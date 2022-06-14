@@ -23,6 +23,8 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
 }
 
 export async function saveActionIds(task: Task, contractName: string, factoryImplementation?: string): Promise<void> {
+  logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
+
   const { useAdaptor, actionIds } = await getActionIds(task, contractName, factoryImplementation);
 
   const actionIdsDir = path.join(ACTION_ID_DIRECTORY, task.network);
@@ -122,7 +124,7 @@ export async function getActionIds(
     .sort(([sigA], [sigB]) => (sigA < sigB ? -1 : 1)); // Sort functions alphabetically.
 
   const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, factoryImplementation);
-  const actionIds = await getAdaptorActionIds(contractFunctions, actionIdSource);
+  const actionIds = await getActionIdsFromSource(contractFunctions, actionIdSource);
 
   return { useAdaptor, actionIds };
 }
@@ -156,7 +158,7 @@ async function getActionIdSource(
   }
 }
 
-async function getAdaptorActionIds(
+async function getActionIdsFromSource(
   contractFunctions: [string, FunctionFragment][],
   actionIdSource: Contract
 ): Promise<Record<string, string>> {

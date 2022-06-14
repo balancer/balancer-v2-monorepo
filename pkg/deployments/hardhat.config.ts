@@ -15,7 +15,7 @@ import { checkArtifact, extractArtifact } from './src/artifact';
 import test from './src/test';
 import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
-import logger, { Logger } from './src/logger';
+import { Logger } from './src/logger';
 import { checkActionIds, checkActionIdUniqueness, saveActionIds } from './src/actionId';
 
 task('deploy', 'Run deployment task')
@@ -50,11 +50,8 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
       const apiKey = args.key ?? (hre.config.networks[hre.network.name] as any).verificationAPIKey;
       const verifier = apiKey ? new Verifier(hre.network, apiKey) : undefined;
 
-      await new Task(args.id, TaskMode.READ_ONLY, hre.network.name, verifier).verify(
-        args.name,
-        args.address,
-        args.args
-      );
+      // Contracts can only be verified in Live mode
+      await new Task(args.id, TaskMode.LIVE, hre.network.name, verifier).verify(args.name, args.address, args.args);
     }
   );
 
@@ -157,7 +154,6 @@ task('save-action-ids', `Print the action IDs for a particular contract`)
               const contractNames = Object.keys(fileContents).filter((name) => name !== 'timestamp');
 
               for (const contractName of contractNames) {
-                logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
                 await saveActionIds(task, contractName);
               }
             }

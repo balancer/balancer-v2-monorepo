@@ -24,8 +24,8 @@ contract MockLegacyBasePool is LegacyBasePool {
 
     uint256 private immutable _totalTokens;
 
-    event InnerOnJoinPoolCalled();
-    event InnerOnExitPoolCalled();
+    event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
+    event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
 
     constructor(
         IVault vault,
@@ -86,7 +86,7 @@ contract MockLegacyBasePool is LegacyBasePool {
         address,
         uint256[] memory balances,
         uint256,
-        uint256,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory,
         bytes memory
     )
@@ -98,7 +98,7 @@ contract MockLegacyBasePool is LegacyBasePool {
             uint256[] memory
         )
     {
-        emit InnerOnJoinPoolCalled();
+        emit InnerOnJoinPoolCalled(protocolSwapFeePercentage);
 
         return (0, new uint256[](balances.length), new uint256[](balances.length));
     }
@@ -109,7 +109,7 @@ contract MockLegacyBasePool is LegacyBasePool {
         address,
         uint256[] memory balances,
         uint256,
-        uint256,
+        uint256 protocolSwapFeePercentage,
         uint256[] memory,
         bytes memory
     )
@@ -121,7 +121,7 @@ contract MockLegacyBasePool is LegacyBasePool {
             uint256[] memory
         )
     {
-        emit InnerOnExitPoolCalled();
+        emit InnerOnExitPoolCalled(protocolSwapFeePercentage);
 
         return (0, new uint256[](balances.length), new uint256[](balances.length));
     }

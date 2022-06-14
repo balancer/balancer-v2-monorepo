@@ -188,20 +188,15 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment (see `TemporarilyPausable`).
-     *
-     * It also turns on Recovery Mode, which enables a special recovery mode exit that executes as little code
-     * as possible to ensure LPs can always exit proportionally, even if the pool is otherwise non-functional.
-     * Note that `unpause` does not automatically exit recovery mode.
      */
     function pause() external authenticate {
         _setPaused(true);
-        _setRecoveryMode(true);
     }
 
     /**
      * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). Note that ny paused pools will automatically unpause after
+     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause after
      * the Buffer Period expires.
      */
     function unpause() external authenticate {
@@ -249,6 +244,11 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
 
+        // Joins are unsupported when paused
+        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
+        // initialization in this case.
+        _ensureNotPaused();
+
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
                 poolId,
@@ -277,7 +277,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );
@@ -321,12 +321,15 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
             _ensureInRecoveryMode();
 
             // Protocol fees are skipped when processing recovery mode exits, since these are pool-agnostic and it
-            // is therefore impossible to know how many fees are due. For consistency, derived pools should not pay
-            // any protocol fees in regular joins and exits if recovery mode is enabled.
+            // is therefore impossible to know how many fees are due. For consistency, all regular joins and exits are
+            // processed as if the protocol swap fee percentage was zero.
             dueProtocolFeeAmounts = new uint256[](balances.length);
 
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
+            // Exits are unsupported when paused
+            _ensureNotPaused();
+
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
 
@@ -337,7 +340,7 @@ abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPau
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );

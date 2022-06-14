@@ -5,6 +5,7 @@ import { WeiPerEther as ONE } from '@ethersproject/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
@@ -211,11 +212,15 @@ describe('BalancerTokenAdmin', () => {
           const tx = await tokenAdmin.connect(admin).mint(other.address, value);
           const receipt = await tx.wait();
 
-          expectEvent.inIndirectReceipt(receipt, token.interface, 'Transfer', {
-            from: ZERO_ADDRESS,
-            to: other.address,
-            value,
-          });
+          expectTransferEvent(
+            receipt,
+            {
+              from: ZERO_ADDRESS,
+              to: other.address,
+              value,
+            },
+            token
+          );
         });
       });
 
