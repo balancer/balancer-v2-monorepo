@@ -8,7 +8,7 @@ import Task, { TaskMode } from './task';
 
 const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
 
-type ContractActionIdData = { useAdaptor: boolean; exampleContractAddress?: string; actionIds: Record<string, string> };
+type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: Record<string, string> };
 type ActionIdInfo = {
   taskId: string;
   contractName: string;
@@ -22,10 +22,10 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   return fileExists ? JSON.parse(fs.readFileSync(filePath).toString()) : {};
 }
 
-export async function saveActionIds(task: Task, contractName: string, contractAddress?: string): Promise<void> {
+export async function saveActionIds(task: Task, contractName: string, factoryOutput?: string): Promise<void> {
   logger.log(`Generating action IDs for ${contractName} of ${task.id}`, '');
 
-  const { useAdaptor, actionIds } = await getActionIds(task, contractName, contractAddress);
+  const { useAdaptor, actionIds } = await getActionIds(task, contractName, factoryOutput);
 
   const actionIdsDir = path.join(ACTION_ID_DIRECTORY, task.network);
   if (!fs.existsSync(actionIdsDir)) fs.mkdirSync(actionIdsDir, { recursive: true });
@@ -37,7 +37,7 @@ export async function saveActionIds(task: Task, contractName: string, contractAd
 
   // Write the new entry.
   newFileContents[task.id] = newFileContents[task.id] ?? {};
-  newFileContents[task.id][contractName] = { useAdaptor, exampleContractAddress: contractAddress, actionIds };
+  newFileContents[task.id][contractName] = { useAdaptor, factoryOutput, actionIds };
 
   fs.writeFileSync(filePath, JSON.stringify(newFileContents, null, 2));
 }
@@ -53,7 +53,7 @@ export async function checkActionIds(task: Task): Promise<void> {
     const { useAdaptor: expectedUseAdaptor, actionIds: expectedActionIds } = await getActionIds(
       task,
       contractName,
-      actionIdData.exampleContractAddress
+      actionIdData.factoryOutput
     );
 
     const adaptorUsageMatch = actionIdData.useAdaptor === expectedUseAdaptor;
@@ -113,7 +113,7 @@ export function checkActionIdUniqueness(network: string): void {
 export async function getActionIds(
   task: Task,
   contractName: string,
-  contractAddress?: string
+  factoryOutput?: string
 ): Promise<{ useAdaptor: boolean; actionIds: Record<string, string> }> {
   const artifact = task.artifact(contractName);
 
@@ -123,7 +123,7 @@ export async function getActionIds(
     .filter(([, func]) => ['nonpayable', 'payable'].includes(func.stateMutability))
     .sort(([sigA], [sigB]) => (sigA < sigB ? -1 : 1)); // Sort functions alphabetically.
 
-  const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, contractAddress);
+  const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, factoryOutput);
   const actionIds = await getActionIdsFromSource(contractFunctions, actionIdSource);
 
   return { useAdaptor, actionIds };
@@ -132,7 +132,7 @@ export async function getActionIds(
 async function getActionIdSource(
   task: Task,
   contractName: string,
-  contractAddress?: string
+  factoryOutput?: string
 ): Promise<{ useAdaptor: boolean; actionIdSource: Contract }> {
   const artifact = task.artifact(contractName);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,8 +146,9 @@ async function getActionIdSource(
   );
 
   if (contractIsAuthorizerAware) {
-    if (contractAddress) {
-      return { useAdaptor: false, actionIdSource: await task.instanceAt(contractName, contractAddress) };
+    if (factoryOutput) {
+      await checkFactoryOutput(task, contractName, factoryOutput);
+      return { useAdaptor: false, actionIdSource: await task.instanceAt(contractName, factoryOutput) };
     } else {
       return { useAdaptor: false, actionIdSource: await task.deployedInstance(contractName) };
     }
@@ -196,4 +197,16 @@ function getDuplicateActionIds(
   );
 
   return duplicateActionIdsMapping;
+}
+
+async function checkFactoryOutput(task: Task, contractName: string, factoryOutput: string) {
+  // We must check that the factory output is actually an instance of the expected contract type. This is
+  // not trivial due to usage of immutable and lack of knowledge of constructor arguments. However, this scenario
+  // only arises with Pools created from factories, all of which share a useful property: their factory contract
+  // name is <contractName>Factory, and they all have a function called 'isPoolFromFactory' we can use for this.
+
+  const factory = await task.deployedInstance(`${contractName}Factory`);
+  if (!(await factory.isPoolFromFactory(factoryOutput))) {
+    throw Error(`The contract at ${factoryOutput} is not an instance of a ${contractName}`);
+  }
 }

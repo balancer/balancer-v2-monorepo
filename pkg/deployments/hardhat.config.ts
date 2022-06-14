@@ -120,7 +120,7 @@ task('check-artifacts', `check that contract artifacts correspond to their build
 task('save-action-ids', `Print the action IDs for a particular contract`)
   .addOptionalParam('id', 'Specific task ID')
   .addOptionalParam('name', 'Contract name')
-  .addOptionalParam('address', 'Contract address')
+  .addOptionalParam('address', 'Address of Pool created from a factory')
   .setAction(
     async (args: { id: string; name: string; address?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
       Logger.setDefaults(false, args.verbose || false);
@@ -129,7 +129,9 @@ task('save-action-ids', `Print the action IDs for a particular contract`)
       // Most likely this is for a pool which is to be deployed from a factory contract deployed as part of the task.
       if (args.address) {
         if (!args.id || !args.name) {
-          throw new Error("Provided a contract address but didn't specify task or contract name.");
+          throw new Error(
+            "Provided an address for Pool created from a factory but didn't specify task or contract name."
+          );
         }
         const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
         await saveActionIds(task, args.name, args.address);
