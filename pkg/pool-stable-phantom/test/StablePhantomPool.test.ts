@@ -1131,10 +1131,15 @@ describe('StablePhantomPool', () => {
     });
 
     describe('proportional exit', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+        await pool.init({ recipient, initialBalances });
+      });
+
       context('when not paused', () => {
         it('cannot exit proportionally (because non-recovery exits are unsupported)', async () => {
           const bptIn = fp(10);
-          await expect(pool.proportionalExit({ from: lp, bptIn })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+          await expect(pool.proportionalExit({ from: recipient, bptIn })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
         });
       });
 
@@ -1146,7 +1151,7 @@ describe('StablePhantomPool', () => {
 
         it('cannot exit proportionally (because all exits are blocked)', async () => {
           const bptIn = fp(10);
-          await expect(pool.proportionalExit({ from: lp, bptIn })).to.be.revertedWith('PAUSED');
+          await expect(pool.proportionalExit({ from: recipient, bptIn })).to.be.revertedWith('PAUSED');
         });
       });
     });
