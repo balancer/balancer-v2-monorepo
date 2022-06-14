@@ -6,6 +6,7 @@ import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
@@ -20,10 +21,10 @@ describe('PolygonRootGaugeFactory', function () {
   let vault: Contract,
     authorizer: Contract,
     authorizerAdaptor: Contract,
-    BAL: Contract,
     BALTokenAdmin: Contract,
     gaugeController: Contract,
     gaugeAdder: Contract;
+  let BAL: string;
 
   const task = new Task('20220413-polygon-root-gauge-factory', TaskMode.TEST, getForkedNetwork(hre));
 
@@ -70,9 +71,7 @@ describe('PolygonRootGaugeFactory', function () {
       '0xf302f9F50958c5593770FDf4d4812309fF77414f' // balancerTokenAdminTask.output({ network: 'mainnet' }).BalancerTokenAdmin
     );
 
-    // We reuse this task as it contains an ABI similar to the one in the real BAL token
-    const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    BAL = await testBALTokenTask.instanceAt('TestBalancerToken', await BALTokenAdmin.getBalancerToken());
+    BAL = await BALTokenAdmin.getBalancerToken();
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.instanceAt(
@@ -162,11 +161,15 @@ describe('PolygonRootGaugeFactory', function () {
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
-    expectEvent.inIndirectReceipt(await mintTx.wait(), BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: gauge.address,
-      value: actualEmissions,
-    });
+    expectTransferEvent(
+      await mintTx.wait(),
+      {
+        from: ZERO_ADDRESS,
+        to: gauge.address,
+        value: actualEmissions,
+      },
+      BAL
+    );
 
     // And the gauge then deposits those in the predicate via the bridge mechanism
     const bridgeInterface = new ethers.utils.Interface([
@@ -176,7 +179,7 @@ describe('PolygonRootGaugeFactory', function () {
     expectEvent.inIndirectReceipt(await mintTx.wait(), bridgeInterface, 'LockedERC20', {
       depositor: gauge.address,
       depositReceiver: recipient.address,
-      rootToken: BAL.address,
+      rootToken: BAL,
       amount: actualEmissions,
     });
   });
@@ -214,11 +217,15 @@ describe('PolygonRootGaugeFactory', function () {
     );
 
     // Tokens are minted for the gauge
-    expectEvent.inIndirectReceipt(await tx.wait(), BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: gauge.address,
-      value: expectedEmissions,
-    });
+    expectTransferEvent(
+      await tx.wait(),
+      {
+        from: ZERO_ADDRESS,
+        to: gauge.address,
+        value: expectedEmissions,
+      },
+      BAL
+    );
 
     // And the gauge then deposits those in the predicate via the bridge mechanism
     const bridgeInterface = new ethers.utils.Interface([
@@ -228,7 +235,7 @@ describe('PolygonRootGaugeFactory', function () {
     expectEvent.inIndirectReceipt(await tx.wait(), bridgeInterface, 'LockedERC20', {
       depositor: gauge.address,
       depositReceiver: recipient.address,
-      rootToken: BAL.address,
+      rootToken: BAL,
       amount: expectedEmissions,
     });
   });
