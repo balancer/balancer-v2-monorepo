@@ -67,7 +67,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Rate Provider for wstETH                             | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
 | Batch Relayer                                        | [`20211203-batch-relayer`](./tasks/20211203-batch-relayer)                                           |
 | Linear Pools for Aave aTokens                        | [`20211208-aave-linear-pool`](./tasks/20211208-aave-linear-pool)                                     |
-| Preminted BPT Meta Stable Pools                      | [`20211208-stable-phantom-pool`](./tasks/20211208-stable-phantom-pool)                               |
 | Authorizer Adaptor for extending governance          | [`20220325-authorizer-adaptor `](./tasks/20220325-authorizer-adaptor)                                |
 | Wallet for the BAL token                             | [`20220325-bal-token-holder-factory `](./tasks/20220325-bal-token-holder-factory)                    |
 | Admin of the BAL token                               | [`20220325-balancer-token-admin `](./tasks/20220325-balancer-token-admin)                            |
@@ -112,3 +111,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/deprecated/20210920-vita-merkle)                                   |
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
+| Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
