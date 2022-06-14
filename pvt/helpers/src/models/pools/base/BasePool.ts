@@ -65,6 +65,10 @@ export default class BasePool {
     return this.instance.getVault();
   }
 
+  async getOwner(): Promise<string> {
+    return this.instance.getOwner();
+  }
+
   async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
     return this.vault.getPool(this.poolId);
   }
@@ -79,6 +83,10 @@ export default class BasePool {
 
   async getScalingFactors(): Promise<BigNumber[]> {
     return this.instance.getScalingFactors();
+  }
+
+  async getScalingFactor(token: Token): Promise<BigNumber> {
+    return this.instance.getScalingFactor(token.address);
   }
 
   async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
