@@ -41,11 +41,11 @@ import "./BasePoolAuthorization.sol";
  * In particular, stable pools do not attempt to compute the invariant (which is a complex, iterative calculation
  * that can fail in extreme circumstances), and no protocol fees are collected.
  *
- * In some pools, such as those with Oracles or Price Rates, Recovery mode takes advantage of mathematical properties
- * to safely compute the invariant for the special case of proportional withdrawals, without running the usual more
- * complex code necessary in general (e.g., for non-proportional joins/exits and swaps). This might be enough to
- * support functions like `getRate`, allowing dependent pools to function normally. (Otherwise, the dependent pools
- * can themselves be placed into Recovery Mode.)
+ * In some pools, such as those with Price Rates, Recovery mode takes advantage of mathematical properties to safely
+ * compute the invariant for the special case of proportional withdrawals, without running the usual more complex code
+ * necessary in general (e.g., for non-proportional joins/exits and swaps). This might be enough to support functions
+ * like `getRate`, allowing dependent pools to function normally. (Otherwise, the dependent pools can themselves be
+ * placed into Recovery Mode.)
  *
  * It is critical to ensure that turning on Recovery Mode would do no harm, if activated maliciously or in error.
  */
