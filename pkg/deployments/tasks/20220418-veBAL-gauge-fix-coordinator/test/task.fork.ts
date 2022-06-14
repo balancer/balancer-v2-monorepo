@@ -4,7 +4,7 @@ import { Contract, ContractReceipt } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
@@ -16,7 +16,7 @@ describe('veBALGaugeFixCoordinator', function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
-  let authorizer: Contract, gaugeController: Contract, BAL: Contract;
+  let authorizer: Contract, gaugeController: Contract;
 
   const task = new Task('20220418-veBAL-gauge-fix-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
@@ -46,10 +46,6 @@ describe('veBALGaugeFixCoordinator', function () {
       'GaugeController',
       gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
     );
-
-    // We reuse this task as it contains an ABI similar to the one in the real BAL token
-    const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    BAL = await testBALTokenTask.instanceAt('TestBalancerToken', BAL_TOKEN);
   });
 
   before('grant permissions', async () => {
@@ -110,27 +106,39 @@ describe('veBALGaugeFixCoordinator', function () {
   });
 
   it('mints BAL for veBAL holders', async () => {
-    expectEvent.inIndirectReceipt(executeReceipt, BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: VEBAL_BAL_TOKEN_HOLDER,
-      value: bn('14500e18').mul(2),
-    });
+    expectTransferEvent(
+      executeReceipt,
+      {
+        from: ZERO_ADDRESS,
+        to: VEBAL_BAL_TOKEN_HOLDER,
+        value: bn('14500e18').mul(2),
+      },
+      BAL_TOKEN
+    );
   });
 
   it('mints BAL for Arbitrum LPs', async () => {
-    expectEvent.inIndirectReceipt(executeReceipt, BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: ARBITRUM_BAL_TOKEN_HOLDER,
-      value: bn('10150e18').mul(2),
-    });
+    expectTransferEvent(
+      executeReceipt,
+      {
+        from: ZERO_ADDRESS,
+        to: ARBITRUM_BAL_TOKEN_HOLDER,
+        value: bn('10150e18').mul(2),
+      },
+      BAL_TOKEN
+    );
   });
 
   it('mints BAL for Polygon LPs', async () => {
-    expectEvent.inIndirectReceipt(executeReceipt, BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: POLYGON_BAL_TOKEN_HOLDER,
-      value: bn('24650e18').mul(2),
-    });
+    expectTransferEvent(
+      executeReceipt,
+      {
+        from: ZERO_ADDRESS,
+        to: POLYGON_BAL_TOKEN_HOLDER,
+        value: bn('24650e18').mul(2),
+      },
+      BAL_TOKEN
+    );
   });
 
   it('renounces the admin role', async () => {

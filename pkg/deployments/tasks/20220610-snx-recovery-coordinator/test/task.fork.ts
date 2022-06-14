@@ -9,8 +9,7 @@ import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { Interface } from 'ethers/lib/utils';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
 describe('SNXRecoveryCoordinator', function () {
@@ -112,18 +111,14 @@ describe('SNXRecoveryCoordinator', function () {
   it('transfers tokens to the vault', async () => {
     const tx = await coordinator.performNextStage();
 
-    expectEvent.inIndirectReceipt(
+    expectTransferEvent(
       await tx.wait(),
-      new Interface(['event Transfer(address indexed from, address indexed to, uint256 value)']),
-      'Transfer',
       { from: await vault.getProtocolFeesCollector(), to: vault.address, value: SNX_AMOUNT },
       SNX
     );
 
-    expectEvent.inIndirectReceipt(
+    expectTransferEvent(
       await tx.wait(),
-      new Interface(['event Transfer(address indexed from, address indexed to, uint256 value)']),
-      'Transfer',
       { from: await vault.getProtocolFeesCollector(), to: vault.address, value: sBTC_AMOUNT },
       sBTC
     );
