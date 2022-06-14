@@ -6,9 +6,9 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { impersonate } from '../../../src/signers';
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { impersonate } from '../../../../src/signers';
 
 describe('veBALDeploymentCoordinator', function () {
   let balMultisig: SignerWithAddress, govMultisig: SignerWithAddress;

@@ -75,27 +75,34 @@ Returns an object with all contracts from a deployment and their addresses.
 | Mainnet Staking Gauges                               | [`20220325-mainnet-gauge-factory`](./tasks/20220325-mainnet-gauge-factory)                           |
 | Single Recipient Stakeless Gauges                    | [`20220325-single-recipient-gauge-factory`](./tasks/20220325-single-recipient-gauge-factory)         |
 | Delegation of veBAL boosts                           | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
-| Coordination of the veBAL deployment                 | [`20220325-veBAL-deployment-coordinator`](./tasks/20220325-veBAL-deployment-coordinator)             |
 | Gauges on child networks (L2s and sidechains)        | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
 | Arbitrum Root Gauges, for veBAL voting               | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)               |
 | Polygon Root Gauges, for veBAL voting                | [`20220413-polygon-root-gauge-factory`](./tasks/20220413-polygon-root-gauge-factory)                 |
-| Coordination of setup of L2 gauges for veBAL system  | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/20220415-veBAL-L2-gauge-setup-coordinator)     |
-| Coordination of veBAL gauges fix (Option 1)          | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/20220418-veBAL-gauge-fix-coordinator)               |
 | veBAL Smart Wallet Checker                           | [`20220420-smart-wallet-checker`](./tasks/20220420-smart-wallet-checker)                             |
-| veBAL Smart Wallet Checker Coordinator               | [`20220421-smart-wallet-checker-coordinator`](./tasks/20220421-smart-wallet-checker-coordinator)     |
 | Fee Distributor for veBAL holders                    | [`20220420-fee-distributor`](./tasks/20220420-fee-distributor)                                       |
 | Distribution Scheduler for reward tokens on gauges   | [`20220422-distribution-scheduler`](./tasks/20220422-distribution-scheduler)                         |
 | Relayer with the fix for the Double Entrypoint issue | [`20220513-double-entrypoint-fix-relayer`](./tasks/20220513-double-entrypoint-fix-relayer)           |
 | Protocol Fee Withdrawer                              | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                       |
 | Child Chain Gauge Token Adder                        | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
-| Tribe BAL Minter Coordinator                         | [`20220606-tribe-bal-minter-coordinator`](./tasks/20220606-tribe-bal-minter-coordinator)             |
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
-| Coordination of the double entrypoint issue fix      | [`20220610-snx-recovery-coordinator`](./tasks/20220610-snx-recovery-coordinator)                     |
+
+## Scripts
+
+These are deployments for script-like contracts (often called 'coordinators') which are typically granted some permission by Governance and then executed, after which they become useless.
+
+| Description                                         | Task ID                                                                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Coordination of the veBAL deployment                | [`20220325-veBAL-deployment-coordinator`](./tasks/scripts/20220325-veBAL-deployment-coordinator)         |
+| Coordination of setup of L2 gauges for veBAL system | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/scripts/20220415-veBAL-L2-gauge-setup-coordinator) |
+| Coordination of veBAL gauges fix (Option 1)         | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/scripts/20220418-veBAL-gauge-fix-coordinator)           |
+| veBAL Smart Wallet Checker Coordinator              | [`20220421-smart-wallet-checker-coordinator`](./tasks/scripts/20220421-smart-wallet-checker-coordinator) |
+| Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)         |
+| Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                 |
 
 ## Deprecated Deployments
 
-These deployments have been depreacted because they're either oudated and have been replaced by newer versions, or because they no longer form part of the current infrastructure. **In almost all cases they should no longer be used.**
+These deployments have been depreacted because they're either oudated and have been replaced by newer versions, or because they no longer form part of the current infrastructure. **In almost all cases they should no longer be used,** and are only kept here for historical reasons.
 
 Go to each deprecated deployment's readme file to learn more about why it is deprecated, and what the replacement deployment is (if any).
 

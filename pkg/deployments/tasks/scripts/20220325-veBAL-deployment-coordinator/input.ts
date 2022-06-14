@@ -1,4 +1,4 @@
-import Task, { TaskMode } from '../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 
 export type veBALDeploymentCoordinatorDeployment = {
   AuthorizerAdaptor: string;
