@@ -10,9 +10,9 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonateWhale } from '../../../src/signers';
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { getSigner, impersonateWhale } from '../../../../src/signers';
 
 describe('MetaStablePoolFactory', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;

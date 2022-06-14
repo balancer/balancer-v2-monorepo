@@ -65,7 +65,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Vault, main protocol contract                        | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Weighted Pools of up to 8 tokens                     | [`20210418-weighted-pool`](./tasks/20210418-weighted-pool)                                           |
 | Weighted Pools with two tokens and price oracle      | [`20210418-weighted-pool`](./tasks/20210418-weighted-pool)                                           |
-| Meta Stable Pools with 2 tokens and price oracle     | [`20210727-meta-stable-pool`](./tasks/20210727-meta-stable-pool)                                     |
 | Relayer for Lido stETH wrapping/unwrapping           | [`20210812-lido-relayer`](./tasks/20210812-lido-relayer)                                             |
 | Distributor contract for LDO rewards                 | [`20210811-ldo-merkle`](./tasks/20210811-ldo-merkle)                                                 |
 | Rate Provider for wstETH                             | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
@@ -109,7 +108,8 @@ These deployments have been depreacted because they're either oudated and have b
 
 Go to each deprecated deployment's readme file to learn more about why it is deprecated, and what the replacement deployment is (if any).
 
-| Description                                     | Task ID                                                                                             |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Stable Pools of up to 5 tokens                  | [`20210624-stable-pool`](./tasks/deprecated-20210624-stable-pool)                                   |
-| Liquidity Bootstrapping Pools of up to 4 tokens | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
+| Description                                      | Task ID                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/deprecated-20210624-stable-pool)                                   |
+| Liquidity Bootstrapping Pools of up to 4 tokens  | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
+| Meta Stable Pools with 2 tokens and price oracle | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                         |
