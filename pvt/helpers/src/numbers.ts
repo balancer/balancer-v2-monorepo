@@ -1,6 +1,10 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
+import _BN from 'bn.js';
+
+export { BigNumber };
+
 const SCALING_FACTOR = 1e18;
 
 export type BigNumberish = string | number | BigNumber;
@@ -18,6 +22,11 @@ export const bn = (x: BigNumberish | Decimal): BigNumber => {
   const stringified = parseScientific(x.toString());
   const integer = stringified.split('.')[0];
   return BigNumber.from(integer);
+};
+
+export const negate = (x: BigNumberish): BigNumber => {
+  // Ethers does not expose the .notn function from bn.js, so we must use it ourselves
+  return bn(new _BN(bn(x).toString()).notn(256).toString());
 };
 
 export const maxUint = (e: number): BigNumber => bn(2).pow(e).sub(1);

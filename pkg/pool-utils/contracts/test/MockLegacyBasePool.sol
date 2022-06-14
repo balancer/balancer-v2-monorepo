@@ -15,10 +15,17 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+
 import "../LegacyBasePool.sol";
 
 contract MockLegacyBasePool is LegacyBasePool {
+    using WeightedPoolUserData for bytes;
+
     uint256 private immutable _totalTokens;
+
+    event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
+    event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
 
     constructor(
         IVault vault,
@@ -57,22 +64,31 @@ contract MockLegacyBasePool is LegacyBasePool {
     }
 
     function _onInitializePool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory scalingFactors,
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {}
+    ) internal pure override returns (uint256, uint256[] memory) {
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        uint256 bptAmountOut;
+
+        for (uint256 i = 0; i < amountsIn.length; i++) {
+            bptAmountOut += amountsIn[i];
+        }
+
+        return (bptAmountOut, amountsIn);
+    }
 
     function _onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
         uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
+        uint256[] memory,
+        bytes memory
     )
         internal
         override
@@ -81,17 +97,21 @@ contract MockLegacyBasePool is LegacyBasePool {
             uint256[] memory,
             uint256[] memory
         )
-    {}
+    {
+        emit InnerOnJoinPoolCalled(protocolSwapFeePercentage);
+
+        return (0, new uint256[](balances.length), new uint256[](balances.length));
+    }
 
     function _onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
         uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
+        uint256[] memory,
+        bytes memory
     )
         internal
         override
@@ -100,7 +120,11 @@ contract MockLegacyBasePool is LegacyBasePool {
             uint256[] memory,
             uint256[] memory
         )
-    {}
+    {
+        emit InnerOnExitPoolCalled(protocolSwapFeePercentage);
+
+        return (0, new uint256[](balances.length), new uint256[](balances.length));
+    }
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return 8;
@@ -121,5 +145,17 @@ contract MockLegacyBasePool is LegacyBasePool {
         for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors[i] = FixedPoint.ONE;
         }
+    }
+
+    function doNotCallInRecovery() external view whenNotInRecoveryMode {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function notCallableInRecovery() external view {
+        _ensureNotInRecoveryMode();
+    }
+
+    function onlyCallableInRecovery() external view {
+        _ensureInRecoveryMode();
     }
 }

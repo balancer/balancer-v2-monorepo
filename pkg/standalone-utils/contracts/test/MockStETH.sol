@@ -16,19 +16,17 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IstETH.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-
-import "./TestToken.sol";
-
-import "../interfaces/IstETH.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 contract MockStETH is TestToken, IstETH {
     constructor(
-        address admin,
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) TestToken(admin, name, symbol, decimals) {
+    ) TestToken(name, symbol, decimals) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -81,6 +81,8 @@ describe('Samples', () => {
   });
 
   describe('update', () => {
+    let encodedSample: string;
+
     const assertUpdate = async (
       sample: string,
       logPairPrice: BigNumberish,
@@ -102,8 +104,8 @@ describe('Samples', () => {
       expect(newSample.timestamp).to.be.equal(timestamp);
     };
 
-    it('updates the sample correctly', async () => {
-      const sample = await samples.encode({
+    sharedBeforeEach('create sample', async () => {
+      encodedSample = await samples.encode({
         logPairPrice: 1,
         accLogPairPrice: 10,
         logBptPrice: 2,
@@ -112,14 +114,16 @@ describe('Samples', () => {
         accLogInvariant: 30,
         timestamp: 400,
       });
+    });
 
-      await assertUpdate(sample, 100, 0, 0, 0);
-      await assertUpdate(sample, 0, 100, 0, 0);
-      await assertUpdate(sample, 0, 0, 100, 0);
-      await assertUpdate(sample, 0, 0, 0, 100);
-      await assertUpdate(sample, 100, 200, 300, 400);
-      await assertUpdate(sample, MIN_INT22.div(2), MIN_INT22.div(2), MIN_INT22.div(2), MAX_UINT31.div(2));
-      await assertUpdate(sample, MAX_INT22.div(2), MAX_INT22.div(2), MAX_INT22.div(2), MAX_UINT31.div(2));
+    it('updates the sample correctly', async () => {
+      await assertUpdate(encodedSample, 100, 0, 0, 0);
+      await assertUpdate(encodedSample, 0, 100, 0, 0);
+      await assertUpdate(encodedSample, 0, 0, 100, 0);
+      await assertUpdate(encodedSample, 0, 0, 0, 100);
+      await assertUpdate(encodedSample, 100, 200, 300, 400);
+      await assertUpdate(encodedSample, MIN_INT22.div(2), MIN_INT22.div(2), MIN_INT22.div(2), MAX_UINT31.div(2));
+      await assertUpdate(encodedSample, MAX_INT22.div(2), MAX_INT22.div(2), MAX_INT22.div(2), MAX_UINT31.div(2));
     });
   });
 });

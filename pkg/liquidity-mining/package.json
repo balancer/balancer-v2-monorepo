@@ -1,0 +1,61 @@
+{
+  "name": "@balancer-labs/v2-liquidity-mining",
+  "version": "1.0.0",
+  "description": "Balancer V2 Liquidity Mining system",
+  "license": "GPL-3.0-only",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/liquidity-mining#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/liquidity-mining"
+  },
+  "bugs": {
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
+  },
+  "files": [
+    "contracts/**/*",
+    "!contracts/test/*"
+  ],
+  "scripts": {
+    "build": "yarn compile",
+    "compile": "hardhat compile && rm -rf artifacts/build-info",
+    "compile:watch": "nodemon --ext sol --exec yarn compile",
+    "lint": "yarn lint:typescript && yarn lint:solidity",
+    "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "lint:solidity": "solhint 'contracts/**/*.sol'",
+    "test": "yarn compile && mocha --extension ts --require hardhat/register --require @balancer-labs/v2-common/setupTests --recursive",
+    "test:fast": "yarn compile && mocha --extension ts --require hardhat/register --require @balancer-labs/v2-common/setupTests --recursive --parallel --exit",
+    "test:watch": "nodemon --ext js,ts --watch test --watch lib --exec 'clear && yarn test --no-compile'"
+  },
+  "devDependencies": {
+    "@balancer-labs/v2-common": "workspace:*",
+    "@balancer-labs/v2-helpers": "workspace:*",
+    "@balancer-labs/v2-interfaces": "workspace:*",
+    "@balancer-labs/v2-solidity-utils": "workspace:*",
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-vyper": "^3.0.0",
+    "@nomiclabs/hardhat-waffle": "^2.0.0",
+    "@types/chai": "^4.2.12",
+    "@types/lodash": "^4.14.161",
+    "@types/mocha": "^8.0.3",
+    "@types/node": "^14.6.0",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "chai": "^4.2.0",
+    "decimal.js": "^10.2.1",
+    "eslint": "^7.9.0",
+    "eslint-plugin-mocha-no-only": "^1.1.1",
+    "eslint-plugin-prettier": "^3.1.4",
+    "ethereum-waffle": "^3.0.2",
+    "ethers": "^5.4.1",
+    "hardhat": "^2.8.3",
+    "mocha": "^8.2.1",
+    "nodemon": "^2.0.4",
+    "prettier": "^2.1.2",
+    "prettier-plugin-solidity": "v1.0.0-alpha.59",
+    "solhint": "^3.2.0",
+    "solhint-plugin-prettier": "^0.0.4",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.0.2"
+  }
+}

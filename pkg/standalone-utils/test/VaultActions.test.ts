@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
@@ -13,12 +13,17 @@ import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/ba
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { BigNumber, Contract } from 'ethers';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { Dictionary } from 'lodash';
-import { Interface } from '@ethersproject/abi';
 import { Zero } from '@ethersproject/constants';
+import {
+  expectChainedReferenceContents,
+  setChainedReferenceContents,
+  toChainedReference,
+} from './helpers/chainedReferences';
 
 describe('VaultActions', function () {
   let vault: Vault;
@@ -32,28 +37,6 @@ describe('VaultActions', function () {
   before('get signers', async () => {
     [, admin, sender] = await ethers.getSigners();
   });
-
-  const CHAINED_REFERENCE_PREFIX = 'ba10';
-  function toChainedReference(key: BigNumberish): BigNumber {
-    // The full padded prefix is 66 characters long, with 64 hex characters and the 0x prefix.
-    const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
-
-    return BigNumber.from(paddedPrefix).add(key);
-  }
-
-  async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
-    await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
-  }
-
-  async function expectChainedReferenceContents(ref: BigNumberish, expectedValue: BigNumberish): Promise<void> {
-    const receipt = await (
-      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [ref])])
-    ).wait();
-
-    expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
-      value: bn(expectedValue),
-    });
-  }
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Balancer Vault
@@ -69,11 +52,10 @@ describe('VaultActions', function () {
         actionId(vault.instance, action)
       )
     );
-    const authorizer = await deployedAt('v2-vault/Authorizer', await vault.instance.getAuthorizer());
-    await authorizer.connect(admin).grantRolesGlobally(relayerActionIds, relayer.address);
+    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
 
     // Approve relayer by sender
-    await vault.instance.connect(sender).setRelayerApproval(sender.address, relayer.address, true);
+    await vault.setRelayerApproval(sender, relayer, true);
   });
 
   sharedBeforeEach('set up pools', async () => {
@@ -261,11 +243,11 @@ describe('VaultActions', function () {
       const {
         args: { amountOut },
       } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-      await expectChainedReferenceContents(toChainedReference(0), amountOut);
+      await expectChainedReferenceContents(relayer, toChainedReference(0), amountOut);
     });
 
     it('swaps with chained references', async () => {
-      await setChainedReferenceContents(toChainedReference(0), amountIn);
+      await setChainedReferenceContents(relayer, toChainedReference(0), amountIn);
 
       const receipt = await (
         await relayer.connect(sender).multicall([
@@ -371,13 +353,13 @@ describe('VaultActions', function () {
         args: { amountIn: amountInSNX },
       } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdC });
 
-      await expectChainedReferenceContents(toChainedReference(0), amountOutMKR);
+      await expectChainedReferenceContents(relayer, toChainedReference(0), amountOutMKR);
 
-      await expectChainedReferenceContents(toChainedReference(1), amountInSNX);
+      await expectChainedReferenceContents(relayer, toChainedReference(1), amountInSNX);
     });
 
     it('swaps with chained references', async () => {
-      await setChainedReferenceContents(toChainedReference(0), amountInC);
+      await setChainedReferenceContents(relayer, toChainedReference(0), amountInC);
 
       const receipt = await (
         await relayer.connect(sender).multicall([
@@ -515,18 +497,13 @@ describe('VaultActions', function () {
 
           const {
             args: { value: BPTAmountOut },
-          } = expectEvent.inIndirectReceipt(
-            receipt,
-            new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-            'Transfer',
-            { from: ZERO_ADDRESS, to: sender.address }
-          );
+          } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: sender.address }, getPoolAddress(poolIdA));
 
-          await expectChainedReferenceContents(toChainedReference(0), BPTAmountOut);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), BPTAmountOut);
         });
 
         it('joins with exact amounts in chained references', async () => {
-          await setChainedReferenceContents(toChainedReference(0), amountInMKR);
+          await setChainedReferenceContents(relayer, toChainedReference(0), amountInMKR);
 
           await expectBalanceChange(
             async () =>
@@ -711,31 +688,19 @@ describe('VaultActions', function () {
               daiAmountOut = daiTransfer.args.delta;
               mkrAmountOut = mkrTransfer.args.delta;
             } else {
-              const daiTransfer = expectEvent.inIndirectReceipt(
-                receipt,
-                new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-                'Transfer',
-                { from: vault.address, to: sender.address },
-                tokens.DAI.address
-              );
-              const mkrTransfer = expectEvent.inIndirectReceipt(
-                receipt,
-                new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-                'Transfer',
-                { from: vault.address, to: sender.address },
-                tokens.MKR.address
-              );
+              const daiTransfer = expectTransferEvent(receipt, { from: vault.address, to: sender.address }, tokens.DAI);
+              const mkrTransfer = expectTransferEvent(receipt, { from: vault.address, to: sender.address }, tokens.MKR);
 
               daiAmountOut = daiTransfer.args.value;
               mkrAmountOut = mkrTransfer.args.value;
             }
 
-            await expectChainedReferenceContents(toChainedReference(0), daiAmountOut);
-            await expectChainedReferenceContents(toChainedReference(1), mkrAmountOut);
+            await expectChainedReferenceContents(relayer, toChainedReference(0), daiAmountOut);
+            await expectChainedReferenceContents(relayer, toChainedReference(1), mkrAmountOut);
           });
 
           it('exits with exact bpt in chained reference', async () => {
-            await setChainedReferenceContents(toChainedReference(0), amountInBPT);
+            await setChainedReferenceContents(relayer, toChainedReference(0), amountInBPT);
 
             await expectBalanceChange(
               async () =>
@@ -853,22 +818,16 @@ describe('VaultActions', function () {
 
               mkrAmountOut = mkrTransfer.args.delta;
             } else {
-              const mkrTransfer = expectEvent.inIndirectReceipt(
-                receipt,
-                new Interface((await getArtifact('v2-solidity-utils/ERC20')).abi),
-                'Transfer',
-                { from: vault.address, to: sender.address },
-                tokens.MKR.address
-              );
+              const mkrTransfer = expectTransferEvent(receipt, { from: vault.address, to: sender.address }, tokens.MKR);
 
               mkrAmountOut = mkrTransfer.args.value;
             }
 
-            await expectChainedReferenceContents(toChainedReference(0), mkrAmountOut);
+            await expectChainedReferenceContents(relayer, toChainedReference(0), mkrAmountOut);
           });
 
           it('exits with exact bpt in chained reference', async () => {
-            await setChainedReferenceContents(toChainedReference(0), amountInBPT);
+            await setChainedReferenceContents(relayer, toChainedReference(0), amountInBPT);
 
             await expectBalanceChange(
               async () =>

@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IPriceOracle.sol";
 
-import "../interfaces/IPriceOracle.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 /**
  * @dev This library provides functions to help manipulating samples for Pool Price Oracles. It handles updates,
@@ -122,49 +122,49 @@ library Samples {
      * @dev Returns `sample`'s timestamp.
      */
     function timestamp(bytes32 sample) internal pure returns (uint256) {
-        return sample.decodeUint31(_TIMESTAMP_OFFSET);
+        return sample.decodeUint(_TIMESTAMP_OFFSET, 31);
     }
 
     /**
      * @dev Returns `sample`'s instant value for the logarithm of the pair price.
      */
     function _instLogPairPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt22(_INST_LOG_PAIR_PRICE_OFFSET);
+        return sample.decodeInt(_INST_LOG_PAIR_PRICE_OFFSET, 22);
     }
 
     /**
      * @dev Returns `sample`'s accumulator of the logarithm of the pair price.
      */
     function _accLogPairPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET);
+        return sample.decodeInt(_ACC_LOG_PAIR_PRICE_OFFSET, 53);
     }
 
     /**
      * @dev Returns `sample`'s instant value for the logarithm of the BPT price.
      */
     function _instLogBptPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt22(_INST_LOG_BPT_PRICE_OFFSET);
+        return sample.decodeInt(_INST_LOG_BPT_PRICE_OFFSET, 22);
     }
 
     /**
      * @dev Returns `sample`'s accumulator of the logarithm of the BPT price.
      */
     function _accLogBptPrice(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt53(_ACC_LOG_BPT_PRICE_OFFSET);
+        return sample.decodeInt(_ACC_LOG_BPT_PRICE_OFFSET, 53);
     }
 
     /**
      * @dev Returns `sample`'s instant value for the logarithm of the invariant.
      */
     function _instLogInvariant(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt22(_INST_LOG_INVARIANT_OFFSET);
+        return sample.decodeInt(_INST_LOG_INVARIANT_OFFSET, 22);
     }
 
     /**
      * @dev Returns `sample`'s accumulator of the logarithm of the invariant.
      */
     function _accLogInvariant(bytes32 sample) private pure returns (int256) {
-        return sample.decodeInt53(_ACC_LOG_INVARIANT_OFFSET);
+        return sample.decodeInt(_ACC_LOG_INVARIANT_OFFSET, 53);
     }
 
     /**
@@ -179,14 +179,30 @@ library Samples {
         int256 accLogInvariant,
         uint256 _timestamp
     ) internal pure returns (bytes32) {
+        // We rely on helper functions to work around stack-too-deep issues
         return
-            instLogPairPrice.encodeInt22(_INST_LOG_PAIR_PRICE_OFFSET) |
-            accLogPairPrice.encodeInt53(_ACC_LOG_PAIR_PRICE_OFFSET) |
-            instLogBptPrice.encodeInt22(_INST_LOG_BPT_PRICE_OFFSET) |
-            accLogBptPrice.encodeInt53(_ACC_LOG_BPT_PRICE_OFFSET) |
-            instLogInvariant.encodeInt22(_INST_LOG_INVARIANT_OFFSET) |
-            accLogInvariant.encodeInt53(_ACC_LOG_INVARIANT_OFFSET) |
-            _timestamp.encodeUint(_TIMESTAMP_OFFSET); // Using 31 bits
+            _packPrices(instLogPairPrice, accLogPairPrice, instLogBptPrice, accLogBptPrice) |
+            _packInvariants(instLogInvariant, accLogInvariant) |
+            _timestamp.encodeUint(_TIMESTAMP_OFFSET, 31);
+    }
+
+    function _packPrices(
+        int256 instLogPairPrice,
+        int256 accLogPairPrice,
+        int256 instLogBptPrice,
+        int256 accLogBptPrice
+    ) private pure returns (bytes32) {
+        return
+            instLogPairPrice.encodeInt(_INST_LOG_PAIR_PRICE_OFFSET, 22) |
+            accLogPairPrice.encodeInt(_ACC_LOG_PAIR_PRICE_OFFSET, 53) |
+            instLogBptPrice.encodeInt(_INST_LOG_BPT_PRICE_OFFSET, 22) |
+            accLogBptPrice.encodeInt(_ACC_LOG_BPT_PRICE_OFFSET, 53);
+    }
+
+    function _packInvariants(int256 instLogInvariant, int256 accLogInvariant) private pure returns (bytes32) {
+        return
+            instLogInvariant.encodeInt(_INST_LOG_INVARIANT_OFFSET, 22) |
+            accLogInvariant.encodeInt(_ACC_LOG_INVARIANT_OFFSET, 53);
     }
 
     /**

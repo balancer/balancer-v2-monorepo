@@ -64,7 +64,9 @@ async function deployControllerAndPool(
   canSetMustAllowlistLPs = true,
   canSetCircuitBreakers = true,
   canChangeTokens = true,
-  swapEnabledOnStart = true
+  canChangeMgmtFees = true,
+  swapEnabledOnStart = true,
+  protocolSwapFeePercentage = MAX_UINT256
 ) {
   const basePoolRights: BasePoolRights = {
     canTransferOwnership: canTransfer,
@@ -78,6 +80,7 @@ async function deployControllerAndPool(
     canSetMustAllowlistLPs: canSetMustAllowlistLPs,
     canSetCircuitBreakers: canSetCircuitBreakers,
     canChangeTokens: canChangeTokens,
+    canChangeMgmtFees: canChangeMgmtFees,
   };
 
   poolController = await deploy('ManagedPoolController', {
@@ -86,6 +89,10 @@ async function deployControllerAndPool(
   });
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
   assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
+
+  const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
+    args: [vault.address],
+  });
 
   const params = {
     vault,
@@ -96,6 +103,8 @@ async function deployControllerAndPool(
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
+    protocolSwapFeePercentage: protocolSwapFeePercentage,
+    aumProtocolFeesCollector: aumProtocolFeesCollector.address,
   };
   pool = await WeightedPool.create(params);
 }
@@ -103,6 +112,8 @@ async function deployControllerAndPool(
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts
 describe('ManagedPoolController', function () {
   const NEW_SWAP_FEE = fp(0.05);
+  const NEW_MGMT_SWAP_FEE = fp(0.78);
+  const NEW_MGMT_AUM_FEE = fp(0.015);
 
   context('pool controller not initialized', () => {
     sharedBeforeEach('deploy controller (default permissions)', async () => {
@@ -135,6 +146,7 @@ describe('ManagedPoolController', function () {
       expect(await poolController.canSetMustAllowlistLPs()).to.be.true;
       expect(await poolController.canSetCircuitBreakers()).to.be.true;
       expect(await poolController.canChangeTokens()).to.be.true;
+      expect(await poolController.canChangeManagementFees()).to.be.true;
     });
 
     it('sets the minimum weight change duration', async () => {
@@ -158,6 +170,34 @@ describe('ManagedPoolController', function () {
       it('reverts if non-manager sets the swap fee', async () => {
         await expect(poolController.connect(other).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
+        );
+      });
+    });
+
+    describe('change management swap fee percentage', () => {
+      it('lets the manager set the management swap fee', async () => {
+        await poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE);
+
+        expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MGMT_SWAP_FEE);
+      });
+
+      it('reverts if non-manager sets the management fee', async () => {
+        await expect(
+          poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
+      });
+    });
+
+    describe('change management aum fee percentage', () => {
+      it('lets the manager set the management AUM fee', async () => {
+        await poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE);
+
+        expect(await pool.getManagementAumFeePercentage()).to.equal(NEW_MGMT_AUM_FEE);
+      });
+
+      it('reverts if non-manager sets the management AUM fee', async () => {
+        await expect(poolController.connect(other).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE)).to.be.revertedWith(
+          'CALLER_IS_NOT_OWNER'
         );
       });
     });
@@ -298,7 +338,7 @@ describe('ManagedPoolController', function () {
     });
 
     context('with canSetMustAllowlistLPs set to false', () => {
-      sharedBeforeEach('deploy controller (canSetMustAllowlistLPs true)', async () => {
+      sharedBeforeEach('deploy controller (canSetMustAllowlistLPs false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false);
         await poolController.initialize(pool.address);
       });
@@ -310,10 +350,28 @@ describe('ManagedPoolController', function () {
       });
     });
 
-    context('with public swaps disabled (on start)', () => {
-      //asdf
-      sharedBeforeEach('deploy controller (swapEnabledOnStart false)', async () => {
+    context('with canChangeMgmtFees set to false', () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, true, true, false);
+        await poolController.initialize(pool.address);
+      });
+
+      it('reverts if the manager tries to change the management swap fee', async () => {
+        await expect(
+          poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+      });
+
+      it('reverts if the manager tries to change the management AUM fee', async () => {
+        await expect(
+          poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE)
+        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+      });
+    });
+
+    context('with public swaps disabled (on start)', () => {
+      sharedBeforeEach('deploy controller (swapEnabledOnStart false)', async () => {
+        await deployControllerAndPool(true, true, true, true, true, false, true, true, true, false);
         await poolController.initialize(pool.address);
         await allTokens.approve({ from: manager, to: await pool.getVault() });
         const initialBalances = Array(allTokens.length).fill(fp(1));
@@ -361,6 +419,16 @@ describe('ManagedPoolController', function () {
 
       it('sets the change tokens permission', async () => {
         expect(await poolController.canChangeTokens()).to.be.false;
+      });
+    });
+
+    context('with canChangeMgmtFees set to false', () => {
+      sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
+        await deployControllerAndPool(true, true, true, true, true, false, false, false, false);
+      });
+
+      it('sets the set management fee permission', async () => {
+        expect(await poolController.canChangeManagementFees()).to.be.false;
       });
     });
   });

@@ -14,13 +14,13 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
-import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IFlashLoanRecipient.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "../interfaces/IFlashLoanRecipient.sol";
-import "../interfaces/IVault.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 contract MockFlashLoanRecipient is IFlashLoanRecipient {
     using Math for uint256;
@@ -68,6 +68,7 @@ contract MockFlashLoanRecipient is IFlashLoanRecipient {
                 IVault(msg.sender).flashLoan(IFlashLoanRecipient(address(this)), tokens, amounts, userData);
             }
 
+            // The recipient will mint the fees it pays
             TestToken(address(token)).mint(address(this), repayInExcess ? feeAmount.add(1) : feeAmount);
 
             uint256 totalDebt = amount.add(feeAmount);

@@ -11,4 +11,5 @@ Aditionally, the `WETH` argument may represent different things in different net
 - [Ethereum mainnet address](./output/mainnet.json)
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
+- [Optimism mainnet address](./output/optimism.json)
 - [`Vault` ABI](./abi/Vault.json)

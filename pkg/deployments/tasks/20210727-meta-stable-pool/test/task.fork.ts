@@ -10,7 +10,7 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonateWhale } from '../../../src/signers';
 
@@ -18,7 +18,7 @@ describe('MetaStablePoolFactory', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
-  const task = Task.forTest('20210727-meta-stable-pool', getForkedNetwork(hre));
+  const task = new Task('20210727-meta-stable-pool', TaskMode.TEST, getForkedNetwork(hre));
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -44,7 +44,7 @@ describe('MetaStablePoolFactory', function () {
   });
 
   before('load vault and tokens', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', await factory.getVault());
     dai = await task.instanceAt('ERC20', DAI);
     usdc = await task.instanceAt('ERC20', USDC);

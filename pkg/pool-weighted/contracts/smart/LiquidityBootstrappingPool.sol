@@ -19,6 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
+import "../lib/GradualValueChange.sol";
 import "../lib/WeightChange.sol";
 import "../lib/WeightCompression.sol";
 
@@ -108,7 +109,8 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            false
         )
     {
         uint256 totalTokens = tokens.length;
@@ -161,13 +163,13 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         // Load current pool state from storage
         bytes32 poolState = _poolState;
 
-        startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+        startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
+        endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
         uint256 totalTokens = _getTotalTokens();
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
+            endWeights[i] = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 16, 16).decompress(16);
         }
     }
 
@@ -189,14 +191,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
     ) external authenticate whenNotPaused nonReentrant {
         InputHelpers.ensureInputLengthMatch(_getTotalTokens(), endWeights.length);
 
-        // If the start time is in the past, "fast forward" to start now
-        // This avoids discontinuities in the weight curve. Otherwise, if you set the start/end times with
-        // only 10% of the period in the future, the weights would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        startTime = Math.max(currentTime, startTime);
-
-        _require(startTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
-
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);
     }
 
@@ -220,11 +215,11 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         return normalizedWeights[i];
     }
 
-    function _getWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint31(_START_WEIGHT_OFFSET + i * 31).uncompress31();
-        uint256 endWeight = poolState.decodeUint16(_END_WEIGHT_OFFSET + i * 16).uncompress16();
-        uint256 startTime = poolState.decodeUint32(_START_TIME_OFFSET);
-        uint256 endTime = poolState.decodeUint32(_END_TIME_OFFSET);
+    function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
+        uint256 startWeight = poolState.decodeUint(_START_WEIGHT_OFFSET + i * 31, 31).decompress(31);
+        uint256 endWeight = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 16, 16).decompress(16);
+        uint256 startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
+        uint256 endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
 
         return WeightChange.getWeight(_weightChangeMode, startWeight, endWeight, startTime, endTime);
     }
@@ -237,12 +232,12 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
         // prettier-ignore
         {
-            weights[0] = _getWeightByIndex(0, poolState);
-            weights[1] = _getWeightByIndex(1, poolState);
+            weights[0] = _getNormalizedWeightByIndex(0, poolState);
+            weights[1] = _getNormalizedWeightByIndex(1, poolState);
             if (totalTokens == 2) return weights;
-            weights[2] = _getWeightByIndex(2, poolState);
+            weights[2] = _getNormalizedWeightByIndex(2, poolState);
             if (totalTokens == 3) return weights;
-            weights[3] = _getWeightByIndex(3, poolState);
+            weights[3] = _getNormalizedWeightByIndex(3, poolState);
         }
 
         return _normalizedWeights(weights);
@@ -281,25 +276,6 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         return normalizedWeights;
     }
 
-    function _getNormalizedWeightsAndMaxWeightIndex()
-        internal
-        view
-        override
-        returns (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex)
-    {
-        normalizedWeights = _getNormalizedWeights();
-
-        maxWeightTokenIndex = 0;
-        uint256 maxNormalizedWeight = normalizedWeights[0];
-
-        for (uint256 i = 1; i < normalizedWeights.length; i++) {
-            if (normalizedWeights[i] > maxNormalizedWeight) {
-                maxWeightTokenIndex = i;
-                maxNormalizedWeight = normalizedWeights[i];
-            }
-        }
-    }
-
     // Pool callback functions
 
     // Prevent any account other than the owner from joining the pool
@@ -326,15 +302,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal override returns (uint256, uint256[] memory) {
         // Only the owner can add liquidity; block public LPs
         _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 
@@ -403,15 +371,19 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
-                .insertUint31(startWeights[i].compress31(), _START_WEIGHT_OFFSET + i * 31)
-                .insertUint16(endWeight.compress16(), _END_WEIGHT_OFFSET + i * 16);
+                .insertUint(startWeights[i].compress(31), _START_WEIGHT_OFFSET + i * 31, 31)
+                .insertUint(endWeight.compress(16), _END_WEIGHT_OFFSET + i * 16, 16);
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = newPoolState.insertUint32(startTime, _START_TIME_OFFSET).insertUint32(endTime, _END_TIME_OFFSET);
+        _poolState = newPoolState.insertUint(startTime, _START_TIME_OFFSET, 32).insertUint(
+            endTime,
+            _END_TIME_OFFSET,
+            32
+        );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }

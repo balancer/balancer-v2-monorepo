@@ -14,21 +14,20 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-standalone-utils/contracts/test/TestToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
 
-import "../interfaces/IStaticAToken.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
     uint256 private _rate = 1e27;
     address private immutable _ASSET;
 
     constructor(
-        address admin,
         string memory name,
         string memory symbol,
         uint8 decimals,
         address underlyingAsset
-    ) TestToken(admin, name, symbol, decimals) {
+    ) TestToken(name, symbol, decimals) {
         _ASSET = underlyingAsset;
     }
 

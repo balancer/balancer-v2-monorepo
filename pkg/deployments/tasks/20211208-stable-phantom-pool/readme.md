@@ -1,6 +1,6 @@
 # 2021-12-08 - Preminted BPT Meta Stable Pool
 
-Deployment of the `StablePhantomPool`, for Meta Stable Pools with preminted BPT of up to 4 tokens.
+Deployment of the `StablePhantomPoolFactory`, for Meta Stable Pools with preminted BPT of up to 4 tokens.
 
 ## Useful Files
 

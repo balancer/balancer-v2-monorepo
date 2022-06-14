@@ -15,12 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BaseMinimalSwapInfoPool.sol";
 
-import "./WeightedPoolUserData.sol";
 import "./WeightedMath.sol";
 
 /**
@@ -28,11 +29,9 @@ import "./WeightedMath.sol";
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
+abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
-
-    uint256 private _lastInvariant;
 
     constructor(
         IVault vault,
@@ -43,14 +42,19 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner
+        address owner,
+        bool mutableTokens
     )
-        LegacyBasePool(
+        BasePool(
             vault,
-            // Given LegacyBaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
+            // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
             // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
             // gas savings.
-            tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
+            // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
+            tokens.length == 2 && !mutableTokens
+                ? IVault.PoolSpecialization.TWO_TOKEN
+                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,
@@ -77,16 +81,6 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
 
     /**
-     * @dev Returns all normalized weights, in the same order as the Pool's tokens, along with the index of the token
-     * with the highest weight.
-     */
-    function _getNormalizedWeightsAndMaxWeightIndex() internal view virtual returns (uint256[] memory, uint256);
-
-    function getLastInvariant() public view virtual returns (uint256) {
-        return _lastInvariant;
-    }
-
-    /**
      * @dev Returns the current value of the invariant.
      */
     function getInvariant() public view returns (uint256) {
@@ -96,7 +90,7 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors());
 
-        (uint256[] memory normalizedWeights, ) = _getNormalizedWeightsAndMaxWeightIndex();
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
@@ -142,6 +136,35 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
             );
     }
 
+    /**
+     * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
+     * behavior at these steps. This often has to do with protocol fee processing.
+     */
+    function _beforeJoinExit(
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolSwapFeePercentage
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /**
+     * @dev Called after any join or exit operation (including initialization). Empty by default, but derived contracts
+     * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
+     *
+     * If isJoin is true, balanceDeltas are the amounts in: otherwise they are the amounts out.
+     *
+     * This function is free to mutate the `preBalances` array.
+     */
+    function _afterJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
     // Initialize
 
     function _onInitializePool(
@@ -158,18 +181,17 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
         _upscaleArray(amountsIn, scalingFactors);
 
-        (uint256[] memory normalizedWeights, ) = _getNormalizedWeightsAndMaxWeightIndex();
-
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, _getTotalTokens());
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
-        _lastInvariant = invariantAfterJoin;
+        _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
 
         return (bptAmountOut, amountsIn);
     }
@@ -178,64 +200,43 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
 
     function _onJoinPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        whenNotPaused
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal virtual override whenNotPaused returns (uint256, uint256[] memory) {
         // All joins are disabled while the contract is paused.
 
-        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous join
-        // or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids spending gas
-        // computing them on each individual swap
-        uint256 invariantBeforeJoin = WeightedMath._calculateInvariant(normalizedWeights, balances);
-
-        uint256[] memory dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-            balances,
-            normalizedWeights,
-            maxWeightTokenIndex,
-            _lastInvariant,
-            invariantBeforeJoin,
-            protocolSwapFeePercentage
-        );
-
-        // Update current balances by subtracting the protocol fee amounts
-        _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
+        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
+            sender,
             balances,
             normalizedWeights,
             scalingFactors,
             userData
         );
+        _afterJoinExit(true, balances, amountsIn, normalizedWeights);
 
-        // Update the invariant with the balances the Pool will have after the join, in order to compute the
-        // protocol swap fee amounts due in future joins and exits.
-        _lastInvariant = _invariantAfterJoin(balances, amountsIn, normalizedWeights);
-
-        return (bptAmountOut, amountsIn, dueProtocolFeeAmounts);
+        return (bptAmountOut, amountsIn);
     }
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
+     * Inheriting contracts may override this function to add additional join types or extra conditions to allow
+     * or disallow joins under certain circumstances.
+     */
     function _doJoin(
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal returns (uint256, uint256[] memory) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -254,22 +255,19 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens(), amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
 
         _upscaleArray(amountsIn, scalingFactors);
 
-        (uint256 bptAmountOut, uint256[] memory swapFees) = WeightedMath._calcBptOutGivenExactTokensIn(
+        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
             balances,
             normalizedWeights,
             amountsIn,
             totalSupply(),
             getSwapFeePercentage()
         );
-
-        // Note that swapFees is already upscaled
-        _processSwapFeeAmounts(swapFees);
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
@@ -280,13 +278,13 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
 
-        (uint256 amountIn, uint256 swapFee) = WeightedMath._calcTokenInGivenExactBptOut(
+        uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountOut,
@@ -294,11 +292,8 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
             getSwapFeePercentage()
         );
 
-        // Note that swapFee is already upscaled
-        _processSwapFeeAmount(tokenIndex, swapFee);
-
         // We join in a single token, so we initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](balances.length);
         // And then assign the result to the selected token
         amountsIn[tokenIndex] = amountIn;
 
@@ -326,74 +321,45 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
 
     function _onExitPool(
         bytes32,
-        address,
+        address sender,
         address,
         uint256[] memory balances,
         uint256,
         uint256 protocolSwapFeePercentage,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        virtual
-        override
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
-        (uint256[] memory normalizedWeights, uint256 maxWeightTokenIndex) = _getNormalizedWeightsAndMaxWeightIndex();
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Exits are not disabled by default while the contract is paused, as some of them remain available to allow LPs
+        // to safely exit the Pool in case of an emergency. Other exit kinds are disabled on a case-by-case basis in
+        // their handlers.
 
-        // Exits are not completely disabled while the contract is paused: proportional exits (exact BPT in for tokens
-        // out) remain functional.
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        if (_isNotPaused()) {
-            // Due protocol swap fee amounts are computed by measuring the growth of the invariant between the previous
-            // join or exit event and now - the invariant's growth is due exclusively to swap fees. This avoids
-            // spending gas calculating the fees on each individual swap.
-            uint256 invariantBeforeExit = WeightedMath._calculateInvariant(normalizedWeights, balances);
-            dueProtocolFeeAmounts = _getDueProtocolFeeAmounts(
-                balances,
-                normalizedWeights,
-                maxWeightTokenIndex,
-                _lastInvariant,
-                invariantBeforeExit,
-                protocolSwapFeePercentage
-            );
+        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
+            sender,
+            balances,
+            normalizedWeights,
+            scalingFactors,
+            userData
+        );
+        _afterJoinExit(false, balances, amountsOut, normalizedWeights);
 
-            // Update current balances by subtracting the protocol fee amounts
-            _mutateAmounts(balances, dueProtocolFeeAmounts, FixedPoint.sub);
-        } else {
-            // If the contract is paused, swap protocol fee amounts are not charged to avoid extra calculations and
-            // reduce the potential for errors.
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-        }
-
-        (bptAmountIn, amountsOut) = _doExit(balances, normalizedWeights, scalingFactors, userData);
-
-        // Update the invariant with the balances the Pool will have after the exit, in order to compute the
-        // protocol swap fees due in future joins and exits.
-        _setLastInvariantAfterExit(balances, amountsOut, normalizedWeights);
-
-        return (bptAmountIn, amountsOut, dueProtocolFeeAmounts);
+        return (bptAmountIn, amountsOut);
     }
 
-    // Introduced to keep _lastInvariant private
-    function _setLastInvariantAfterExit(
-        uint256[] memory balances,
-        uint256[] memory amountsOut,
-        uint256[] memory normalizedWeights
-    ) internal {
-        _lastInvariant = _invariantAfterExit(balances, amountsOut, normalizedWeights);
-    }
-
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified exit type.
+     * Inheriting contracts may override this function to add additional exit types or extra conditions to allow
+     * or disallow exit under certain circumstances.
+     */
     function _doExit(
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal returns (uint256, uint256[] memory) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
@@ -411,15 +377,15 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         bytes memory userData
-    ) private whenNotPaused returns (uint256, uint256[] memory) {
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
 
-        (uint256 amountOut, uint256 swapFee) = WeightedMath._calcTokenOutGivenExactBptIn(
+        uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
             balances[tokenIndex],
             normalizedWeights[tokenIndex],
             bptAmountIn,
@@ -428,11 +394,8 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         );
 
         // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        // Note that swapFee is already upscaled.
-        _processSwapFeeAmount(tokenIndex, swapFee);
-
         // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](balances.length);
         // And then assign the result to the selected token
         amountsOut[tokenIndex] = amountOut;
 
@@ -461,14 +424,15 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private whenNotPaused returns (uint256, uint256[] memory) {
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens());
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
         _upscaleArray(amountsOut, scalingFactors);
 
-        (uint256 bptAmountIn, uint256[] memory swapFees) = WeightedMath._calcBptInGivenExactTokensOut(
+        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
+        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
             balances,
             normalizedWeights,
             amountsOut,
@@ -477,80 +441,10 @@ abstract contract BaseWeightedPool is LegacyBaseMinimalSwapInfoPool {
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
-        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        // Note that swapFee is already upscaled.
-        _processSwapFeeAmounts(swapFees);
-
         return (bptAmountIn, amountsOut);
     }
 
     // Helpers
-
-    function _getDueProtocolFeeAmounts(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 maxWeightTokenIndex,
-        uint256 previousInvariant,
-        uint256 currentInvariant,
-        uint256 protocolSwapFeePercentage
-    ) internal view returns (uint256[] memory) {
-        // Initialize with zeros
-        uint256[] memory dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
-
-        // Early return if the protocol swap fee percentage is zero, saving gas.
-        if (protocolSwapFeePercentage == 0) {
-            return dueProtocolFeeAmounts;
-        }
-
-        // The protocol swap fees are always paid using the token with the largest weight in the Pool. As this is the
-        // token that is expected to have the largest balance, using it to pay fees should not unbalance the Pool.
-        dueProtocolFeeAmounts[maxWeightTokenIndex] = WeightedMath._calcDueTokenProtocolSwapFeeAmount(
-            balances[maxWeightTokenIndex],
-            normalizedWeights[maxWeightTokenIndex],
-            previousInvariant,
-            currentInvariant,
-            protocolSwapFeePercentage
-        );
-
-        return dueProtocolFeeAmounts;
-    }
-
-    /**
-     * @dev Returns the value of the invariant given `balances`, assuming they are increased by `amountsIn`. All
-     * amounts are expected to be upscaled.
-     */
-    function _invariantAfterJoin(
-        uint256[] memory balances,
-        uint256[] memory amountsIn,
-        uint256[] memory normalizedWeights
-    ) private view returns (uint256) {
-        _mutateAmounts(balances, amountsIn, FixedPoint.add);
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    function _invariantAfterExit(
-        uint256[] memory balances,
-        uint256[] memory amountsOut,
-        uint256[] memory normalizedWeights
-    ) internal view returns (uint256) {
-        _mutateAmounts(balances, amountsOut, FixedPoint.sub);
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    /**
-     * @dev Mutates `amounts` by applying `mutation` with each entry in `arguments`.
-     *
-     * Equivalent to `amounts = amounts.map(mutation)`.
-     */
-    function _mutateAmounts(
-        uint256[] memory toMutate,
-        uint256[] memory arguments,
-        function(uint256, uint256) pure returns (uint256) mutation
-    ) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            toMutate[i] = mutation(toMutate[i], arguments[i]);
-        }
-    }
 
     /**
      * @dev This function returns the appreciation of one BPT relative to the

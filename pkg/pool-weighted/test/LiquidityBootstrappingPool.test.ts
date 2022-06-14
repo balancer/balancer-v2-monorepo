@@ -217,6 +217,80 @@ describe('LiquidityBootstrappingPool', function () {
             const bptAfterExit = await pool.balanceOf(owner.address);
             expect(bptAfterExit).to.lt(bptAfterJoin);
           });
+
+          describe('update weights gradually', () => {
+            const UPDATE_DURATION = MINUTE * 60;
+
+            context('with invalid parameters', () => {
+              let now: BigNumber;
+
+              sharedBeforeEach(async () => {
+                now = await currentTimestamp();
+              });
+
+              it('fails if end weights are mismatched (too few)', async () => {
+                await expect(pool.updateWeightsGradually(sender, now, now, weights.slice(0, 1))).to.be.revertedWith(
+                  'INPUT_LENGTH_MISMATCH'
+                );
+              });
+
+              it('fails if the end weights are mismatched (too many)', async () => {
+                await expect(pool.updateWeightsGradually(sender, now, now, [...weights, fp(0.5)])).to.be.revertedWith(
+                  'INPUT_LENGTH_MISMATCH'
+                );
+              });
+
+              it('fails with an end weight below the minimum', async () => {
+                const badWeights = [...weights];
+                badWeights[2] = fp(0.005);
+
+                await expect(
+                  pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+                ).to.be.revertedWith('MIN_WEIGHT');
+              });
+
+              it('fails with invalid normalized end weights', async () => {
+                const badWeights = Array(weights.length).fill(fp(0.6));
+
+                await expect(
+                  pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
+                ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
+              });
+            });
+
+            context('with valid parameters (ongoing weight update)', () => {
+              const endWeights = [fp(0.15), fp(0.25), fp(0.55), fp(0.05)];
+
+              let now, startTime: BigNumber, endTime: BigNumber;
+              const START_DELAY = MINUTE * 10;
+
+              sharedBeforeEach('updateWeightsGradually', async () => {
+                now = await currentTimestamp();
+                startTime = now.add(START_DELAY);
+                endTime = startTime.add(UPDATE_DURATION);
+
+                await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
+              });
+
+              it('updating weights emits an event', async () => {
+                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
+
+                expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
+                  startTime: startTime,
+                  endTime: endTime,
+                  // weights don't exactly match because of the compression
+                });
+              });
+
+              it('stores the params', async () => {
+                const updateParams = await pool.getGradualWeightUpdateParams();
+
+                expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
+                expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
+                expect(updateParams.endWeights).to.equalWithError(endWeights, 0.001);
+              });
+            });
+          });
         });
 
         context('when the sender is not the owner', () => {

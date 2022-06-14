@@ -16,11 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
+import "./InvariantGrowthProtocolFees.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool {
+contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
     using FixedPoint for uint256;
 
     uint256 private constant _MAX_TOKENS = 20;
@@ -73,10 +74,6 @@ contract WeightedPool is BaseWeightedPool {
     uint256 internal immutable _scalingFactor18;
     uint256 internal immutable _scalingFactor19;
 
-    // The protocol fees will always be charged using the token associated with the max weight in the pool.
-    // Since these Pools will register tokens only once, we can assume this index will be constant.
-    uint256 internal immutable _maxWeightTokenIndex;
-
     uint256 internal immutable _normalizedWeight0;
     uint256 internal immutable _normalizedWeight1;
     uint256 internal immutable _normalizedWeight2;
@@ -119,7 +116,8 @@ contract WeightedPool is BaseWeightedPool {
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner
+            owner,
+            false
         )
     {
         uint256 numTokens = tokens.length;
@@ -127,24 +125,16 @@ contract WeightedPool is BaseWeightedPool {
 
         _totalTokens = numTokens;
 
-        // Ensure  each normalized weight is above them minimum and find the token index of the maximum weight
+        // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        uint256 maxWeightTokenIndex = 0;
-        uint256 maxNormalizedWeight = 0;
         for (uint8 i = 0; i < numTokens; i++) {
             uint256 normalizedWeight = normalizedWeights[i];
-            _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
+            _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedSum = normalizedSum.add(normalizedWeight);
-            if (normalizedWeight > maxNormalizedWeight) {
-                maxWeightTokenIndex = i;
-                maxNormalizedWeight = normalizedWeight;
-            }
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
-
-        _maxWeightTokenIndex = maxWeightTokenIndex;
 
         _normalizedWeight0 = normalizedWeights[0];
         _normalizedWeight1 = normalizedWeights[1];
@@ -269,16 +259,6 @@ contract WeightedPool is BaseWeightedPool {
         return normalizedWeights;
     }
 
-    function _getNormalizedWeightsAndMaxWeightIndex()
-        internal
-        view
-        virtual
-        override
-        returns (uint256[] memory, uint256)
-    {
-        return (_getNormalizedWeights(), _maxWeightTokenIndex);
-    }
-
     function _getMaxTokens() internal pure virtual override returns (uint256) {
         return _MAX_TOKENS;
     }
@@ -347,5 +327,24 @@ contract WeightedPool is BaseWeightedPool {
         }
 
         return scalingFactors;
+    }
+
+    // InvariantGrowthProtocolFees
+
+    function _beforeJoinExit(
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 protocolSwapFeePercentage
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._beforeJoinExit(preBalances, normalizedWeights, protocolSwapFeePercentage);
+    }
+
+    function _afterJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights
+    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
+        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
     }
 }

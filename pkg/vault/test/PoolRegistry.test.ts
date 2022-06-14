@@ -8,6 +8,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
@@ -26,7 +27,7 @@ describe('PoolRegistry', () => {
   sharedBeforeEach('deploy vault & tokens', async () => {
     const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
@@ -337,7 +338,7 @@ describe('PoolRegistry', () => {
                         const { tokens: poolTokens, lastChangeBlock } = await vault.getPoolTokens(poolId);
                         expect(poolTokens).not.to.have.members([tokens.first.address]);
 
-                        // If all tokens are deregisted, the last change block goes back to the initial value.
+                        // If all tokens are deregistered, the last change block goes back to the initial value.
                         const expectedBlock = poolTokens.length > 0 ? exitBlock : 0;
                         expect(lastChangeBlock).to.equal(expectedBlock);
                       });

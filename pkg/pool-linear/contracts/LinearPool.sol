@@ -15,18 +15,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/LinearPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
-import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
-
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
-
 import "./LinearMath.sol";
-import "./LinearPoolUserData.sol";
 
 /**
  * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying
@@ -151,7 +151,7 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         return address(_mainToken);
     }
 
-    function getWrappedToken() external view returns (address) {
+    function getWrappedToken() public view returns (address) {
         return address(_wrappedToken);
     }
 
@@ -570,12 +570,15 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         return _getWrappedTokenRate();
     }
 
+    /**
+     * @dev Should be 1e18 for the subsequent calculation of the wrapper token scaling factor.
+     */
     function _getWrappedTokenRate() internal view virtual returns (uint256);
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
-        lowerTarget = miscData.decodeUint96(_LOWER_TARGET_OFFSET);
-        upperTarget = miscData.decodeUint96(_UPPER_TARGET_OFFSET);
+        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, 96);
+        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, 96);
     }
 
     function _setTargets(
@@ -587,10 +590,10 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
         // Pack targets as two uint96 values into a single storage slot. This results in targets being capped to 96
-        // bits, but that should be more than enough.
+        // bits, but that should be more than enough. Values are already checked for validity above.
         _setMiscData(
-            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
-                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET)
+            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET, 96) |
+                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET, 96)
         );
 
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
