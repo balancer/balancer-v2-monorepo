@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "../BaseCoordinator.sol";
 
 contract TestCoordinator is BaseCoordinator {
-    event StagesRegistered();
+    event RegisterStagesHookCalled();
     event StagePerformed(uint256 stageNumber);
     event AfterLastStageHookExecuted();
 
@@ -32,7 +32,7 @@ contract TestCoordinator is BaseCoordinator {
         _registerStage(_performStageTwo);
         _registerStage(_performStageThree);
         _registerStage(_performStageFour);
-        emit StagesRegistered();
+        emit RegisterStagesHookCalled();
     }
 
     function _afterLastStage() internal virtual override {

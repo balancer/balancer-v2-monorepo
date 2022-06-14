@@ -35,10 +35,10 @@ describe('BaseCoordinator', () => {
 
   describe('registerStages', () => {
     context('when stages have not already been registered', () => {
-      it('emits a StagesRegistered event', async () => {
+      it('emits a RegisterStagesHookCalled event', async () => {
         const tx = await coordinator.registerStages();
 
-        expectEvent.inReceipt(await tx.wait(), 'StagesRegistered');
+        expectEvent.inReceipt(await tx.wait(), 'RegisterStagesHookCalled');
       });
     });
 
@@ -107,7 +107,7 @@ describe('BaseCoordinator', () => {
           it('registers the stages automatically', async () => {
             const tx = await coordinator.performNextStage();
 
-            expectEvent.inReceipt(await tx.wait(), 'StagesRegistered');
+            expectEvent.inReceipt(await tx.wait(), 'RegisterStagesHookCalled');
           });
         });
 
@@ -119,7 +119,7 @@ describe('BaseCoordinator', () => {
           it('proceeds without attempting to register them', async () => {
             const tx = await coordinator.performNextStage();
 
-            expectEvent.notEmitted(await tx.wait(), 'StagesRegistered');
+            expectEvent.notEmitted(await tx.wait(), 'RegisterStagesHookCalled');
           });
         });
       }
