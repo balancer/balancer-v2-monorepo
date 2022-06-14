@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -306,11 +306,15 @@ describe('DistributionScheduler', () => {
 
       const receipt = await startDistributionForToken();
 
-      expectEvent.inIndirectReceipt(receipt, rewardToken.instance.interface, 'Transfer', {
-        from: distributionScheduler.address,
-        to: rewardTokenDistributor.address,
-        value: pendingRewards,
-      });
+      expectTransferEvent(
+        receipt,
+        {
+          from: distributionScheduler.address,
+          to: rewardTokenDistributor.address,
+          value: pendingRewards,
+        },
+        rewardToken
+      );
     });
 
     it('resets pending rewards to zero', async () => {
@@ -397,28 +401,24 @@ describe('DistributionScheduler', () => {
       const tx = await distributionScheduler.startDistributions(rewardTokenDistributor.address);
       const receipt = await tx.wait();
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         receipt,
-        rewardToken.instance.interface,
-        'Transfer',
         {
           from: distributionScheduler.address,
           to: rewardTokenDistributor.address,
           value: pendingToken1,
         },
-        rewardToken.address
+        rewardToken
       );
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         receipt,
-        rewardToken.instance.interface,
-        'Transfer',
         {
           from: distributionScheduler.address,
           to: rewardTokenDistributor.address,
           value: pendingToken2,
         },
-        rewardToken2.address
+        rewardToken2
       );
     });
   });
