@@ -26,7 +26,7 @@ contract ChildChainGaugeRewardHelper {
     }
 
     function claimRewardsFromGauges(IRewardsOnlyGauge[] calldata gauges, address user) external {
-        for(uint256 i = 0; i < gauges.length; i++){
+        for (uint256 i = 0; i < gauges.length; i++) {
             _claimRewardsFromGauge(gauges[i], user);
         }
     }
