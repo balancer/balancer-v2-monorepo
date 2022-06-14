@@ -477,7 +477,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external authenticate whenNotPaused {
-        _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
+        _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
         _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
@@ -492,7 +492,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external authenticate whenNotPaused {
-        _require(getMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
+        _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];

@@ -8,16 +8,16 @@ if (process.env.CI) {
   const content = `{
     "networks": {
       "mainnet": {
-        "url": "${process.env.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT}"
+        "url": "${process.env.MAINNET_RPC_ENDPOINT}"
       },
       "polygon": {
-        "url": "${process.env.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT}"
+        "url": "${process.env.POLYGON_RPC_ENDPOINT}"
       },
       "arbitrum": {
-        "url": "${process.env.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT}"
+        "url": "${process.env.ARBITRUM_RPC_ENDPOINT}"
       },
       "optimism": {
-        "url": "${process.env.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT}"
+        "url": "${process.env.OPTIMISM_RPC_ENDPOINT}"
       }
     },
     "defaultConfig": {
