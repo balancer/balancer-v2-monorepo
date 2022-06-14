@@ -10,6 +10,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 describe('FeeDistributor', function () {
   let veBALHolder: SignerWithAddress, veBALHolder2: SignerWithAddress, feeCollector: SignerWithAddress;
@@ -101,14 +102,11 @@ describe('FeeDistributor', function () {
         const tx = await distributor.claimTokens(veBALHolder.address, [BAL.address, WETH.address]);
         const wethBalanceAfter = await WETH.balanceOf(veBALHolder.address);
 
-        expectEvent.inIndirectReceipt(
+        expectTransferEvent(
           await tx.wait(),
-          BAL.interface,
-          'Transfer',
           { from: distributor.address, to: veBALHolder.address, value: expectedBALAmount },
           BAL.address
         );
-
         expect(wethBalanceAfter).to.equal(wethBalanceBefore);
       });
     });
@@ -130,18 +128,14 @@ describe('FeeDistributor', function () {
 
       const tx = await distributor.claimTokens(veBALHolder.address, [BAL.address, WETH.address]);
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        BAL.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder.address, value: expectedBALAmount },
         BAL.address
       );
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        WETH.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder.address, value: expectedWETHAmount },
         WETH.address
       );
@@ -162,18 +156,14 @@ describe('FeeDistributor', function () {
 
       const tx = await distributor.claimTokens(veBALHolder2.address, [BAL.address, WETH.address]);
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        BAL.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder2.address, value: expectedBALAmount },
         BAL.address
       );
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        WETH.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder2.address, value: expectedWETHAmount },
         WETH.address
       );
