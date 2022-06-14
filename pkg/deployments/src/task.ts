@@ -22,9 +22,11 @@ import {
   TaskRunOptions,
 } from './types';
 import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
+import { flatMap } from 'lodash';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
+const SCRIPTS_DIRECTORY = path.join(TASKS_DIRECTORY, 'scripts');
 
 export enum TaskMode {
   LIVE, // Deploys and saves outputs
@@ -203,7 +205,12 @@ export default class Task {
       return deprecatedDir;
     }
 
-    throw Error(`Could not find a directory at ${nonDeprecatedDir} or ${deprecatedDir}`);
+    const scriptsDir = this._dirAt(SCRIPTS_DIRECTORY, this.id, false);
+    if (this._existsDir(scriptsDir)) {
+      return scriptsDir;
+    }
+
+    throw Error(`Could not find a directory at ${nonDeprecatedDir}, ${deprecatedDir} or ${scriptsDir}`);
   }
 
   buildInfo(fileName: string): BuildInfo {
@@ -353,6 +360,9 @@ export default class Task {
   }
 
   static getAllTaskIds(): string[] {
-    return [...fs.readdirSync(TASKS_DIRECTORY), ...fs.readdirSync(DEPRECATED_DIRECTORY)].sort();
+    return [TASKS_DIRECTORY, DEPRECATED_DIRECTORY, SCRIPTS_DIRECTORY]
+      .map((dir) => fs.readdirSync(dir))
+      .flat()
+      .sort();
   }
 }
