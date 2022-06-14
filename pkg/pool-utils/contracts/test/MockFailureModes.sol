@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
-abstract contract MockInvariantDependency {
+abstract contract MockFailureModes {
     bool private _simulateInvariantFailure;
 
     modifier whenInvariantConverges {

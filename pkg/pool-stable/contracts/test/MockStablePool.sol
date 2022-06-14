@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/MockInvariantDependency.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 
 import "../StablePool.sol";
 
@@ -24,7 +24,7 @@ import "../StablePool.sol";
  * `_calculateInvariant` function  are marked with a modifier, and will fail if the `_simulateInvariantFailure`
  * flag has been set.
  */
-contract MockStablePool is StablePool, MockInvariantDependency {
+contract MockStablePool is StablePool, MockFailureModes {
     constructor(
         IVault vault,
         string memory name,

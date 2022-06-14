@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/MockInvariantDependency.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 
 import "../StablePhantomPool.sol";
 
-contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
+contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
     constructor(NewPoolParams memory params) StablePhantomPool(params) {
         // solhint-disable-previous-line no-empty-blocks
     }
