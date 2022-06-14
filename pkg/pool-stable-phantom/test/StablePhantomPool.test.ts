@@ -1139,7 +1139,9 @@ describe('StablePhantomPool', () => {
       context('when not paused', () => {
         it('cannot exit proportionally (because non-recovery exits are unsupported)', async () => {
           const bptIn = fp(10);
-          await expect(pool.proportionalExit({ from: recipient, bptIn })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+          await expect(pool.proportionalExit({ from: recipient, bptIn })).to.be.revertedWith(
+            'UNHANDLED_BY_PHANTOM_POOL'
+          );
         });
       });
 
@@ -1170,7 +1172,12 @@ describe('StablePhantomPool', () => {
           const { tokens: allTokens } = await pool.getTokens();
 
           await expect(
-            pool.recoveryModeExit({ from: lp, tokens: allTokens, currentBalances: initialBalances, bptIn: totalBptBalance })
+            pool.recoveryModeExit({
+              from: lp,
+              tokens: allTokens,
+              currentBalances: initialBalances,
+              bptIn: totalBptBalance,
+            })
           ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
         });
       });
