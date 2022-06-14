@@ -353,6 +353,6 @@ export default class Task {
   }
 
   static getAllTaskIds(): string[] {
-    return [...fs.readdirSync(TASKS_DIRECTORY), ...fs.readdirSync(DEPRECATED_DIRECTORY)];
+    return [...fs.readdirSync(TASKS_DIRECTORY), ...fs.readdirSync(DEPRECATED_DIRECTORY)].sort();
   }
 }
