@@ -4,13 +4,14 @@ import { BigNumber, Contract, ContractTransaction, ContractReceipt } from 'ether
 
 import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
+import { BasePoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Account, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../constants';
 import { GeneralSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
+import { RecoveryModeExitParams, JoinExitBasePool } from '../base/types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -416,5 +417,41 @@ export default class StablePhantomPool {
     const result = [];
     for (let i = 0; i < items.length - 1; i++) result[i] = items[i < this.bptIndex ? i : i + 1];
     return result;
+  }
+
+  // Temporary! Will be removed when we descend from BasePool
+  async recoveryModeExit(params: RecoveryModeExitParams): Promise<ExitResult> {
+    return this.exit(this._buildRecoveryModeExitParams(params));
+  }
+
+  private _buildRecoveryModeExitParams(params: RecoveryModeExitParams): JoinExitBasePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      currentBalances: params.currentBalances,
+      data: BasePoolEncoder.recoveryModeExit(params.bptIn),
+    };
+  }
+
+  async exit(params: JoinExitBasePool): Promise<ExitResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens: allTokens } = await this.getTokens();
+
+    const tx = await this.vault.exitPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: allTokens,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
   }
 }

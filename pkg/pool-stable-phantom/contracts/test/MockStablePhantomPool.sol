@@ -15,14 +15,38 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-pool-utils/contracts/test/MockInvariantDependency.sol";
+
 import "../StablePhantomPool.sol";
 
-contract MockStablePhantomPool is StablePhantomPool {
+contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
     constructor(NewPoolParams memory params) StablePhantomPool(params) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     function mockCacheTokenRateIfNecessary(IERC20 token) external {
         _cacheTokenRateIfNecessary(token);
+    }
+
+    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
+        return super.getRate();
+    }
+
+    function _onSwapGivenIn(
+        SwapRequest memory request,
+        uint256[] memory balancesIncludingBpt,
+        uint256 indexIn,
+        uint256 indexOut
+    ) internal virtual override whenInvariantConverges returns (uint256 amountOut) {
+        return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
+    }
+
+    function _onSwapGivenOut(
+        SwapRequest memory request,
+        uint256[] memory balancesIncludingBpt,
+        uint256 indexIn,
+        uint256 indexOut
+    ) internal virtual override whenInvariantConverges returns (uint256 amountIn) {
+        return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
 }

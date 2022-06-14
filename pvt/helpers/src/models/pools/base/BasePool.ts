@@ -109,6 +109,7 @@ export default class BasePool {
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
+
   async recoveryModeExit(params: RecoveryModeExitParams): Promise<ExitResult> {
     return this.exit(this._buildRecoveryModeExitParams(params));
   }
