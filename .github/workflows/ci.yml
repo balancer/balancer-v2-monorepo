@@ -275,6 +275,35 @@ jobs:
       - name: Check Deployment Addresses
         run: yarn workspace @balancer-labs/v2-deployments check-deployments
 
+  check-action-ids:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Cache
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: '**/node_modules'
+          key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
+      - name: Install
+        run: yarn --immutable
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Compile balancer-js
+        run: yarn workspace @balancer-labs/balancer-js build
+      - name: Prepare Config
+        run: yarn workspace @balancer-labs/v2-deployments ci:prepare-config
+        env:
+          ALCHEMY_MAINNET_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT }}
+          ALCHEMY_POLYGON_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
+          ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
+          ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
+      - name: Check Action IDs
+        run: yarn workspace @balancer-labs/v2-deployments check-action-ids
+
   benchmark:
     runs-on: ubuntu-latest
     steps:
