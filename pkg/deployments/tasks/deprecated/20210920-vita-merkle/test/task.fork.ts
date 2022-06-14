@@ -6,9 +6,9 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { getSigner, impersonate } from '../../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
