@@ -842,7 +842,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
      * underlying tokens. This starts at 1 when the pool is created and grows over time.
      * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() public view virtual override returns (uint256) {
         (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 

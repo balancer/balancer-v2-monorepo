@@ -1,4 +1,4 @@
-    // SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-pool-utils/contracts/test/MockInvariantDependency.sol";
+
 import "../StablePool.sol";
 
 /**
@@ -22,14 +24,7 @@ import "../StablePool.sol";
  * `_calculateInvariant` function  are marked with a modifier, and will fail if the `_simulateInvariantFailure`
  * flag has been set.
  */
-contract MockStablePool is StablePool {
-    bool private _simulateInvariantFailure;
-
-    modifier whenInvariantConverges {
-        _ensureInvariantConverges();
-        _;
-    }
-
+contract MockStablePool is StablePool, MockInvariantDependency {
     constructor(
         IVault vault,
         string memory name,
@@ -52,21 +47,6 @@ contract MockStablePool is StablePool {
         owner
     ) {
       // solhint-disable-previous-line no-empty-blocks
-    }
-
-    // Simulate failure of the invariant to converge
-    function setInvariantFailure(bool invariantFailsToConverge) external {
-        _simulateInvariantFailure = invariantFailsToConverge;
-    }
-
-    function invariantConverges() external view returns (bool) {
-        return !_simulateInvariantFailure;
-    }
-
-    function _ensureInvariantConverges() private view {
-        if (_simulateInvariantFailure) {
-            _revert(Errors.STABLE_INVARIANT_DIDNT_CONVERGE);
-        }
     }
 
     function _onSwapGivenIn(
