@@ -576,12 +576,10 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         uint256 bptAmountIn = userData.recoveryModeExit();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        uint256 virtualSupply = _getVirtualSupply(balances[_bptIndex]);
-
         uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
             balancesWithoutBpt,
             bptAmountIn,
-            virtualSupply
+            _getVirtualSupply(balances[_bptIndex])
         );
 
         return (bptAmountIn, _addBptItem(amountsOut, 0));

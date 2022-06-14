@@ -37,7 +37,11 @@ contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256 amountOut) {
+    ) internal virtual override returns (uint256 amountOut) {
+        if (request.tokenIn != IERC20(this) && request.tokenOut != IERC20(this)) {
+            _ensureInvariantConverges();
+        }
+
         return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
     }
 
@@ -46,7 +50,11 @@ contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256 amountIn) {
+    ) internal virtual override returns (uint256 amountIn) {
+        if (request.tokenIn != IERC20(this) && request.tokenOut != IERC20(this)) {
+            _ensureInvariantConverges();
+        }
+
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
 }
