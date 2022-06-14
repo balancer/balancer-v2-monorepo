@@ -71,7 +71,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
@@ -87,28 +86,6 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.ORACLE_WEIGHTED_POOL: {
-        result = deploy('v2-pool-weighted/MockOracleWeightedPool', {
-          args: [
-            {
-              vault: vault.address,
-              name: NAME,
-              symbol: SYMBOL,
-              tokens: tokens.addresses,
-              normalizedWeight0: weights[0],
-              normalizedWeight1: weights[1],
-              swapFeePercentage: swapFeePercentage,
-              pauseWindowDuration: pauseWindowDuration,
-              bufferPeriodDuration: bufferPeriodDuration,
-              oracleEnabled: oracleEnabled,
-              owner: owner,
-            },
-          ],
-          from,
-          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
-        });
-        break;
-      }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         result = deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
           args: [
@@ -204,7 +181,6 @@ export default {
       weights,
       assetManagers,
       swapFeePercentage,
-      oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
       protocolSwapFeePercentage,
@@ -219,26 +195,6 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.ORACLE_WEIGHTED_POOL: {
-        const factory = await deploy('v2-pool-weighted/OracleWeightedPoolFactory', {
-          args: [vault.address],
-          from,
-          libraries: { QueryProcessor: await (await deploy('QueryProcessor')).address },
-        });
-        const tx = await factory.create(
-          NAME,
-          SYMBOL,
-          tokens.addresses,
-          weights,
-          swapFeePercentage,
-          oracleEnabled,
-          owner
-        );
-        const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-        result = deployedAt('v2-pool-weighted/OracleWeightedPool', event.args.pool);
-        break;
-      }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
           args: [vault.address],

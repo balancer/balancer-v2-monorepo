@@ -11,7 +11,7 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import WeightedPoolDeployer from './WeightedPoolDeployer';
 import { MinimalSwap } from '../../vault/types';
-import { Account, TxParams } from '../../types/types';
+import { Account } from '../../types/types';
 import {
   JoinExitWeightedPool,
   InitWeightedPool,
@@ -29,12 +29,9 @@ import {
   ExitQueryResult,
   JoinQueryResult,
   PoolQueryResult,
-  MiscData,
-  Sample,
   GradualWeightUpdateParams,
   GradualSwapFeeUpdateParams,
   WeightedPoolType,
-  VoidResult,
 } from './types';
 import {
   calculateInvariant,
@@ -182,23 +179,6 @@ export default class WeightedPool {
   async getMaxOut(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
     return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
-  }
-
-  async isOracleEnabled(): Promise<boolean> {
-    if (this.poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL)
-      throw Error('Cannot query misc data for non-2-tokens weighted pool');
-    return (await this.getMiscData()).oracleEnabled;
-  }
-
-  async getMiscData(): Promise<MiscData> {
-    if (this.poolType != WeightedPoolType.ORACLE_WEIGHTED_POOL)
-      throw Error('Cannot query misc data for non-2-tokens weighted pool');
-    return this.instance.getMiscData();
-  }
-
-  async getOracleSample(oracleIndex?: BigNumberish): Promise<Sample> {
-    if (!oracleIndex) oracleIndex = (await this.getMiscData()).oracleIndex;
-    return this.instance.getSample(oracleIndex);
   }
 
   async getOwner(): Promise<string> {
@@ -400,12 +380,6 @@ export default class WeightedPool {
     const receipt = await tx.wait();
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
     return { amount, receipt };
-  }
-
-  async dirtyUninitializedOracleSamples(startSlot: number, endSlot: number): Promise<VoidResult> {
-    const tx = await this.instance.dirtyUninitializedOracleSamples(startSlot, endSlot);
-    const receipt = await tx.wait();
-    return { receipt };
   }
 
   async init(params: InitWeightedPool): Promise<JoinResult> {
@@ -644,13 +618,6 @@ export default class WeightedPool {
     const result = await this.instance.getPausedState();
 
     return result.paused;
-  }
-
-  async enableOracle(txParams: TxParams): Promise<VoidResult> {
-    const pool = txParams.from ? this.instance.connect(txParams.from) : this.instance;
-    const tx = await pool.enableOracle();
-    const receipt = await tx.wait();
-    return { receipt };
   }
 
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
