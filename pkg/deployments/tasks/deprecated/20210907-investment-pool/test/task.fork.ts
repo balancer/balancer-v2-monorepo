@@ -11,9 +11,9 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigners, impersonateWhale } from '../../../src/signers';
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { getSigners, impersonateWhale } from '../../../../src/signers';
 
 describe('InvestmentPoolFactory', function () {
   let owner: SignerWithAddress, wallet: SignerWithAddress, whale: SignerWithAddress;

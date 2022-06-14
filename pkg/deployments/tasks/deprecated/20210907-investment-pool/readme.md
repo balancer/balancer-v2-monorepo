@@ -1,6 +1,8 @@
 # 2021-09-07 - Investment Pool
 
-Deployment of the `InvestmentPoolFactory`, for an initial iteration of Investment Pools, suitable mostly for Pools with only a few tokens (about 6 or 8 maximum). These Pools grant a large amount of power to their owner: they should only be used with care.
+> ⚠️ **DEPRECATED: do not use** ⚠️
+>
+> This factory and associated Pools have been deprecated. A version of Managed Pools will soon be released, providing a migration path for existing Pools.
 
 ## Useful Files
 
