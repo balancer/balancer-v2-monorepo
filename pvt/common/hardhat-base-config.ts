@@ -11,19 +11,7 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 1500,
   },
-  '@balancer-labs/v2-pool-weighted/contracts/OracleWeightedPoolFactory.sol': {
-    version: '0.7.1',
-    runs: 200,
-  },
   '@balancer-labs/v2-pool-weighted/contracts/LiquidityBootstrappingPoolFactory.sol': {
-    version: '0.7.1',
-    runs: 200,
-  },
-  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePool.sol': {
-    version: '0.7.1',
-    runs: 200,
-  },
-  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },

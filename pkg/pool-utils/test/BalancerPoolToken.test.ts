@@ -4,6 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -90,7 +91,7 @@ describe('BalancerPoolToken', () => {
             const tx = await token.connect(signer).transferFrom(holder.address, to, amount);
             const receipt = await tx.wait();
 
-            expectEvent.inReceipt(receipt, 'Transfer', { from: holder.address, to, value: amount });
+            expectTransferEvent(receipt, { from: holder.address, to, value: amount }, token);
           });
         });
 

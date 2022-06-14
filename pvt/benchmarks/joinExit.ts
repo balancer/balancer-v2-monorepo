@@ -44,7 +44,7 @@ async function main() {
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens, 0, false),
+      () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       true,
       joinWeightedUserData,
@@ -95,7 +95,7 @@ async function main() {
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens, 0, false),
+      () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       false,
       joinWeightedUserData,
@@ -147,7 +147,7 @@ async function main() {
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens, 0, false),
+      () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       true,
       joinWeightedUserData,
@@ -199,7 +199,7 @@ async function main() {
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitPool(
-      () => getWeightedPool(vault, tokens, numTokens, 0, false),
+      () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       false,
       joinWeightedUserData,
