@@ -1,7 +1,7 @@
 # 2021-06-24 - Stable Pool
 
-| :warning: | This deployment has been deprecated, head to [this upgraded version](../20220609-stable-pool-v2) instead. |
-| --------- | :-------------------------------------------------------------------------------------------------------- |
+| :warning: | This deployment has been deprecated, head to [this upgraded version](../../20220609-stable-pool-v2) instead. |
+| --------- | :----------------------------------------------------------------------------------------------------------- |
 
 Deployment of the `StablePoolFactory`, for Stable Pools of up to 5 tokens.
 
