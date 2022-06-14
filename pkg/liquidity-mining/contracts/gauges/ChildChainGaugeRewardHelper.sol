@@ -32,13 +32,9 @@ contract ChildChainGaugeRewardHelper {
     }
 
     function _claimRewardsFromGauge(IRewardsOnlyGauge gauge, address user) internal {
-        if (gauge.last_claim() + CLAIM_FREQUENCY < block.timestamp) {
-            gauge.claim_rewards(user);
-        } else {
-            // Force rewards from the streamer onto the gauge.
-            gauge.reward_contract().get_reward();
-            gauge.claim_rewards(user);
-        }
+        // Force rewards from the streamer onto the gauge.
+        gauge.reward_contract().get_reward();
+        gauge.claim_rewards(user);
     }
 
     function pendingRewards(
