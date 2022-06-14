@@ -108,7 +108,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 
 | Description                                      | Task ID                                                                                             |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/deprecated-20210624-stable-pool)                                   |
+| Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/deprecated/20210624-stable-pool)                                   |
 | Liquidity Bootstrapping Pools of up to 4 tokens  | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
 | Meta Stable Pools with 2 tokens and price oracle | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                         |
 | Distributor contract for LDO rewards             | [`20210811-ldo-merkle`](./deprecated/tasks/deprecated/20210811-ldo-merkle)                          |
