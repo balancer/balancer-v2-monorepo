@@ -5,7 +5,7 @@ import { Contract } from 'ethers';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentWeekTimestamp, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
@@ -113,18 +113,14 @@ describe('DistributionScheduler', function () {
 
     // Ideally we'd look for events on the gauge as it processes the deposit, but deposit_reward_token emits no events.
 
-    expectEvent.inIndirectReceipt(
+    expectTransferEvent(
       await tx.wait(),
-      DAI.interface,
-      'Transfer',
       { from: scheduler.address, to: gauge.address, value: daiWeeklyAmount },
       DAI.address
     );
 
-    expectEvent.inIndirectReceipt(
+    expectTransferEvent(
       await tx.wait(),
-      USDC.interface,
-      'Transfer',
       { from: scheduler.address, to: gauge.address, value: usdcWeeklyAmount.mul(2) },
       USDC.address
     );
