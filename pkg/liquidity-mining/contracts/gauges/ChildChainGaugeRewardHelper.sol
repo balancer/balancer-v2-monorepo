@@ -28,6 +28,23 @@ contract ChildChainGaugeRewardHelper {
     uint256 public constant CLAIM_FREQUENCY = 3600;
 
     /**
+     * @notice Returns the amount of ERC20 token `token` on RewardsOnlyGauge `gauge` claimable by address `user`.
+     * @dev This function cannot be marked `view` as it updates the gauge's state (not possible in a view context).
+     * Offchain users attempting to read from this function should manually perform a static call or modify the abi.
+     * @param gauge - The address of the RewardsOnlyGauge for which to query.
+     * @param user - The address of the user for which to query.
+     * @param token - The address of the reward token for which to query.
+     */
+    function getPendingRewards(
+        IRewardsOnlyGauge gauge,
+        address user,
+        address token
+    ) external returns (uint256) {
+        gauge.reward_contract().get_reward();
+        return gauge.claimable_reward_write(user, token);
+    }
+
+    /**
      * @notice Claims pending rewards on RewardsOnlyGauge `gauge` for account `user`.
      * @param gauge - The address of the RewardsOnlyGauge from which to claim rewards.
      * @param user - The address of the user for which to claim rewards.
@@ -47,26 +64,11 @@ contract ChildChainGaugeRewardHelper {
         }
     }
 
+    // Internal functions
+
     function _claimRewardsFromGauge(IRewardsOnlyGauge gauge, address user) internal {
         // Force rewards from the streamer onto the gauge.
         gauge.reward_contract().get_reward();
         gauge.claim_rewards(user);
-    }
-
-    /**
-     * @notice Returns the amount of ERC20 token `token` on RewardsOnlyGauge `gauge` claimable by address `user`.
-     * @dev This function cannot be marked `view` as it updates the gauge's state (not possible in a view context).
-     * Offchain users attempting to read from this function should manually perform a static call or modify the abi.
-     * @param gauge - The address of the RewardsOnlyGauge for which to query.
-     * @param user - The address of the user for which to query.
-     * @param token - The address of the reward token for which to query.
-     */
-    function getPendingRewards(
-        IRewardsOnlyGauge gauge,
-        address user,
-        address token
-    ) external returns (uint256) {
-        gauge.reward_contract().get_reward();
-        return gauge.claimable_reward_write(user, token);
     }
 }
