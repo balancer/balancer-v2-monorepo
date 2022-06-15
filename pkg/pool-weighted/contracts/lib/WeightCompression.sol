@@ -58,7 +58,7 @@ library WeightCompression {
 
     /**
      * @dev Reverse a compression operation, and restore the 256 bit value from a compressed value of
-     * length `bitLength`. The compressed value is in the range [0, max n-bit value], and we are mapping
+     * length `bitLength`. The compressed value is in the range [0, 2^(bitLength) - 1], and we are mapping
      * it back onto the uncompressed range [0, maxUncompressedValue].
      *
      * It is very important that the bitLength and maxUncompressedValue arguments are the
