@@ -24,8 +24,28 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function mockCacheTokenRateIfNecessary(IERC20 token) external whenNotInFailureMode(FailureMode.PRICE_RATE) {
+    function mockCacheTokenRateIfNecessary(IERC20 token) external {
         _cacheTokenRateIfNecessary(token);
+    }
+
+    function _cacheTokenRateIfNecessary(IERC20 token)
+        internal
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+    {
+        return _cacheTokenRateIfNecessary(token);
+    }
+
+    function getTokenRate(IERC20 token)
+        public
+        view
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+            returns (uint256)
+    {
+        return super.getTokenRate(token);
     }
 
     function getRate()
@@ -34,9 +54,20 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         virtual
         override
         whenNotInFailureMode(FailureMode.INVARIANT)
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
-    returns (uint256) {
+            returns (uint256)
+    {
         return super.getRate();
+    }
+
+    function _scalingFactors()
+        internal
+        view
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+            returns (uint256[] memory scalingFactors)
+    {
+        return super._scalingFactors();
     }
 
     function _onSwapGivenIn(
@@ -50,7 +81,7 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         override
         whenNotInFailureMode(FailureMode.INVARIANT)
         whenNotInFailureMode(FailureMode.PRICE_RATE)
-    returns (uint256 amountOut) {
+            returns (uint256 amountOut) {
         return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
     }
 
@@ -65,7 +96,8 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         override
         whenNotInFailureMode(FailureMode.INVARIANT)
         whenNotInFailureMode(FailureMode.PRICE_RATE)
-    returns (uint256 amountIn) {
+            returns (uint256 amountIn)
+    {
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
 }

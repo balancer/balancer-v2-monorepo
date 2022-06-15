@@ -760,7 +760,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     /**
      * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
-    function _cacheTokenRateIfNecessary(IERC20 token) internal {
+    function _cacheTokenRateIfNecessary(IERC20 token) internal virtual {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
         // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
         // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
