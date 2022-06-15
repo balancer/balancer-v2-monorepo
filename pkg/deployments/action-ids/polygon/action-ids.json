@@ -170,6 +170,17 @@
       "actionIds": {
         "create(string,string,address,address,uint256,uint256,address)": "0x527e5a8917fef9f19f55ea7d3f9dc98c00e4836cf918d2af144d2ef91076a53c"
       }
+    },
+    "AaveLinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0503Dd6b2D3Dd463c9BeF67fB5156870Af63393E",
+      "actionIds": {
+        "initialize()": "0x09041991bbfec3c802aaa649c92bad03812001d7ff845ffe5106da62ad3ff22a",
+        "setAssetManagerPoolConfig(address,bytes)": "0x6ed3ab730abc868939ac1e6504c80858fd8376493ac852cc1681abe2fe1ccc4a",
+        "setPaused(bool)": "0xd06706585931d27d86f0857d74f590f3519447f07ae2294a25747da7c53b429c",
+        "setSwapFeePercentage(uint256)": "0xe6167761e1f45f3f8129b4cb8756e924c73a5c94bee1dc35e64a8614b94f61ae",
+        "setTargets(uint256,uint256)": "0xf875b1c51b68896b3ff368c3133dd43eeafb9385f5c2542556132bcefd14bda0"
+      }
     }
   },
   "20211208-stable-phantom-pool": {
