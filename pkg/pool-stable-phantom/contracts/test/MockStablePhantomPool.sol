@@ -80,7 +80,6 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         virtual
         override
         whenNotInFailureMode(FailureMode.INVARIANT)
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
             returns (uint256 amountOut) {
         return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
     }
@@ -95,7 +94,6 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         virtual
         override
         whenNotInFailureMode(FailureMode.INVARIANT)
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
             returns (uint256 amountIn)
     {
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
