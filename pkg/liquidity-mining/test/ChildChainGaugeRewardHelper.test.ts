@@ -4,7 +4,8 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { currentTimestamp, HOUR } from '@balancer-labs/v2-helpers/src/time';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { advanceTime, currentTimestamp, HOUR, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -19,13 +20,15 @@ describe('ChildChainGaugeRewardHelper', () => {
   let adaptor: Contract;
 
   let balToken: Token;
-
   let tokens: TokenList;
+
   let gaugeOne: Contract;
   let streamerOne: Contract;
+  let gaugeOneStartTime: BigNumberish;
 
   let gaugeTwo: Contract;
   let streamerTwo: Contract;
+  let gaugeTwoStartTime: BigNumberish;
 
   let gaugeHelper: Contract;
 
@@ -73,9 +76,7 @@ describe('ChildChainGaugeRewardHelper', () => {
     ]);
 
     await gaugeOne.connect(user)['deposit(uint256)'](rewardAmount);
-    await gaugeOne.connect(user)['deposit(uint256,address)'](rewardAmount.mul(2), other.address);
     await gaugeTwo.connect(user)['deposit(uint256)'](rewardAmount);
-    await gaugeTwo.connect(user)['deposit(uint256,address)'](rewardAmount.mul(2), other.address);
   });
 
   sharedBeforeEach('set up distributor on streamer', async () => {
@@ -92,10 +93,12 @@ describe('ChildChainGaugeRewardHelper', () => {
 
   sharedBeforeEach('send tokens to streamer', async () => {
     await balToken.mint(streamerOne.address, rewardAmount);
-    await streamerOne.connect(distributor).notify_reward_amount(balToken.address);
+    const tx1 = await streamerOne.connect(distributor).notify_reward_amount(balToken.address);
+    gaugeOneStartTime = await receiptTimestamp(tx1.wait());
 
     await balToken.mint(streamerTwo.address, rewardAmount);
-    await streamerTwo.connect(distributor).notify_reward_amount(balToken.address);
+    const tx2 = await streamerTwo.connect(distributor).notify_reward_amount(balToken.address);
+    gaugeTwoStartTime = await receiptTimestamp(tx2.wait());
   });
 
   describe('claimRewardsFromGauge', () => {
@@ -110,6 +113,7 @@ describe('ChildChainGaugeRewardHelper', () => {
       sharedBeforeEach('send tokens to streamer', async () => {
         await gaugeOne['claim_rewards(address)'](other.address);
 
+        await advanceTime(HOUR / 2);
         // Ensure that we're still in the rate limiting period.
         const now = await currentTimestamp();
         const lastClaimTime = await gaugeOne.last_claim();
@@ -117,8 +121,18 @@ describe('ChildChainGaugeRewardHelper', () => {
       });
 
       it('claims more tokens from the streamer', async () => {
+        const existingRewards = await balToken.balanceOf(gaugeOne);
+
         const tx = await gaugeHelper.claimRewardsFromGauge(gaugeOne.address, user.address);
-        expectTransferEvent(await tx.wait(), { from: streamerOne.address, to: gaugeOne.address }, balToken);
+
+        const claimTimestamp = await receiptTimestamp(tx);
+        const totalCumulativeRewards = rewardAmount.mul(bn(claimTimestamp).sub(gaugeOneStartTime)).div(WEEK);
+        const expectedNewRewardsAmount = totalCumulativeRewards.sub(existingRewards);
+
+        const {
+          args: { value: newRewardsAmount },
+        } = expectTransferEvent(await tx.wait(), { from: streamerOne.address, to: gaugeOne.address }, balToken);
+        expect(newRewardsAmount).to.be.almostEqual(expectedNewRewardsAmount);
       });
     });
   });
@@ -135,6 +149,9 @@ describe('ChildChainGaugeRewardHelper', () => {
     context('when the gauge has claimed tokens from streamer recently', () => {
       sharedBeforeEach('send tokens to streamer', async () => {
         await gaugeOne['claim_rewards(address)'](other.address);
+        await gaugeTwo['claim_rewards(address)'](other.address);
+
+        await advanceTime(HOUR / 2);
 
         // Ensure that we're still in the rate limiting period.
         const now = await currentTimestamp();
@@ -143,9 +160,27 @@ describe('ChildChainGaugeRewardHelper', () => {
       });
 
       it('claims more tokens from the streamer', async () => {
+        const existingRewardsOne = await balToken.balanceOf(gaugeOne);
+        const existingRewardsTwo = await balToken.balanceOf(gaugeOne);
+
         const tx = await gaugeHelper.claimRewardsFromGauges([gaugeOne.address, gaugeTwo.address], user.address);
-        expectTransferEvent(await tx.wait(), { from: streamerOne.address, to: gaugeOne.address }, balToken);
-        expectTransferEvent(await tx.wait(), { from: streamerTwo.address, to: gaugeTwo.address }, balToken);
+        const claimTimestamp = await receiptTimestamp(tx);
+
+        const totalCumulativeRewardsOne = rewardAmount.mul(bn(claimTimestamp).sub(gaugeOneStartTime)).div(WEEK);
+        const expectedNewRewardsAmountOne = totalCumulativeRewardsOne.sub(existingRewardsOne);
+
+        const {
+          args: { value: newRewardsAmountOne },
+        } = expectTransferEvent(await tx.wait(), { from: streamerOne.address, to: gaugeOne.address }, balToken);
+        expect(newRewardsAmountOne).to.be.almostEqual(expectedNewRewardsAmountOne);
+
+        const totalCumulativeRewardsTwo = rewardAmount.mul(bn(claimTimestamp).sub(gaugeTwoStartTime)).div(WEEK);
+        const expectedNewRewardsAmountTwo = totalCumulativeRewardsTwo.sub(existingRewardsTwo);
+
+        const {
+          args: { value: newRewardsAmountTwo },
+        } = expectTransferEvent(await tx.wait(), { from: streamerTwo.address, to: gaugeTwo.address }, balToken);
+        expect(newRewardsAmountTwo).to.be.almostEqual(expectedNewRewardsAmountTwo);
       });
     });
   });
