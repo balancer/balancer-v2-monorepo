@@ -150,6 +150,18 @@
       "actionIds": {
         "create(string,string,address[],uint256[],uint256,address,bool,uint256)": "0x0db6d61a48fade7d0796ef73bf36390a527f54e13950af4c28a8236037471834"
       }
+    },
+    "InvestmentPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x95A28a3be5ed7b5bfc01C804fA33877853527756",
+      "actionIds": {
+        "setAssetManagerPoolConfig(address,bytes)": "0x3198180bf4b949c0230328311ed9c44e45edf3f301ab72ec4d72db4aad6b6418",
+        "setPaused(bool)": "0x6e84d531e4d5c13375c0f1c4b4e872111aeccf9d85b22f47c0e78dea085514f9",
+        "setSwapEnabled(bool)": "0x877fd7bfde32dd7caec22b5336a4aac23f5254420df0c8c27137cb83a283a45d",
+        "setSwapFeePercentage(uint256)": "0x594c8893e09351e14d4db7d5f587381915923bdbe69921847a3fe00329607c89",
+        "updateWeightsGradually(uint256,uint256,uint256[])": "0x55e906387632340265f352a836e4fd7a8af37473f6d20a9b7a9854d4c09afac0",
+        "withdrawCollectedManagementFees(address)": "0xe1bfc0ba5180b36c24fe745b19eaa1a48cf79d2a780d27ee486d965d6bff3b28"
+      }
     }
   },
   "20211012-merkle-orchard": {

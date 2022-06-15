@@ -181,6 +181,18 @@
       "actionIds": {
         "create(string,string,address[],uint256[],uint256,address,bool,uint256)": "0xb4d5b96b20908201024f5175a555aff829236b7605db02daffbf2a17f4ca2b57"
       }
+    },
+    "InvestmentPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x3B40D7d5AE25dF2561944dD68b252016c4c7B280",
+      "actionIds": {
+        "setAssetManagerPoolConfig(address,bytes)": "0x8ede97683b1fadf663e65daaaef500256ae3643c68c6a4b77e4a84b6035d28a4",
+        "setPaused(bool)": "0x39794bfb631976145dd5645f5c903aa2b443f72f15e99d1b7413294703d56380",
+        "setSwapEnabled(bool)": "0x0e86e31bfd78ac23d9fbebeb5305bbfc7d666c0602cc1e74194140c651c5c904",
+        "setSwapFeePercentage(uint256)": "0x72696c3624ff2400c3580f888cdfc372de1ec9ecba65f61ae7d06752d0181f3a",
+        "updateWeightsGradually(uint256,uint256,uint256[])": "0x63c0eaeb06b0089842f2fe3ea983921782387e90d36d385cc683ab874153113b",
+        "withdrawCollectedManagementFees(address)": "0xd9628fe78fc2a5e864832482b704caf2b03cd52c227663a96aa302ac9bd2f15c"
+      }
     }
   },
   "20211012-merkle-orchard": {
