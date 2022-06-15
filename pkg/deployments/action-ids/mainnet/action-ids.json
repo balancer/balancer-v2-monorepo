@@ -128,6 +128,20 @@
       "actionIds": {
         "create(string,string,address[],uint256,address[],uint256[],uint256,bool,address)": "0x35a3db544cfbcb07e2aa5288331e259147eb73fa71abbf042d2e30f883336c9f"
       }
+    },
+    "MetaStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x851523A36690bF267BbFEC389C823072D82921a9",
+      "actionIds": {
+        "enableOracle()": "0x9bb0ceafb44194dec6a47c23126dfed1662c42d573398f0f4af21aee3757b88e",
+        "setAssetManagerPoolConfig(address,bytes)": "0x287ba3992c230585d4856a43c953df4b6d09d8e3890f9291cc2633628e9d01cd",
+        "setPaused(bool)": "0xa9d5a531fd849052f92ebf9cbe5ae801a82bbc0ffd854f4dcd44c663d4a11ec8",
+        "setPriceRateCacheDuration(address,uint256)": "0xc8cec43a5d5eea46edca69d90b740e59c583c81a2a8fc493bb9428e720af8bba",
+        "setSwapFeePercentage(uint256)": "0x15d3918ca8f9895d8906a780f5f402d32707bada7b1b5e7b21b7351257103a35",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0xc108e87eca9f3a0e9a9db0b708e6b15a70c3d0859b02723a7cc4b5ca1fb9fc28",
+        "stopAmplificationParameterUpdate()": "0x2f17310a7a479b437515eb1917c45a5f8d1fc7035462cfc7c7c43825dec621b5",
+        "updatePriceRateCache(address)": "0x2660c857c9d8d37ecd99d93ddcc0228cf852373a4a76f8eb9b958ea0a0ec6e68"
+      }
     }
   },
   "20210811-ldo-merkle": {

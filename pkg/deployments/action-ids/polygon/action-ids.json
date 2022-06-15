@@ -128,6 +128,20 @@
       "actionIds": {
         "create(string,string,address[],uint256,address[],uint256[],uint256,bool,address)": "0x53b275af72c08826755a37670feb2498799e93accbe09ab78b3ffd2ca5af30a2"
       }
+    },
+    "MetaStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xC17636e36398602dd37Bb5d1B3a9008c7629005f",
+      "actionIds": {
+        "enableOracle()": "0xe9ce7912cef35356af9e6fe2f74e7db29ae4048f06230c7abf973669cfd81b0a",
+        "setAssetManagerPoolConfig(address,bytes)": "0x346bbd103487616e43ad4426647c4ea8c1679ae34b804472e8381851b68df68b",
+        "setPaused(bool)": "0xb175321bb12100f9cd00c1e223f12597e71012d08487d09c03745d7e8b6bfa6e",
+        "setPriceRateCacheDuration(address,uint256)": "0x126e98a631e7fef0d7726b6184cdc93213837514cf93f422b71e3548eb3a5f7f",
+        "setSwapFeePercentage(uint256)": "0xce2ff98f438259b5f78b8cf5818e70fcc2ff35b13dc38356616b1431cea9726e",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0x4a5335097f75ce0343ed07c66342c9a6d5b34cd71451545e40430882c5136cfe",
+        "stopAmplificationParameterUpdate()": "0xe3e737cbdba086ac765746aadfd83769e92e0415cdde864c27803829d15a97d0",
+        "updatePriceRateCache(address)": "0xaa509da7385e33b5a660313d5306edd65de9d8cfef0b8f497302aea07eff3938"
+      }
     }
   },
   "20210907-investment-pool": {
