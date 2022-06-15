@@ -24,6 +24,8 @@ import {
 import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
+const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
+const SCRIPTS_DIRECTORY = path.join(TASKS_DIRECTORY, 'scripts');
 
 export enum TaskMode {
   LIVE, // Deploys and saves outputs
@@ -188,7 +190,26 @@ export default class Task {
 
   dir(): string {
     if (!this.id) throw Error('Please provide a task deployment ID to run');
-    return this._dirAt(TASKS_DIRECTORY, this.id);
+
+    // The task might be deprecated, so it may not exist in the main directory. We first look there, but don't require
+    // that the directory exists.
+
+    const nonDeprecatedDir = this._dirAt(TASKS_DIRECTORY, this.id, false);
+    if (this._existsDir(nonDeprecatedDir)) {
+      return nonDeprecatedDir;
+    }
+
+    const deprecatedDir = this._dirAt(DEPRECATED_DIRECTORY, this.id, false);
+    if (this._existsDir(deprecatedDir)) {
+      return deprecatedDir;
+    }
+
+    const scriptsDir = this._dirAt(SCRIPTS_DIRECTORY, this.id, false);
+    if (this._existsDir(scriptsDir)) {
+      return scriptsDir;
+    }
+
+    throw Error(`Could not find a directory at ${nonDeprecatedDir}, ${deprecatedDir} or ${scriptsDir}`);
   }
 
   buildInfo(fileName: string): BuildInfo {
@@ -322,7 +343,7 @@ export default class Task {
   }
 
   private _findTaskId(idAlias: string): string {
-    const matches = fs.readdirSync(TASKS_DIRECTORY).filter((taskDirName) => taskDirName.includes(idAlias));
+    const matches = Task.getAllTaskIds().filter((taskDirName) => taskDirName.includes(idAlias));
 
     if (matches.length == 1) {
       return matches[0];
@@ -335,5 +356,12 @@ export default class Task {
         );
       }
     }
+  }
+
+  static getAllTaskIds(): string[] {
+    return [TASKS_DIRECTORY, DEPRECATED_DIRECTORY, SCRIPTS_DIRECTORY]
+      .map((dir) => fs.readdirSync(dir))
+      .flat()
+      .sort();
   }
 }
