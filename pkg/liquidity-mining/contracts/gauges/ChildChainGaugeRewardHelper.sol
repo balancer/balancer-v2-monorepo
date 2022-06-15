@@ -61,7 +61,7 @@ contract ChildChainGaugeRewardHelper {
      * @param user - The address of the user for which to query.
      * @param token - The address of the reward token for which to query.
      */
-    function pendingRewards(
+    function getPendingRewards(
         IRewardsOnlyGauge gauge,
         address user,
         address token
