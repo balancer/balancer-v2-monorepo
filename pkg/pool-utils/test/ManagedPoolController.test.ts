@@ -293,7 +293,7 @@ describe('ManagedPoolController', function () {
 
       it('reverts if the manager transfers ownership', async () => {
         await expect(poolController.connect(manager).transferOwnership(other.address)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
+          'FEATURE_DISABLED'
         );
       });
     });
@@ -305,7 +305,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager updates metadata', async () => {
-        await expect(poolController.connect(manager).updateMetadata('0x')).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        await expect(poolController.connect(manager).updateMetadata('0x')).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -320,7 +320,7 @@ describe('ManagedPoolController', function () {
 
         await expect(
           poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS)
-        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        ).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -331,9 +331,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager disables swaps', async () => {
-        await expect(poolController.connect(manager).setSwapEnabled(false)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+        await expect(poolController.connect(manager).setSwapEnabled(false)).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -344,9 +342,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager tries to disable the allowlist', async () => {
-        await expect(poolController.connect(manager).setMustAllowlistLPs(true)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+        await expect(poolController.connect(manager).setMustAllowlistLPs(true)).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -359,13 +355,13 @@ describe('ManagedPoolController', function () {
       it('reverts if the manager tries to change the management swap fee', async () => {
         await expect(
           poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
-        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        ).to.be.revertedWith('FEATURE_DISABLED');
       });
 
       it('reverts if the manager tries to change the management AUM fee', async () => {
         await expect(
           poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE)
-        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        ).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
