@@ -37,7 +37,7 @@ contract ChildChainGaugeRewardHelper {
     }
 
     /**
-     * @notice Claims pending rewards on a list of RewardsOnlyGauges `gauge` for account `user`.
+     * @notice Claims pending rewards on a list of RewardsOnlyGauges `gauges` for account `user`.
      * @param gauges - An array of address of RewardsOnlyGauges from which to claim rewards.
      * @param user - The address of the user for which to claim rewards.
      */
