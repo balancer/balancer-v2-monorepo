@@ -105,6 +105,17 @@
       "actionIds": {
         "create(string,string,address[],uint256[],uint256,address,bool)": "0xbe1e0934823cee657ae4c9d763780b556f6dc57a287137a2ce26ef70f771c203"
       }
+    },
+    "LiquidityBootstrappingPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x6FC73B9d624b543f8B6b88FC3CE627877Ff169Ee",
+      "actionIds": {
+        "setAssetManagerPoolConfig(address,bytes)": "0xd3d88853c901e2581060bf590a0ed48da57ca3ccbe89f748d828c282dc40e1b6",
+        "setPaused(bool)": "0x0546471589e6cc8d242057938789941d762b4cf0186a74658ae0f81866138734",
+        "setSwapEnabled(bool)": "0xc86f763ebb824c76acdae97561cae60573473dd0e0addb83f0d142f12b0a5d59",
+        "setSwapFeePercentage(uint256)": "0xf472b63b0e5e0ef0eedf49fb6dcb108ff97950c4394d78409c9251ea89c943da",
+        "updateWeightsGradually(uint256,uint256,uint256[])": "0xf1c73f7bc5b3a33181b70ef054dd876b584d652e288fcd6fd2bf02d7b9c61cf0"
+      }
     }
   },
   "20210727-meta-stable-pool": {
