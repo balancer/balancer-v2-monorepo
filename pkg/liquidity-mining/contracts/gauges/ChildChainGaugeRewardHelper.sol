@@ -53,6 +53,14 @@ contract ChildChainGaugeRewardHelper {
         gauge.claim_rewards(user);
     }
 
+    /**
+     * @notice Returns the amount of ERC20 token `token` on RewardsOnlyGauge `gauge` claimable by address `user`.
+     * @dev This function cannot be marked `view` as it updates the gauge's state (not possible in a view context).
+     * Offchain users attempting to read from this function should manually perform a static call or modify the abi.
+     * @param gauge - The address of the RewardsOnlyGauge for which to query.
+     * @param user - The address of the user for which to query.
+     * @param token - The address of the reward token for which to query.
+     */
     function pendingRewards(
         IRewardsOnlyGauge gauge,
         address user,
