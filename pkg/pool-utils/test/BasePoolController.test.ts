@@ -213,7 +213,7 @@ describe('BasePoolController', function () {
 
       it('reverts if the manager transfers ownership', async () => {
         await expect(poolController.connect(manager).transferOwnership(other.address)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
+          'FEATURE_DISABLED'
         );
       });
     });
@@ -281,7 +281,7 @@ describe('BasePoolController', function () {
 
       it('reverts if manager sets the swap fee', async () => {
         await expect(poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
+          'FEATURE_DISABLED'
         );
       });
     });
@@ -297,9 +297,7 @@ describe('BasePoolController', function () {
       });
 
       it('reverts if the manager updates metadata', async () => {
-        await expect(poolController.connect(manager).updateMetadata(METADATA)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+        await expect(poolController.connect(manager).updateMetadata(METADATA)).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
   });

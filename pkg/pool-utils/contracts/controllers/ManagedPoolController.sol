@@ -152,7 +152,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         uint256 endTime,
         uint256[] calldata endWeights
     ) external virtual override onlyManager withBoundPool {
-        _require(canChangeWeights(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeWeights(), Errors.FEATURE_DISABLED);
         _require(
             endTime >= startTime && endTime - startTime >= _minWeightChangeDuration,
             Errors.WEIGHT_CHANGE_TOO_FAST
@@ -165,7 +165,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
      * @dev Pass a call to ManagedPool's setSwapEnabled through to the underlying pool.
      */
     function setSwapEnabled(bool swapEnabled) external virtual override onlyManager withBoundPool {
-        _require(canDisableSwaps(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canDisableSwaps(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setSwapEnabled(swapEnabled);
     }
@@ -180,7 +180,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
      * allowlist, or re-enabling it after allowing public LPs, can impose or remove a "cap" on the total supply.
      */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external virtual override onlyManager withBoundPool {
-        _require(canSetMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canSetMustAllowlistLPs(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setMustAllowlistLPs(mustAllowlistLPs);
     }
@@ -219,7 +219,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         onlyManager
         withBoundPool
     {
-        _require(canChangeManagementFees(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
     }
@@ -234,7 +234,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         onlyManager
         withBoundPool
     {
-        _require(canChangeManagementFees(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
     }
