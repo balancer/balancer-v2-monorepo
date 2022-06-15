@@ -64,9 +64,7 @@ task('extract-artifacts', `Extract contract artifacts from their build-info`)
       const task = new Task(args.id, TaskMode.READ_ONLY);
       extractArtifact(task);
     } else {
-      const taskDirectory = path.resolve(__dirname, './tasks');
-
-      for (const taskID of readdirSync(taskDirectory)) {
+      for (const taskID of Task.getAllTaskIds()) {
         const task = new Task(taskID, TaskMode.READ_ONLY);
         extractArtifact(task);
       }
@@ -84,15 +82,15 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
     if (args.id) {
       await new Task(args.id, TaskMode.CHECK, hre.network.name).run(args);
     } else {
-      const taskDirectory = path.resolve(__dirname, './tasks');
+      for (const taskID of Task.getAllTaskIds()) {
+        const task = new Task(taskID, TaskMode.CHECK, hre.network.name);
+        const outputDir = path.resolve(task.dir(), 'output');
 
-      for (const taskID of readdirSync(taskDirectory)) {
-        const outputDir = path.resolve(taskDirectory, taskID, 'output');
         if (existsSync(outputDir) && statSync(outputDir).isDirectory()) {
           const outputFiles = readdirSync(outputDir);
           if (outputFiles.some((outputFile) => outputFile.includes(hre.network.name))) {
             // Not all tasks have outputs for all networks, so we skip those that don't
-            await new Task(taskID, TaskMode.CHECK, hre.network.name).run(args);
+            await task.run(args);
           }
         }
       }
@@ -108,9 +106,7 @@ task('check-artifacts', `check that contract artifacts correspond to their build
       const task = new Task(args.id, TaskMode.READ_ONLY);
       checkArtifact(task);
     } else {
-      const taskDirectory = path.resolve(__dirname, './tasks');
-
-      for (const taskID of readdirSync(taskDirectory)) {
+      for (const taskID of Task.getAllTaskIds()) {
         const task = new Task(taskID, TaskMode.READ_ONLY);
         checkArtifact(task);
       }
@@ -148,6 +144,7 @@ task('save-action-ids', `Print the action IDs for a particular contract`)
       async function generateActionIdsForTask(taskId: string): Promise<void> {
         const task = new Task(taskId, TaskMode.READ_ONLY, hre.network.name);
         const outputDir = path.resolve(task.dir(), 'output');
+
         if (existsSync(outputDir) && statSync(outputDir).isDirectory()) {
           for (const outputFile of readdirSync(outputDir)) {
             const outputFilePath = path.resolve(outputDir, outputFile);
@@ -170,8 +167,7 @@ task('save-action-ids', `Print the action IDs for a particular contract`)
 
       // We're calculating action IDs for whichever contracts we can pull enough information from disk for.
       // This will calculate action IDs for any contracts which are a named output from a task.
-      const taskDirectory = path.resolve(__dirname, './tasks');
-      for (const taskID of readdirSync(taskDirectory)) {
+      for (const taskID of Task.getAllTaskIds()) {
         await generateActionIdsForTask(taskID);
       }
     }
@@ -186,9 +182,7 @@ task('check-action-ids', `Check that contract action-ids correspond the expected
       const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
       await checkActionIds(task);
     } else {
-      const taskDirectory = path.resolve(__dirname, './tasks');
-
-      for (const taskID of readdirSync(taskDirectory)) {
+      for (const taskID of Task.getAllTaskIds()) {
         const task = new Task(taskID, TaskMode.READ_ONLY, hre.network.name);
         await checkActionIds(task);
       }
