@@ -51,7 +51,10 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
     }
 
     function isComplete() public view returns (bool) {
-        return getCurrentStage() >= getStagesLength();
+        uint256 currentStage = getCurrentStage();
+        // currentStage > 0 ensures that coordinator is not marked as complete when getStagesLength == 0.
+        // This prevents `isComplete` returning true on deployment of the coordinator.
+        return currentStage > 0 && currentStage >= getStagesLength();
     }
 
     function getCurrentStage() public view returns (uint256) {
@@ -85,14 +88,15 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
 
         require(!isComplete(), "All stages completed");
 
-        uint256 currentStage = getCurrentStage();
-        _coordinatorStages[currentStage]();
+        _coordinatorStages[getCurrentStage()]();
 
         _advanceCurrentStage();
     }
 
     function _getTimeSinceLastStageActivation() internal view returns (uint256) {
-        return block.timestamp - getStageActivationTime(getCurrentStage() - 1);
+        uint256 currentStage = getCurrentStage();
+        require(currentStage > 0, "First stage has not yet been activated");
+        return block.timestamp - getStageActivationTime(currentStage - 1);
     }
 
     function _advanceCurrentStage() private {

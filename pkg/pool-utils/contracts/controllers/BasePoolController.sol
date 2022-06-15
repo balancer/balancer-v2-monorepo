@@ -206,7 +206,7 @@ contract BasePoolController is IBasePoolController {
      * Can only be called by the current manager.
      */
     function transferOwnership(address newManager) external onlyManager {
-        _require(canTransferOwnership(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canTransferOwnership(), Errors.FEATURE_DISABLED);
 
         _managerCandidate = newManager;
     }
@@ -246,7 +246,7 @@ contract BasePoolController is IBasePoolController {
      * @dev Pass a call to BasePool's setSwapFeePercentage through to the underlying pool, if allowed.
      */
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual override withBoundPool {
-        _require(canChangeSwapFee(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeSwapFee(), Errors.FEATURE_DISABLED);
         _require(getSwapFeeController() == msg.sender, Errors.SENDER_NOT_ALLOWED);
 
         IControlledPool(pool).setSwapFeePercentage(swapFeePercentage);
@@ -277,7 +277,7 @@ contract BasePoolController is IBasePoolController {
      * @dev Setter for the admin to set/update the metadata
      */
     function updateMetadata(bytes memory metadata) external onlyManager {
-        _require(canUpdateMetadata(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canUpdateMetadata(), Errors.FEATURE_DISABLED);
 
         _metadata = metadata;
         emit MetadataUpdated(metadata);
