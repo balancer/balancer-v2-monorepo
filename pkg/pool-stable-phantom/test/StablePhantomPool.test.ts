@@ -28,22 +28,22 @@ describe('StablePhantomPool', () => {
     [, lp, owner, recipient, admin, other] = await ethers.getSigners();
   });
 
-  context('for 2 tokens pool', () => {
+  context('for a 2 token pool', () => {
     itBehavesAsStablePhantomPool(2);
   });
 
-  context('for 4 tokens pool', () => {
+  context('for a 4 token pool', () => {
     itBehavesAsStablePhantomPool(4);
   });
 
-  context('for 1 token pool', () => {
+  context('for a 1 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
-  context('for 5 tokens pool', () => {
+  context('for a 5 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(5, { sorted: true });
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
@@ -78,6 +78,11 @@ describe('StablePhantomPool', () => {
       bptIndex = await pool.getBptIndex();
       deployTimestamp = await currentTimestamp();
       initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
+    }
+
+    async function enableRecoveryMode(pool: StablePhantomPool): Promise<void> {
+      await pool.enableRecoveryMode(admin);
+      expect(await pool.inRecoveryMode()).to.be.true;
     }
 
     describe('creation', () => {
@@ -301,6 +306,16 @@ describe('StablePhantomPool', () => {
             await expect(pool.init({ initialBalances })).to.be.revertedWith('PAUSED');
           });
         });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enable recovery mode', async () => {
+            await enableRecoveryMode(pool);
+          });
+
+          it('does not revert', async () => {
+            await expect(pool.init({ initialBalances })).to.not.be.reverted;
+          });
+        });
       });
 
       context('when it was already initialized', () => {
@@ -342,19 +357,23 @@ describe('StablePhantomPool', () => {
         context('token out given token in', () => {
           const amountIn = fp(0.1);
 
-          it('swaps tokens', async () => {
-            const tokenIn = tokens.first;
-            const tokenOut = tokens.second;
+          async function itSwapsTokensGivenIn(): Promise<void> {
+            it('swaps tokens', async () => {
+              const tokenIn = tokens.first;
+              const tokenOut = tokens.second;
 
-            const previousBalance = await tokenOut.balanceOf(recipient);
-            const expectedAmountOut = await pool.estimateTokenOutGivenTokenIn(tokenIn, tokenOut, amountIn);
+              const previousBalance = await tokenOut.balanceOf(recipient);
+              const expectedAmountOut = await pool.estimateTokenOutGivenTokenIn(tokenIn, tokenOut, amountIn);
 
-            const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount: amountIn, recipient });
-            expect(amountOut).to.be.equalWithError(expectedAmountOut, 0.00001);
+              const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount: amountIn, recipient });
+              expect(amountOut).to.be.equalWithError(expectedAmountOut, 0.00001);
 
-            const currentBalance = await tokenOut.balanceOf(recipient);
-            expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedAmountOut, 0.00001);
-          });
+              const currentBalance = await tokenOut.balanceOf(recipient);
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedAmountOut, 0.00001);
+            });
+          }
+
+          itSwapsTokensGivenIn();
 
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
@@ -367,24 +386,41 @@ describe('StablePhantomPool', () => {
               ).to.be.revertedWith('PAUSED');
             });
           });
+
+          context('when in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await enableRecoveryMode(pool);
+            });
+
+            itSwapsTokensGivenIn();
+          });
         });
 
         context('token in given token out', () => {
           const amountOut = fp(0.1);
 
-          it('swaps tokens', async () => {
-            const tokenIn = tokens.first;
-            const tokenOut = tokens.second;
+          async function itSwapsTokensGivenOut(): Promise<void> {
+            it('swaps tokens', async () => {
+              const tokenIn = tokens.first;
+              const tokenOut = tokens.second;
 
-            const previousBalance = await tokenOut.balanceOf(recipient);
-            const expectedAmountIn = await pool.estimateTokenInGivenTokenOut(tokenIn, tokenOut, amountOut);
+              const previousBalance = await tokenOut.balanceOf(recipient);
+              const expectedAmountIn = await pool.estimateTokenInGivenTokenOut(tokenIn, tokenOut, amountOut);
 
-            const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: tokenOut, amount: amountOut, recipient });
-            expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
+              const { amountIn } = await pool.swapGivenOut({
+                in: tokenIn,
+                out: tokenOut,
+                amount: amountOut,
+                recipient,
+              });
+              expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
 
-            const currentBalance = await tokenOut.balanceOf(recipient);
-            expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
-          });
+              const currentBalance = await tokenOut.balanceOf(recipient);
+              expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
+            });
+          }
+
+          itSwapsTokensGivenOut();
 
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
@@ -397,23 +433,35 @@ describe('StablePhantomPool', () => {
               ).to.be.revertedWith('PAUSED');
             });
           });
+
+          context('when in recovery mode', async () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await enableRecoveryMode(pool);
+            });
+
+            itSwapsTokensGivenOut();
+          });
         });
 
         context('token out given BPT in', () => {
           const bptIn = fp(1);
 
-          it('swaps exact BPT for token', async () => {
-            const tokenOut = tokens.first;
+          async function itSwapsTokenOutGivenBptIn(): Promise<void> {
+            it('swaps exact BPT for token', async () => {
+              const tokenOut = tokens.first;
 
-            const previousBalance = await tokenOut.balanceOf(recipient);
-            const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(tokenOut, bptIn);
+              const previousBalance = await tokenOut.balanceOf(recipient);
+              const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(tokenOut, bptIn);
 
-            const { amountOut } = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
-            expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
+              const { amountOut } = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
+              expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
 
-            const currentBalance = await tokenOut.balanceOf(recipient);
-            expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedTokenOut, 0.00001);
-          });
+              const currentBalance = await tokenOut.balanceOf(recipient);
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedTokenOut, 0.00001);
+            });
+          }
+
+          itSwapsTokenOutGivenBptIn();
 
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
@@ -426,23 +474,35 @@ describe('StablePhantomPool', () => {
               ).to.be.revertedWith('PAUSED');
             });
           });
+
+          context('when in recovery mode', async () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await enableRecoveryMode(pool);
+            });
+
+            itSwapsTokenOutGivenBptIn();
+          });
         });
 
         context('token in given BPT out', () => {
           const bptOut = fp(1);
 
-          it('swaps token for exact BPT', async () => {
-            const tokenIn = tokens.first;
+          async function itSwapsTokenForExactBpt(): Promise<void> {
+            it('swaps token for exact BPT', async () => {
+              const tokenIn = tokens.first;
 
-            const previousBalance = await pool.balanceOf(recipient);
-            const expectedTokenIn = await pool.estimateTokenInGivenBptOut(tokenIn, bptOut);
+              const previousBalance = await pool.balanceOf(recipient);
+              const expectedTokenIn = await pool.estimateTokenInGivenBptOut(tokenIn, bptOut);
 
-            const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
-            expect(amountIn).to.be.equalWithError(expectedTokenIn, 0.00001);
+              const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
+              expect(amountIn).to.be.equalWithError(expectedTokenIn, 0.00001);
 
-            const currentBalance = await pool.balanceOf(recipient);
-            expect(currentBalance.sub(previousBalance)).to.be.equal(bptOut);
-          });
+              const currentBalance = await pool.balanceOf(recipient);
+              expect(currentBalance.sub(previousBalance)).to.be.equal(bptOut);
+            });
+          }
+
+          itSwapsTokenForExactBpt();
 
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
@@ -455,23 +515,35 @@ describe('StablePhantomPool', () => {
               ).to.be.revertedWith('PAUSED');
             });
           });
+
+          context('when in recovery mode', async () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await enableRecoveryMode(pool);
+            });
+
+            itSwapsTokenForExactBpt();
+          });
         });
 
         context('BPT out given token in', () => {
           const amountIn = fp(1);
 
-          it('swaps exact token for BPT', async () => {
-            const tokenIn = tokens.first;
+          async function itSwapsExactTokenForBpt(): Promise<void> {
+            it('swaps exact token for BPT', async () => {
+              const tokenIn = tokens.first;
 
-            const previousBalance = await pool.balanceOf(recipient);
-            const expectedBptOut = await pool.estimateBptOutGivenTokenIn(tokenIn, amountIn);
+              const previousBalance = await pool.balanceOf(recipient);
+              const expectedBptOut = await pool.estimateBptOutGivenTokenIn(tokenIn, amountIn);
 
-            const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: pool.bpt, amount: amountIn, recipient });
-            expect(amountOut).to.be.equalWithError(expectedBptOut, 0.00001);
+              const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: pool.bpt, amount: amountIn, recipient });
+              expect(amountOut).to.be.equalWithError(expectedBptOut, 0.00001);
 
-            const currentBalance = await pool.balanceOf(recipient);
-            expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedBptOut, 0.00001);
-          });
+              const currentBalance = await pool.balanceOf(recipient);
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedBptOut, 0.00001);
+            });
+          }
+
+          itSwapsExactTokenForBpt();
 
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
@@ -484,23 +556,40 @@ describe('StablePhantomPool', () => {
               ).to.be.revertedWith('PAUSED');
             });
           });
+
+          context('when in recovery mode', async () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await enableRecoveryMode(pool);
+            });
+
+            itSwapsExactTokenForBpt();
+          });
         });
 
         context('BPT in given token out', () => {
           const amountOut = fp(0.1);
 
-          it('swaps BPT for exact tokens', async () => {
-            const tokenOut = tokens.first;
+          async function itSwapsBptForExactTokens(): Promise<void> {
+            it('swaps BPT for exact tokens', async () => {
+              const tokenOut = tokens.first;
 
-            const previousBalance = await tokenOut.balanceOf(recipient);
-            const expectedBptIn = await pool.estimateBptInGivenTokenOut(tokenOut, amountOut);
+              const previousBalance = await tokenOut.balanceOf(recipient);
+              const expectedBptIn = await pool.estimateBptInGivenTokenOut(tokenOut, amountOut);
 
-            const { amountIn } = await pool.swapGivenOut({ in: pool.bpt, out: tokenOut, amount: amountOut, recipient });
-            expect(amountIn).to.be.equalWithError(expectedBptIn, 0.00001);
+              const { amountIn } = await pool.swapGivenOut({
+                in: pool.bpt,
+                out: tokenOut,
+                amount: amountOut,
+                recipient,
+              });
+              expect(amountIn).to.be.equalWithError(expectedBptIn, 0.00001);
 
-            const currentBalance = await tokenOut.balanceOf(recipient);
-            expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
-          });
+              const currentBalance = await tokenOut.balanceOf(recipient);
+              expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
+            });
+          }
+
+          itSwapsBptForExactTokens();
 
           context('when paused', () => {
             sharedBeforeEach('pause pool', async () => {
@@ -512,6 +601,14 @@ describe('StablePhantomPool', () => {
                 pool.swapGivenOut({ in: pool.bpt, out: tokens.first, amount: amountOut, recipient })
               ).to.be.revertedWith('PAUSED');
             });
+          });
+
+          context('when in recovery mode', async () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await enableRecoveryMode(pool);
+            });
+
+            itSwapsBptForExactTokens();
           });
         });
       });
@@ -819,6 +916,12 @@ describe('StablePhantomPool', () => {
             });
           });
         });
+
+        describe('with upstream getRate failures', () => {
+          it.skip('can do when we have MockFailureModes', async () => {
+            expect(true).to.be.true;
+          });
+        });
       });
     });
 
@@ -991,11 +1094,7 @@ describe('StablePhantomPool', () => {
       describe('collection', () => {
         const amount = fp(10);
 
-        sharedBeforeEach('update cache', async () => {
-          await pool.updateProtocolSwapFeePercentageCache();
-        });
-
-        sharedBeforeEach('accrue fees', async () => {
+        async function calculateProtocolFeesAfterSwap(): Promise<BigNumber> {
           const token = tokens.first;
 
           const { amountOut: bptAmount } = await pool.swapGivenIn({
@@ -1006,22 +1105,56 @@ describe('StablePhantomPool', () => {
             recipient: lp,
           });
           await pool.swapGivenIn({ in: pool.bpt, out: token, amount: bptAmount, from: lp, recipient: lp });
+
+          return pool.getDueProtocolFeeBptAmount();
+        }
+
+        async function itTransfersTokensToFeeCollector(): Promise<void> {
+          it('Transfers tokens to the fee collector', async () => {
+            const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
+
+            await pool.collectProtocolFees(other);
+
+            const dueFeeAfter = await pool.getDueProtocolFeeBptAmount();
+            expect(dueFeeAfter).to.be.equal(0);
+
+            const feeCollector = await pool.vault.getFeesCollector();
+            const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
+
+            expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
+            expect(dueFeeBefore).to.be.gt(0);
+          });
+        }
+
+        context('not in recovery mode', () => {
+          sharedBeforeEach('update cache', async () => {
+            await pool.updateProtocolSwapFeePercentageCache();
+          });
+
+          it('accrues (and transfers) protocol fees', async () => {
+            const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
+            expect(dueFeeBefore).to.equal(0);
+
+            const dueFeeAfter = await calculateProtocolFeesAfterSwap();
+            expect(dueFeeAfter).to.be.gt(fp(0));
+
+            itTransfersTokensToFeeCollector();
+          });
         });
 
-        it('transfers tokens to the fee collector', async () => {
-          const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
-          expect(dueFeeBefore).to.be.gt(fp(0));
+        context('in recovery mode', () => {
+          sharedBeforeEach('enable recovery mode', async () => {
+            await enableRecoveryMode(pool);
+          });
 
-          await pool.collectProtocolFees(other);
+          it('does not accrue protocol fees', async () => {
+            const dueFeeAfter = await calculateProtocolFeesAfterSwap();
+            expect(dueFeeAfter).to.be.eq(fp(0));
+          });
 
-          const dueFeeAfter = await pool.getDueProtocolFeeBptAmount();
-
-          expect(dueFeeAfter).to.be.equal(fp(0));
-
-          const feeCollector = await pool.vault.getFeesCollector();
-          const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
-
-          expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
+          it('cannot collect protocol fees', async () => {
+            expect(itTransfersTokensToFeeCollector()).to.be.revertedWith('IN_RECOVERY_MODE');
+          });
         });
       });
     });
@@ -1145,7 +1278,6 @@ describe('StablePhantomPool', () => {
         });
       });
 
-      // Skip until recovery mode implemented
       context('when paused', () => {
         sharedBeforeEach('pause pool', async () => {
           await pool.pause();
