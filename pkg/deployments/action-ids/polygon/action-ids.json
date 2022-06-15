@@ -86,6 +86,17 @@
       "actionIds": {
         "create(string,string,address[],uint256,uint256,address)": "0x24c1ce6a38931ed2e9a7db6296d348efbb2777b33ec38fb14b57f29701dda2ca"
       }
+    },
+    "StablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x32C471dD7ED2df5D62C6fc498fe6293fbfd66597",
+      "actionIds": {
+        "setAssetManagerPoolConfig(address,bytes)": "0x605335b210e41aa6abf3dcc7ede4da40480fec68dc8eb118d499fa010783bddd",
+        "setPaused(bool)": "0x97270598fa4177db8fa1b289b1a781d6ae7a6e1f87fe4c03f6a0c07990014bb8",
+        "setSwapFeePercentage(uint256)": "0x7b09f4b61ccfe85436161b0223489b187d9f9158c542b5e6105df147afc78aca",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0x8c9b4c1f53b968f62f656d48126bd856c38b0d879974dff5b5d6055c0d2917d4",
+        "stopAmplificationParameterUpdate()": "0xc787be37f98a254065bf8678258de57ce53a2d6814c519063f3003dd9f92dfc3"
+      }
     }
   },
   "20210721-liquidity-bootstrapping-pool": {
