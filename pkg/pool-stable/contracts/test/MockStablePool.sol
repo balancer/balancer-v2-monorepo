@@ -1,4 +1,4 @@
-    // SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
+
 import "../StablePool.sol";
 
 /**
@@ -22,14 +24,7 @@ import "../StablePool.sol";
  * `_calculateInvariant` function  are marked with a modifier, and will fail if the `_simulateInvariantFailure`
  * flag has been set.
  */
-contract MockStablePool is StablePool {
-    bool private _simulateInvariantFailure;
-
-    modifier whenInvariantConverges {
-        _ensureInvariantConverges();
-        _;
-    }
-
+contract MockStablePool is StablePool, MockFailureModes {
     constructor(
         IVault vault,
         string memory name,
@@ -54,27 +49,12 @@ contract MockStablePool is StablePool {
       // solhint-disable-previous-line no-empty-blocks
     }
 
-    // Simulate failure of the invariant to converge
-    function setInvariantFailure(bool invariantFailsToConverge) external {
-        _simulateInvariantFailure = invariantFailsToConverge;
-    }
-
-    function invariantConverges() external view returns (bool) {
-        return !_simulateInvariantFailure;
-    }
-
-    function _ensureInvariantConverges() private view {
-        if (_simulateInvariantFailure) {
-            _revert(Errors.STABLE_INVARIANT_DIDNT_CONVERGE);
-        }
-    }
-
     function _onSwapGivenIn(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super ._onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
     }
 
@@ -83,7 +63,7 @@ contract MockStablePool is StablePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super._onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
     }
 
@@ -100,7 +80,7 @@ contract MockStablePool is StablePool {
         internal
         virtual
         override
-        whenInvariantConverges
+        whenNotInFailureMode(FailureMode.INVARIANT)
         returns (
             uint256,
             uint256[] memory,
@@ -133,7 +113,7 @@ contract MockStablePool is StablePool {
         internal
         virtual
         override
-        whenInvariantConverges
+        whenNotInFailureMode(FailureMode.INVARIANT)
         returns (
             uint256 bptAmountIn,
             uint256[] memory amountsOut,
@@ -153,7 +133,7 @@ contract MockStablePool is StablePool {
         );
     }
 
-    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
+    function getRate() public view virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super.getRate();
     }
 }
