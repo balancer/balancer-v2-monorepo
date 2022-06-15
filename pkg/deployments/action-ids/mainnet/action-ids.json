@@ -61,6 +61,23 @@
       "actionIds": {
         "create(string,string,address[],uint256[],uint256,bool,address)": "0x52df70aac861355cfd394f6f8947bfab3c6f1738478300ecc0a35cc1632d8995"
       }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xa69ad41BBD9303f2c165d19b5564325Da72c7224",
+      "actionIds": {
+        "setPaused(bool)": "0x3c7de1d8a207c7901ec612f9f0f50957da016911a50d5c22bbe5c9f4f3392d95",
+        "setSwapFeePercentage(uint256)": "0x3697d13ee45583cf9c2c64a978ab5886bcd07ec2b851efbea2fced982b8f9596"
+      }
+    },
+    "WeightedPool2Tokens": {
+      "useAdaptor": false,
+      "factoryOutput": "0xc29562b045D80fD77c69Bec09541F5c16fe20d9d",
+      "actionIds": {
+        "enableOracle()": "0xe543cb443264aa0734939fa06d9e6ade81d691ee5f27c2183c2a54a2c245c8b1",
+        "setPaused(bool)": "0x43f20c0b0ba9191edc765615b4aa9f5fc68be74185b79f813946e7bc9a9e1e38",
+        "setSwapFeePercentage(uint256)": "0xc065d550fa98abc242b6baf98e7b2063590675f1ddd81bdb9ea8d8f5c5d52f98"
+      }
     }
   },
   "20210624-stable-pool": {
