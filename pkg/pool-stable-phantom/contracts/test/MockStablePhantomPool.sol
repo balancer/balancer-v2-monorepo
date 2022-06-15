@@ -34,7 +34,7 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         override
         whenNotInFailureMode(FailureMode.PRICE_RATE)
     {
-        return _cacheTokenRateIfNecessary(token);
+        return super._cacheTokenRateIfNecessary(token);
     }
 
     function getTokenRate(IERC20 token)
