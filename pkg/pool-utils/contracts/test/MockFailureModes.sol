@@ -31,12 +31,6 @@ abstract contract MockFailureModes {
         _;
     }
 
-    constructor() {
-        // Initialize error messages
-        _failureCode[FailureMode.INVARIANT] = Errors.STABLE_INVARIANT_DIDNT_CONVERGE;
-        _failureCode[FailureMode.PRICE_RATE] = Errors.LOW_LEVEL_CALL_FAILED;
-    }
-
     // Simulate a failure by turning on the associated failure mode flag
     function setFailureMode(FailureMode mode, bool failed) external {
         _failureState[mode] = failed;
@@ -51,7 +45,7 @@ abstract contract MockFailureModes {
     // Revert with the associated message if this failure mode is activated
     function _ensureNotFailed(FailureMode mode) private view {
         if (_failureState[mode]) {
-            _revert(_failureCode[mode]);
+            _revert(_failureCode[mode] == 0 ? Errors.INDUCED_FAILURE : _failureCode[mode]);
         }
     }
 }
