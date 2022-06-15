@@ -1,0 +1,12 @@
+[
+  "approve(address,uint256)",
+  "transfer(address,uint256)",
+  "transferFrom(address,address,uint256)",
+  "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+  "decreaseApproval(address,uint256)",
+  "increaseApproval(address,uint256)",
+  "onExitPool(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+  "onJoinPool(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+  "queryExit(bytes32,address,address,uint256[],uint256,uint256,bytes)",
+  "queryJoin(bytes32,address,address,uint256[],uint256,uint256,bytes)"
+]
