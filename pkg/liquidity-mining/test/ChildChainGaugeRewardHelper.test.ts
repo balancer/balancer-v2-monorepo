@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, BigNumber, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, HOUR, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -122,12 +122,19 @@ describe('ChildChainGaugeRewardHelper', () => {
 
       it('claims more tokens from the streamer', async () => {
         const existingRewards = await balToken.balanceOf(gaugeOne);
+        const reportedPendingRewards = await gaugeHelper.callStatic.getPendingRewards(
+          gaugeOne.address,
+          user.address,
+          balToken.address
+        );
 
         const tx = await gaugeHelper.claimRewardsFromGauge(gaugeOne.address, user.address);
 
         const claimTimestamp = await receiptTimestamp(tx);
         const totalCumulativeRewards = rewardAmount.mul(bn(claimTimestamp).sub(gaugeOneStartTime)).div(WEEK);
         const expectedNewRewardsAmount = totalCumulativeRewards.sub(existingRewards);
+
+        expect(reportedPendingRewards).to.be.almostEqual(expectedNewRewardsAmount);
 
         const {
           args: { value: newRewardsAmount },
@@ -163,6 +170,14 @@ describe('ChildChainGaugeRewardHelper', () => {
         const existingRewardsOne = await balToken.balanceOf(gaugeOne);
         const existingRewardsTwo = await balToken.balanceOf(gaugeOne);
 
+        const reportedPendingRewards = (
+          await Promise.all(
+            [gaugeOne, gaugeTwo].map((gauge) =>
+              gaugeHelper.callStatic.getPendingRewards(gauge.address, user.address, balToken.address)
+            )
+          )
+        ).reduce((prev: BigNumber, curr: BigNumber) => curr.add(prev), bn(0));
+
         const tx = await gaugeHelper.claimRewardsFromGauges([gaugeOne.address, gaugeTwo.address], user.address);
         const claimTimestamp = await receiptTimestamp(tx);
 
@@ -181,6 +196,8 @@ describe('ChildChainGaugeRewardHelper', () => {
           args: { value: newRewardsAmountTwo },
         } = expectTransferEvent(await tx.wait(), { from: streamerTwo.address, to: gaugeTwo.address }, balToken);
         expect(newRewardsAmountTwo).to.be.almostEqual(expectedNewRewardsAmountTwo);
+
+        expect(expectedNewRewardsAmountOne.add(expectedNewRewardsAmountTwo)).to.equal(reportedPendingRewards);
       });
     });
   });
