@@ -134,7 +134,7 @@ describe('ChildChainGaugeRewardHelper', () => {
         const totalCumulativeRewards = rewardAmount.mul(bn(claimTimestamp).sub(gaugeOneStartTime)).div(WEEK);
         const expectedNewRewardsAmount = totalCumulativeRewards.sub(existingRewards);
 
-        expect(reportedPendingRewards).to.be.almostEqual(expectedNewRewardsAmount);
+        expect(reportedPendingRewards).to.be.almostEqual(totalCumulativeRewards);
 
         const {
           args: { value: newRewardsAmount },
@@ -197,7 +197,7 @@ describe('ChildChainGaugeRewardHelper', () => {
         } = expectTransferEvent(await tx.wait(), { from: streamerTwo.address, to: gaugeTwo.address }, balToken);
         expect(newRewardsAmountTwo).to.be.almostEqual(expectedNewRewardsAmountTwo);
 
-        expect(expectedNewRewardsAmountOne.add(expectedNewRewardsAmountTwo)).to.equal(reportedPendingRewards);
+        expect(reportedPendingRewards).to.be.almostEqual(totalCumulativeRewardsOne.add(totalCumulativeRewardsTwo));
       });
     });
   });
