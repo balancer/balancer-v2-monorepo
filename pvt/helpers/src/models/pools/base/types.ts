@@ -33,3 +33,8 @@ export type MultiExitGivenIn = {
   protocolFeePercentage?: BigNumberish;
   lastChangeBlock?: BigNumberish;
 };
+
+export enum FailureMode {
+  INVARIANT,
+  PRICE_RATE,
+}

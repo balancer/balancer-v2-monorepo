@@ -711,7 +711,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
      * @dev Forces a rate cache hit for a token.
      * It will revert if the requested token does not have an associated rate provider.
      */
-    function updateTokenRateCache(IERC20 token) external {
+    function updateTokenRateCache(IERC20 token) public virtual {
         IRateProvider provider = _getRateProvider(token);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
         uint256 duration = _tokenRateCaches[token].getDuration();

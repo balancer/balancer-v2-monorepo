@@ -918,8 +918,18 @@ describe('StablePhantomPool', () => {
         });
 
         describe('with upstream getRate failures', () => {
-          it.skip('can do when we have MockFailureModes', async () => {
-            expect(true).to.be.true;
+          const newRate = fp(1.5);
+
+          sharedBeforeEach('set rate failure mode', async () => {
+            await pool.setRateFailure(true);
+          });
+
+          it('reverts', async () => {
+            await tokens.asyncEach(async (token, i) => {
+              await rateProviders[i].mockRate(newRate);
+
+              await expect(pool.updateTokenRateCache(token)).to.be.revertedWith('INDUCED_FAILURE');
+            });
           });
         });
       });
@@ -1292,16 +1302,24 @@ describe('StablePhantomPool', () => {
 
     describe('recovery mode', () => {
       let sender: SignerWithAddress;
+      let allTokens: string[];
 
       sharedBeforeEach('deploy pool', async () => {
         await deployPool();
-        await pool.init({ recipient, initialBalances });
+        sender = (await ethers.getSigners())[0];
+
+        const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
+          i == bptIndex ? bn(0) : fp(100)
+        );
+        await pool.init({ recipient: sender, initialBalances: equalBalances });
+
+        const result = await pool.getTokens();
+        allTokens = result.tokens;
       });
 
       context('when not in recovery mode', () => {
         it('reverts', async () => {
           const totalBptBalance = await pool.balanceOf(lp);
-          const { tokens: allTokens } = await pool.getTokens();
 
           await expect(
             pool.recoveryModeExit({
@@ -1314,82 +1332,110 @@ describe('StablePhantomPool', () => {
         });
       });
 
-      // invariant.behavior: share between stable and phantom stable?
-      context.skip('one lp', () => {
-        it('can partially exit in recovery mode', async () => {
-          const previousVirtualSupply = await pool.getVirtualSupply();
-          const previousSenderBptBalance = await pool.balanceOf(sender);
-
-          //Exit with 1/4 of BPT balance
-          const bptIn = (await pool.balanceOf(sender)).div(4);
-
-          const currentBalances = await pool.getBalances();
-          const expectedAmountsOut = currentBalances.map((balance, i) =>
-            i == pool.bptIndex ? bn(0) : bn(balance).mul(previousSenderBptBalance).div(previousVirtualSupply).div(4)
-          );
-
-          const result = await pool.proportionalExit({ from: sender, bptIn });
-
-          // Protocol fees should be zero
-          expect(result.dueProtocolFeeAmounts).to.be.zeros;
-          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
-
-          const currentSenderBptBalance = await pool.balanceOf(sender);
-          expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.00001);
-
-          // Current virtual supply
-          const currentVirtualSupply = await pool.getVirtualSupply();
-          expect(currentVirtualSupply).to.be.equalWithError(previousVirtualSupply.sub(bptIn), 0.00001);
+      context('when in recovery mode', () => {
+        sharedBeforeEach('enable recovery mode (and simulate utter failure)', async () => {
+          await enableRecoveryMode(pool);
         });
-      });
 
-      context.skip('two lps', () => {
-        const amount = fp(100);
+        context('one lp', () => {
+          it('can partially exit', async () => {
+            const previousVirtualSupply = await pool.getVirtualSupply();
+            const previousSenderBptBalance = await pool.balanceOf(sender);
 
-        sharedBeforeEach('second lp swaps', async () => {
-          await tokens.mint({ to: lp, amount });
-          await tokens.approve({ from: lp, to: pool.vault });
-          await pool.swapGivenIn({
-            in: tokens.first,
-            out: pool.bpt,
-            amount: amount,
-            from: lp,
-            recipient: lp,
+            //Exit with 1/4 of BPT balance
+            const bptIn = (await pool.balanceOf(sender)).div(4);
+
+            const currentBalances = await pool.getBalances();
+            const expectedAmountsOut = currentBalances.map((balance, i) =>
+              i == pool.bptIndex ? bn(0) : bn(balance).mul(previousSenderBptBalance).div(previousVirtualSupply).div(4)
+            );
+
+            const result = await pool.recoveryModeExit({
+              from: sender,
+              tokens: allTokens,
+              currentBalances: initialBalances,
+              bptIn,
+            });
+
+            expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
+
+            const currentSenderBptBalance = await pool.balanceOf(sender);
+            expect(previousSenderBptBalance.sub(currentSenderBptBalance)).to.be.equalWithError(bptIn, 0.00001);
+
+            // Current virtual supply
+            const currentVirtualSupply = await pool.getVirtualSupply();
+            expect(currentVirtualSupply).to.be.equalWithError(previousVirtualSupply.sub(bptIn), 0.00001);
           });
         });
 
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
+        context('two lps', () => {
+          const amount = fp(100);
 
-        sharedBeforeEach('first lp exits', async () => {
-          const bptIn = await pool.balanceOf(sender);
-          await pool.proportionalExit({ from: sender, bptIn });
-        });
+          sharedBeforeEach('second lp swaps', async () => {
+            await tokens.mint({ to: lp, amount });
+            await tokens.approve({ from: lp, to: pool.vault });
+            await pool.swapGivenIn({
+              in: tokens.first,
+              out: pool.bpt,
+              amount: amount,
+              from: lp,
+              recipient: lp,
+            });
+          });
 
-        it('can fully exit proportionally', async () => {
-          const previousVirtualSupply = await pool.getVirtualSupply();
-          const previousLpBptBalance = await pool.balanceOf(lp);
+          async function itAllowsBothLpsToExit(): Promise<void> {
+            sharedBeforeEach('first lp exits', async () => {
+              const bptIn = await pool.balanceOf(sender);
 
-          const currentBalances = await pool.getBalances();
-          const expectedAmountsOut = currentBalances.map((balance, i) =>
-            i == pool.bptIndex ? bn(0) : bn(balance).mul(previousLpBptBalance).div(previousVirtualSupply)
-          );
+              await pool.recoveryModeExit({
+                from: sender,
+                tokens: allTokens,
+                currentBalances: initialBalances,
+                bptIn,
+              });
+            });
 
-          //Exit with all BPT balance
-          const result = await pool.proportionalExit({ from: lp, bptIn: previousLpBptBalance });
+            it('can fully exit proportionally', async () => {
+              const previousVirtualSupply = await pool.getVirtualSupply();
+              const previousLpBptBalance = await pool.balanceOf(lp);
 
-          // Protocol fees should be zero
-          expect(result.dueProtocolFeeAmounts).to.be.zeros;
-          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
+              const currentBalances = await pool.getBalances();
+              const expectedAmountsOut = currentBalances.map((balance, i) =>
+                i == pool.bptIndex ? bn(0) : bn(balance).mul(previousLpBptBalance).div(previousVirtualSupply)
+              );
 
-          const currentLpBptBalance = await pool.balanceOf(lp);
-          expect(currentLpBptBalance).to.be.equal(0);
+              //Exit with all BPT balance
+              const result = await pool.recoveryModeExit({
+                from: lp,
+                tokens: allTokens,
+                currentBalances,
+                bptIn: previousLpBptBalance,
+              });
 
-          // Current virtual supply after full exit is the minted minimumBpt to 0x0
-          const minimumBpt = await pool.instance.getMinimumBpt();
-          const currentVirtualSupply = await pool.getVirtualSupply();
-          expect(currentVirtualSupply).to.be.equalWithError(minimumBpt, 0.00001);
+              expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
+
+              const currentLpBptBalance = await pool.balanceOf(lp);
+              expect(currentLpBptBalance).to.be.equal(0);
+
+              // Current virtual supply after full exit is the minted minimumBpt to 0x0
+              const minimumBpt = await pool.instance.getMinimumBpt();
+              const currentVirtualSupply = await pool.getVirtualSupply();
+              expect(currentVirtualSupply).to.be.equalWithError(minimumBpt, 0.00001);
+            });
+          }
+
+          context('with functioning pool', () => {
+            itAllowsBothLpsToExit();
+          });
+
+          context('with broken pool', () => {
+            sharedBeforeEach('blow up pool', async () => {
+              await pool.setInvariantFailure(true);
+              await pool.setRateFailure(true);
+            });
+
+            itAllowsBothLpsToExit();
+          });
         });
       });
     });

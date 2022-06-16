@@ -11,7 +11,7 @@ import { actionId } from '../../misc/actions';
 import Token from '../../tokens/Token';
 import Vault from '../../vault/Vault';
 
-import { RecoveryModeExitParams, ExitResult, JoinExitBasePool } from './types';
+import { RecoveryModeExitParams, ExitResult, JoinExitBasePool, FailureMode } from './types';
 
 export default class BasePool {
   instance: Contract;
@@ -177,6 +177,14 @@ export default class BasePool {
 
   async inRecoveryMode(): Promise<boolean> {
     return await this.instance.inRecoveryMode();
+  }
+
+  async setInvariantFailure(invariantFailsToConverge: boolean): Promise<void> {
+    await this.instance.setFailureMode(FailureMode.INVARIANT, invariantFailsToConverge);
+  }
+
+  async setRateFailure(priceRateReverts: boolean): Promise<void> {
+    await this.instance.setFailureMode(FailureMode.PRICE_RATE, priceRateReverts);
   }
 
   private async grantPausePermissions(): Promise<void> {

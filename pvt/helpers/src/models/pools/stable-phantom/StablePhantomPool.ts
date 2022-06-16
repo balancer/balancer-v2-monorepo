@@ -4,14 +4,13 @@ import { BigNumber, Contract, ContractTransaction, ContractReceipt } from 'ether
 
 import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { BasePoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js/src';
+import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Account, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../constants';
 import { GeneralSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
-import { RecoveryModeExitParams, JoinExitBasePool } from '../base/types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
