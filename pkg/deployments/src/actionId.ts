@@ -117,10 +117,7 @@ export async function getActionIds(
 ): Promise<{ useAdaptor: boolean; actionIds: Record<string, string> }> {
   const artifact = task.artifact(contractName);
 
-  // We know this JSON file is simply an array of strings
-  const ignoredFunctions = (safeReadJsonFile(
-    path.join(ACTION_ID_DIRECTORY, 'ignored-functions.json')
-  ) as unknown) as string[];
+  const { ignoredFunctions } = safeReadJsonFile<string[]>(path.join(ACTION_ID_DIRECTORY, 'ignored-functions.json'));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contractInterface = new Interface(artifact.abi as any);
