@@ -204,6 +204,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
+        // Retrieve from a local function that checks for recovery mode (where protocol fees are zero)
         uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
 
         // Compute virtual BPT supply and token balances (sans BPT).
@@ -270,6 +271,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
+        // Retrieve from a local function that checks for recovery mode (where protocol fees are zero)
         uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
 
         // Compute virtual BPT supply and token balances (sans BPT).
@@ -589,7 +591,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     // calculation after disabling recovery mode. This is unnecessary here, as protocol fees are
     // acccumulated on each swap (or not, if recovery mode is enabled).
     function _setRecoveryMode(bool enabled) internal virtual override {
-        super._setRecoveryMode(enabled);
+        RecoveryMode._setRecoveryMode(enabled);
     }
 
     // Scaling factors
@@ -785,6 +787,17 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         view
         returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
     {
+        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
+        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
+        //
+        // In normal operation, no BPT are minted or burned, so we *could* use `_MAX_TOKEN_BALANCE` instead of
+        // `totalSupply()` and save gas:
+        // virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
+        //
+        // However, we support recovery mode. When enabled, LPs can exit proportionally and burn BPT. Since recovery
+        // mode is reversible, we need the pool's accounting to still be correct when it is disabled, so we cannot use
+        // this optimization. 
         virtualSupply = _getVirtualSupply(amounts[_bptIndex]);
 
         amountsWithoutBpt = new uint256[](amounts.length - 1);

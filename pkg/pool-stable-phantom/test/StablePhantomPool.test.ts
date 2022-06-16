@@ -1304,6 +1304,20 @@ describe('StablePhantomPool', () => {
       let sender: SignerWithAddress;
       let allTokens: string[];
 
+      it('enabling recovery mode emits an event', async () => {
+        const tx = await pool.enableRecoveryMode(admin);
+        const receipt = await tx.wait();
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
+      });
+
+      it('disabling recovery mode emits an event', async () => {
+        await enableRecoveryMode(pool);
+
+        const tx = await pool.disableRecoveryMode(admin);
+        const receipt = await tx.wait();
+        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+      });
+
       sharedBeforeEach('deploy pool', async () => {
         await deployPool();
         sender = (await ethers.getSigners())[0];
