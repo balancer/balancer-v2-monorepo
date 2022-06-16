@@ -118,6 +118,7 @@ const balancerErrorCodes: Record<string, string> = {
   '436': 'CODEC_OVERFLOW',
   '437': 'IN_RECOVERY_MODE',
   '438': 'NOT_IN_RECOVERY_MODE',
+  '439': 'INDUCED_FAILURE',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',

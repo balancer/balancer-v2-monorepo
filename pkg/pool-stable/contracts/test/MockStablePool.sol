@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/MockInvariantDependency.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 
 import "../StablePool.sol";
 
@@ -24,7 +24,7 @@ import "../StablePool.sol";
  * `_calculateInvariant` function  are marked with a modifier, and will fail if the `_simulateInvariantFailure`
  * flag has been set.
  */
-contract MockStablePool is StablePool, MockInvariantDependency {
+contract MockStablePool is StablePool, MockFailureModes {
     constructor(
         IVault vault,
         string memory name,
@@ -54,7 +54,7 @@ contract MockStablePool is StablePool, MockInvariantDependency {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super ._onSwapGivenIn(swapRequest, balances, indexIn, indexOut);
     }
 
@@ -63,7 +63,7 @@ contract MockStablePool is StablePool, MockInvariantDependency {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenInvariantConverges returns (uint256) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super._onSwapGivenOut(swapRequest, balances, indexIn, indexOut);
     }
 
@@ -80,7 +80,7 @@ contract MockStablePool is StablePool, MockInvariantDependency {
         internal
         virtual
         override
-        whenInvariantConverges
+        whenNotInFailureMode(FailureMode.INVARIANT)
         returns (
             uint256,
             uint256[] memory,
@@ -113,7 +113,7 @@ contract MockStablePool is StablePool, MockInvariantDependency {
         internal
         virtual
         override
-        whenInvariantConverges
+        whenNotInFailureMode(FailureMode.INVARIANT)
         returns (
             uint256 bptAmountIn,
             uint256[] memory amountsOut,
@@ -133,7 +133,7 @@ contract MockStablePool is StablePool, MockInvariantDependency {
         );
     }
 
-    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
+    function getRate() public view virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
       return super.getRate();
     }
 }

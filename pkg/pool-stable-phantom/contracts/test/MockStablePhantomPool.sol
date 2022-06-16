@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/test/MockInvariantDependency.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 
 import "../StablePhantomPool.sol";
 
-contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
+contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
     constructor(NewPoolParams memory params) StablePhantomPool(params) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -28,8 +28,46 @@ contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
         _cacheTokenRateIfNecessary(token);
     }
 
-    function getRate() public view virtual override whenInvariantConverges returns (uint256) {
+    function _cacheTokenRateIfNecessary(IERC20 token)
+        internal
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+    {
+        return super._cacheTokenRateIfNecessary(token);
+    }
+
+    function getTokenRate(IERC20 token)
+        public
+        view
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+            returns (uint256)
+    {
+        return super.getTokenRate(token);
+    }
+
+    function getRate()
+        public
+        view
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.INVARIANT)
+            returns (uint256)
+    {
         return super.getRate();
+    }
+
+    function _scalingFactors()
+        internal
+        view
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.PRICE_RATE)
+            returns (uint256[] memory scalingFactors)
+    {
+        return super._scalingFactors();
     }
 
     function _onSwapGivenIn(
@@ -37,11 +75,12 @@ contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256 amountOut) {
-        if (request.tokenIn != IERC20(this) && request.tokenOut != IERC20(this)) {
-            _ensureInvariantConverges();
-        }
-
+    )
+        internal
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.INVARIANT)
+            returns (uint256 amountOut) {
         return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
     }
 
@@ -50,11 +89,13 @@ contract MockStablePhantomPool is StablePhantomPool, MockInvariantDependency {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override returns (uint256 amountIn) {
-        if (request.tokenIn != IERC20(this) && request.tokenOut != IERC20(this)) {
-            _ensureInvariantConverges();
-        }
-
+    )
+        internal
+        virtual
+        override
+        whenNotInFailureMode(FailureMode.INVARIANT)
+            returns (uint256 amountIn)
+    {
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
 }

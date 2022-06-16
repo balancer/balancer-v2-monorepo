@@ -199,4 +199,11 @@ export default {
   mocha: {
     timeout: 600000,
   },
+  networks: {
+    mainnet: {
+      saveDeployments: true,
+      url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.MAIN_ALCHEMY_KEY}`,
+      accounts: [`0x${process.env.ACCOUNT_PRIVATE_KEY}`],
+    },
+  }
 };
