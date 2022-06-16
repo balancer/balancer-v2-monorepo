@@ -33,6 +33,8 @@ interface IChildChainStreamer {
 
     function initialize(address gauge) external;
 
+    function get_reward() external;
+
     function reward_tokens(uint256 index) external view returns (IERC20);
 
     function reward_data(IERC20 token) external view returns (RewardToken memory);

@@ -230,7 +230,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             // replace it and reimplement it here to take advantage of that.
 
             (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
             amountOut = StableMath._calcOutGivenIn(
                 currentAmp,
@@ -296,7 +296,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             // replace it and reimplement it here to take advtange of that.
 
             (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
             amountIn = StableMath._calcInGivenOut(
                 currentAmp,
@@ -410,7 +410,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
 
         // We round down, favoring LP fees.
 
-        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, false);
+        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
         uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
 
         if (invariantRatio > FixedPoint.ONE) {
@@ -464,7 +464,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         (uint256 amp, ) = _getAmplificationParameter();
         (, uint256[] memory amountsIn) = _dropBptItem(amountsInIncludingBpt);
         // The true argument in the _calculateInvariant call instructs it to round up
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn, true);
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn);
 
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
@@ -760,7 +760,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     /**
      * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
-    function _cacheTokenRateIfNecessary(IERC20 token) internal {
+    function _cacheTokenRateIfNecessary(IERC20 token) internal virtual {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
         // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
         // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
@@ -842,7 +842,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
      * underlying tokens. This starts at 1 when the pool is created and grows over time.
      * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() public view virtual override returns (uint256) {
         (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 

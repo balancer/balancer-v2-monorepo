@@ -16,21 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./IChildChainStreamer.sol";
+import "./IRewardTokenDistributor.sol";
 
 // For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
 // naming convention.
 // solhint-disable func-name-mixedcase, var-name-mixedcase
 
-interface IRewardsOnlyGauge {
-    struct Reward {
-        IERC20 token;
-        address distributor;
-        uint256 period_finish;
-        uint256 rate;
-        uint256 last_update;
-        uint256 integral;
-    }
-
+interface IRewardsOnlyGauge is IRewardTokenDistributor {
     function initialize(
         address pool,
         address streamer,
@@ -39,10 +31,6 @@ interface IRewardsOnlyGauge {
 
     function lp_token() external view returns (IERC20);
 
-    function reward_tokens(uint256 index) external view returns (IERC20);
-
-    function reward_data(IERC20 token) external view returns (Reward memory);
-
     function reward_contract() external view returns (IChildChainStreamer);
 
     function set_rewards(
@@ -50,4 +38,6 @@ interface IRewardsOnlyGauge {
         bytes32 claimSig,
         address[8] calldata rewardTokens
     ) external;
+
+    function last_claim() external view returns (uint256);
 }
