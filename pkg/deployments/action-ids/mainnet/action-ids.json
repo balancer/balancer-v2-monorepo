@@ -333,7 +333,6 @@
         "create_boost(address,address,int256,uint256,uint256,uint256)": "0xce9c580a1e3377595db533643f032e9d7bf9544e31d696c48a16e797fa82d5ce",
         "extend_boost(uint256,int256,uint256,uint256)": "0x2f8a062f8344cfe8574e9e6c67d0f3748802f02a2af653df71d38fb8ebd0bdde",
         "safeTransferFrom(address,address,uint256)": "0x2543da213f22fe55d6ad038969e569a0e22f956a4f51c07fb0e6610bf0e813b9",
-        "safeTransferFrom(address,address,uint256,bytes)": "0x14862217750d7c601edd1d81404d87875256810480870d7e9891f6691a43d400",
         "setApprovalForAll(address,bool)": "0x5082362308cf6060c96bdc9e34bcef0083316c7ea918f43666dccae67654e0d0",
         "set_base_uri(string)": "0xeb64a3bdaa01387bfd7d1ce9cdddd6dbace525fca48858752f25b9bd5593a094",
         "set_delegation_status(address,address,bool)": "0x6c714a4a280d2590fd368ce54a96f8d00d5e1c39e055865d883d61c3c9ebd1c5"
@@ -466,8 +465,6 @@
         "create_boost(address,address,int256,uint256,uint256,uint256)": "0xce9c580a1e3377595db533643f032e9d7bf9544e31d696c48a16e797fa82d5ce",
         "extend_boost(uint256,int256,uint256,uint256)": "0x2f8a062f8344cfe8574e9e6c67d0f3748802f02a2af653df71d38fb8ebd0bdde",
         "preseed()": "0x309fcfd1a0ff2f78ea637d18cad11ac7949e25a09f2d7c5b69b9d4cce2cdb745",
-        "safeTransferFrom(address,address,uint256)": "0x2543da213f22fe55d6ad038969e569a0e22f956a4f51c07fb0e6610bf0e813b9",
-        "safeTransferFrom(address,address,uint256,bytes)": "0x14862217750d7c601edd1d81404d87875256810480870d7e9891f6691a43d400",
         "setApprovalForAll(address,bool)": "0x5082362308cf6060c96bdc9e34bcef0083316c7ea918f43666dccae67654e0d0",
         "set_base_uri(string)": "0xeb64a3bdaa01387bfd7d1ce9cdddd6dbace525fca48858752f25b9bd5593a094",
         "set_delegation_status(address,address,bool)": "0x6c714a4a280d2590fd368ce54a96f8d00d5e1c39e055865d883d61c3c9ebd1c5"

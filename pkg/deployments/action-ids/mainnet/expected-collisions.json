@@ -123,34 +123,6 @@
       "useAdaptor": true
     }
   ],
-  "0x2543da213f22fe55d6ad038969e569a0e22f956a4f51c07fb0e6610bf0e813b9": [
-    {
-      "taskId": "20220325-ve-delegation",
-      "contractName": "VotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220530-preseeded-voting-escrow-delegation",
-      "contractName": "PreseededVotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0x14862217750d7c601edd1d81404d87875256810480870d7e9891f6691a43d400": [
-    {
-      "taskId": "20220325-ve-delegation",
-      "contractName": "VotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256,bytes)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220530-preseeded-voting-escrow-delegation",
-      "contractName": "PreseededVotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256,bytes)",
-      "useAdaptor": true
-    }
-  ],
   "0x5082362308cf6060c96bdc9e34bcef0083316c7ea918f43666dccae67654e0d0": [
     {
       "taskId": "20220325-ve-delegation",

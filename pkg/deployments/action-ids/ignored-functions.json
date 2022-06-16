@@ -3,6 +3,8 @@
     "approve(address,uint256)",
     "transfer(address,uint256)",
     "transferFrom(address,address,uint256)",
+    "safeTransferFrom(address,address,uint256)",
+    "safeTransferFrom(address,address,uint256,bytes)",
     "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
     "decreaseApproval(address,uint256)",
     "increaseApproval(address,uint256)",
