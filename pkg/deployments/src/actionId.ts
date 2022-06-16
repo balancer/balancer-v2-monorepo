@@ -117,10 +117,13 @@ export async function getActionIds(
 ): Promise<{ useAdaptor: boolean; actionIds: Record<string, string> }> {
   const artifact = task.artifact(contractName);
 
+  const { ignoredFunctions } = safeReadJsonFile<string[]>(path.join(ACTION_ID_DIRECTORY, 'ignored-functions.json'));
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contractInterface = new Interface(artifact.abi as any);
   const contractFunctions = Object.entries(contractInterface.functions)
     .filter(([, func]) => ['nonpayable', 'payable'].includes(func.stateMutability))
+    .filter(([, func]) => !ignoredFunctions.includes(func.format()))
     .sort(([sigA], [sigB]) => (sigA < sigB ? -1 : 1)); // Sort functions alphabetically.
 
   const { useAdaptor, actionIdSource } = await getActionIdSource(task, contractName, factoryOutput);
