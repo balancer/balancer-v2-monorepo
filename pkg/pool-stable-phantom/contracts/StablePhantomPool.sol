@@ -797,7 +797,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         //
         // However, we support recovery mode. When enabled, LPs can exit proportionally and burn BPT. Since recovery
         // mode is reversible, we need the pool's accounting to still be correct when it is disabled, so we cannot use
-        // this optimization. 
+        // this optimization.
         virtualSupply = _getVirtualSupply(amounts[_bptIndex]);
 
         amountsWithoutBpt = new uint256[](amounts.length - 1);
