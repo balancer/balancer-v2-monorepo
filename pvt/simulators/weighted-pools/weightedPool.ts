@@ -21,6 +21,18 @@ async function main() {
   const balIndex = pool.indexOf('BAL');
   const wethIndex = pool.indexOf('WETH');
 
+  // These "simulate" functions were designed for a very specific purpose - testing the behavior over
+  // the full range of swap fee values (1%-99%). They write CSV files in a format that can be imported
+  // to Excel and graphed.
+  //
+  // Of course it is more general: you can create a simulated pool with any number of tokens and starting
+  // liquidity (it will calculate the balances, given the token prices in USD), and perform operations to
+  // inspect the results.
+  //
+  // Running `yarn hardhat run weighted-pools/weightedPool.ts` from the /simulators directory should produce
+  // CSV files. This is just one example of what can be done with the simulated pool. For instance, new
+  // tests could be created for /benchmarks.
+
   // Given BAL in, compute WETH out
   simulateSwap(
     pool,
