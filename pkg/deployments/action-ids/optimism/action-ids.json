@@ -61,6 +61,23 @@
       "actionIds": {
         "create(string,string,address[],uint256[],uint256,bool,address)": "0x52df70aac861355cfd394f6f8947bfab3c6f1738478300ecc0a35cc1632d8995"
       }
+    },
+    "WeightedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x34A81e8956BF20b7448b31990A2c06F96830a6e4",
+      "actionIds": {
+        "setPaused(bool)": "0xb175321bb12100f9cd00c1e223f12597e71012d08487d09c03745d7e8b6bfa6e",
+        "setSwapFeePercentage(uint256)": "0xce2ff98f438259b5f78b8cf5818e70fcc2ff35b13dc38356616b1431cea9726e"
+      }
+    },
+    "WeightedPool2Tokens": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0A54996Ce9cEAA449Cde73dA6aA0368bfe3df6Dc",
+      "actionIds": {
+        "enableOracle()": "0x13abbbfd4f15a79011552decbdb20dbc44fac4fe252ef9175b56316630226b18",
+        "setPaused(bool)": "0x33651f97c60f5c9bae32e34d4affa67d26b9b3bb7fe727a08b22d54e60dc9e0a",
+        "setSwapFeePercentage(uint256)": "0xb6202de0535d339310cb6bbbe84445fab2c4f3560adc56dfa561ec6867d2d5c0"
+      }
     }
   },
   "20210624-stable-pool": {
@@ -104,22 +121,16 @@
     "RewardsOnlyGauge": {
       "useAdaptor": true,
       "actionIds": {
-        "approve(address,uint256)": "0xdccfd45f477eb98dccfa22fc0500374fbd991473af77fada16d83760d07ed898",
         "claim_rewards()": "0xa1fcfa4f107b70052cfbb2e460d99c96f9b18c1197671fe00ab59c32adcddbeb",
         "claim_rewards(address)": "0x1c866c9ea7b119a642f593024ced6088dbde65d041e5d3e826b9ad49b949a64b",
         "claim_rewards(address,address)": "0x17b18f02fd5498a6aba17d20977b1a8a08f888d821999613fee42f9f9acb0bd9",
         "claimable_reward_write(address,address)": "0x0ae6cb447a316668297b7077e3d07e7df1d2001bdc89167b0d0a9a7b7414e713",
-        "decreaseAllowance(address,uint256)": "0xd9ae0afe11e4438ceeacf4ce6e6734de71b7ff21bfc7bf129e3f41a5bc7d0430",
         "deposit(uint256)": "0x514b6f05525a3f31c3bde60d063e91e88204c5cdc5b35934513f911943b97fcc",
         "deposit(uint256,address)": "0x360a8a15589674642b2125956d96757fc2f06ff1b968333271de16a20e01df05",
         "deposit(uint256,address,bool)": "0x7572a9d124a97112d9e0f610651c79f13cf257bea3a71e38663b8a23875a2241",
-        "increaseAllowance(address,uint256)": "0xd1cdd622a88e21cb501e0e6ae75cb87dc82f020aae5726edafb60a98e56c40eb",
         "initialize(address,address,bytes32)": "0x239fe96ab7982152599e758a36dc414951eb8be491da93c1d24063d06bd4cbcd",
-        "permit(address,address,uint256,uint256,uint8,bytes32,bytes32)": "0x641cefbdff55e82b7e47f6fce6cecfa8b409a32f9b59dd3ff8e62e791fcfa368",
         "set_rewards(address,bytes32,address[8])": "0x62ec7b8b11ad5ac9716cef94d52c76a2f61556acd1ef19368ac7513db9e75225",
         "set_rewards_receiver(address)": "0x1b288a1f96e75e2fda7a0c1ac5c35a7fd2c5e2e5c425c32152ae01f82545e2da",
-        "transfer(address,uint256)": "0xa5aeb47fcf73101ea8540dc3ea36205c17d68dcadda5a92c3d0d44c1e56a22aa",
-        "transferFrom(address,address,uint256)": "0x0aefcbf30821d7994bd862c038bbcea8de21f87d424e0f6fec1d71909f1a9188",
         "withdraw(uint256)": "0xec9d6185ed79aed8edc19bc6fc25ca544504ab0970d25b191e5279100224502a",
         "withdraw(uint256,bool)": "0xb69fa1eb7b5ac6d9f3d5b8707460dc80b1f871eb64473f46b1aaaed1002aec60"
       }

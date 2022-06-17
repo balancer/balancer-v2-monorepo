@@ -65,4 +65,12 @@ contract MockRewardTokenDistributor is IRewardTokenDistributor {
     function claim_rewards(address user) external override {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function claimable_reward(address, address) external pure override returns (uint256) {
+        return 0;
+    }
+
+    function claimable_reward_write(address, address) external pure override returns (uint256) {
+        return 0;
+    }
 }

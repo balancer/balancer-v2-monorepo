@@ -23,6 +23,8 @@ import "../solidity-utils/openzeppelin/IERC20.sol";
 interface IChildChainStreamer {
     function initialize(address gauge) external;
 
+    function get_reward() external;
+
     function reward_tokens(uint256 index) external view returns (IERC20);
 
     function add_reward(
