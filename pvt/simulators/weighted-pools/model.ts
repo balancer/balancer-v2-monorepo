@@ -17,6 +17,7 @@ export default class WeightedPool {
   totalSupply: number;
   numTokens: number;
   prices: number[];
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   indices: any;
 
   constructor(tokens: string[], weights: number[], swapFee: number) {
