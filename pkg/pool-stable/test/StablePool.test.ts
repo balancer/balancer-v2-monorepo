@@ -109,6 +109,264 @@ describe('StablePool', function () {
     });
   });
 
+  context('with fixed, non-18-decimal tokens', () => {
+    const numTokens = 5;
+    let dTokens: TokenList;
+    let dPool: StablePool;
+
+    sharedBeforeEach('deploy tokens and pool', async () => {
+      // Ensure we cover the full range, from 0 to 17
+      // Including common non-18 values of 6 and 8
+      dTokens = await TokenList.create(
+        [
+          { decimals: 17, symbol: 'TK17' },
+          { decimals: 11, symbol: 'TK11' },
+          { decimals: 8, symbol: 'TK8' },
+          { decimals: 6, symbol: 'TK6' },
+          { decimals: 0, symbol: 'TK0' },
+        ],
+        { sorted: true }
+      );
+      dPool = await StablePool.create({
+        admin,
+        tokens: dTokens,
+        amplificationParameter: AMPLIFICATION_PARAMETER,
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      });
+    });
+
+    it('sets scaling factors', async () => {
+      const poolScalingFactors = await dPool.getScalingFactors();
+      const tokenScalingFactors = dTokens.map((token) => fp(10 ** (18 - token.decimals)));
+
+      expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+    });
+
+    context('when initialized', () => {
+      let initialBalances: BigNumber[];
+      let amountsIn: BigNumber[];
+      let amountsOut: BigNumber[];
+      let dueProtocolFeeAmounts: BigNumber[];
+      let previousBptBalance: BigNumber;
+
+      sharedBeforeEach('initialize pool', async () => {
+        initialBalances = Array(dTokens.length).fill(fp(100));
+        initialBalances.map((b, i) => (b = b.mul(10 ** (18 - dTokens.get(i).decimals))));
+
+        const result = await dPool.init({ recipient, initialBalances });
+        amountsIn = result.amountsIn;
+        dueProtocolFeeAmounts = result.dueProtocolFeeAmounts;
+
+        previousBptBalance = await dPool.balanceOf(recipient);
+      });
+
+      it('initializes with uniform initial balances', async () => {
+        const downscaledBalances = await dPool.downscaleArray(initialBalances);
+
+        // Unscaled balances should all be 100
+        expect(downscaledBalances).to.deep.equal(Array(dTokens.length).fill(fp(100)));
+      });
+
+      it('grants the invariant amount of BPT', async () => {
+        const invariant = await dPool.estimateInvariant(await dPool.upscaleArray(initialBalances));
+
+        // Amounts in should be the same as initial ones
+        expect(amountsIn).to.deep.equal(initialBalances);
+
+        // Protocol fees should be zero
+        expect(dueProtocolFeeAmounts).to.be.zeros;
+
+        // Initial balances should equal invariant
+        expect(await dPool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.001);
+      });
+
+      context('joins', () => {
+        it('grants BPT for exact tokens', async () => {
+          amountsIn = initialBalances;
+
+          const expectedBptOut = await dPool.estimateBptOut(
+            await dPool.upscaleArray(amountsIn),
+            await dPool.upscaleArray(initialBalances)
+          );
+
+          const previousBptBalance = await dPool.balanceOf(recipient);
+          const minimumBptOut = pct(expectedBptOut, 0.99);
+
+          const result = await dPool.joinGivenIn({ amountsIn, minimumBptOut, recipient });
+
+          // Amounts in should be the same as initial ones
+          expect(result.amountsIn).to.deep.equal(amountsIn);
+
+          // Protocol fees should be zero
+          expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+          // Make sure received BPT is close to what we expect
+          const currentBptBalance = await dPool.balanceOf(recipient);
+          expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
+        });
+
+        for (let tokenIndex = 0; tokenIndex < numTokens; tokenIndex++) {
+          it(`grants exact BPT for token ${tokenIndex} in`, async () => {
+            const previousBptBalance = await dPool.balanceOf(recipient);
+            const bptOut = previousBptBalance.div(2);
+
+            const expectedAmountIn = await dPool.estimateTokenIn(tokenIndex, bptOut, initialBalances);
+
+            const result = await dPool.joinGivenOut({ recipient, bptOut, token: tokenIndex });
+
+            // Only token in should be the one transferred
+            expect(result.amountsIn[tokenIndex]).to.be.equalWithError(expectedAmountIn, 0.001);
+            expect(result.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+            // Protocol fees should be zero
+            expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+            // Make sure received BPT is close to what we expect
+            const currentBptBalance = await dPool.balanceOf(recipient);
+            expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+          });
+
+          it(`grants BPT for exact tokens (- token[${tokenIndex}])`, async () => {
+            amountsIn = initialBalances.map((b, i) => (i == tokenIndex ? fp(0) : b.mul(2)));
+
+            const expectedBptOut = await dPool.estimateBptOut(
+              await dPool.upscaleArray(amountsIn),
+              await dPool.upscaleArray(initialBalances)
+            );
+
+            const previousBptBalance = await dPool.balanceOf(recipient);
+            const minimumBptOut = pct(expectedBptOut, 0.99);
+
+            const result = await dPool.joinGivenIn({ amountsIn, minimumBptOut, recipient });
+
+            // Amounts in should be the same as initial ones
+            expect(result.amountsIn).to.deep.equal(amountsIn);
+
+            // Protocol fees should be zero
+            expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+            // Make sure received BPT is close to what we expect
+            const currentBptBalance = await dPool.balanceOf(recipient);
+            expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
+          });
+        }
+      });
+
+      context('exits', () => {
+        it('grants all tokens for exact bpt', async () => {
+          // Exit with half of the BPT balance
+          const bptIn = previousBptBalance.div(2);
+          const expectedAmountsOut = initialBalances.map((balance) => balance.div(2));
+
+          const result = await dPool.multiExitGivenIn({ from: recipient, bptIn });
+
+          // Protocol fees should be zero
+          expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+          // Balances are reduced by half because we are returning half of the BPT supply
+          expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
+
+          // Current BPT balance should have been reduced by half
+          expect(await dPool.balanceOf(recipient)).to.be.equalWithError(bptIn, 0.001);
+        });
+
+        it('grants exact tokens for BPT', async () => {
+          amountsOut = initialBalances.map((b) => b.div(2));
+
+          const expectedBptIn = previousBptBalance.div(2);
+          const maximumBptIn = pct(expectedBptIn, 1.01);
+
+          const result = await dPool.exitGivenOut({ from: recipient, amountsOut, maximumBptIn });
+
+          // Protocol fees should be zero
+          expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+          // Token balances should been reduced as requested
+          expect(result.amountsOut).to.deep.equal(amountsOut);
+
+          // BPT balance should have been reduced by half because we are returning half of the tokens
+          expect(await dPool.balanceOf(recipient)).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+        });
+        for (let tokenIndex = 0; tokenIndex < numTokens; tokenIndex++) {
+          it(`grants one token (${tokenIndex}) for exact bpt`, async () => {
+            // 5% of previous balance
+            const previousBptBalance = await dPool.balanceOf(recipient);
+            const bptIn = pct(previousBptBalance, 0.05);
+            const currentBalances = await dPool.upscaleArray(initialBalances);
+
+            const expectedTokenOut = await dPool.estimateTokenOut(tokenIndex, bptIn, currentBalances);
+
+            const result = await dPool.singleExitGivenIn({ from: recipient, bptIn, token: tokenIndex });
+
+            // Protocol fees should be zero
+            expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+            // Only token out should be the one transferred
+            expect(result.amountsOut[tokenIndex]).to.be.equalWithError(expectedTokenOut, 0.0001);
+            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+            // Current BPT balance should decrease
+            expect(await dPool.balanceOf(recipient)).to.equal(previousBptBalance.sub(bptIn));
+          });
+
+          it(`grants exact tokens for BPT (- token[${tokenIndex}])`, async () => {
+            // Request half of the remaining token balances
+            amountsOut = initialBalances.map((b, i) => (i == tokenIndex ? fp(0) : b.div(2)));
+
+            const expectedBptIn = previousBptBalance.div(2);
+            const maximumBptIn = pct(expectedBptIn, 1.01);
+
+            const result = await dPool.exitGivenOut({ from: recipient, amountsOut, maximumBptIn });
+
+            // Protocol fees should be zero
+            expect(result.dueProtocolFeeAmounts).to.be.zeros;
+
+            // Token balances should been reduced as requested
+            expect(result.amountsOut).to.deep.equal(amountsOut);
+
+            if (tokenIndex == numTokens) {
+              // BPT balance should have been reduced by half because we are returning half of the tokens
+              expect(await dPool.balanceOf(recipient)).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+            }
+          });
+        }
+      });
+
+      context('swaps', () => {
+        for (let tokenIndex = 0; tokenIndex < numTokens; tokenIndex++) {
+          for (let indexOut = 0; indexOut < numTokens; indexOut++) {
+            if (tokenIndex != indexOut) {
+              it(`swaps givenIn with (${tokenIndex} for ${indexOut})`, async () => {
+                const amount = initialBalances[tokenIndex].div(5);
+
+                const amountWithFees = amount.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
+                const expectedAmountOut = await dPool.estimateGivenIn({
+                  in: tokenIndex,
+                  out: indexOut,
+                  amount: amountWithFees,
+                });
+
+                const result = await dPool.swapGivenIn({ in: tokenIndex, out: indexOut, amount: amountWithFees });
+
+                expect(result).to.be.equalWithError(expectedAmountOut, 0.1);
+              });
+
+              it(`swaps givenOut with (${tokenIndex} for ${indexOut})`, async () => {
+                const amount = initialBalances[indexOut].div(5);
+
+                const expectedAmountIn = await dPool.estimateGivenOut({ in: tokenIndex, out: indexOut, amount });
+
+                const result = await dPool.swapGivenOut({ in: tokenIndex, out: indexOut, amount });
+
+                expect(result).to.be.equalWithError(expectedAmountIn, 0.1);
+              });
+            }
+          }
+        }
+      });
+    });
+  });
+
   async function enableRecoveryMode(pool: StablePool): Promise<void> {
     await pool.enableRecoveryMode(admin);
     expect(await pool.inRecoveryMode()).to.be.true;
@@ -244,7 +502,7 @@ describe('StablePool', function () {
 
       describe('initialization', () => {
         it('grants the invariant amount of BPT', async () => {
-          const invariant = await pool.estimateInvariant(await pool.upscale(initialBalances));
+          const invariant = await pool.estimateInvariant(await pool.upscaleArray(initialBalances));
 
           const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ recipient, initialBalances });
 
@@ -305,8 +563,8 @@ describe('StablePool', function () {
             sharedBeforeEach('initialize pool', async () => {
               await pool.init({ recipient, initialBalances });
               expectedBptOut = await pool.estimateBptOut(
-                await pool.upscale(amountsIn),
-                await pool.upscale(initialBalances)
+                await pool.upscaleArray(amountsIn),
+                await pool.upscaleArray(initialBalances)
               );
             });
 
@@ -322,7 +580,7 @@ describe('StablePool', function () {
               // Protocol fees should be zero
               expect(result.dueProtocolFeeAmounts).to.be.zeros;
 
-              // Make sure received BPT is closed to what we expect
+              // Make sure received BPT is close to what we expect
               const currentBptBalance = await pool.balanceOf(recipient);
               expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
             });
@@ -1217,7 +1475,7 @@ describe('StablePool', function () {
           expect(lastInvariant).to.not.equal(originalInvariant);
 
           const balances = await pool.getBalances();
-          const upscaledBalances = await pool.upscale(balances);
+          const upscaledBalances = await pool.upscaleArray(balances);
 
           const { value } = await pool.getAmplificationParameter();
           const expectedInvariant = await calculateInvariant(upscaledBalances, value.div(AMP_PRECISION));

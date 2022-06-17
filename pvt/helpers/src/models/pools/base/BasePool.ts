@@ -89,14 +89,22 @@ export default class BasePool {
     return this.instance.getScalingFactor(token.address);
   }
 
-  async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
+  async upscaleArray(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
     return balances.map((b, i) => bn(b).mul(scalingFactors[i]).div(fp(1)));
   }
 
-  async downscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
+  async downscaleArray(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
     return balances.map((b, i) => bn(b).mul(fp(1)).div(scalingFactors[i]));
+  }
+
+  upscale(balance: BigNumberish, factor: BigNumberish): BigNumberish {
+    return bn(balance).mul(factor).div(fp(1));
+  }
+
+  downscale(balance: BigNumberish, factor: BigNumberish): BigNumberish {
+    return bn(balance).mul(fp(1)).div(factor);
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
