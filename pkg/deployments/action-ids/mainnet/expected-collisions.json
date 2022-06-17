@@ -19,46 +19,6 @@
       "useAdaptor": true
     }
   ],
-  "0xdccfd45f477eb98dccfa22fc0500374fbd991473af77fada16d83760d07ed898": [
-    {
-      "taskId": "20220325-mainnet-gauge-factory",
-      "contractName": "LiquidityGaugeV5",
-      "signature": "approve(address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220325-ve-delegation",
-      "contractName": "VotingEscrowDelegation",
-      "signature": "approve(address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220530-preseeded-voting-escrow-delegation",
-      "contractName": "PreseededVotingEscrowDelegation",
-      "signature": "approve(address,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0x0aefcbf30821d7994bd862c038bbcea8de21f87d424e0f6fec1d71909f1a9188": [
-    {
-      "taskId": "20220325-mainnet-gauge-factory",
-      "contractName": "LiquidityGaugeV5",
-      "signature": "transferFrom(address,address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220325-ve-delegation",
-      "contractName": "VotingEscrowDelegation",
-      "signature": "transferFrom(address,address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220530-preseeded-voting-escrow-delegation",
-      "contractName": "PreseededVotingEscrowDelegation",
-      "signature": "transferFrom(address,address,uint256)",
-      "useAdaptor": true
-    }
-  ],
   "0xaa40669e74603d8e708eac95e60f78c35d5af4f59afdb700675f38c6534809f7": [
     {
       "taskId": "20220325-mainnet-gauge-factory",
@@ -160,34 +120,6 @@
       "taskId": "20220530-preseeded-voting-escrow-delegation",
       "contractName": "PreseededVotingEscrowDelegation",
       "signature": "extend_boost(uint256,int256,uint256,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0x2543da213f22fe55d6ad038969e569a0e22f956a4f51c07fb0e6610bf0e813b9": [
-    {
-      "taskId": "20220325-ve-delegation",
-      "contractName": "VotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220530-preseeded-voting-escrow-delegation",
-      "contractName": "PreseededVotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256)",
-      "useAdaptor": true
-    }
-  ],
-  "0x14862217750d7c601edd1d81404d87875256810480870d7e9891f6691a43d400": [
-    {
-      "taskId": "20220325-ve-delegation",
-      "contractName": "VotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256,bytes)",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220530-preseeded-voting-escrow-delegation",
-      "contractName": "PreseededVotingEscrowDelegation",
-      "signature": "safeTransferFrom(address,address,uint256,bytes)",
       "useAdaptor": true
     }
   ],

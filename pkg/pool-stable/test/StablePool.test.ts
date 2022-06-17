@@ -955,7 +955,7 @@ describe('StablePool', function () {
           });
 
           it('getRate fails', async () => {
-            await expect(pool.getRate()).to.be.revertedWith('STABLE_INVARIANT_DIDNT_CONVERGE');
+            await expect(pool.getRate()).to.be.revertedWith('INDUCED_FAILURE');
           });
         });
 
