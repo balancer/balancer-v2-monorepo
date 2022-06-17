@@ -47,6 +47,11 @@ export enum SWAP_INTERFACE {
   MINIMAL_SWAP_INFO,
 }
 
+export enum FAILURE_MODE {
+  INVARIANT,
+  PRICE_RATE,
+}
+
 export default class StablePool extends BasePool {
   amplificationParameter: BigNumberish;
 
@@ -311,7 +316,7 @@ export default class StablePool extends BasePool {
   }
 
   async setInvariantFailure(invariantFailsToConverge: boolean): Promise<void> {
-    await this.instance.setInvariantFailure(invariantFailsToConverge);
+    await this.instance.setFailureMode(FAILURE_MODE.INVARIANT, invariantFailsToConverge);
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
