@@ -74,11 +74,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public immutable EXECUTE_ACTION_ID;
     bytes32 public immutable SCHEDULE_DELAY_ACTION_ID;
 
+    // These action ids do not need to be used by external actors as the action ids above do.
+    // Instead they're saved just for gas savings so we can keep them private.
+    bytes32 private immutable _GRANT_WHATEVER_ACTION_ID;
+    bytes32 private immutable _REVOKE_WHATEVER_ACTION_ID;
+
     TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
+    address private _pendingRoot;
     ScheduledExecution[] private _scheduledExecutions;
     mapping(bytes32 => bool) private _isPermissionGranted;
     mapping(bytes32 => uint256) private _delaysPerActionId;
@@ -118,6 +124,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     event RootSet(address indexed root);
 
+    /**
+     * @dev Emitted when a new `pendingRoot` is set. The new account must claim ownership for it to take effect.
+     */
+    event PendingRootSet(address indexed pendingRoot);
+
     modifier onlyExecutor() {
         _require(msg.sender == address(_executor), Errors.SENDER_NOT_ALLOWED);
         _;
@@ -128,21 +139,25 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         IAuthentication vault,
         uint256 rootTransferDelay
     ) {
-        _root = admin;
+        _setRoot(admin);
         _vault = vault;
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
         bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);
-        _grantPermission(getActionId(grantActionId, WHATEVER), admin, EVERYWHERE);
-
         bytes32 revokeActionId = getActionId(TimelockAuthorizer.revokePermissions.selector);
-        _grantPermission(getActionId(revokeActionId, WHATEVER), admin, EVERYWHERE);
+        bytes32 grantWhateverActionId = getActionId(grantActionId, WHATEVER);
+        bytes32 revokeWhateverActionId = getActionId(revokeActionId, WHATEVER);
+
+        _grantPermission(grantWhateverActionId, admin, EVERYWHERE);
+        _grantPermission(revokeWhateverActionId, admin, EVERYWHERE);
 
         GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
         EXECUTE_ACTION_ID = getActionId(TimelockAuthorizer.execute.selector);
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
+        _GRANT_WHATEVER_ACTION_ID = grantWhateverActionId;
+        _REVOKE_WHATEVER_ACTION_ID = revokeWhateverActionId;
     }
 
     /**
@@ -150,6 +165,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function isRoot(address account) public view returns (bool) {
         return account == _root;
+    }
+
+    /**
+     * @dev Returns true if `account` is the pending root.
+     */
+    function isPendingRoot(address account) public view returns (bool) {
+        return account == _pendingRoot;
     }
 
     /**
@@ -178,6 +200,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     function getRoot() external view returns (address) {
         return _root;
+    }
+
+    /**
+     * @dev Returns the currently pending new root address.
+     */
+    function getPendingRoot() external view returns (address) {
+        return _pendingRoot;
     }
 
     /**
@@ -318,11 +347,44 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Sets the root address to `newRoot`.
+     * @notice Sets the pending root address to `pendingRoot`.
+     * @dev Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
-    function setRoot(address newRoot) external onlyExecutor {
-        _root = newRoot;
-        emit RootSet(newRoot);
+    function setPendingRoot(address pendingRoot) external onlyExecutor {
+        _setPendingRoot(pendingRoot);
+    }
+
+    function _setPendingRoot(address pendingRoot) internal {
+        _pendingRoot = pendingRoot;
+        emit PendingRootSet(pendingRoot);
+    }
+
+    /**
+     * @notice Transfers root powers from the current to the pending root address.
+     * @dev This function prevents accidentally transferring root to an invalid address.
+     * To become root, the pending root must call this function to ensure that it's able to interact with this contract.
+     */
+    function claimRoot() external {
+        address currentRoot = _root;
+        address pendingRoot = _pendingRoot;
+        _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
+
+        // Grant powers to new root to grant or revoke any permission over any contract.
+        _grantPermission(_GRANT_WHATEVER_ACTION_ID, pendingRoot, EVERYWHERE);
+        _grantPermission(_REVOKE_WHATEVER_ACTION_ID, pendingRoot, EVERYWHERE);
+
+        // Revoke these powers from the outgoing root.
+        _revokePermission(_GRANT_WHATEVER_ACTION_ID, currentRoot, EVERYWHERE);
+        _revokePermission(_REVOKE_WHATEVER_ACTION_ID, currentRoot, EVERYWHERE);
+
+        // Complete the root transfer and reset the pending root.
+        _setRoot(pendingRoot);
+        _setPendingRoot(address(0));
+    }
+
+    function _setRoot(address root) internal {
+        _root = root;
+        emit RootSet(root);
     }
 
     /**
@@ -333,10 +395,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         returns (uint256 scheduledExecutionId)
     {
         _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
-        bytes32 actionId = getActionId(this.setRoot.selector);
-        bytes32 scheduleRootChangeActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
-        bytes memory data = abi.encodeWithSelector(this.setRoot.selector, newRoot);
-        return _scheduleWithDelay(scheduleRootChangeActionId, address(this), data, getRootTransferDelay(), executors);
+        bytes32 actionId = getActionId(this.setPendingRoot.selector);
+        bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
+        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
     }
 
     /**
@@ -360,8 +421,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
-        bool isAllowed = _hasPermissionOrWhatever(SCHEDULE_DELAY_ACTION_ID, msg.sender, address(this), actionId);
-        _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
         // The delay change is scheduled to execute after the current delay for the action has elapsed. This is
         // critical, as otherwise it'd be possible to execute an action with a delay shorter than its current one
@@ -430,7 +490,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @dev Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
-     * Note that pairs can manage themselves, even banning the root, but the root can allow itself back at any time.
+     * Note that granters can revoke the granter status of other granters, even banning the root.
+     * However, the root can always rejoin, and then revoke any malicious granters.
      */
     function manageGranter(
         bytes32 actionId,
@@ -438,8 +499,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bool isAllowed = isRoot(msg.sender) || isGranter(actionId, msg.sender, where);
+        // Root may grant or revoke granter status from any address.
+        // Granters may only revoke a granter status from any address.
+        bool isAllowed = isRoot(msg.sender) || (!allowed && isGranter(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+
         bytes32 grantPermissionsActionId = getActionId(GRANT_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
     }
@@ -476,7 +540,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @dev Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
-     * Note that pairs can manage themselves, even banning the root, but the root can allow himself back at any time
+     * Note that revokers can revoke the revoker status of other revokers, even banning the root.
+     * However, the root can always rejoin, and then revoke any malicious revokers.
      */
     function manageRevoker(
         bytes32 actionId,
@@ -484,8 +549,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where,
         bool allowed
     ) external {
-        bool isAllowed = isRoot(msg.sender) || isRevoker(actionId, msg.sender, where);
+        // Root may grant or revoke revoker status from any address.
+        // Revokers may only revoke a revoker status from any address.
+        bool isAllowed = isRoot(msg.sender) || (!allowed && isRevoker(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
+
         bytes32 revokePermissionsActionId = getActionId(REVOKE_ACTION_ID, actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
     }

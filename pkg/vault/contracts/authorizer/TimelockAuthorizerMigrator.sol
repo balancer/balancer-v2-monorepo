@@ -28,33 +28,39 @@ contract TimelockAuthorizerMigrator {
     uint256 public constant CHANGE_ROOT_DELAY = 7 days;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    // solhint-disable var-name-mixedcase
-    bytes32 public immutable GRANT_PERMISSION_ACTION_ID;
-    bytes32 public immutable REVOKE_PERMISSION_ACTION_ID;
-
     IVault public immutable vault;
     address public immutable root;
     IBasicAuthorizer public immutable oldAuthorizer;
     TimelockAuthorizer public immutable newAuthorizer;
 
-    uint256 public migratedRoles;
-    OldRoleData[] public rolesData;
+    bool private _roleMigrationComplete;
     uint256 public rootChangeExecutionId;
 
-    /**
-     * @dev This structure is required to tell the migrator which roles need to be
-     * granted for which targets in the new timelock authorizer.
-     */
-    struct OldRoleData {
+    uint256 public existingRolesMigrated;
+    RoleData[] public rolesData;
+
+    uint256 public grantersMigrated;
+    RoleData[] public grantersData;
+
+    uint256 public revokersMigrated;
+    RoleData[] public revokersData;
+
+    struct RoleData {
+        address grantee;
         bytes32 role;
         address target;
     }
 
+    /**
+     * @dev Reverts if _rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
+     */
     constructor(
         IVault _vault,
         address _root,
         IBasicAuthorizer _oldAuthorizer,
-        OldRoleData[] memory _rolesData
+        RoleData[] memory _rolesData,
+        RoleData[] memory _grantersData,
+        RoleData[] memory _revokersData
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
@@ -65,29 +71,42 @@ contract TimelockAuthorizerMigrator {
         vault = _vault;
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
-            rolesData.push(OldRoleData(_rolesData[i].role, _rolesData[i].target));
+            RoleData memory roleData = _rolesData[i];
+            // We require that any permissions being copied from the old Authorizer must exist on the old Authorizer.
+            // This simplifies verification of the permissions being added to the new TimelockAuthorizer.
+            require(_oldAuthorizer.canPerform(roleData.role, roleData.grantee, roleData.target), "UNEXPECTED_ROLE");
+            rolesData.push(roleData);
+        }
+        for (uint256 i = 0; i < _grantersData.length; i++) {
+            // There's no concept of a "granter" on the old Authorizer so we cannot verify these onchain.
+            // We must manually verify that these permissions are set sensibly.
+            grantersData.push(_grantersData[i]);
+        }
+        for (uint256 i = 0; i < _revokersData.length; i++) {
+            // Similarly to granters, we must manually verify that these permissions are set sensibly.
+            revokersData.push(_revokersData[i]);
         }
 
-        bytes32 id = bytes32(uint256(address(_newAuthorizer)));
-        GRANT_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.grantPermissions.selector));
-        REVOKE_PERMISSION_ACTION_ID = keccak256(abi.encodePacked(id, TimelockAuthorizer.revokePermissions.selector));
+        // Enqueue a root change execution in the new authorizer to set it to the desired root address.
+        // We only allow the migrator to execute this transaction to avoid it being triggered too early,
+        // resulting in the migration being cut short.
+        rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
     }
 
     /**
-     * @dev Tells whether the migration has been completed or not
+     * @notice Returns whether the migration has been completed or not
      */
     function isComplete() public view returns (bool) {
-        return migratedRoles >= rolesData.length;
+        return _roleMigrationComplete;
     }
 
     /**
      * @dev Migrate roles from the old authorizer to the new one
-     * @param n Number of roles to migrate, use 0 to migrate all the remaining ones
+     * @param rolesToMigrate Number of roles to migrate, use MAX_UINT256 to migrate all the remaining ones
      */
-    function migrate(uint256 n) external {
+    function migrate(uint256 rolesToMigrate) external {
         require(!isComplete(), "MIGRATION_COMPLETE");
-        _beforeMigrate();
-        _migrate(n == 0 ? rolesData.length : n);
+        _migrate(rolesToMigrate);
         _afterMigrate();
     }
 
@@ -96,7 +115,9 @@ contract TimelockAuthorizerMigrator {
      */
     function finalizeMigration() external {
         require(isComplete(), "MIGRATION_NOT_COMPLETE");
-        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+        // Safety check to avoid us migrating to a authorizer with an invalid root.
+        // `root` must call `claimRoot` on `newAuthorizer` in order for us to set it on the Vault.
+        require(newAuthorizer.isRoot(root), "ROOT_NOT_CLAIMED_YET");
 
         // Ensure the migrator contract has authority to change the vault's authorizer
         bytes32 setAuthorizerId = IAuthentication(address(vault)).getActionId(IVault.setAuthorizer.selector);
@@ -105,80 +126,108 @@ contract TimelockAuthorizerMigrator {
 
         // Finally change the authorizer in the vault and trigger root change
         vault.setAuthorizer(newAuthorizer);
-        newAuthorizer.execute(rootChangeExecutionId);
     }
 
-    function _migrate(uint256 n) internal {
-        uint256 i = migratedRoles;
-        uint256 to = Math.min(i + n, rolesData.length);
-        for (; i < to; i++) _migrate(rolesData[i]);
-        migratedRoles = i;
-    }
+    // Internal Functions
 
-    function _migrate(OldRoleData memory roleData) internal {
-        _migrate(roleData.role, roleData.target);
-        _migrate(oldAuthorizer.getRoleAdmin(roleData.role), roleData.target);
-    }
+    /**
+     * @notice Migrates to TimelockAuthorizer by setting up roles from the old Authorizer and new granters/revokers.
+     * @dev Attempting to migrate roles in excess of the amount of unmigrated roles of any particular type results in
+     * all remaining roles of that type being migrated. The unused role migrations will then flow over into the next
+     * "role type".
+     * @param rolesToMigrate The number of permissions to set up on the new TimelockAuthorizer.
+     */
+    function _migrate(uint256 rolesToMigrate) internal {
+        // Each function returns the amount of unused role migrations which is then fed into the next function.
+        rolesToMigrate = _migrateExistingRoles(rolesToMigrate);
+        rolesToMigrate = _setupGranters(rolesToMigrate);
+        _setupRevokers(rolesToMigrate);
 
-    function _migrate(bytes32 role, address target) internal {
-        address[] memory wheres = _arr(target);
-        bytes32[] memory actionIds = _arr(role);
-        uint256 membersCount = oldAuthorizer.getRoleMemberCount(role);
-
-        // Iterate over the accounts that had the role granted in the old authorizer, granting
-        // the permission for the same role for the specified target in the new authorizer.
-        for (uint256 i = 0; i < membersCount; i++) {
-            address member = oldAuthorizer.getRoleMember(role, i);
-            newAuthorizer.grantPermissions(actionIds, member, wheres);
+        // As we set up the revoker roles last we can use them to determine whether the full migration is complete.
+        if (revokersMigrated >= revokersData.length) {
+            _roleMigrationComplete = true;
         }
     }
 
-    function _beforeMigrate() internal {
-        // Execute only once before the migration starts
-        if (migratedRoles > 0) return;
+    /**
+     * @notice Migrates listed roles from the old Authorizer to the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
+     * The amount of unused role migrations is then returned so they can be used to perform the next migration step.
+     * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
+     * @return remainingRolesToMigrate - The amount of role migrations which were unused in this function.
+     */
+    function _migrateExistingRoles(uint256 rolesToMigrate) internal returns (uint256 remainingRolesToMigrate) {
+        uint256 i = existingRolesMigrated;
+        uint256 to = Math.min(i + rolesToMigrate, rolesData.length);
+        remainingRolesToMigrate = (i + rolesToMigrate) - to;
 
-        // Enqueue a root change execution in the new authorizer to set it to the desire root address
-        rootChangeExecutionId = newAuthorizer.scheduleRootChange(root, _arr(address(this)));
+        for (; i < to; i++) {
+            RoleData memory roleData = rolesData[i];
+            newAuthorizer.grantPermissions(_arr(roleData.role), roleData.grantee, _arr(roleData.target));
+        }
+
+        existingRolesMigrated = i;
     }
 
+    /**
+     * @notice Sets up granters for the listed roles on the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
+     * The amount of unused role migrations is then returned so they can be used to perform the next migration step.
+     * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
+     * @return remainingRolesToMigrate - The amount of role migrations which were unused in this function.
+     */
+    function _setupGranters(uint256 rolesToMigrate) internal returns (uint256 remainingRolesToMigrate) {
+        uint256 i = grantersMigrated;
+        uint256 to = Math.min(i + rolesToMigrate, grantersData.length);
+        remainingRolesToMigrate = (i + rolesToMigrate) - to;
+
+        for (; i < to; i++) {
+            RoleData memory granterData = grantersData[i];
+            newAuthorizer.manageGranter(granterData.role, granterData.grantee, granterData.target, true);
+        }
+
+        grantersMigrated = i;
+    }
+
+    /**
+     * @notice Sets up revokers for the listed roles on the new TimelockAuthorizer.
+     * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
+     * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
+     */
+    function _setupRevokers(uint256 rolesToMigrate) internal {
+        uint256 i = revokersMigrated;
+        uint256 to = Math.min(i + rolesToMigrate, revokersData.length);
+
+        for (; i < to; i++) {
+            RoleData memory revokerData = revokersData[i];
+            newAuthorizer.manageRevoker(revokerData.role, revokerData.grantee, revokerData.target, true);
+        }
+
+        revokersMigrated = i;
+    }
+
+    /**
+     * @notice Begins transfer of root powers from the migrator to the specified address once all roles are migrated.
+     */
     function _afterMigrate() internal {
         // Execute only once after the migration ends
         if (!isComplete()) return;
 
-        // Grant permissions for `TimelockAuthorizer.grantPermissions` and `TimelockAuthorizer.revokePermissions`
-        // on `TimelockAuthorizer.EVERYWHERE` and `TimelockAuthorizer.WHATEVER` to all the default admins defined
-        // in the old authorizer
-        bytes32 grantWhateverActionId = newAuthorizer.getActionId(GRANT_PERMISSION_ACTION_ID, WHATEVER);
-        bytes32 revokeWhateverActionId = newAuthorizer.getActionId(REVOKE_PERMISSION_ACTION_ID, WHATEVER);
-        bytes32[] memory actionIds = _arr(grantWhateverActionId, revokeWhateverActionId);
-        address[] memory wheres = _arr(EVERYWHERE, EVERYWHERE);
-        uint256 defaultAdminsCount = oldAuthorizer.getRoleMemberCount(DEFAULT_ADMIN_ROLE);
-        for (uint256 i = 0; i < defaultAdminsCount; i++) {
-            address defaultAdmin = oldAuthorizer.getRoleMember(DEFAULT_ADMIN_ROLE, i);
-            newAuthorizer.grantPermissions(actionIds, defaultAdmin, wheres);
-        }
-        newAuthorizer.revokePermissions(actionIds, address(this), wheres);
+        // Finally trigger the first step of transferring root ownership over the TimelockAuthorizer to `root`.
+        // Before the migration can be finalized, `root` must call `claimRoot` on the `TimelockAuthorizer`.
+        require(newAuthorizer.canExecute(rootChangeExecutionId), "CANNOT_TRIGGER_ROOT_CHANGE_YET");
+        newAuthorizer.execute(rootChangeExecutionId);
     }
+
+    // Helper functions
 
     function _arr(bytes32 a) internal pure returns (bytes32[] memory arr) {
         arr = new bytes32[](1);
         arr[0] = a;
     }
 
-    function _arr(bytes32 a, bytes32 b) internal pure returns (bytes32[] memory arr) {
-        arr = new bytes32[](2);
-        arr[0] = a;
-        arr[1] = b;
-    }
-
     function _arr(address a) internal pure returns (address[] memory arr) {
         arr = new address[](1);
         arr[0] = a;
-    }
-
-    function _arr(address a, address b) internal pure returns (address[] memory arr) {
-        arr = new address[](2);
-        arr[0] = a;
-        arr[1] = b;
     }
 }
