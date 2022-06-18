@@ -23,6 +23,7 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
+  reserveAssetManager?: string;
   protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
@@ -45,6 +46,7 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  reserveAssetManager: string;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
