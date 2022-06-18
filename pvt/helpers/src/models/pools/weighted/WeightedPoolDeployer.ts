@@ -41,7 +41,6 @@ export default {
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
-      owner,
     } = deployment;
 
     return new WeightedPool(
@@ -59,7 +58,7 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
+      aumProtocolFeesCollector
     );
   },
 
