@@ -28,7 +28,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
-import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
@@ -51,10 +50,9 @@ import "./RecoveryMode.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable, RecoveryMode {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
-    using BasePoolUserData for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
 
@@ -326,36 +324,26 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory amountsOut;
-        uint256 bptAmountIn;
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
 
-        if (userData.isRecoveryModeExitKind()) {
-            // This exit kind is only available in Recovery Mode.
-            _ensureInRecoveryMode();
-
-            (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
-        } else {
-            uint256[] memory scalingFactors = _scalingFactors();
-            _upscaleArray(balances, scalingFactors);
-
-            (bptAmountIn, amountsOut) = _onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                scalingFactors,
-                userData
-            );
-
-            // amountsOut are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(amountsOut, scalingFactors);
-        }
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = _onExitPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            scalingFactors,
+            userData
+        );
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
+
+        // amountsOut are amounts exiting the Pool, so we round down.
+        _downscaleDownArray(amountsOut, scalingFactors);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
         return (amountsOut, new uint256[](balances.length));
@@ -535,7 +523,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(getSwapFeePercentage().complement());
+        return amount.divUp(FixedPoint.ONE.sub(getSwapFeePercentage()));
     }
 
     /**
