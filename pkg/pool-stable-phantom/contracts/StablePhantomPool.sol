@@ -546,7 +546,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     /**
      * @dev Collects due protocol fees
      */
-
     function _collectProtocolFees()
         private
         returns (
