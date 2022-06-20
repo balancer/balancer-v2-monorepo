@@ -1347,7 +1347,7 @@ describe('StablePhantomPool', () => {
       });
 
       context('when in recovery mode', () => {
-        sharedBeforeEach('enable recovery mode (and simulate utter failure)', async () => {
+        sharedBeforeEach('enable recovery mode', async () => {
           await enableRecoveryMode(pool);
         });
 

@@ -330,8 +330,11 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         }
     }
 
-    // Do not charge protocol fees in recovery mode
-    function _getProtocolSwapFeePercentage() private view returns (uint256) {
+    /**
+     * @notice Returns the protocol swap fee percentage.
+     * @dev No protocol fees are charged if the pool is in recovery mode.
+     */
+    function _getProtocolSwapFeePercentage() internal view returns (uint256) {
         return inRecoveryMode() ? 0 : getProtocolSwapFeePercentageCache();
     }
 
@@ -785,17 +788,14 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         view
         returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
     {
-        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
-        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
-        //
         // In normal operation, no BPT are minted or burned, so we *could* use `_MAX_TOKEN_BALANCE` instead of
         // `totalSupply()` and save gas:
         // virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
         //
-        // However, we support recovery mode. When enabled, LPs can exit proportionally and burn BPT. Since recovery
-        // mode is reversible, we need the pool's accounting to still be correct when it is disabled, so we cannot use
-        // this optimization.
+        // However, while the Pool is in recovery mode, LPs can exit proportionally and burn BPT. Since recovery
+        // mode is reversible - and unlike pausing, allows normal operation while enabled, including swaps -
+        // we cannot use this optimization. Otherwise, burning BPT in recovery mode would make the accounting
+        // permanently inaccurate (and the pool unsafe).
         virtualSupply = _getVirtualSupply(amounts[_bptIndex]);
 
         amountsWithoutBpt = new uint256[](amounts.length - 1);
