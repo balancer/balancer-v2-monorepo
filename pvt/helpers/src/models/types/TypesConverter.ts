@@ -62,7 +62,6 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      reserveAssetManager,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
@@ -79,7 +78,6 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
-    if (undefined == reserveAssetManager) reserveAssetManager = ZERO_ADDRESS;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
@@ -94,7 +92,6 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      reserveAssetManager,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,

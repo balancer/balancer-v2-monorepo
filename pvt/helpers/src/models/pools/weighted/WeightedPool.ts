@@ -58,7 +58,6 @@ export default class WeightedPool extends BasePool {
   mustAllowlistLPs: boolean;
   protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
-  reserveAssetManager: string;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
 
@@ -77,7 +76,6 @@ export default class WeightedPool extends BasePool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
-    reserveAssetManager: string,
     protocolSwapFeePercentage: BigNumberish,
     managementSwapFeePercentage: BigNumberish,
     managementAumFeePercentage: BigNumberish,
@@ -93,7 +91,6 @@ export default class WeightedPool extends BasePool {
     this.mustAllowlistLPs = mustAllowlistLPs;
     this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
-    this.reserveAssetManager = reserveAssetManager;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumProtocolFeesCollector = aumProtocolFeesCollector;
   }
