@@ -520,7 +520,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     /**
      * @dev Revert on all exit kinds (except for the recovery mode exit, which will not call `_onExitPool`)
      */
-
     function _onExitPool(
         bytes32,
         address,
