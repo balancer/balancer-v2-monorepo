@@ -543,29 +543,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
     }
 
-    /**
-     * @dev Collects due protocol fees
-     */
-    function _collectProtocolFees()
-        private
-        returns (
-            uint256 bptOut,
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
-        uint256 totalTokens = _getTotalTokens();
-
-        // This join neither grants BPT nor takes any tokens from the sender.
-        bptOut = 0;
-        amountsIn = new uint256[](totalTokens);
-
-        // Due protocol fees are all zero except for the BPT amount, which is then zeroed out.
-        dueProtocolFeeAmounts = new uint256[](totalTokens);
-        dueProtocolFeeAmounts[_bptIndex] = _dueProtocolFeeBptAmount;
-        _dueProtocolFeeBptAmount = 0;
-    }
-
     // We cannot use the default implementation here, since we need to account for the BPT token
     function _doRecoveryModeExit(
         uint256[] memory balances,
@@ -591,6 +568,29 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     // acccumulated on each swap (or not, if recovery mode is enabled).
     function _setRecoveryMode(bool enabled) internal virtual override {
         RecoveryMode._setRecoveryMode(enabled);
+    }
+
+    /**
+     * @dev Collects due protocol fees
+     */
+    function _collectProtocolFees()
+        private
+        returns (
+            uint256 bptOut,
+            uint256[] memory amountsIn,
+            uint256[] memory dueProtocolFeeAmounts
+        )
+    {
+        uint256 totalTokens = _getTotalTokens();
+
+        // This join neither grants BPT nor takes any tokens from the sender.
+        bptOut = 0;
+        amountsIn = new uint256[](totalTokens);
+
+        // Due protocol fees are all zero except for the BPT amount, which is then zeroed out.
+        dueProtocolFeeAmounts = new uint256[](totalTokens);
+        dueProtocolFeeAmounts[_bptIndex] = _dueProtocolFeeBptAmount;
+        _dueProtocolFeeBptAmount = 0;
     }
 
     // Scaling factors
