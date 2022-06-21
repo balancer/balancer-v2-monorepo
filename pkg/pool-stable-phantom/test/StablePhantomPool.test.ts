@@ -85,6 +85,11 @@ describe('StablePhantomPool', () => {
       expect(await pool.inRecoveryMode()).to.be.true;
     }
 
+    async function disableRecoveryMode(pool: StablePhantomPool): Promise<void> {
+      await pool.disableRecoveryMode(admin);
+      expect(await pool.inRecoveryMode()).to.be.false;
+    }
+
     describe('creation', () => {
       context('when the creation succeeds', () => {
         const swapFeePercentage = fp(0.1);
@@ -1104,7 +1109,11 @@ describe('StablePhantomPool', () => {
       describe('collection', () => {
         const amount = fp(10);
 
-        async function calculateProtocolFeesAfterSwap(): Promise<BigNumber> {
+        sharedBeforeEach('update cache', async () => {
+          await pool.updateProtocolSwapFeePercentageCache();
+        });
+
+        async function accrueProtocolFees(): Promise<BigNumber> {
           const token = tokens.first;
 
           const { amountOut: bptAmount } = await pool.swapGivenIn({
@@ -1119,36 +1128,30 @@ describe('StablePhantomPool', () => {
           return pool.getDueProtocolFeeBptAmount();
         }
 
-        async function itTransfersTokensToFeeCollector(): Promise<void> {
-          it('Transfers tokens to the fee collector', async () => {
-            const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
+        async function tokensAreTransferredToCollector(): Promise<void> {
+          const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
 
-            await pool.collectProtocolFees(other);
+          await pool.collectProtocolFees(other);
 
-            const dueFeeAfter = await pool.getDueProtocolFeeBptAmount();
-            expect(dueFeeAfter).to.be.equal(0);
+          const dueFeeAfter = await pool.getDueProtocolFeeBptAmount();
+          expect(dueFeeAfter).to.be.equal(0);
 
-            const feeCollector = await pool.vault.getFeesCollector();
-            const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
+          const feeCollector = await pool.vault.getFeesCollector();
+          const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
 
-            expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
-            expect(dueFeeBefore).to.be.gt(0);
-          });
+          expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
+          expect(dueFeeBefore).to.be.gt(0);
         }
 
         context('not in recovery mode', () => {
-          sharedBeforeEach('update cache', async () => {
-            await pool.updateProtocolSwapFeePercentageCache();
-          });
-
           it('accrues (and transfers) protocol fees', async () => {
             const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
             expect(dueFeeBefore).to.equal(0);
 
-            const dueFeeAfter = await calculateProtocolFeesAfterSwap();
+            const dueFeeAfter = await accrueProtocolFees();
             expect(dueFeeAfter).to.be.gt(fp(0));
 
-            itTransfersTokensToFeeCollector();
+            await tokensAreTransferredToCollector();
           });
         });
 
@@ -1158,12 +1161,34 @@ describe('StablePhantomPool', () => {
           });
 
           it('does not accrue protocol fees', async () => {
-            const dueFeeAfter = await calculateProtocolFeesAfterSwap();
+            const dueFeeAfter = await accrueProtocolFees();
             expect(dueFeeAfter).to.be.eq(fp(0));
           });
+        });
 
-          it('cannot collect protocol fees', async () => {
-            expect(itTransfersTokensToFeeCollector()).to.be.revertedWith('IN_RECOVERY_MODE');
+        context('with a recovery mode interlude', () => {
+          it('accrues fees during normal operation', async () => {
+            const pendingFees = await accrueProtocolFees();
+            expect(pendingFees).to.gt(0);
+          });
+
+          it('stops collecting fees in recovery mode', async () => {
+            const pendingFees = await accrueProtocolFees();
+            await enableRecoveryMode(pool);
+
+            expect(await accrueProtocolFees()).to.equal(pendingFees);
+          });
+
+          it('resumes collection when recovery mode is disabled', async () => {
+            const pendingFees = await accrueProtocolFees();
+            await enableRecoveryMode(pool);
+            await accrueProtocolFees();
+            await disableRecoveryMode(pool);
+
+            expect(await accrueProtocolFees()).to.gt(pendingFees);
+
+            await pool.collectProtocolFees(other);
+            expect(await pool.getDueProtocolFeeBptAmount()).to.equal(0);
           });
         });
       });
@@ -1273,50 +1298,9 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('proportional exit', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        await deployPool();
-        await pool.init({ recipient, initialBalances });
-      });
-
-      context('when not paused', () => {
-        it('cannot exit proportionally (because non-recovery exits are unsupported)', async () => {
-          const bptIn = fp(10);
-          await expect(pool.proportionalExit({ from: recipient, bptIn })).to.be.revertedWith(
-            'UNHANDLED_BY_PHANTOM_POOL'
-          );
-        });
-      });
-
-      context('when paused', () => {
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
-
-        it('cannot exit proportionally (because all exits are blocked)', async () => {
-          const bptIn = fp(10);
-          await expect(pool.proportionalExit({ from: recipient, bptIn })).to.be.revertedWith('PAUSED');
-        });
-      });
-    });
-
     describe('recovery mode', () => {
       let sender: SignerWithAddress;
       let allTokens: string[];
-
-      it('enabling recovery mode emits an event', async () => {
-        const tx = await pool.enableRecoveryMode(admin);
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
-      });
-
-      it('disabling recovery mode emits an event', async () => {
-        await enableRecoveryMode(pool);
-
-        const tx = await pool.disableRecoveryMode(admin);
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
-      });
 
       sharedBeforeEach('deploy pool', async () => {
         await deployPool();
