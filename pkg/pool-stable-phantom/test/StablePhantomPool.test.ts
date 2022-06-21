@@ -80,16 +80,6 @@ describe('StablePhantomPool', () => {
       initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
     }
 
-    async function enableRecoveryMode(pool: StablePhantomPool): Promise<void> {
-      await pool.enableRecoveryMode(admin);
-      expect(await pool.inRecoveryMode()).to.be.true;
-    }
-
-    async function disableRecoveryMode(pool: StablePhantomPool): Promise<void> {
-      await pool.disableRecoveryMode(admin);
-      expect(await pool.inRecoveryMode()).to.be.false;
-    }
-
     describe('creation', () => {
       context('when the creation succeeds', () => {
         const swapFeePercentage = fp(0.1);
@@ -314,7 +304,7 @@ describe('StablePhantomPool', () => {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enable recovery mode', async () => {
-            await enableRecoveryMode(pool);
+            await pool.enableRecoveryMode(admin);
           });
 
           it('does not revert', async () => {
@@ -394,7 +384,7 @@ describe('StablePhantomPool', () => {
 
           context('when in recovery mode', () => {
             sharedBeforeEach('enable recovery mode', async () => {
-              await enableRecoveryMode(pool);
+              await pool.enableRecoveryMode(admin);
             });
 
             itSwapsTokensGivenIn();
@@ -441,7 +431,7 @@ describe('StablePhantomPool', () => {
 
           context('when in recovery mode', async () => {
             sharedBeforeEach('enable recovery mode', async () => {
-              await enableRecoveryMode(pool);
+              await pool.enableRecoveryMode(admin);
             });
 
             itSwapsTokensGivenOut();
@@ -482,7 +472,7 @@ describe('StablePhantomPool', () => {
 
           context('when in recovery mode', async () => {
             sharedBeforeEach('enable recovery mode', async () => {
-              await enableRecoveryMode(pool);
+              await pool.enableRecoveryMode(admin);
             });
 
             itSwapsTokenOutGivenBptIn();
@@ -523,7 +513,7 @@ describe('StablePhantomPool', () => {
 
           context('when in recovery mode', async () => {
             sharedBeforeEach('enable recovery mode', async () => {
-              await enableRecoveryMode(pool);
+              await pool.enableRecoveryMode(admin);
             });
 
             itSwapsTokenForExactBpt();
@@ -564,7 +554,7 @@ describe('StablePhantomPool', () => {
 
           context('when in recovery mode', async () => {
             sharedBeforeEach('enable recovery mode', async () => {
-              await enableRecoveryMode(pool);
+              await pool.enableRecoveryMode(admin);
             });
 
             itSwapsExactTokenForBpt();
@@ -610,7 +600,7 @@ describe('StablePhantomPool', () => {
 
           context('when in recovery mode', async () => {
             sharedBeforeEach('enable recovery mode', async () => {
-              await enableRecoveryMode(pool);
+              await pool.enableRecoveryMode(admin);
             });
 
             itSwapsBptForExactTokens();
@@ -1157,7 +1147,7 @@ describe('StablePhantomPool', () => {
 
         context('in recovery mode', () => {
           sharedBeforeEach('enable recovery mode', async () => {
-            await enableRecoveryMode(pool);
+            await pool.enableRecoveryMode(admin);
           });
 
           it('does not accrue protocol fees', async () => {
@@ -1174,16 +1164,16 @@ describe('StablePhantomPool', () => {
 
           it('stops collecting fees in recovery mode', async () => {
             const pendingFees = await accrueProtocolFees();
-            await enableRecoveryMode(pool);
+            await pool.enableRecoveryMode(admin);
 
             expect(await accrueProtocolFees()).to.equal(pendingFees);
           });
 
           it('resumes collection when recovery mode is disabled', async () => {
             const pendingFees = await accrueProtocolFees();
-            await enableRecoveryMode(pool);
+            await pool.enableRecoveryMode(admin);
             await accrueProtocolFees();
-            await disableRecoveryMode(pool);
+            await pool.disableRecoveryMode(admin);
 
             expect(await accrueProtocolFees()).to.gt(pendingFees);
 
@@ -1332,7 +1322,7 @@ describe('StablePhantomPool', () => {
 
       context('when in recovery mode', () => {
         sharedBeforeEach('enable recovery mode', async () => {
-          await enableRecoveryMode(pool);
+          await pool.enableRecoveryMode(admin);
         });
 
         context('one lp', () => {
