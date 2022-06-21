@@ -204,7 +204,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
-        // Retrieve from a local function that checks for recovery mode (where protocol fees are zero)
         uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
 
         // Compute virtual BPT supply and token balances (sans BPT).
@@ -271,7 +270,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
-        // Retrieve from a local function that checks for recovery mode (where protocol fees are zero)
         uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
 
         // Compute virtual BPT supply and token balances (sans BPT).
@@ -332,7 +330,9 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
 
     /**
      * @notice Returns the protocol swap fee percentage.
-     * @dev No protocol fees are charged if the pool is in recovery mode.
+     * @dev This is typically the cached value, but it is zeroed-out while the Pool is in recovery mode, imitating
+     * the behavior in BasePool. The cache should not be used directly - all protocol fee queries should be made
+     * using this function.
      */
     function _getProtocolSwapFeePercentage() internal view returns (uint256) {
         return inRecoveryMode() ? 0 : getProtocolSwapFeePercentageCache();
@@ -521,7 +521,8 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Revert on all exit kinds (except for the recovery mode exit, which will not call `_onExitPool`)
+     * @dev dev Revert on all exit kinds. Note that this does not prevent recovery mode exits, as that one does not
+     * call`_onExitPool`.
      */
     function _onExitPool(
         bytes32,
@@ -551,15 +552,14 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         uint256,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
+        // adjust the balances array by removing BPT from it.
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
 
-        uint256 bptAmountIn = userData.recoveryModeExit();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
             balancesWithoutBpt,
-            bptAmountIn,
-            _getVirtualSupply(balances[_bptIndex])
+            virtualSupply,
+            userData
         );
 
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -788,14 +788,6 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         view
         returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
     {
-        // In normal operation, no BPT are minted or burned, so we *could* use `_MAX_TOKEN_BALANCE` instead of
-        // `totalSupply()` and save gas:
-        // virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
-        //
-        // However, while the Pool is in recovery mode, LPs can exit proportionally and burn BPT. Since recovery
-        // mode is reversible - and unlike pausing, allows normal operation while enabled, including swaps -
-        // we cannot use this optimization. Otherwise, burning BPT in recovery mode would make the accounting
-        // permanently inaccurate (and the pool unsafe).
         virtualSupply = _getVirtualSupply(amounts[_bptIndex]);
 
         amountsWithoutBpt = new uint256[](amounts.length - 1);
