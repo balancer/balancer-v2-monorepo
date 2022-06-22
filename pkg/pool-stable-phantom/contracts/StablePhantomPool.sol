@@ -670,9 +670,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory scalingFactors = new uint256[](totalTokens);
 
+        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
         // prettier-ignore
         {
-            // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
             if (totalTokens > 0) { scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0)); }
             if (totalTokens > 1) { scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1)); }
             if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); }
