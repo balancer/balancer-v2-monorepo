@@ -329,6 +329,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory amountsOut;
         uint256 bptAmountIn;
 
+        // When a user calls `exitPool`, this is the first point of entry from the Vault.
+        // We first check whether this is a Recovery Mode exit - if so, we proceed using this special lightweight exit
+        // mechanism which avoids computing any complex values, interacting with external contracts, etc., and generally
+        // should always work, even if the Pool's mathematics or a dependency break down.
         if (userData.isRecoveryModeExitKind()) {
             // This exit kind is only available in Recovery Mode.
             _ensureInRecoveryMode();
