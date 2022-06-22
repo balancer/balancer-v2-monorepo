@@ -617,13 +617,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-    // Override the implementation in StablePool, which has special processing to "reset" protocol fee
-    // calculation after disabling recovery mode. This is unnecessary here, as protocol fees are
-    // acccumulated on each swap (or not, if recovery mode is enabled).
-    function _setRecoveryMode(bool enabled) internal virtual override {
-        RecoveryMode._setRecoveryMode(enabled);
-    }
-
     /**
      * @dev Collects due protocol fees
      */
