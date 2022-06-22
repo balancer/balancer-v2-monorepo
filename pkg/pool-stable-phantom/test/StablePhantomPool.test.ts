@@ -38,19 +38,23 @@ describe('StablePhantomPool', () => {
     [, lp, owner, recipient, admin, other] = await ethers.getSigners();
   });
 
-  context('for a 2 token pool', () => {
-    itBehavesAsStablePhantomPool(2);
-  });
-
-  context('for a 4 token pool', () => {
-    itBehavesAsStablePhantomPool(4);
-  });
-
   context('for a 1 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
     });
+  });
+
+  context('for a 2 token pool', () => {
+    itBehavesAsStablePhantomPool(2);
+  });
+
+  context('for a 3 token pool', () => {
+    itBehavesAsStablePhantomPool(3);
+  });
+
+  context('for a 4 token pool', () => {
+    itBehavesAsStablePhantomPool(4);
   });
 
   context('for a 5 token pool', () => {
