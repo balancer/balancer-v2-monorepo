@@ -164,7 +164,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
