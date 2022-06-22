@@ -1919,7 +1919,7 @@ describe('ManagedPool', function () {
                   // as if the pool were never paused, however this is unlikely to occur.
                   await pool.collectAumManagementFees(owner);
 
-                  await pool.setPaused(false);
+                  await pool.unpause();
 
                   // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
                   // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -1976,7 +1976,7 @@ describe('ManagedPool', function () {
               // as if the pool were never paused, however this is unlikely to occur.
               await pool.collectAumManagementFees(owner);
 
-              await pool.setPaused(false);
+              await pool.unpause();
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2026,7 +2026,7 @@ describe('ManagedPool', function () {
               // as if the pool were never paused, however this is unlikely to occur.
               await pool.collectAumManagementFees(owner);
 
-              await pool.setPaused(false);
+              await pool.unpause();
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2069,7 +2069,7 @@ describe('ManagedPool', function () {
               // as if the pool were never paused, however this is unlikely to occur.
               await pool.collectAumManagementFees(owner);
 
-              await pool.setPaused(false);
+              await pool.unpause();
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2188,7 +2188,7 @@ describe('ManagedPool', function () {
                     // as if the pool were never paused, however this is unlikely to occur.
                     await pool.collectAumManagementFees(owner);
 
-                    await pool.setPaused(false);
+                    await pool.unpause();
 
                     // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
                     // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
