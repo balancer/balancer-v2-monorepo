@@ -174,13 +174,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = registeredTokens[0];
         _token1 = registeredTokens[1];
-        _token2 = totalTokens > 2 ? registeredTokens[2] : IERC20(0);
+        _token2 = registeredTokens[2];
         _token3 = totalTokens > 3 ? registeredTokens[3] : IERC20(0);
         _token4 = totalTokens > 4 ? registeredTokens[4] : IERC20(0);
 
         _scalingFactor0 = _computeScalingFactor(registeredTokens[0]);
         _scalingFactor1 = _computeScalingFactor(registeredTokens[1]);
-        _scalingFactor2 = totalTokens > 2 ? _computeScalingFactor(registeredTokens[2]) : 0;
+        _scalingFactor2 = _computeScalingFactor(registeredTokens[2]);
         _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(registeredTokens[3]) : 0;
         _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(registeredTokens[4]) : 0;
 
@@ -220,9 +220,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _rateProvider0 = (tokensAndBPTRateProviders.length > 0) ? tokensAndBPTRateProviders[0] : IRateProvider(0);
-        _rateProvider1 = (tokensAndBPTRateProviders.length > 1) ? tokensAndBPTRateProviders[1] : IRateProvider(0);
-        _rateProvider2 = (tokensAndBPTRateProviders.length > 2) ? tokensAndBPTRateProviders[2] : IRateProvider(0);
+        _rateProvider0 = tokensAndBPTRateProviders[0];
+        _rateProvider1 = tokensAndBPTRateProviders[1];
+        _rateProvider2 = tokensAndBPTRateProviders[2];
         _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
         _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
     }
@@ -650,8 +650,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 scalingFactor;
 
         // prettier-ignore
-        if (_isToken0(token)) { scalingFactor = _getScalingFactor0(); }
-        else if (_isToken1(token)) { scalingFactor = _getScalingFactor1(); }
+        if (token == _token0) { scalingFactor = _getScalingFactor0(); }
+        else if (token == _token1) { scalingFactor = _getScalingFactor1(); }
         else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
         else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
         else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
@@ -665,22 +665,24 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     /**
      * @dev Overrides scaling factor getter to introduce the tokens' rates.
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
+        scalingFactors = new uint256[](totalTokens);
 
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0)); }
-            if (totalTokens > 1) { scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1)); }
-            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); }
-            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3)); }
-            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4)); }
+            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+            if (totalTokens > 3) {
+                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
+            } else { return scalingFactors; }
+            if (totalTokens > 4) {
+                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
+            } else { return scalingFactors; }
         }
-
-        return scalingFactors;
     }
 
     // Token rates
@@ -694,9 +696,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { providers[0] = _rateProvider0; } else { return providers; }
-            if (totalTokens > 1) { providers[1] = _rateProvider1; } else { return providers; }
-            if (totalTokens > 2) { providers[2] = _rateProvider2; } else { return providers; }
+            providers[0] = _rateProvider0;
+            providers[1] = _rateProvider1;
+            providers[2] = _rateProvider2;
             if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
             if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
         }
@@ -797,9 +799,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 totalTokens = _getTotalTokens();
         // prettier-ignore
         {
-            if (totalTokens > 0) { _cacheTokenRateIfNecessary(_token0); } else { return; }
-            if (totalTokens > 1) { _cacheTokenRateIfNecessary(_token1); } else { return; }
-            if (totalTokens > 2) { _cacheTokenRateIfNecessary(_token2); } else { return; }
+            _cacheTokenRateIfNecessary(_token0);
+            _cacheTokenRateIfNecessary(_token1);
+            _cacheTokenRateIfNecessary(_token2);
             if (totalTokens > 3) { _cacheTokenRateIfNecessary(_token3); } else { return; }
             if (totalTokens > 4) { _cacheTokenRateIfNecessary(_token4); } else { return; }
         }
@@ -1031,14 +1033,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         endValue = _packedAmplificationData.decodeUint(64, 64);
         startTime = _packedAmplificationData.decodeUint(64 * 2, 64);
         endTime = _packedAmplificationData.decodeUint(64 * 3, 64);
-    }
-
-    function _isToken0(IERC20 token) internal view returns (bool) {
-        return token == _token0;
-    }
-
-    function _isToken1(IERC20 token) internal view returns (bool) {
-        return token == _token1;
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
