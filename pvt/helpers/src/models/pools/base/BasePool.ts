@@ -11,7 +11,7 @@ import { actionId } from '../../misc/actions';
 import Token from '../../tokens/Token';
 import Vault from '../../vault/Vault';
 
-import { RecoveryModeExitParams, ExitResult, JoinExitBasePool } from './types';
+import { RecoveryModeExitParams, ExitResult, JoinExitBasePool, FailureMode } from './types';
 
 export default class BasePool {
   instance: Contract;
@@ -125,6 +125,7 @@ export default class BasePool {
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
     return this.vault.getPoolTokenInfo(this.poolId, token);
   }
+
   async recoveryModeExit(params: RecoveryModeExitParams): Promise<ExitResult> {
     return this.exit(this._buildRecoveryModeExitParams(params));
   }
@@ -133,6 +134,7 @@ export default class BasePool {
     return {
       from: params.from,
       recipient: params.recipient,
+      tokens: params.tokens,
       currentBalances: params.currentBalances,
       data: BasePoolEncoder.recoveryModeExit(params.bptIn),
     };
@@ -147,7 +149,7 @@ export default class BasePool {
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: this.tokens.addresses,
+      tokens: params.tokens ?? this.tokens.addresses,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
@@ -183,6 +185,14 @@ export default class BasePool {
 
   async inRecoveryMode(): Promise<boolean> {
     return await this.instance.inRecoveryMode();
+  }
+
+  async setInvariantFailure(invariantFailsToConverge: boolean): Promise<void> {
+    await this.instance.setFailureMode(FailureMode.INVARIANT, invariantFailsToConverge);
+  }
+
+  async setRateFailure(priceRateReverts: boolean): Promise<void> {
+    await this.instance.setFailureMode(FailureMode.PRICE_RATE, priceRateReverts);
   }
 
   private async grantPausePermissions(): Promise<void> {
