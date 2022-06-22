@@ -665,27 +665,22 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     /**
      * @dev Overrides scaling factor getter to introduce the tokens' rates.
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
 
-        scalingFactors = new uint256[](totalTokens);
-
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
-        scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
-
-        if (totalTokens > 2) {
-            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+        // prettier-ignore
+        {
+            // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
+            if (totalTokens > 0) { scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0)); }
+            if (totalTokens > 1) { scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1)); }
+            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2)); }
+            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3)); }
+            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4)); }
         }
 
-        if (totalTokens > 3) {
-            scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
-        }
-
-        if (totalTokens > 4) {
-            scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
-        }
+        return scalingFactors;
     }
 
     // Token rates
