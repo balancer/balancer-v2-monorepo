@@ -65,7 +65,7 @@ describe('BasePool', function () {
     if (!poolTokens) poolTokens = tokens;
     if (!assetManagers) assetManagers = Array(poolTokens.length).fill(ZERO_ADDRESS);
     if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
-    if (!pauseWindowDuration) pauseWindowDuration = 0;
+    if (!pauseWindowDuration) pauseWindowDuration = MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
 
@@ -207,6 +207,20 @@ describe('BasePool', function () {
             const receipt = await (await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).wait();
 
             expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage: newSwapFeePercentage });
+          });
+
+          context('when paused', () => {
+            sharedBeforeEach('pause pool', async () => {
+              const action = await actionId(pool, 'pause');
+              await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+              await pool.connect(admin).pause();
+            });
+
+            it('reverts', async () => {
+              await expect(pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).to.be.revertedWith(
+                'PAUSED'
+              );
+            });
           });
         });
 
