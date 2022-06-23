@@ -9,7 +9,7 @@ import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -792,6 +792,56 @@ describe('BasePool', function () {
         const data = `0x${'1'.repeat(i).padStart(64, '0')}`;
         await assertMiscData(data);
       }
+    });
+  });
+
+  describe('set asset manager config', () => {
+    let pool: Contract;
+    const poolConfig = {
+      targetPercentage: 3,
+      upperCriticalPercentage: 4,
+      lowerCriticalPercentage: 2,
+    };
+
+    const encodedConfig = ethers.utils.defaultAbiCoder.encode(
+      ['uint64', 'uint64', 'uint64'],
+      [bn(poolConfig.targetPercentage), bn(poolConfig.upperCriticalPercentage), bn(poolConfig.lowerCriticalPercentage)]
+    );
+
+    sharedBeforeEach('deploy pool and asset manager', async () => {
+      const assetManagerContract = await deploy('MockAssetManager', { args: [tokens.first.address] });
+
+      const assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
+      assetManagers[0] = assetManagerContract.address;
+
+      pool = await deployBasePool({ owner: poolOwner, assetManagers });
+    });
+
+    sharedBeforeEach('set permissions', async () => {
+      const pauseAction = await actionId(pool, 'pause');
+      await authorizer.connect(admin).grantPermissions([pauseAction], admin.address, [ANY_ADDRESS]);
+    });
+
+    it('lets the owner set the asset manager config', async () => {
+      await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
+    });
+
+    it('reverts if non-owner sets the asset manager config', async () => {
+      await expect(
+        pool.connect(other).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
+    context('when paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.connect(admin).pause();
+      });
+
+      it('reverts', async () => {
+        await expect(
+          pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
+        ).to.be.revertedWith('PAUSED');
+      });
     });
   });
 });
