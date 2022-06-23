@@ -36,6 +36,7 @@ import {
   calculateInvariant,
 } from '../stable/math';
 import BasePool from '../base/BasePool';
+import { currentTimestamp, DAY } from '../../../time';
 
 export default class StablePhantomPool extends BasePool {
   amplificationParameter: BigNumberish;
@@ -120,6 +121,23 @@ export default class StablePhantomPool extends BasePool {
   async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
     const pool = params?.from ? this.instance.connect(params.from) : this.instance;
     return pool.setTokenRateCacheDuration(token.address, duration);
+  }
+
+  async startAmpChange(
+    newAmp: BigNumberish,
+    endTime?: BigNumberish,
+    txParams: TxParams = {}
+  ): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    if (!endTime) endTime = (await currentTimestamp()).add(2 * DAY);
+    return pool.startAmplificationParameterUpdate(newAmp, endTime);
+  }
+
+  async stopAmpChange(txParams: TxParams = {}): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.stopAmplificationParameterUpdate();
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {

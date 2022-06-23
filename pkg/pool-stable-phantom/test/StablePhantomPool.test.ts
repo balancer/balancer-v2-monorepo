@@ -10,7 +10,14 @@ import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
-import { advanceTime, currentTimestamp, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import {
+  advanceTime,
+  currentTimestamp,
+  DAY,
+  MINUTE,
+  MONTH,
+  setNextBlockTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -24,16 +31,11 @@ describe('StablePhantomPool', () => {
     admin: SignerWithAddress,
     other: SignerWithAddress;
 
+  const AMP_PRECISION = 1e3;
+  const AMPLIFICATION_PARAMETER = bn(200);
+
   sharedBeforeEach('setup signers', async () => {
     [, lp, owner, recipient, admin, other] = await ethers.getSigners();
-  });
-
-  context('for a 2 token pool', () => {
-    itBehavesAsStablePhantomPool(2);
-  });
-
-  context('for a 4 token pool', () => {
-    itBehavesAsStablePhantomPool(4);
   });
 
   context('for a 1 token pool', () => {
@@ -41,6 +43,18 @@ describe('StablePhantomPool', () => {
       const tokens = await TokenList.create(1);
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
     });
+  });
+
+  context('for a 2 token pool', () => {
+    itBehavesAsStablePhantomPool(2);
+  });
+
+  context('for a 3 token pool', () => {
+    itBehavesAsStablePhantomPool(3);
+  });
+
+  context('for a 4 token pool', () => {
+    itBehavesAsStablePhantomPool(4);
   });
 
   context('for a 5 token pool', () => {
@@ -83,11 +97,10 @@ describe('StablePhantomPool', () => {
     describe('creation', () => {
       context('when the creation succeeds', () => {
         const swapFeePercentage = fp(0.1);
-        const amplificationParameter = bn(200);
         const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
 
         sharedBeforeEach('deploy pool', async () => {
-          await deployPool({ swapFeePercentage, amplificationParameter }, tokenRates);
+          await deployPool({ swapFeePercentage, amplificationParameter: AMPLIFICATION_PARAMETER }, tokenRates);
         });
 
         it('sets the name', async () => {
@@ -133,7 +146,7 @@ describe('StablePhantomPool', () => {
         it('sets amplification', async () => {
           const { value, isUpdating, precision } = await pool.getAmplificationParameter();
 
-          expect(value).to.be.equal(amplificationParameter.mul(precision));
+          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(precision));
           expect(isUpdating).to.be.false;
         });
 
@@ -1242,48 +1255,268 @@ describe('StablePhantomPool', () => {
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
         await pool.updateProtocolSwapFeePercentageCache();
-
-        // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
-        const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
-          i == bptIndex ? bn(0) : fp(100)
-        );
-        await pool.init({ recipient: lp.address, initialBalances: equalBalances });
       });
 
-      context('without protocol fees', () => {
-        it('reports correctly', async () => {
-          const virtualSupply = await pool.getVirtualSupply();
-          const invariant = await pool.estimateInvariant();
-
-          const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
-
-          const rate = await pool.getRate();
-
-          expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+      context('before initialized', () => {
+        it('rate is zero', async () => {
+          await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
         });
       });
 
-      context('with protocol fees', () => {
-        sharedBeforeEach('swap bpt in', async () => {
-          const amount = fp(50);
-          const tokenIn = pool.bpt;
-          const tokenOut = tokens.second;
-
-          await tokens.mint({ to: lp, amount });
-          await tokens.approve({ from: lp, to: pool.vault });
-
-          await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+      context('once initialized', () => {
+        sharedBeforeEach('initialize pool', async () => {
+          // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
+          const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
+            i == bptIndex ? bn(0) : fp(100)
+          );
+          await pool.init({ recipient: lp.address, initialBalances: equalBalances });
         });
 
-        it('reports correctly', async () => {
-          const virtualSupply = await pool.getVirtualSupply();
-          const invariant = await pool.estimateInvariant();
+        context('without protocol fees', () => {
+          it('reports correctly', async () => {
+            const virtualSupply = await pool.getVirtualSupply();
+            const invariant = await pool.estimateInvariant();
 
-          const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
 
-          const rate = await pool.getRate();
+            const rate = await pool.getRate();
 
-          expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+            expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+          });
+        });
+
+        context('with protocol fees', () => {
+          sharedBeforeEach('swap bpt in', async () => {
+            const amount = fp(50);
+            const tokenIn = pool.bpt;
+            const tokenOut = tokens.second;
+
+            await tokens.mint({ to: lp, amount });
+            await tokens.approve({ from: lp, to: pool.vault });
+
+            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+          });
+
+          it('reports correctly', async () => {
+            const virtualSupply = await pool.getVirtualSupply();
+            const invariant = await pool.estimateInvariant();
+
+            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+
+            const rate = await pool.getRate();
+
+            expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+          });
+        });
+      });
+    });
+
+    describe('amplification factor changes', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool({ owner });
+      });
+
+      context('when the sender is allowed', () => {
+        context('when requesting a reasonable change duration', () => {
+          const duration = DAY * 2;
+          let endTime: BigNumber;
+
+          sharedBeforeEach('set end time', async () => {
+            const startTime = (await currentTimestamp()).add(100);
+            await setNextBlockTimestamp(startTime);
+            endTime = startTime.add(duration);
+          });
+
+          context('when requesting a valid amp', () => {
+            const itUpdatesAmpCorrectly = (newAmp: BigNumber) => {
+              const increasing = AMPLIFICATION_PARAMETER.lt(newAmp);
+
+              context('when there was no previous ongoing update', () => {
+                it('starts changing the amp', async () => {
+                  await pool.startAmpChange(newAmp, endTime);
+
+                  await advanceTime(duration / 2);
+
+                  const { value, isUpdating } = await pool.getAmplificationParameter();
+                  expect(isUpdating).to.be.true;
+
+                  if (increasing) {
+                    const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
+                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)));
+                  } else {
+                    const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
+                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)));
+                  }
+                });
+
+                it('stops updating after duration', async () => {
+                  await pool.startAmpChange(newAmp, endTime);
+
+                  await advanceTime(duration + 1);
+
+                  const { value, isUpdating } = await pool.getAmplificationParameter();
+                  expect(value).to.be.equal(newAmp.mul(AMP_PRECISION));
+                  expect(isUpdating).to.be.false;
+                });
+
+                it('emits an event', async () => {
+                  const receipt = await pool.startAmpChange(newAmp, endTime);
+
+                  expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStarted', {
+                    startValue: AMPLIFICATION_PARAMETER.mul(AMP_PRECISION),
+                    endValue: newAmp.mul(AMP_PRECISION),
+                    endTime,
+                  });
+                });
+
+                it('does not emit an AmpUpdateStopped event', async () => {
+                  const receipt = await pool.startAmpChange(newAmp, endTime);
+                  expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStopped');
+                });
+              });
+
+              context('when there was a previous ongoing update', () => {
+                sharedBeforeEach('start change', async () => {
+                  await pool.startAmpChange(newAmp, endTime);
+
+                  await advanceTime(duration / 3);
+                  const beforeStop = await pool.getAmplificationParameter();
+                  expect(beforeStop.isUpdating).to.be.true;
+                });
+
+                it('starting again reverts', async () => {
+                  await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_ONGOING_UPDATE');
+                });
+
+                it('can stop', async () => {
+                  const beforeStop = await pool.getAmplificationParameter();
+
+                  await pool.stopAmpChange();
+
+                  const afterStop = await pool.getAmplificationParameter();
+                  expect(afterStop.value).to.be.equalWithError(beforeStop.value, 0.001);
+                  expect(afterStop.isUpdating).to.be.false;
+                });
+
+                it('stopping emits an event', async () => {
+                  const receipt = await pool.stopAmpChange();
+                  expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStopped');
+                });
+
+                it('stopping does not emit an AmpUpdateStarted event', async () => {
+                  const receipt = await pool.stopAmpChange();
+                  expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStarted');
+                });
+
+                it('can start after stop', async () => {
+                  await pool.stopAmpChange();
+                  const afterStop = await pool.getAmplificationParameter();
+
+                  const newEndTime = (await currentTimestamp()).add(DAY * 2);
+                  const startReceipt = await pool.startAmpChange(newAmp, newEndTime);
+                  const now = await currentTimestamp();
+                  expectEvent.inReceipt(await startReceipt.wait(), 'AmpUpdateStarted', {
+                    endValue: newAmp.mul(AMP_PRECISION),
+                    startTime: now,
+                    endTime: newEndTime,
+                  });
+
+                  await advanceTime(duration / 3);
+
+                  const afterStart = await pool.getAmplificationParameter();
+                  expect(afterStart.isUpdating).to.be.true;
+                  expect(afterStart.value).to.be[increasing ? 'gt' : 'lt'](afterStop.value);
+                });
+              });
+            };
+
+            context('when increasing the amp', () => {
+              context('when increasing the amp by 2x', () => {
+                const newAmp = AMPLIFICATION_PARAMETER.mul(2);
+
+                itUpdatesAmpCorrectly(newAmp);
+              });
+            });
+
+            context('when decreasing the amp', () => {
+              context('when decreasing the amp by 2x', () => {
+                const newAmp = AMPLIFICATION_PARAMETER.div(2);
+
+                itUpdatesAmpCorrectly(newAmp);
+              });
+            });
+          });
+
+          context('when requesting an invalid amp', () => {
+            it('reverts when requesting below the min', async () => {
+              const lowAmp = bn(0);
+              await expect(pool.startAmpChange(lowAmp)).to.be.revertedWith('MIN_AMP');
+            });
+
+            it('reverts when requesting above the max', async () => {
+              const highAmp = bn(5001);
+              await expect(pool.startAmpChange(highAmp)).to.be.revertedWith('MAX_AMP');
+            });
+
+            describe('rate limits', () => {
+              let startTime: BigNumber;
+
+              beforeEach('set start time', async () => {
+                startTime = (await currentTimestamp()).add(100);
+                await setNextBlockTimestamp(startTime);
+              });
+
+              it('reverts when increasing the amp by more than 2x in a single day', async () => {
+                const newAmp = AMPLIFICATION_PARAMETER.mul(2).add(1);
+                const endTime = startTime.add(DAY);
+
+                await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_RATE_TOO_HIGH');
+              });
+
+              it('reverts when increasing the amp by more than 2x daily over multiple days', async () => {
+                const newAmp = AMPLIFICATION_PARAMETER.mul(5).add(1);
+                const endTime = startTime.add(DAY * 2);
+
+                await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_RATE_TOO_HIGH');
+              });
+
+              it('reverts when decreasing the amp by more than 2x in a single day', async () => {
+                const newAmp = AMPLIFICATION_PARAMETER.div(2).sub(1);
+                const endTime = startTime.add(DAY);
+
+                await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_RATE_TOO_HIGH');
+              });
+
+              it('reverts when decreasing the amp by more than 2x daily over multiple days', async () => {
+                const newAmp = AMPLIFICATION_PARAMETER.div(5).sub(1);
+                const endTime = startTime.add(DAY * 2);
+
+                await expect(pool.startAmpChange(newAmp, endTime)).to.be.revertedWith('AMP_RATE_TOO_HIGH');
+              });
+            });
+          });
+        });
+
+        context('when requesting a short duration change', () => {
+          let endTime;
+
+          it('reverts', async () => {
+            endTime = (await currentTimestamp()).add(DAY).sub(1);
+            await expect(pool.startAmpChange(AMPLIFICATION_PARAMETER, endTime)).to.be.revertedWith(
+              'AMP_END_TIME_TOO_CLOSE'
+            );
+          });
+        });
+      });
+
+      context('when the sender is not allowed', () => {
+        it('reverts', async () => {
+          const from = other;
+
+          await expect(pool.stopAmpChange({ from })).to.be.revertedWith('SENDER_NOT_ALLOWED');
+          await expect(pool.startAmpChange(AMPLIFICATION_PARAMETER, DAY, { from })).to.be.revertedWith(
+            'SENDER_NOT_ALLOWED'
+          );
         });
       });
     });
