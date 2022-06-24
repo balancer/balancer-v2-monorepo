@@ -852,6 +852,8 @@ describe('BasePool', function () {
 
   describe('set asset manager config', () => {
     let pool: Contract;
+    let assetManagerContract: Contract;
+
     const poolConfig = {
       targetPercentage: 3,
       upperCriticalPercentage: 4,
@@ -864,7 +866,7 @@ describe('BasePool', function () {
     );
 
     sharedBeforeEach('deploy pool and asset manager', async () => {
-      const assetManagerContract = await deploy('MockAssetManager', { args: [tokens.first.address] });
+      assetManagerContract = await deploy('MockAssetManager', { args: [tokens.first.address] });
 
       const assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
       assetManagers[0] = assetManagerContract.address;
@@ -877,8 +879,29 @@ describe('BasePool', function () {
       await authorizer.connect(admin).grantPermissions([pauseAction], admin.address, [ANY_ADDRESS]);
     });
 
+    it('sets the asset manager for the first token', async () => {
+      const poolId = await pool.getPoolId();
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
+
+      expect(assetManager).to.equal(assetManagerContract.address);
+    });
+
     it('lets the owner set the asset manager config', async () => {
       await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
+    });
+
+    it('Setting the asset manager config emits an event', async () => {
+      const tx = await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
+      const receipt = await tx.wait();
+
+      const poolId = await pool.getPoolId();
+
+      expectEvent.inIndirectReceipt(receipt, assetManagerContract.interface, 'AssetManagerPoolConfigSet', {
+        token: tokens.first.address,
+        assetManager: assetManagerContract.address,
+        poolId: poolId,
+        poolConfig: encodedConfig,
+      });
     });
 
     it('reverts if non-owner sets the asset manager config', async () => {
