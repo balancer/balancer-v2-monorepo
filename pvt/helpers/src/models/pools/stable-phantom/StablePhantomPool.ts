@@ -19,7 +19,6 @@ import TypesConverter from '../../types/TypesConverter';
 import StablePhantomPoolDeployer from './StablePhantomPoolDeployer';
 import * as expectEvent from '../../../test/expectEvent';
 
-import { actionId } from '../../misc/actions';
 import {
   InitStablePool,
   JoinExitStablePool,
@@ -36,16 +35,12 @@ import {
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
 } from '../stable/math';
+import BasePool from '../base/BasePool';
+import { currentTimestamp, DAY } from '../../../time';
 
-export default class StablePhantomPool {
-  instance: Contract;
-  poolId: string;
-  vault: Vault;
-  tokens: TokenList;
-  bptIndex: number;
-  swapFeePercentage: BigNumberish;
+export default class StablePhantomPool extends BasePool {
   amplificationParameter: BigNumberish;
-  owner?: SignerWithAddress;
+  bptIndex: number;
 
   static async create(params: RawStablePhantomPoolDeployment = {}): Promise<StablePhantomPool> {
     return StablePhantomPoolDeployer.deploy(params);
@@ -61,54 +56,18 @@ export default class StablePhantomPool {
     amplificationParameter: BigNumberish,
     owner?: SignerWithAddress
   ) {
-    this.instance = instance;
-    this.poolId = poolId;
-    this.vault = vault;
-    this.tokens = tokens;
-    this.bptIndex = bptIndex.toNumber();
-    this.swapFeePercentage = swapFeePercentage;
-    this.amplificationParameter = amplificationParameter;
-    this.owner = owner;
-  }
+    super(instance, poolId, vault, tokens, swapFeePercentage, owner);
 
-  get address(): string {
-    return this.instance.address;
+    this.amplificationParameter = amplificationParameter;
+    this.bptIndex = bptIndex.toNumber();
   }
 
   get bpt(): Token {
     return new Token('BPT', 'BPT', 18, this.instance);
   }
 
-  async name(): Promise<string> {
-    return this.instance.name();
-  }
-
-  async symbol(): Promise<string> {
-    return this.instance.symbol();
-  }
-
-  async decimals(): Promise<number> {
-    return this.instance.decimals();
-  }
-
-  async totalSupply(): Promise<BigNumber> {
-    return this.instance.totalSupply();
-  }
-
   async virtualTotalSupply(): Promise<BigNumber> {
     return MAX_UINT112.sub((await this.getBalances())[this.bptIndex]);
-  }
-
-  async balanceOf(account: Account): Promise<BigNumber> {
-    return this.instance.balanceOf(TypesConverter.toAddress(account));
-  }
-
-  async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
-    return this.vault.getPool(this.poolId);
-  }
-
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
-    return this.vault.getPoolTokens(this.poolId);
   }
 
   async getTokenIndex(token: Token): Promise<number> {
@@ -117,22 +76,6 @@ export default class StablePhantomPool {
 
   async getBalances(): Promise<BigNumber[]> {
     return (await this.getTokens()).balances;
-  }
-
-  async getVault(): Promise<string> {
-    return this.instance.getVault();
-  }
-
-  async getOwner(): Promise<string> {
-    return this.instance.getOwner();
-  }
-
-  async getPoolId(): Promise<string> {
-    return this.instance.getPoolId();
-  }
-
-  async getSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getSwapFeePercentage();
   }
 
   async getDueProtocolFeeBptAmount(): Promise<BigNumber> {
@@ -145,14 +88,6 @@ export default class StablePhantomPool {
 
   async getBptIndex(): Promise<number> {
     return (await this.instance.getBptIndex()).toNumber();
-  }
-
-  async getScalingFactors(): Promise<BigNumber[]> {
-    return this.instance.getScalingFactors();
-  }
-
-  async getScalingFactor(token: Token): Promise<BigNumber> {
-    return this.instance.getScalingFactor(token.address);
   }
 
   async getRateProviders(): Promise<string> {
@@ -188,10 +123,21 @@ export default class StablePhantomPool {
     return pool.setTokenRateCacheDuration(token.address, duration);
   }
 
-  async pause(): Promise<void> {
-    const action = await actionId(this.instance, 'setPaused');
-    await this.vault.grantPermissionsGlobally([action]);
-    await this.instance.setPaused(true);
+  async startAmpChange(
+    newAmp: BigNumberish,
+    endTime?: BigNumberish,
+    txParams: TxParams = {}
+  ): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    if (!endTime) endTime = (await currentTimestamp()).add(2 * DAY);
+    return pool.startAmplificationParameterUpdate(newAmp, endTime);
+  }
+
+  async stopAmpChange(txParams: TxParams = {}): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.stopAmplificationParameterUpdate();
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {

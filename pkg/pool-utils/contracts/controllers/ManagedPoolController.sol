@@ -15,7 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../interfaces/IControlledManagedPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
+
 import "./BasePoolController.sol";
 
 /**
@@ -129,9 +130,9 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     }
 
     /**
-     * @dev Getter for the canChangeManagementSwapFeePercentage permission.
+     * @dev Getter for the canChangeManagementFees permission.
      */
-    function canChangeManagementSwapFeePercentage() public view returns (bool) {
+    function canChangeManagementFees() public view returns (bool) {
         return _controllerState.decodeBool(_CHANGE_MGMT_FEES_OFFSET);
     }
 
@@ -151,7 +152,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         uint256 endTime,
         uint256[] calldata endWeights
     ) external virtual override onlyManager withBoundPool {
-        _require(canChangeWeights(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeWeights(), Errors.FEATURE_DISABLED);
         _require(
             endTime >= startTime && endTime - startTime >= _minWeightChangeDuration,
             Errors.WEIGHT_CHANGE_TOO_FAST
@@ -164,7 +165,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
      * @dev Pass a call to ManagedPool's setSwapEnabled through to the underlying pool.
      */
     function setSwapEnabled(bool swapEnabled) external virtual override onlyManager withBoundPool {
-        _require(canDisableSwaps(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canDisableSwaps(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setSwapEnabled(swapEnabled);
     }
@@ -179,7 +180,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
      * allowlist, or re-enabling it after allowing public LPs, can impose or remove a "cap" on the total supply.
      */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external virtual override onlyManager withBoundPool {
-        _require(canSetMustAllowlistLPs(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canSetMustAllowlistLPs(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setMustAllowlistLPs(mustAllowlistLPs);
     }
@@ -202,7 +203,7 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
     }
 
     /**
-     * @dev Transfer any BPT management fees from this contract to the recipient
+     * @dev Transfer any BPT management fees from this contract to the recipient.
      */
     function withdrawCollectedManagementFees(address recipient) external virtual override onlyManager withBoundPool {
         IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
@@ -218,8 +219,23 @@ contract ManagedPoolController is BasePoolController, IControlledManagedPool {
         onlyManager
         withBoundPool
     {
-        _require(canChangeManagementSwapFeePercentage(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
 
         IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
+    }
+
+    /**
+     * @dev Pass a call to ManagedPool's setManagementAumFeePercentage through to the underlying pool.
+     */
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
+        external
+        virtual
+        override
+        onlyManager
+        withBoundPool
+    {
+        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
+
+        IControlledManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
     }
 }

@@ -7,9 +7,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceToTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 describe('FeeDistributor', function () {
   let veBALHolder: SignerWithAddress, veBALHolder2: SignerWithAddress, feeCollector: SignerWithAddress;
@@ -17,7 +18,7 @@ describe('FeeDistributor', function () {
 
   let VEBAL: Contract, BAL: Contract, WETH: Contract;
 
-  const task = Task.forTest('20220420-fee-distributor', getForkedNetwork(hre));
+  const task = new Task('20220420-fee-distributor', TaskMode.TEST, getForkedNetwork(hre));
 
   const VEBAL_HOLDER = '0xCB3593C7c0dFe13129Ff2B6add9bA402f76c797e';
   const VEBAL_HOLDER_2 = '0x49a2dcc237a65cc1f412ed47e0594602f6141936';
@@ -43,11 +44,11 @@ describe('FeeDistributor', function () {
   });
 
   before('setup contracts', async () => {
-    const veBALTask = Task.forTest('20220325-gauge-controller', getForkedNetwork(hre));
+    const veBALTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     VEBAL = await veBALTask.instanceAt('VotingEscrow', await veBALTask.output({ network: 'mainnet' }).VotingEscrow);
 
     // We reuse this task as it contains an ABI similar to the one in real ERC20 tokens
-    const testBALTokenTask = Task.forTest('20220325-test-balancer-token', getForkedNetwork(hre));
+    const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     BAL = await testBALTokenTask.instanceAt('TestBalancerToken', BAL_ADDRESS);
     WETH = await testBALTokenTask.instanceAt('TestBalancerToken', WETH_ADDRESS);
   });
@@ -101,14 +102,11 @@ describe('FeeDistributor', function () {
         const tx = await distributor.claimTokens(veBALHolder.address, [BAL.address, WETH.address]);
         const wethBalanceAfter = await WETH.balanceOf(veBALHolder.address);
 
-        expectEvent.inIndirectReceipt(
+        expectTransferEvent(
           await tx.wait(),
-          BAL.interface,
-          'Transfer',
           { from: distributor.address, to: veBALHolder.address, value: expectedBALAmount },
           BAL.address
         );
-
         expect(wethBalanceAfter).to.equal(wethBalanceBefore);
       });
     });
@@ -130,18 +128,14 @@ describe('FeeDistributor', function () {
 
       const tx = await distributor.claimTokens(veBALHolder.address, [BAL.address, WETH.address]);
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        BAL.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder.address, value: expectedBALAmount },
         BAL.address
       );
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        WETH.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder.address, value: expectedWETHAmount },
         WETH.address
       );
@@ -162,18 +156,14 @@ describe('FeeDistributor', function () {
 
       const tx = await distributor.claimTokens(veBALHolder2.address, [BAL.address, WETH.address]);
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        BAL.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder2.address, value: expectedBALAmount },
         BAL.address
       );
 
-      expectEvent.inIndirectReceipt(
+      expectTransferEvent(
         await tx.wait(),
-        WETH.interface,
-        'Transfer',
         { from: distributor.address, to: veBALHolder2.address, value: expectedWETHAmount },
         WETH.address
       );

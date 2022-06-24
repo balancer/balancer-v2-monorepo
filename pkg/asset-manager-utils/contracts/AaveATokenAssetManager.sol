@@ -12,12 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "./aave/ILendingPoolAddressesProvider.sol";
-import "./aave/ILendingPool.sol";
-import "./aave/IAaveIncentivesController.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/aave/ILendingPoolAddressesProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/aave/ILendingPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/aave/IAaveIncentivesController.sol";
 
 import "./RewardsAssetManager.sol";
-import "@balancer-labs/v2-distributors/contracts/interfaces/IMultiDistributor.sol";
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
@@ -31,7 +30,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     IERC20 public immutable stkAave;
 
     // @notice rewards distributor for pool which owns this asset manager
-    IMultiDistributor public distributor;
+    address public distributor;
 
     constructor(
         IVault vault,
@@ -58,11 +57,7 @@ contract AaveATokenAssetManager is RewardsAssetManager {
     function initialize(bytes32 poolId, address rewardsDistributor) public {
         _initialize(poolId);
 
-        distributor = IMultiDistributor(rewardsDistributor);
-        IERC20 poolAddress = IERC20(uint256(poolId) >> (12 * 8));
-        distributor.createDistribution(poolAddress, stkAave, 1);
-
-        stkAave.approve(rewardsDistributor, type(uint256).max);
+        distributor = rewardsDistributor;
     }
 
     /**
@@ -97,11 +92,8 @@ contract AaveATokenAssetManager is RewardsAssetManager {
         assets[0] = address(aToken);
         aaveIncentives.claimRewards(assets, type(uint256).max, address(this));
 
-        // Forward to distributor
-        IERC20 poolAddress = IERC20(uint256(getPoolId()) >> (12 * 8));
-        distributor.fundDistribution(
-            distributor.getDistributionId(poolAddress, stkAave, address(this)),
-            stkAave.balanceOf(address(this))
-        );
+        // Realistically we should call a function so the distributor knows about these funds.
+        // For now we just transfer them as we have no interface.
+        stkAave.transfer(distributor, stkAave.balanceOf(address(this)));
     }
 }

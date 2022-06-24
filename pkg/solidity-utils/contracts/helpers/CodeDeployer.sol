@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "./BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Library used to deploy contracts with specific code. This can be used for long-term storage of immutable data as

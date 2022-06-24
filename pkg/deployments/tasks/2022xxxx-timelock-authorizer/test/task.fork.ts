@@ -7,7 +7,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { ONES_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { impersonate } from '../../../src/signers';
 import { getForkedNetwork } from '../../../src/test';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
@@ -18,7 +18,7 @@ describe('TimelockAuthorizer', function () {
   let EVERYWHERE: string, DEFAULT_ADMIN_ROLE: string;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
 
-  const task = Task.forTest('2022xxxx-timelock-authorizer', getForkedNetwork(hre));
+  const task = new Task('2022xxxx-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
 
   before('run task', async () => {
     await task.run({ force: true });
@@ -28,12 +28,12 @@ describe('TimelockAuthorizer', function () {
   });
 
   before('load vault', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', await migrator.vault());
   });
 
   before('load old authorizer and impersonate multisig', async () => {
-    const authorizerTask = Task.forTest('20210418-authorizer', getForkedNetwork(hre));
+    const authorizerTask = new Task('20210418-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre));
     oldAuthorizer = await authorizerTask.instanceAt('Authorizer', await migrator.oldAuthorizer());
 
     const authorizerInput = authorizerTask.input() as AuthorizerDeployment;

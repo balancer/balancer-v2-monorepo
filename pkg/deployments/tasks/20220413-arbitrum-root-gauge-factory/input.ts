@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type ArbitrumRootGaugeFactoryDeployment = {
   Vault: string;
@@ -9,8 +9,8 @@ export type ArbitrumRootGaugeFactoryDeployment = {
   MaxSubmissionCost: number;
 };
 
-const Vault = new Task('20210418-vault');
-const BalancerMinter = new Task('20220325-gauge-controller');
+const Vault = new Task('20210418-vault', TaskMode.READ_ONLY);
+const BalancerMinter = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
 
 export default {
   mainnet: {

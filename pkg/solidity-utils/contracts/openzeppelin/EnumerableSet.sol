@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
 // Based on the EnumerableSet library from OpenZeppelin Contracts, altered to remove the base private functions that
-// work on bytes32, replacing them with a native implementation for address and bytes32 values, to reduce bytecode 
+// work on bytes32, replacing them with a native implementation for address and bytes32 values, to reduce bytecode
 // size and runtime costs.
 // The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Library for managing
@@ -48,8 +48,7 @@ library EnumerableSet {
     /**
      * @dev Add a value to a set. O(1).
      *
-     * Returns true if the value was added to the set, that is if it was not
-     * already present.
+     * Returns true if the value was added to the set, if it was not already present.
      */
     function add(AddressSet storage set, address value) internal returns (bool) {
         if (!contains(set, value)) {
@@ -140,6 +139,7 @@ library EnumerableSet {
      * This function performs one less storage read than {at}, but should only be used when `index` is known to be
      * within bounds.
      */
+    // solhint-disable-next-line func-name-mixedcase
     function unchecked_at(AddressSet storage set, uint256 index) internal view returns (address) {
         return set._values[index];
     }
@@ -151,7 +151,7 @@ library EnumerableSet {
     struct Bytes32Set {
         // Storage of set values
         bytes32[] _values;
-        // Position of the value in the `values` array, plus 1 because index 0 
+        // Position of the value in the `values` array, plus 1 because index 0
         // means a value is not in the set.
         mapping(bytes32 => uint256) _indexes;
     }
@@ -159,7 +159,7 @@ library EnumerableSet {
     /**
      * @dev Add a value to a set. O(1).
      *
-     * Returns true if the value was added to the set, that is if it was not 
+     * Returns true if the value was added to the set, that is if it was not
      * already present.
      */
     function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
@@ -250,6 +250,7 @@ library EnumerableSet {
      * This function performs one less storage read than {at}, but should only be used when `index` is known to be
      * within bounds.
      */
+    // solhint-disable-next-line func-name-mixedcase
     function unchecked_at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
         return set._values[index];
     }

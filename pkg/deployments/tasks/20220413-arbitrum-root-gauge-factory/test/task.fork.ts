@@ -7,12 +7,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 describe('ArbitrumRootGaugeFactory', function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -20,12 +21,12 @@ describe('ArbitrumRootGaugeFactory', function () {
   let vault: Contract,
     authorizer: Contract,
     authorizerAdaptor: Contract,
-    BAL: Contract,
     BALTokenAdmin: Contract,
     gaugeController: Contract,
     gaugeAdder: Contract;
+  let BAL: string;
 
-  const task = Task.forTest('20220413-arbitrum-root-gauge-factory', getForkedNetwork(hre));
+  const task = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.TEST, getForkedNetwork(hre));
 
   const VEBAL_HOLDER = '0xCB3593C7c0dFe13129Ff2B6add9bA402f76c797e';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
@@ -48,33 +49,31 @@ describe('ArbitrumRootGaugeFactory', function () {
   });
 
   before('setup contracts', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', '0xBA12222222228d8Ba445958a75a0704d566BF2C8'); // vaultTask.output({ network: 'mainnet' }).Vault
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
-    const authorizerAdaptorTask = Task.forTest('20220325-authorizer-adaptor', getForkedNetwork(hre));
+    const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizerAdaptor = await authorizerAdaptorTask.instanceAt(
       'AuthorizerAdaptor',
       '0x8f42adbba1b16eaae3bb5754915e0d06059add75' // authorizerAdaptorTask.output({ network: 'mainnet' }).AuthorizerAdaptor
     );
 
-    const gaugeAdderTask = Task.forTest('20220325-gauge-adder', getForkedNetwork(hre));
+    const gaugeAdderTask = new Task('20220325-gauge-adder', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeAdder = await gaugeAdderTask.instanceAt(
       'GaugeAdder',
       '0xEd5ba579bB5D516263ff6E1C10fcAc1040075Fe2' // gaugeAdderTask.output({ network: 'mainnet' }).GaugeAdder
     );
 
-    const balancerTokenAdminTask = Task.forTest('20220325-balancer-token-admin', getForkedNetwork(hre));
+    const balancerTokenAdminTask = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, getForkedNetwork(hre));
     BALTokenAdmin = await balancerTokenAdminTask.instanceAt(
       'BalancerTokenAdmin',
       '0xf302f9F50958c5593770FDf4d4812309fF77414f' // balancerTokenAdminTask.output({ network: 'mainnet' }).BalancerTokenAdmin
     );
 
-    // We reuse this task as it contains an ABI similar to the one in the real BAL token
-    const testBALTokenTask = Task.forTest('20220325-test-balancer-token', getForkedNetwork(hre));
-    BAL = await testBALTokenTask.instanceAt('TestBalancerToken', await BALTokenAdmin.getBalancerToken());
+    BAL = await BALTokenAdmin.getBalancerToken();
 
-    const gaugeControllerTask = Task.forTest('20220325-gauge-controller', getForkedNetwork(hre));
+    const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.instanceAt(
       'GaugeController',
       '0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD' // gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
@@ -165,11 +164,15 @@ describe('ArbitrumRootGaugeFactory', function () {
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
-    expectEvent.inIndirectReceipt(await mintTx.wait(), BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: gauge.address,
-      value: actualEmissions,
-    });
+    expectTransferEvent(
+      await mintTx.wait(),
+      {
+        from: ZERO_ADDRESS,
+        to: gauge.address,
+        value: actualEmissions,
+      },
+      BAL
+    );
 
     // And the gauge then deposits those in the predicate via the bridge mechanism
     const bridgeInterface = new ethers.utils.Interface([
@@ -179,7 +182,7 @@ describe('ArbitrumRootGaugeFactory', function () {
     expectEvent.inIndirectReceipt(await mintTx.wait(), bridgeInterface, 'DepositInitiated', {
       from: gauge.address,
       to: recipient.address,
-      l1Token: BAL.address,
+      l1Token: BAL,
       amount: actualEmissions,
     });
   });
@@ -219,11 +222,15 @@ describe('ArbitrumRootGaugeFactory', function () {
     );
 
     // Tokens are minted for the gauge
-    expectEvent.inIndirectReceipt(await tx.wait(), BAL.interface, 'Transfer', {
-      from: ZERO_ADDRESS,
-      to: gauge.address,
-      value: expectedEmissions,
-    });
+    expectTransferEvent(
+      await tx.wait(),
+      {
+        from: ZERO_ADDRESS,
+        to: gauge.address,
+        value: expectedEmissions,
+      },
+      BAL
+    );
 
     // And the gauge then deposits those in the predicate via the bridge mechanism
     const bridgeInterface = new ethers.utils.Interface([
@@ -233,7 +240,7 @@ describe('ArbitrumRootGaugeFactory', function () {
     expectEvent.inIndirectReceipt(await tx.wait(), bridgeInterface, 'DepositInitiated', {
       from: gauge.address,
       to: recipient.address,
-      l1Token: BAL.address,
+      l1Token: BAL,
       amount: expectedEmissions,
     });
   });

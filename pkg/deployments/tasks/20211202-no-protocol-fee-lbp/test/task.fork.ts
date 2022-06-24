@@ -11,7 +11,7 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-import Task from '../../../src/task';
+import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -20,7 +20,7 @@ describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
-  const task = Task.forTest('20211202-no-protocol-fee-lbp', getForkedNetwork(hre));
+  const task = new Task('20211202-no-protocol-fee-lbp', TaskMode.TEST, getForkedNetwork(hre));
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -40,7 +40,7 @@ describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
 
   before('run task', async () => {
     await task.run({ force: true });
-    factory = await task.instanceAt('NoProtocolFeeLiquidityBootstrappingPoolFactory', task.output().factory);
+    factory = await task.deployedInstance('NoProtocolFeeLiquidityBootstrappingPoolFactory');
   });
 
   before('load signers', async () => {
@@ -49,7 +49,7 @@ describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
   });
 
   before('load vault and tokens', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     vault = await vaultTask.instanceAt('Vault', await factory.getVault());
     dai = await task.instanceAt('IERC20', DAI);
     usdc = await task.instanceAt('IERC20', USDC);
@@ -152,7 +152,7 @@ describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
   });
 
   it('authorized accounts can disable the factory', async () => {
-    const vaultTask = Task.forTest('20210418-vault', getForkedNetwork(hre));
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
     const DEFAULT_ADMIN_ROLE = await authorizer.DEFAULT_ADMIN_ROLE();

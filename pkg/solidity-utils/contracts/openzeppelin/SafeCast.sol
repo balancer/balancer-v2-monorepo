@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Wrappers over Solidity's uintXX/intXX casting operators with added overflow
@@ -28,7 +28,7 @@ library SafeCast {
      * - input must be less than or equal to maxInt256.
      */
     function toInt256(uint256 value) internal pure returns (int256) {
-        _require(value < 2**255, Errors.SAFE_CAST_VALUE_CANT_FIT_INT256);
+        _require(value >> 255 == 0, Errors.SAFE_CAST_VALUE_CANT_FIT_INT256);
         return int256(value);
     }
 }

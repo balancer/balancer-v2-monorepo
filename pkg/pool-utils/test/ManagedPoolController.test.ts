@@ -90,6 +90,10 @@ async function deployControllerAndPool(
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
   assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
 
+  const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
+    args: [vault.address],
+  });
+
   const params = {
     vault,
     tokens: allTokens,
@@ -100,6 +104,7 @@ async function deployControllerAndPool(
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
     protocolSwapFeePercentage: protocolSwapFeePercentage,
+    aumProtocolFeesCollector: aumProtocolFeesCollector.address,
   };
   pool = await WeightedPool.create(params);
 }
@@ -107,7 +112,8 @@ async function deployControllerAndPool(
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts
 describe('ManagedPoolController', function () {
   const NEW_SWAP_FEE = fp(0.05);
-  const NEW_MGMT_FEE = fp(0.78);
+  const NEW_MGMT_SWAP_FEE = fp(0.78);
+  const NEW_MGMT_AUM_FEE = fp(0.015);
 
   context('pool controller not initialized', () => {
     sharedBeforeEach('deploy controller (default permissions)', async () => {
@@ -140,7 +146,7 @@ describe('ManagedPoolController', function () {
       expect(await poolController.canSetMustAllowlistLPs()).to.be.true;
       expect(await poolController.canSetCircuitBreakers()).to.be.true;
       expect(await poolController.canChangeTokens()).to.be.true;
-      expect(await poolController.canChangeManagementSwapFeePercentage()).to.be.true;
+      expect(await poolController.canChangeManagementFees()).to.be.true;
     });
 
     it('sets the minimum weight change duration', async () => {
@@ -169,14 +175,28 @@ describe('ManagedPoolController', function () {
     });
 
     describe('change management swap fee percentage', () => {
-      it('lets the manager set the management fee', async () => {
-        await poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_FEE);
+      it('lets the manager set the management swap fee', async () => {
+        await poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE);
 
-        expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MGMT_FEE);
+        expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MGMT_SWAP_FEE);
       });
 
       it('reverts if non-manager sets the management fee', async () => {
-        await expect(poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_FEE)).to.be.revertedWith(
+        await expect(
+          poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
+      });
+    });
+
+    describe('change management aum fee percentage', () => {
+      it('lets the manager set the management AUM fee', async () => {
+        await poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE);
+
+        expect(await pool.getManagementAumFeePercentage()).to.equal(NEW_MGMT_AUM_FEE);
+      });
+
+      it('reverts if non-manager sets the management AUM fee', async () => {
+        await expect(poolController.connect(other).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE)).to.be.revertedWith(
           'CALLER_IS_NOT_OWNER'
         );
       });
@@ -273,7 +293,7 @@ describe('ManagedPoolController', function () {
 
       it('reverts if the manager transfers ownership', async () => {
         await expect(poolController.connect(manager).transferOwnership(other.address)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
+          'FEATURE_DISABLED'
         );
       });
     });
@@ -285,7 +305,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager updates metadata', async () => {
-        await expect(poolController.connect(manager).updateMetadata('0x')).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        await expect(poolController.connect(manager).updateMetadata('0x')).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -300,7 +320,7 @@ describe('ManagedPoolController', function () {
 
         await expect(
           poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS)
-        ).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        ).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -311,9 +331,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager disables swaps', async () => {
-        await expect(poolController.connect(manager).setSwapEnabled(false)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+        await expect(poolController.connect(manager).setSwapEnabled(false)).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -324,9 +342,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('reverts if the manager tries to disable the allowlist', async () => {
-        await expect(poolController.connect(manager).setMustAllowlistLPs(true)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+        await expect(poolController.connect(manager).setMustAllowlistLPs(true)).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -336,10 +352,16 @@ describe('ManagedPoolController', function () {
         await poolController.initialize(pool.address);
       });
 
-      it('reverts if the manager tries to change the management fee', async () => {
-        await expect(poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_FEE)).to.be.revertedWith(
-          'UNAUTHORIZED_OPERATION'
-        );
+      it('reverts if the manager tries to change the management swap fee', async () => {
+        await expect(
+          poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
+        ).to.be.revertedWith('FEATURE_DISABLED');
+      });
+
+      it('reverts if the manager tries to change the management AUM fee', async () => {
+        await expect(
+          poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE)
+        ).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
 
@@ -402,7 +424,7 @@ describe('ManagedPoolController', function () {
       });
 
       it('sets the set management fee permission', async () => {
-        expect(await poolController.canChangeManagementSwapFeePercentage()).to.be.false;
+        expect(await poolController.canChangeManagementFees()).to.be.false;
       });
     });
   });
