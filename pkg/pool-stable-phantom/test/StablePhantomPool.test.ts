@@ -1343,10 +1343,16 @@ describe('StablePhantomPool', () => {
 
                   if (increasing) {
                     const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)));
+                    expect(value).to.be.equalWithError(
+                      AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)),
+                      0.0000001
+                    );
                   } else {
                     const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)));
+                    expect(value).to.be.equalWithError(
+                      AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)),
+                      0.0000001
+                    );
                   }
                 });
 
