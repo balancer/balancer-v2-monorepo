@@ -59,8 +59,12 @@ describe('StablePhantomPool', () => {
   });
 
   context('for a 5 token pool', () => {
+    itBehavesAsStablePhantomPool(5);
+  });
+
+  context('for a 6 token pool', () => {
     it('reverts', async () => {
-      const tokens = await TokenList.create(5, { sorted: true });
+      const tokens = await TokenList.create(6, { sorted: true });
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
     });
   });
@@ -771,7 +775,7 @@ describe('StablePhantomPool', () => {
 
         describe('update', () => {
           const itUpdatesTheRateCache = (action: (token: Token) => Promise<ContractTransaction>) => {
-            const newRate = fp(1.5);
+            const newRate = fp(4.5);
 
             it('updates the cache', async () => {
               await tokens.asyncEach(async (token, i) => {
@@ -865,7 +869,7 @@ describe('StablePhantomPool', () => {
               await tokens.asyncEach(async (token, i) => {
                 const previousCache = await pool.getTokenRateCache(token);
 
-                const newRate = fp(1.5);
+                const newRate = fp(4.5);
                 await rateProviders[i].mockRate(newRate);
                 const forceUpdateAt = await currentTimestamp();
                 await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
@@ -927,7 +931,7 @@ describe('StablePhantomPool', () => {
         });
 
         describe('with upstream getRate failures', () => {
-          const newRate = fp(1.5);
+          const newRate = fp(4.5);
 
           sharedBeforeEach('set rate failure mode', async () => {
             await pool.setRateFailure(true);

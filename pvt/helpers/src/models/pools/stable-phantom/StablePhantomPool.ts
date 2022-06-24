@@ -92,7 +92,7 @@ export default class StablePhantomPool extends BasePool {
     return (await this.instance.getBptIndex()).toNumber();
   }
 
-  async getRateProviders(): Promise<string> {
+  async getRateProviders(): Promise<string[]> {
     return this.instance.getRateProviders();
   }
 
