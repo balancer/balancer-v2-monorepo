@@ -590,18 +590,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
 
-        _upscaleArray(amountsIn, scalingFactors);
+        uint256[] memory scaledAmountsInWithBpt = _addBptItem(amountsIn, 0);
+        _upscaleArray(scaledAmountsInWithBpt, scalingFactors);
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
+        (, uint256[] memory scaledAmountsInWithoutBpt) = _dropBptItem(scaledAmountsInWithBpt);
 
-        uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
-            currentAmp,
-            balancesWithoutBpt,
-            amountsIn,
-            virtualSupply,
-            getSwapFeePercentage()
-        );
+        uint256 bptAmountOut = _computeBptAmountOut(balances, scaledAmountsInWithoutBpt);
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
@@ -610,6 +604,24 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, amountsIn, new uint256[](balances.length));
+    }
+
+    function _computeBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsInWithoutBpt)
+        private
+        view
+        returns (uint256)
+    {
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return
+            StableMath._calcBptOutGivenExactTokensIn(
+                currentAmp,
+                balancesWithoutBpt,
+                scaledAmountsInWithoutBpt,
+                virtualSupply,
+                getSwapFeePercentage()
+            );
     }
 
     /**
