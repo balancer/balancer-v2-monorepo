@@ -332,7 +332,7 @@ describe('StablePhantomPool', () => {
         });
 
         it('reverts', async () => {
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
       });
     });

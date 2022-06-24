@@ -543,16 +543,16 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Revert on all joins, except for the special join kind that simply pays due protocol fees to the Vault.
+     * @dev Support multi-token joins, plus the special join kind that simply pays due protocol fees to the Vault.
      */
     function _onJoinPool(
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
-        uint256,
-        uint256[] memory,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
     )
         internal
@@ -567,9 +567,49 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
             return _collectProtocolFees();
+        } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _joinExactTokensInForBPTOut(balances, scalingFactors, protocolSwapFeePercentage, userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
+    }
+
+    function _joinExactTokensInForBPTOut(
+        uint256[] memory balances,
+        uint256[] memory scalingFactors,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    )
+        private
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256[] memory
+        )
+    {
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
+        InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
+
+        _upscaleArray(amountsIn, scalingFactors);
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
+            currentAmp,
+            balancesWithoutBpt,
+            amountsIn,
+            virtualSupply,
+            getSwapFeePercentage()
+        );
+
+        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
+
+        if (protocolSwapFeePercentage > 0) {
+            _trackDueProtocolFeeByBpt(bptAmountOut, protocolSwapFeePercentage);
         }
 
-        _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        return (bptAmountOut, amountsIn, new uint256[](balances.length));
     }
 
     /**
