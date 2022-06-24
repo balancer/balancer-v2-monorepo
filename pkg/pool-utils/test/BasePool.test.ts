@@ -316,7 +316,7 @@ describe('BasePool', function () {
     });
   });
 
-  describe('set paused', () => {
+  describe('pause', () => {
     let pool: Contract;
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
@@ -331,8 +331,63 @@ describe('BasePool', function () {
         expect(paused).to.be.true;
       });
 
+      context('when paused', () => {
+        let poolId: string;
+        let initialBalances: BigNumber[];
+
+        sharedBeforeEach('deploy and initialize pool', async () => {
+          initialBalances = Array(tokens.length).fill(fp(1000));
+          poolId = await pool.getPoolId();
+
+          const request: JoinPoolRequest = {
+            assets: tokens.addresses,
+            maxAmountsIn: initialBalances,
+            userData: WeightedPoolEncoder.joinInit(initialBalances),
+            fromInternalBalance: false,
+          };
+
+          await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
+          await tokens.approve({ from: poolOwner, to: vault });
+
+          await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
+        });
+
+        sharedBeforeEach('pause pool', async () => {
+          await pool.connect(sender).pause();
+        });
+
+        it('joins revert', async () => {
+          const OTHER_JOIN_KIND = 1;
+
+          const request: JoinPoolRequest = {
+            assets: tokens.addresses,
+            maxAmountsIn: Array(tokens.length).fill(0),
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+            fromInternalBalance: false,
+          };
+
+          await expect(
+            vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request)
+          ).to.be.revertedWith('PAUSED');
+        });
+
+        it('exits revert', async () => {
+          const OTHER_EXIT_KIND = 1;
+
+          const request: ExitPoolRequest = {
+            assets: tokens.addresses,
+            minAmountsOut: Array(tokens.length).fill(0),
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+            toInternalBalance: false,
+          };
+
+          await expect(
+            vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+
       it('can unpause', async () => {
-        await pool.connect(sender).pause();
         await pool.connect(sender).unpause();
 
         const { paused } = await pool.getPausedState();
