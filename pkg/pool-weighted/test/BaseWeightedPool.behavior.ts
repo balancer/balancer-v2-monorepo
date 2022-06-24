@@ -471,7 +471,7 @@ export function itBehavesAsWeightedPool(
         expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
       });
 
-      it('does not revert if paused', async () => {
+      it.skip('does not revert if paused', async () => {
         await pool.pause();
 
         const bptIn = previousBptBalance.div(2);

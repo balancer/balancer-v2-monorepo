@@ -33,6 +33,7 @@ describe('StablePhantomPool', () => {
 
   const AMP_PRECISION = 1e3;
   const AMPLIFICATION_PARAMETER = bn(200);
+  const PREMINTED_BPT = MAX_UINT112.div(2);
 
   sharedBeforeEach('setup signers', async () => {
     [, lp, owner, recipient, admin, other] = await ethers.getSigners();
@@ -58,8 +59,12 @@ describe('StablePhantomPool', () => {
   });
 
   context('for a 5 token pool', () => {
+    itBehavesAsStablePhantomPool(5);
+  });
+
+  context('for a 6 token pool', () => {
     it('reverts', async () => {
-      const tokens = await TokenList.create(5, { sorted: true });
+      const tokens = await TokenList.create(6, { sorted: true });
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
     });
   });
@@ -264,10 +269,10 @@ describe('StablePhantomPool', () => {
             });
           });
 
-          it('mints the max amount of BPT minus minimum Bpt', async () => {
+          it('mints half the max amount of BPT minus minimum Bpt', async () => {
             await pool.init({ initialBalances });
 
-            expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+            expect(await pool.totalSupply()).to.be.equalWithError(PREMINTED_BPT, 0.000000001);
           });
 
           it('mints the minimum BPT to the address zero', async () => {
@@ -293,13 +298,13 @@ describe('StablePhantomPool', () => {
 
             const { amountsIn, dueProtocolFeeAmounts } = await pool.init({ initialBalances });
 
-            const expectedBPT = MAX_UINT112.sub(invariant);
+            const expectedBPT = PREMINTED_BPT.sub(invariant);
             expect(await pool.balanceOf(pool.vault)).to.be.equalWithError(expectedBPT, 0.00001);
 
             expect(dueProtocolFeeAmounts).to.be.zeros;
             for (let i = 0; i < amountsIn.length; i++) {
               i === bptIndex
-                ? expect(amountsIn[i]).to.be.equalWithError(MAX_UINT112.sub(invariant), 0.00001)
+                ? expect(amountsIn[i]).to.be.equalWithError(PREMINTED_BPT.sub(invariant), 0.00001)
                 : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
             }
           });
@@ -770,7 +775,7 @@ describe('StablePhantomPool', () => {
 
         describe('update', () => {
           const itUpdatesTheRateCache = (action: (token: Token) => Promise<ContractTransaction>) => {
-            const newRate = fp(1.5);
+            const newRate = fp(4.5);
 
             it('updates the cache', async () => {
               await tokens.asyncEach(async (token, i) => {
@@ -864,7 +869,7 @@ describe('StablePhantomPool', () => {
               await tokens.asyncEach(async (token, i) => {
                 const previousCache = await pool.getTokenRateCache(token);
 
-                const newRate = fp(1.5);
+                const newRate = fp(4.5);
                 await rateProviders[i].mockRate(newRate);
                 const forceUpdateAt = await currentTimestamp();
                 await pool.setTokenRateCacheDuration(token, newDuration, { from: owner });
@@ -926,7 +931,7 @@ describe('StablePhantomPool', () => {
         });
 
         describe('with upstream getRate failures', () => {
-          const newRate = fp(1.5);
+          const newRate = fp(4.5);
 
           sharedBeforeEach('set rate failure mode', async () => {
             await pool.setRateFailure(true);
@@ -1342,10 +1347,16 @@ describe('StablePhantomPool', () => {
 
                   if (increasing) {
                     const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)));
+                    expect(value).to.be.equalWithError(
+                      AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)),
+                      0.0000001
+                    );
                   } else {
                     const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
-                    expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)));
+                    expect(value).to.be.equalWithError(
+                      AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)),
+                      0.0000001
+                    );
                   }
                 });
 

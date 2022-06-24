@@ -52,7 +52,7 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
   await allTokens.mint({ to: manager, amount: fp(100) });
   await allTokens.mint({ to: other, amount: fp(100) });
 
-  assetManager = await deploy('v2-asset-manager-utils/MockAssetManager', { args: [allTokens.DAI.address] });
+  assetManager = await deploy('MockAssetManager', { args: [allTokens.DAI.address] });
 });
 
 async function deployControllerAndPool(
