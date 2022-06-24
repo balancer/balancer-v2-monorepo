@@ -58,8 +58,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
     // is therefore _MIN_TOKENS + 1.
     uint256 private constant _MIN_TOKENS = 2;
-    // This maximum is imposed by the Vault, which stores balances in a packed format resulting in fewer than 256 bits.
-    uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
+    // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
+    // We are preminting half of that value (rounded up).
+    uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
 
     // The index of BPT in the tokens and balances arrays, i.e. its index when calling IVault.registerTokens().
     uint256 private immutable _bptIndex;
@@ -70,6 +71,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     IERC20 internal immutable _token2;
     IERC20 internal immutable _token3;
     IERC20 internal immutable _token4;
+    IERC20 internal immutable _token5;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -80,6 +82,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     uint256 internal immutable _scalingFactor2;
     uint256 internal immutable _scalingFactor3;
     uint256 internal immutable _scalingFactor4;
+    uint256 internal immutable _scalingFactor5;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -118,6 +121,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     IRateProvider internal immutable _rateProvider2;
     IRateProvider internal immutable _rateProvider3;
     IRateProvider internal immutable _rateProvider4;
+    IRateProvider internal immutable _rateProvider5;
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
@@ -177,12 +181,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _token2 = registeredTokens[2];
         _token3 = totalTokens > 3 ? registeredTokens[3] : IERC20(0);
         _token4 = totalTokens > 4 ? registeredTokens[4] : IERC20(0);
+        _token5 = totalTokens > 5 ? registeredTokens[5] : IERC20(0);
 
         _scalingFactor0 = _computeScalingFactor(registeredTokens[0]);
         _scalingFactor1 = _computeScalingFactor(registeredTokens[1]);
         _scalingFactor2 = _computeScalingFactor(registeredTokens[2]);
         _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(registeredTokens[3]) : 0;
         _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(registeredTokens[4]) : 0;
+        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(registeredTokens[5]) : 0;
 
         uint256 initialAmp = Math.mul(params.amplificationParameter, StableMath._AMP_PRECISION);
         _setAmplificationData(initialAmp);
@@ -225,6 +231,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _rateProvider2 = tokensAndBPTRateProviders[2];
         _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
         _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
+        _rateProvider5 = (tokensAndBPTRateProviders.length > 5) ? tokensAndBPTRateProviders[5] : IRateProvider(0);
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -531,11 +538,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
 
-        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up for the total
+        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
         // supply, and have the Vault pull those tokens from the sender as part of the join.
+        // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
+        // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
+        //
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
         // all accounts.
-        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
+        uint256 initialBpt = _PREMINTED_TOKEN_BALANCE.sub(bptAmountOut);
+
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 
@@ -707,6 +718,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
         else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
         else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
+        else if (token == _token5) { scalingFactor = _getScalingFactor5(); }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -734,6 +746,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             if (totalTokens > 4) {
                 scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
             } else { return scalingFactors; }
+            if (totalTokens > 5) {
+                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
+            } else { return scalingFactors; }
         }
     }
 
@@ -753,6 +768,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             providers[2] = _rateProvider2;
             if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
             if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
+            if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
         }
     }
 
@@ -763,6 +779,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         else if (token == _token2) { return _rateProvider2; }
         else if (token == _token3) { return _rateProvider3; }
         else if (token == _token4) { return _rateProvider4; }
+        else if (token == _token5) { return _rateProvider5; }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -856,6 +873,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             _cacheTokenRateIfNecessary(_token2);
             if (totalTokens > 3) { _cacheTokenRateIfNecessary(_token3); } else { return; }
             if (totalTokens > 4) { _cacheTokenRateIfNecessary(_token4); } else { return; }
+            if (totalTokens > 5) { _cacheTokenRateIfNecessary(_token5); } else { return; }
         }
     }
 
@@ -932,7 +950,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _getVirtualSupply(balances[_bptIndex]);
     }
 
-    // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
     // vault. So the virtualSupply (the actual supply in circulation) is defined as:
     // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
@@ -1036,7 +1054,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
-        return StableMath._MAX_STABLE_TOKENS;
+        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
+        return StableMath._MAX_STABLE_TOKENS + 1;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
@@ -1105,5 +1124,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     function _getScalingFactor4() internal view returns (uint256) {
         return _scalingFactor4;
+    }
+
+    function _getScalingFactor5() internal view returns (uint256) {
+        return _scalingFactor5;
     }
 }

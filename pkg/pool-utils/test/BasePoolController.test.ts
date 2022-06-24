@@ -44,7 +44,7 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
   allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   await allTokens.mint({ to: manager, amount: fp(100) });
 
-  assetManager = await deploy('v2-asset-manager-utils/MockAssetManager', { args: [allTokens.DAI.address] });
+  assetManager = await deploy('MockAssetManager', { args: [allTokens.DAI.address] });
 });
 
 async function deployControllerAndPool(canTransfer = true, canChangeSwapFee = true, canUpdateMetadata = true) {

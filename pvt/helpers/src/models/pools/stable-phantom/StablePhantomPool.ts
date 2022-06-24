@@ -38,6 +38,8 @@ import {
 import BasePool from '../base/BasePool';
 import { currentTimestamp, DAY } from '../../../time';
 
+const PREMINTED_BPT = MAX_UINT112.div(2);
+
 export default class StablePhantomPool extends BasePool {
   amplificationParameter: BigNumberish;
   bptIndex: number;
@@ -67,7 +69,7 @@ export default class StablePhantomPool extends BasePool {
   }
 
   async virtualTotalSupply(): Promise<BigNumber> {
-    return MAX_UINT112.sub((await this.getBalances())[this.bptIndex]);
+    return PREMINTED_BPT.sub((await this.getBalances())[this.bptIndex]);
   }
 
   async getTokenIndex(token: Token): Promise<number> {
@@ -90,7 +92,7 @@ export default class StablePhantomPool extends BasePool {
     return (await this.instance.getBptIndex()).toNumber();
   }
 
-  async getRateProviders(): Promise<string> {
+  async getRateProviders(): Promise<string[]> {
     return this.instance.getRateProviders();
   }
 
