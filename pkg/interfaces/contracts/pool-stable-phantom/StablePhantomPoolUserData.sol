@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 library StablePhantomPoolUserData {
     enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES }
-    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT }
+    enum ExitKindPhantom { EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     function joinKind(bytes memory self) internal pure returns (JoinKindPhantom) {
         return abi.decode(self, (JoinKindPhantom));
@@ -36,5 +36,13 @@ library StablePhantomPoolUserData {
 
     function exactBptInForTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
         (, bptAmountIn) = abi.decode(self, (ExitKindPhantom, uint256));
+    }
+
+    function bptInForExactTokensOut(bytes memory self)
+        internal
+        pure
+        returns (uint256[] memory amountsOut, uint256 maxBPTAmountIn)
+    {
+        (, amountsOut, maxBPTAmountIn) = abi.decode(self, (ExitKindPhantom, uint256[], uint256));
     }
 }

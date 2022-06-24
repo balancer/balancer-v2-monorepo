@@ -573,21 +573,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev dev Revert on all exit kinds. Note that this does not prevent recovery mode exits, as that one does not
-     * call`_onExitPool`.
+     * @dev Support multi-token exits, including proportional exits. Note that recovery mode exits
+     * do not call`_onExitPool`.
      */
     function _onExitPool(
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
-        uint256,
-        uint256[] memory,
-        bytes memory
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
+        bytes memory userData
     )
         internal
-        pure
         override
         returns (
             uint256,
@@ -595,7 +594,76 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             uint256[] memory
         )
     {
-        _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
+        uint256[] memory amountsOut;
+        uint256 bptAmountIn;
+
+        if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            (bptAmountIn, amountsOut) = _exitExactBPTInForTokensOut(balances, userData);
+        } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+            (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
+                balances,
+                scalingFactors,
+                protocolSwapFeePercentage,
+                userData
+            );
+        } else {
+            _revert(Errors.UNHANDLED_EXIT_KIND);
+        }
+
+        return (bptAmountIn, amountsOut, new uint256[](balances.length));
+    }
+
+    function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+
+        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
+            balancesWithoutBpt,
+            bptAmountIn,
+            virtualSupply
+        );
+
+        return (bptAmountIn, _addBptItem(amountsOut, 0));
+    }
+
+    function _exitBPTInForExactTokensOut(
+        uint256[] memory balances,
+        uint256[] memory scalingFactors,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) private returns (uint256, uint256[] memory) {
+        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
+        // amountsOut are unscaled, and do not include BPT
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens() - 1);
+
+        uint256[] memory scaledAmountsOutWithBpt = _addBptItem(amountsOut, 0);
+        _upscaleArray(scaledAmountsOutWithBpt, scalingFactors);
+
+        (uint256 virtualSupply, uint256[] memory scaledAmountsOutWithoutBpt) = _dropBptItem(scaledAmountsOutWithBpt);
+        (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
+            currentAmp,
+            balancesWithoutBpt,
+            scaledAmountsOutWithoutBpt,
+            virtualSupply,
+            getSwapFeePercentage()
+        );
+        _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
+
+        if (protocolSwapFeePercentage > 0) {
+            _trackDueProtocolFeeByBpt(bptAmountIn, protocolSwapFeePercentage);
+        }
+
+        return (bptAmountIn, scaledAmountsOutWithBpt);
     }
 
     // We cannot use the default implementation here, since we need to account for the BPT token
