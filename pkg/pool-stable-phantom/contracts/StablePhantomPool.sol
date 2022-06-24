@@ -58,8 +58,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
     // is therefore _MIN_TOKENS + 1.
     uint256 private constant _MIN_TOKENS = 2;
-    // This maximum is imposed by the Vault, which stores balances in a packed format resulting in fewer than 256 bits.
-    uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
+    // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
+    // We are preminting half of that value (rounded up).
+    uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
 
     // The index of BPT in the tokens and balances arrays, i.e. its index when calling IVault.registerTokens().
     uint256 private immutable _bptIndex;
@@ -531,11 +532,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
 
-        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up for the total
+        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
         // supply, and have the Vault pull those tokens from the sender as part of the join.
+        // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
+        // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
+        //
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
         // all accounts.
-        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
+        uint256 initialBpt = _PREMINTED_TOKEN_BALANCE.sub(bptAmountOut);
+
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 
@@ -880,7 +885,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _getVirtualSupply(balances[_bptIndex]);
     }
 
-    // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
     // vault. So the virtualSupply (the actual supply in circulation) is defined as:
     // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
