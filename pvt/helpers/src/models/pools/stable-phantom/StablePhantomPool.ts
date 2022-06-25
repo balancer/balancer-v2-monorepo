@@ -418,7 +418,7 @@ export default class StablePhantomPool extends BasePool {
       data: StablePoolEncoder.exitExactBPTInForTokensOutPhantom(params.bptIn),
     };
   }
-  
+
   private _buildExitGivenOutParams(params: ExitGivenOutStablePool): JoinExitStablePool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
