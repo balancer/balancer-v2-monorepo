@@ -5,17 +5,17 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 
 import "./SecondaryIssuePool.sol";
 import "./interfaces/ISecondaryIssuePoolFactory.sol";
 
-contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract SecondaryIssuePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
 
-    constructor(IVault vault) BasePoolFactory(vault) {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(SecondaryIssuePool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -30,19 +30,20 @@ contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        address pool = address(new SecondaryIssuePool(  getVault(),
-                                                        _name,
-                                                        _symbol,
-                                                        _security,
-                                                        _currency,
-                                                        _tradeFeePercentage,
-                                                        _maxAmountsIn,
-                                                        pauseWindowDuration,
-                                                        bufferPeriodDuration,
-                                                        msg.sender
-                                                    ));
-        _register(pool);
-        return pool;
+        return
+            _create(
+                abi.encode(  
+                    getVault(),
+                    _name,
+                    _symbol,
+                    _security,
+                    _currency,
+                    _tradeFeePercentage,
+                    _maxAmountsIn,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    msg.sender
+                ));
     }
 
 }
