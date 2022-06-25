@@ -124,6 +124,7 @@ contract BalancerManager is IMarketMaker, Ownable{
     function make(address _owner, address owned, bytes32 _isin, uint _offered, address tomatch, uint _desired, uint _min) private {
         IMarketMaker.token memory t = IMarketMaker.token({
             owner: _owner,
+            offered: owned,
             amountDesired: _desired,
             amountOffered: _offered,
             min: _min,
@@ -131,8 +132,10 @@ contract BalancerManager is IMarketMaker, Ownable{
         });
         uint256 index = mmtokens[owned][tomatch].length;
         mmtokens[owned][tomatch].push(t);
-        offeredTokenIndex[owned] = offeredTokens.length;
-        offeredTokens.push(owned);
+        if(offeredTokenIndex[owned]==0){
+            offeredTokens.push(owned);
+            offeredTokenIndex[owned] = offeredTokens.length;
+        }
         toMatchTokens[tomatch].push(mmtokens[owned][tomatch][index]);        
     }
 

@@ -14,6 +14,7 @@ interface IMarketMaker {
     // isin is the security token identifier
     struct token{
         address owner;
+        address offered;
         uint amountOffered;
         uint amountDesired;
         uint min;
