@@ -539,7 +539,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Revert on all joins.
+     * @dev Revert on all join kinds.
      */
     function _onJoinPool(
         bytes32,
@@ -550,15 +550,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256,
         uint256[] memory,
         bytes memory
-    )
-        internal
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory
-        )
-    {
+    ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
     }
 
@@ -575,15 +567,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256,
         uint256[] memory,
         bytes memory
-    )
-        internal
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory
-        )
-    {
+    ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
     }
 
