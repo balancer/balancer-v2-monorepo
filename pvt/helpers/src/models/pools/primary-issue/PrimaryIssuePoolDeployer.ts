@@ -20,7 +20,16 @@ export default {
 
     const pool = await this._deployStandalone(deployment, vault);
 
-    const { owner, securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, swapFeePercentage, issueCutoffTime } = deployment;
+    const {
+      owner,
+      securityToken,
+      currencyToken,
+      minimumPrice,
+      basePrice,
+      maxSecurityOffered,
+      swapFeePercentage,
+      issueCutoffTime,
+    } = deployment;
 
     const poolId = await pool.getPoolId();
 
@@ -45,7 +54,7 @@ export default {
       currencyToken,
       minimumPrice,
       basePrice,
-      maxSecurityOffered,      
+      maxSecurityOffered,
       swapFeePercentage,
       issueCutoffTime,
       pauseWindowDuration,
@@ -55,6 +64,10 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
+    // console.log(securityToken.name);
+    // console.log(securityToken.address);
+    // console.log(currencyToken.name);
+    // console.log(currencyToken.address);
     return deploy('pool-primary-issues/PrimaryIssuePool', {
       args: [
         vault.address,

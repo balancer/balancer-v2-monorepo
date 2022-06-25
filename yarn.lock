@@ -1793,16 +1793,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomiclabs/hardhat-ethers@npm:2.0.1":
-  version: 2.0.1
-  resolution: "@nomiclabs/hardhat-ethers@npm:2.0.1"
-  peerDependencies:
-    ethers: ^5.0.0
-    hardhat: ^2.0.0
-  checksum: bf21e2d71398bc361b83ff058b6984d90b947f9ac062237962ce0f846e863b19ac744e0c9ec32fb0c8922050b876072575b28581c6769ba75dac05f020940c42
-  languageName: node
-  linkType: hard
-
 "@nomiclabs/hardhat-ethers@npm:^2.0.1":
   version: 2.0.2
   resolution: "@nomiclabs/hardhat-ethers@npm:2.0.2"
@@ -2542,7 +2532,7 @@ __metadata:
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
-    "@nomiclabs/hardhat-ethers": 2.0.1
+    "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
     "@types/lodash": ^4.14.161
@@ -2583,7 +2573,7 @@ __metadata:
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
     "@balancer-labs/v2-vault": "workspace:*"
-    "@nomiclabs/hardhat-ethers": 2.0.1
+    "@nomiclabs/hardhat-ethers": ^2.0.1
     "@nomiclabs/hardhat-waffle": ^2.0.0
     "@types/chai": ^4.2.12
     "@types/lodash": ^4.14.161
