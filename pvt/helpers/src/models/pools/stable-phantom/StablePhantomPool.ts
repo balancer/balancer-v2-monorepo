@@ -1,13 +1,13 @@
 import { ethers } from 'hardhat';
 import { defaultAbiCoder } from '@ethersproject/abi';
-import { BigNumber, Contract, ContractTransaction, ContractReceipt } from 'ethers';
+import { BigNumber, Contract, ContractTransaction, ContractReceipt, ContractFunction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-import { Account, TxParams } from '../../types/types';
+import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS } from '../../../constants';
 import { GeneralSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
@@ -21,10 +21,13 @@ import * as expectEvent from '../../../test/expectEvent';
 
 import {
   InitStablePool,
+  JoinGivenInStablePool,
   JoinExitStablePool,
   JoinResult,
+  JoinQueryResult,
   MultiExitGivenInStablePool,
   ExitResult,
+  PoolQueryResult,
 } from '../stable/types';
 import {
   calcBptInGivenExactTokensOut,
@@ -209,6 +212,33 @@ export default class StablePhantomPool extends BasePool {
     return calcBptInGivenExactTokensOut(currentBalances, this.amplificationParameter, amountsOut, virtualSupply, 0);
   }
 
+  async estimateBptOut(
+    amountsIn: BigNumberish[],
+    currentBalances?: BigNumberish[],
+    supply?: BigNumberish
+  ): Promise<BigNumberish> {
+    if (!supply) supply = await this.virtualTotalSupply();
+    if (!currentBalances) currentBalances = await this._dropBptItem(await this.getBalances());
+    const swapFeePercentage = await this.getSwapFeePercentage();
+
+    const tokenCountWithBpt = (await this.getBalances()).length;
+
+    if (currentBalances.length == tokenCountWithBpt) {
+      currentBalances = await this._dropBptItem(currentBalances);
+    }
+    if (amountsIn.length == tokenCountWithBpt) {
+      amountsIn = await this._dropBptItem(amountsIn);
+    }
+
+    return calcBptOutGivenExactTokensIn(
+      currentBalances,
+      this.amplificationParameter,
+      amountsIn,
+      supply,
+      swapFeePercentage
+    );
+  }
+
   async swapGivenIn(params: SwapPhantomPool): Promise<{ amountOut: BigNumber; receipt: ContractReceipt }> {
     const { amountOut, receipt } = await this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
     return { amountOut, receipt };
@@ -288,6 +318,55 @@ export default class StablePhantomPool extends BasePool {
     return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFeeAmounts };
   }
 
+  toList<T>(items: NAry<T>): T[] {
+    return Array.isArray(items) ? items : [items];
+  }
+  
+  async joinGivenIn(params: JoinGivenInStablePool): Promise<JoinResult> {
+    // Need to drop BPT from amountsIn
+    const tokenAmountsIn = this.toList(params.amountsIn);
+    
+    params.amountsIn = await this._dropBptItem(tokenAmountsIn);
+
+    return this.join(this._buildJoinGivenInParams(params));
+  }
+
+  async queryJoinGivenIn(params: JoinGivenInStablePool): Promise<JoinQueryResult> {
+    // Need to drop BPT from amountsIn
+    const tokenAmountsIn = this.toList(params.amountsIn);
+    
+    params.amountsIn = await this._dropBptItem(tokenAmountsIn);
+
+    return this.queryJoin(this._buildJoinGivenInParams(params));
+  }
+
+  async join(params: JoinExitStablePool): Promise<JoinResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens: allTokens } = await this.getTokens();
+
+    const tx = this.vault.joinPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: allTokens,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
+  }
+
+  async queryJoin(params: JoinExitStablePool): Promise<JoinQueryResult> {
+    const fn = this.instance.queryJoin;
+    return (await this._executeQuery(params, fn)) as JoinQueryResult;
+  }
+
   async proportionalExit(params: MultiExitGivenInStablePool): Promise<ExitResult> {
     const { tokens: allTokens } = await this.getTokens();
     const data = this._encodeExitExactBPTInForTokensOut(params.bptIn);
@@ -341,6 +420,20 @@ export default class StablePhantomPool extends BasePool {
     };
   }
 
+  private _buildJoinGivenInParams(params: JoinGivenInStablePool): JoinExitStablePool {
+    const { amountsIn: amounts } = params;
+    const amountsIn = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
+
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: StablePoolEncoder.joinExactTokensInForBPTOutPhantom(amountsIn, params.minimumBptOut ?? 0),
+    };
+  }
+
   private _buildCollectProtocolFeeParams(from: SignerWithAddress): JoinExitStablePool {
     return {
       from,
@@ -363,5 +456,44 @@ export default class StablePhantomPool extends BasePool {
     const result = [];
     for (let i = 0; i < items.length - 1; i++) result[i] = items[i < this.bptIndex ? i : i + 1];
     return result;
+  }
+
+  private async _addBptItem(items: BigNumberish[], value: BigNumber): Promise<BigNumberish[]> {
+    const result = [];
+    for (let i = 0; i < this.tokens.length - 1; i++) result[i] = i == this.bptIndex ? value : items[i < this.bptIndex ? i : i - 1];
+    return result;
+  }
+
+  async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
+    const scalingFactors = await this.getScalingFactors();
+    if (balances.length < scalingFactors.length) {
+      balances = await this._addBptItem(balances, bn(0));
+    }
+
+    return balances.map((b, i) => bn(b).mul(scalingFactors[i]).div(fp(1)));
+  }
+
+  async downscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
+    const scalingFactors = await this.getScalingFactors();
+    if (balances.length < scalingFactors.length) {
+      balances = await this._addBptItem(balances, bn(0));
+    }
+
+    return balances.map((b, i) => bn(b).mul(fp(1)).div(scalingFactors[i]));
+  }
+
+  private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    return fn(
+      this.poolId,
+      params.from?.address || ZERO_ADDRESS,
+      to,
+      currentBalances,
+      params.lastChangeBlock ?? 0,
+      params.protocolFeePercentage ?? 0,
+      params.data ?? '0x'
+    );
   }
 }

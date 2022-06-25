@@ -604,25 +604,24 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256[] memory scaledAmountsInWithBpt = _addBptItem(amountsIn, 0);
         _upscaleArray(scaledAmountsInWithBpt, scalingFactors);
 
-        (, uint256[] memory scaledAmountsInWithoutBpt) = _dropBptItem(scaledAmountsInWithBpt);
-
-        uint256 bptAmountOut = _computeBptAmountOut(balances, scaledAmountsInWithoutBpt);
-
+        // Balances come in from onJoinPool already upscaled
+        uint256 bptAmountOut = _computeBptAmountOut(balances, scaledAmountsInWithBpt);
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
         if (protocolSwapFeePercentage > 0) {
             _trackDueProtocolFeeByBpt(bptAmountOut, protocolSwapFeePercentage);
         }
 
-        return (bptAmountOut, amountsIn, new uint256[](balances.length));
+        return (bptAmountOut, _addBptItem(amountsIn, 0), new uint256[](balances.length));
     }
 
-    function _computeBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsInWithoutBpt)
+    function _computeBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsIn)
         private
         view
         returns (uint256)
     {
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (, uint256[] memory scaledAmountsInWithoutBpt) = _dropBptItem(scaledAmountsIn);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return
