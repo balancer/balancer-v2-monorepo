@@ -654,11 +654,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // amountsOut are unscaled, and do not include BPT
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens() - 1);
 
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+
         uint256[] memory scaledAmountsOutWithBpt = _addBptItem(amountsOut, 0);
         _upscaleArray(scaledAmountsOutWithBpt, scalingFactors);
-
-        (uint256 virtualSupply, uint256[] memory scaledAmountsOutWithoutBpt) = _dropBptItem(scaledAmountsOutWithBpt);
-        (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (, uint256[] memory scaledAmountsOutWithoutBpt) = _dropBptItem(scaledAmountsOutWithBpt);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
@@ -929,6 +929,22 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return index < _bptIndex ? index : index.sub(1);
     }
 
+    /**
+     * @notice Returns an array with the `bptIndex` value removed. Also returns the virtual supply,
+     * if called with current token balances.
+     *
+     * @dev This function can be used in two ways. It will always drop the BPT item from the
+     * `amounts` input array, and return the result in `amountsWithoutBpt`.
+     *
+     * If the amounts given are token balances (e.g., from join/exit hooks), then the
+     * `virtualSupply` will be accurate, and is returned as a convenience, since often both
+     * values are needed together.
+     *
+     * It can be called with other kinds of amounts, but in that case the value returned in
+     * virtualSupply will not be meaningful.
+     *
+     * You can always call `getVirtualSupply` directly, if that is what you need.
+     */
     function _dropBptItem(uint256[] memory amounts)
         internal
         view
