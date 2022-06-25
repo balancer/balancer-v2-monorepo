@@ -1,13 +1,13 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, BalancerErrorCodes } from '@balancer-labs/balancer-js';
 import { RawPrimaryPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/primary-issue/types';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -18,21 +18,27 @@ import Decimal from 'decimal.js';
 
 describe('PrimaryPool', function () {
   let pool: PrimaryPool, tokens: TokenList, securityToken: Token, currencyToken: Token;
-  let   trader: SignerWithAddress,
-        lp: SignerWithAddress,
-        admin: SignerWithAddress,
-        owner: SignerWithAddress,
-        other: SignerWithAddress;
+  let trader: SignerWithAddress,
+    lp: SignerWithAddress,
+    admin: SignerWithAddress,
+    owner: SignerWithAddress,
+    other: SignerWithAddress;
 
   const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+  function testAllEqualTo(arr: BigNumber[], val: BigNumberish) {
+    for (let i = 0; i < arr.length; i++) if (!arr[i].eq(val)) return false;
+    return true;
+  }
 
   before('setup', async () => {
     [, lp, trader, admin, owner, other] = await ethers.getSigners();
   });
-  
+
   sharedBeforeEach('deploy tokens', async () => {
     tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
@@ -40,15 +46,14 @@ describe('PrimaryPool', function () {
     securityToken = tokens.DAI;
     currencyToken = tokens.CDAI;
   });
-  
+
   async function deployPool(params: RawPrimaryPoolDeployment, mockedVault = true): Promise<void> {
     params = Object.assign({}, { swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, owner, admin }, params);
     pool = await PrimaryPool.create(params, mockedVault);
   }
-  
+
   describe('creation', () => {
     context('when the creation succeeds', () => {
-
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ securityToken, currencyToken }, false);
       });
@@ -67,13 +72,15 @@ describe('PrimaryPool', function () {
         const { tokens, balances } = await pool.getTokens();
 
         expect(tokens).to.have.members(pool.tokens.addresses);
-        expect(balances).to.be.zeros;
+        expect(testAllEqualTo(balances, 0)).to.be.equal(true);
+        // expect(balances).to.be.zeros;
       });
 
       it('sets the asset managers', async () => {
         await tokens.asyncEach(async (token) => {
           const { assetManager } = await pool.getTokenInfo(token);
-          expect(assetManager).to.be.zeroAddress;
+          expect(assetManager).to.be.equal(ZERO_ADDRESS);
+          // expect(assetManager).to.be.zeroAddress;
         });
       });
 
@@ -92,25 +99,27 @@ describe('PrimaryPool', function () {
       it('sets the decimals', async () => {
         expect(await pool.decimals()).to.equal(18);
       });
-
     });
 
     context('when the creation fails', () => {
       it('reverts if there are repeated tokens', async () => {
-        await expect(deployPool({ securityToken, currencyToken: securityToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
+        await expect(
+          deployPool({ securityToken: securityToken, currencyToken: securityToken }, false)
+        ).to.be.revertedWith(BalancerErrorCodes.UNSORTED_ARRAY.toString());
       });
-
     });
   });
-  
+
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
-      await deployPool({ securityToken, currencyToken }, false);
+      // minimum price should be given as non-zero value so that zero-division error won't occur
+      await deployPool({ securityToken, currencyToken, minimumPrice: BigNumber.from(1) }, false);
     });
 
     it('initialize pool', async () => {
       const previousBalances = await pool.getBalances();
-      expect(previousBalances).to.be.zeros;
+      expect(testAllEqualTo(previousBalances, 0)).to.be.equal(true);
+      // expect(previousBalances).to.be.zeros;
 
       await pool.initialize();
 
@@ -135,5 +144,4 @@ describe('PrimaryPool', function () {
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
   });
-  
 });

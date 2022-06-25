@@ -12,15 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/asset-manager-utils/IAssetManager.sol";
 
-pragma solidity ^0.7.0;
-
 contract MockAssetManager is IAssetManager {
     event Rebalanced(address assetManager, bytes32 poolId, IERC20 token, bool force);
+    event AssetManagerPoolConfigSet(address assetManager, bytes32 poolId, IERC20 token, bytes poolConfig);
 
     IERC20 internal _token;
 
@@ -28,8 +27,8 @@ contract MockAssetManager is IAssetManager {
         _token = token;
     }
 
-    function setConfig(bytes32, bytes memory) external override {
-        // solhint-disable-previous-line no-empty-blocks
+    function setConfig(bytes32 poolId, bytes memory poolConfig) external override {
+        emit AssetManagerPoolConfigSet(address(this), poolId, _token, poolConfig);
     }
 
     function getToken() external view override returns (IERC20) {

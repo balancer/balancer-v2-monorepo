@@ -3,3 +3,4 @@ export * from './pool-weighted';
 export * from './pool-utils';
 export * from './utils';
 export * from './types';
+export * from './errors';

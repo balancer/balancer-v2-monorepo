@@ -268,6 +268,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
 
+        // Joins are unsupported when paused
+        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
+        // initialization in this case.
+        _ensureNotPaused();
+
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
                 poolId,
@@ -339,6 +344,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
+            // Exits are unsupported when paused
+            _ensureNotPaused();
+
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
 

@@ -155,13 +155,21 @@ export default {
   },
 
   toPrimaryPoolDeployment(params: RawPrimaryPoolDeployment): PrimaryPoolDeployment {
-    let { minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+    let {
+      minimumPrice,
+      basePrice,
+      maxSecurityOffered,
+      issueCutoffTime,
+      swapFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+    } = params;
 
     if (!minimumPrice) minimumPrice = bn(0);
     if (!basePrice) basePrice = bn(100);
     if (!maxSecurityOffered) maxSecurityOffered = bn(1000);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!issueCutoffTime) issueCutoffTime = bn(new Date().getTime()*2);
+    if (!issueCutoffTime) issueCutoffTime = bn(new Date().getTime() * 2);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
 
@@ -245,7 +253,9 @@ export default {
       const args = Object.assign(
         {},
         { symbol: `TK${i}`, name: `Token ${i}`, decimals: varyDecimals ? computeDecimalsFromIndex(i) : 18, from },
-        param
+        param,
+        param.symbol && !param.name && { name: param.symbol },
+        !param.symbol && param.name && { symbol: param.name }
       );
       return this.toTokenDeployment(args);
     });

@@ -6,6 +6,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-vault/contracts/PoolBalances.sol";
 import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
@@ -14,15 +15,14 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
-contract PrimaryIssuePool is BasePool, IGeneralPool
-{   
-    using BokkyPooBahsDateTimeLibrary for uint;
+contract PrimaryIssuePool is BasePool, IGeneralPool {
+    using BokkyPooBahsDateTimeLibrary for uint256;
     using Math for uint256;
 
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
 
-    uint256 private constant _TOTAL_TOKENS = 3;//Security token, Currency token (ie, paired token), and BPT although we don't use BPT in this pool
+    uint256 private constant _TOTAL_TOKENS = 2; //Security token, Currency token (ie, paired token)
 
     uint256 private immutable _scalingFactorSecurity;
     uint256 private immutable _scalingFactorCurrency;
@@ -31,7 +31,6 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     uint256 private _maxPrice;
 
     uint256 private _MAX_TOKEN_BALANCE;
-
     uint256 private _cutoffTime;
     uint256 private _startTime;
 
@@ -39,7 +38,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     uint256 private immutable _currencyIndex;
     uint256 private immutable _bptIndex;
 
-    address payable private balancerManager;
+    address payable private _balancerManager;
 
     struct Params {
         uint256 fee;
@@ -64,24 +63,25 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         address owner;
     }*/
 
-    constructor(IVault vault,
-                address security,
-                address currency,
-                uint256 minimumPrice,
-                uint256 basePrice,
-                uint256 maxSecurityOffered,
-                uint256 issueFeePercentage,
-                uint256 pauseWindowDuration,
-                uint256 bufferPeriodDuration,
-                uint256 issueCutoffTime,
-                address owner    
-                )
+    constructor(
+        IVault vault,
+        address security,
+        address currency,
+        uint256 minimumPrice,
+        uint256 basePrice,
+        uint256 maxSecurityOffered,
+        uint256 issueFeePercentage,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        uint256 issueCutoffTime,
+        address owner
+    )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
             ERC20(security).name(),
             ERC20(security).symbol(),
-            _sortTokens(IERC20(security), IERC20(currency), IERC20(this)),
+            _sortTokens(IERC20(security), IERC20(currency)),
             new address[](_TOTAL_TOKENS),
             issueFeePercentage,
             pauseWindowDuration,
@@ -89,6 +89,10 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
             owner
         )
     {
+        // console.log(ERC20(security).name());
+        // console.log(security);
+        // console.log(ERC20(currency).name());
+        // console.log(currency);
         // set tokens
         _security = IERC20(security);
         _currency = IERC20(currency);
@@ -118,8 +122,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         _cutoffTime = issueCutoffTime;
         _startTime = block.timestamp;
 
-        //set owner 
-        balancerManager = payable(owner);
+        //set owner
+        _balancerManager = payable(owner);
     }
 
     /*constructor(NewPoolParams memory params)
@@ -165,7 +169,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         _startTime = block.timestamp;
 
         //set owner 
-        balancerManager = payable(params.owner);
+        _balancerManager = payable(params.owner);
     }*/
 
     function getSecurity() external view returns (address) {
@@ -189,8 +193,9 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
             maxAmountsIn: _maxAmountsIn,
             userData: "",
             fromInternalBalance: false
-        });        
-        getVault().joinPool(getPoolId(), balancerManager, address(this), request);                                
+        });
+        IVault _vault = getVault();
+        _vault.joinPool(getPoolId(), _balancerManager, address(this), request);
     }
 
     function exit() external {
@@ -206,8 +211,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
             minAmountsOut: _minAmountsOut,
             userData: "",
             toInternalBalance: false
-        });        
-        getVault().exitPool(getPoolId(), address(this), balancerManager, request);                                
+        });
+        getVault().exitPool(getPoolId(), address(this), _balancerManager, request);
     }
 
     function onSwap(
@@ -215,29 +220,23 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) view returns (uint256) {
-        
+    ) public view override onlyVault(request.poolId) returns (uint256) {
         // ensure that swap request is not beyond issue's cut off time
         require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp);
 
         // ensure that price is within price band
         uint256[] memory scalingFactors = _scalingFactors();
-        Params memory params = Params({
-            fee: getSwapFeePercentage(),
-            minPrice: _minPrice,
-            maxPrice: _maxPrice
-        });
+        Params memory params = Params({ fee: getSwapFeePercentage(), minPrice: _minPrice, maxPrice: _maxPrice });
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             request.amount = _upscale(request.amount, scalingFactors[indexIn]);
             uint256 amountOut = _onSwapIn(request, balances, params);
             return _downscaleDown(amountOut, scalingFactors[indexOut]);
-        } else if (request.kind == IVault.SwapKind.GIVEN_OUT){
+        } else if (request.kind == IVault.SwapKind.GIVEN_OUT) {
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
             uint256 amountIn = _onSwapOut(request, balances, params);
             return _downscaleUp(amountIn, scalingFactors[indexIn]);
         }
-
     }
 
     function _onSwapIn(
@@ -260,19 +259,20 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _currency, Errors.INVALID_TOKEN);
-        
-        //returning currency for current price of security paid in, but only if new price of security do not go out of price band
-        if(request.tokenOut==_currency){
+
+        // returning currency for current price of security paid in,
+        // but only if new price of security do not go out of price band
+        if (request.tokenOut == _currency) {
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], request.amount);
             uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], tokenOutAmt);
 
-            if(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice)
-                return tokenOutAmt;
-            else
-                return 0;
-        }      
+            if (
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+            ) return tokenOutAmt;
+            else return 0;
+        }
     }
 
     function _swapCurrencyIn(
@@ -281,18 +281,19 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenOut == _security, Errors.INVALID_TOKEN);
-        
-        //returning security for currency paid in at current price of security, but only if new price of security do not go out of price band
-        if(request.tokenOut==_security){
+
+        // returning security for currency paid in at current price of security,
+        // but only if new price of security do not go out of price band
+        if (request.tokenOut == _security) {
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
             uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], tokenOutAmt);
 
-            if(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice)
-                return tokenOutAmt;
-            else
-                return 0;
+            if (
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+            ) return tokenOutAmt;
+            else return 0;
         }
     }
 
@@ -316,18 +317,18 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _currency, Errors.INVALID_TOKEN);
-        
+
         //returning security to be swapped out for paid in currency
-        if(request.tokenIn==_currency){
+        if (request.tokenIn == _currency) {
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
             uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenOutAmt);
 
-            if(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice)
-                return tokenOutAmt;
-            else
-                return 0; 
+            if (
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+            ) return tokenOutAmt;
+            else return 0;
         }
     }
 
@@ -337,18 +338,18 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         Params memory params
     ) internal view returns (uint256) {
         _require(request.tokenIn == _security, Errors.INVALID_TOKEN);
-        
+
         //returning currency to be paid in for security paid in
-        if(request.tokenIn==_security){
+        if (request.tokenIn == _security) {
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
             uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenOutAmt);
 
-            if(Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice)
-                return tokenOutAmt;
-            else
-                return 0;
+            if (
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
+                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+            ) return tokenOutAmt;
+            else return 0;
         }
     }
 
@@ -358,10 +359,9 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         address recipient,
         uint256[] memory,
         bytes memory
-    ) internal override whenNotPaused view returns (uint256, uint256[] memory) {
-
+    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
-        _require(sender == balancerManager, Errors.CALLER_IS_NOT_OWNER);
+        _require(sender == _balancerManager, Errors.CALLER_IS_NOT_OWNER);
         _require(recipient == address(this), Errors.CALLER_IS_NOT_OWNER);
 
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
@@ -378,15 +378,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         uint256,
         uint256[] memory,
         bytes memory
-    )
-        internal
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory
-        )
-    {
+    ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNHANDLED_JOIN_KIND);
     }
 
@@ -399,15 +391,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         uint256,
         uint256[] memory,
         bytes memory
-    )
-        internal
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory
-        )
-    {
+    ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNHANDLED_JOIN_KIND);
     }
 
@@ -420,7 +404,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        if (token == _security || token == _currency ) {
+        if (token == _security || token == _currency) {
             return FixedPoint.ONE;
         } else {
             _revert(Errors.INVALID_TOKEN);
@@ -434,5 +418,4 @@ contract PrimaryIssuePool is BasePool, IGeneralPool
         scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
     }
-
 }

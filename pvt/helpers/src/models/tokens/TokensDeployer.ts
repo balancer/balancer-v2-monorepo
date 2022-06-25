@@ -15,7 +15,7 @@ class TokensDeployer {
     const defaultSender = from || (await ethers.getSigners())[0];
     const trimmedParams = sorted ? this._trimParamsForSortedDeploy(params) : params;
     const deployments: TokenDeployment[] = TypesConverter.toTokenDeployments(
-      trimmedParams,
+      params, // trimmedParams,
       defaultSender,
       varyDecimals
     );

@@ -38,6 +38,16 @@ function _sortTokens(
     tokens[indexTokenC] = tokenC;
 }
 
+function _sortTokens(IERC20 tokenA, IERC20 tokenB) view returns (IERC20[] memory tokens) {
+    // console.log(ERC20(address(tokenA)).name());
+    // console.log(address(tokenA));
+    // console.log(ERC20(address(tokenB)).name());
+    // console.log(address(tokenB));
+    tokens = new IERC20[](2);
+    tokens[0] = tokenA > tokenB ? tokenB : tokenA;
+    tokens[1] = tokenA <= tokenB ? tokenB : tokenA;
+}
+
 function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC20[] memory sorted) {
     sorted = new IERC20[](tokens.length + 1);
 
