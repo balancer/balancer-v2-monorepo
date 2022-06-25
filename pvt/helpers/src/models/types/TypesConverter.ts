@@ -2,10 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { ethers } from 'ethers';
 
-import { bn, fp } from '../../numbers';
+import { BigNumberish, bn, fp } from '../../numbers';
 import { DAY, MONTH } from '../../time';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
-
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
@@ -63,11 +62,12 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
       poolType,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
@@ -77,15 +77,14 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!oracleEnabled) oracleEnabled = true;
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
-    if (undefined === swapEnabledOnStart) swapEnabledOnStart = true;
-    if (undefined === mustAllowlistLPs) mustAllowlistLPs = false;
-    if (undefined === protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
-    if (undefined === managementSwapFeePercentage) managementSwapFeePercentage = fp(0);
-    if (poolType === WeightedPoolType.ORACLE_WEIGHTED_POOL && tokens.length !== 2)
-      throw Error('Cannot request custom 2-token pool without 2 tokens in the list');
+    if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
+    if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
+    if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
+    if (undefined == protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
+    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = fp(0);
+    if (undefined == managementAumFeePercentage) managementAumFeePercentage = fp(0);
     return {
       tokens,
       weights,
@@ -93,11 +92,12 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
@@ -113,8 +113,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
-      meta,
     } = params;
 
     if (!tokens) tokens = new TokenList();
@@ -124,8 +122,6 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-    if (!oracleEnabled) oracleEnabled = true;
-    if (!meta) meta = false;
 
     return {
       tokens,
@@ -135,8 +131,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
-      meta,
       owner: params.owner,
     };
   },
@@ -322,7 +316,7 @@ export default {
     return typeof to === 'string' ? to : to.address;
   },
 
-  toBytes32(value: number): string {
+  toBytes32(value: BigNumberish): string {
     const hexy = ethers.utils.hexlify(value);
     return ethers.utils.hexZeroPad(hexy, 32);
   },

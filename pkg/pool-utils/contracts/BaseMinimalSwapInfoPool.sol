@@ -15,8 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
+
 import "./BasePool.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
 /**
  * @dev Extension of `BasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
@@ -69,7 +70,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled. The swap fee has already
+     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled. The swap fee has already
      * been deducted from `swapRequest.amount`.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
@@ -86,7 +87,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      *
      * Returns the amount of tokens that will be granted to the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled.
+     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
      * and returning it to the Vault.

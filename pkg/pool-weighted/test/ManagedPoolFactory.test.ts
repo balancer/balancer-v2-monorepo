@@ -27,12 +27,15 @@ describe('ManagedPoolFactory', function () {
   let vault: Vault;
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
+  let admin: SignerWithAddress;
   let poolControllerAddress: string;
+  let protocolFeesCollector: string;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
+  const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const MIN_WEIGHT_CHANGE_DURATION = DAY;
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
@@ -42,14 +45,16 @@ describe('ManagedPoolFactory', function () {
   let createTime: BigNumber;
 
   before('setup signers', async () => {
-    [, manager, assetManager] = await ethers.getSigners();
+    [, admin, manager, assetManager] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
 
     baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
+
+    protocolFeesCollector = await baseFactory.getAumProtocolFeesCollector();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
@@ -75,6 +80,8 @@ describe('ManagedPoolFactory', function () {
       mustAllowlistLPs: mustAllowlistLPs,
       protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+      managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumProtocolFeesCollector: protocolFeesCollector,
     };
 
     const basePoolRights: BasePoolRights = {
@@ -159,6 +166,10 @@ describe('ManagedPoolFactory', function () {
 
     it('sets management swap fee', async () => {
       expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+    });
+
+    it('sets management aum fee', async () => {
+      expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
     });
 
     it('sets the pool manager ', async () => {

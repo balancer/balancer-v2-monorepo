@@ -10,12 +10,12 @@ import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { range } from 'lodash';
 
-export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): void {
+export function itPaysProtocolFeesFromInvariantGrowth(): void {
   const MAX_TOKENS = 10;
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
-  const numTokens = type == WeightedPoolType.ORACLE_WEIGHTED_POOL ? 2 : MAX_TOKENS;
+  const numTokens = MAX_TOKENS;
 
   let pool: WeightedPool;
   let tokens: TokenList;
@@ -69,7 +69,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
           itIsUpdatedByExits();
         });
 
-        context('when paused', () => {
+        context.skip('when paused', () => {
           sharedBeforeEach(async () => {
             await pool.pause();
           });
@@ -154,7 +154,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(type: WeightedPoolType): v
           });
         });
 
-        context('when paused', () => {
+        context.skip('when paused', () => {
           sharedBeforeEach(async () => {
             await pool.pause();
           });

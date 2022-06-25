@@ -17,82 +17,85 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
- * @dev Library for compressing and uncompresing numbers by using smaller types.
- * All values are 18 decimal fixed-point numbers in the [0.0, 1.0] range,
- * so heavier compression (fewer bits) results in fewer decimals.
+ * @dev Library for compressing and decompressing numbers by using smaller types.
+ * All values are 18 decimal fixed-point numbers, so heavier compression (fewer bits)
+ * results in fewer decimals.
  */
 library WeightCompression {
-    uint256 private constant _UINT31_MAX = 2**(31) - 1;
-
     using FixedPoint for uint256;
 
     /**
-     * @dev Convert a 16-bit value to full FixedPoint
+     * @dev Compress a 256 bit value into `bitLength` bits.
+     * To compress a value down to n bits, you first "normalize" it over the full input range.
+     * For instance, if the maximum value were 10_000, and the `value` is 2_000, it would be
+     * normalized to 0.2.
+     *
+     * Finally, "scale" that normalized value into the output range: adapting [0, maxUncompressedValue]
+     * to [0, max n-bit value]. For n=8 bits, the max value is 255, so 0.2 corresponds to 51.
+     * Likewise, for 16 bits, 0.2 would be stored as 13_107.
      */
-    function uncompress16(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(type(uint16).max);
+    function compress(
+        uint256 value,
+        uint256 bitLength,
+        uint256 maxUncompressedValue
+    ) internal pure returns (uint256) {
+        // It's not meaningful to compress 1-bit values (2 bits is also a bit silly, but theoretically possible).
+        // 255 would likewise not be very helpful, but is technically valid.
+        _require(bitLength >= 2 && bitLength <= 255, Errors.OUT_OF_BOUNDS);
+        // The value cannot exceed the input range, or the compression would not "fit" in the output range.
+        _require(value <= maxUncompressedValue, Errors.OUT_OF_BOUNDS);
+
+        // There is another way this can fail: maxUncompressedValue * value can overflow, if either or both
+        // are too big. Essentially, the maximum bitLength will be about 256 - (# bits needed for maxUncompressedValue).
+        // It's not worth it to test for this: the caller is responsible for many things anyway, notably ensuring
+        // compress and decompress are called with the same arguments, and packing the resulting value properly
+        // (the most common use is to assist in packing several variables into a 256-bit word).
+
+        uint256 maxCompressedValue = (1 << bitLength) - 1;
+
+        return value.mulDown(maxCompressedValue).divDown(maxUncompressedValue);
     }
 
     /**
-     * @dev Compress a FixedPoint value to 16 bits
+     * @dev Reverse a compression operation, and restore the 256 bit value from a compressed value of
+     * length `bitLength`. The compressed value is in the range [0, 2^(bitLength) - 1], and we are mapping
+     * it back onto the uncompressed range [0, maxUncompressedValue].
+     *
+     * It is very important that the bitLength and maxUncompressedValue arguments are the
+     * same for compress and decompress, or the results will be meaningless. This must be validated
+     * externally.
      */
-    function compress16(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(type(uint16).max).divUp(FixedPoint.ONE);
+    function decompress(
+        uint256 value,
+        uint256 bitLength,
+        uint256 maxUncompressedValue
+    ) internal pure returns (uint256) {
+        // It's not meaningful to compress 1-bit values (2 bits is also a bit silly, but theoretically possible).
+        // 255 would likewise not be very helpful, but is technically valid.
+        _require(bitLength >= 2 && bitLength <= 255, Errors.OUT_OF_BOUNDS);
+        uint256 maxCompressedValue = (1 << bitLength) - 1;
+        // The value must not exceed the maximum compressed value (2**(bitLength) - 1), or it will exceed the max
+        // uncompressed value.
+        _require(value <= maxCompressedValue, Errors.OUT_OF_BOUNDS);
+
+        return value.mulUp(maxUncompressedValue).divDown(maxCompressedValue);
+    }
+
+    // Special case overloads
+
+    /**
+     * @dev It is very common for the maximum value to be one: Weighted Pool weights, for example.
+     * Overload for this common case, passing FixedPoint.ONE to the general `compress` function.
+     */
+    function compress(uint256 value, uint256 bitLength) internal pure returns (uint256) {
+        return compress(value, bitLength, FixedPoint.ONE);
     }
 
     /**
-     * @dev Convert a 31-bit value to full FixedPoint
+     * @dev It is very common for the maximum value to be one: Weighted Pool weights, for example.
+     * Overload for this common case, passing FixedPoint.ONE to the general `decompress` function.
      */
-    function uncompress31(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(_UINT31_MAX);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 31 bits
-     */
-    function compress31(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(_UINT31_MAX).divUp(FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Convert a 32-bit value to full FixedPoint
-     */
-    function uncompress32(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(FixedPoint.ONE).divUp(type(uint32).max);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 32 bits
-     */
-    function compress32(uint256 value) internal pure returns (uint256) {
-        return value.mulUp(type(uint32).max).divUp(FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Convert a 64-bit value to full FixedPoint (assuming a max value of ONE)
-     */
-    function uncompress64(uint256 value) internal pure returns (uint256) {
-        return uncompress64(value, FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 64 bits (assuming a max value of ONE)
-     */
-    function compress64(uint256 value) internal pure returns (uint256) {
-        return compress64(value, FixedPoint.ONE);
-    }
-
-    /**
-     * @dev Convert a 64-bit value to full FixedPoint
-     */
-    function uncompress64(uint256 value, uint256 maxValue) internal pure returns (uint256) {
-        return value.mulUp(maxValue).divUp(type(uint64).max);
-    }
-
-    /**
-     * @dev Compress a FixedPoint value to 64 bits
-     */
-    function compress64(uint256 value, uint256 maxValue) internal pure returns (uint256) {
-        return value.mulUp(type(uint64).max).divUp(maxValue);
+    function decompress(uint256 value, uint256 bitLength) internal pure returns (uint256) {
+        return decompress(value, bitLength, FixedPoint.ONE);
     }
 }

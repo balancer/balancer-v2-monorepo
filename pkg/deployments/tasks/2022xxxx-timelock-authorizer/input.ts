@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 
 export type RoleData = {
   role: string;
@@ -12,8 +12,8 @@ export type TimelockAuthorizerDeployment = {
   rolesData: RoleData[];
 };
 
-const Vault = new Task('20210418-vault');
-const Authorizer = new Task('20210418-authorizer');
+const Vault = new Task('20210418-vault', TaskMode.READ_ONLY);
+const Authorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
 
 export default {
   Vault,

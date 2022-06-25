@@ -32,6 +32,7 @@ import * as parser from '@solidity-parser/parser';
 
 import Task from './task';
 import logger from './logger';
+import { findContractSourceName, getAllFullyQualifiedNames } from './buildinfo';
 
 const MAX_VERIFICATION_INTENTS = 3;
 
@@ -80,7 +81,7 @@ export default class Verifier {
     const buildInfo = this.findBuildInfoWithContract(buildInfos, name);
     buildInfo.input = this.trimmedBuildInfoInput(name, buildInfo.input);
 
-    const sourceName = this.findContractSourceName(buildInfo, name);
+    const sourceName = findContractSourceName(buildInfo, name);
     const contractInformation = await extractMatchingContractInformation(sourceName, name, buildInfo, deployedBytecode);
     if (!contractInformation) throw Error('Could not find a bytecode matching the requested contract');
 
@@ -171,7 +172,7 @@ export default class Verifier {
 
   private findBuildInfoWithContract(buildInfos: BuildInfo[], contractName: string): BuildInfo {
     const found = buildInfos.find((buildInfo) =>
-      this.getAllFullyQualifiedNames(buildInfo).some((name) => name.contractName === contractName)
+      getAllFullyQualifiedNames(buildInfo).some((name) => name.contractName === contractName)
     );
 
     if (found === undefined) {
@@ -179,24 +180,6 @@ export default class Verifier {
     } else {
       return found;
     }
-  }
-
-  private findContractSourceName(buildInfo: BuildInfo, contractName: string): string {
-    const names = this.getAllFullyQualifiedNames(buildInfo);
-    const contractMatches = names.filter((name) => name.contractName === contractName);
-    if (contractMatches.length === 0)
-      throw Error(`Could not find a source file for the requested contract ${contractName}`);
-    if (contractMatches.length > 1) throw Error(`More than one source file was found to match ${contractName}`);
-    return contractMatches[0].sourceName;
-  }
-
-  private getAllFullyQualifiedNames(buildInfo: BuildInfo): Array<{ sourceName: string; contractName: string }> {
-    const contracts = buildInfo.output.contracts;
-    return Object.keys(contracts).reduce((names: { sourceName: string; contractName: string }[], sourceName) => {
-      const contractsNames = Object.keys(contracts[sourceName]);
-      const qualifiedNames = contractsNames.map((contractName) => ({ sourceName, contractName }));
-      return names.concat(qualifiedNames);
-    }, []);
   }
 
   // Trims the inputs of the build info to only keep imported files, avoiding submitting unnecessary source files for
