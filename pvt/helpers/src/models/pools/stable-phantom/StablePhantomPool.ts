@@ -321,11 +321,11 @@ export default class StablePhantomPool extends BasePool {
   toList<T>(items: NAry<T>): T[] {
     return Array.isArray(items) ? items : [items];
   }
-  
+
   async joinGivenIn(params: JoinGivenInStablePool): Promise<JoinResult> {
     // Need to drop BPT from amountsIn
     const tokenAmountsIn = this.toList(params.amountsIn);
-    
+
     params.amountsIn = await this._dropBptItem(tokenAmountsIn);
 
     return this.join(this._buildJoinGivenInParams(params));
@@ -334,7 +334,7 @@ export default class StablePhantomPool extends BasePool {
   async queryJoinGivenIn(params: JoinGivenInStablePool): Promise<JoinQueryResult> {
     // Need to drop BPT from amountsIn
     const tokenAmountsIn = this.toList(params.amountsIn);
-    
+
     params.amountsIn = await this._dropBptItem(tokenAmountsIn);
 
     return this.queryJoin(this._buildJoinGivenInParams(params));
@@ -460,7 +460,8 @@ export default class StablePhantomPool extends BasePool {
 
   private async _addBptItem(items: BigNumberish[], value: BigNumber): Promise<BigNumberish[]> {
     const result = [];
-    for (let i = 0; i < this.tokens.length - 1; i++) result[i] = i == this.bptIndex ? value : items[i < this.bptIndex ? i : i - 1];
+    for (let i = 0; i < this.tokens.length - 1; i++)
+      result[i] = i == this.bptIndex ? value : items[i < this.bptIndex ? i : i - 1];
     return result;
   }
 
