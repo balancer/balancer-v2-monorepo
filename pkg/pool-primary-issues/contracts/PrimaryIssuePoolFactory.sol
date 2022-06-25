@@ -5,20 +5,19 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 
-import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol';
-import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol';
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 import "./PrimaryIssuePool.sol";
 import "./interfaces/IPrimaryIssuePoolFactory.sol";
 
-contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract PrimaryIssuePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
 
-    constructor(IVault vault) BasePoolFactory(vault) {
+    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(PrimaryIssuePool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -33,43 +32,22 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
         
-        /*address assetManager = msg.sender;
-        address[] memory assetmanagers = new address[](2);
-        assetmanagers[0] = assetManager;
-        assetmanagers[1] = assetManager;
+        return
+            _create(
+                abi.encode(
+                    getVault(),
+                    _security,
+                    _currency,
+                    _minimumPrice,
+                    _basePrice,
+                    _maxAmountsIn,
+                    _issueFeePercentage,
+                    pauseWindowDuration,
+                    bufferPeriodDuration,
+                    _cutOffTime,
+                    msg.sender
+                ));
 
-        PrimaryIssuePool.NewPoolParams memory poolparams = PrimaryIssuePool.NewPoolParams({
-            vault: getVault(),
-            name: ERC20(_security).name(),
-            symbol: ERC20(_security).symbol(),
-            security: IERC20(_security),
-            currency: IERC20(_currency),
-            assetManagers: assetmanagers,
-            minimumPrice: _minimumPrice,
-            basePrice: _basePrice,
-            maxSecurityOffered : _maxAmountsIn,
-            issueFeePercentage: _issueFeePercentage,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            issueCutoffTime: _cutOffTime,
-            owner: assetManager
-        });
-
-        address pool = address(new PrimaryIssuePool(poolparams));*/
-        address pool = address(new PrimaryIssuePool(getVault(),
-                                                    _security,
-                                                    _currency,
-                                                    _minimumPrice,
-                                                    _basePrice,
-                                                    _maxAmountsIn,
-                                                    _issueFeePercentage,
-                                                    pauseWindowDuration,
-                                                    bufferPeriodDuration,
-                                                    _cutOffTime,
-                                                    msg.sender
-                                                    ));
-        _register(pool);
-        return pool;
     }
 
 }

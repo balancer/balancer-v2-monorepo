@@ -7,11 +7,11 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-vault/contracts/PoolBalances.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 

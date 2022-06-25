@@ -5,13 +5,13 @@
 pragma solidity ^0.7.1;
 pragma experimental ABIEncoderV2;
 
-import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol';
 import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol';
 import '@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol';
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import '@balancer-labs/v2-vault/contracts/interfaces/IVault.sol';
-import '@balancer-labs/v2-vault/contracts/interfaces/IAsset.sol';
+import '@balancer-labs/v2-interfaces/contracts/vault/IVault.sol';
+import '@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol';
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 import './interfaces/IPrimaryIssuePoolFactory.sol';
 import './interfaces/IPrimaryIssuePool.sol';

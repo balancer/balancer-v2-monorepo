@@ -5,7 +5,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import '@balancer-labs/v2-interfaces/contracts/vault/IVault.sol';
 interface IPrimaryIssuePoolFactory {
 
     function create(address security, 
