@@ -101,13 +101,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
 
-    // Since this Pool is not joined or exited via the regular onJoinPool and onExitPool hooks, it lacks a way to
-    // continuously pay due protocol fees. Instead, it keeps track of those internally.
-    // Due protocol fees are expressed in BPT, which leads to reduced gas costs when compared to tracking due fees for
-    // each Pool token. This means that some of the BPT deposited in the Vault for the Pool is part of the 'virtual'
-    // supply, as it belongs to the protocol.
-    uint256 private _dueProtocolFeeBptAmount;
-
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
     //
@@ -125,7 +118,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
-    event DueProtocolFeeIncreased(uint256 bptAmount);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -143,7 +135,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     constructor(NewPoolParams memory params)
-        LegacyBasePool(
+        BasePool(
             params.vault,
             IVault.PoolSpecialization.GENERAL,
             params.name,
@@ -242,10 +234,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _bptIndex;
     }
 
-    function getDueProtocolFeeBptAmount() external view returns (uint256) {
-        return _dueProtocolFeeBptAmount;
-    }
-
     // Typically, `_onSwapGivenIn` and `_onSwapGivenOut` handlers are meant to process swaps between Pool tokens.
     // Since one of the Pool's tokens is the preminted BPT, we neeed to a) handle swaps where that tokens is involved
     // separately (as they are effectively single-token joins or exits), and b) remove BPT from the balances array when
@@ -279,13 +267,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
             // For given in swaps, request.amount holds the amount in.
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
             }
         } else if (request.tokenOut == IERC20(this)) {
             amountOut = _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(amountOut, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(amountOut, protocolSwapFeePercentage);
             }
         } else {
             // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
@@ -313,7 +301,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
                 balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
 
-                _trackDueProtocolFeeByInvariantIncrement(
+                _payDueProtocolFeeByInvariantIncrement(
                     invariant,
                     currentAmp,
                     balances,
@@ -341,14 +329,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             amountIn = _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
 
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(amountIn, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(amountIn, protocolSwapFeePercentage);
             }
         } else if (request.tokenOut == IERC20(this)) {
             amountIn = _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
             // For given out swaps, request.amount holds the amount out.
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
             }
         } else {
             // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
@@ -376,7 +364,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
                 balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
 
-                _trackDueProtocolFeeByInvariantIncrement(
+                _payDueProtocolFeeByInvariantIncrement(
                     invariant,
                     currentAmp,
                     balances,
@@ -457,9 +445,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Tracks newly charged protocol fees after a swap where BPT was not involved (i.e. a regular swap).
+     * @dev Pay newly charged protocol fees after a swap where BPT was not involved (i.e. a regular swap).
      */
-    function _trackDueProtocolFeeByInvariantIncrement(
+    function _payDueProtocolFeeByInvariantIncrement(
         uint256 previousInvariant,
         uint256 amp,
         uint256[] memory postSwapBalances,
@@ -490,9 +478,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
             );
 
-            _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
-
-            emit DueProtocolFeeIncreased(protocolFeeAmount);
+            _payProtocolFees(protocolFeeAmount);
         }
     }
 
@@ -500,13 +486,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * @dev Tracks newly charged protocol fees after a swap where `bptAmount` was either sent or received (i.e. a
      * single-token join or exit).
      */
-    function _trackDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
+    function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
         uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
 
         uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
-        _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
 
-        emit DueProtocolFeeIncreased(protocolFeeAmount);
+        _payProtocolFees(protocolFeeAmount);
     }
 
     /**
@@ -554,7 +539,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Revert on all joins, except for the special join kind that simply pays due protocol fees to the Vault.
+     * @dev Revert on all joins.
      */
     function _onJoinPool(
         bytes32,
@@ -564,22 +549,16 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory userData
+        bytes memory
     )
         internal
+        pure
         override
         returns (
             uint256,
-            uint256[] memory,
             uint256[] memory
         )
     {
-        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
-
-        if (kind == StablePhantomPoolUserData.JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
-            return _collectProtocolFees();
-        }
-
         _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
     }
 
@@ -602,7 +581,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         override
         returns (
             uint256,
-            uint256[] memory,
             uint256[] memory
         )
     {
@@ -626,29 +604,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         );
 
         return (bptAmountIn, _addBptItem(amountsOut, 0));
-    }
-
-    /**
-     * @dev Collects due protocol fees
-     */
-    function _collectProtocolFees()
-        private
-        returns (
-            uint256 bptOut,
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
-        uint256 totalTokens = _getTotalTokens();
-
-        // This join neither grants BPT nor takes any tokens from the sender.
-        bptOut = 0;
-        amountsIn = new uint256[](totalTokens);
-
-        // Due protocol fees are all zero except for the BPT amount, which is then zeroed out.
-        dueProtocolFeeAmounts = new uint256[](totalTokens);
-        dueProtocolFeeAmounts[_bptIndex] = _dueProtocolFeeBptAmount;
-        _dueProtocolFeeBptAmount = 0;
     }
 
     // Scaling factors
@@ -900,9 +855,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
     // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-    // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
-        return totalSupply().sub(bptBalance).add(_dueProtocolFeeBptAmount);
+        return totalSupply().sub(bptBalance);
     }
 
     /**

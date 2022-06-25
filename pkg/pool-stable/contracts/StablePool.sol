@@ -22,7 +22,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/LegacyBaseMinimalSwapInfoPool.sol";
 
 import "./StableMath.sol";
@@ -34,7 +34,7 @@ import "./StableMath.sol";
  * popularized by Curve) which allows for significantly larger trades before encountering substantial price impact,
  * vastly increasing capital efficiency for like-kind swaps.
  */
-contract StablePool is BaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProvider {
+contract StablePool is LegacyBaseGeneralPool, LegacyBaseMinimalSwapInfoPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using StablePoolUserData for bytes;
