@@ -9,7 +9,7 @@ import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -65,7 +65,7 @@ describe('BasePool', function () {
     if (!poolTokens) poolTokens = tokens;
     if (!assetManagers) assetManagers = Array(poolTokens.length).fill(ZERO_ADDRESS);
     if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
-    if (!pauseWindowDuration) pauseWindowDuration = 0;
+    if (!pauseWindowDuration) pauseWindowDuration = MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
 
@@ -208,6 +208,20 @@ describe('BasePool', function () {
 
             expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage: newSwapFeePercentage });
           });
+
+          context('when paused', () => {
+            sharedBeforeEach('pause pool', async () => {
+              const action = await actionId(pool, 'pause');
+              await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
+              await pool.connect(admin).pause();
+            });
+
+            it('reverts', async () => {
+              await expect(pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).to.be.revertedWith(
+                'PAUSED'
+              );
+            });
+          });
         });
 
         context('when the new swap fee percentage is above the maximum', () => {
@@ -302,7 +316,7 @@ describe('BasePool', function () {
     });
   });
 
-  describe('set paused', () => {
+  describe('pause', () => {
     let pool: Contract;
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
@@ -317,8 +331,63 @@ describe('BasePool', function () {
         expect(paused).to.be.true;
       });
 
+      context('when paused', () => {
+        let poolId: string;
+        let initialBalances: BigNumber[];
+
+        sharedBeforeEach('deploy and initialize pool', async () => {
+          initialBalances = Array(tokens.length).fill(fp(1000));
+          poolId = await pool.getPoolId();
+
+          const request: JoinPoolRequest = {
+            assets: tokens.addresses,
+            maxAmountsIn: initialBalances,
+            userData: WeightedPoolEncoder.joinInit(initialBalances),
+            fromInternalBalance: false,
+          };
+
+          await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
+          await tokens.approve({ from: poolOwner, to: vault });
+
+          await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
+        });
+
+        sharedBeforeEach('pause pool', async () => {
+          await pool.connect(sender).pause();
+        });
+
+        it('joins revert', async () => {
+          const OTHER_JOIN_KIND = 1;
+
+          const request: JoinPoolRequest = {
+            assets: tokens.addresses,
+            maxAmountsIn: Array(tokens.length).fill(0),
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+            fromInternalBalance: false,
+          };
+
+          await expect(
+            vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request)
+          ).to.be.revertedWith('PAUSED');
+        });
+
+        it('exits revert', async () => {
+          const OTHER_EXIT_KIND = 1;
+
+          const request: ExitPoolRequest = {
+            assets: tokens.addresses,
+            minAmountsOut: Array(tokens.length).fill(0),
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+            toInternalBalance: false,
+          };
+
+          await expect(
+            vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+
       it('can unpause', async () => {
-        await pool.connect(sender).pause();
         await pool.connect(sender).unpause();
 
         const { paused } = await pool.getPausedState();
@@ -778,6 +847,79 @@ describe('BasePool', function () {
         const data = `0x${'1'.repeat(i).padStart(64, '0')}`;
         await assertMiscData(data);
       }
+    });
+  });
+
+  describe('set asset manager config', () => {
+    let pool: Contract;
+    let assetManagerContract: Contract;
+
+    const poolConfig = {
+      targetPercentage: 3,
+      upperCriticalPercentage: 4,
+      lowerCriticalPercentage: 2,
+    };
+
+    const encodedConfig = ethers.utils.defaultAbiCoder.encode(
+      ['uint64', 'uint64', 'uint64'],
+      [bn(poolConfig.targetPercentage), bn(poolConfig.upperCriticalPercentage), bn(poolConfig.lowerCriticalPercentage)]
+    );
+
+    sharedBeforeEach('deploy pool and asset manager', async () => {
+      assetManagerContract = await deploy('MockAssetManager', { args: [tokens.first.address] });
+
+      const assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
+      assetManagers[0] = assetManagerContract.address;
+
+      pool = await deployBasePool({ owner: poolOwner, assetManagers });
+    });
+
+    sharedBeforeEach('set permissions', async () => {
+      const pauseAction = await actionId(pool, 'pause');
+      await authorizer.connect(admin).grantPermissions([pauseAction], admin.address, [ANY_ADDRESS]);
+    });
+
+    it('sets the asset manager for the first token', async () => {
+      const poolId = await pool.getPoolId();
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
+
+      expect(assetManager).to.equal(assetManagerContract.address);
+    });
+
+    it('lets the owner set the asset manager config', async () => {
+      await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
+    });
+
+    it('Setting the asset manager config emits an event', async () => {
+      const tx = await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
+      const receipt = await tx.wait();
+
+      const poolId = await pool.getPoolId();
+
+      expectEvent.inIndirectReceipt(receipt, assetManagerContract.interface, 'AssetManagerPoolConfigSet', {
+        token: tokens.first.address,
+        assetManager: assetManagerContract.address,
+        poolId: poolId,
+        poolConfig: encodedConfig,
+      });
+    });
+
+    it('reverts if non-owner sets the asset manager config', async () => {
+      await expect(
+        pool.connect(other).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
+    context('when paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.connect(admin).pause();
+      });
+
+      it('reverts', async () => {
+        await expect(
+          pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
+        ).to.be.revertedWith('PAUSED');
+      });
     });
   });
 });

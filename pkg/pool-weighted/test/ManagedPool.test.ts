@@ -1946,7 +1946,7 @@ describe('ManagedPool', function () {
               return tx.wait();
             }, timeElapsed);
 
-            context('when the pool is paused', () => {
+            context.skip('when the pool is paused', () => {
               sharedBeforeEach('pause pool', async () => {
                 await pool.pause();
               });
@@ -2053,7 +2053,7 @@ describe('ManagedPool', function () {
           return receipt;
         }, timeElapsed);
 
-        context('when the pool is paused', () => {
+        context.skip('when the pool is paused', () => {
           sharedBeforeEach('pause pool', async () => {
             await pool.pause();
           });
@@ -2302,7 +2302,7 @@ describe('ManagedPool', function () {
             return receipt;
           }, timeElapsed);
 
-          context('when the pool is paused', () => {
+          context.skip('when the pool is paused', () => {
             sharedBeforeEach('pause pool', async () => {
               await pool.pause();
             });
