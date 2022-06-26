@@ -69,7 +69,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
           itIsUpdatedByExits();
         });
 
-        context('when paused', () => {
+        context.skip('when paused', () => {
           sharedBeforeEach(async () => {
             await pool.pause();
           });
@@ -154,7 +154,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
           });
         });
 
-        context('when paused', () => {
+        context.skip('when paused', () => {
           sharedBeforeEach(async () => {
             await pool.pause();
           });

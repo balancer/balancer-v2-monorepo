@@ -36,6 +36,9 @@ import {
   calculateInvariant,
 } from '../stable/math';
 import BasePool from '../base/BasePool';
+import { currentTimestamp, DAY } from '../../../time';
+
+const PREMINTED_BPT = MAX_UINT112.div(2);
 
 export default class StablePhantomPool extends BasePool {
   amplificationParameter: BigNumberish;
@@ -66,7 +69,7 @@ export default class StablePhantomPool extends BasePool {
   }
 
   async virtualTotalSupply(): Promise<BigNumber> {
-    return MAX_UINT112.sub((await this.getBalances())[this.bptIndex]);
+    return PREMINTED_BPT.sub((await this.getBalances())[this.bptIndex]);
   }
 
   async getTokenIndex(token: Token): Promise<number> {
@@ -89,7 +92,7 @@ export default class StablePhantomPool extends BasePool {
     return (await this.instance.getBptIndex()).toNumber();
   }
 
-  async getRateProviders(): Promise<string> {
+  async getRateProviders(): Promise<string[]> {
     return this.instance.getRateProviders();
   }
 
@@ -120,6 +123,23 @@ export default class StablePhantomPool extends BasePool {
   async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {
     const pool = params?.from ? this.instance.connect(params.from) : this.instance;
     return pool.setTokenRateCacheDuration(token.address, duration);
+  }
+
+  async startAmpChange(
+    newAmp: BigNumberish,
+    endTime?: BigNumberish,
+    txParams: TxParams = {}
+  ): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    if (!endTime) endTime = (await currentTimestamp()).add(2 * DAY);
+    return pool.startAmplificationParameterUpdate(newAmp, endTime);
+  }
+
+  async stopAmpChange(txParams: TxParams = {}): Promise<ContractTransaction> {
+    const sender = txParams.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.stopAmplificationParameterUpdate();
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
