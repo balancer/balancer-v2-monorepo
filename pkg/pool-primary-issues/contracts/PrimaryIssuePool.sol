@@ -15,7 +15,10 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 
 import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
+import "./interfaces/IMarketMaker.sol";
+
 contract PrimaryIssuePool is BasePool, IGeneralPool {
+
     using BokkyPooBahsDateTimeLibrary for uint256;
     using Math for uint256;
 
@@ -46,22 +49,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         uint256 maxPrice;
     }
 
-    /*struct NewPoolParams {
-        IVault vault;
-        string name;
-        string symbol;
-        IERC20 security;
-        IERC20 currency;
-        address[] assetManagers;
-        uint256 minimumPrice;
-        uint256 basePrice;
-        uint256 maxSecurityOffered;
-        uint256 issueFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        uint256 issueCutoffTime;
-        address owner;
-    }*/
+    event OpenIssue(address indexed security, uint256 openingPrice, uint256 securityOffered);
+    event Subscription(address indexed security, address assetIn, string assetName, uint256 amount, address investor, uint256 price);
 
     constructor(
         IVault vault,
@@ -89,10 +78,6 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
             owner
         )
     {
-        // console.log(ERC20(security).name());
-        // console.log(security);
-        // console.log(ERC20(currency).name());
-        // console.log(currency);
         // set tokens
         _security = IERC20(security);
         _currency = IERC20(currency);
@@ -123,54 +108,8 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         _startTime = block.timestamp;
 
         //set owner
-        _balancerManager = payable(owner);
+        _balancerManager = payable(owner);        
     }
-
-    /*constructor(NewPoolParams memory params)
-        BasePool(
-            params.vault,
-            IVault.PoolSpecialization.GENERAL,
-            params.name,
-            params.symbol,
-            _sortTokens(params.security, params.currency, IERC20(this)),
-            params.assetManagers,
-            params.issueFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
-        )
-    {
-        // set tokens
-        _security = params.security;
-        _currency = params.currency;
-
-        // Set token indexes
-        (uint256 securityIndex, uint256 currencyIndex, ) = _getSortedTokenIndexes(
-            params.security,
-            params.currency,
-            IERC20(this)
-        );
-        _securityIndex = securityIndex;
-        _currencyIndex = currencyIndex;
-
-        // set scaling factors
-        _scalingFactorSecurity = _computeScalingFactor(params.security);
-        _scalingFactorCurrency = _computeScalingFactor(params.currency);
-
-        // set price bounds
-        _minPrice = params.minimumPrice;
-        _maxPrice = params.basePrice;
-
-        // set max total balance of securities
-        _MAX_TOKEN_BALANCE = params.maxSecurityOffered;
-
-        // set issue time bounds
-        _cutoffTime = params.issueCutoffTime;
-        _startTime = block.timestamp;
-
-        //set owner 
-        _balancerManager = payable(params.owner);
-    }*/
 
     function getSecurity() external view returns (address) {
         return address(_security);
@@ -196,6 +135,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         });
         IVault _vault = getVault();
         _vault.joinPool(getPoolId(), _balancerManager, address(this), request);
+        emit OpenIssue(address(_security), _minPrice, _maxAmountsIn[1]);
     }
 
     function exit() external {
@@ -220,7 +160,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public view override onlyVault(request.poolId) returns (uint256) {
+    ) public override onlyVault(request.poolId) returns (uint256) {
         // ensure that swap request is not beyond issue's cut off time
         require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp);
 
@@ -243,7 +183,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         if (request.tokenIn == _security) {
             return _swapSecurityIn(request, balances, params);
         } else if (request.tokenIn == _currency) {
@@ -257,7 +197,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         _require(request.tokenOut == _currency, Errors.INVALID_TOKEN);
 
         // returning currency for current price of security paid in,
@@ -270,8 +210,13 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
             if (
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
-            ) return tokenOutAmt;
-            else return 0;
+            ){
+                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
+                emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
+                return tokenOutAmt;
+            } 
+            else 
+                return 0;
         }
     }
 
@@ -279,7 +224,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         _require(request.tokenOut == _security, Errors.INVALID_TOKEN);
 
         // returning security for currency paid in at current price of security,
@@ -292,8 +237,13 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
             if (
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
-            ) return tokenOutAmt;
-            else return 0;
+            ){
+                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
+                emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
+                return tokenOutAmt;
+            }
+            else 
+                return 0;
         }
     }
 
@@ -301,7 +251,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         if (request.tokenOut == _security) {
             return _swapSecurityOut(request, balances, params);
         } else if (request.tokenOut == _currency) {
@@ -315,7 +265,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         _require(request.tokenIn == _currency, Errors.INVALID_TOKEN);
 
         //returning security to be swapped out for paid in currency
@@ -327,8 +277,13 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
             if (
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
-            ) return tokenOutAmt;
-            else return 0;
+            ) {
+                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
+                emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
+                return tokenOutAmt;
+            }
+            else 
+                return 0;
         }
     }
 
@@ -336,7 +291,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         SwapRequest memory request,
         uint256[] memory balances,
         Params memory params
-    ) internal view returns (uint256) {
+    ) internal returns (uint256) {
         _require(request.tokenIn == _security, Errors.INVALID_TOKEN);
 
         //returning currency to be paid in for security paid in
@@ -348,8 +303,13 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
             if (
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
-            ) return tokenOutAmt;
-            else return 0;
+            ) {
+                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
+                emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
+                return tokenOutAmt;
+            }
+            else 
+                return 0;
         }
     }
 

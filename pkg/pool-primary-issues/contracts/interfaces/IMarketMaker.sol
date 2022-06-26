@@ -32,7 +32,7 @@ interface IMarketMaker {
     struct subscriptions{
         address investor;
         address asset;
-        bytes32 name;
+        string name;
         uint256 amount;   
         uint256 price;     
     }
@@ -43,7 +43,7 @@ interface IMarketMaker {
 
     function issue(address security, uint256 cutoffTime) external;
 
-    function subscribe(bytes32 poolId, address security, address assetIn, bytes32 assetName, uint256 amount, address investor, uint256 price) external;
+    function subscribe(bytes32 poolId, address security, address assetIn, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn) external;
 
     function close(address security) external returns(bytes32[] memory, bool);
 

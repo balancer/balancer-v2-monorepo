@@ -26,7 +26,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
     address private immutable _security;
     address private immutable _currency;
 
-    uint256 private constant _TOTAL_TOKENS = 3; //Balancer pool token, Security token, Currency token (ie, paired token)
+    uint256 private constant _TOTAL_TOKENS = 2; //Balancer pool token, Security token, Currency token (ie, paired token)
 
     uint256 private immutable _scalingFactorSecurity;
     uint256 private immutable _scalingFactorCurrency;
@@ -100,9 +100,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
     mapping(bytes32 => bytes32) private tradeRefs;
 
     event tradeReport(
+                    address indexed security,
                     address party, 
                     address counterparty, 
-                    address security,
                     uint256 price,
                     uint256 askprice, 
                     address currency, 
@@ -110,6 +110,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     bytes32 status,
                     uint256 executionDate
                 );
+
+    event Offer(address indexed security, uint256 secondaryOffer);
+
     constructor(IVault vault,
                 string memory name,
                 string memory symbol,
@@ -125,7 +128,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
             IVault.PoolSpecialization.GENERAL,
             name,
             symbol,
-            _sortTokens(IERC20(security), IERC20(currency), IERC20(this)),
+            _sortTokens(IERC20(security), IERC20(currency)),
             new address[](_TOTAL_TOKENS),
             tradeFeePercentage,
             pauseWindowDuration,
@@ -178,7 +181,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
             userData: "",
             fromInternalBalance: false
         });        
-        getVault().joinPool(getPoolId(), balancerManager, address(this), request);                                
+        getVault().joinPool(getPoolId(), balancerManager, address(this), request);   
+        emit Offer(_security, _maxAmountsIn[0]);                             
     }
 
     function exit() external {
@@ -612,9 +616,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                                 _qty, 
                                 block.timestamp);   
         uint256 _executionDt = block.timestamp;
-        emit tradeReport(_transferor, 
-                        _transferee, 
+        emit tradeReport(
                         _security,
+                        _transferor, 
+                        _transferee, 
                         _price,
                         _askprice,
                         _currency, 

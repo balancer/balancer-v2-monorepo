@@ -279,10 +279,14 @@ contract BalancerManager is IMarketMaker, Ownable{
     }
 
     // called by pool when assets are swapped in by investors against security tokens issued
-    function subscribe(bytes32 poolId, address security, address assetIn, bytes32 assetName, uint256 amount, address investor, uint256 price) override onlyPool(poolId, security) external {
-        investors[poolId].push(IMarketMaker.subscriptions(investor, assetIn, assetName, amount, price));
-        subscriberIndex[poolId][investor] = investors[poolId].length;
-        subscribed[poolId][assetIn] = Math.add(subscribed[poolId][assetIn], amount);
+    function subscribe(bytes32 poolId, address security, address asset, string calldata assetName, uint256 amount, address investor, uint256 price, bool paidIn) override onlyPool(poolId, security) external {
+        investors[poolId].push(IMarketMaker.subscriptions(investor, asset, assetName, amount, price));
+        if(subscriberIndex[poolId][investor]==0)
+            subscriberIndex[poolId][investor] = investors[poolId].length;
+        if(paidIn)
+            subscribed[poolId][asset] = Math.add(subscribed[poolId][asset], amount);
+        else
+            subscribed[poolId][asset] = Math.sub(subscribed[poolId][asset], amount);
     }
 
     /**
