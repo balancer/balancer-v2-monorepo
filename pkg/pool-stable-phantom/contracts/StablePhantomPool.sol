@@ -612,7 +612,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             _trackDueProtocolFeeByBpt(bptAmountOut, protocolSwapFeePercentage);
         }
 
-        return (bptAmountOut, _addBptItem(amountsIn, 0), new uint256[](balances.length));
+        return (bptAmountOut, scaledAmountsInWithBpt, new uint256[](balances.length));
     }
 
     function _computeBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsIn)
