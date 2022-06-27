@@ -211,7 +211,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
             ){
-                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
+                //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
                 emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
                 return tokenOutAmt;
             } 
@@ -238,7 +238,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
             ){
-                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
+                //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
                 emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
                 return tokenOutAmt;
             }
@@ -278,7 +278,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
             ) {
-                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
+                //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
                 emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
                 return tokenOutAmt;
             }
@@ -304,7 +304,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
                 Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
             ) {
-                IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
+                //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
                 emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
                 return tokenOutAmt;
             }
