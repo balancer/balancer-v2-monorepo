@@ -96,7 +96,7 @@ export class StablePoolEncoder {
     );
 
   /**
-   * Encodes the userData parameter for exiting a StablePool by removing tokens in return for an exact amount of BPT
+   * Encodes the userData parameter for exiting a PhantomStablePool by removing tokens in return for an exact amount of BPT
    * @param bptAmountIn - the amount of BPT to be burned
    */
   static exitExactBPTInForTokensOutPhantom = (bptAmountIn: BigNumberish): string =>
@@ -106,7 +106,7 @@ export class StablePoolEncoder {
     );
 
   /**
-   * Encodes the userData parameter for exiting a StablePool by removing exact amounts of tokens
+   * Encodes the userData parameter for exiting a PhantomStablePool by removing exact amounts of tokens
    * @param amountsOut - the amounts of each token to be withdrawn from the pool
    * @param maxBPTAmountIn - the minimum acceptable BPT to burn in return for withdrawn tokens
    */
