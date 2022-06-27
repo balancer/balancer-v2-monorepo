@@ -606,8 +606,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         )
     {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
-        uint256[] memory amountsOut;
         uint256 bptAmountIn;
+        uint256[] memory amountsOut;
 
         if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             (bptAmountIn, amountsOut) = _exitExactBPTInForTokensOut(balances, userData);
@@ -635,13 +635,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
 
-        uint256[] memory scaledAmountsOut = StableMath._calcTokensOutGivenExactBptIn(
+        uint256[] memory amountsOutWithoutBpt = StableMath._calcTokensOutGivenExactBptIn(
             balancesWithoutBpt,
             bptAmountIn,
             virtualSupply
         );
 
-        return (bptAmountIn, _addBptItem(scaledAmountsOut, 0));
+        return (bptAmountIn, _addBptItem(amountsOutWithoutBpt, 0));
     }
 
     function _exitBPTInForExactTokensOut(
