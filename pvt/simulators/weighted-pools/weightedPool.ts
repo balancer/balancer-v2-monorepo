@@ -29,7 +29,7 @@ async function main() {
   // liquidity (it will calculate the balances, given the token prices in USD), and perform operations to
   // inspect the results.
   //
-  // Running `yarn hardhat run weighted-pools/weightedPool.ts` from the /simulators directory should produce
+  // Running `yarn ts-node run weighted-pools/weightedPool.ts` from the /simulators directory should produce
   // CSV files. This is just one example of what can be done with the simulated pool. For instance, new
   // tests could be created for /benchmarks.
 
