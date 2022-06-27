@@ -346,29 +346,6 @@ export default class StablePhantomPool extends BasePool {
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
   }
 
-  async proportionalExit(params: MultiExitGivenInStablePool): Promise<ExitResult> {
-    const { tokens: allTokens } = await this.getTokens();
-    const data = this._encodeExitExactBPTInForTokensOut(params.bptIn);
-    const currentBalances = params.currentBalances || (await this.getBalances());
-    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
-
-    const tx = await this.vault.exitPool({
-      poolAddress: this.address,
-      poolId: this.poolId,
-      recipient: to,
-      currentBalances,
-      tokens: allTokens,
-      lastChangeBlock: params.lastChangeBlock ?? 0,
-      protocolFeePercentage: params.protocolFeePercentage ?? 0,
-      data: data,
-      from: params.from,
-    });
-
-    const receipt = await (await tx).wait();
-    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts };
-  }
-
   private async _buildSwapParams(kind: number, params: SwapPhantomPool): Promise<GeneralSwap> {
     return {
       kind,
