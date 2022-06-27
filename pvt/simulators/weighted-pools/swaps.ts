@@ -1,10 +1,6 @@
-import WeightedPool from './model';
 import fs from 'fs';
-
-export enum SwapKind {
-  GivenIn = 0,
-  GivenOut,
-}
+import { SwapKind } from '@balancer-labs/balancer-js';
+import WeightedPool from './model';
 
 export function simulateSwap(
   pool: WeightedPool,
