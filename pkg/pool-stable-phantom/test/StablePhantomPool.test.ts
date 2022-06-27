@@ -715,7 +715,7 @@ describe('StablePhantomPool', () => {
             expect(await pool.balanceOf(lp)).to.equal(0);
           });
 
-          async function multiExitGivenIn(): Promise<void> {
+          it('can tell how many tokens it will give in return', async () => {
             const totalBPT = await pool.getVirtualSupply();
             const expectedAmountsOut = initialBalances.map((balance) =>
               bn(balance).mul(previousBptBalance).div(totalBPT)
@@ -725,10 +725,6 @@ describe('StablePhantomPool', () => {
 
             expect(result.bptIn).to.equal(previousBptBalance);
             expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
-          }
-
-          it('can tell how many tokens it will give in return', async () => {
-            await multiExitGivenIn();
           });
 
           it('reverts if paused', async () => {
@@ -770,18 +766,7 @@ describe('StablePhantomPool', () => {
             expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.div(2), 0.001);
           });
 
-          async function exitGivenOut(): Promise<void> {
-            const amountsOut = initialBalances.map((balance) => bn(balance).div(2));
-            const expectedBptIn = previousBptBalance.div(2);
-            const maximumBptIn = pct(expectedBptIn, 1.01);
-
-            const result = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
-
-            expect(result.amountsOut).to.deep.equal(amountsOut);
-            expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
-          }
-
-          it('fails if more BTP needed', async () => {
+          it('fails if more BPT needed', async () => {
             // Call should fail because we are requesting a max amount lower than the actual needed
             const amountsOut = initialBalances;
             const maximumBptIn = previousBptBalance.div(2);
@@ -792,7 +777,14 @@ describe('StablePhantomPool', () => {
           });
 
           it('can tell how much BPT it will have to receive', async () => {
-            await exitGivenOut();
+            const amountsOut = initialBalances.map((balance) => bn(balance).div(2));
+            const expectedBptIn = previousBptBalance.div(2);
+            const maximumBptIn = pct(expectedBptIn, 1.01);
+
+            const result = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
+
+            expect(result.amountsOut).to.deep.equal(amountsOut);
+            expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
           });
 
           it('reverts if paused', async () => {

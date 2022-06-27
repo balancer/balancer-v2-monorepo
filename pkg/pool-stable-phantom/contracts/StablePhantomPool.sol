@@ -635,13 +635,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
 
-        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
+        uint256[] memory scaledAmountsOut = StableMath._calcTokensOutGivenExactBptIn(
             balancesWithoutBpt,
             bptAmountIn,
             virtualSupply
         );
 
-        return (bptAmountIn, _addBptItem(amountsOut, 0));
+        return (bptAmountIn, _addBptItem(scaledAmountsOut, 0));
     }
 
     function _exitBPTInForExactTokensOut(
@@ -654,12 +654,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // amountsOut are unscaled, and do not include BPT
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens() - 1);
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
-
         uint256[] memory scaledAmountsOutWithBpt = _addBptItem(amountsOut, 0);
         _upscaleArray(scaledAmountsOutWithBpt, scalingFactors);
-        (, uint256[] memory scaledAmountsOutWithoutBpt) = _dropBptItem(scaledAmountsOutWithBpt);
 
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (, uint256[] memory scaledAmountsOutWithoutBpt) = _dropBptItem(scaledAmountsOutWithBpt);
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
