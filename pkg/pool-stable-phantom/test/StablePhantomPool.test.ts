@@ -704,17 +704,13 @@ describe('StablePhantomPool', () => {
               expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
             });
 
-            async function joinGivenIn(): Promise<void> {
+            it('can tell how much BPT it will give in return', async () => {
               const minimumBptOut = pct(expectedBptOut, 0.99);
 
               const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
 
               expect(result.amountsIn).to.deep.equal(amountsIn);
               expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
-            }
-
-            it('can tell how much BPT it will give in return', async () => {
-              await joinGivenIn();
             });
 
             it('fails if not enough BPT', async () => {

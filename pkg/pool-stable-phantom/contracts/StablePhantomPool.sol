@@ -554,7 +554,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Support multi-token joins, plus the special join kind that simply pays due protocol fees to the Vault.
+     * @dev Supports multi-token joins, plus the special join kind that simply pays due protocol fees to the Vault.
      */
     function _onJoinPool(
         bytes32,
@@ -576,10 +576,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
-        if (kind == StablePhantomPoolUserData.JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
-            return _collectProtocolFees();
-        } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, scalingFactors, protocolSwapFeePercentage, userData);
+        } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
+            return _collectProtocolFees();
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
