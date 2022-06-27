@@ -685,17 +685,18 @@ describe('StablePhantomPool', () => {
 
         function itExitsExactBptInForAllTokensOutProperly() {
           it('grants all tokens for exact bpt', async () => {
-            // Exit with half of the BPT balance
-            const bptIn = previousBptBalance.div(2);
-            const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(2));
+            // Exit with a third of the BPT balance
+            const bptIn = previousBptBalance.div(3);
+            // The pool should return about a third of its holdings
+            const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(3));
 
             const result = await pool.multiExitGivenIn({ from: lp, bptIn });
 
-            // Balances are reduced by half because we are returning half of the BPT supply
+            // Balances are reduced by a third, since we are returning a third of the BPT supply
             expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.001);
 
-            // Current BPT balance should have been reduced by half
-            expect(await pool.balanceOf(lp)).to.be.equalWithError(bptIn, 0.001);
+            // Current BPT balance should have been reduced to two thirds
+            expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(bptIn), 0.001);
           });
 
           it('fully exit', async () => {
@@ -751,10 +752,11 @@ describe('StablePhantomPool', () => {
 
         function itExitsBptInForExactTokensOutProperly() {
           it('grants exact tokens for bpt', async () => {
-            // Request half of the token balances
-            const amountsOut = initialBalances.map((balance) => bn(balance).div(2));
+            // Request a third of the token balances
+            const amountsOut = initialBalances.map((balance) => bn(balance).div(3));
 
-            const expectedBptIn = previousBptBalance.div(2);
+            // Exit with a third of the BPT balance
+            const expectedBptIn = previousBptBalance.div(3);
             const maximumBptIn = pct(expectedBptIn, 1.01);
 
             const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
@@ -762,8 +764,8 @@ describe('StablePhantomPool', () => {
             // Token balances should been reduced as requested
             expect(result.amountsOut).to.deep.equal(amountsOut);
 
-            // BPT balance should have been reduced by half because we are returning half of the tokens
-            expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+            // BPT balance should have been reduced to 2/3 because we are returning 1/3 of the tokens
+            expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(expectedBptIn), 0.001);
           });
 
           it('fails if more BPT needed', async () => {
