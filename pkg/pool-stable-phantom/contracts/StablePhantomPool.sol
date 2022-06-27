@@ -601,11 +601,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
 
+        // amountsIn, from the caller, are unscaled and exclude the BPT token. Before we can upscale `amountsIn`,
+        // we must add BPT to it as the scaling factors must be applied to all registered tokens.
         uint256[] memory scaledAmountsInWithBpt = _addBptItem(amountsIn, 0);
         _upscaleArray(scaledAmountsInWithBpt, scalingFactors);
 
-        // Balances come in from onJoinPool already upscaled
-        uint256 bptAmountOut = _computeBptAmountOut(balances, scaledAmountsInWithBpt);
+        // balances include the BPT token and were already upscaled by the caller.
+        // At this point we also have the complete set of upscaled amountsIn, which is all the information needed
+        // to compute and validate the bptAmountOut. (This is only a separate function to avoid stack issues.)
+        uint256 bptAmountOut = _calculateBptAmountOut(balances, scaledAmountsInWithBpt);
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
         if (protocolSwapFeePercentage > 0) {
@@ -615,13 +619,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountOut, scaledAmountsInWithBpt, new uint256[](balances.length));
     }
 
-    function _computeBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsIn)
+    function _calculateBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsInWithBpt)
         private
         view
         returns (uint256)
     {
+        // The StableMath calculations need balances and amountsIn for the non-BPT tokens only, plus the totalSupply
+        // (which for PhantomStablePool is the virtual supply).
+        // Before calling `_calcBptOutGivenExactTokensIn`, we need to remove the BPT token from both the balance and
+        // amountsIn arrays.
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
-        (, uint256[] memory scaledAmountsInWithoutBpt) = _dropBptItem(scaledAmountsIn);
+        (, uint256[] memory scaledAmountsInWithoutBpt) = _dropBptItem(scaledAmountsInWithBpt);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return
