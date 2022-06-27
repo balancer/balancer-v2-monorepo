@@ -1,7 +1,7 @@
-import { simulateSwap } from './swaps';
-import { simulateExactTokensInJoin, simulateSingleTokenJoin } from './joins';
-import { simulateExactTokensOutExit, simulateSingleTokenExit } from './exits';
-import WeightedPool from './model';
+import { simulateSwap } from '../weighted-pools/swaps';
+import { simulateExactTokensInJoin, simulateSingleTokenJoin } from '../weighted-pools/joins';
+import { simulateExactTokensOutExit, simulateSingleTokenExit } from '../weighted-pools/exits';
+import WeightedPool from '../weighted-pools/model';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
 async function main() {
@@ -29,7 +29,7 @@ async function main() {
   // liquidity (it will calculate the balances, given the token prices in USD), and perform operations to
   // inspect the results.
   //
-  // Running `yarn ts-node run weighted-pools/weightedPool.ts` from the /simulators directory should produce
+  // Running `yarn ts-node scripts/weightedPool.ts` from the /simulators directory should produce
   // CSV files. This is just one example of what can be done with the simulated pool. For instance, new
   // tests could be created for /benchmarks.
 
