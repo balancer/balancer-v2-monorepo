@@ -76,6 +76,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Mainnet Staking Gauges                               | [`20220325-mainnet-gauge-factory`](./tasks/20220325-mainnet-gauge-factory)                           |
 | Single Recipient Stakeless Gauges                    | [`20220325-single-recipient-gauge-factory`](./tasks/20220325-single-recipient-gauge-factory)         |
 | Delegation of veBAL boosts                           | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
+| Linear Pools for ERC4626 Tokens V2                   | [`20220404-erc4626-linear-pool-v2`](./tasks/deprecated/20220404-erc4626-linear-pool-v2)              |
 | Gauges on child networks (L2s and sidechains)        | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
 | Arbitrum Root Gauges, for veBAL voting               | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)               |
 | Polygon Root Gauges, for veBAL voting                | [`20220413-polygon-root-gauge-factory`](./tasks/20220413-polygon-root-gauge-factory)                 |
@@ -122,3 +123,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
 | Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
+| Linear Pools for ERC4626 Tokens                  | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
