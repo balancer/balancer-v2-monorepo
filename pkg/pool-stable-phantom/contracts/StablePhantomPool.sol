@@ -609,9 +609,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 bptAmountIn;
         uint256[] memory amountsOut;
 
-        if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            (bptAmountIn, amountsOut) = _exitExactBPTInForTokensOut(balances, userData);
-        } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
                 balances,
                 scalingFactors,
@@ -623,25 +621,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountIn, amountsOut, new uint256[](balances.length));
-    }
-
-    function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        returns (uint256, uint256[] memory)
-    {
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
-
-        uint256[] memory amountsOutWithoutBpt = StableMath._calcTokensOutGivenExactBptIn(
-            balancesWithoutBpt,
-            bptAmountIn,
-            virtualSupply
-        );
-
-        return (bptAmountIn, _addBptItem(amountsOutWithoutBpt, 0));
     }
 
     function _exitBPTInForExactTokensOut(

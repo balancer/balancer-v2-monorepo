@@ -295,14 +295,6 @@ export default class StablePhantomPool extends BasePool {
     return Array.isArray(items) ? items : [items];
   }
 
-  async multiExitGivenIn(params: MultiExitGivenInStablePool): Promise<ExitResult> {
-    return this.exit(this._buildMultiExitGivenInParams(params));
-  }
-
-  async queryMultiExitGivenIn(params: MultiExitGivenInStablePool): Promise<ExitQueryResult> {
-    return this.queryExit(this._buildMultiExitGivenInParams(params));
-  }
-
   async exitGivenOut(params: ExitGivenOutStablePool): Promise<ExitResult> {
     // Need to drop BPT from amountsOut
     const tokenAmountsOut = this.toList(params.amountsOut);
@@ -385,17 +377,6 @@ export default class StablePhantomPool extends BasePool {
     };
   }
 
-  private _buildMultiExitGivenInParams(params: MultiExitGivenInStablePool): JoinExitStablePool {
-    return {
-      from: params.from,
-      recipient: params.recipient,
-      lastChangeBlock: params.lastChangeBlock,
-      currentBalances: params.currentBalances,
-      protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.exitExactBPTInForTokensOutPhantom(params.bptIn),
-    };
-  }
-
   private _buildExitGivenOutParams(params: ExitGivenOutStablePool): JoinExitStablePool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
@@ -408,11 +389,6 @@ export default class StablePhantomPool extends BasePool {
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.exitBPTInForExactTokensOutPhantom(amountsOut, params.maximumBptIn ?? MAX_UINT256),
     };
-  }
-
-  private _encodeExitExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
-    const EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
-    return defaultAbiCoder.encode(['uint256', 'uint256'], [EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
