@@ -19,10 +19,9 @@ import "../StableMath.sol";
 contract MockStableMath {
     function invariant(
         uint256 amp,
-        uint256[] memory balances,
-        bool roundUp
+        uint256[] memory balances
     ) external pure returns (uint256) {
-        return StableMath._calculateInvariant(amp, balances, roundUp);
+        return StableMath._calculateInvariant(amp, balances);
     }
 
     function outGivenIn(
@@ -39,7 +38,7 @@ contract MockStableMath {
                 tokenIndexIn,
                 tokenIndexOut,
                 tokenAmountIn,
-                StableMath._calculateInvariant(amp, balances, true)
+                StableMath._calculateInvariant(amp, balances)
             );
     }
 
@@ -57,7 +56,7 @@ contract MockStableMath {
                 tokenIndexIn,
                 tokenIndexOut,
                 tokenAmountOut,
-                StableMath._calculateInvariant(amp, balances, true)
+                StableMath._calculateInvariant(amp, balances)
             );
     }
 

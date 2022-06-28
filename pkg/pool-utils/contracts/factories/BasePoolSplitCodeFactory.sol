@@ -15,27 +15,37 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
 
 /**
- * @dev Same as `BasePoolFactory`, for Pools whose creation code is so large that the factory cannot hold it.
+ * @notice Base contract for Pool factories.
+ *
+ * Pools are deployed from factories to allow third parties to reason about them. Unknown Pools may have arbitrary
+ * logic: being able to assert that a Pool's behavior follows certain rules (those imposed by the contracts created by
+ * the factory) is very powerful.
+ *
+ * @dev By using the split code mechanism, we can deploy Pools with creation code so large that a regular factory
+ * contract would not be able to store it.
+ *
+ * Since we expect to release new versions of pool types regularly - and the blockchain is forever - versioning will
+ * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
+ * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory {
-    IVault private immutable _vault;
+abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory, SingletonAuthentication {
     mapping(address => bool) private _isPoolFromFactory;
+    bool private _disabled;
 
     event PoolCreated(address indexed pool);
+    event FactoryDisabled();
 
-    constructor(IVault vault, bytes memory creationCode) BaseSplitCodeFactory(creationCode) {
-        _vault = vault;
-    }
-
-    /**
-     * @dev Returns the Vault's address.
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
+    constructor(IVault vault, bytes memory creationCode)
+        BaseSplitCodeFactory(creationCode)
+        SingletonAuthentication(vault)
+    {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -45,7 +55,32 @@ abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory {
         return _isPoolFromFactory[pool];
     }
 
+    /**
+     * @dev Check whether the derived factory has been disabled.
+     */
+    function isDisabled() public view returns (bool) {
+        return _disabled;
+    }
+
+    /**
+     * @dev Disable the factory, preventing the creation of more pools. Already existing pools are unaffected.
+     * Once a factory is disabled, it cannot be re-enabled.
+     */
+    function disable() external authenticate {
+        _ensureEnabled();
+
+        _disabled = true;
+
+        emit FactoryDisabled();
+    }
+
+    function _ensureEnabled() internal view {
+        _require(!isDisabled(), Errors.DISABLED);
+    }
+
     function _create(bytes memory constructorArgs) internal override returns (address) {
+        _ensureEnabled();
+
         address pool = super._create(constructorArgs);
 
         _isPoolFromFactory[pool] = true;

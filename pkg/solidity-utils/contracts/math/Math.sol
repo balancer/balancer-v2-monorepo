@@ -2,7 +2,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow checks.

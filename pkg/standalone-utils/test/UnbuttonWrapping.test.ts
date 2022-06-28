@@ -9,6 +9,7 @@ import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/Stable
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -38,7 +39,7 @@ describe('UnbuttonWrapping', function () {
     });
     ampl = new Token('Mock Ampleforth', 'AMPL', 9, amplContract);
 
-    const wamplContract = await deploy('MockUnbuttonERC20', {
+    const wamplContract = await deploy('v2-pool-linear/MockUnbuttonERC20', {
       args: [ampl.address, 'Mock Wrapped Ampleforth', 'wAMPL'],
     });
     wampl = new Token('wampl', 'wampl', 18, wamplContract);
@@ -131,14 +132,6 @@ describe('UnbuttonWrapping', function () {
     expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
       value: bn(expectedValue),
     });
-  }
-
-  function expectTransferEvent(
-    receipt: ContractReceipt,
-    args: { from?: string; to?: string; value?: BigNumberish },
-    token: Token
-  ) {
-    return expectEvent.inIndirectReceipt(receipt, token.instance.interface, 'Transfer', args, token.address);
   }
 
   describe('primitives', () => {
@@ -671,11 +664,7 @@ describe('UnbuttonWrapping', function () {
         });
 
         // BPT minted to recipient
-        expectTransferEvent(
-          receipt,
-          { from: ZERO_ADDRESS, to: recipientUser.address },
-          await Token.deployedAt(pool.address)
-        );
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: recipientUser.address }, pool);
       });
 
       it('does not take wampl from the user', async () => {

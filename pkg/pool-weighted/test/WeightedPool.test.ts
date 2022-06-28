@@ -20,7 +20,7 @@ describe('WeightedPool', function () {
     allTokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
   });
 
-  itPaysProtocolFeesFromInvariantGrowth(WeightedPoolType.WEIGHTED_POOL);
+  itPaysProtocolFeesFromInvariantGrowth();
 
   describe('weights and scaling factors', () => {
     for (const numTokens of range(2, MAX_TOKENS + 1)) {

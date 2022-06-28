@@ -13,6 +13,7 @@ import { getPoolAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/ba
 import { MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { Contract } from 'ethers';
 import { expect } from 'chai';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -23,7 +24,6 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
-import { expectTransferEvent } from './helpers/tokenTransfer';
 
 describe('VaultActions', function () {
   let vault: Vault;
@@ -497,11 +497,7 @@ describe('VaultActions', function () {
 
           const {
             args: { value: BPTAmountOut },
-          } = expectTransferEvent(
-            receipt,
-            { from: ZERO_ADDRESS, to: sender.address },
-            await Token.deployedAt(getPoolAddress(poolIdA))
-          );
+          } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: sender.address }, getPoolAddress(poolIdA));
 
           await expectChainedReferenceContents(relayer, toChainedReference(0), BPTAmountOut);
         });

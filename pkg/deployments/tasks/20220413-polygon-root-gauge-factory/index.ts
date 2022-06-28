@@ -6,5 +6,9 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   const input = task.input() as PolygonRootGaugeFactoryDeployment;
 
   const args = [input.BalancerMinter, input.PolygonRootChainManager, input.PolygonERC20Predicate];
-  await task.deployAndVerify('PolygonRootGaugeFactory', args, from, force);
+  const factory = await task.deployAndVerify('PolygonRootGaugeFactory', args, from, force);
+
+  const implementation = await factory.getGaugeImplementation();
+  await task.verify('PolygonRootGauge', implementation, args);
+  await task.save({ PolygonRootGauge: implementation });
 };

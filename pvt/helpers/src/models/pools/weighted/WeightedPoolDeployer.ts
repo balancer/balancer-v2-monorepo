@@ -26,6 +26,7 @@ export default {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
     const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
+    const poolId = await pool.getPoolId();
 
     const {
       tokens,
@@ -37,9 +38,10 @@ export default {
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
     } = deployment;
 
-    const poolId = await pool.getPoolId();
     return new WeightedPool(
       pool,
       poolId,
@@ -52,7 +54,9 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       protocolSwapFeePercentage,
-      managementSwapFeePercentage
+      managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector
     );
   },
 
@@ -64,12 +68,13 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
       owner,
       from,
     } = params;
@@ -77,28 +82,6 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.ORACLE_WEIGHTED_POOL: {
-        result = deploy('v2-pool-weighted/MockOracleWeightedPool', {
-          args: [
-            {
-              vault: vault.address,
-              name: NAME,
-              symbol: SYMBOL,
-              tokens: tokens.addresses,
-              normalizedWeight0: weights[0],
-              normalizedWeight1: weights[1],
-              swapFeePercentage: swapFeePercentage,
-              pauseWindowDuration: pauseWindowDuration,
-              bufferPeriodDuration: bufferPeriodDuration,
-              oracleEnabled: oracleEnabled,
-              owner: owner,
-            },
-          ],
-          from,
-          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
-        });
-        break;
-      }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         result = deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
           args: [
@@ -131,6 +114,8 @@ export default {
               mustAllowlistLPs: mustAllowlistLPs,
               protocolSwapFeePercentage: protocolSwapFeePercentage,
               managementSwapFeePercentage: managementSwapFeePercentage,
+              managementAumFeePercentage: managementAumFeePercentage,
+              aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
             owner,
@@ -169,11 +154,12 @@ export default {
       weights,
       assetManagers,
       swapFeePercentage,
-      oracleEnabled,
       swapEnabledOnStart,
       mustAllowlistLPs,
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -182,26 +168,6 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.ORACLE_WEIGHTED_POOL: {
-        const factory = await deploy('v2-pool-weighted/OracleWeightedPoolFactory', {
-          args: [vault.address],
-          from,
-          libraries: { QueryProcessor: await (await deploy('QueryProcessor')).address },
-        });
-        const tx = await factory.create(
-          NAME,
-          SYMBOL,
-          tokens.addresses,
-          weights,
-          swapFeePercentage,
-          oracleEnabled,
-          owner
-        );
-        const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-        result = deployedAt('v2-pool-weighted/OracleWeightedPool', event.args.pool);
-        break;
-      }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
           args: [vault.address],
@@ -243,6 +209,8 @@ export default {
           mustAllowlistLPs: mustAllowlistLPs,
           protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
+          managementAumFeePercentage: managementAumFeePercentage,
+          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {

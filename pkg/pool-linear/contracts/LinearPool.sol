@@ -15,18 +15,18 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/LinearPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+
+import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
-import "@balancer-labs/v2-pool-utils/contracts/interfaces/IRateProvider.sol";
-import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
-
-import "@balancer-labs/v2-vault/contracts/interfaces/IGeneralPool.sol";
-
 import "./LinearMath.sol";
-import "./LinearPoolUserData.sol";
 
 /**
  * @dev Linear Pools are designed to hold two assets: "main" and "wrapped" tokens that have an equal value underlying
@@ -45,9 +45,11 @@ import "./LinearPoolUserData.sol";
  * meaning. This Pool attempts to hold a certain amount of "main" tokens, between a lower and upper target value.
  * The pool charges fees on trades that move the balance outside that range, which are then paid back as incentives to
  * traders whose swaps return the balance to the desired region.
+ *
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
+ * Accordingly, this Pool also does not pay any protocol fees.
  */
-abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
+abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -110,7 +112,7 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         uint256 bufferPeriodDuration,
         address owner
     )
-        LegacyBasePool(
+        BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
             name,
@@ -416,16 +418,7 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         uint256,
         uint256[] memory,
         bytes memory
-    )
-        internal
-        pure
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
@@ -438,16 +431,7 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         uint256,
         uint256[] memory,
         bytes memory userData
-    )
-        internal
-        view
-        override
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
+    ) internal view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
         // triggered. This allows for a simple and safe way to exit the Pool.
 
@@ -466,9 +450,6 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
             // advisable to stop using a Pool after it is paused and the pause window expires.
 
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-
-            // Due protocol fees are set to zero as this Pool accrues no fees and pays no protocol fees.
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
         }
     }
 
@@ -577,8 +558,8 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
 
     function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
-        lowerTarget = miscData.decodeUint96(_LOWER_TARGET_OFFSET);
-        upperTarget = miscData.decodeUint96(_UPPER_TARGET_OFFSET);
+        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, 96);
+        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, 96);
     }
 
     function _setTargets(
@@ -590,10 +571,10 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
         // Pack targets as two uint96 values into a single storage slot. This results in targets being capped to 96
-        // bits, but that should be more than enough.
+        // bits, but that should be more than enough. Values are already checked for validity above.
         _setMiscData(
-            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET) |
-                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET)
+            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET, 96) |
+                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET, 96)
         );
 
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
@@ -615,6 +596,9 @@ abstract contract LinearPool is LegacyBasePool, IGeneralPool, IRateProvider {
         _setTargets(_mainToken, newLowerTarget, newUpperTarget);
     }
 
+    // Note that we override the public version of setSwapFeePercentage instead of the internal one
+    // (_setSwapFeePercentage) as the internal one is called during construction, and therefore cannot access immutable
+    // state variables, which we use below.
     function setSwapFeePercentage(uint256 swapFeePercentage) public override {
         // For the swap fee percentage to be changeable:
         //  - the pool must currently be between the current targets (meaning no fees are currently pending)
