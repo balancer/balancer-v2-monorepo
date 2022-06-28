@@ -7,3 +7,4 @@ Deployment of the new `GaugeAdder`, a helper contract which helps prevent some f
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Kovan testnet addresses](./output/kovan.json)
 - [`GaugeAdder` ABI](./abi/GaugeAdder.json)
+- [Previous `GaugeAdder` deployment](../20220325-gauge-adder/)
