@@ -632,8 +632,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Support multi-token exits, including proportional exits. Note that recovery mode exits
-     * do not call`_onExitPool`.
+     * @dev Support multi-token exits. Note that recovery mode exits do not call`_onExitPool`.
      */
     function _onExitPool(
         bytes32,
