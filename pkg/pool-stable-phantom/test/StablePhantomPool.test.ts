@@ -7,7 +7,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
 import {
@@ -337,7 +337,7 @@ describe('StablePhantomPool', () => {
         });
 
         it('reverts', async () => {
-          await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_BY_PHANTOM_POOL');
+          await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
       });
     });
@@ -627,17 +627,106 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('join', () => {
+    describe('onJoinPool', () => {
+      const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
+
       sharedBeforeEach('deploy pool', async () => {
-        await deployPool();
-        await pool.init({ recipient, initialBalances });
+        await deployPool({ admin });
       });
 
-      context('when the sender is not the vault', () => {
-        it('reverts', async () => {
-          const tx = pool.instance.onJoinPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');
-          await expect(tx).to.be.revertedWith('CALLER_NOT_VAULT');
+      sharedBeforeEach('allow vault', async () => {
+        await tokens.mint({ to: recipient, amount: fp(100) });
+        await tokens.approve({ from: recipient, to: pool.vault });
+      });
+
+      it('fails if caller is not the vault', async () => {
+        await expect(
+          pool.instance.connect(lp).onJoinPool(pool.poolId, lp.address, other.address, [0], 0, 0, '0x')
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+
+      it('fails if no user data', async () => {
+        await expect(pool.join({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
+      });
+
+      it('fails if wrong user data', async () => {
+        const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
+
+        await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
+      });
+
+      describe('join exact tokens in for BPT out', () => {
+        context('not in recovery mode', () => {
+          itJoinsGivenExactTokensInCorrectly();
         });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enable recovery mode', async () => {
+            await pool.enableRecoveryMode(admin);
+          });
+
+          itJoinsGivenExactTokensInCorrectly();
+        });
+
+        function itJoinsGivenExactTokensInCorrectly() {
+          it('fails if not initialized', async () => {
+            await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances })).to.be.revertedWith(
+              'UNINITIALIZED'
+            );
+          });
+
+          context('once initialized', () => {
+            let expectedBptOut: BigNumberish;
+            let amountsIn: BigNumberish[];
+
+            sharedBeforeEach('initialize pool', async () => {
+              await pool.init({ recipient, initialBalances });
+              bptIndex = await pool.getBptIndex();
+              amountsIn = ZEROS.map((n, i) => (i != bptIndex ? fp(0.1) : n));
+
+              expectedBptOut = await pool.estimateBptOut(
+                await pool.upscale(amountsIn),
+                await pool.upscale(initialBalances)
+              );
+            });
+
+            it('grants BPT for exact tokens', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              const minimumBptOut = pct(expectedBptOut, 0.99);
+
+              const result = await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+
+              // Amounts in should be the same as initial ones
+              expect(result.amountsIn).to.deep.equal(amountsIn);
+
+              // Make sure received BPT is closed to what we expect
+              const currentBptBalance = await pool.balanceOf(recipient);
+              expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
+            });
+
+            it('can tell how much BPT it will give in return', async () => {
+              const minimumBptOut = pct(expectedBptOut, 0.99);
+
+              const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
+
+              expect(result.amountsIn).to.deep.equal(amountsIn);
+              expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
+            });
+
+            it('fails if not enough BPT', async () => {
+              // This call should fail because we are requesting minimum 1% more
+              const minimumBptOut = pct(expectedBptOut, 1.01);
+
+              await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
+            });
+
+            it('reverts if paused', async () => {
+              await pool.pause();
+
+              await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
+            });
+          });
+        }
       });
     });
 
@@ -1349,13 +1438,13 @@ describe('StablePhantomPool', () => {
                     const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
                     expect(value).to.be.equalWithError(
                       AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)),
-                      0.0000001
+                      0.00001
                     );
                   } else {
                     const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
                     expect(value).to.be.equalWithError(
                       AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)),
-                      0.0000001
+                      0.00001
                     );
                   }
                 });
