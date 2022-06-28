@@ -272,7 +272,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
 
         // Compute virtual BPT supply and token balances (sans BPT).
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
             amountOut = _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
@@ -335,7 +335,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
 
         // Compute virtual BPT supply and token balances (sans BPT).
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
             amountIn = _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
@@ -532,7 +532,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
 
         (uint256 amp, ) = _getAmplificationParameter();
-        (, uint256[] memory amountsIn) = _dropBptItem(amountsInIncludingBpt);
+        uint256[] memory amountsIn = _dropBptItem(amountsInIncludingBpt);
         uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn);
 
         // Set the initial BPT to the value of the invariant
@@ -617,7 +617,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) internal virtual override returns (uint256, uint256[] memory) {
         // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
         // adjust the balances array by removing BPT from it.
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
             balancesWithoutBpt,
@@ -861,16 +861,33 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return index < _bptIndex ? index : index.sub(1);
     }
 
-    function _dropBptItem(uint256[] memory amounts)
-        internal
-        view
-        returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
-    {
-        virtualSupply = _getVirtualSupply(amounts[_bptIndex]);
-
-        amountsWithoutBpt = new uint256[](amounts.length - 1);
+    /**
+     * @dev Remove the item at `_bptIndex` from an arbitrary array (e.g., amountsIn).
+     */
+    function _dropBptItem(uint256[] memory amounts) internal view returns (uint256[] memory) {
+        uint256[] memory amountsWithoutBpt = new uint256[](amounts.length - 1);
         for (uint256 i = 0; i < amountsWithoutBpt.length; i++) {
             amountsWithoutBpt[i] = amounts[i < _bptIndex ? i : i + 1];
+        }
+
+        return amountsWithoutBpt;
+    }
+
+    /**
+     * @dev Remove the item at `_bptIndex` from an array assumed to represent the current balances.
+     * Since the number at that index is the current BPT balance, use it to compute and return
+     * the virtualSupply.
+     */
+    function _dropBptItemFromBalances(uint256[] memory balances)
+        internal
+        view
+        returns (uint256 virtualSupply, uint256[] memory balancesWithoutBpt)
+    {
+        virtualSupply = _getVirtualSupply(balances[_bptIndex]);
+
+        balancesWithoutBpt = new uint256[](balances.length - 1);
+        for (uint256 i = 0; i < balancesWithoutBpt.length; i++) {
+            balancesWithoutBpt[i] = balances[i < _bptIndex ? i : i + 1];
         }
     }
 
@@ -914,7 +931,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
