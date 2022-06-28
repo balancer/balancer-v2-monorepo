@@ -135,6 +135,33 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     }
 
     /**
+     * @notice Adds a new gauge to the GaugeController for the "Optimism" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on Optimism.
+     */
+    function addOptimismGauge(address rootGauge) external override authenticate {
+        _addGauge(rootGauge, GaugeType.Optimism);
+    }
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "Gnosis" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on Gnosis Chain.
+     */
+    function addGnosisGauge(address rootGauge) external override authenticate {
+        _addGauge(rootGauge, GaugeType.Gnosis);
+    }
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "ZKSync" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on ZKSync.
+     */
+    function addZKSyncGauge(address rootGauge) external override authenticate {
+        _addGauge(rootGauge, GaugeType.ZKSync);
+    }
+
+    /**
      * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
      */
     function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external override authenticate {
