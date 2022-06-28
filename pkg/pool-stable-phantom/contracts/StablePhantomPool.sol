@@ -601,15 +601,27 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
 
-        // amountsIn, from the caller, are unscaled and exclude the BPT token. Before we can upscale `amountsIn`,
-        // we must add BPT to it as the scaling factors must be applied to all registered tokens.
-        uint256[] memory scaledAmountsInWithBpt = _addBptItem(amountsIn, 0);
-        _upscaleArray(scaledAmountsInWithBpt, scalingFactors);
+        // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
+        (uint256[] memory scaledAmountsInWithBpt, uint256[] memory scaledAmountsInWithoutBpt) = _upscaleWithoutBpt(
+            amountsIn,
+            scalingFactors
+        );
 
-        // balances include the BPT token and were already upscaled by the caller.
-        // At this point we also have the complete set of upscaled amountsIn, which is all the information needed
-        // to compute and validate the bptAmountOut. (This is only a separate function to avoid stack issues.)
-        uint256 bptAmountOut = _calculateBptAmountOut(balances, scaledAmountsInWithBpt);
+        uint256 bptAmountOut;
+        // New scope to avoid stack-too-deep issues
+        {
+            (uint256 currentAmp, ) = _getAmplificationParameter();
+            (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+
+            bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
+                currentAmp,
+                balancesWithoutBpt,
+                scaledAmountsInWithoutBpt,
+                virtualSupply,
+                getSwapFeePercentage()
+            );
+        }
+
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
         if (protocolSwapFeePercentage > 0) {
@@ -617,29 +629,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, scaledAmountsInWithBpt, new uint256[](balances.length));
-    }
-
-    function _calculateBptAmountOut(uint256[] memory balances, uint256[] memory scaledAmountsInWithBpt)
-        private
-        view
-        returns (uint256)
-    {
-        // The StableMath calculations need balances and amountsIn for the non-BPT tokens only, plus the totalSupply
-        // (which for PhantomStablePool is the virtual supply).
-        // Before calling `_calcBptOutGivenExactTokensIn`, we need to remove the BPT token from both the balance and
-        // amountsIn arrays.
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-        uint256[] memory scaledAmountsInWithoutBpt = _dropBptItem(scaledAmountsInWithBpt);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return
-            StableMath._calcBptOutGivenExactTokensIn(
-                currentAmp,
-                balancesWithoutBpt,
-                scaledAmountsInWithoutBpt,
-                virtualSupply,
-                getSwapFeePercentage()
-            );
     }
 
     /**
@@ -949,6 +938,22 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         for (uint256 i = 0; i < amountsWithBpt.length; i++) {
             amountsWithBpt[i] = i == _bptIndex ? bptAmount : amounts[i < _bptIndex ? i : i - 1];
         }
+    }
+
+    /**
+     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
+     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
+     */
+    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
+        internal
+        view
+        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
+    {
+        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
+        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
+        _upscaleArray(scaledWithBpt, scalingFactors);
+
+        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
     }
 
     /**
