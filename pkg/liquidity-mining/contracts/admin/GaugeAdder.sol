@@ -27,6 +27,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IGaugeController private immutable _gaugeController;
+    IERC20 private immutable _balWethBpt;
     IAuthorizerAdaptor private _authorizerAdaptor;
 
     // Mapping from gauge type to a list of address for approved factories for that type
@@ -37,6 +38,9 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     constructor(IGaugeController gaugeController) SingletonAuthentication(gaugeController.admin().getVault()) {
         _gaugeController = gaugeController;
         _authorizerAdaptor = gaugeController.admin();
+
+        // Cache the BAL 80 WETH 20 BPT on this contract.
+        _balWethBpt = gaugeController.token();
     }
 
     /**
@@ -110,7 +114,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
         // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller
         IERC20 pool = gauge.lp_token();
         require(_poolGauge[pool] == ILiquidityGauge(0), "Duplicate gauge");
-        require(pool != _gaugeController.token(), "Cannot add gauge for 80/20 BAL-WETH BPT");
+        require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
         _poolGauge[pool] = gauge;
 
         _addGauge(address(gauge), GaugeType.Ethereum);
