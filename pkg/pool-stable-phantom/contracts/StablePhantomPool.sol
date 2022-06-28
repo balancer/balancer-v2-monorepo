@@ -874,21 +874,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Remove the item at `_bptIndex` from an array assumed to represent the current balances.
-     * Since the number at that index is the current BPT balance, use it to compute and return
-     * the virtualSupply.
+     * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
+     * current Pool balances.
      */
-    function _dropBptItemFromBalances(uint256[] memory balances)
-        internal
-        view
-        returns (uint256 virtualSupply, uint256[] memory balancesWithoutBpt)
-    {
-        virtualSupply = _getVirtualSupply(balances[_bptIndex]);
-
-        balancesWithoutBpt = new uint256[](balances.length - 1);
-        for (uint256 i = 0; i < balancesWithoutBpt.length; i++) {
-            balancesWithoutBpt[i] = balances[i < _bptIndex ? i : i + 1];
-        }
+    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
+        return (_getVirtualSupply(balances[_bptIndex]), _dropBptItem(balances));
     }
 
     function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
