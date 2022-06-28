@@ -575,14 +575,5 @@
         "unpause()": "0x07b4fb5e12466b66136a430edadfe74892e0cbfc410f6268a2d1d24cc09a6e05"
       }
     }
-  },
-  "20220404-erc4626-linear-pool-v2": {
-    "ERC4626LinearPoolFactory": {
-      "useAdaptor": true,
-      "factoryOutput": "0xb0F75E97A114A4EB4a425eDc48990e6760726709",
-      "actionIds": {
-        "create(string,string,address,address,uint256,uint256,address)": "0x57ae3d5ec3fd0db73a6bce9004759ef4fe0b634368367ea70a82a52f85766856"
-      }
-    }
   }
 }
