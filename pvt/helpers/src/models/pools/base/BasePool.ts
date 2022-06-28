@@ -135,13 +135,14 @@ export default class BasePool {
   async exit(params: JoinExitBasePool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens: allTokens } = await this.getTokens();
 
     const tx = await this.vault.exitPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: params.tokens ?? this.tokens.addresses,
+      tokens: allTokens,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',

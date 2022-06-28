@@ -18,7 +18,6 @@ import {
   MONTH,
   setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
@@ -730,17 +729,95 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('exit', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        await deployPool();
-        await pool.init({ recipient, initialBalances });
+    describe('onExitPool', () => {
+      let previousBptBalance: BigNumber;
+
+      sharedBeforeEach('deploy and initialize pool', async () => {
+        await deployPool({ admin });
+        await pool.init({ initialBalances, recipient: lp });
+        previousBptBalance = await pool.balanceOf(lp);
       });
 
-      context('when the sender is not the vault', () => {
-        it('reverts', async () => {
-          const tx = pool.instance.onExitPool(pool.poolId, ZERO_ADDRESS, ZERO_ADDRESS, [0], 0, 0, '0x');
-          await expect(tx).to.be.revertedWith('CALLER_NOT_VAULT');
+      sharedBeforeEach('allow vault', async () => {
+        await tokens.mint({ to: lp, amount: fp(100) });
+        await tokens.approve({ from: lp, to: pool.vault });
+      });
+
+      it('fails if caller is not the vault', async () => {
+        await expect(
+          pool.instance.connect(lp).onExitPool(pool.poolId, recipient.address, other.address, [0], 0, 0, '0x')
+        ).to.be.revertedWith('CALLER_NOT_VAULT');
+      });
+
+      it('fails if no user data', async () => {
+        await expect(pool.exit({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
+      });
+
+      it('fails if wrong user data', async () => {
+        const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
+
+        await expect(pool.exit({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
+      });
+
+      describe('exit BPT in for exact tokens out', () => {
+        context('not in recovery mode', () => {
+          itExitsBptInForExactTokensOutProperly();
         });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enable recovery mode', async () => {
+            await pool.enableRecoveryMode(admin);
+          });
+
+          itExitsBptInForExactTokensOutProperly();
+        });
+
+        function itExitsBptInForExactTokensOutProperly() {
+          it('grants exact tokens for bpt', async () => {
+            // Request a third of the token balances
+            const amountsOut = initialBalances.map((balance) => bn(balance).div(3));
+
+            // Exit with a third of the BPT balance
+            const expectedBptIn = previousBptBalance.div(3);
+            const maximumBptIn = pct(expectedBptIn, 1.01);
+
+            const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
+
+            // Token balances should been reduced as requested
+            expect(result.amountsOut).to.deep.equal(amountsOut);
+
+            // BPT balance should have been reduced to 2/3 because we are returning 1/3 of the tokens
+            expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(expectedBptIn), 0.001);
+          });
+
+          it('fails if more BPT needed', async () => {
+            // Call should fail because we are requesting a max amount lower than the actual needed
+            const amountsOut = initialBalances;
+            const maximumBptIn = previousBptBalance.div(2);
+
+            await expect(pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn })).to.be.revertedWith(
+              'BPT_IN_MAX_AMOUNT'
+            );
+          });
+
+          it('can tell how much BPT it will have to receive', async () => {
+            const amountsOut = initialBalances.map((balance) => bn(balance).div(2));
+            const expectedBptIn = previousBptBalance.div(2);
+            const maximumBptIn = pct(expectedBptIn, 1.01);
+
+            const result = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
+
+            expect(result.amountsOut).to.deep.equal(amountsOut);
+            expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+          });
+
+          it('reverts if paused', async () => {
+            await pool.pause();
+
+            const amountsOut = initialBalances;
+            await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
+          });
+        }
       });
     });
 
