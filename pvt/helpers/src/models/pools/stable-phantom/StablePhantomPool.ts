@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { defaultAbiCoder } from '@ethersproject/abi';
 import { BigNumber, Contract, ContractTransaction, ContractReceipt, ContractFunction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
@@ -23,7 +22,6 @@ import {
   InitStablePool,
   JoinExitStablePool,
   JoinResult,
-  MultiExitGivenInStablePool,
   ExitResult,
   ExitGivenOutStablePool,
   ExitQueryResult,
