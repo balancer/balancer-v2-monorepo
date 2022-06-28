@@ -681,11 +681,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // amountsOut are unscaled, and do not include BPT
         InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens() - 1);
 
-        uint256[] memory scaledAmountsOutWithBpt = _addBptItem(amountsOut, 0);
-        _upscaleArray(scaledAmountsOutWithBpt, scalingFactors);
+        // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
+        (uint256[] memory scaledAmountsOutWithBpt, uint256[] memory scaledAmountsOutWithoutBpt) = _upscaleWithoutBpt(
+            amountsOut,
+            scalingFactors
+        );
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-        uint256[] memory scaledAmountsOutWithoutBpt = _dropBptItem(scaledAmountsOutWithBpt);
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
