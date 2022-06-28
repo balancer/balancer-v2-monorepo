@@ -575,5 +575,18 @@
         "unpause()": "0x07b4fb5e12466b66136a430edadfe74892e0cbfc410f6268a2d1d24cc09a6e05"
       }
     }
+  },
+  "20220404-erc4626-linear-pool-v2": {
+    "ERC4626LinearPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0xb0F75E97A114A4EB4a425eDc48990e6760726709",
+      "actionIds": {
+        "initialize()": "0x9b2fa0d42c19f1dc95f6e44002978e37339777d7e71fd3d42a4066d93e4deb5e",
+        "setAssetManagerPoolConfig(address,bytes)": "0x3baef9657cec1bbb4fd4445b46071a8428aaaef07e20c5527f19835a3951a1d7",
+        "setPaused(bool)": "0x454e3e323a395178b43f22b136dc1c2c25f3f193c11a944ce3de9a1b1f9f3389",
+        "setSwapFeePercentage(uint256)": "0x26d5c069f3666699e0fe94626b94bf5bc2a311d3265e773c4a81c9a12c9731ca",
+        "setTargets(uint256,uint256)": "0x742dd28e4a604e9a5a791e1708221230de313f7fdf28172ebd4f8e8d3407b1e8"
+      }
+    }
   }
 }
