@@ -11,6 +11,6 @@ const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY
 export default {
   mainnet: {
     GaugeController,
-    PreviousGaugeAdder: GaugeAdder,
+    PreviousGaugeAdder: GaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
   },
 };
