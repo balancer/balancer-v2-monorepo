@@ -5,7 +5,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /**
  * @dev Collection of functions related to the address type
@@ -40,6 +40,8 @@ library Address {
         }
         return size > 0;
     }
+
+    // solhint-disable max-line-length
 
     /**
      * @dev Replacement for Solidity's `transfer`: sends `amount` wei to
@@ -83,9 +85,12 @@ library Address {
      * _Available since v3.1._
      */
     function functionCall(address target, bytes memory data) internal returns (bytes memory) {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.call(data);
         return verifyCallResult(success, returndata);
     }
+
+    // solhint-enable max-line-length
 
     /**
      * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
@@ -93,8 +98,13 @@ library Address {
      *
      * _Available since v3.4._
      */
-    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
-        (bool success, bytes memory returndata) = target.call{value: value}(data);
+    function functionCallWithValue(
+        address target,
+        bytes memory data,
+        uint256 value
+    ) internal returns (bytes memory) {
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
         return verifyCallResult(success, returndata);
     }
 
@@ -105,6 +115,7 @@ library Address {
      * _Available since v3.4._
      */
     function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.delegatecall(data);
         return verifyCallResult(success, returndata);
     }

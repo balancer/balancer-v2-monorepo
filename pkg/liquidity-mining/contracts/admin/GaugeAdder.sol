@@ -14,48 +14,38 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
-
-import "../interfaces/IGaugeAdder.sol";
-import "../interfaces/IStakingLiquidityGauge.sol";
-
-contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
+contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    IVault private immutable _vault;
     IGaugeController private immutable _gaugeController;
+    IERC20 private immutable _balWethBpt;
     IAuthorizerAdaptor private _authorizerAdaptor;
+
+    IGaugeAdder private immutable _previousGaugeAdder;
 
     // Mapping from gauge type to a list of address for approved factories for that type
     mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
     // Mapping from mainnet BPT addresses to canonical liquidity gauge as listed on the GaugeController
     mapping(IERC20 => ILiquidityGauge) internal _poolGauge;
 
-    constructor(IGaugeController gaugeController) Authentication(bytes32(uint256(address(this)))) {
-        // GaugeAdder is a singleton, so it simply uses its own address to disambiguate action identifiers
-        IAuthorizerAdaptor authorizerAdaptor = gaugeController.admin();
-
-        _vault = authorizerAdaptor.getVault();
+    constructor(IGaugeController gaugeController, IGaugeAdder previousGaugeAdder)
+        SingletonAuthentication(gaugeController.admin().getVault())
+    {
         _gaugeController = gaugeController;
-        _authorizerAdaptor = authorizerAdaptor;
-    }
+        _authorizerAdaptor = gaugeController.admin();
+        _previousGaugeAdder = previousGaugeAdder;
 
-    /**
-     * @notice Returns the Balancer Vault
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
+        // Cache the BAL 80 WETH 20 BPT on this contract.
+        _balWethBpt = gaugeController.token();
     }
 
     /**
@@ -79,8 +69,14 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
      * This function provides global information by using which gauge has been added to the Gauge Controller
      * to represent the canonical gauge for a given pool address.
      */
-    function getPoolGauge(IERC20 pool) external view override returns (ILiquidityGauge) {
-        return _poolGauge[pool];
+    function getPoolGauge(IERC20 pool) public view override returns (ILiquidityGauge) {
+        ILiquidityGauge gauge = _poolGauge[pool];
+        if (gauge == ILiquidityGauge(0) && _previousGaugeAdder != IGaugeAdder(0)) {
+            // It's possible that a gauge for this pool was added by a previous GaugeAdder,
+            // we must also then check if it exists on this other GaugeAdder.
+            return _previousGaugeAdder.getPoolGauge(pool);
+        }
+        return gauge;
     }
 
     /**
@@ -126,10 +122,10 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     function addEthereumGauge(IStakingLiquidityGauge gauge) external override authenticate {
         // Each gauge factory prevents deploying multiple gauges for the same Balancer pool
         // however two separate factories can each deploy their own gauge for the same pool.
-        // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller
+        // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller.
         IERC20 pool = gauge.lp_token();
-        require(_poolGauge[pool] == ILiquidityGauge(0), "Duplicate gauge");
-        require(pool != _gaugeController.token(), "Cannot add gauge for 80/20 BAL-WETH BPT");
+        require(getPoolGauge(pool) == ILiquidityGauge(0), "Duplicate gauge");
+        require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
         _poolGauge[pool] = gauge;
 
         _addGauge(address(gauge), GaugeType.Ethereum);
@@ -154,6 +150,33 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     }
 
     /**
+     * @notice Adds a new gauge to the GaugeController for the "Optimism" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on Optimism.
+     */
+    function addOptimismGauge(address rootGauge) external override authenticate {
+        _addGauge(rootGauge, GaugeType.Optimism);
+    }
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "Gnosis" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on Gnosis Chain.
+     */
+    function addGnosisGauge(address rootGauge) external override authenticate {
+        _addGauge(rootGauge, GaugeType.Gnosis);
+    }
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "ZKSync" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on ZKSync.
+     */
+    function addZKSyncGauge(address rootGauge) external override authenticate {
+        _addGauge(rootGauge, GaugeType.ZKSync);
+    }
+
+    /**
      * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
      */
     function addGaugeFactory(ILiquidityGaugeFactory factory, GaugeType gaugeType) external override authenticate {
@@ -170,10 +193,6 @@ contract GaugeAdder is IGaugeAdder, Authentication, ReentrancyGuard {
     }
 
     // Internal functions
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
-    }
 
     /**
      * @dev Adds `gauge` to the GaugeController with type `gaugeType` and an initial weight of zero

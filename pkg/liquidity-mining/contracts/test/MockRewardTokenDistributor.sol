@@ -15,9 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
-
-import "../interfaces/IRewardTokenDistributor.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IRewardTokenDistributor.sol";
 
 // solhint-disable func-name-mixedcase, var-name-mixedcase, not-rely-on-time
 
@@ -63,5 +62,15 @@ contract MockRewardTokenDistributor is IRewardTokenDistributor {
         // We don't care about the rest of the update.
     }
 
-    function claim_rewards(address user) external override {}
+    function claim_rewards(address user) external override {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function claimable_reward(address, address) external pure override returns (uint256) {
+        return 0;
+    }
+
+    function claimable_reward_write(address, address) external pure override returns (uint256) {
+        return 0;
+    }
 }

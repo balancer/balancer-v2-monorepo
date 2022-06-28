@@ -14,11 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
 
-import "./interfaces/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 // solhint-disable not-rely-on-time
 
@@ -33,7 +34,7 @@ import "./interfaces/IBalancerTokenAdmin.sol";
  * in order to know how much BAL a gauge is allowed to mint. As this does not exist within the BAL token itself
  * it is defined here, we must then wrap the token's minting functionality in order for this to be meaningful.
  */
-contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGuard {
+contract BalancerTokenAdmin is IBalancerTokenAdmin, SingletonAuthentication, ReentrancyGuard {
     using Math for uint256;
 
     // Initial inflation rate of 145k BAL per week.
@@ -42,7 +43,6 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
     uint256 public constant override RATE_REDUCTION_COEFFICIENT = 1189207115002721024; // 2 ** (1/4) * 1e18
     uint256 public constant override RATE_DENOMINATOR = 1e18;
 
-    IVault private immutable _vault;
     IBalancerToken private immutable _balancerToken;
 
     event MiningParametersUpdated(uint256 rate, uint256 supply);
@@ -53,10 +53,8 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
     uint256 private _startEpochSupply;
     uint256 private _rate;
 
-    constructor(IVault vault, IBalancerToken balancerToken) Authentication(bytes32(uint256(address(this)))) {
-        // BalancerTokenAdmin is a singleton, so it simply uses its own address to disambiguate action identifiers
+    constructor(IVault vault, IBalancerToken balancerToken) SingletonAuthentication(vault) {
         _balancerToken = balancerToken;
-        _vault = vault;
     }
 
     /**
@@ -64,20 +62,6 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
      */
     function getBalancerToken() external view override returns (IBalancerToken) {
         return _balancerToken;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault.
-     */
-    function getVault() public view override returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @notice Returns the Balancer Vault's current authorizer.
-     */
-    function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
     }
 
     /**
@@ -259,10 +243,6 @@ contract BalancerTokenAdmin is IBalancerTokenAdmin, Authentication, ReentrancyGu
     }
 
     // Internal functions
-
-    function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
-        return getAuthorizer().canPerform(actionId, account, address(this));
-    }
 
     /**
      * @notice Maximum allowable number of tokens in existence (claimed or unclaimed)

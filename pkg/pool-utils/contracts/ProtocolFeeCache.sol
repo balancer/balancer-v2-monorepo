@@ -14,8 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 /**
  * @title Store a fixed or cache the delegated Protocol Swap Fee Percentage
@@ -42,7 +42,7 @@ abstract contract ProtocolFeeCache {
     uint256 private immutable _fixedProtocolSwapFeePercentage;
 
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
-    IProtocolFeesCollector private immutable _protocolFeeCollector;
+    IProtocolFeesCollector private immutable _protocolFeesCollector;
 
     uint256 private _protocolSwapFeePercentageCache;
 
@@ -54,11 +54,11 @@ abstract contract ProtocolFeeCache {
 
         _delegatedProtocolFees = delegatedProtocolFees;
 
-        IProtocolFeesCollector protocolFeeCollector = vault.getProtocolFeesCollector();
-        _protocolFeeCollector = protocolFeeCollector;
+        IProtocolFeesCollector protocolFeesCollector = vault.getProtocolFeesCollector();
+        _protocolFeesCollector = protocolFeesCollector;
 
         if (delegatedProtocolFees) {
-            _updateProtocolSwapFeeCache(protocolFeeCollector);
+            _updateProtocolSwapFeeCache(protocolFeesCollector);
         } else {
             _require(
                 protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
@@ -77,21 +77,21 @@ abstract contract ProtocolFeeCache {
     }
 
     /**
-     * @dev Can be called by anyone to update the cache fee percentage (when delegated).
-     * Updates the cache to the latest value set by governance.
-     */
-    function updateProtocolSwapFeePercentageCache() external {
-        _require(getProtocolFeeDelegation(), Errors.INVALID_OPERATION);
-
-        _updateProtocolSwapFeeCache(_protocolFeeCollector);
-    }
-
-    /**
      * @dev Returns the current protocol swap fee percentage. If `getProtocolFeeDelegation()` is false, this value is
      * immutable. Alternatively, it will track the global fee percentage set in the Fee Collector.
      */
     function getProtocolSwapFeePercentageCache() public view returns (uint256) {
         return getProtocolFeeDelegation() ? _protocolSwapFeePercentageCache : _fixedProtocolSwapFeePercentage;
+    }
+
+    /**
+     * @dev Can be called by anyone to update the cache swap fee percentage (when delegated).
+     * Updates the cache to the latest value set by governance.
+     */
+    function updateProtocolSwapFeePercentageCache() external {
+        _require(getProtocolFeeDelegation(), Errors.INVALID_OPERATION);
+
+        _updateProtocolSwapFeeCache(_protocolFeesCollector);
     }
 
     /**
