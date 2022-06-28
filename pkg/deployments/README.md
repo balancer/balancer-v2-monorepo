@@ -67,6 +67,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Rate Provider for wstETH                             | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
 | Batch Relayer                                        | [`20211203-batch-relayer`](./tasks/20211203-batch-relayer)                                           |
 | Linear Pools for Aave aTokens                        | [`20211208-aave-linear-pool`](./tasks/20211208-aave-linear-pool)                                     |
+| Batch Relayer V2                                     | [`20220318-batch-relayer-v2`](./tasks/20220318-batch-relayer-v2)                                     |
 | Authorizer Adaptor for extending governance          | [`20220325-authorizer-adaptor `](./tasks/20220325-authorizer-adaptor)                                |
 | Wallet for the BAL token                             | [`20220325-bal-token-holder-factory `](./tasks/20220325-bal-token-holder-factory)                    |
 | Admin of the BAL token                               | [`20220325-balancer-token-admin `](./tasks/20220325-balancer-token-admin)                            |
@@ -75,17 +76,20 @@ Returns an object with all contracts from a deployment and their addresses.
 | Mainnet Staking Gauges                               | [`20220325-mainnet-gauge-factory`](./tasks/20220325-mainnet-gauge-factory)                           |
 | Single Recipient Stakeless Gauges                    | [`20220325-single-recipient-gauge-factory`](./tasks/20220325-single-recipient-gauge-factory)         |
 | Delegation of veBAL boosts                           | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
+| Linear Pools for ERC4626 Tokens V2                   | [`20220404-erc4626-linear-pool-v2`](./tasks/deprecated/20220404-erc4626-linear-pool-v2)              |
 | Gauges on child networks (L2s and sidechains)        | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
 | Arbitrum Root Gauges, for veBAL voting               | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)               |
 | Polygon Root Gauges, for veBAL voting                | [`20220413-polygon-root-gauge-factory`](./tasks/20220413-polygon-root-gauge-factory)                 |
 | veBAL Smart Wallet Checker                           | [`20220420-smart-wallet-checker`](./tasks/20220420-smart-wallet-checker)                             |
 | Fee Distributor for veBAL holders                    | [`20220420-fee-distributor`](./tasks/20220420-fee-distributor)                                       |
+| Linear Pools for Unbutton tokens                     | [`20220425-unbutton-aave-linear-pool`](./tasks/20220425-unbutton-aave-linear-pool)                   |
 | Distribution Scheduler for reward tokens on gauges   | [`20220422-distribution-scheduler`](./tasks/20220422-distribution-scheduler)                         |
 | Relayer with the fix for the Double Entrypoint issue | [`20220513-double-entrypoint-fix-relayer`](./tasks/20220513-double-entrypoint-fix-relayer)           |
 | Protocol Fee Withdrawer                              | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                       |
 | Child Chain Gauge Token Adder                        | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
+| Gauge Registrant V2, supporting new networks         | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
 
 ## Scripts
 
@@ -119,3 +123,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
 | Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
+| Linear Pools for ERC4626 Tokens                  | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
