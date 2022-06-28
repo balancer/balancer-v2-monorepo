@@ -37,7 +37,7 @@ describe('GaugeAdder', () => {
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     gaugeFactory = await deploy('MockLiquidityGaugeFactory');
-    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address] });
+    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, ZERO_ADDRESS] });
 
     await gaugeController.add_type('LiquidityMiningCommittee', 0);
     await gaugeController.add_type('veBAL', 0);

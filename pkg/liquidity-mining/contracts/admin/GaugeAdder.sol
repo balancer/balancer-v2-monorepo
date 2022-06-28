@@ -30,14 +30,19 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     IERC20 private immutable _balWethBpt;
     IAuthorizerAdaptor private _authorizerAdaptor;
 
+    IGaugeAdder private immutable _previousGaugeAdder;
+
     // Mapping from gauge type to a list of address for approved factories for that type
     mapping(GaugeType => EnumerableSet.AddressSet) internal _gaugeFactoriesByType;
     // Mapping from mainnet BPT addresses to canonical liquidity gauge as listed on the GaugeController
     mapping(IERC20 => ILiquidityGauge) internal _poolGauge;
 
-    constructor(IGaugeController gaugeController) SingletonAuthentication(gaugeController.admin().getVault()) {
+    constructor(IGaugeController gaugeController, IGaugeAdder previousGaugeAdder)
+        SingletonAuthentication(gaugeController.admin().getVault())
+    {
         _gaugeController = gaugeController;
         _authorizerAdaptor = gaugeController.admin();
+        _previousGaugeAdder = previousGaugeAdder;
 
         // Cache the BAL 80 WETH 20 BPT on this contract.
         _balWethBpt = gaugeController.token();
@@ -64,8 +69,14 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
      * This function provides global information by using which gauge has been added to the Gauge Controller
      * to represent the canonical gauge for a given pool address.
      */
-    function getPoolGauge(IERC20 pool) external view override returns (ILiquidityGauge) {
-        return _poolGauge[pool];
+    function getPoolGauge(IERC20 pool) public view override returns (ILiquidityGauge) {
+        ILiquidityGauge gauge = _poolGauge[pool];
+        if (gauge == ILiquidityGauge(0) && _previousGaugeAdder != IGaugeAdder(0)) {
+            // It's possible that a gauge for this pool was added by a previous GaugeAdder,
+            // we must also then check if it exists on this other GaugeAdder.
+            return _previousGaugeAdder.getPoolGauge(pool);
+        }
+        return gauge;
     }
 
     /**
@@ -111,9 +122,9 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     function addEthereumGauge(IStakingLiquidityGauge gauge) external override authenticate {
         // Each gauge factory prevents deploying multiple gauges for the same Balancer pool
         // however two separate factories can each deploy their own gauge for the same pool.
-        // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller
+        // We then check here to see if the new gauge's pool already has a gauge on the Gauge Controller.
         IERC20 pool = gauge.lp_token();
-        require(_poolGauge[pool] == ILiquidityGauge(0), "Duplicate gauge");
+        require(getPoolGauge(pool) == ILiquidityGauge(0), "Duplicate gauge");
         require(pool != _balWethBpt, "Cannot add gauge for 80/20 BAL-WETH BPT");
         _poolGauge[pool] = gauge;
 
