@@ -86,6 +86,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Child Chain Gauge Token Adder                        | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
+| Batch Relayer V2                                     | [`20220318-batch-relayer-v2`](./tasks/20220318-batch-relayer-v2)                                     |
 
 ## Scripts
 
