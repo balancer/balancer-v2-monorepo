@@ -21,7 +21,7 @@ import "./ILiquidityGaugeFactory.sol";
 import "./IStakingLiquidityGauge.sol";
 
 interface IGaugeAdder is IAuthentication {
-    enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum }
+    enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync }
 
     event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
@@ -72,6 +72,27 @@ interface IGaugeAdder is IAuthentication {
      * It should not be called with the address of the gauge which is deployed on Arbitrum
      */
     function addArbitrumGauge(address rootGauge) external;
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "Optimism" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on Optimism.
+     */
+    function addOptimismGauge(address rootGauge) external;
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "Gnosis" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on Gnosis Chain.
+     */
+    function addGnosisGauge(address rootGauge) external;
+
+    /**
+     * @notice Adds a new gauge to the GaugeController for the "ZKSync" type.
+     * This function must be called with the address of the *root* gauge which is deployed on Ethereum mainnet.
+     * It should not be called with the address of the gauge which is deployed on ZKSync.
+     */
+    function addZKSyncGauge(address rootGauge) external;
 
     /**
      * @notice Adds `factory` as an allowlisted factory contract for gauges with type `gaugeType`.
