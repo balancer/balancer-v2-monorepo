@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import { MINUTE, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -84,7 +84,7 @@ describe('LiquidityBootstrappingPool', function () {
           const normalizedWeights = await pool.getNormalizedWeights();
 
           for (let i = 0; i < numTokens; i++) {
-            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.0001);
+            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.001);
           }
         });
 
@@ -164,14 +164,14 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Not exactly equal due to weight compression
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.001);
       });
 
       it('stores the initial weights as a zero duration weight change', async () => {
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
 
         expect(startTime).to.equal(endTime);
-        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.001);
       });
 
       describe('permissioned actions', () => {
@@ -239,12 +239,6 @@ describe('LiquidityBootstrappingPool', function () {
                 );
               });
 
-              it('fails if start time > end time', async () => {
-                await expect(pool.updateWeightsGradually(sender, now, now.sub(1), weights)).to.be.revertedWith(
-                  'GRADUAL_UPDATE_TIME_TRAVEL'
-                );
-              });
-
               it('fails with an end weight below the minimum', async () => {
                 const badWeights = [...weights];
                 badWeights[2] = fp(0.005);
@@ -261,63 +255,24 @@ describe('LiquidityBootstrappingPool', function () {
                   pool.updateWeightsGradually(sender, now.add(100), now.add(1000), badWeights)
                 ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
               });
-
-              context('with start time in the past', () => {
-                let now: BigNumber, startTime: BigNumber, endTime: BigNumber;
-                const endWeights = [fp(0.15), fp(0.25), fp(0.55), fp(0.05)];
-
-                sharedBeforeEach('updateWeightsGradually (start time in the past)', async () => {
-                  now = await currentTimestamp();
-                  // Start an hour in the past
-                  startTime = now.sub(MINUTE * 60);
-                  endTime = now.add(UPDATE_DURATION);
-                });
-
-                it('fast-forwards start time to present', async () => {
-                  await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
-                  const updateParams = await pool.getGradualWeightUpdateParams();
-
-                  // Start time should be fast-forwarded to now
-                  expect(updateParams.startTime).to.equalWithError(now, 0.001);
-                });
-              });
             });
 
             context('with valid parameters (ongoing weight update)', () => {
-              // startWeights must equal "weights" above - just not using fp to keep math simple
-              const startWeights = [0.3, 0.55, 0.1, 0.05];
-              const endWeights = [0.15, 0.25, 0.55, 0.05];
-
-              function getEndWeights(pct: number): BigNumber[] {
-                const intermediateWeights = Array<BigNumber>(weights.length);
-
-                for (let i = 0; i < weights.length; i++) {
-                  if (startWeights[i] < endWeights[i]) {
-                    // Weight is increasing
-                    intermediateWeights[i] = fp(startWeights[i] + ((endWeights[i] - startWeights[i]) * pct) / 100);
-                  } else {
-                    // Weight is decreasing (or not changing)
-                    intermediateWeights[i] = fp(startWeights[i] - ((startWeights[i] - endWeights[i]) * pct) / 100);
-                  }
-                }
-
-                return intermediateWeights;
-              }
+              const endWeights = [fp(0.15), fp(0.25), fp(0.55), fp(0.05)];
 
               let now, startTime: BigNumber, endTime: BigNumber;
               const START_DELAY = MINUTE * 10;
-              const finalEndWeights = getEndWeights(100);
 
               sharedBeforeEach('updateWeightsGradually', async () => {
                 now = await currentTimestamp();
                 startTime = now.add(START_DELAY);
                 endTime = startTime.add(UPDATE_DURATION);
 
-                await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+                await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
               });
 
               it('updating weights emits an event', async () => {
-                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, finalEndWeights);
+                const receipt = await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
 
                 expectEvent.inReceipt(await receipt.wait(), 'GradualWeightUpdateScheduled', {
                   startTime: startTime,
@@ -331,33 +286,8 @@ describe('LiquidityBootstrappingPool', function () {
 
                 expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
                 expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
-                expect(updateParams.endWeights).to.equalWithError(finalEndWeights, 0.001);
+                expect(updateParams.endWeights).to.equalWithError(endWeights, 0.001);
               });
-
-              it('gets start weights if called before the start time', async () => {
-                const normalizedWeights = await pool.getNormalizedWeights();
-
-                // Need to decrease precision
-                expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-              });
-
-              it('gets end weights if called after the end time', async () => {
-                await advanceTime(endTime.add(MINUTE));
-                const normalizedWeights = await pool.getNormalizedWeights();
-
-                // Need to decrease precision
-                expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
-              });
-
-              for (let pct = 5; pct < 100; pct += 5) {
-                it(`gets correct intermediate weights if called ${pct}% through`, async () => {
-                  await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
-                  const normalizedWeights = await pool.getNormalizedWeights();
-
-                  // Need to decrease precision
-                  expect(normalizedWeights).to.equalWithError(getEndWeights(pct), 0.005);
-                });
-              }
             });
           });
         });

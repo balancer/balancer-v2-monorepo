@@ -1,4 +1,4 @@
-import Task from '../../src/task';
+import Task, { TaskMode } from '../../src/task';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 export type VaultDeployment = {
@@ -8,15 +8,9 @@ export type VaultDeployment = {
   bufferPeriodDuration: number;
 };
 
-const Authorizer = new Task('20210418-authorizer');
+const Authorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
 
 export default {
-  goerli: {
-    Authorizer,
-    weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
-  },
   kovan: {
     Authorizer,
     weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
@@ -29,18 +23,6 @@ export default {
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },
-  rinkeby: {
-    Authorizer,
-    weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
-  },
-  ropsten: {
-    Authorizer,
-    weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
-  },
   polygon: {
     Authorizer,
     weth: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', // WMATIC
@@ -50,6 +32,12 @@ export default {
   arbitrum: {
     Authorizer,
     weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
+  optimism: {
+    Authorizer,
+    weth: '0x4200000000000000000000000000000000000006',
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },

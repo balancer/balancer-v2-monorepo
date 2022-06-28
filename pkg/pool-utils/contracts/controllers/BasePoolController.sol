@@ -15,11 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolController.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../BasePoolAuthorization.sol";
-import "../interfaces/IBasePoolController.sol";
-import "../interfaces/IControlledPool.sol";
 
 /**
  * @dev Pool controller that serves as the owner of a Balancer pool, and is in turn owned by
@@ -181,7 +181,7 @@ contract BasePoolController is IBasePoolController {
      * It means the pool address must be in storage vs immutable, but this is acceptable for infrequent admin
      * operations.
      */
-    function initialize(address poolAddress) external virtual override {
+    function initialize(address poolAddress) public virtual override {
         // This can only be called once - and the owner of the pool must be this contract
         _require(
             pool == address(0) && BasePoolAuthorization(poolAddress).getOwner() == address(this),
@@ -198,7 +198,7 @@ contract BasePoolController is IBasePoolController {
      * Can only be called by the current manager.
      */
     function transferOwnership(address newManager) external onlyManager {
-        _require(canTransferOwnership(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canTransferOwnership(), Errors.FEATURE_DISABLED);
 
         _managerCandidate = newManager;
     }
@@ -238,7 +238,7 @@ contract BasePoolController is IBasePoolController {
      * @dev Pass a call to BasePool's setSwapFeePercentage through to the underlying pool, if allowed.
      */
     function setSwapFeePercentage(uint256 swapFeePercentage) external virtual override withBoundPool {
-        _require(canChangeSwapFee(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canChangeSwapFee(), Errors.FEATURE_DISABLED);
         _require(getSwapFeeController() == msg.sender, Errors.SENDER_NOT_ALLOWED);
 
         IControlledPool(pool).setSwapFeePercentage(swapFeePercentage);
@@ -269,7 +269,7 @@ contract BasePoolController is IBasePoolController {
      * @dev Setter for the admin to set/update the metadata
      */
     function updateMetadata(bytes memory metadata) external onlyManager {
-        _require(canUpdateMetadata(), Errors.UNAUTHORIZED_OPERATION);
+        _require(canUpdateMetadata(), Errors.FEATURE_DISABLED);
 
         _metadata = metadata;
         emit MetadataUpdated(metadata);

@@ -20,6 +20,7 @@ export const MAX_INT256: BigNumber = maxInt(256);
 export const ANY_ADDRESS = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF';
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+export const ONES_BYTES32 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
 
 export const MAX_GAS_LIMIT = 8e6;
 export const MAX_WEIGHTED_TOKENS = 100;

@@ -10,7 +10,6 @@ import Vault from '../../vault/Vault';
 
 export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
-  ORACLE_WEIGHTED_POOL,
   LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
 }
@@ -22,10 +21,12 @@ export type RawWeightedPoolDeployment = {
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
-  oracleEnabled?: boolean;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
+  protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
+  managementAumFeePercentage?: BigNumberish;
+  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -42,10 +43,12 @@ export type WeightedPoolDeployment = {
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   poolType: WeightedPoolType;
-  oracleEnabled: boolean;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -166,36 +169,20 @@ export type VoidResult = {
   receipt: ContractReceipt;
 };
 
-export type MiscData = {
-  swapFeePercentage: BigNumber;
-  oracleEnabled: boolean;
-  oracleIndex: BigNumber;
-  oracleSampleCreationTimestamp: BigNumber;
-  logTotalSupply: BigNumber;
-  logInvariant: BigNumber;
-};
-
-export type Sample = {
-  logPairPrice: BigNumber;
-  accLogPairPrice: BigNumber;
-  logBptPrice: BigNumber;
-  accLogBptPrice: BigNumber;
-  logInvariant: BigNumber;
-  accLogInvariant: BigNumber;
-  timestamp: BigNumber;
-};
-
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
-export type GradualUpdateParams = {
+export type GradualWeightUpdateParams = {
   startTime: BigNumber;
   endTime: BigNumber;
+  startWeights: BigNumber[];
   endWeights: BigNumber[];
 };
 
-export type TokenCollectedFees = {
-  amounts: BigNumber[];
-  tokenAddresses: string[];
+export type GradualSwapFeeUpdateParams = {
+  startTime: BigNumber;
+  endTime: BigNumber;
+  startSwapFeePercentage: BigNumber;
+  endSwapFeePercentage: BigNumber;
 };
 
 export type BasePoolRights = {
@@ -210,21 +197,20 @@ export type ManagedPoolRights = {
   canSetMustAllowlistLPs: boolean;
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
-  canChangeMgmtSwapFee: boolean;
+  canChangeMgmtFees: boolean;
 };
 
 export type ManagedPoolParams = {
-  vault: string;
   name: string;
   symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
-  pauseWindowDuration: number;
-  bufferPeriodDuration: number;
-  owner: string;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
+  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
+  managementAumFeePercentage: BigNumberish;
+  aumProtocolFeesCollector: string;
 };

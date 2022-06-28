@@ -19,7 +19,6 @@ enum GaugeType {
 
 describe('GaugeAdder', () => {
   let vault: Vault;
-  let authorizer: Contract;
   let gaugeController: Contract;
   let gaugeFactory: Contract;
   let adaptor: Contract;
@@ -33,14 +32,12 @@ describe('GaugeAdder', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    authorizer = vault.authorizer;
 
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     gaugeFactory = await deploy('MockLiquidityGaugeFactory');
-    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address] });
+    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, ZERO_ADDRESS] });
 
     await gaugeController.add_type('LiquidityMiningCommittee', 0);
     await gaugeController.add_type('veBAL', 0);
@@ -58,29 +55,6 @@ describe('GaugeAdder', () => {
 
     return event.args.gauge;
   }
-
-  describe('constructor', () => {
-    it('sets the vault address', async () => {
-      expect(await gaugeAdder.getVault()).to.be.eq(vault.address);
-    });
-
-    it('sets the authorizer adaptor address', async () => {
-      expect(await gaugeAdder.getAuthorizerAdaptor()).to.be.eq(adaptor.address);
-    });
-
-    it('uses the authorizer of the vault', async () => {
-      expect(await gaugeAdder.getAuthorizer()).to.equal(authorizer.address);
-    });
-
-    it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault.instance, 'setAuthorizer');
-      await vault.grantPermissionsGlobally([action], admin.address);
-
-      await vault.instance.connect(admin).setAuthorizer(other.address);
-
-      expect(await gaugeAdder.getAuthorizer()).to.equal(other.address);
-    });
-  });
 
   describe('addGaugeFactory', () => {
     context('when caller is not authorized', () => {
@@ -191,23 +165,54 @@ describe('GaugeAdder', () => {
       });
 
       context('when gauge is for a pool which already has a gauge', () => {
-        let duplicateGauge: string;
+        context('when gauge was deployed by the current GaugeAdder', () => {
+          let duplicateGauge: string;
 
-        sharedBeforeEach('add gauge factory', async () => {
-          const action = await actionId(gaugeAdder, 'addGaugeFactory');
-          await vault.grantPermissionsGlobally([action], admin);
+          sharedBeforeEach('add gauge factory', async () => {
+            const action = await actionId(gaugeAdder, 'addGaugeFactory');
+            await vault.grantPermissionsGlobally([action], admin);
 
-          await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
-          await gaugeAdder.connect(admin).addEthereumGauge(gauge);
+            await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
+            await gaugeAdder.connect(admin).addEthereumGauge(gauge);
 
-          const duplicateGaugeFactory = await deploy('MockLiquidityGaugeFactory');
-          duplicateGauge = await deployGauge(duplicateGaugeFactory, ANY_ADDRESS);
+            const duplicateGaugeFactory = await deploy('MockLiquidityGaugeFactory');
+            duplicateGauge = await deployGauge(duplicateGaugeFactory, ANY_ADDRESS);
+          });
+
+          it('reverts', async () => {
+            await expect(gaugeAdder.connect(admin).addEthereumGauge(duplicateGauge)).to.be.revertedWith(
+              'Duplicate gauge'
+            );
+          });
         });
 
-        it('reverts', async () => {
-          await expect(gaugeAdder.connect(admin).addEthereumGauge(duplicateGauge)).to.be.revertedWith(
-            'Duplicate gauge'
-          );
+        context('when gauge was deployed by the previous GaugeAdder', () => {
+          let newGaugeAdder: Contract;
+
+          sharedBeforeEach('add gauge on previous GaugeAdder', async () => {
+            const action = await actionId(gaugeAdder, 'addGaugeFactory');
+            await vault.grantPermissionsGlobally([action], admin);
+
+            await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
+            await gaugeAdder.connect(admin).addEthereumGauge(gauge);
+          });
+
+          sharedBeforeEach('add gauge factory to new GaugeAdder', async () => {
+            newGaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, gaugeAdder.address] });
+
+            const addGaugeFactoryAction = await actionId(newGaugeAdder, 'addGaugeFactory');
+            await vault.grantPermissionsGlobally([addGaugeFactoryAction], admin);
+
+            await newGaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
+
+            // Authorize admin to add gauges through new GaugeAdder
+            const addEthereumGaugeAction = await actionId(newGaugeAdder, 'addEthereumGauge');
+            await vault.grantPermissionsGlobally([addEthereumGaugeAction], admin);
+          });
+
+          it('reverts', async () => {
+            await expect(newGaugeAdder.connect(admin).addEthereumGauge(gauge)).to.be.revertedWith('Duplicate gauge');
+          });
         });
       });
 

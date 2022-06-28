@@ -5,14 +5,15 @@ import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../test/expectEvent';
-import { ANY_ADDRESS } from '../../constants';
 import { BigNumberish } from '../../numbers';
-import { TimelockAuthorizerDeployment } from './types';
+import { ANY_ADDRESS, ONES_BYTES32 } from '../../constants';
 
-import { Account, NAry, TxParams } from '../types/types';
 import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
+import { TimelockAuthorizerDeployment } from './types';
+import { Account, NAry, TxParams } from '../types/types';
 
 export default class TimelockAuthorizer {
+  static WHATEVER = ONES_BYTES32;
   static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;
@@ -51,11 +52,23 @@ export default class TimelockAuthorizer {
     return this.instance.permissionId(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async delay(action: string): Promise<BigNumberish> {
-    return this.instance.delaysPerActionId(action);
+  async getActionId(actionId: string, how: string): Promise<string> {
+    return (await this.instance.functions['getActionId(bytes32,bytes32)'](actionId, how))[0];
   }
 
-  async scheduledExecutions(
+  async isRoot(account: Account): Promise<boolean> {
+    return this.instance.isRoot(this.toAddress(account));
+  }
+
+  async isPendingRoot(account: Account): Promise<boolean> {
+    return this.instance.isPendingRoot(this.toAddress(account));
+  }
+
+  async delay(action: string): Promise<BigNumberish> {
+    return this.instance.getActionIdDelay(action);
+  }
+
+  async getScheduledExecution(
     id: BigNumberish
   ): Promise<{
     executed: boolean;
@@ -65,14 +78,37 @@ export default class TimelockAuthorizer {
     data: string;
     where: string;
   }> {
-    return this.instance.scheduledExecutions(id);
+    return this.instance.getScheduledExecution(id);
   }
 
-  async canPerform(actions: NAry<string>, account: Account, wheres: NAry<Account>): Promise<boolean> {
-    const options = this.permissionsFor(actions, wheres);
-    const promises = options.map(([action, where]) => this.instance.canPerform(action, this.toAddress(account), where));
-    const results = await Promise.all(promises);
-    return results.every(Boolean);
+  async canPerform(action: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.canPerform(action, this.toAddress(account), this.toAddress(where));
+  }
+
+  async canGrant(action: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.canGrant(action, this.toAddress(account), this.toAddress(where));
+  }
+
+  async canRevoke(action: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.canRevoke(action, this.toAddress(account), this.toAddress(where));
+  }
+
+  async isGranter(actionId: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.isGranter(actionId, this.toAddress(account), this.toAddress(where));
+  }
+
+  async isRevoker(actionId: string, account: Account, where: Account): Promise<boolean> {
+    return this.instance.isRevoker(actionId, this.toAddress(account), this.toAddress(where));
+  }
+
+  async scheduleRootChange(root: Account, executors: Account[], params?: TxParams): Promise<number> {
+    const receipt = await this.with(params).scheduleRootChange(this.toAddress(root), this.toAddresses(executors));
+    const event = expectEvent.inReceipt(await receipt.wait(), 'ExecutionScheduled');
+    return event.args.scheduledExecutionId;
+  }
+
+  async claimRoot(params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).claimRoot();
   }
 
   async scheduleDelayChange(action: string, delay: number, executors: Account[], params?: TxParams): Promise<number> {
@@ -131,6 +167,32 @@ export default class TimelockAuthorizer {
     return this.with(params).cancel(id);
   }
 
+  async addGranter(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(where), true);
+  }
+
+  async removeGranter(
+    action: string,
+    account: Account,
+    wheres: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).manageGranter(action, this.toAddress(account), this.toAddress(wheres), false);
+  }
+
+  async addRevoker(action: string, account: Account, where: Account, params?: TxParams): Promise<ContractTransaction> {
+    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(where), true);
+  }
+
+  async removeRevoker(
+    action: string,
+    account: Account,
+    wheres: Account,
+    params?: TxParams
+  ): Promise<ContractTransaction> {
+    return this.with(params).manageRevoker(action, this.toAddress(account), this.toAddress(wheres), false);
+  }
+
   async grantPermissions(
     actions: NAry<string>,
     account: Account,
@@ -187,10 +249,6 @@ export default class TimelockAuthorizer {
     await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await this.execute(id);
-  }
-
-  permissionsFor(actions: NAry<string>, w: NAry<Account>): string[][] {
-    return this.toList(actions).flatMap((a) => this.toList(w).map((where) => [a, this.toAddress(where)]));
   }
 
   toAddress(account: Account): string {

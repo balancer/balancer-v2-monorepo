@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
@@ -27,12 +27,15 @@ describe('ManagedPoolFactory', function () {
   let vault: Vault;
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
+  let admin: SignerWithAddress;
   let poolControllerAddress: string;
+  let protocolFeesCollector: string;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
+  const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const MIN_WEIGHT_CHANGE_DURATION = DAY;
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
@@ -42,14 +45,16 @@ describe('ManagedPoolFactory', function () {
   let createTime: BigNumber;
 
   before('setup signers', async () => {
-    [, manager, assetManager] = await ethers.getSigners();
+    [, admin, manager, assetManager] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
 
     baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
+
+    protocolFeesCollector = await baseFactory.getAumProtocolFeesCollector();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
@@ -58,25 +63,25 @@ describe('ManagedPoolFactory', function () {
     canTransfer = true,
     canChangeSwapFee = true,
     swapsEnabled = true,
-    mustAllowlistLPs = false
+    mustAllowlistLPs = false,
+    protocolSwapFeePercentage = MAX_UINT256
   ): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
     const newPoolParams: ManagedPoolParams = {
-      vault: vault.address,
       name: NAME,
       symbol: SYMBOL,
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
       assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      pauseWindowDuration: BASE_PAUSE_WINDOW_DURATION,
-      bufferPeriodDuration: BASE_PAUSE_WINDOW_DURATION,
-      owner: manager.address,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
+      protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+      managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumProtocolFeesCollector: protocolFeesCollector,
     };
 
     const basePoolRights: BasePoolRights = {
@@ -91,13 +96,13 @@ describe('ManagedPoolFactory', function () {
       canSetMustAllowlistLPs: true,
       canSetCircuitBreakers: true,
       canChangeTokens: true,
-      canChangeMgmtSwapFee: true,
+      canChangeMgmtFees: true,
     };
 
     const receipt = await (
       await factory
         .connect(manager)
-        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION)
+        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
@@ -161,6 +166,10 @@ describe('ManagedPoolFactory', function () {
 
     it('sets management swap fee', async () => {
       expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
+    });
+
+    it('sets management aum fee', async () => {
+      expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
     });
 
     it('sets the pool manager ', async () => {
@@ -245,6 +254,18 @@ describe('ManagedPoolFactory', function () {
       const pool = await createPool(true, true, true, false);
 
       expect(await pool.getMustAllowlistLPs()).to.be.false;
+    });
+
+    it('pool created with protocol fees delegated', async () => {
+      const pool = await createPool(true, true, true, true);
+
+      expect(await pool.getProtocolFeeDelegation()).to.be.true;
+    });
+
+    it('pool created with protocol fees disabled', async () => {
+      const pool = await createPool(true, true, true, false, fp(0));
+
+      expect(await pool.getProtocolFeeDelegation()).to.be.false;
     });
   });
 });

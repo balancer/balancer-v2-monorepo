@@ -25,6 +25,19 @@ export async function instanceAt(artifact: Artifact, address: string): Promise<C
   return ethers.getContractAt(artifact.abi, address);
 }
 
+export function deploymentTxData(artifact: Artifact, args: Array<Param> = [], libs?: Libraries): string {
+  if (libs) artifact = linkBytecode(artifact, libs);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const encodedConstructorArguments = new utils.Interface(artifact.abi as any[]).encodeDeploy(args);
+
+  // Solidity contracts are deployed by sending a transaction with their creation code, concatenated by the abi-encoded
+  // constructor arguments.
+  // We remove the first two characters of the encoded constructor arguments as ethers returns a string with the "0x"
+  // prefix.
+  return `0x${artifact.evm.bytecode.object}${encodedConstructorArguments.substring(2)}`;
+}
+
 function linkBytecode(artifact: Artifact, libraries: Libraries): Artifact {
   let bytecode = artifact.evm.bytecode.object;
   for (const [, fileReferences] of Object.entries(artifact.evm.bytecode.linkReferences)) {
@@ -38,6 +51,6 @@ function linkBytecode(artifact: Artifact, libraries: Libraries): Artifact {
     }
   }
 
-  artifact.evm.bytecode.object = bytecode;
+  artifact.evm.bytecode.object = bytecode.toLowerCase();
   return artifact;
 }

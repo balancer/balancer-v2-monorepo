@@ -68,32 +68,36 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
   const swapFeePercentage = fp(0.02); // 2%
   const managementFee = fp(0.5); // 50%
+  const aumFee = 0;
 
   let pool: Contract;
   let joinUserData: string;
 
-  if (poolName == 'WeightedPool' || poolName == 'OracleWeightedPool' || poolName == 'ManagedPool') {
+  if (poolName == 'WeightedPool' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
 
+    const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
+      args: [vault.address],
+    });
+
     switch (poolName) {
       case 'ManagedPool': {
         const newPoolParams: ManagedPoolParams = {
-          vault: vault.address,
           name: name,
           symbol: symbol,
           tokens: tokens.addresses,
           normalizedWeights: weights,
           assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
-          pauseWindowDuration: MONTH * 3,
-          bufferPeriodDuration: MONTH,
-          owner: creator.address,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
+          protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
+          managementAumFeePercentage: aumFee,
+          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -108,13 +112,10 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canSetMustAllowlistLPs: true,
           canSetCircuitBreakers: true,
           canChangeTokens: true,
-          canChangeMgmtSwapFee: true,
+          canChangeMgmtFees: true,
         };
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY];
-        break;
-      }
-      case 'OracleWeightedPool': {
-        params = [tokens.addresses, weights, swapFeePercentage, true];
+
+        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
       default: {
@@ -157,9 +158,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 }
 
 export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
-  return size === 2
-    ? deployPool(vault, tokens.subset(size, offset), 'OracleWeightedPool')
-    : size > 20
+  return size > 20
     ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
     : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
@@ -183,7 +182,7 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader, others };
 }
 
-type PoolName = 'WeightedPool' | 'OracleWeightedPool' | 'StablePool' | 'ManagedPool';
+type PoolName = 'WeightedPool' | 'StablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Vault,
@@ -191,16 +190,12 @@ async function deployPoolFromFactory(
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
   const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
-  const libraries =
-    poolName == 'OracleWeightedPool'
-      ? { QueryProcessor: await (await deploy('v2-pool-utils/QueryProcessor')).address }
-      : undefined;
   let factory: Contract;
   if (poolName == 'ManagedPool') {
     const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address], libraries });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
   }
 
   // We could reuse this factory if we saved it across pool deployments

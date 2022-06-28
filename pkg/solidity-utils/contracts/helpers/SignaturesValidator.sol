@@ -14,8 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "./BalancerErrors.sol";
-import "./ISignaturesValidator.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/ISignaturesValidator.sol";
+
 import "../openzeppelin/EIP712.sol";
 
 /**
