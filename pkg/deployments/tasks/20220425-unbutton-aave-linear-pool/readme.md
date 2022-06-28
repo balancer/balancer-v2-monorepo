@@ -5,6 +5,7 @@ Deployment of the `UnbuttonAaveLinearPoolFactory`, for Aave Linear Pools where b
 ## Useful Files
 
 - [Ethereum mainnet address](./output/mainnet.json)
-- [Polygon mainnet address](./output/polygon.json)
-- [Arbitrum mainnet address](./output/arbitrum.json)
+- [Polygon address](./output/polygon.json)
+- [Arbitrum address](./output/arbitrum.json)
+- [Optimism address](./output/optimism.json)
 - [`UnbuttonAaveLinearPool` ABI](./abi/UnbuttonAaveLinearPool.json)
