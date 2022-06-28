@@ -445,7 +445,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Pay newly charged protocol fees after a swap where BPT was not involved (i.e. a regular swap).
+     * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
      */
     function _payDueProtocolFeeByInvariantIncrement(
         uint256 previousInvariant,
@@ -483,7 +483,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Tracks newly charged protocol fees after a swap where `bptAmount` was either sent or received (i.e. a
+     * @dev Pays protocol fees charged after a swap where `bptAmount` was either sent or received (i.e. a
      * single-token join or exit).
      */
     function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {

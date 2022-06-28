@@ -1005,6 +1005,8 @@ describe('StablePhantomPool', () => {
 
           context('on swaps given in', () => {
             it('pays any protocol fees due when swapping tokens', async () => {
+              const previousBalance = await pool.balanceOf(protocolFeesCollector.address);
+
               const tokenIn = tokens.first;
               const tokenOut = tokens.second;
               await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
@@ -1012,10 +1014,12 @@ describe('StablePhantomPool', () => {
               const currentFee = await pool.balanceOf(protocolFeesCollector.address);
               const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITH_FEE, inRecoveryMode);
 
-              expect(currentFee).to.be.equalWithError(expectedFee, 0.01);
+              expect(currentFee).to.be.equalWithError(expectedFee.sub(previousBalance), 0.01);
             });
 
             it('pays any protocol fees due when swapping for BPT (join)', async () => {
+              const previousBalance = await pool.balanceOf(protocolFeesCollector.address);
+
               const { amountOut: bptAmount } = await pool.swapGivenIn({
                 in: tokens.first,
                 out: pool.bpt,
@@ -1027,16 +1031,18 @@ describe('StablePhantomPool', () => {
               const currentFee = await pool.balanceOf(protocolFeesCollector.address);
               const expectedFee = getExpectedProtocolFee(bptAmount, AmountKind.WITHOUT_FEE, inRecoveryMode);
 
-              expect(currentFee).to.be.equalWithError(expectedFee, 0.01);
+              expect(currentFee).to.be.equalWithError(expectedFee.sub(previousBalance), 0.01);
             });
 
             it('pays any protocol fees due when swapping BPT (exit)', async () => {
+              const previousBalance = await pool.balanceOf(protocolFeesCollector.address);
+
               await pool.swapGivenIn({ in: pool.bpt, out: tokens.first, amount, from: lp, recipient });
 
               const currentFee = await pool.balanceOf(protocolFeesCollector.address);
               const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITH_FEE, inRecoveryMode);
 
-              expect(currentFee).to.be.equalWithError(expectedFee, 0.01);
+              expect(currentFee).to.be.equalWithError(expectedFee.sub(previousBalance), 0.01);
             });
           });
 
