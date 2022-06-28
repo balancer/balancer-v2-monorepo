@@ -18,6 +18,10 @@ export enum StablePoolExitKind {
   BPT_IN_FOR_EXACT_TOKENS_OUT,
 }
 
+export enum StablePhantomPoolExitKind {
+  BPT_IN_FOR_EXACT_TOKENS_OUT = 0,
+}
+
 export class StablePoolEncoder {
   /**
    * Cannot be constructed.
@@ -88,5 +92,16 @@ export class StablePoolEncoder {
     defaultAbiCoder.encode(
       ['uint256', 'uint256[]', 'uint256'],
       [StablePoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
+    );
+
+  /**
+   * Encodes the userData parameter for exiting a PhantomStablePool by removing exact amounts of tokens
+   * @param amountsOut - the amounts of each token to be withdrawn from the pool
+   * @param maxBPTAmountIn - the minimum acceptable BPT to burn in return for withdrawn tokens
+   */
+  static exitBPTInForExactTokensOutPhantom = (amountsOut: BigNumberish[], maxBPTAmountIn: BigNumberish): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256[]', 'uint256'],
+      [StablePhantomPoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
     );
 }
