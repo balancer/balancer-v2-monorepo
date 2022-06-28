@@ -67,6 +67,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Rate Provider for wstETH                             | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
 | Batch Relayer                                        | [`20211203-batch-relayer`](./tasks/20211203-batch-relayer)                                           |
 | Linear Pools for Aave aTokens                        | [`20211208-aave-linear-pool`](./tasks/20211208-aave-linear-pool)                                     |
+| Batch Relayer V2                                     | [`20220318-batch-relayer-v2`](./tasks/20220318-batch-relayer-v2)                                     |
 | Authorizer Adaptor for extending governance          | [`20220325-authorizer-adaptor `](./tasks/20220325-authorizer-adaptor)                                |
 | Wallet for the BAL token                             | [`20220325-bal-token-holder-factory `](./tasks/20220325-bal-token-holder-factory)                    |
 | Admin of the BAL token                               | [`20220325-balancer-token-admin `](./tasks/20220325-balancer-token-admin)                            |
@@ -87,6 +88,8 @@ Returns an object with all contracts from a deployment and their addresses.
 | Child Chain Gauge Token Adder                        | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
+| Gauge Registrant V2, supporting new networks         | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
+
 
 ## Scripts
 
