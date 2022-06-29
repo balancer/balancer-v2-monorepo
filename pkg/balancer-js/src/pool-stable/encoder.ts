@@ -10,6 +10,7 @@ export enum StablePoolJoinKind {
 export enum StablePhantomPoolJoinKind {
   INIT = 0,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
+  TOKEN_IN_FOR_EXACT_BPT_OUT,
 }
 
 export enum StablePoolExitKind {
@@ -63,6 +64,17 @@ export class StablePoolEncoder {
     defaultAbiCoder.encode(
       ['uint256', 'uint256', 'uint256'],
       [StablePoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
+    );
+
+  /**
+   * Encodes the userData parameter for joining a StablePhantomPool with to receive an exact amount of BPT
+   * @param bptAmountOut - the amount of BPT to be minted
+   * @param enterTokenIndex - the index of the token to be provided as liquidity
+   */
+  static joinTokenInForExactBPTOutPhantom = (bptAmountOut: BigNumberish, enterTokenIndex: number): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256', 'uint256'],
+      [StablePhantomPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
     );
 
   /**

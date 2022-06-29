@@ -727,6 +727,86 @@ describe('StablePhantomPool', () => {
           });
         }
       });
+
+      describe('join token in for exact BPT out', () => {
+        let tokenIndex: number;
+        let token: Token;
+
+        sharedBeforeEach('get token to join with', async () => {
+          tokenIndex = pool.bptIndex == 0 ? 1 : 0;
+          token = tokens.get(tokenIndex);
+        });
+
+        context('not in recovery mode', () => {
+          itJoinsExactBPTOutCorrectly();
+        });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enable recovery mode', async () => {
+            await pool.enableRecoveryMode(admin);
+          });
+
+          itJoinsExactBPTOutCorrectly();
+        });
+
+        function itJoinsExactBPTOutCorrectly() {
+          it('fails if not initialized', async () => {
+            await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
+          });
+
+          context('once initialized', () => {
+            sharedBeforeEach('initialize pool', async () => {
+              await pool.init({ recipient, initialBalances });
+            });
+
+            it('grants exact BPT for token in', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              // 20% of previous balance
+              const bptOut = pct(previousBptBalance, 0.2);
+              const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
+
+              const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+
+              // Only token in should be the one transferred
+              expect(result.amountsIn[tokenIndex]).to.be.equalWithError(expectedAmountIn, 0.001);
+              expect(result.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+              // Make sure received BPT is close to what we expect
+              const currentBptBalance = await pool.balanceOf(recipient);
+              expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+            });
+
+            it('can tell token amount received (for either join or joinSwap)', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              // 20% of previous balance
+              const bptOut = pct(previousBptBalance, 0.2);
+              const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
+
+              const result = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+
+              expect(result.bptOut).to.be.equal(bptOut);
+              expect(result.amountsIn[tokenIndex]).to.be.equalWithError(expectedAmountIn, 0.001);
+              expect(result.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+              // Join swap should give the same number of tokens
+              const { amountIn } = await pool.swapGivenOut({
+                from: recipient,
+                in: token,
+                out: pool.bpt,
+                amount: bptOut,
+                recipient: lp,
+              });
+              expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
+            });
+
+            it('reverts if paused', async () => {
+              await pool.pause();
+
+              await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
+            });
+          });
+        }
+      });
     });
 
     describe('onExitPool', () => {

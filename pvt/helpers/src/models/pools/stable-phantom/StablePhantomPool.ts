@@ -21,6 +21,7 @@ import * as expectEvent from '../../../test/expectEvent';
 import {
   InitStablePool,
   JoinGivenInStablePool,
+  JoinGivenOutStablePool,
   JoinExitStablePool,
   JoinResult,
   JoinQueryResult,
@@ -317,6 +318,14 @@ export default class StablePhantomPool extends BasePool {
     return this.queryJoin(this._buildJoinGivenInParams(params));
   }
 
+  async joinGivenOut(params: JoinGivenOutStablePool): Promise<JoinResult> {
+    return this.join(this._buildJoinGivenOutParams(params));
+  }
+
+  async queryJoinGivenOut(params: JoinGivenOutStablePool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinGivenOutParams(params));
+  }
+
   async join(params: JoinExitStablePool): Promise<JoinResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
@@ -406,6 +415,17 @@ export default class StablePhantomPool extends BasePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.joinExactTokensInForBPTOutPhantom(amountsIn, params.minimumBptOut ?? 0),
+    };
+  }
+
+  private _buildJoinGivenOutParams(params: JoinGivenOutStablePool): JoinExitStablePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: StablePoolEncoder.joinTokenInForExactBPTOutPhantom(params.bptOut, this.tokens.indexOf(params.token)),
     };
   }
 
