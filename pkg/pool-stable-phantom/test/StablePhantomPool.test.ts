@@ -1117,12 +1117,15 @@ describe('StablePhantomPool', () => {
     describe('protocol swap fees', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
+      let protocolFeesCollector: Contract;
 
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
         await pool.updateProtocolSwapFeePercentageCache();
+
+        protocolFeesCollector = await pool.vault.getFeesCollector();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
@@ -1134,237 +1137,153 @@ describe('StablePhantomPool', () => {
         await tokens.approve({ from: lp, to: pool.vault });
       });
 
-      describe('accounting', () => {
-        const amount = fp(1);
+      function itAccountsForProtocolFees() {
+        describe('accounting', () => {
+          const amount = fp(1);
+          let inRecoveryMode: boolean;
+          let previousBalance: BigNumber;
 
-        sharedBeforeEach('update cache', async () => {
-          await pool.updateProtocolSwapFeePercentageCache();
-        });
+          sharedBeforeEach('update cache', async () => {
+            await pool.updateProtocolSwapFeePercentageCache();
+            inRecoveryMode = await pool.inRecoveryMode();
+          });
 
-        enum AmountKind {
-          WITH_FEE,
-          WITHOUT_FEE,
-        }
-
-        function getAproxDueFee(amount: BigNumber, kind: AmountKind): BigNumber {
-          // In StablePools, BPT and underlying tokens are almost equivalent. This means that the token fee amount is a
-          // good estimate of the equivalent BPT fee amount.
-
-          if (kind == AmountKind.WITHOUT_FEE) {
-            amount = amount.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
+          enum AmountKind {
+            WITH_FEE,
+            WITHOUT_FEE,
           }
 
-          const fee = amount.mul(swapFeePercentage).div(fp(1));
-          const protocolFee = fee.mul(protocolFeePercentage).div(fp(1));
-          return protocolFee;
-        }
+          function getExpectedProtocolFee(amount: BigNumber, kind: AmountKind, recoveryMode: boolean): BigNumber {
+            // In StablePools, BPT and underlying tokens are almost equivalent. This means that the token fee amount is a
+            // good estimate of the equivalent BPT fee amount.
 
-        context('on swaps given in', () => {
-          it('tracks fees when swapping tokens', async () => {
-            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
+            if (recoveryMode) {
+              return bn(0);
+            }
 
-            const tokenIn = tokens.first;
-            const tokenOut = tokens.second;
-            const { receipt } = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+            if (kind == AmountKind.WITHOUT_FEE) {
+              amount = amount.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
+            }
 
-            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
-            const aproxFee = getAproxDueFee(amount, AmountKind.WITH_FEE);
+            const fee = amount.mul(swapFeePercentage).div(fp(1));
+            const protocolFee = fee.mul(protocolFeePercentage).div(fp(1));
+            return protocolFee;
+          }
 
-            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+          context('on swaps given in', () => {
+            sharedBeforeEach('ensure the initial protocol fee balance is non-zero', async () => {
+              // Make the previousBalance non-zero
+              await pool.swapGivenIn({
+                in: tokens.second,
+                out: pool.bpt,
+                amount,
+                from: lp,
+                recipient: protocolFeesCollector.address,
+              });
+              previousBalance = await pool.balanceOf(protocolFeesCollector.address);
+              expect(previousBalance).to.gt(0);
+            });
 
-            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
-              bptAmount: currentDueFee.sub(previousDueFee),
+            it('pays any protocol fees due when swapping tokens', async () => {
+              await pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount, from: lp, recipient });
+
+              const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
+              const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITH_FEE, inRecoveryMode);
+
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
+            });
+
+            it('pays any protocol fees due when swapping for BPT (join)', async () => {
+              const { amountOut: bptAmount } = await pool.swapGivenIn({
+                in: tokens.first,
+                out: pool.bpt,
+                amount,
+                from: lp,
+                recipient,
+              });
+
+              const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
+              const expectedFee = getExpectedProtocolFee(bptAmount, AmountKind.WITHOUT_FEE, inRecoveryMode);
+
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
+            });
+
+            it('pays any protocol fees due when swapping BPT (exit)', async () => {
+              await pool.swapGivenIn({ in: pool.bpt, out: tokens.first, amount, from: lp, recipient });
+
+              const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
+              const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITH_FEE, inRecoveryMode);
+
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
             });
           });
 
-          it('tracks fees when swapping for BPT (join)', async () => {
-            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
-
-            const token = tokens.first;
-            const { amountOut: bptAmount, receipt } = await pool.swapGivenIn({
-              in: token,
-              out: pool.bpt,
-              amount,
-              from: lp,
-              recipient,
+          context('on swaps given out', () => {
+            sharedBeforeEach('ensure the initial protocol fee balance is non-zero', async () => {
+              // Make the previousBalance non-zero
+              await pool.swapGivenIn({
+                in: tokens.second,
+                out: pool.bpt,
+                amount,
+                from: lp,
+                recipient: protocolFeesCollector.address,
+              });
+              previousBalance = await pool.balanceOf(protocolFeesCollector.address);
+              expect(previousBalance).to.gt(0);
             });
 
-            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
-            const aproxFee = getAproxDueFee(bptAmount, AmountKind.WITHOUT_FEE);
+            it('pays any protocol fees due when swapping tokens', async () => {
+              const { amountIn } = await pool.swapGivenOut({
+                in: tokens.first,
+                out: tokens.second,
+                amount,
+                from: lp,
+                recipient,
+              });
 
-            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+              const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
+              const expectedFee = getExpectedProtocolFee(amountIn, AmountKind.WITH_FEE, inRecoveryMode);
 
-            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
-              bptAmount: currentDueFee.sub(previousDueFee),
-            });
-          });
-
-          it('tracks fees when swapping BPT (exit)', async () => {
-            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
-
-            const token = tokens.first;
-            const { receipt } = await pool.swapGivenIn({ in: pool.bpt, out: token, amount, from: lp, recipient });
-
-            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
-            const aproxFee = getAproxDueFee(amount, AmountKind.WITH_FEE);
-
-            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
-
-            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
-              bptAmount: currentDueFee.sub(previousDueFee),
-            });
-          });
-        });
-
-        context('on swaps given out', () => {
-          it('tracks fees when swapping tokens', async () => {
-            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
-
-            const tokenIn = tokens.first;
-            const tokenOut = tokens.second;
-            const { amountIn, receipt } = await pool.swapGivenOut({
-              in: tokenIn,
-              out: tokenOut,
-              amount,
-              from: lp,
-              recipient,
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
             });
 
-            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
-            const aproxFee = getAproxDueFee(amountIn, AmountKind.WITH_FEE);
+            it('pays any protocol fees due when swapping for BPT (join)', async () => {
+              await pool.swapGivenOut({ in: tokens.first, out: pool.bpt, amount, from: lp, recipient });
 
-            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+              const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
+              const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITHOUT_FEE, inRecoveryMode);
 
-            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
-              bptAmount: currentDueFee.sub(previousDueFee),
-            });
-          });
-
-          it('tracks fees when swapping for BPT (join)', async () => {
-            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
-
-            const token = tokens.first;
-            const { receipt } = await pool.swapGivenOut({ in: token, out: pool.bpt, amount, from: lp, recipient });
-
-            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
-            const aproxFee = getAproxDueFee(amount, AmountKind.WITHOUT_FEE);
-
-            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
-
-            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
-              bptAmount: currentDueFee.sub(previousDueFee),
-            });
-          });
-
-          it('tracks fees when swapping BPT (exit)', async () => {
-            const previousDueFee = await pool.getDueProtocolFeeBptAmount();
-
-            const token = tokens.first;
-            const { amountIn: bptAmount, receipt } = await pool.swapGivenOut({
-              in: pool.bpt,
-              out: token,
-              amount,
-              from: lp,
-              recipient,
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
             });
 
-            const currentDueFee = await pool.getDueProtocolFeeBptAmount();
-            const aproxFee = getAproxDueFee(bptAmount, AmountKind.WITH_FEE);
+            it('pays any protocol fees due when swapping BPT (exit)', async () => {
+              const { amountIn: bptAmount } = await pool.swapGivenOut({
+                in: pool.bpt,
+                out: tokens.first,
+                amount,
+                from: lp,
+                recipient,
+              });
 
-            expect(currentDueFee).to.be.equalWithError(aproxFee, 0.01);
+              const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
+              const expectedFee = getExpectedProtocolFee(bptAmount, AmountKind.WITH_FEE, inRecoveryMode);
 
-            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'DueProtocolFeeIncreased', {
-              bptAmount: currentDueFee.sub(previousDueFee),
+              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
             });
           });
         });
+      }
+
+      context('not in recovery mode', () => {
+        itAccountsForProtocolFees();
       });
 
-      describe('collection', () => {
-        const amount = fp(10);
-
-        sharedBeforeEach('update cache', async () => {
-          await pool.updateProtocolSwapFeePercentageCache();
+      context('in recovery mode', () => {
+        sharedBeforeEach('enter recovery mode', async () => {
+          await pool.enableRecoveryMode(admin);
         });
 
-        async function accrueProtocolFees(): Promise<BigNumber> {
-          const token = tokens.first;
-
-          const { amountOut: bptAmount } = await pool.swapGivenIn({
-            in: token,
-            out: pool.bpt,
-            amount,
-            from: lp,
-            recipient: lp,
-          });
-          await pool.swapGivenIn({ in: pool.bpt, out: token, amount: bptAmount, from: lp, recipient: lp });
-
-          return pool.getDueProtocolFeeBptAmount();
-        }
-
-        async function tokensAreTransferredToCollector(): Promise<void> {
-          const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
-
-          await pool.collectProtocolFees(other);
-
-          const dueFeeAfter = await pool.getDueProtocolFeeBptAmount();
-          expect(dueFeeAfter).to.be.equal(0);
-
-          const feeCollector = await pool.vault.getFeesCollector();
-          const feeCollectorBalance = await pool.bpt.balanceOf(feeCollector.address);
-
-          expect(feeCollectorBalance).to.be.equal(dueFeeBefore);
-          expect(dueFeeBefore).to.be.gt(0);
-        }
-
-        context('not in recovery mode', () => {
-          it('accrues (and transfers) protocol fees', async () => {
-            const dueFeeBefore = await pool.getDueProtocolFeeBptAmount();
-            expect(dueFeeBefore).to.equal(0);
-
-            const dueFeeAfter = await accrueProtocolFees();
-            expect(dueFeeAfter).to.be.gt(fp(0));
-
-            await tokensAreTransferredToCollector();
-          });
-        });
-
-        context('in recovery mode', () => {
-          sharedBeforeEach('enable recovery mode', async () => {
-            await pool.enableRecoveryMode(admin);
-          });
-
-          it('does not accrue protocol fees', async () => {
-            const dueFeeAfter = await accrueProtocolFees();
-            expect(dueFeeAfter).to.be.eq(fp(0));
-          });
-        });
-
-        context('with a recovery mode interlude', () => {
-          it('accrues fees during normal operation', async () => {
-            const pendingFees = await accrueProtocolFees();
-            expect(pendingFees).to.gt(0);
-          });
-
-          it('stops collecting fees in recovery mode', async () => {
-            const pendingFees = await accrueProtocolFees();
-            await pool.enableRecoveryMode(admin);
-
-            expect(await accrueProtocolFees()).to.equal(pendingFees);
-          });
-
-          it('resumes collection when recovery mode is disabled', async () => {
-            const pendingFees = await accrueProtocolFees();
-            await pool.enableRecoveryMode(admin);
-            await accrueProtocolFees();
-            await pool.disableRecoveryMode(admin);
-
-            expect(await accrueProtocolFees()).to.gt(pendingFees);
-
-            await pool.collectProtocolFees(other);
-            expect(await pool.getDueProtocolFeeBptAmount()).to.equal(0);
-          });
-        });
+        itAccountsForProtocolFees();
       });
     });
 
@@ -1395,8 +1314,9 @@ describe('StablePhantomPool', () => {
       });
 
       context('with protocol fees', () => {
+        const amount = fp(50);
+
         sharedBeforeEach('swap bpt in', async () => {
-          const amount = fp(50);
           const tokenIn = pool.bpt;
           const tokenOut = tokens.second;
 
@@ -1407,12 +1327,14 @@ describe('StablePhantomPool', () => {
         });
 
         it('reports correctly', async () => {
-          const dueFee = await pool.getDueProtocolFeeBptAmount();
+          const swapFee = amount.mul(swapFeePercentage).div(fp(1));
+          const protocolFee = swapFee.mul(protocolFeePercentage).div(fp(1));
+
           const senderBptBalance = await pool.balanceOf(lp);
 
           const virtualSupply = await pool.getVirtualSupply();
 
-          expect(virtualSupply).to.be.equalWithError(senderBptBalance.add(dueFee), 0.0001);
+          expect(virtualSupply).to.be.equalWithError(senderBptBalance.add(protocolFee), 0.0001);
         });
       });
     });

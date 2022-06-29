@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
-import "./BasePool.sol";
+import "./LegacyBasePool.sol";
 
 /**
  * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.
@@ -26,7 +26,7 @@ import "./BasePool.sol";
  * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the General
  * specialization setting.
  */
-abstract contract BaseGeneralPool is IGeneralPool, BasePool {
+abstract contract LegacyBaseGeneralPool is IGeneralPool, LegacyBasePool {
     // Swap Hooks
 
     function onSwap(

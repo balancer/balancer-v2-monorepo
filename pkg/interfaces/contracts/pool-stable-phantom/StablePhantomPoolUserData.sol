@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 library StablePhantomPoolUserData {
-    enum JoinKindPhantom { INIT, COLLECT_PROTOCOL_FEES, EXACT_TOKENS_IN_FOR_BPT_OUT }
+    enum JoinKindPhantom { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT }
     enum ExitKindPhantom { BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     function joinKind(bytes memory self) internal pure returns (JoinKindPhantom) {

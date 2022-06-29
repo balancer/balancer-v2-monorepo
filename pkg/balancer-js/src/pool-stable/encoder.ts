@@ -9,7 +9,6 @@ export enum StablePoolJoinKind {
 
 export enum StablePhantomPoolJoinKind {
   INIT = 0,
-  COLLECT_PROTOCOL_FEES,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
 }
 
@@ -37,12 +36,6 @@ export class StablePoolEncoder {
    */
   static joinInit = (amountsIn: BigNumberish[]): string =>
     defaultAbiCoder.encode(['uint256', 'uint256[]'], [StablePoolJoinKind.INIT, amountsIn]);
-
-  /**
-   * Encodes the userData parameter for collecting protocol fees for StablePhantomPool
-   */
-  static joinCollectProtocolFees = (): string =>
-    defaultAbiCoder.encode(['uint256'], [StablePhantomPoolJoinKind.COLLECT_PROTOCOL_FEES]);
 
   /**
    * Encodes the userData parameter for joining a StablePool with exact token inputs
