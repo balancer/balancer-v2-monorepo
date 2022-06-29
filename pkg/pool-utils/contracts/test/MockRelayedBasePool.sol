@@ -39,7 +39,7 @@ contract MockRelayedBasePool is RelayedBasePool {
         IBasePoolRelayer relayer,
         address owner
     )
-        LegacyBasePool(
+        BasePool(
             vault,
             specialization,
             name,
@@ -125,11 +125,10 @@ contract MockRelayedBasePool is RelayedBasePool {
         override
         returns (
             uint256,
-            uint256[] memory,
             uint256[] memory
         )
     {
-        return (_MINIMUM_BPT * 2, _ones(), _zeros());
+        return (_MINIMUM_BPT * 2, _ones());
     }
 
     function _onExitPool(
@@ -147,15 +146,10 @@ contract MockRelayedBasePool is RelayedBasePool {
         override
         returns (
             uint256,
-            uint256[] memory,
             uint256[] memory
         )
     {
-        return (_MINIMUM_BPT, _ones(), _zeros());
-    }
-
-    function _zeros() private view returns (uint256[] memory) {
-        return new uint256[](_getTotalTokens());
+        return (_MINIMUM_BPT, _ones());
     }
 
     function _ones() private view returns (uint256[] memory ones) {
