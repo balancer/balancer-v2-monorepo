@@ -49,7 +49,7 @@ describe('StablePhantomPool', () => {
     itBehavesAsStablePhantomPool(2);
   });
 
-  context('for a 3 token pool', () => {
+  /*context('for a 3 token pool', () => {
     itBehavesAsStablePhantomPool(3);
   });
 
@@ -59,7 +59,7 @@ describe('StablePhantomPool', () => {
 
   context('for a 5 token pool', () => {
     itBehavesAsStablePhantomPool(5);
-  });
+  });*/
 
   context('for a 6 token pool', () => {
     it('reverts', async () => {
@@ -799,25 +799,34 @@ describe('StablePhantomPool', () => {
             expect(previousBptBalance.sub(bptIn)).to.equal(bptAfter);
           });
 
-          it('can tell token amount returned (for either exit or exitSwap)', async () => {
+          it('can tell how many tokens it will give in return', async () => {
             const bptIn = pct(await pool.balanceOf(lp), 0.2);
-            const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(token, bptIn);
+            const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
 
-            const result = await pool.querySingleExitGivenIn({ bptIn, token });
+            expect(queryResult.bptIn).to.equal(bptIn);
+            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
 
-            expect(result.bptIn).to.equal(bptIn);
+            const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
             expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
-            expect(result.amountsOut[tokenIndex]).to.be.equalWithError(expectedTokenOut, 0.0001);
 
-            // Exit swap should give the same number of tokens
-            const { amountOut } = await pool.swapGivenIn({
+            // Query and exit should match exactly
+            expect(result.amountsOut[tokenIndex]).to.equal(queryResult.amountsOut[tokenIndex]);
+          });
+
+          it('exit and exitSwap give the same result', async () => {
+            const bptIn = pct(await pool.balanceOf(lp), 0.2);
+            const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
+
+            // Exit swap should give approximately the same number of tokens (modulo fees)
+            // If we charge fees the same, they should match exactly
+            const amountOut = await pool.querySwapGivenIn({
               from: lp,
               in: pool.bpt,
               out: token,
               amount: bptIn,
               recipient: lp,
             });
-            expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
+            expect(queryResult.amountsOut[tokenIndex]).to.equalWithError(amountOut, 0.0001);
           });
 
           it('reverts if paused', async () => {
@@ -874,10 +883,14 @@ describe('StablePhantomPool', () => {
             const expectedBptIn = previousBptBalance.div(2);
             const maximumBptIn = pct(expectedBptIn, 1.01);
 
-            const result = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
+            const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
 
-            expect(result.amountsOut).to.deep.equal(amountsOut);
-            expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+            expect(queryResult.amountsOut).to.deep.equal(amountsOut);
+            expect(queryResult.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+
+            // Query and exit should match exactly
+            const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
+            expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
           });
 
           it('reverts if paused', async () => {
