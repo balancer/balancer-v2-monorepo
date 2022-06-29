@@ -1,14 +1,14 @@
 import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction, ContractReceipt, ContractFunction } from 'ethers';
 
-import { SwapKind } from '@balancer-labs/balancer-js';
+import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS, MAX_UINT256 } from '../../../constants';
-import { GeneralSwap } from '../../vault/types';
+import { GeneralSwap, QueryBatchSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
 
 import Vault from '../../vault/Vault';
@@ -441,6 +441,38 @@ export default class StablePhantomPool extends BasePool {
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.exitExactBPTInForOneTokenOutPhantom(params.bptIn, this.tokens.indexOf(params.token)),
     };
+  }
+
+  private _buildQuerySwapParams(kind: number, allTokens: string[], params: SwapPhantomPool): QueryBatchSwap {
+    const swapStep: BatchSwapStep = {
+      poolId: this.poolId,
+      assetInIndex: allTokens.indexOf(params.in.address),
+      assetOutIndex: allTokens.indexOf(params.out.address),
+      amount: params.amount,
+      userData: '0x',
+    };
+
+    const funds: FundManagement = {
+      sender: params.from?.address ?? ZERO_ADDRESS,
+      fromInternalBalance: false,
+      recipient: TypesConverter.toAddress(params.recipient) ?? ZERO_ADDRESS,
+      toInternalBalance: false,
+    };
+
+    return {
+      kind,
+      swaps: [swapStep],
+      assets: allTokens,
+      funds,
+    };
+  }
+
+  async querySwapGivenIn(params: SwapPhantomPool): Promise<BigNumber> {
+    const { tokens: allTokens } = await this.getTokens();
+    const queryParams = this._buildQuerySwapParams(SwapKind.GivenIn, allTokens, params);
+
+    const amountsOut = await this.vault.queryBatchSwap(queryParams);
+    return amountsOut[allTokens.indexOf(params.out.address)].mul(-1);
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
