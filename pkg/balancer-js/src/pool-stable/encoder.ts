@@ -100,11 +100,11 @@ export class StablePoolEncoder {
    * @param bptAmountIn - the amount of BPT to be burned
    * @param enterTokenIndex - the index of the token to removed from the pool
    */
-   static exitExactBPTInForOneTokenOutPhantom = (bptAmountIn: BigNumberish, exitTokenIndex: number): string =>
-   defaultAbiCoder.encode(
-     ['uint256', 'uint256', 'uint256'],
-     [StablePhantomPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, exitTokenIndex]
-   );
+  static exitExactBPTInForOneTokenOutPhantom = (bptAmountIn: BigNumberish, exitTokenIndex: number): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256', 'uint256'],
+      [StablePhantomPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, exitTokenIndex]
+    );
 
   /**
    * Encodes the userData parameter for exiting a PhantomStablePool by removing exact amounts of tokens
