@@ -1010,9 +1010,10 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        _checkCircuitBreakerUpperBound(
+        // Lower Bound check means BptPrice must be <= startPrice/MinRatio
+        _checkCircuitBreakerLowerBound(
             _circuitBreakerState[swapRequest.tokenOut],
-            currentBalanceTokenOut.add(swapRequest.amount),
+            currentBalanceTokenOut.sub(swapRequest.amount),
             swapRequest.tokenOut
         );
 
@@ -1025,10 +1026,9 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        // Lower Bound check means BptPrice must be <= startPrice/MinRatio
-        _checkCircuitBreakerLowerBound(
+        _checkCircuitBreakerUpperBound(
             _circuitBreakerState[swapRequest.tokenIn],
-            currentBalanceTokenIn.sub(amountIn),
+            currentBalanceTokenIn.add(amountIn),
             swapRequest.tokenIn
         );
 
