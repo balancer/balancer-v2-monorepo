@@ -67,9 +67,11 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
         // Create "Optimism" gauge type on GaugeController.
         IGaugeController gaugeController = newGaugeAdder.getGaugeController();
+        // All types on the Gauge controller have equal type weights of 1e18.
+        uint256 typeWeight = 1e18;
         getAuthorizerAdaptor().performAction(
             address(gaugeController),
-            abi.encodeWithSelector(IGaugeController.add_type.selector, "Optimism", 1e18)
+            abi.encodeWithSelector(IGaugeController.add_type.selector, "Optimism", typeWeight)
         );
 
         authorizer.renounceRole(addGaugeTypeRole, address(this));
