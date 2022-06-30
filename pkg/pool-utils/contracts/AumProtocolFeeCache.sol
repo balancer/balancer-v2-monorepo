@@ -16,13 +16,15 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IAumProtocolFeesCollector.sol";
 
+import "./RecoveryMode.sol";
+
 /**
  * @title Store a cached Protocol AUM Fee Percentage
  * @author Balancer Labs
  * @dev Unanticipated by the Vault, the AUM protocol fee is stored in a separate Singleton contract,
  * deployed by the BaseManagedPoolFactory.
  */
-abstract contract AumProtocolFeeCache {
+abstract contract AumProtocolFeeCache is RecoveryMode {
     IAumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
 
     uint256 private _protocolAumFeePercentageCache;
@@ -39,7 +41,7 @@ abstract contract AumProtocolFeeCache {
      * @dev Returns the current protocol AUM fee percentage.
      */
     function getProtocolAumFeePercentageCache() public view returns (uint256) {
-        return _protocolAumFeePercentageCache;
+        return inRecoveryMode() ? 0 : _protocolAumFeePercentageCache;
     }
 
     /**

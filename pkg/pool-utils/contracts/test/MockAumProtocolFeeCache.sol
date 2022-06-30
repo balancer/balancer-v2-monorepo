@@ -17,7 +17,19 @@ pragma solidity ^0.7.0;
 import "../AumProtocolFeeCache.sol";
 
 contract MockAumProtocolFeeCache is AumProtocolFeeCache {
-    constructor(IAumProtocolFeesCollector aumProtocolFeesCollector) AumProtocolFeeCache(aumProtocolFeesCollector) {
+    constructor(IAumProtocolFeesCollector aumProtocolFeesCollector)
+        Authentication(bytes32(uint256(address(this))))
+        BasePoolAuthorization(msg.sender)
+        AumProtocolFeeCache(aumProtocolFeesCollector)
+    {
         // solhint-disable-prev-line no-empty-blocks
+    }
+
+    function _isOwnerOnlyAction(bytes32) internal pure override returns (bool) {
+        return true;
+    }
+
+    function _getAuthorizer() internal pure override returns (IAuthorizer) {
+        return IAuthorizer(address(0));
     }
 }
