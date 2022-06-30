@@ -59,7 +59,7 @@ describe('StablePhantomPool', () => {
 
   context('for a 5 token pool', () => {
     itBehavesAsStablePhantomPool(5);
-  });*/
+  });
 
   context('for a 6 token pool', () => {
     it('reverts', async () => {
