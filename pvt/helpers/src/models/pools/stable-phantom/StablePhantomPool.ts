@@ -28,7 +28,7 @@ import {
   ExitResult,
   ExitQueryResult,
   PoolQueryResult,
-} from '../stable/types';
+} from '../stable-phantom/types';
 import {
   calcBptInGivenExactTokensOut,
   calcBptOutGivenExactTokensIn,
@@ -37,7 +37,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
-} from '../stable/math';
+} from '../stable-phantom/math';
 import BasePool from '../base/BasePool';
 import { currentTimestamp, DAY } from '../../../time';
 
