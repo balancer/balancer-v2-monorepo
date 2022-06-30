@@ -19,7 +19,7 @@ pragma solidity ^0.7.0;
  */
 interface IRecoveryMode {
     /**
-     * @dev Emitted when the Mecovery Mode status changes.
+     * @dev Emitted when the Recovery Mode status changes.
      */
     event RecoveryModeStateChanged(bool enabled);
 
