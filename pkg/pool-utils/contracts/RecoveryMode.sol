@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IRecoveryMode.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryMode.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -64,7 +64,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * running, even in a pathological state. Unlike the Pause operation, which is only available during a short window
      * after factory deployment, Recovery Mode can always be enableed.
      */
-    function enableRecoveryMode() external authenticate {
+    function enableRecoveryMode() external override authenticate {
         _setRecoveryMode(true);
     }
 
@@ -73,7 +73,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * @dev Protocol fees are not paid while in Recovery Mode, so it should only remain active for as long as strictly
      * necessary.
      */
-    function disableRecoveryMode() external authenticate {
+    function disableRecoveryMode() external override authenticate {
         _setRecoveryMode(false);
     }
 
