@@ -17,7 +17,21 @@ pragma solidity ^0.7.0;
 import "../ProtocolFeeCache.sol";
 
 contract MockProtocolFeeCache is ProtocolFeeCache {
-    constructor(IVault vault, uint256 protocolSwapFeePercentage) ProtocolFeeCache(vault, protocolSwapFeePercentage) {
+    // We make the caller the owner and make all functions owner only, letting the deployer perform all permissioned
+    // actions.
+    constructor(IVault vault, uint256 protocolSwapFeePercentage)
+        Authentication(bytes32(uint256(address(this))))
+        BasePoolAuthorization(msg.sender)
+        ProtocolFeeCache(vault, protocolSwapFeePercentage)
+    {
         // solhint-disable-prev-line no-empty-blocks
+    }
+
+    function _isOwnerOnlyAction(bytes32) internal pure override returns (bool) {
+        return true;
+    }
+
+    function _getAuthorizer() internal pure override returns (IAuthorizer) {
+        return IAuthorizer(address(0));
     }
 }

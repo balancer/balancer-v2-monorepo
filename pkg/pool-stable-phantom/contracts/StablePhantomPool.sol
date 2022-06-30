@@ -257,7 +257,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
-        uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
@@ -320,7 +320,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) internal virtual override whenNotPaused returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
-        uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage();
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
@@ -373,16 +373,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 );
             }
         }
-    }
-
-    /**
-     * @notice Returns the protocol swap fee percentage.
-     * @dev This is typically the cached value, but it is zeroed-out while the Pool is in recovery mode, imitating
-     * the behavior in BasePool. The cache should not be used directly - all protocol fee queries should be made
-     * using this function.
-     */
-    function _getProtocolSwapFeePercentage() internal view returns (uint256) {
-        return inRecoveryMode() ? 0 : getProtocolSwapFeePercentageCache();
     }
 
     /**
@@ -881,7 +871,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     /**
      * @dev Overrides only owner action to allow setting the cache duration for the token rates
      */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(
+            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            BasePool,
+            BasePoolAuthorization
+        )
+        returns (bool)
+    {
         return
             (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
             (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
