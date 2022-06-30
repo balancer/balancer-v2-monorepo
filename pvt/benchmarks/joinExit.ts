@@ -77,6 +77,7 @@ async function main() {
 
   // numTokens is the size of the pool: 2,4
   // Stable have a max of 5
+  /* TODO: fix stable pools
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -87,7 +88,7 @@ async function main() {
       exitStableUserData
     );
   }
-  console.log('\n');
+  console.log('\n');*/
 
   console.log(`#With user balance\n`);
 
@@ -128,6 +129,7 @@ async function main() {
 
   // numTokens is the size of the pool: 2,4
   // Stable have a max of 5
+  /* TODO: fix stable pools
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -138,7 +140,7 @@ async function main() {
       exitStableUserData
     );
   }
-  console.log('\n');
+  console.log('\n');*/
 
   console.log('== Partial Join/Exit (2-stage entry/exit) ==');
 
@@ -181,6 +183,7 @@ async function main() {
   );
   console.log('\n');
 
+  /* TODO: fix stable pools
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -192,7 +195,7 @@ async function main() {
       numberJoinsExits
     );
   }
-  console.log('\n');
+  console.log('\n');*/
 
   console.log(`#With user balance\n`);
 
@@ -233,6 +236,7 @@ async function main() {
   );
   console.log('\n');
 
+  /* TODO: Fix stable pools
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
     await joinAndExitPool(
@@ -243,7 +247,7 @@ async function main() {
       exitStableUserData,
       numberJoinsExits
     );
-  }
+  }*/
 }
 
 async function joinAndExitPool(
@@ -255,17 +259,21 @@ async function joinAndExitPool(
   stageIdx = 1
 ) {
   const poolId: string = await getPoolId();
+
   const { address: poolAddress } = await vault.getPool(poolId);
   const pool: Contract = await deployedAt('v2-pool-weighted/WeightedPool', poolAddress);
+
+  const { tokens: allTokens } = await vault.getPoolTokens(poolId);
+
   const joinRequest = {
-    assets: pickTokenAddresses(tokens, numTokens),
-    maxAmountsIn: Array(numTokens).fill(MAX_UINT256),
+    assets: allTokens, //pickTokenAddresses(tokens, numTokens),
+    maxAmountsIn: Array(allTokens.length).fill(MAX_UINT256),
     userData: joinData,
     fromInternalBalance: !transferTokens,
   };
   const exitRequest = {
-    assets: pickTokenAddresses(tokens, numTokens),
-    minAmountsOut: Array(numTokens).fill(0),
+    assets: allTokens, //pickTokenAddresses(tokens, numTokens),
+    minAmountsOut: Array(allTokens.length).fill(0),
     userData: exitData,
     fromInternalBalance: !transferTokens,
   };

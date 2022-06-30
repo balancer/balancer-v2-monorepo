@@ -9,8 +9,6 @@ async function main() {
 
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPool');
 
-  await measureDeployment('v2-pool-stable/StablePoolFactory');
-
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPoolFactory');
 
   await measureDeployment('v2-pool-weighted/ManagedPoolFactory');
