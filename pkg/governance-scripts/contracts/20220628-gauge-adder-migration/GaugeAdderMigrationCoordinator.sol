@@ -22,6 +22,8 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     IGaugeAdder public immutable newGaugeAdder;
     IGaugeAdder public immutable oldGaugeAdder;
 
+    IGaugeController public immutable gaugeController;
+
     ILiquidityGaugeFactory public immutable optimismRootGaugeFactory;
 
     address public immutable liquidityMiningCommitteeMultisig;
@@ -37,6 +39,8 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         oldGaugeAdder = _oldGaugeAdder;
         optimismRootGaugeFactory = _optimismRootGaugeFactory;
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
+
+        gaugeController = _newGaugeAdder.getGaugeController();
     }
 
     // Coordinator Setup
@@ -47,8 +51,8 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
     function _firstStage() private {
         _setupOptimismGaugeType();
-        // _setupNewGaugeAdder();
-        // _deprecateOldGaugeAdder();
+        _setupNewGaugeAdder();
+        _deprecateOldGaugeAdder();
     }
 
     function _afterLastStage() internal virtual override {
@@ -66,15 +70,14 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         authorizer.grantRole(addGaugeTypeRole, address(this));
 
         // Create "Optimism" gauge type on GaugeController.
-        IGaugeController gaugeController = newGaugeAdder.getGaugeController();
         // All types on the Gauge controller have equal type weights of 1e18.
         uint256 typeWeight = 1e18;
-        // getAuthorizerAdaptor().performAction(
-        //     address(gaugeController),
-        //     abi.encodeWithSelector(IGaugeController.add_type.selector, "Optimism", typeWeight)
-        // );
+        getAuthorizerAdaptor().performAction(
+            address(gaugeController),
+            abi.encodeWithSelector(IGaugeController.add_type.selector, "Optimism", typeWeight)
+        );
 
-        // authorizer.renounceRole(addGaugeTypeRole, address(this));
+        authorizer.renounceRole(addGaugeTypeRole, address(this));
     }
 
     function _setupNewGaugeAdder() private {

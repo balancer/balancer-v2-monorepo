@@ -31,6 +31,19 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "gaugeController",
+    "outputs": [
+      {
+        "internalType": "contract IGaugeController",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes4",
