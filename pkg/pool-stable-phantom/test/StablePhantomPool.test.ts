@@ -49,7 +49,7 @@ describe('StablePhantomPool', () => {
     itBehavesAsStablePhantomPool(2);
   });
 
-  /*context('for a 3 token pool', () => {
+  context('for a 3 token pool', () => {
     itBehavesAsStablePhantomPool(3);
   });
 
