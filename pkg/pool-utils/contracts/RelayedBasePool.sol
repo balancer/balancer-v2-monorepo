@@ -20,14 +20,14 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRelayedBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
-import "./LegacyBasePool.sol";
+import "./BasePool.sol";
 
 /**
  * @dev Base Pool associated with a relayer that guarantees it can only be joined/exited from the relayer itself.
  * This contract is a simple mixin for pools. Implementing pools must make sure to call the BasePool's constructor
  * properly.
  */
-abstract contract RelayedBasePool is LegacyBasePool, IRelayedBasePool {
+abstract contract RelayedBasePool is BasePool, IRelayedBasePool {
     using Address for address;
 
     IBasePoolRelayer internal immutable _relayer;
