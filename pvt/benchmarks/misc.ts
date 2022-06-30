@@ -145,7 +145,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
   const poolId = await pool.getPoolId();
   const { tokens: allTokens } = await vault.getPoolTokens(poolId);
-  const initialBalances = allTokens.map((t) => t == pool.address ? 0 : initialPoolBalance);
+  const initialBalances = allTokens.map((t) => (t == pool.address ? 0 : initialPoolBalance));
   joinUserData = StablePoolEncoder.joinInit(initialBalances);
 
   await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {

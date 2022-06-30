@@ -386,7 +386,9 @@ describe('UnbuttonWrapping', function () {
       const { tokens: allTokens } = await pool.getTokens();
       const wethIndex = allTokens.indexOf(WETH.address);
 
-      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : i == wethIndex ? fp(2) : fp(6)));
+      const initialBalances = Array.from({ length: 3 }).map((_, i) =>
+        i == bptIndex ? 0 : i == wethIndex ? fp(2) : fp(6)
+      );
 
       // Seed liquidity in pool
       await pool.init({ initialBalances, from: admin });
