@@ -302,16 +302,27 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     function _claimToken(address user, IERC20 token) internal returns (uint256) {
         TokenState storage tokenState = _tokenState[token];
         uint256 userTimeCursor = _getUserTokenTimeCursor(user, token);
-        // We round `_tokenTimeCursor` down so it represents the beginning of the first incomplete week.
-        uint256 currentActiveWeek = _roundDownTimestamp(tokenState.timeCursor);
+
+        // The first week which cannot be safely claimed is the earliest of:
+        // - A) The global or user time cursor (whichever is earliest), rounded up to the end of the week.
+        // - B) The token time cursor, rounded down to the beginning of the week.
+        //
+        // This prevents the two failure modes:
+        // - A) A user may claim a week for which we have not processed their balance, resulting in tokens being locked.
+        // - B) A user may claim a week which then receives more tokens to be distributed. However the user has
+        //      already claimed for that week so their share of these new tokens are lost.
+        uint256 firstUnclaimableWeek = Math.min(
+            _roundUpTimestamp(Math.min(_timeCursor, _userState[user].timeCursor)),
+            _roundDownTimestamp(tokenState.timeCursor)
+        );
+
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         mapping(uint256 => uint256) storage userBalanceAtTimestamp = _userBalanceAtTimestamp[user];
 
         uint256 amount;
         for (uint256 i = 0; i < 20; ++i) {
-            // We only want to claim for complete weeks so break once we reach `currentActiveWeek`.
-            // This is as `tokensPerWeek[currentActiveWeek]` will continue to grow over the week.
-            if (userTimeCursor >= currentActiveWeek) break;
+            // We clearly cannot claim for `firstUnclaimableWeek` and so we break here.
+            if (userTimeCursor >= firstUnclaimableWeek) break;
 
             amount +=
                 (tokensPerWeek[userTimeCursor] * userBalanceAtTimestamp[userTimeCursor]) /
