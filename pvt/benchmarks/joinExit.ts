@@ -6,8 +6,8 @@ import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
-import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
+import { setupEnvironment, getWeightedPool } from './misc';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 // setup environment
@@ -37,8 +37,9 @@ async function main() {
   const joinWeightedUserData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
   const exitWeightedUserData = WeightedPoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
-  const joinStableUserData = StablePoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
-  const exitStableUserData = StablePoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
+  // TODO: fix stable pools
+  // const joinStableUserData = StablePoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
+  // const exitStableUserData = StablePoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
   // numTokens is the size of the pool: 2,4,6,8,...
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
