@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/AumProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
@@ -53,7 +54,7 @@ import "../BaseWeightedPool.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -213,7 +214,8 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             owner,
             true
         )
-        AumProtocolFeeCache(vault, params.protocolSwapFeePercentage, params.aumProtocolFeesCollector)
+        ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
+        AumProtocolFeeCache(params.aumProtocolFeesCollector)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);

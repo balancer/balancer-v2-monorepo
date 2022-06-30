@@ -16,26 +16,20 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IAumProtocolFeesCollector.sol";
 
-import "./ProtocolFeeCache.sol";
-
 /**
  * @title Store a cached Protocol AUM Fee Percentage
  * @author Balancer Labs
  * @dev Unanticipated by the Vault, the AUM protocol fee is stored in a separate Singleton contract,
  * deployed by the BaseManagedPoolFactory.
  */
-abstract contract AumProtocolFeeCache is ProtocolFeeCache {
+abstract contract AumProtocolFeeCache {
     IAumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
 
     uint256 private _protocolAumFeePercentageCache;
 
     event ProtocolAumFeePercentageCacheUpdated(uint256 protocolAumFeePercentage);
 
-    constructor(
-        IVault vault,
-        uint256 protocolSwapFeePercentage,
-        IAumProtocolFeesCollector aumProtocolFeesCollector
-    ) ProtocolFeeCache(vault, protocolSwapFeePercentage) {
+    constructor(IAumProtocolFeesCollector aumProtocolFeesCollector) {
         _aumProtocolFeesCollector = aumProtocolFeesCollector;
 
         _updateProtocolAumFeeCache(aumProtocolFeesCollector);
