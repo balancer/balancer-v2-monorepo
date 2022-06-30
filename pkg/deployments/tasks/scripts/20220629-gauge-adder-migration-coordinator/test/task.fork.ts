@@ -8,8 +8,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe.only('GaugeAdderMigrationCoordinator', function () {
+describe('GaugeAdderMigrationCoordinator', function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -56,9 +57,14 @@ describe.only('GaugeAdderMigrationCoordinator', function () {
     expect(await coordinator.getCurrentStage()).to.equal(1);
   });
 
+  it('adds the Optimism gauge type to the GaugeController', async () => {
+    const OPTIMISM_GAUGE_TYPE = 5;
+
+    expect(await gaugeController.gauge_type_names(OPTIMISM_GAUGE_TYPE)).to.equal('Optimism');
+  });
+
   it('adds the Optimism root gauge factory to the gauge adder', async () => {
     const OPTIMISM_GAUGE_TYPE = 5;
-    expect(await gaugeController.gauge_type_names(OPTIMISM_GAUGE_TYPE)).to.equal('Optimism');
 
     expect(await newGaugeAdder.getFactoryForGaugeTypeCount(OPTIMISM_GAUGE_TYPE)).to.equal(1);
     expect(await newGaugeAdder.getFactoryForGaugeType(OPTIMISM_GAUGE_TYPE, 0)).to.equal(
@@ -75,6 +81,31 @@ describe.only('GaugeAdderMigrationCoordinator', function () {
       .false;
     expect(await authorizer.canPerform(addGaugePermission, newGaugeAdder.address, authorizerAdaptor.address)).to.be
       .true;
+  });
+
+  it('grants permissions to the multisig to add gauges of existing types on the new GaugeAdder', async () => {
+    const multisig = task.input().LiquidityMiningMultisig;
+
+    const activeAddGaugeFunctions = [
+      'addEthereumGauge(address)',
+      'addPolygonGauge(address)',
+      'addArbitrumGauge(address)',
+      'addOptimismGauge(address)',
+    ];
+    for (const addGaugeFunction of activeAddGaugeFunctions) {
+      const permission = await actionId(newGaugeAdder, addGaugeFunction);
+      expect(await authorizer.canPerform(permission, multisig, newGaugeAdder.address)).to.be.true;
+    }
+  });
+
+  it("doesn't grant permissions to add gauges for the gauge types which haven't been created yet.", async () => {
+    const multisig = task.input().LiquidityMiningMultisig;
+
+    const inactiveAddGaugeFunctions = ['addGnosisGauge(address)', 'addZKSyncGauge(address)'];
+    for (const addGaugeFunction of inactiveAddGaugeFunctions) {
+      const permission = await actionId(newGaugeAdder, addGaugeFunction);
+      expect(await authorizer.canPerform(permission, multisig, newGaugeAdder.address)).to.be.false;
+    }
   });
 
   it('renounces the admin role', async () => {
