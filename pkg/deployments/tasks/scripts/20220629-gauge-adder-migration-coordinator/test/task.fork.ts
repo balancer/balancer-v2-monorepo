@@ -1,0 +1,83 @@
+import hre from 'hardhat';
+import { expect } from 'chai';
+import { Contract } from 'ethers';
+
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { impersonate } from '../../../../src/signers';
+
+describe.only('GaugeAdderMigrationCoordinator', function () {
+  let govMultisig: SignerWithAddress;
+  let coordinator: Contract;
+
+  let vault: Contract, authorizer: Contract, authorizerAdaptor: Contract, gaugeController: Contract;
+
+  let oldGaugeAdder: Contract;
+  let newGaugeAdder: Contract;
+
+  const task = new Task('20220629-gauge-adder-migration-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+
+  const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+
+  before('run task', async () => {
+    await task.run({ force: true });
+    coordinator = await task.deployedInstance('GaugeAdderMigrationCoordinator');
+  });
+
+  before('setup contracts', async () => {
+    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    vault = await vaultTask.deployedInstance('Vault');
+    authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
+
+    const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    authorizerAdaptor = await authorizerAdaptorTask.deployedInstance('AuthorizerAdaptor');
+
+    const gaugeAdderTask = new Task('20220325-gauge-adder', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    oldGaugeAdder = await gaugeAdderTask.deployedInstance('GaugeAdder');
+
+    const gaugeAdderV2Task = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    newGaugeAdder = await gaugeAdderV2Task.deployedInstance('GaugeAdder');
+
+    const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
+  });
+
+  before('grant permissions', async () => {
+    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+
+    await authorizer.connect(govMultisig).grantRole(await authorizer.DEFAULT_ADMIN_ROLE(), coordinator.address);
+  });
+
+  it('performs first stage', async () => {
+    await coordinator.performNextStage();
+    expect(await coordinator.getCurrentStage()).to.equal(1);
+  });
+
+  it('adds the Optimism root gauge factory to the gauge adder', async () => {
+    const OPTIMISM_GAUGE_TYPE = 5;
+    expect(await gaugeController.gauge_type_names(OPTIMISM_GAUGE_TYPE)).to.equal('Optimism');
+
+    expect(await newGaugeAdder.getFactoryForGaugeTypeCount(OPTIMISM_GAUGE_TYPE)).to.equal(1);
+    expect(await newGaugeAdder.getFactoryForGaugeType(OPTIMISM_GAUGE_TYPE, 0)).to.equal(
+      task.input().OptimismRootGaugeFactory
+    );
+  });
+
+  it('transfers the rights to add new gauges to the new GaugeAdder', async () => {
+    const addGaugePermission = await authorizerAdaptor.getActionId(
+      gaugeController.interface.getSighash('add_gauge(address,int128)')
+    );
+
+    expect(await authorizer.canPerform(addGaugePermission, oldGaugeAdder.address, authorizerAdaptor.address)).to.be
+      .false;
+    expect(await authorizer.canPerform(addGaugePermission, newGaugeAdder.address, authorizerAdaptor.address)).to.be
+      .true;
+  });
+
+  it('renounces the admin role', async () => {
+    expect(await authorizer.hasRole(await authorizer.DEFAULT_ADMIN_ROLE(), coordinator.address)).to.equal(false);
+  });
+});
