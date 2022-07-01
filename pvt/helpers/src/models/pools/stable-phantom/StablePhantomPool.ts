@@ -489,10 +489,22 @@ export default class StablePhantomPool extends BasePool {
 
   async querySwapGivenIn(params: SwapPhantomPool): Promise<BigNumber> {
     const { tokens: allTokens } = await this.getTokens();
-    const queryParams = this._buildQuerySwapParams(SwapKind.GivenIn, allTokens, params);
 
-    const amountsOut = await this.vault.queryBatchSwap(queryParams);
+    const amountsOut = await this._querySwapInternal(SwapKind.GivenIn, params, allTokens);
     return amountsOut[allTokens.indexOf(params.out.address)].mul(-1);
+  }
+
+  async querySwapGivenOut(params: SwapPhantomPool): Promise<BigNumber> {
+    const { tokens: allTokens } = await this.getTokens();
+
+    const amountsIn = await this._querySwapInternal(SwapKind.GivenOut, params, allTokens);
+    return amountsIn[allTokens.indexOf(params.in.address)];
+  }
+
+  private async _querySwapInternal(kind: SwapKind, params: SwapPhantomPool, allTokens: string[]): Promise<BigNumber[]> {
+    const queryParams = this._buildQuerySwapParams(kind, allTokens, params);
+
+    return await this.vault.queryBatchSwap(queryParams);
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {

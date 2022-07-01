@@ -798,11 +798,11 @@ describe('StablePhantomPool', () => {
             it('join and joinSwap give the same result', async () => {
               const previousBptBalance = await pool.balanceOf(recipient);
               // 20% of previous balance
-              const bptOut = pct(previousBptBalance, 0.2);
+              const bptOut = pct(previousBptBalance, 0.325);
 
               const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
 
-              const { amountIn } = await pool.swapGivenOut({
+              const amountIn = await pool.querySwapGivenOut({
                 from: recipient,
                 in: token,
                 out: pool.bpt,
