@@ -423,7 +423,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.joinExactTokensInForBPTOutPhantom(amountsIn, params.minimumBptOut ?? 0),
+      data: StablePoolEncoder.joinExactTokensInForBPTOut(amountsIn, params.minimumBptOut ?? 0),
     };
   }
 
@@ -434,7 +434,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.joinTokenInForExactBPTOutPhantom(params.bptOut, this.tokens.indexOf(params.token)),
+      data: StablePoolEncoder.joinTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
     };
   }
 
@@ -448,7 +448,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.exitBPTInForExactTokensOutPhantom(amountsOut, params.maximumBptIn ?? MAX_UINT256),
+      data: StablePoolEncoder.exitBPTInForExactTokensOut(amountsOut, params.maximumBptIn ?? MAX_UINT256),
     };
   }
 
@@ -459,7 +459,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.exitExactBPTInForOneTokenOutPhantom(params.bptIn, this.tokens.indexOf(params.token)),
+      data: StablePoolEncoder.exitExactBPTInForOneTokenOut(params.bptIn, this.tokens.indexOf(params.token)),
     };
   }
 
