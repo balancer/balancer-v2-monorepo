@@ -76,8 +76,8 @@ contract OptimismRootGaugeFactory is ISingleRecipientGaugeFactory, IOptimismGasL
     /**
      * @notice Returns the gas limit for the Optimism side of the bridging transaction
      */
-    function getOptimismGasLimit() external view override returns (uint32 gasLimit) {
-        gasLimit = _gasLimit;
+    function getOptimismGasLimit() external view override returns (uint32) {
+        return _gasLimit;
     }
 
     /**
