@@ -545,6 +545,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(balances, scalingFactors, protocolSwapFeePercentage, userData);
+        } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return _joinTokenInForExactBPTOut(balances, protocolSwapFeePercentage, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -587,6 +589,39 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, scaledAmountsInWithBpt);
+    }
+
+    function _joinTokenInForExactBPTOut(
+        uint256[] memory balances,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) private returns (uint256, uint256[] memory) {
+        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
+
+        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        // We join with a single token, so initialize amountsIn with zeros
+        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+
+        // And then assign the result to the selected token
+        amountsIn[tokenIndex] = StableMath._calcTokenInGivenExactBptOut(
+            currentAmp,
+            balancesWithoutBpt,
+            tokenIndex,
+            bptAmountOut,
+            virtualSupply,
+            getSwapFeePercentage()
+        );
+
+        if (protocolSwapFeePercentage > 0) {
+            _payDueProtocolFeeByBpt(bptAmountOut, protocolSwapFeePercentage);
+        }
+
+        return (bptAmountOut, amountsIn);
     }
 
     /**

@@ -21,6 +21,7 @@ import * as expectEvent from '../../../test/expectEvent';
 import {
   InitStablePool,
   JoinGivenInStablePool,
+  JoinGivenOutStablePool,
   JoinExitStablePool,
   JoinResult,
   JoinQueryResult,
@@ -318,6 +319,14 @@ export default class StablePhantomPool extends BasePool {
     return this.queryJoin(this._buildJoinGivenInParams(params));
   }
 
+  async joinGivenOut(params: JoinGivenOutStablePool): Promise<JoinResult> {
+    return this.join(this._buildJoinGivenOutParams(params));
+  }
+
+  async queryJoinGivenOut(params: JoinGivenOutStablePool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildJoinGivenOutParams(params));
+  }
+
   async join(params: JoinExitStablePool): Promise<JoinResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
@@ -418,6 +427,17 @@ export default class StablePhantomPool extends BasePool {
     };
   }
 
+  private _buildJoinGivenOutParams(params: JoinGivenOutStablePool): JoinExitStablePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: StablePoolEncoder.joinTokenInForExactBPTOutPhantom(params.bptOut, this.tokens.indexOf(params.token)),
+    };
+  }
+
   private _buildExitGivenOutParams(params: ExitGivenOutStablePool): JoinExitStablePool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
@@ -469,10 +489,22 @@ export default class StablePhantomPool extends BasePool {
 
   async querySwapGivenIn(params: SwapPhantomPool): Promise<BigNumber> {
     const { tokens: allTokens } = await this.getTokens();
-    const queryParams = this._buildQuerySwapParams(SwapKind.GivenIn, allTokens, params);
 
-    const amountsOut = await this.vault.queryBatchSwap(queryParams);
+    const amountsOut = await this._querySwapInternal(SwapKind.GivenIn, params, allTokens);
     return amountsOut[allTokens.indexOf(params.out.address)].mul(-1);
+  }
+
+  async querySwapGivenOut(params: SwapPhantomPool): Promise<BigNumber> {
+    const { tokens: allTokens } = await this.getTokens();
+
+    const amountsIn = await this._querySwapInternal(SwapKind.GivenOut, params, allTokens);
+    return amountsIn[allTokens.indexOf(params.in.address)];
+  }
+
+  private async _querySwapInternal(kind: SwapKind, params: SwapPhantomPool, allTokens: string[]): Promise<BigNumber[]> {
+    const queryParams = this._buildQuerySwapParams(kind, allTokens, params);
+
+    return await this.vault.queryBatchSwap(queryParams);
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
