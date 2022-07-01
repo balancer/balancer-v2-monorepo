@@ -10,6 +10,7 @@ export enum StablePoolJoinKind {
 export enum StablePhantomPoolJoinKind {
   INIT = 0,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
+  TOKEN_IN_FOR_EXACT_BPT_OUT,
 }
 
 export enum StablePoolExitKind {
@@ -19,7 +20,8 @@ export enum StablePoolExitKind {
 }
 
 export enum StablePhantomPoolExitKind {
-  BPT_IN_FOR_EXACT_TOKENS_OUT = 0,
+  EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
+  BPT_IN_FOR_EXACT_TOKENS_OUT,
 }
 
 export class StablePoolEncoder {
@@ -66,6 +68,17 @@ export class StablePoolEncoder {
     );
 
   /**
+   * Encodes the userData parameter for joining a StablePhantomPool with to receive an exact amount of BPT
+   * @param bptAmountOut - the amount of BPT to be minted
+   * @param enterTokenIndex - the index of the token to be provided as liquidity
+   */
+  static joinTokenInForExactBPTOutPhantom = (bptAmountOut: BigNumberish, enterTokenIndex: number): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256', 'uint256'],
+      [StablePhantomPoolJoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT, bptAmountOut, enterTokenIndex]
+    );
+
+  /**
    * Encodes the userData parameter for exiting a StablePool by removing a single token in return for an exact amount of BPT
    * @param bptAmountIn - the amount of BPT to be burned
    * @param enterTokenIndex - the index of the token to removed from the pool
@@ -92,6 +105,17 @@ export class StablePoolEncoder {
     defaultAbiCoder.encode(
       ['uint256', 'uint256[]', 'uint256'],
       [StablePoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
+    );
+
+  /**
+   * Encodes the userData parameter for exiting a StablePhantomPool by removing a single token in return for an exact amount of BPT
+   * @param bptAmountIn - the amount of BPT to be burned
+   * @param enterTokenIndex - the index of the token to removed from the pool
+   */
+  static exitExactBPTInForOneTokenOutPhantom = (bptAmountIn: BigNumberish, exitTokenIndex: number): string =>
+    defaultAbiCoder.encode(
+      ['uint256', 'uint256', 'uint256'],
+      [StablePhantomPoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, exitTokenIndex]
     );
 
   /**
