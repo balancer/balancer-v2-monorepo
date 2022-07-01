@@ -42,4 +42,8 @@ interface IRewardTokenDistributor {
     function set_reward_distributor(IERC20 rewardToken, address distributor) external;
 
     function deposit_reward_token(IERC20 rewardToken, uint256 amount) external;
+
+    function claimable_reward(address rewardToken, address user) external view returns (uint256);
+
+    function claimable_reward_write(address rewardToken, address user) external returns (uint256);
 }

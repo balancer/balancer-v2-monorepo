@@ -159,7 +159,7 @@ library Errors {
     uint256 internal constant TOKEN_DOES_NOT_HAVE_RATE_PROVIDER = 341;
     uint256 internal constant INVALID_INITIALIZATION = 342;
     uint256 internal constant OUT_OF_NEW_TARGET_RANGE = 343;
-    uint256 internal constant UNAUTHORIZED_OPERATION = 344;
+    uint256 internal constant FEATURE_DISABLED = 344;
     uint256 internal constant UNINITIALIZED_POOL_CONTROLLER = 345;
     uint256 internal constant SET_SWAP_FEE_DURING_FEE_CHANGE = 346;
     uint256 internal constant SET_SWAP_FEE_PENDING_FEE_CHANGE = 347;
@@ -206,6 +206,10 @@ library Errors {
     uint256 internal constant ADDRESS_NOT_ALLOWLISTED = 433;
     uint256 internal constant ERC20_BURN_EXCEEDS_BALANCE = 434;
     uint256 internal constant INVALID_OPERATION = 435;
+    uint256 internal constant CODEC_OVERFLOW = 436;
+    uint256 internal constant IN_RECOVERY_MODE = 437;
+    uint256 internal constant NOT_IN_RECOVERY_MODE = 438;
+    uint256 internal constant INDUCED_FAILURE = 439;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

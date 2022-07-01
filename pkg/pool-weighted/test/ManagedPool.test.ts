@@ -234,7 +234,7 @@ describe('ManagedPool', function () {
         expect(await pool.isAllowedAddress(other.address)).to.be.true;
 
         // Cannot remove addresses when the allowlist is disabled
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
 
         // Turn the allowlist back on
         await pool.setMustAllowlistLPs(owner, true);
@@ -294,8 +294,8 @@ describe('ManagedPool', function () {
         await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
 
         // Does not allow adding or removing addresses now
-        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
       });
 
       it('reverts if non-owner tries to enable public LPs', async () => {
@@ -418,7 +418,7 @@ describe('ManagedPool', function () {
         });
 
         it('cannot add to the allowlist when it is not enabled', async () => {
-          await expect(pool.addAllowedAddress(sender, other.address)).to.be.revertedWith('UNAUTHORIZED_OPERATION');
+          await expect(pool.addAllowedAddress(sender, other.address)).to.be.revertedWith('FEATURE_DISABLED');
         });
 
         it('swaps can be enabled and disabled', async () => {
@@ -1901,7 +1901,7 @@ describe('ManagedPool', function () {
               return tx.wait();
             }, timeElapsed);
 
-            context('when the pool is paused', () => {
+            context.skip('when the pool is paused', () => {
               sharedBeforeEach('pause pool', async () => {
                 await pool.pause();
               });
@@ -1919,7 +1919,7 @@ describe('ManagedPool', function () {
                   // as if the pool were never paused, however this is unlikely to occur.
                   await pool.collectAumManagementFees(owner);
 
-                  await pool.setPaused(false);
+                  await pool.unpause();
 
                   // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
                   // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -1976,7 +1976,7 @@ describe('ManagedPool', function () {
               // as if the pool were never paused, however this is unlikely to occur.
               await pool.collectAumManagementFees(owner);
 
-              await pool.setPaused(false);
+              await pool.unpause();
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2008,7 +2008,7 @@ describe('ManagedPool', function () {
           return receipt;
         }, timeElapsed);
 
-        context('when the pool is paused', () => {
+        context.skip('when the pool is paused', () => {
           sharedBeforeEach('pause pool', async () => {
             await pool.pause();
           });
@@ -2026,7 +2026,7 @@ describe('ManagedPool', function () {
               // as if the pool were never paused, however this is unlikely to occur.
               await pool.collectAumManagementFees(owner);
 
-              await pool.setPaused(false);
+              await pool.unpause();
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2069,7 +2069,7 @@ describe('ManagedPool', function () {
               // as if the pool were never paused, however this is unlikely to occur.
               await pool.collectAumManagementFees(owner);
 
-              await pool.setPaused(false);
+              await pool.unpause();
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2188,7 +2188,7 @@ describe('ManagedPool', function () {
                     // as if the pool were never paused, however this is unlikely to occur.
                     await pool.collectAumManagementFees(owner);
 
-                    await pool.setPaused(false);
+                    await pool.unpause();
 
                     // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
                     // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2253,7 +2253,7 @@ describe('ManagedPool', function () {
             return receipt;
           }, timeElapsed);
 
-          context('when the pool is paused', () => {
+          context.skip('when the pool is paused', () => {
             sharedBeforeEach('pause pool', async () => {
               await pool.pause();
             });

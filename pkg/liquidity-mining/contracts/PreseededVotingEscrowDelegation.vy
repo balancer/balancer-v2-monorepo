@@ -340,7 +340,7 @@ def _burn_boost(_token_id: uint256, _delegator: address, _receiver: address, _bi
         # expire_time != next_expiry, the cancelled boost token isn't the next expiring boost token
         # or
         # expiries != 0, the cancelled boost token isn't the only one expiring at expire_time
-        for i in range(1, 513):  # ~10 years
+        for i in range(513):  # ~10 years
             # we essentially allow for a boost token be expired for up to 6 years
             # 10 yrs - 4 yrs (max vecRV lock time) = ~ 6 yrs
             if i == 512:

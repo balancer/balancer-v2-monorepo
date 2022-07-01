@@ -22,11 +22,14 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
+import "@balancer-labs/v2-pool-stable/contracts/StableMath.sol";
 
 /**
  * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
@@ -41,22 +44,62 @@ import "@balancer-labs/v2-pool-stable/contracts/StablePool.sol";
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
  * actually owned by some entity) instead.
  */
-contract StablePhantomPool is StablePool, ProtocolFeeCache {
+contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
+    using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
     using StablePhantomPoolUserData for bytes;
+    using BasePoolUserData for bytes;
 
+    // The Pool will register n+1 tokens, where n are the actual tokens in the Pool, and the other one is the BPT
+    // itself.
+    uint256 private immutable _totalTokens;
+
+    // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
+    // is therefore _MIN_TOKENS + 1.
     uint256 private constant _MIN_TOKENS = 2;
-    uint256 private constant _MAX_TOKEN_BALANCE = 2**(112) - 1;
+    // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
+    // We are preminting half of that value (rounded up).
+    uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
 
+    // The index of BPT in the tokens and balances arrays, i.e. its index when calling IVault.registerTokens().
     uint256 private immutable _bptIndex;
 
-    // Since this Pool is not joined or exited via the regular onJoinPool and onExitPool hooks, it lacks a way to
-    // continuously pay due protocol fees. Instead, it keeps track of those internally.
-    // Due protocol fees are expressed in BPT, which leads to reduced gas costs when compared to tracking due fees for
-    // each Pool token. This means that some of the BPT deposited in the Vault for the Pool is part of the 'virtual'
-    // supply, as it belongs to the protocol.
-    uint256 private _dueProtocolFeeBptAmount;
+    // These are the registered tokens: one of them will be the BPT.
+    IERC20 internal immutable _token0;
+    IERC20 internal immutable _token1;
+    IERC20 internal immutable _token2;
+    IERC20 internal immutable _token3;
+    IERC20 internal immutable _token4;
+    IERC20 internal immutable _token5;
+
+    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
+    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
+    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
+
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
+    uint256 internal immutable _scalingFactor5;
+
+    // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
+    // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
+    // solhint-disable not-rely-on-time
+
+    // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiply the
+    // current value by 2 every day.
+    // WARNING: this only limits *a single* amplification change to have a maximum rate of change of twice the original
+    // value daily. It is possible to perform multiple amplification changes in sequence to increase this value more
+    // rapidly: for example, by doubling the value every day it can increase by a factor of 8 over three days (2^3).
+    uint256 private constant _MIN_UPDATE_TIME = 1 days;
+    uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
+
+    bytes32 private _packedAmplificationData;
+
+    event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
+    event AmpUpdateStopped(uint256 currentValue);
 
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
@@ -71,10 +114,10 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     IRateProvider internal immutable _rateProvider2;
     IRateProvider internal immutable _rateProvider3;
     IRateProvider internal immutable _rateProvider4;
+    IRateProvider internal immutable _rateProvider5;
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
-    event DueProtocolFeeIncreased(uint256 bptAmount);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -92,12 +135,13 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     }
 
     constructor(NewPoolParams memory params)
-        StablePool(
+        BasePool(
             params.vault,
+            IVault.PoolSpecialization.GENERAL,
             params.name,
             params.symbol,
             _insertSorted(params.tokens, IERC20(this)),
-            params.amplificationParameter,
+            new address[](params.tokens.length + 1),
             params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
@@ -115,6 +159,31 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
             params.rateProviders.length,
             params.tokenRateCacheDurations.length
         );
+
+        _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
+
+        IERC20[] memory registeredTokens = _insertSorted(params.tokens, IERC20(this));
+        uint256 totalTokens = registeredTokens.length;
+        _totalTokens = totalTokens;
+
+        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+        _token0 = registeredTokens[0];
+        _token1 = registeredTokens[1];
+        _token2 = registeredTokens[2];
+        _token3 = totalTokens > 3 ? registeredTokens[3] : IERC20(0);
+        _token4 = totalTokens > 4 ? registeredTokens[4] : IERC20(0);
+        _token5 = totalTokens > 5 ? registeredTokens[5] : IERC20(0);
+
+        _scalingFactor0 = _computeScalingFactor(registeredTokens[0]);
+        _scalingFactor1 = _computeScalingFactor(registeredTokens[1]);
+        _scalingFactor2 = _computeScalingFactor(registeredTokens[2]);
+        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(registeredTokens[3]) : 0;
+        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(registeredTokens[4]) : 0;
+        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(registeredTokens[5]) : 0;
+
+        uint256 initialAmp = Math.mul(params.amplificationParameter, StableMath._AMP_PRECISION);
+        _setAmplificationData(initialAmp);
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
             if (params.rateProviders[i] != IRateProvider(0)) {
@@ -149,11 +218,12 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _rateProvider0 = (tokensAndBPTRateProviders.length > 0) ? tokensAndBPTRateProviders[0] : IRateProvider(0);
-        _rateProvider1 = (tokensAndBPTRateProviders.length > 1) ? tokensAndBPTRateProviders[1] : IRateProvider(0);
-        _rateProvider2 = (tokensAndBPTRateProviders.length > 2) ? tokensAndBPTRateProviders[2] : IRateProvider(0);
+        _rateProvider0 = tokensAndBPTRateProviders[0];
+        _rateProvider1 = tokensAndBPTRateProviders[1];
+        _rateProvider2 = tokensAndBPTRateProviders[2];
         _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
         _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
+        _rateProvider5 = (tokensAndBPTRateProviders.length > 5) ? tokensAndBPTRateProviders[5] : IRateProvider(0);
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -164,33 +234,17 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         return _bptIndex;
     }
 
-    function getDueProtocolFeeBptAmount() external view returns (uint256) {
-        return _dueProtocolFeeBptAmount;
-    }
-
-    /**
-     * @dev StablePools with two tokens may use the IMinimalSwapInfoPool interface. This should never happen since this
-     * Pool has a minimum of three tokens, but we override and revert unconditionally in this handler anyway.
-     */
-    function onSwap(
-        SwapRequest memory,
-        uint256,
-        uint256
-    ) public pure override returns (uint256) {
-        _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
-    }
-
-    // StablePool's `_onSwapGivenIn` and `_onSwapGivenOut` handlers are meant to process swaps between Pool tokens.
+    // Typically, `_onSwapGivenIn` and `_onSwapGivenOut` handlers are meant to process swaps between Pool tokens.
     // Since one of the Pool's tokens is the preminted BPT, we neeed to a) handle swaps where that tokens is involved
     // separately (as they are effectively single-token joins or exits), and b) remove BPT from the balances array when
-    // processing regular swaps before delegating those to StablePool's handler.
+    // processing regular swaps before calling the StableMath functions.
     //
-    // Since StablePools don't accurately track protocol fees in single-token joins and exit, and not only does this
-    // Pool not support multi-token joins or exits, but also they are expected to be much more prevalent, we compute
-    // protocol fees in a different and more straightforward way. Recall that due protocol fees are expressed as BPT
-    // amounts: for any swap involving BPT, we simply add the corresponding protocol swap fee to that amount, and for
-    // swaps without BPT we convert the fee amount to the equivalent BPT amount. Note that swap fees are charged by
-    // BaseGeneralPool.
+    // Only single-token joins and exits are supported, and these are expected to occur very frequently due to the BPT
+    // of this Pool being included in other Pools. Because of this, we compute protocol fees in a relatively
+    // straightforward way instead of trying to measure invariant growth between joins and exits.
+    // Recall that due protocol fees are expressed as BPT amounts: for any swap involving BPT, we simply add the
+    // corresponding protocol swap fee to that amount, and for swaps without BPT we convert the fee amount to the
+    // equivalent BPT amount. Note that swap fees are charged by BaseGeneralPool.
     //
     // The given in and given out handlers are quite similar and could use an intermediate abstraction, but keeping the
     // duplication seems to lead to more readable code, given the number of variants at play.
@@ -206,31 +260,28 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
             amountOut = _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
 
             // For given in swaps, request.amount holds the amount in.
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
             }
         } else if (request.tokenOut == IERC20(this)) {
             amountOut = _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(amountOut, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(amountOut, protocolSwapFeePercentage);
             }
         } else {
             // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
             // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
             // corresponds to protocol fees.
 
-            // Since the original StablePool._onSwapGivenIn implementation already computes the invariant, we fully
-            // replace it and reimplement it here to take advantage of that.
-
             (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
             amountOut = StableMath._calcOutGivenIn(
                 currentAmp,
@@ -250,7 +301,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
                 balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
                 balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
 
-                _trackDueProtocolFeeByInvariantIncrement(
+                _payDueProtocolFeeByInvariantIncrement(
                     invariant,
                     currentAmp,
                     balances,
@@ -272,31 +323,28 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
         if (request.tokenIn == IERC20(this)) {
             amountIn = _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
 
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(amountIn, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(amountIn, protocolSwapFeePercentage);
             }
         } else if (request.tokenOut == IERC20(this)) {
             amountIn = _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
 
             // For given out swaps, request.amount holds the amount out.
             if (protocolSwapFeePercentage > 0) {
-                _trackDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
+                _payDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
             }
         } else {
             // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
             // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
             // corresponds to protocol fees.
 
-            // Since the original StablePool._onSwapGivenOut implementation already computes the invariant, we fully
-            // replace it and reimplement it here to take advtange of that.
-
             (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances, true);
+            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
             amountIn = StableMath._calcInGivenOut(
                 currentAmp,
@@ -316,7 +364,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
                 balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
                 balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
 
-                _trackDueProtocolFeeByInvariantIncrement(
+                _payDueProtocolFeeByInvariantIncrement(
                     invariant,
                     currentAmp,
                     balances,
@@ -387,9 +435,9 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Tracks newly charged protocol fees after a swap where BPT was not involved (i.e. a regular swap).
+     * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
      */
-    function _trackDueProtocolFeeByInvariantIncrement(
+    function _payDueProtocolFeeByInvariantIncrement(
         uint256 previousInvariant,
         uint256 amp,
         uint256[] memory postSwapBalances,
@@ -410,7 +458,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
 
         // We round down, favoring LP fees.
 
-        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances, false);
+        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
         uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
 
         if (invariantRatio > FixedPoint.ONE) {
@@ -420,23 +468,20 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
                 invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
             );
 
-            _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
-
-            emit DueProtocolFeeIncreased(protocolFeeAmount);
+            _payProtocolFees(protocolFeeAmount);
         }
     }
 
     /**
-     * @dev Tracks newly charged protocol fees after a swap where `bptAmount` was either sent or received (i.e. a
+     * @dev Pays protocol fees charged after a swap where `bptAmount` was either sent or received (i.e. a
      * single-token join or exit).
      */
-    function _trackDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
+    function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
         uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
 
         uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
-        _dueProtocolFeeBptAmount = _dueProtocolFeeBptAmount.add(protocolFeeAmount);
 
-        emit DueProtocolFeeIncreased(protocolFeeAmount);
+        _payProtocolFees(protocolFeeAmount);
     }
 
     /**
@@ -462,18 +507,21 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
 
         (uint256 amp, ) = _getAmplificationParameter();
-        (, uint256[] memory amountsIn) = _dropBptItem(amountsInIncludingBpt);
-        // The true argument in the _calculateInvariant call instructs it to round up
-        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn, true);
+        uint256[] memory amountsIn = _dropBptItem(amountsInIncludingBpt);
+        uint256 invariantAfterJoin = StableMath._calculateInvariant(amp, amountsIn);
 
         // Set the initial BPT to the value of the invariant
         uint256 bptAmountOut = invariantAfterJoin;
 
-        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up for the total
+        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
         // supply, and have the Vault pull those tokens from the sender as part of the join.
+        // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
+        // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
+        //
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
         // all accounts.
-        uint256 initialBpt = _MAX_TOKEN_BALANCE.sub(bptAmountOut);
+        uint256 initialBpt = _PREMINTED_TOKEN_BALANCE.sub(bptAmountOut);
+
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 
@@ -481,61 +529,68 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Revert on all joins, except for the special join kind that simply pays due protocol fees to the Vault.
+     * @dev Supports multi-token joins, plus the special join kind that simply pays due protocol fees to the Vault.
      */
     function _onJoinPool(
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
-        uint256,
-        uint256[] memory,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {
+    ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
-        if (kind == StablePhantomPoolUserData.JoinKindPhantom.COLLECT_PROTOCOL_FEES) {
-            return _collectProtocolFees();
+        if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return _joinExactTokensInForBPTOut(balances, scalingFactors, protocolSwapFeePercentage, userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
+    }
+
+    function _joinExactTokensInForBPTOut(
+        uint256[] memory balances,
+        uint256[] memory scalingFactors,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) private returns (uint256, uint256[] memory) {
+        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
+        InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
+
+        // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
+        (uint256[] memory scaledAmountsInWithBpt, uint256[] memory scaledAmountsInWithoutBpt) = _upscaleWithoutBpt(
+            amountsIn,
+            scalingFactors
+        );
+
+        uint256 bptAmountOut;
+        // New scope to avoid stack-too-deep issues
+        {
+            (uint256 currentAmp, ) = _getAmplificationParameter();
+            (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+
+            bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
+                currentAmp,
+                balancesWithoutBpt,
+                scaledAmountsInWithoutBpt,
+                virtualSupply,
+                getSwapFeePercentage()
+            );
         }
 
-        _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
+
+        if (protocolSwapFeePercentage > 0) {
+            _payDueProtocolFeeByBpt(bptAmountOut, protocolSwapFeePercentage);
+        }
+
+        return (bptAmountOut, scaledAmountsInWithBpt);
     }
 
     /**
-     * @dev Collects due protocol fees
-     */
-
-    function _collectProtocolFees()
-        private
-        returns (
-            uint256 bptOut,
-            uint256[] memory amountsIn,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
-        uint256 totalTokens = _getTotalTokens();
-
-        // This join neither grants BPT nor takes any tokens from the sender.
-        bptOut = 0;
-        amountsIn = new uint256[](totalTokens);
-
-        // Due protocol fees are all zero except for the BPT amount, which is then zeroed out.
-        dueProtocolFeeAmounts = new uint256[](totalTokens);
-        dueProtocolFeeAmounts[_bptIndex] = _dueProtocolFeeBptAmount;
-        _dueProtocolFeeBptAmount = 0;
-    }
-
-    /**
-     * @dev Revert on all exits.
+     * @dev Support multi-token exits. Note that recovery mode exits do not call`_onExitPool`.
      */
     function _onExitPool(
         bytes32,
@@ -543,59 +598,111 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         address,
         uint256[] memory balances,
         uint256,
-        uint256,
-        uint256[] memory,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        internal
-        view
-        override
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            uint256[] memory dueProtocolFeeAmounts
-        )
-    {
+    ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
+        uint256 bptAmountIn;
+        uint256[] memory amountsOut;
 
-        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
-        // triggered. This allows for a simple and safe way to exit the Pool.
-        if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            _ensurePaused();
-
-            // Note that this will cause the user's BPT to be burned, which is not something that happens during
-            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
-            // advisable to stop using a Pool after it is paused and the pause window expires.
-
-            (bptAmountIn, amountsOut) = _proportionalExit(balances, userData);
-            // For simplicity, due protocol fees are set to zero.
-            dueProtocolFeeAmounts = new uint256[](_getTotalTokens());
+        if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+            (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
+                balances,
+                scalingFactors,
+                protocolSwapFeePercentage,
+                userData
+            );
+        } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+            (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(balances, protocolSwapFeePercentage, userData);
         } else {
-            _revert(Errors.UNHANDLED_BY_PHANTOM_POOL);
+            _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+
+        return (bptAmountIn, amountsOut);
     }
 
-    function _proportionalExit(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        returns (uint256, uint256[] memory)
-    {
-        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
-        // retrieve their tokens in case of an emergency.
-        //
-        // This particular exit function is the only one available because it is the simplest, and therefore least
-        // likely to be incorrect, or revert and lock funds.
-        (, uint256[] memory balancesWithoutBpt) = _dropBptItem(balances);
-
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+    function _exitExactBPTInForTokenOut(
+        uint256[] memory balances,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) private returns (uint256, uint256[] memory) {
+        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        uint256[] memory amountsOut = StableMath._calcTokensOutGivenExactBptIn(
+        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        // We exit in a single token, so initialize amountsOut with zeros
+        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+
+        // And then assign the result to the selected token
+        amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
+            currentAmp,
             balancesWithoutBpt,
+            tokenIndex,
             bptAmountIn,
-            // This process burns BPT, rendering the approximation returned by `_dropBPTItem` inaccurate,
-            // so we use the real method here
-            _getVirtualSupply(balances[_bptIndex])
+            virtualSupply,
+            getSwapFeePercentage()
+        );
+
+        if (protocolSwapFeePercentage > 0) {
+            _payDueProtocolFeeByBpt(bptAmountIn, protocolSwapFeePercentage);
+        }
+
+        return (bptAmountIn, amountsOut);
+    }
+
+    function _exitBPTInForExactTokensOut(
+        uint256[] memory balances,
+        uint256[] memory scalingFactors,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) private returns (uint256, uint256[] memory) {
+        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
+        // amountsOut are unscaled, and do not include BPT
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens() - 1);
+
+        // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
+        (uint256[] memory scaledAmountsOutWithBpt, uint256[] memory scaledAmountsOutWithoutBpt) = _upscaleWithoutBpt(
+            amountsOut,
+            scalingFactors
+        );
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
+            currentAmp,
+            balancesWithoutBpt,
+            scaledAmountsOutWithoutBpt,
+            virtualSupply,
+            getSwapFeePercentage()
+        );
+        _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
+
+        if (protocolSwapFeePercentage > 0) {
+            _payDueProtocolFeeByBpt(bptAmountIn, protocolSwapFeePercentage);
+        }
+
+        return (bptAmountIn, scaledAmountsOutWithBpt);
+    }
+
+    // We cannot use the default implementation here, since we need to account for the BPT token
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
+        // adjust the balances array by removing BPT from it.
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
+            balancesWithoutBpt,
+            virtualSupply,
+            userData
         );
 
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -607,32 +714,47 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         return _scalingFactor(token);
     }
 
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        uint256 scalingFactor;
+
+        // prettier-ignore
+        if (token == _token0) { scalingFactor = _getScalingFactor0(); }
+        else if (token == _token1) { scalingFactor = _getScalingFactor1(); }
+        else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
+        else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
+        else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
+        else if (token == _token5) { scalingFactor = _getScalingFactor5(); }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        return scalingFactor.mulDown(getTokenRate(token));
+    }
+
     /**
      * @dev Overrides scaling factor getter to introduce the tokens' rates.
      */
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
-        scalingFactors = super._scalingFactors();
+        scalingFactors = new uint256[](totalTokens);
 
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
         // prettier-ignore
         {
-            if (totalTokens > 0) { scalingFactors[0] = scalingFactors[0].mulDown(getTokenRate(_token0)); }
-            if (totalTokens > 1) { scalingFactors[1] = scalingFactors[1].mulDown(getTokenRate(_token1)); }
-            if (totalTokens > 2) { scalingFactors[2] = scalingFactors[2].mulDown(getTokenRate(_token2)); }
-            if (totalTokens > 3) { scalingFactors[3] = scalingFactors[3].mulDown(getTokenRate(_token3)); }
-            if (totalTokens > 4) { scalingFactors[4] = scalingFactors[4].mulDown(getTokenRate(_token4)); }
+            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+            if (totalTokens > 3) {
+                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
+            } else { return scalingFactors; }
+            if (totalTokens > 4) {
+                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
+            } else { return scalingFactors; }
+            if (totalTokens > 5) {
+                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
+            } else { return scalingFactors; }
         }
-    }
-
-    /**
-     * @dev Overrides scaling factor getter to introduce the token's rate.
-     */
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        uint256 baseScalingFactor = super._scalingFactor(token);
-        return baseScalingFactor.mulDown(getTokenRate(token));
     }
 
     // Token rates
@@ -646,11 +768,12 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
 
         // prettier-ignore
         {
-            if (totalTokens > 0) { providers[0] = _rateProvider0; } else { return providers; }
-            if (totalTokens > 1) { providers[1] = _rateProvider1; } else { return providers; }
-            if (totalTokens > 2) { providers[2] = _rateProvider2; } else { return providers; }
+            providers[0] = _rateProvider0;
+            providers[1] = _rateProvider1;
+            providers[2] = _rateProvider2;
             if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
             if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
+            if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
         }
     }
 
@@ -661,6 +784,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         else if (token == _token2) { return _rateProvider2; }
         else if (token == _token3) { return _rateProvider3; }
         else if (token == _token4) { return _rateProvider4; }
+        else if (token == _token5) { return _rateProvider5; }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -720,7 +844,7 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
      * @dev Forces a rate cache hit for a token.
      * It will revert if the requested token does not have an associated rate provider.
      */
-    function updateTokenRateCache(IERC20 token) external {
+    function updateTokenRateCache(IERC20 token) public virtual {
         IRateProvider provider = _getRateProvider(token);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
         uint256 duration = _tokenRateCaches[token].getDuration();
@@ -749,18 +873,19 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         uint256 totalTokens = _getTotalTokens();
         // prettier-ignore
         {
-            if (totalTokens > 0) { _cacheTokenRateIfNecessary(_token0); } else { return; }
-            if (totalTokens > 1) { _cacheTokenRateIfNecessary(_token1); } else { return; }
-            if (totalTokens > 2) { _cacheTokenRateIfNecessary(_token2); } else { return; }
+            _cacheTokenRateIfNecessary(_token0);
+            _cacheTokenRateIfNecessary(_token1);
+            _cacheTokenRateIfNecessary(_token2);
             if (totalTokens > 3) { _cacheTokenRateIfNecessary(_token3); } else { return; }
             if (totalTokens > 4) { _cacheTokenRateIfNecessary(_token4); } else { return; }
+            if (totalTokens > 5) { _cacheTokenRateIfNecessary(_token5); } else { return; }
         }
     }
 
     /**
      * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
-    function _cacheTokenRateIfNecessary(IERC20 token) internal {
+    function _cacheTokenRateIfNecessary(IERC20 token) internal virtual {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
         // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
         // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
@@ -781,32 +906,46 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
     /**
      * @dev Overrides only owner action to allow setting the cache duration for the token rates
      */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(
+            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            BasePool,
+            BasePoolAuthorization
+        )
+        returns (bool)
+    {
+        return
+            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
+            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 
     function _skipBptIndex(uint256 index) internal view returns (uint256) {
         return index < _bptIndex ? index : index.sub(1);
     }
 
-    function _dropBptItem(uint256[] memory amounts)
-        internal
-        view
-        returns (uint256 virtualSupply, uint256[] memory amountsWithoutBpt)
-    {
-        // The initial amount of BPT pre-minted is _MAX_TOKEN_BALANCE and it goes entirely to the pool balance in the
-        // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-        // virtualSupply = totalSupply() - (_balances[_bptIndex] - _dueProtocolFeeBptAmount)
-        //
-        // However, since this Pool never mints or burns BPT outside of the initial supply (except in the event of an
-        // emergency pause), we can simply use `_MAX_TOKEN_BALANCE` instead of `totalSupply()` and save
-        // gas.
-        virtualSupply = _MAX_TOKEN_BALANCE - amounts[_bptIndex] + _dueProtocolFeeBptAmount;
-
-        amountsWithoutBpt = new uint256[](amounts.length - 1);
+    /**
+     * @dev Remove the item at `_bptIndex` from an arbitrary array (e.g., amountsIn).
+     */
+    function _dropBptItem(uint256[] memory amounts) internal view returns (uint256[] memory) {
+        uint256[] memory amountsWithoutBpt = new uint256[](amounts.length - 1);
         for (uint256 i = 0; i < amountsWithoutBpt.length; i++) {
             amountsWithoutBpt[i] = amounts[i < _bptIndex ? i : i + 1];
         }
+
+        return amountsWithoutBpt;
+    }
+
+    /**
+     * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
+     * current Pool balances.
+     */
+    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
+        return (_getVirtualSupply(balances[_bptIndex]), _dropBptItem(balances));
     }
 
     function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
@@ -818,6 +957,22 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         for (uint256 i = 0; i < amountsWithBpt.length; i++) {
             amountsWithBpt[i] = i == _bptIndex ? bptAmount : amounts[i < _bptIndex ? i : i - 1];
         }
+    }
+
+    /**
+     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
+     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
+     */
+    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
+        internal
+        view
+        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
+    {
+        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
+        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
+        _upscaleArray(scaledWithBpt, scalingFactors);
+
+        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
     }
 
     /**
@@ -833,8 +988,11 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
         return _getVirtualSupply(balances[_bptIndex]);
     }
 
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
-        return totalSupply().sub(bptBalance).add(_dueProtocolFeeBptAmount);
+        return totalSupply().sub(bptBalance);
     }
 
     /**
@@ -842,14 +1000,171 @@ contract StablePhantomPool is StablePool, ProtocolFeeCache {
      * underlying tokens. This starts at 1 when the pool is created and grows over time.
      * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() public view virtual override returns (uint256) {
         (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItem(balancesIncludingBpt);
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return StableMath._getRate(balances, currentAmp, virtualSupply);
+    }
+
+    // Amplification
+
+    /**
+     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
+     * `endTime` is reached, when it will be `rawEndValue`.
+     *
+     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
+     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
+     */
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
+        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
+
+        uint256 duration = Math.sub(endTime, block.timestamp);
+        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
+
+        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
+
+        // daily rate = (endValue / currentValue) / duration * 1 day
+        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
+        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
+        uint256 dailyRate = endValue > currentValue
+            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
+            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
+        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
+
+        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
+    }
+
+    /**
+     * @dev Stops the amplification parameter change process, keeping the current value.
+     */
+    function stopAmplificationParameterUpdate() external authenticate {
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
+
+        _setAmplificationData(currentValue);
+    }
+
+    function getAmplificationParameter()
+        external
+        view
+        returns (
+            uint256 value,
+            bool isUpdating,
+            uint256 precision
+        )
+    {
+        (value, isUpdating) = _getAmplificationParameter();
+        precision = StableMath._AMP_PRECISION;
+    }
+
+    function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
+        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
+
+        // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
+
+        if (block.timestamp < endTime) {
+            isUpdating = true;
+
+            // We can skip checked arithmetic as:
+            //  - block.timestamp is always larger or equal to startTime
+            //  - endTime is always larger than startTime
+            //  - the value delta is bounded by the largest amplification parameter, which never causes the
+            //    multiplication to overflow.
+            // This also means that the following computation will never revert nor yield invalid results.
+            if (endValue > startValue) {
+                value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            } else {
+                value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            }
+        } else {
+            isUpdating = false;
+            value = endValue;
+        }
+    }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
+        return StableMath._MAX_STABLE_TOKENS + 1;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    function _setAmplificationData(uint256 value) private {
+        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
+        emit AmpUpdateStopped(value);
+    }
+
+    function _setAmplificationData(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 startTime,
+        uint256 endTime
+    ) private {
+        _storeAmplificationData(startValue, endValue, startTime, endTime);
+        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
+    }
+
+    function _storeAmplificationData(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 startTime,
+        uint256 endTime
+    ) private {
+        _packedAmplificationData =
+            WordCodec.encodeUint(startValue, 0, 64) |
+            WordCodec.encodeUint(endValue, 64, 64) |
+            WordCodec.encodeUint(startTime, 64 * 2, 64) |
+            WordCodec.encodeUint(endTime, 64 * 3, 64);
+    }
+
+    function _getAmplificationData()
+        private
+        view
+        returns (
+            uint256 startValue,
+            uint256 endValue,
+            uint256 startTime,
+            uint256 endTime
+        )
+    {
+        startValue = _packedAmplificationData.decodeUint(0, 64);
+        endValue = _packedAmplificationData.decodeUint(64, 64);
+        startTime = _packedAmplificationData.decodeUint(64 * 2, 64);
+        endTime = _packedAmplificationData.decodeUint(64 * 3, 64);
+    }
+
+    function _getScalingFactor0() internal view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() internal view returns (uint256) {
+        return _scalingFactor1;
+    }
+
+    function _getScalingFactor2() internal view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() internal view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    function _getScalingFactor4() internal view returns (uint256) {
+        return _scalingFactor4;
+    }
+
+    function _getScalingFactor5() internal view returns (uint256) {
+        return _scalingFactor5;
     }
 }

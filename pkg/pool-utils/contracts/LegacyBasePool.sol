@@ -27,14 +27,15 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
-import "./BasePoolAuthorization.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
 /**
  * @notice Reference implementation for the base layer of a Pool contract
- * @dev Reference implementation for the base layer of a Pool contract that manages a single Pool with optional
- * Asset Managers, an admin-controlled swap fee percentage, and an emergency pause mechanism.
+ * @dev Manages a single Pool with optional Asset Managers, an admin-controlled swap fee percentage, a temporary
+ * emergency pause mechanism that disables the pool, and a permanent Recovery Mode option that ensures LPs can
+ * always proportionally exit the pool, even if it's in a pathological state.
  *
  * Note that neither swap fees nor the pause mechanism are used by this contract. They are passed through so that
  * derived contracts can use them via the `_addSwapFeeAmount` and `_subtractSwapFeeAmount` functions, and the
@@ -46,9 +47,10 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
+abstract contract LegacyBasePool is IBasePool, BalancerPoolToken, TemporarilyPausable, RecoveryMode {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
 
@@ -140,7 +142,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
      * @dev This is stored in the MSB 64 bits of the `_miscData`.
      */
     function getSwapFeePercentage() public view returns (uint256) {
-        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
     }
 
     /**
@@ -156,7 +158,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
+        _miscData = _miscData.insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, 64);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -194,7 +196,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
     /**
      * @notice Reverse a `pause` operation, and restore a pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused pool within the Buffer Period set during
-     * pool factory deployment (see `TemporarilyPausable`). Note that ny paused pools will automatically unpause after
+     * pool factory deployment (see `TemporarilyPausable`). Note that any paused pools will automatically unpause after
      * the Buffer Period expires.
      */
     function unpause() external authenticate {
@@ -242,6 +244,11 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
 
+        // Joins are unsupported when paused
+        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
+        // initialization in this case.
+        _ensureNotPaused();
+
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
                 poolId,
@@ -270,7 +277,7 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );
@@ -301,27 +308,49 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(balances, scalingFactors);
+        uint256[] memory dueProtocolFeeAmounts;
+        uint256[] memory amountsOut;
+        uint256 bptAmountIn;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut, uint256[] memory dueProtocolFeeAmounts) = _onExitPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            scalingFactors,
-            userData
-        );
+        // When a user calls `exitPool`, this is the first point of entry from the Vault.
+        // We first check whether this is a Recovery Mode exit - if so, we proceed using this special lightweight exit
+        // mechanism which avoids computing any complex values, interacting with external contracts, etc., and generally
+        // should always work, even if the Pool's mathematics or a dependency break down.
+        if (userData.isRecoveryModeExitKind()) {
+            // This exit kind is only available in Recovery Mode.
+            _ensureInRecoveryMode();
 
-        // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
+            // Protocol fees are skipped when processing recovery mode exits, since these are pool-agnostic and it
+            // is therefore impossible to know how many fees are due. For consistency, all regular joins and exits are
+            // processed as if the protocol swap fee percentage was zero.
+            dueProtocolFeeAmounts = new uint256[](balances.length);
+
+            (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
+        } else {
+            // Exits are unsupported when paused
+            _ensureNotPaused();
+
+            uint256[] memory scalingFactors = _scalingFactors();
+            _upscaleArray(balances, scalingFactors);
+
+            // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
+            (bptAmountIn, amountsOut, dueProtocolFeeAmounts) = _onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
+                scalingFactors,
+                userData
+            );
+
+            // Both amountsOut and dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
+            _downscaleDownArray(amountsOut, scalingFactors);
+            _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
+        }
 
         _burnPoolTokens(sender, bptAmountIn);
-
-        // Both amountsOut and dueProtocolFeeAmounts are amounts exiting the Pool, so we round down.
-        _downscaleDownArray(amountsOut, scalingFactors);
-        _downscaleDownArray(dueProtocolFeeAmounts, scalingFactors);
 
         return (amountsOut, dueProtocolFeeAmounts);
     }
@@ -499,8 +528,6 @@ abstract contract LegacyBasePool is IBasePool, BasePoolAuthorization, BalancerPo
             uint256[] memory amountsOut,
             uint256[] memory dueProtocolFeeAmounts
         );
-
-    // Internal functions
 
     /**
      * @dev Adds swap fee amount to `amount`, returning a higher value.

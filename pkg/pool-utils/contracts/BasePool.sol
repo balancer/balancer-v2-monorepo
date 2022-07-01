@@ -28,6 +28,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
@@ -50,9 +51,10 @@ import "./BasePoolAuthorization.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable {
+abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable, RecoveryMode {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
 
     uint256 private constant _MIN_TOKENS = 2;
 
@@ -148,7 +150,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev This is stored in the MSB 64 bits of the `_miscData`.
      */
     function getSwapFeePercentage() public view virtual returns (uint256) {
-        return _miscData.decodeUint64(_SWAP_FEE_PERCENTAGE_OFFSET);
+        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
     }
 
     /**
@@ -164,7 +166,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -172,7 +174,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.insertUint64(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET);
+        _miscData = _miscData.insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, 64);
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -266,6 +268,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory scalingFactors = _scalingFactors();
 
+        // Joins are unsupported when paused
+        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
+        // initialization in this case.
+        _ensureNotPaused();
+
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
                 poolId,
@@ -294,7 +301,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 recipient,
                 balances,
                 lastChangeBlock,
-                protocolSwapFeePercentage,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
                 scalingFactors,
                 userData
             );
@@ -324,26 +331,43 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory scalingFactors = _scalingFactors();
-        _upscaleArray(balances, scalingFactors);
+        uint256[] memory amountsOut;
+        uint256 bptAmountIn;
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _onExitPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            scalingFactors,
-            userData
-        );
+        // When a user calls `exitPool`, this is the first point of entry from the Vault.
+        // We first check whether this is a Recovery Mode exit - if so, we proceed using this special lightweight exit
+        // mechanism which avoids computing any complex values, interacting with external contracts, etc., and generally
+        // should always work, even if the Pool's mathematics or a dependency break down.
+        if (userData.isRecoveryModeExitKind()) {
+            // This exit kind is only available in Recovery Mode.
+            _ensureInRecoveryMode();
+
+            (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
+        } else {
+            // Exits are unsupported when paused
+            _ensureNotPaused();
+
+            uint256[] memory scalingFactors = _scalingFactors();
+            _upscaleArray(balances, scalingFactors);
+
+            (bptAmountIn, amountsOut) = _onExitPool(
+                poolId,
+                sender,
+                recipient,
+                balances,
+                lastChangeBlock,
+                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
+                scalingFactors,
+                userData
+            );
+
+            // amountsOut are amounts exiting the Pool, so we round down.
+            _downscaleDownArray(amountsOut, scalingFactors);
+        }
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
 
         _burnPoolTokens(sender, bptAmountIn);
-
-        // amountsOut are amounts exiting the Pool, so we round down.
-        _downscaleDownArray(amountsOut, scalingFactors);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
         return (amountsOut, new uint256[](balances.length));
@@ -523,7 +547,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(FixedPoint.ONE.sub(getSwapFeePercentage()));
+        return amount.divUp(getSwapFeePercentage().complement());
     }
 
     /**
