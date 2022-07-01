@@ -12,7 +12,7 @@ import { deployedAt } from '../../contract';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
 import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '../../constants';
-import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap } from './types';
+import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap, QueryBatchSwap } from './types';
 import { Interface } from '@ethersproject/abi';
 
 export default class Vault {
@@ -256,5 +256,10 @@ export default class Vault {
   async _defaultSender(): Promise<SignerWithAddress> {
     const signers = await ethers.getSigners();
     return signers[0];
+  }
+
+  // Returns asset deltas
+  async queryBatchSwap(params: QueryBatchSwap): Promise<BigNumber[]> {
+    return await this.instance.queryBatchSwap(params.kind, params.swaps, params.assets, params.funds);
   }
 }
