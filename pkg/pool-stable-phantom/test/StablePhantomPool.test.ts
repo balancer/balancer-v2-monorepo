@@ -706,10 +706,14 @@ describe('StablePhantomPool', () => {
             it('can tell how much BPT it will give in return', async () => {
               const minimumBptOut = pct(expectedBptOut, 0.99);
 
-              const result = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
+              const queryResult = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
 
-              expect(result.amountsIn).to.deep.equal(amountsIn);
-              expect(result.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
+              expect(queryResult.amountsIn).to.deep.equal(amountsIn);
+              expect(queryResult.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
+
+              // Query and join should match exactly
+              const result = await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+              expect(result.amountsIn).to.deep.equal(queryResult.amountsIn);
             });
 
             it('fails if not enough BPT', async () => {
@@ -776,19 +780,28 @@ describe('StablePhantomPool', () => {
               expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
             });
 
-            it('can tell token amount received (for either join or joinSwap)', async () => {
+            it('can tell how many tokens it will receive', async () => {
               const previousBptBalance = await pool.balanceOf(recipient);
               // 20% of previous balance
               const bptOut = pct(previousBptBalance, 0.2);
-              const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
 
-              const result = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+              const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
 
-              expect(result.bptOut).to.be.equal(bptOut);
-              expect(result.amountsIn[tokenIndex]).to.be.equalWithError(expectedAmountIn, 0.001);
-              expect(result.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+              expect(queryResult.bptOut).to.be.equal(bptOut);
+              expect(queryResult.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
 
-              // Join swap should give the same number of tokens
+              const result = await pool.joinGivenOut({from: recipient, bptOut, token });
+              // Query and join should match exactly
+              expect(result.amountsIn[tokenIndex]).to.equal(queryResult.amountsIn[tokenIndex]);
+            });
+
+            it('join and joinSwap give the same result', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              // 20% of previous balance
+              const bptOut = pct(previousBptBalance, 0.2);
+
+              const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+
               const { amountIn } = await pool.swapGivenOut({
                 from: recipient,
                 in: token,
@@ -796,7 +809,8 @@ describe('StablePhantomPool', () => {
                 amount: bptOut,
                 recipient: lp,
               });
-              expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
+
+              expect(amountIn).to.be.equalWithError(queryResult.amountsIn[tokenIndex], 0.00001);
             });
 
             it('reverts if paused', async () => {
