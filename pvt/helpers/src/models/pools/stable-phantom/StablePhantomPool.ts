@@ -1,14 +1,14 @@
 import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction, ContractReceipt, ContractFunction } from 'ethers';
 
-import { SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer-js';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { StablePoolEncoder } from '@balancer-labs/balancer-js/src';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS, MAX_UINT256 } from '../../../constants';
-import { GeneralSwap } from '../../vault/types';
+import { GeneralSwap, QueryBatchSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
 
 import Vault from '../../vault/Vault';
@@ -25,6 +25,7 @@ import {
   JoinResult,
   JoinQueryResult,
   ExitGivenOutStablePool,
+  SingleExitGivenInStablePool,
   ExitResult,
   ExitQueryResult,
   PoolQueryResult,
@@ -360,6 +361,14 @@ export default class StablePhantomPool extends BasePool {
     return this.queryExit(this._buildExitGivenOutParams(params));
   }
 
+  async singleExitGivenIn(params: SingleExitGivenInStablePool): Promise<ExitResult> {
+    return this.exit(this._buildSingleExitGivenInParams(params));
+  }
+
+  async querySingleExitGivenIn(params: SingleExitGivenInStablePool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildSingleExitGivenInParams(params));
+  }
+
   async queryExit(params: JoinExitStablePool): Promise<ExitQueryResult> {
     const fn = this.instance.queryExit;
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
@@ -423,6 +432,49 @@ export default class StablePhantomPool extends BasePool {
     };
   }
 
+  private _buildSingleExitGivenInParams(params: SingleExitGivenInStablePool): JoinExitStablePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: StablePoolEncoder.exitExactBPTInForOneTokenOutPhantom(params.bptIn, this.tokens.indexOf(params.token)),
+    };
+  }
+
+  private _buildQuerySwapParams(kind: number, allTokens: string[], params: SwapPhantomPool): QueryBatchSwap {
+    const swapStep: BatchSwapStep = {
+      poolId: this.poolId,
+      assetInIndex: allTokens.indexOf(params.in.address),
+      assetOutIndex: allTokens.indexOf(params.out.address),
+      amount: params.amount,
+      userData: '0x',
+    };
+
+    const funds: FundManagement = {
+      sender: params.from?.address ?? ZERO_ADDRESS,
+      fromInternalBalance: false,
+      recipient: TypesConverter.toAddress(params.recipient) ?? ZERO_ADDRESS,
+      toInternalBalance: false,
+    };
+
+    return {
+      kind,
+      swaps: [swapStep],
+      assets: allTokens,
+      funds,
+    };
+  }
+
+  async querySwapGivenIn(params: SwapPhantomPool): Promise<BigNumber> {
+    const { tokens: allTokens } = await this.getTokens();
+    const queryParams = this._buildQuerySwapParams(SwapKind.GivenIn, allTokens, params);
+
+    const amountsOut = await this.vault.queryBatchSwap(queryParams);
+    return amountsOut[allTokens.indexOf(params.out.address)].mul(-1);
+  }
+
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
@@ -446,30 +498,5 @@ export default class StablePhantomPool extends BasePool {
     const result = [];
     for (let i = 0; i < items.length - 1; i++) result[i] = items[i < this.bptIndex ? i : i + 1];
     return result;
-  }
-
-  private async _addBptItem(items: BigNumberish[], value: BigNumber): Promise<BigNumberish[]> {
-    const result = [];
-    for (let i = 0; i < this.tokens.length - 1; i++)
-      result[i] = i == this.bptIndex ? value : items[i < this.bptIndex ? i : i - 1];
-    return result;
-  }
-
-  async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
-    const scalingFactors = await this.getScalingFactors();
-    if (balances.length < scalingFactors.length) {
-      balances = await this._addBptItem(balances, bn(0));
-    }
-
-    return balances.map((b, i) => bn(b).mul(scalingFactors[i]).div(fp(1)));
-  }
-
-  async downscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
-    const scalingFactors = await this.getScalingFactors();
-    if (balances.length < scalingFactors.length) {
-      balances = await this._addBptItem(balances, bn(0));
-    }
-
-    return balances.map((b, i) => bn(b).mul(fp(1)).div(scalingFactors[i]));
   }
 }

@@ -759,6 +759,84 @@ describe('StablePhantomPool', () => {
         await expect(pool.exit({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
       });
 
+      describe('exit BPT in for one token out', () => {
+        let tokenIndex: number;
+        let token: Token;
+
+        sharedBeforeEach('get token to exit with', async () => {
+          tokenIndex = pool.bptIndex == 0 ? 1 : 0;
+          token = tokens.get(tokenIndex);
+        });
+
+        context('not in recovery mode', () => {
+          itExitsExactBptInForOneTokenOutProperly();
+        });
+
+        context('in recovery mode', () => {
+          sharedBeforeEach('enable recovery mode', async () => {
+            await pool.enableRecoveryMode(admin);
+          });
+
+          itExitsExactBptInForOneTokenOutProperly();
+        });
+
+        function itExitsExactBptInForOneTokenOutProperly() {
+          it('grants one token for exact bpt', async () => {
+            // 20% of previous balance
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptIn = pct(previousBptBalance, 0.2);
+            const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(token, bptIn);
+
+            const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
+
+            // Only token out should be the one transferred
+            expect(result.amountsOut[tokenIndex]).to.be.equalWithError(expectedTokenOut, 0.0001);
+            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+            const bptAfter = await pool.balanceOf(lp);
+
+            // Current BPT balance should decrease
+            expect(previousBptBalance.sub(bptIn)).to.equal(bptAfter);
+          });
+
+          it('can tell how many tokens it will give in return', async () => {
+            const bptIn = pct(await pool.balanceOf(lp), 0.2);
+            const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
+
+            expect(queryResult.bptIn).to.equal(bptIn);
+            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+            const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
+            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+
+            // Query and exit should match exactly
+            expect(result.amountsOut[tokenIndex]).to.equal(queryResult.amountsOut[tokenIndex]);
+          });
+
+          it('exit and exitSwap give the same result', async () => {
+            const bptIn = pct(await pool.balanceOf(lp), 0.2);
+            const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
+
+            // Exit swap should give approximately the same number of tokens (modulo fees)
+            // If we charge fees the same, they should match exactly
+            const amountOut = await pool.querySwapGivenIn({
+              from: lp,
+              in: pool.bpt,
+              out: token,
+              amount: bptIn,
+              recipient: lp,
+            });
+            expect(queryResult.amountsOut[tokenIndex]).to.equalWithError(amountOut, 0.0001);
+          });
+
+          it('reverts if paused', async () => {
+            await pool.pause();
+
+            await expect(pool.singleExitGivenIn({ from: lp, bptIn: fp(1), token })).to.be.revertedWith('PAUSED');
+          });
+        }
+      });
+
       describe('exit BPT in for exact tokens out', () => {
         context('not in recovery mode', () => {
           itExitsBptInForExactTokensOutProperly();
@@ -805,10 +883,14 @@ describe('StablePhantomPool', () => {
             const expectedBptIn = previousBptBalance.div(2);
             const maximumBptIn = pct(expectedBptIn, 1.01);
 
-            const result = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
+            const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
 
-            expect(result.amountsOut).to.deep.equal(amountsOut);
-            expect(result.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+            expect(queryResult.amountsOut).to.deep.equal(amountsOut);
+            expect(queryResult.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+
+            // Query and exit should match exactly
+            const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
+            expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
           });
 
           it('reverts if paused', async () => {
