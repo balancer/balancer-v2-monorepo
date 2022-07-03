@@ -11,12 +11,10 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 describe('AumProtocolFeeCache', () => {
-  const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
-
   const AUM_PROTOCOL_FEE = fp(0.05); // 5%
   const NEW_AUM_PROTOCOL_FEE = fp(0.1); // 10%
 
-  let protocolFeeCache: Contract;
+  let feeCache: Contract;
   let aumProtocolFeesCollector: Contract;
   let admin: SignerWithAddress;
   let vault: Contract;
@@ -41,13 +39,13 @@ describe('AumProtocolFeeCache', () => {
 
   describe('AUM protocol fees', () => {
     sharedBeforeEach('deploy aum fee cache', async () => {
-      protocolFeeCache = await deploy('MockAumProtocolFeeCache', {
-        args: [vault.address, FIXED_PROTOCOL_FEE, aumProtocolFeesCollector.address],
+      feeCache = await deploy('MockAumProtocolFeeCache', {
+        args: [aumProtocolFeesCollector.address],
       });
     });
 
     it('sets the AUM protocol fee', async () => {
-      expect(await protocolFeeCache.getProtocolAumFeePercentageCache()).to.equal(AUM_PROTOCOL_FEE);
+      expect(await feeCache.getProtocolAumFeePercentageCache()).to.equal(AUM_PROTOCOL_FEE);
     });
 
     context('when the AUM protocol fee is updated', () => {
@@ -56,17 +54,17 @@ describe('AumProtocolFeeCache', () => {
       });
 
       it('retrieves the old value when not updated', async () => {
-        expect(await protocolFeeCache.getProtocolAumFeePercentageCache()).to.equal(AUM_PROTOCOL_FEE);
+        expect(await feeCache.getProtocolAumFeePercentageCache()).to.equal(AUM_PROTOCOL_FEE);
       });
 
       it('updates the cached value', async () => {
-        await protocolFeeCache.updateProtocolAumFeePercentageCache();
+        await feeCache.updateProtocolAumFeePercentageCache();
 
-        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(NEW_AUM_PROTOCOL_FEE);
+        expect(await feeCache.getProtocolAumFeePercentageCache()).to.equal(NEW_AUM_PROTOCOL_FEE);
       });
 
       it('emits an event when updating', async () => {
-        const receipt = await protocolFeeCache.updateProtocolAumFeePercentageCache();
+        const receipt = await feeCache.updateProtocolAumFeePercentageCache();
 
         expectEvent.inReceipt(await receipt.wait(), 'ProtocolAumFeePercentageCacheUpdated', {
           protocolAumFeePercentage: NEW_AUM_PROTOCOL_FEE,
