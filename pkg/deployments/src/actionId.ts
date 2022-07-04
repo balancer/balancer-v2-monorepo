@@ -6,9 +6,9 @@ import path from 'path';
 import logger from './logger';
 import Task, { TaskMode } from './task';
 
-const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
+export const ACTION_ID_DIRECTORY = path.join(__dirname, '../action-ids');
 
-type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: Record<string, string> };
+export type ContractActionIdData = { useAdaptor: boolean; factoryOutput?: string; actionIds: Record<string, string> };
 type ActionIdInfo = {
   taskId: string;
   contractName: string;
@@ -20,6 +20,12 @@ function safeReadJsonFile<T>(filePath: string): Record<string, T> {
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   return fileExists ? JSON.parse(fs.readFileSync(filePath).toString()) : {};
+}
+
+export function getTaskActionIds(task: Task): Record<string, ContractActionIdData> {
+  const filePath = path.join(ACTION_ID_DIRECTORY, task.network, 'action-ids.json');
+  const actionIdFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
+  return actionIdFileContents[task.id];
 }
 
 export async function saveActionIds(task: Task, contractName: string, factoryOutput?: string): Promise<void> {
@@ -43,10 +49,7 @@ export async function saveActionIds(task: Task, contractName: string, factoryOut
 }
 
 export async function checkActionIds(task: Task): Promise<void> {
-  const filePath = path.join(ACTION_ID_DIRECTORY, task.network, 'action-ids.json');
-  const actionIdFileContents = safeReadJsonFile<Record<string, ContractActionIdData>>(filePath);
-
-  const taskActionIdData = actionIdFileContents[task.id];
+  const taskActionIdData = getTaskActionIds(task);
   if (taskActionIdData === undefined) return;
 
   for (const [contractName, actionIdData] of Object.entries(taskActionIdData)) {
