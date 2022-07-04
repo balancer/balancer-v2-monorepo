@@ -1780,7 +1780,9 @@ describe('TimelockAuthorizer', () => {
                 expect(scheduledExecution.data).to.be.equal(expectedData);
                 expect(scheduledExecution.where).to.be.equal(authorizer.address);
                 expect(scheduledExecution.protected).to.be.false;
-                expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(expectedDelay));
+                expect(scheduledExecution.executableAt).to.be.at.almostEqual(
+                  (await currentTimestamp()).add(expectedDelay)
+                );
               });
 
               it('can be executed after the expected delay', async () => {
@@ -1929,7 +1931,7 @@ describe('TimelockAuthorizer', () => {
                   expect(scheduledExecution.data).to.be.equal(data);
                   expect(scheduledExecution.where).to.be.equal(where.address);
                   expect(scheduledExecution.protected).to.be.false;
-                  expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(delay));
+                  expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
                 });
 
                 it('cannot execute the action immediately', async () => {
@@ -1979,7 +1981,7 @@ describe('TimelockAuthorizer', () => {
                   expect(scheduledExecution.data).to.be.equal(data);
                   expect(scheduledExecution.where).to.be.equal(where.address);
                   expect(scheduledExecution.protected).to.be.true;
-                  expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(delay));
+                  expect(scheduledExecution.executableAt).to.be.at.almostEqual((await currentTimestamp()).add(delay));
                 });
 
                 it('cannot execute the action immediately', async () => {
@@ -2324,7 +2326,9 @@ describe('TimelockAuthorizer', () => {
             expect(scheduledExecution.data).to.be.equal(expectedData);
             expect(scheduledExecution.where).to.be.equal(authorizer.address);
             expect(scheduledExecution.protected).to.be.false;
-            expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(ROOT_CHANGE_DELAY));
+            expect(scheduledExecution.executableAt).to.be.at.almostEqual(
+              (await currentTimestamp()).add(ROOT_CHANGE_DELAY)
+            );
           });
 
           it('can be executed after the delay', async () => {
