@@ -71,7 +71,8 @@ contract TimelockAuthorizerMigrator {
         RoleData[] memory _rolesData,
         RoleData[] memory _grantersData,
         RoleData[] memory _revokersData,
-        DelayData[] memory _delaysData
+        DelayData[] memory _executeDelaysData,
+        DelayData[] memory _grantDelaysData
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
@@ -100,17 +101,31 @@ contract TimelockAuthorizerMigrator {
 
         // We require for there to be at least one delay set as we use the number of delays set as a test for whether
         // the migration is complete. Deploying the migrator with an empty delays array results in a broken deploy.
-        uint256 delaysDataLength = _delaysData.length;
+        uint256 delaysDataLength = _executeDelaysData.length + _grantDelaysData.length;
         require(delaysDataLength > 0, "INVALID_DELAYS_LENGTH");
         delaysExecutions = delaysDataLength;
-        for (uint256 i = 0; i < delaysDataLength; i++) {
-            // Setting the initial value for a delay requires us to wait 3 days before we can complete setting it.
-            // As we're only setting a small number of delays we then schedule them now to ensure that they're ready
-            // to execute once `CHANGE_ROOT_DELAY` has passed.
 
+        // Setting the initial value for a delay requires us to wait 3 days before we can complete setting it.
+        // As we're only setting a small number of delays we then schedule them now to ensure that they're ready
+        // to execute once `CHANGE_ROOT_DELAY` has passed.
+        for (uint256 i = 0; i < _executeDelaysData.length; i++) {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
-            require(_delaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
-            _newAuthorizer.scheduleDelayChange(_delaysData[i].actionId, _delaysData[i].newDelay, _arr(address(this)));
+            require(_executeDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
+            _newAuthorizer.scheduleDelayChange(
+                _executeDelaysData[i].actionId,
+                _executeDelaysData[i].newDelay,
+                _arr(address(this))
+            );
+        }
+        bytes32 grantActionId = _newAuthorizer.GRANT_ACTION_ID();
+        for (uint256 i = 0; i < _grantDelaysData.length; i++) {
+            // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
+            require(_grantDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
+            _newAuthorizer.scheduleDelayChange(
+                _newAuthorizer.getActionId(grantActionId, _grantDelaysData[i].actionId),
+                _grantDelaysData[i].newDelay,
+                _arr(address(this))
+            );
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address.
