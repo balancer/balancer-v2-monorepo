@@ -4,9 +4,10 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('TimelockAuthorizerMigrator', () => {
   let root: SignerWithAddress;
@@ -24,9 +25,16 @@ describe('TimelockAuthorizerMigrator', () => {
     target: string;
   }
 
+  interface DelayData {
+    actionId: string;
+    newDelay: BigNumberish;
+  }
+
   let rolesData: RoleData[];
   let grantersData: RoleData[];
   let revokersData: RoleData[];
+  let executeDelaysData: DelayData[];
+  let grantDelaysData: DelayData[];
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -53,12 +61,31 @@ describe('TimelockAuthorizerMigrator', () => {
       { grantee: granter1.address, role: ROLE_2, target: target.address },
       { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
     ];
+    executeDelaysData = [
+      // We must set this delay first to satisfy the `DELAY_EXCEEDS_SET_AUTHORIZER` check.
+      { actionId: await actionId(vault, 'setAuthorizer'), newDelay: 30 * DAY },
+      { actionId: ROLE_1, newDelay: 14 * DAY },
+      { actionId: ROLE_2, newDelay: 7 * DAY },
+    ];
+    grantDelaysData = [
+      { actionId: ROLE_2, newDelay: 30 * DAY },
+      { actionId: ROLE_3, newDelay: 30 * DAY },
+    ];
   });
 
   context('constructor', () => {
     context('when attempting to migrate a role which does not exist on previous Authorizer', () => {
       it('reverts', async () => {
-        const args = [vault.address, root.address, oldAuthorizer.address, rolesData, grantersData, revokersData];
+        const args = [
+          vault.address,
+          root.address,
+          oldAuthorizer.address,
+          rolesData,
+          grantersData,
+          revokersData,
+          executeDelaysData,
+          grantDelaysData,
+        ];
         await expect(deploy('TimelockAuthorizerMigrator', { args })).to.be.revertedWith('UNEXPECTED_ROLE');
       });
     });
@@ -70,7 +97,16 @@ describe('TimelockAuthorizerMigrator', () => {
     });
 
     sharedBeforeEach('set up migrator', async () => {
-      const args = [vault.address, root.address, oldAuthorizer.address, rolesData, grantersData, revokersData];
+      const args = [
+        vault.address,
+        root.address,
+        oldAuthorizer.address,
+        rolesData,
+        grantersData,
+        revokersData,
+        executeDelaysData,
+        grantDelaysData,
+      ];
       migrator = await deploy('TimelockAuthorizerMigrator', { args });
       newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
       const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
@@ -114,6 +150,23 @@ describe('TimelockAuthorizerMigrator', () => {
         }
       });
 
+      it('sets up delays properly', async () => {
+        await migrate();
+
+        for (const delayData of executeDelaysData) {
+          expect(await newAuthorizer.getActionIdDelay(delayData.actionId)).to.be.eq(delayData.newDelay);
+        }
+
+        const GRANT_ACTION_ID = await newAuthorizer.GRANT_ACTION_ID();
+        for (const delayData of grantDelaysData) {
+          const grantActionId = await newAuthorizer['getActionId(bytes32,bytes32)'](
+            GRANT_ACTION_ID,
+            delayData.actionId
+          );
+          expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
+        }
+      });
+
       it('does not set the new authorizer immediately', async () => {
         await migrate();
 
@@ -153,9 +206,14 @@ describe('TimelockAuthorizerMigrator', () => {
     context('with a full migration', () => {
       itMigratesPermissionsProperly(() =>
         Promise.all(
-          Array.from({ length: rolesData.length + grantersData.length + revokersData.length }).map(() =>
-            migrator.migrate(1)
-          )
+          Array.from({
+            length:
+              rolesData.length +
+              grantersData.length +
+              revokersData.length +
+              executeDelaysData.length +
+              grantDelaysData.length,
+          }).map(() => migrator.migrate(1))
         )
       );
     });
