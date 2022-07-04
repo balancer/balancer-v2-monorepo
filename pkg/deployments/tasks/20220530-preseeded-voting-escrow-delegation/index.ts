@@ -31,5 +31,5 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     ),
   ];
 
-  await task.deployAndVerify('PreseededVotingEscrowDelegation', args, from, force);
+  await task.deploy('PreseededVotingEscrowDelegation', args, from, force);
 };
