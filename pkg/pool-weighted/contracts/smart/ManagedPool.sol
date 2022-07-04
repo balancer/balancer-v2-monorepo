@@ -1242,7 +1242,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
     /**
      * @dev Extend ownerOnly functions to include the Managed Pool control functions.
      */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        override(
+            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            BasePool,
+            BasePoolAuthorization
+        )
+        returns (bool)
+    {
         return
             (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPool.updateSwapFeeGradually.selector)) ||

@@ -25,4 +25,7 @@ export default {
   optimism: {
     BAL: '0xFE8B128bA8C78aabC59d4c64cEE7fF28e9379921',
   },
+  goerli: {
+    BAL: TestBalancerToken.output({ network: 'goerli' }).TestBalancerToken,
+  },
 };
