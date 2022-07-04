@@ -358,7 +358,7 @@ describe('UnbuttonWrapping', function () {
     });
   });
 
-  describe.skip('complex actions', () => {
+  describe('complex actions', () => {
     let WETH: Token;
     let poolTokens: TokenList;
     let poolId: string;

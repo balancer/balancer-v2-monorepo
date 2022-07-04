@@ -49,7 +49,7 @@ export default class Token {
     if (this.symbol === 'WETH') {
       await token.deposit({ value: amount });
       await token.transfer(TypesConverter.toAddress(to), amount);
-    } else if (this.symbol !== 'wstETH') {
+    } else if (this.symbol !== 'wstETH' && this.symbol != 'wampl') {
       // wstETH has the permissioned wrap()
       await token.mint(TypesConverter.toAddress(to), amount ?? MAX_UINT256);
     }
