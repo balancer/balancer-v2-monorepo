@@ -45,8 +45,10 @@ contract TimelockAuthorizerMigrator {
     uint256 public revokersMigrated;
     RoleData[] public revokersData;
 
+    // As execution IDs are sequential and these are the first scheduled executions, we just need to iterate from 0
+    // to the maximum execution ID rather than maintaining an array.
     uint256 public delaysSet;
-    uint256[] public delaysExecutionIds;
+    uint256 public delaysExecutions;
 
     struct RoleData {
         address grantee;
@@ -100,6 +102,7 @@ contract TimelockAuthorizerMigrator {
         // the migration is complete. Deploying the migrator with an empty delays array results in a broken deploy.
         uint256 delaysDataLength = _delaysData.length;
         require(delaysDataLength > 0, "INVALID_DELAYS_LENGTH");
+        delaysExecutions = delaysDataLength;
         for (uint256 i = 0; i < delaysDataLength; i++) {
             // Setting the initial value for a delay requires us to wait 3 days before we can complete setting it.
             // As we're only setting a small number of delays we then schedule them now to ensure that they're ready
@@ -107,13 +110,7 @@ contract TimelockAuthorizerMigrator {
 
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_delaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
-            delaysExecutionIds.push(
-                _newAuthorizer.scheduleDelayChange(
-                    _delaysData[i].actionId,
-                    _delaysData[i].newDelay,
-                    _arr(address(this))
-                )
-            );
+            _newAuthorizer.scheduleDelayChange(_delaysData[i].actionId, _delaysData[i].newDelay, _arr(address(this)));
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address.
@@ -174,7 +171,7 @@ contract TimelockAuthorizerMigrator {
         _setupDelays(rolesToMigrate);
 
         // As we execute the setting of delays last we can use them to determine whether the full migration is complete.
-        if (delaysSet >= delaysExecutionIds.length) {
+        if (delaysSet >= delaysExecutions) {
             _roleMigrationComplete = true;
         }
     }
@@ -244,14 +241,14 @@ contract TimelockAuthorizerMigrator {
      */
     function _setupDelays(uint256 delaysToSet) internal {
         uint256 i = delaysSet;
-        uint256 to = Math.min(i + delaysToSet, delaysExecutionIds.length);
+        uint256 to = Math.min(i + delaysToSet, delaysExecutions);
 
         // The first delay will be the longest (by definition as it is the delay for changing the authorizer address)
         // We then just need to check this once to know that the other delays may be set.
-        if (i == 0) require(newAuthorizer.canExecute(delaysExecutionIds[0]), "CANNOT_TRIGGER_DELAY_CHANGE_YET");
+        if (i == 0) require(newAuthorizer.canExecute(0), "CANNOT_TRIGGER_DELAY_CHANGE_YET");
 
         for (; i < to; i++) {
-            newAuthorizer.execute(delaysExecutionIds[i]);
+            newAuthorizer.execute(i);
         }
 
         delaysSet = i;
