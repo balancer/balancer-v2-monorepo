@@ -31,6 +31,8 @@ describe('TimelockAuthorizer', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
+  const MIN_DELAY = 0 * DAY;
+
   sharedBeforeEach('deploy authorizer', async () => {
     const oldAuthorizer = await TimelockAuthorizer.create({ admin });
 
@@ -1766,10 +1768,10 @@ describe('TimelockAuthorizer', () => {
           context('when the delay is less than or equal to the delay to set the authorizer in the vault', () => {
             sharedBeforeEach('set delay to set authorizer', async () => {
               const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-              await authorizer.setDelay(setAuthorizerAction, delay, { from: admin });
+              await authorizer.setDelay(setAuthorizerAction, delay * 2, { from: admin });
             });
 
-            context('when there was no previous delay', () => {
+            function itSchedulesTheDelayChangeCorrectly(expectedDelay: number) {
               it('schedules a delay change', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
@@ -1778,12 +1780,13 @@ describe('TimelockAuthorizer', () => {
                 expect(scheduledExecution.data).to.be.equal(expectedData);
                 expect(scheduledExecution.where).to.be.equal(authorizer.address);
                 expect(scheduledExecution.protected).to.be.false;
-                expect(scheduledExecution.executableAt).to.be.at.most(await currentTimestamp());
+                expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(expectedDelay));
               });
 
-              it('can be executed immediately', async () => {
+              it('can be executed after the expected delay', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
+                await advanceTime(expectedDelay);
                 await authorizer.execute(id);
                 expect(await authorizer.delay(action)).to.be.equal(delay);
               });
@@ -1791,53 +1794,44 @@ describe('TimelockAuthorizer', () => {
               it('emits an event', async () => {
                 const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
 
+                await advanceTime(expectedDelay);
                 const receipt = await authorizer.execute(id);
                 expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: action, delay });
               });
+            }
+
+            context('when the delay is being increased', () => {
+              context('when there was no previous delay', () => {
+                itSchedulesTheDelayChangeCorrectly(MIN_DELAY);
+              });
+
+              context('when there was a previous delay set', () => {
+                const previousDelay = delay / 2;
+
+                sharedBeforeEach('set previous delay', async () => {
+                  await authorizer.setDelay(action, previousDelay, { from: admin });
+                });
+
+                itSchedulesTheDelayChangeCorrectly(MIN_DELAY);
+              });
             });
 
-            context('when there was a previous delay set', () => {
-              const previousDelay = delay / 2;
+            context('when the delay is being decreased', () => {
+              const previousDelay = delay * 2;
+              const executionDelay = Math.max(previousDelay - delay, MIN_DELAY);
 
               sharedBeforeEach('set previous delay', async () => {
-                const id = await authorizer.scheduleDelayChange(action, previousDelay, [], { from: admin });
-                await authorizer.execute(id);
+                await authorizer.setDelay(action, previousDelay, { from: admin });
               });
 
-              it('schedules a delay change', async () => {
-                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-                const scheduledExecution = await authorizer.getScheduledExecution(id);
-                expect(scheduledExecution.executed).to.be.false;
-                expect(scheduledExecution.data).to.be.equal(expectedData);
-                expect(scheduledExecution.where).to.be.equal(authorizer.address);
-                expect(scheduledExecution.protected).to.be.false;
-                expect(scheduledExecution.executableAt).to.be.at.most((await currentTimestamp()).add(previousDelay));
-              });
-
-              it('cannot be executed immediately', async () => {
-                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-                await expect(authorizer.execute(id)).to.be.revertedWith('ACTION_NOT_EXECUTABLE');
-
-                await advanceTime(previousDelay);
-                await authorizer.execute(id);
-                expect(await authorizer.delay(action)).to.be.equal(delay);
-              });
-
-              it('emits an event', async () => {
-                const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
-
-                await advanceTime(previousDelay);
-                const receipt = await authorizer.execute(id);
-                expectEvent.inReceipt(await receipt.wait(), 'ActionDelaySet', { actionId: action, delay });
-              });
+              itSchedulesTheDelayChangeCorrectly(executionDelay);
             });
           });
 
           context('when the delay is greater than the delay to set the authorizer in the vault', () => {
             it('reverts on execution', async () => {
               const id = await authorizer.scheduleDelayChange(action, delay, [], { from: admin });
+              await advanceTime(MIN_DELAY);
               await expect(authorizer.execute(id)).to.be.revertedWith('DELAY_EXCEEDS_SET_AUTHORIZER');
             });
           });
