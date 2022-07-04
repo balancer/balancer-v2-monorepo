@@ -11,6 +11,7 @@ import { ANY_ADDRESS, ONES_BYTES32 } from '../../constants';
 import TimelockAuthorizerDeployer from './TimelockAuthorizerDeployer';
 import { TimelockAuthorizerDeployment } from './types';
 import { Account, NAry, TxParams } from '../types/types';
+import { advanceToTimestamp } from '../../time';
 
 export default class TimelockAuthorizer {
   static WHATEVER = ONES_BYTES32;
@@ -248,6 +249,7 @@ export default class TimelockAuthorizer {
     const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SCHEDULE_DELAY_ACTION_ID, action]);
     await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
+    await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);
   }
 

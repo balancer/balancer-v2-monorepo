@@ -310,10 +310,6 @@ export default class StablePool extends BasePool {
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees };
   }
 
-  async setInvariantFailure(invariantFailsToConverge: boolean): Promise<void> {
-    await this.instance.setInvariantFailure(invariantFailsToConverge);
-  }
-
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;

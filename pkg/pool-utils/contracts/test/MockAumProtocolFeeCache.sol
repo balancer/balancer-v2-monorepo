@@ -17,8 +17,7 @@ pragma solidity ^0.7.0;
 import "../AumProtocolFeeCache.sol";
 
 contract MockAumProtocolFeeCache is AumProtocolFeeCache {
-    constructor(IVault vault, uint256 protocolSwapFeePercentage, IAumProtocolFeesCollector aumProtocolFeesCollector)
-    AumProtocolFeeCache(vault, protocolSwapFeePercentage, aumProtocolFeesCollector) {
+    constructor(IAumProtocolFeesCollector aumProtocolFeesCollector) AumProtocolFeeCache(aumProtocolFeesCollector) {
         // solhint-disable-prev-line no-empty-blocks
     }
 }

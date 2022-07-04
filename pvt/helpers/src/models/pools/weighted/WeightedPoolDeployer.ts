@@ -26,6 +26,7 @@ export default {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
     const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
+    const poolId = await pool.getPoolId();
 
     const {
       tokens,
@@ -41,7 +42,6 @@ export default {
       aumProtocolFeesCollector,
     } = deployment;
 
-    const poolId = await pool.getPoolId();
     return new WeightedPool(
       pool,
       poolId,

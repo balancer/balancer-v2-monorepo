@@ -4,19 +4,37 @@ import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, DAY } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('TimelockAuthorizerMigrator', () => {
-  let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, root: SignerWithAddress;
+  let root: SignerWithAddress;
+  let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
+  let granter1: SignerWithAddress, granter2: SignerWithAddress, granter3: SignerWithAddress;
   let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
 
   before('set up signers', async () => {
-    [, user1, user2, user3, root] = await ethers.getSigners();
+    [, user1, user2, user3, granter1, granter2, granter3, root] = await ethers.getSigners();
   });
 
-  let rolesData: Array<{ role: string; target: string }>;
+  interface RoleData {
+    grantee: string;
+    role: string;
+    target: string;
+  }
+
+  interface DelayData {
+    actionId: string;
+    newDelay: BigNumberish;
+  }
+
+  let rolesData: RoleData[];
+  let grantersData: RoleData[];
+  let revokersData: RoleData[];
+  let executeDelaysData: DelayData[];
+  let grantDelaysData: DelayData[];
   const ROLE_1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
   const ROLE_2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
@@ -27,85 +45,177 @@ describe('TimelockAuthorizerMigrator', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const target = await deploy('MockBasicAuthorizer'); // any contract
-    await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
+    const target = await deploy('MockAuthenticatedContract', { args: [vault.address] });
     rolesData = [
-      { role: ROLE_1, target: target.address },
-      { role: ROLE_2, target: target.address },
-      { role: ROLE_3, target: target.address },
+      { grantee: user1.address, role: ROLE_1, target: target.address },
+      { grantee: user2.address, role: ROLE_2, target: target.address },
+      { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
+    ];
+    grantersData = [
+      { grantee: granter1.address, role: ROLE_1, target: target.address },
+      { grantee: granter2.address, role: ROLE_2, target: ZERO_ADDRESS },
+      { grantee: granter3.address, role: ROLE_3, target: target.address },
+    ];
+    revokersData = [
+      { grantee: user1.address, role: ROLE_1, target: target.address },
+      { grantee: granter1.address, role: ROLE_2, target: target.address },
+      { grantee: user3.address, role: ROLE_3, target: ZERO_ADDRESS },
+    ];
+    executeDelaysData = [
+      // We must set this delay first to satisfy the `DELAY_EXCEEDS_SET_AUTHORIZER` check.
+      { actionId: await actionId(vault, 'setAuthorizer'), newDelay: 30 * DAY },
+      { actionId: ROLE_1, newDelay: 14 * DAY },
+      { actionId: ROLE_2, newDelay: 7 * DAY },
+    ];
+    grantDelaysData = [
+      { actionId: ROLE_2, newDelay: 30 * DAY },
+      { actionId: ROLE_3, newDelay: 30 * DAY },
     ];
   });
 
-  sharedBeforeEach('set up migrator', async () => {
-    const args = [vault.address, root.address, oldAuthorizer.address, rolesData];
-    migrator = await deploy('TimelockAuthorizerMigrator', { args });
-    newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
-    const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
-    await oldAuthorizer.grantRolesToMany([setAuthorizerActionId], [migrator.address]);
-
-    const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
-    await advanceTime(CHANGE_ROOT_DELAY);
+  context('constructor', () => {
+    context('when attempting to migrate a role which does not exist on previous Authorizer', () => {
+      it('reverts', async () => {
+        const args = [
+          vault.address,
+          root.address,
+          oldAuthorizer.address,
+          rolesData,
+          grantersData,
+          revokersData,
+          executeDelaysData,
+          grantDelaysData,
+        ];
+        await expect(deploy('TimelockAuthorizerMigrator', { args })).to.be.revertedWith('UNEXPECTED_ROLE');
+      });
+    });
   });
 
-  const itMigratesPermissionsProperly = (migrate: () => Promise<unknown>) => {
-    it('runs the migration properly', async () => {
-      expect(await migrator.migratedRoles()).to.be.equal(0);
-
-      await migrate();
-
-      expect(await migrator.migratedRoles()).to.be.equal(rolesData.length);
-      expect(await migrator.isComplete()).to.be.true;
+  context('migrate', () => {
+    sharedBeforeEach('grant roles on old Authorizer', async () => {
+      await oldAuthorizer.grantRolesToMany([ROLE_1, ROLE_2, ROLE_3], [user1.address, user2.address, user3.address]);
     });
 
-    it('migrates all roles properly', async () => {
-      await migrate();
+    sharedBeforeEach('set up migrator', async () => {
+      const args = [
+        vault.address,
+        root.address,
+        oldAuthorizer.address,
+        rolesData,
+        grantersData,
+        revokersData,
+        executeDelaysData,
+        grantDelaysData,
+      ];
+      migrator = await deploy('TimelockAuthorizerMigrator', { args });
+      newAuthorizer = await deployedAt('TimelockAuthorizer', await migrator.newAuthorizer());
+      const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
+      await oldAuthorizer.grantRolesToMany([setAuthorizerActionId], [migrator.address]);
 
-      for (const roleData of rolesData) {
-        const membersCount = await oldAuthorizer.getRoleMemberCount(roleData.role);
-        for (let i = 0; i < membersCount; i++) {
-          const member = await oldAuthorizer.getRoleMember(roleData.role, i);
-          expect(await newAuthorizer.hasPermission(roleData.role, member, roleData.target)).to.be.true;
-        }
-      }
+      const CHANGE_ROOT_DELAY = await newAuthorizer.getRootTransferDelay();
+      await advanceTime(CHANGE_ROOT_DELAY);
     });
 
-    it('does not set the new authorizer immediately', async () => {
-      await migrate();
+    const itMigratesPermissionsProperly = (migrate: () => Promise<unknown>) => {
+      it('runs the migration properly', async () => {
+        expect(await migrator.existingRolesMigrated()).to.be.equal(0);
 
-      expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
-      expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
-    });
-
-    context('finalization', () => {
-      sharedBeforeEach('migrate all roles', async () => {
         await migrate();
+
+        expect(await migrator.existingRolesMigrated()).to.be.equal(rolesData.length);
+        expect(await migrator.isComplete()).to.be.true;
       });
 
-      context('when new root has not claimed ownership over TimelockAuthorizer', () => {
-        it('reverts', async () => {
-          await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
-        });
+      it('migrates all roles properly', async () => {
+        await migrate();
+
+        for (const roleData of rolesData) {
+          expect(await newAuthorizer.hasPermission(roleData.role, roleData.grantee, roleData.target)).to.be.true;
+        }
       });
 
-      context('when new root has claimed ownership over TimelockAuthorizer', () => {
-        sharedBeforeEach('claim root', async () => {
-          await newAuthorizer.connect(root).claimRoot();
+      it('sets up granters properly', async () => {
+        await migrate();
+
+        for (const granterData of grantersData) {
+          expect(await newAuthorizer.isGranter(granterData.role, granterData.grantee, granterData.target)).to.be.true;
+        }
+      });
+
+      it('sets up revokers properly', async () => {
+        await migrate();
+
+        for (const revokerData of revokersData) {
+          expect(await newAuthorizer.isRevoker(revokerData.role, revokerData.grantee, revokerData.target)).to.be.true;
+        }
+      });
+
+      it('sets up delays properly', async () => {
+        await migrate();
+
+        for (const delayData of executeDelaysData) {
+          expect(await newAuthorizer.getActionIdDelay(delayData.actionId)).to.be.eq(delayData.newDelay);
+        }
+
+        const GRANT_ACTION_ID = await newAuthorizer.GRANT_ACTION_ID();
+        for (const delayData of grantDelaysData) {
+          const grantActionId = await newAuthorizer['getActionId(bytes32,bytes32)'](
+            GRANT_ACTION_ID,
+            delayData.actionId
+          );
+          expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
+        }
+      });
+
+      it('does not set the new authorizer immediately', async () => {
+        await migrate();
+
+        expect(await newAuthorizer.isRoot(migrator.address)).to.be.true;
+        expect(await vault.getAuthorizer()).to.be.equal(oldAuthorizer.address);
+      });
+
+      context('finalization', () => {
+        sharedBeforeEach('migrate all roles', async () => {
+          await migrate();
         });
 
-        it('sets the new Authorizer on the Vault', async () => {
-          await migrator.finalizeMigration();
+        context('when new root has not claimed ownership over TimelockAuthorizer', () => {
+          it('reverts', async () => {
+            await expect(migrator.finalizeMigration()).to.be.revertedWith('ROOT_NOT_CLAIMED_YET');
+          });
+        });
 
-          expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+        context('when new root has claimed ownership over TimelockAuthorizer', () => {
+          sharedBeforeEach('claim root', async () => {
+            await newAuthorizer.connect(root).claimRoot();
+          });
+
+          it('sets the new Authorizer on the Vault', async () => {
+            await migrator.finalizeMigration();
+
+            expect(await vault.getAuthorizer()).to.be.equal(newAuthorizer.address);
+          });
         });
       });
+    };
+
+    context('with a partial migration', () => {
+      itMigratesPermissionsProperly(() => migrator.migrate(MAX_UINT256));
     });
-  };
 
-  context('with a partial migration', () => {
-    itMigratesPermissionsProperly(() => migrator.migrate(0));
-  });
-
-  context('with a full migration', () => {
-    itMigratesPermissionsProperly(() => Promise.all(rolesData.map(async () => await migrator.migrate(1))));
+    context('with a full migration', () => {
+      itMigratesPermissionsProperly(() =>
+        Promise.all(
+          Array.from({
+            length:
+              rolesData.length +
+              grantersData.length +
+              revokersData.length +
+              executeDelaysData.length +
+              grantDelaysData.length,
+          }).map(() => migrator.migrate(1))
+        )
+      );
+    });
   });
 });

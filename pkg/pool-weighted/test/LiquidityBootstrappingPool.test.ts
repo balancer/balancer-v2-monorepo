@@ -85,7 +85,7 @@ describe('LiquidityBootstrappingPool', function () {
           const normalizedWeights = await pool.getNormalizedWeights();
 
           for (let i = 0; i < numTokens; i++) {
-            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.0001);
+            expect(normalizedWeights[i]).to.equalWithError(pool.normalizedWeights[i], 0.001);
           }
         });
 
@@ -165,14 +165,14 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Not exactly equal due to weight compression
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.001);
       });
 
       it('stores the initial weights as a zero duration weight change', async () => {
         const { startTime, endTime, endWeights } = await pool.getGradualWeightUpdateParams();
 
         expect(startTime).to.equal(endTime);
-        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.001);
       });
 
       describe('permissioned actions', () => {
