@@ -41,12 +41,12 @@ describe('TimelockAuthorizerMigrator', () => {
   const ROLE_3 = '0x0000000000000000000000000000000000000000000000000000000000000003';
 
   sharedBeforeEach('set up vault', async () => {
-    oldAuthorizer = await deploy('MockBasicAuthorizer');
-    vault = await deploy('Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
+    oldAuthorizer = await deploy('v2-vault/MockBasicAuthorizer');
+    vault = await deploy('v2-vault/Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const target = await deploy('MockAuthenticatedContract', { args: [vault.address] });
+    const target = await deploy('v2-vault/MockAuthenticatedContract', { args: [vault.address] });
     rolesData = [
       { grantee: user1.address, role: ROLE_1, target: target.address },
       { grantee: user2.address, role: ROLE_2, target: target.address },
@@ -100,7 +100,7 @@ describe('TimelockAuthorizerMigrator', () => {
       let tempAuthorizer: Contract;
 
       sharedBeforeEach('set up vault', async () => {
-        tempAuthorizer = await deploy('MockBasicAuthorizer');
+        tempAuthorizer = await deploy('v2-vault/MockBasicAuthorizer');
       });
 
       it('reverts', async () => {
