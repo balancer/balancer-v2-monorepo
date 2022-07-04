@@ -26,4 +26,7 @@ export default {
   optimism: {
     InitialDeniedTokens: [],
   },
+  goerli: {
+    InitialDeniedTokens: [],
+  },
 };

@@ -18,6 +18,9 @@ if (process.env.CI) {
       },
       "optimism": {
         "url": "${process.env.OPTIMISM_RPC_ENDPOINT}"
+      },
+      "goerli": {
+        "url": "${process.env.GOERLI_RPC_ENDPOINT}"
       }
     },
     "defaultConfig": {
