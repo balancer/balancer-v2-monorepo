@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
+import { BatchSwapStep, FundManagement } from '@balancer-labs/balancer-js';
 import { Account } from '../types/types';
 import { BigNumberish } from '../../numbers';
 
@@ -69,4 +69,11 @@ export type ExitPool = {
   minAmountsOut?: BigNumberish[];
   toInternalBalance?: boolean;
   from?: SignerWithAddress;
+};
+
+export type QueryBatchSwap = {
+  kind: number;
+  swaps: BatchSwapStep[];
+  assets: string[];
+  funds: FundManagement;
 };

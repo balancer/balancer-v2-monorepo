@@ -41,4 +41,10 @@ export default {
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },
+  goerli: {
+    Authorizer,
+    weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
 };
