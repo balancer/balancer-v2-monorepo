@@ -1,0 +1,614 @@
+{
+  "0x8ba5bbfc65500befee6f807951312220f05be14a619a4b27df3279d6d8cb23f7": [
+    {
+      "taskId": "20210418-authorizer",
+      "contractName": "Authorizer",
+      "signature": "grantRole(bytes32,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-test-balancer-token",
+      "contractName": "TestBalancerToken",
+      "signature": "grantRole(bytes32,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x7cefce05d274ae00638cfb5ca5ff0d25243084c3ab8b9111cb0e80a845a97e33": [
+    {
+      "taskId": "20210418-authorizer",
+      "contractName": "Authorizer",
+      "signature": "renounceRole(bytes32,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-test-balancer-token",
+      "contractName": "TestBalancerToken",
+      "signature": "renounceRole(bytes32,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xa69c55a3bf33c36d1357b5d2dd820ceb8f29cb3a5c638478e3f55ba7b541670b": [
+    {
+      "taskId": "20210418-authorizer",
+      "contractName": "Authorizer",
+      "signature": "revokeRole(bytes32,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-test-balancer-token",
+      "contractName": "TestBalancerToken",
+      "signature": "revokeRole(bytes32,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x7e71d5c2d145f4c81011b6407caf19e007135dbc32c6f0f4fc213fad4e299150": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "approveVault(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "approveVault(address,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x54feb236f9f78c009d49ee155b50671b2a1d23db16c1cdf405a59d46d1e51b1e": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x4fce71aaaee5b0e28c0b6975dbaacbecb63706f78b414620684e6abb046b58ef": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x5e31bbb459ace7e3dc6f5bf9857b5687b281508f942f502605977ea408185b49": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x2e05a6c8f54ccb34498ebc128fcd4ae9debd708af102157d030786fdb51e113b": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xcdcf738ebeaa2629e5107d3214c2246116d95e8e507d771614e3ed9e108c00f6": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "setRelayerApproval(address,bool,bytes)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "setRelayerApproval(address,bool,bytes)",
+      "useAdaptor": true
+    }
+  ],
+  "0x3e5995991fa6590f94a998f5016816175aa4c74c6333a0f55004158c414603e1": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETH(address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETH(address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xa78fe983ad4b824ce92b642c9bf4b1f4ca2def1f4e40c778a4cfb10f2b04d29b": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETHAndWrap(address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETHAndWrap(address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xdb12b915d7cecc94c4ea2c61139b80aa641a2d38b5471f09d5335e7bc5bc0148": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x56e7b514ac51fd278742f48a75478a98c345fc7fa1ab4100c01bd90b0b36a9fb": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xdb07889951437a5d23b60d16407fe8218d9d9fcd73048951d748f24c774d4b17": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapWstETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapWstETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xf2da0c0a72d250c77c8b3feb9d744e9b70b6077e84ea1648a8e3e1e653942581": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    }
+  ],
+  "0x13819141ff0f4cbaec1cb35f7e2310776a0cf4d520511be91360abda2d59909a": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    }
+  ],
+  "0xf55a2e940b90ecfc63d6f2d5ab6d9441d5a6b097b72e7c41a5e4fde799d30abb": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xb613cf0a8971487f11a1ecb75f8ed2ef585a4cc1a6a5b62e3339d07ec71b014e": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapStETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapStETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x3f1c6da046c01fb8c9201a73d729522abd0f2e2fd48e8e1b0691925c37c6dec5": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BalancerRelayer",
+      "signature": "multicall(bytes[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220318-batch-relayer-v2",
+      "contractName": "BalancerRelayer",
+      "signature": "multicall(bytes[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xc656e762de524a52243bd0ad98fe0208a4b763e5b3406a525dd47ba8814c5e88": [
+    {
+      "taskId": "20211208-aave-linear-pool",
+      "contractName": "AaveLinearPoolFactory",
+      "signature": "create(string,string,address,address,uint256,uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220404-erc4626-linear-pool-v2",
+      "contractName": "ERC4626LinearPoolFactory",
+      "signature": "create(string,string,address,address,uint256,uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220425-unbutton-aave-linear-pool",
+      "contractName": "UnbuttonAaveLinearPoolFactory",
+      "signature": "create(string,string,address,address,uint256,uint256,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x7f4b0536efcbd917495f0d8e7a96852c08739243c797e73f00d32999233f8d5d": [
+    {
+      "taskId": "20220325-gauge-controller",
+      "contractName": "VotingEscrow",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-gauge-controller",
+      "contractName": "GaugeController",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    }
+  ],
+  "0x9f596268ae1d840bffec6468f35868d6215d48830f5874204b4b5202ce5f037e": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    }
+  ],
+  "0xc13be6a0bc76228878b765dc039dccf7a203e1b54c277e6c95a0e2adfd9b9768": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x09cd18211fb6b5f5d35da164c1377daca07134e29471154cc4b268e635fa98ae": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x96ae016c0a4c7f47195543b71764c67ffad0660f500b0bd178dcc31c9c77c7aa": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xf36a7bb219d21dfa1e55054181e8d0374dd108d24388e03731dc0d19761caf80": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xb11918b6dac9f6ee7f9177c880d2f5ecea0c1f851d6846a012c98497ba9d11ce": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address,bool)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "deposit(uint256,address,bool)",
+      "useAdaptor": true
+    }
+  ],
+  "0x2071350ff2da59d3371768c9d51c341a241f4f772ba140c4aa97f151f298f2ce": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "initialize(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainStreamer",
+      "signature": "initialize(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x75f03d945d74639aa78784e5071604aa86c170a9f4c32bdf428231d560be70b7": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainStreamer",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xcfbfe4d78681a144e3340201137411eee3ad0d0d99dbf387f55f321dfefa2340": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x97c58aaa7f1baf7f9ed7dc75b801e1b130bb834fd9ddf7ea7e152c9ffed6c21f": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xfd3383566837d1fe48201add6079241ede290ac9131b6e2d44dd6fa38e636a4c": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256,bool)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "RewardsOnlyGauge",
+      "signature": "withdraw(uint256,bool)",
+      "useAdaptor": true
+    }
+  ],
+  "0x11dac6d73575cf704c874437f6e2742b10f0b3a8cb903c585bdc799cab66c457": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-single-recipient-gauge-factory",
+      "contractName": "SingleRecipientGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-child-chain-gauge-factory",
+      "contractName": "ChildChainLiquidityGaugeFactory",
+      "signature": "create(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x833298360476618944f718981ab233082f5122f9f3e9028d063809d504e88d75": [
+    {
+      "taskId": "20220325-test-balancer-token",
+      "contractName": "TestBalancerToken",
+      "signature": "burn(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "burn(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "burn(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x883f26e95df579fa682d038f27522a17d874346c18d9dbe2d502ef473e726580": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "batch_cancel_boosts(uint256[256])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "batch_cancel_boosts(uint256[256])",
+      "useAdaptor": true
+    }
+  ],
+  "0xedd0ebabd9c0f1fa41a6d2054310ecb3bad17c3e576b34d1f7248e69281d37a9": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "batch_set_delegation_status(address,address[256],uint256[256])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "batch_set_delegation_status(address,address[256],uint256[256])",
+      "useAdaptor": true
+    }
+  ],
+  "0x2b026cd495c98dd35b33bd5be496f7c57cba766b8fa2832ba428190d5d54395c": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "cancel_boost(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "cancel_boost(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x9e114ee25688c62b328b4af834f05fdff86eedde0d647e798ef48714279af25e": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "create_boost(address,address,int256,uint256,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "create_boost(address,address,int256,uint256,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xddfb0ba9a402842551fa67e8f569543d4e9b070ca5395d6231f133f8bd940ea3": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "extend_boost(uint256,int256,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "extend_boost(uint256,int256,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x6b41b73de8753e4078cde2c682af18fea9a8d77a53d2ac78e22a3dfe521129e3": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "setApprovalForAll(address,bool)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "setApprovalForAll(address,bool)",
+      "useAdaptor": true
+    }
+  ],
+  "0x78d5dd240bf6124d3e8e7c6918c9ebe9d901c97e695d2f9f58461fe1393c33b9": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "set_base_uri(string)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "set_base_uri(string)",
+      "useAdaptor": true
+    }
+  ],
+  "0xb6ea2830f55c1f054aa739efb9bb246886c82431fed5d323d0ae7fe31c332ab9": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegation",
+      "signature": "set_delegation_status(address,address,bool)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220530-preseeded-voting-escrow-delegation",
+      "contractName": "PreseededVotingEscrowDelegation",
+      "signature": "set_delegation_status(address,address,bool)",
+      "useAdaptor": true
+    }
+  ]
+}
