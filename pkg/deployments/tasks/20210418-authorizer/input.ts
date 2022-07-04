@@ -18,4 +18,7 @@ export default {
   optimism: {
     admin: '0xFB2ac3989B6AD0e043a8958004484d6BAAb2c6Ab',
   },
+  goerli: {
+    admin: '0xE0a171587b1Cae546E069A943EDa96916F5EE977',
+  },
 };
