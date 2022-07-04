@@ -60,8 +60,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     address public constant EVERYWHERE = address(-1);
     uint256 public constant MAX_DELAY = 2 * (365 days);
     // We need a minimum delay period to ensure that scheduled actions may be properly scrutinised.
-    // TODO: set this to non-zero value.
-    uint256 public constant MIN_DELAY = 0; //3 days;
+    uint256 public constant MIN_DELAY = 3 days;
 
     struct ScheduledExecution {
         address where;
