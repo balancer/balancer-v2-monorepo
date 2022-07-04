@@ -21,6 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutor.sol";
 
@@ -58,6 +59,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address public constant EVERYWHERE = address(-1);
     uint256 public constant MAX_DELAY = 2 * (365 days);
+    // We need a minimum delay period to ensure that scheduled actions may be properly scrutinised.
+    // TODO: set this to non-zero value.
+    uint256 public constant MIN_DELAY = 0; //3 days;
 
     struct ScheduledExecution {
         address where;
@@ -423,14 +427,25 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         require(newDelay <= MAX_DELAY, "DELAY_TOO_LARGE");
         _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
 
-        // The delay change is scheduled to execute after the current delay for the action has elapsed. This is
-        // critical, as otherwise it'd be possible to execute an action with a delay shorter than its current one
-        // by first changing it to a smaller (or zero) value.
+        // The delay change is scheduled so that it's never possible to execute an action in a shorter time than the
+        // current delay.
+        //
+        // If we're reducing the action's delay then we must first wait for the difference between the two delays.
+        // This means that if we immediately schedule the action for execution once the delay is reduced, then
+        // these two delays combined will result in the original delay.
+        //
+        // If we're increasing the delay on an action, we could execute this change immediately as it's impossible to
+        // perform an action sooner by increasing its delay. Requiring a potentially long delay before increasing the
+        // delay just adds unnecessary friction to increasing security for sensitive actions.
+        //
+        // In practice, we enforce a minimum delay period to allow proper scrutiny of the change of the action's delay.
 
         uint256 actionDelay = _delaysPerActionId[actionId];
+        uint256 executionDelay = newDelay < actionDelay ? Math.max(actionDelay - newDelay, MIN_DELAY) : MIN_DELAY;
+
         bytes32 scheduleDelayActionId = getActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
-        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, actionDelay, executors);
+        return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
     }
 
     /**
