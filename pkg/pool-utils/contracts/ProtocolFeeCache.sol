@@ -17,6 +17,8 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
+import "./RecoveryMode.sol";
+
 /**
  * @title Store a fixed or cache the delegated Protocol Swap Fee Percentage
  * @author Balancer Labs
@@ -30,7 +32,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
  * `updateProtocolSwapFeePercentageCache`. Any other value means the protocol swap fee is fixed, so it is instead
  * stored in the immutable `_fixedProtocolSwapFeePercentage`.
  */
-abstract contract ProtocolFeeCache {
+abstract contract ProtocolFeeCache is RecoveryMode {
     uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
 
     // Matches ProtocolFeesCollector
@@ -81,7 +83,11 @@ abstract contract ProtocolFeeCache {
      * immutable. Alternatively, it will track the global fee percentage set in the Fee Collector.
      */
     function getProtocolSwapFeePercentageCache() public view returns (uint256) {
-        return getProtocolFeeDelegation() ? _protocolSwapFeePercentageCache : _fixedProtocolSwapFeePercentage;
+        if (inRecoveryMode()) {
+            return 0;
+        } else {
+            return getProtocolFeeDelegation() ? _protocolSwapFeePercentageCache : _fixedProtocolSwapFeePercentage;
+        }
     }
 
     /**
