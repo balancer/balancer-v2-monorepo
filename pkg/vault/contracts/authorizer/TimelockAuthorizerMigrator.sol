@@ -45,10 +45,18 @@ contract TimelockAuthorizerMigrator {
     uint256 public revokersMigrated;
     RoleData[] public revokersData;
 
+    uint256 public delaysSet;
+    uint256[] public delaysExecutionIds;
+
     struct RoleData {
         address grantee;
         bytes32 role;
         address target;
+    }
+
+    struct DelayData {
+        bytes32 actionId;
+        uint256 newDelay;
     }
 
     /**
@@ -60,7 +68,8 @@ contract TimelockAuthorizerMigrator {
         IBasicAuthorizer _oldAuthorizer,
         RoleData[] memory _rolesData,
         RoleData[] memory _grantersData,
-        RoleData[] memory _revokersData
+        RoleData[] memory _revokersData,
+        DelayData[] memory _delaysData
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
@@ -85,6 +94,26 @@ contract TimelockAuthorizerMigrator {
         for (uint256 i = 0; i < _revokersData.length; i++) {
             // Similarly to granters, we must manually verify that these permissions are set sensibly.
             revokersData.push(_revokersData[i]);
+        }
+
+        // We require for there to be at least one delay set as we use the number of delays set as a test for whether
+        // the migration is complete. Deploying the migrator with an empty delays array results in a broken deploy.
+        uint256 delaysDataLength = _delaysData.length;
+        require(delaysDataLength > 0, "INVALID_DELAYS_LENGTH");
+        for (uint256 i = 0; i < delaysDataLength; i++) {
+            // Setting the initial value for a delay requires us to wait 3 days before we can complete setting it.
+            // As we're only setting a small number of delays we then schedule them now to ensure that they're ready
+            // to execute once `CHANGE_ROOT_DELAY` has passed.
+
+            // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
+            require(_delaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
+            delaysExecutionIds.push(
+                _newAuthorizer.scheduleDelayChange(
+                    _delaysData[i].actionId,
+                    _delaysData[i].newDelay,
+                    _arr(address(this))
+                )
+            );
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address.
@@ -141,10 +170,11 @@ contract TimelockAuthorizerMigrator {
         // Each function returns the amount of unused role migrations which is then fed into the next function.
         rolesToMigrate = _migrateExistingRoles(rolesToMigrate);
         rolesToMigrate = _setupGranters(rolesToMigrate);
-        _setupRevokers(rolesToMigrate);
+        rolesToMigrate = _setupRevokers(rolesToMigrate);
+        _setupDelays(rolesToMigrate);
 
-        // As we set up the revoker roles last we can use them to determine whether the full migration is complete.
-        if (revokersMigrated >= revokersData.length) {
+        // As we execute the setting of delays last we can use them to determine whether the full migration is complete.
+        if (delaysSet >= delaysExecutionIds.length) {
             _roleMigrationComplete = true;
         }
     }
@@ -194,9 +224,10 @@ contract TimelockAuthorizerMigrator {
      * @dev Attempting to migrate roles in excess of the unmigrated roles results in all remaining roles being migrated.
      * @param rolesToMigrate - The desired number of roles to migrate (may exceed the remaining unmigrated roles).
      */
-    function _setupRevokers(uint256 rolesToMigrate) internal {
+    function _setupRevokers(uint256 rolesToMigrate) internal returns (uint256 remainingRolesToMigrate) {
         uint256 i = revokersMigrated;
         uint256 to = Math.min(i + rolesToMigrate, revokersData.length);
+        remainingRolesToMigrate = (i + rolesToMigrate) - to;
 
         for (; i < to; i++) {
             RoleData memory revokerData = revokersData[i];
@@ -204,6 +235,26 @@ contract TimelockAuthorizerMigrator {
         }
 
         revokersMigrated = i;
+    }
+
+    /**
+     * @notice Executes the setting of listed delays on the new TimelockAuthorizer.
+     * @dev Attempting to execute in excess of the number of unexecuted delays results in all remaining delays being set.
+     * @param delaysToSet - The desired number of scheduled delays to execute (may exceed the remaining delays).
+     */
+    function _setupDelays(uint256 delaysToSet) internal {
+        uint256 i = delaysSet;
+        uint256 to = Math.min(i + delaysToSet, delaysExecutionIds.length);
+
+        // The first delay will be the longest (by definition as it is the delay for changing the authorizer address)
+        // We then just need to check this once to know that the other delays may be set.
+        if (i == 0) require(newAuthorizer.canExecute(delaysExecutionIds[0]), "CANNOT_TRIGGER_DELAY_CHANGE_YET");
+
+        for (; i < to; i++) {
+            newAuthorizer.execute(delaysExecutionIds[i]);
+        }
+
+        delaysSet = i;
     }
 
     /**
