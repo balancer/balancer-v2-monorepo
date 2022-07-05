@@ -139,7 +139,7 @@ contract TimelockAuthorizerMigrator {
     function startRootTransfer() external {
         // Check that the delays have been set up on the new authorizer.
         // Checking the first delay has been set is sufficient.
-        // This check is shortcircuited if there are no delays to set up (`rootChanExecutionId == 0`).
+        // This check is shortcircuited if there are no delays to set up (`rootChangeExecutionId == 0`).
         require(
             rootChangeExecutionId == 0 || newAuthorizer.getScheduledExecution(0).executed,
             "DELAYS_NOT_MIGRATED_YET"
