@@ -138,8 +138,12 @@ contract TimelockAuthorizerMigrator {
      */
     function startRootTransfer() external {
         // Check that the delays have been set up on the new authorizer.
-        // Checking the first delay has been set is sufficient
-        require(newAuthorizer.getScheduledExecution(0).executed, "DELAYS_NOT_MIGRATED_YET");
+        // Checking the first delay has been set is sufficient.
+        // This check is shortcircuited if there are no delays to set up (`rootChanExecutionId == 0`).
+        require(
+            rootChangeExecutionId == 0 || newAuthorizer.getScheduledExecution(0).executed,
+            "DELAYS_NOT_MIGRATED_YET"
+        );
 
         // Finally trigger the first step of transferring root ownership over the TimelockAuthorizer to `root`.
         // Before the migration can be finalized, `root` must call `claimRoot` on the `TimelockAuthorizer`.
