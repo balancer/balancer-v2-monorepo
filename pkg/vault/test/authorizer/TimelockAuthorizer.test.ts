@@ -2233,11 +2233,7 @@ describe('TimelockAuthorizer', () => {
     context('when the given id is valid', () => {
       let id: BigNumberish;
 
-      context('when the sender has permission for the requested action', () => {
-        sharedBeforeEach('set sender', async () => {
-          from = grantee;
-        });
-
+      function itCancelsTheScheduledAction() {
         context('when the action was not executed', () => {
           sharedBeforeEach('schedule execution', async () => {
             id = await schedule();
@@ -2274,11 +2270,27 @@ describe('TimelockAuthorizer', () => {
             await expect(authorizer.cancel(id, { from })).to.be.revertedWith('ACTION_ALREADY_EXECUTED');
           });
         });
+      }
+
+      context('when the sender has permission for the requested action', () => {
+        sharedBeforeEach('set sender', async () => {
+          from = grantee;
+        });
+
+        itCancelsTheScheduledAction();
+      });
+
+      context('when the sender is root', () => {
+        sharedBeforeEach('set sender', async () => {
+          from = admin;
+        });
+
+        itCancelsTheScheduledAction();
       });
 
       context('when the sender does not have permission for the requested action', () => {
         sharedBeforeEach('set sender', async () => {
-          from = admin;
+          from = other;
         });
 
         it('reverts', async () => {

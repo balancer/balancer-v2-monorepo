@@ -498,10 +498,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
-        // The permission to cancel a scheduled action is the same one used to schedule it
+        // The permission to cancel a scheduled action is the same one used to schedule it.
+        // The root address may cancel any action even without this permission.
         IAuthentication target = IAuthentication(scheduledExecution.where);
         bytes32 actionId = target.getActionId(_decodeSelector(scheduledExecution.data));
-        _require(hasPermission(actionId, msg.sender, scheduledExecution.where), Errors.SENDER_NOT_ALLOWED);
+        _require(
+            hasPermission(actionId, msg.sender, scheduledExecution.where) || isRoot(msg.sender),
+            Errors.SENDER_NOT_ALLOWED
+        );
 
         scheduledExecution.cancelled = true;
         emit ExecutionCancelled(scheduledExecutionId);
