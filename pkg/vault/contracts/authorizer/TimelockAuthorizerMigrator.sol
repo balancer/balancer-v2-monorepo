@@ -117,8 +117,7 @@ contract TimelockAuthorizerMigrator {
         }
 
         // Enqueue a root change execution in the new authorizer to set it to the desired root address.
-        // We only allow the migrator to execute this transaction to avoid it being triggered too early,
-        // resulting in the migration being cut short.
+        // We only allow the migrator to execute this transaction to avoid it being triggered too early.
         rootChangeExecutionId = _newAuthorizer.scheduleRootChange(_root, _arr(address(this)));
     }
 
@@ -135,6 +134,7 @@ contract TimelockAuthorizerMigrator {
 
     /**
      * @notice Begins transfer of root powers from the migrator to the specified address.
+     * @dev The setup of delays on the new authorizer must be executed before calling this function.
      */
     function startRootTransfer() external {
         // Check that the delays have been set up on the new authorizer.
