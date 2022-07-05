@@ -350,16 +350,24 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
+     * @dev Schedules an execution to change the root address to `newRoot`.
+     */
+    function scheduleRootChange(address newRoot, address[] memory executors)
+        external
+        returns (uint256 scheduledExecutionId)
+    {
+        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
+        bytes32 actionId = getActionId(this.setPendingRoot.selector);
+        bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
+        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
+    }
+
+    /**
      * @notice Sets the pending root address to `pendingRoot`.
      * @dev Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
     function setPendingRoot(address pendingRoot) external onlyExecutor {
         _setPendingRoot(pendingRoot);
-    }
-
-    function _setPendingRoot(address pendingRoot) internal {
-        _pendingRoot = pendingRoot;
-        emit PendingRootSet(pendingRoot);
     }
 
     /**
@@ -390,17 +398,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         emit RootSet(root);
     }
 
-    /**
-     * @dev Schedules an execution to change the root address to `newRoot`.
-     */
-    function scheduleRootChange(address newRoot, address[] memory executors)
-        external
-        returns (uint256 scheduledExecutionId)
-    {
-        _require(isRoot(msg.sender), Errors.SENDER_NOT_ALLOWED);
-        bytes32 actionId = getActionId(this.setPendingRoot.selector);
-        bytes memory data = abi.encodeWithSelector(this.setPendingRoot.selector, newRoot);
-        return _scheduleWithDelay(actionId, address(this), data, getRootTransferDelay(), executors);
+    function _setPendingRoot(address pendingRoot) internal {
+        _pendingRoot = pendingRoot;
+        emit PendingRootSet(pendingRoot);
     }
 
     /**
@@ -498,10 +498,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
         require(!scheduledExecution.cancelled, "ACTION_ALREADY_CANCELLED");
 
-        // The permission to cancel a scheduled action is the same one used to schedule it
+        // The permission to cancel a scheduled action is the same one used to schedule it.
+        // The root address may cancel any action even without this permission.
         IAuthentication target = IAuthentication(scheduledExecution.where);
         bytes32 actionId = target.getActionId(_decodeSelector(scheduledExecution.data));
-        _require(hasPermission(actionId, msg.sender, scheduledExecution.where), Errors.SENDER_NOT_ALLOWED);
+        _require(
+            hasPermission(actionId, msg.sender, scheduledExecution.where) || isRoot(msg.sender),
+            Errors.SENDER_NOT_ALLOWED
+        );
 
         scheduledExecution.cancelled = true;
         emit ExecutionCancelled(scheduledExecutionId);
