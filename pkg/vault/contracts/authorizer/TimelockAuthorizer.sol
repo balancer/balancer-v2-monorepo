@@ -484,7 +484,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Cancels a scheduled action `scheduledExecutionId`.
+     * @notice Cancels a scheduled action `scheduledExecutionId`.
+     * @dev The permission to cancel a scheduled action is the same one used to schedule it.
+     *
+     * Note that in the case of cancelling a malicious granting or revocation of permissions to an address,
+     * we must assume that the granter/revoker status of all non-malicious addresses will be revoked as calls to
+     * manageGranter/manageRevoker have no delays associated with them.
      */
     function cancel(uint256 scheduledExecutionId) external {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
@@ -503,9 +508,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
-     * Note that granters can revoke the granter status of other granters, even banning the root.
-     * However, the root can always rejoin, and then revoke any malicious granters.
+     * @notice Sets `account`'s granter status to `allowed` for action `actionId` in target `where`.
+     * @dev Note that granters can revoke the granter status of other granters, even removing the root.
+     * However the root can always rejoin, and then remove any malicious granters.
+     *
+     * Note that there are no delays associated with adding or removing granters. This is based on the assumption that
+     * any action which a malicous user could exploit to damage the protocol will have a sufficiently long delay
+     * associated with either granting permission for or exercising that permission such that the root will be able to
+     * reestablish control and cancel the action before it can be executed.
      */
     function manageGranter(
         bytes32 actionId,
@@ -553,9 +563,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
-     * Note that revokers can revoke the revoker status of other revokers, even banning the root.
-     * However, the root can always rejoin, and then revoke any malicious revokers.
+     * @notice Sets `account`'s revoker status to `allowed` for action `actionId` in target `where`.
+     * @dev Note that revokers can revoke the revoker status of other revokers, even banning the root.
+     * However the root can always rejoin, and then remove any malicious revokers.
+     *
+     * Note that there are no delays associated with adding or removing revokers. This is based on the assumption that
+     * any permissions for which revocation from key addresses would be dangerous (e.g. preventing the BalancerMinter
+     * from minting BAL) have sufficiently long delays associated with revoking them that the root will be able to
+     * reestablish control and cancel the revocation before the scheduled revocation can be executed.
      */
     function manageRevoker(
         bytes32 actionId,
