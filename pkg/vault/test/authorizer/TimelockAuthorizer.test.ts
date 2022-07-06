@@ -1157,7 +1157,7 @@ describe('TimelockAuthorizer', () => {
           let grantActionId: string;
 
           sharedBeforeEach('set constants', async () => {
-            grantActionId = await authorizer.getActionId(await authorizer.GRANT_ACTION_ID(), ACTION_1);
+            grantActionId = await authorizer.getGrantPermissionActionId(ACTION_1);
           });
 
           sharedBeforeEach('set delay', async () => {
@@ -1448,7 +1448,7 @@ describe('TimelockAuthorizer', () => {
             let revokeActionId: string;
 
             sharedBeforeEach('set constants', async () => {
-              revokeActionId = await authorizer.getActionId(await authorizer.REVOKE_ACTION_ID(), ACTION_1);
+              revokeActionId = await authorizer.getRevokePermissionActionId(ACTION_1);
             });
 
             sharedBeforeEach('set delay', async () => {
@@ -1859,10 +1859,8 @@ describe('TimelockAuthorizer', () => {
       sharedBeforeEach('grant permission', async () => {
         // We never check that the caller has this permission but if we were to check a permission
         // it would be this one, we then grant it to the caller so we can be sure about why the call is reverting.
-        const SCHEDULE_DELAY_ACTION_ID = await authorizer.SCHEDULE_DELAY_ACTION_ID();
-        const args = [SCHEDULE_DELAY_ACTION_ID, action];
-        const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], args);
-        await authorizer.grantPermissions(setDelayAction, grantee, authorizer, { from: root });
+        const setDelayActionId = await authorizer.getScheduleDelayActionId(action);
+        await authorizer.grantPermissions(setDelayActionId, grantee, authorizer, { from: root });
       });
 
       it('reverts', async () => {

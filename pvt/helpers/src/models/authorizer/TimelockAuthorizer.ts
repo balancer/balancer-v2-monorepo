@@ -53,8 +53,20 @@ export default class TimelockAuthorizer {
     return this.instance.permissionId(action, this.toAddress(account), this.toAddress(where));
   }
 
-  async getActionId(actionId: string, how: string): Promise<string> {
-    return (await this.instance.functions['getActionId(bytes32,bytes32)'](actionId, how))[0];
+  async getGrantPermissionActionId(actionId: string): Promise<string> {
+    return this.instance.getGrantPermissionActionId(actionId);
+  }
+
+  async getRevokePermissionActionId(actionId: string): Promise<string> {
+    return this.instance.getRevokePermissionActionId(actionId);
+  }
+
+  async getExecuteExecutionActionId(executionId: BigNumberish): Promise<string> {
+    return this.instance.getExecuteExecutionActionId(executionId);
+  }
+
+  async getScheduleDelayActionId(actionId: string): Promise<string> {
+    return this.instance.getScheduleDelayActionId(actionId);
   }
 
   async isRoot(account: Account): Promise<boolean> {
