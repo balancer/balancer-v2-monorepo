@@ -19,13 +19,12 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-vault/contracts/balances/BalanceAllocation.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
+
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 /**
@@ -33,11 +32,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
  * It connects different functionalities of the protocol components to allow accessing information that would
  * have required a more cumbersome setup if we wanted to provide these already built-in.
  */
-contract BalancerQueries is AssetHelpers {
-    using Math for uint256;
-    using BalanceAllocation for bytes32;
-    using BalanceAllocation for bytes32[];
-
+contract BalancerQueries is IBalancerQueries, AssetHelpers {
     IVault public immutable vault;
 
     constructor(IVault _vault) AssetHelpers(_vault.WETH()) {
@@ -46,6 +41,7 @@ contract BalancerQueries is AssetHelpers {
 
     function querySwap(IVault.SingleSwap memory singleSwap, IVault.FundManagement memory funds)
         external
+        override
         returns (uint256)
     {
         // The Vault only supports batch swap queries, so we need to convert the swap call into an equivalent batch
@@ -89,7 +85,7 @@ contract BalancerQueries is AssetHelpers {
         IVault.BatchSwapStep[] memory swaps,
         IAsset[] memory assets,
         IVault.FundManagement memory funds
-    ) external returns (int256[] memory assetDeltas) {
+    ) external override returns (int256[] memory assetDeltas) {
         return vault.queryBatchSwap(kind, swaps, assets, funds);
     }
 
@@ -98,7 +94,7 @@ contract BalancerQueries is AssetHelpers {
         address sender,
         address recipient,
         IVault.JoinPoolRequest memory request
-    ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
+    ) external override returns (uint256 bptOut, uint256[] memory amountsIn) {
         (address pool, ) = vault.getPool(poolId);
         (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
         IProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
@@ -119,7 +115,7 @@ contract BalancerQueries is AssetHelpers {
         address sender,
         address recipient,
         IVault.ExitPoolRequest memory request
-    ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
+    ) external override returns (uint256 bptIn, uint256[] memory amountsOut) {
         (address pool, ) = vault.getPool(poolId);
         (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
         IProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
