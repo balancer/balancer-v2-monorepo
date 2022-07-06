@@ -26,6 +26,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "./TimelockExecutor.sol";
 
 /**
+ * @title Timelock Authorizer
+ * @author Balancer Labs
  * @dev Basic Authorizer implementation using timelocks.
  *
  * Users are allowed to perform actions if they have the permission to do so.
@@ -58,6 +60,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address public constant EVERYWHERE = address(-1);
+
+    // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
+    // an arbitrarily long delay.
     uint256 public constant MAX_DELAY = 2 * (365 days);
     // We need a minimum delay period to ensure that scheduled actions may be properly scrutinised.
     uint256 public constant MIN_DELAY = 3 days;
