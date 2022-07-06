@@ -423,22 +423,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Sets the root address to `root`.
-     */
-    function _setRoot(address root) internal {
-        _root = root;
-        emit RootSet(root);
-    }
-
-    /**
-     * @dev Sets the pending root address to `pendingRoot`.
-     */
-    function _setPendingRoot(address pendingRoot) internal {
-        _pendingRoot = pendingRoot;
-        emit PendingRootSet(pendingRoot);
-    }
-
-    /**
      * @notice Sets a new delay `delay` for action `actionId`.
      */
     function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
@@ -754,6 +738,22 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // If the account doesn't have the explicit permission, we repeat for the global permission
         bytes32 globalActionId = getExtendedActionId(actionId, WHATEVER);
         return canPerform(globalActionId, account, where);
+    }
+
+    /**
+     * @dev Sets the root address to `root`.
+     */
+    function _setRoot(address root) internal {
+        _root = root;
+        emit RootSet(root);
+    }
+
+    /**
+     * @dev Sets the pending root address to `pendingRoot`.
+     */
+    function _setPendingRoot(address pendingRoot) internal {
+        _pendingRoot = pendingRoot;
+        emit PendingRootSet(pendingRoot);
     }
 
     function _decodeSelector(bytes memory data) internal pure returns (bytes4) {
