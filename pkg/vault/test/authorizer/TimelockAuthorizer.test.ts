@@ -2470,4 +2470,59 @@ describe('TimelockAuthorizer', () => {
       });
     });
   });
+
+  describe('scenarios', () => {
+    describe('authorizer migration', () => {
+      let setAuthorizerActionId: string;
+
+      sharedBeforeEach('remove root global granter/revoker permissions', async () => {
+        // We start from a worst case scenario of a root which has lost all of it's permissions.
+        // We must then show how the root can recover and still perform the desired action.
+        await authorizer.removeGranter(WHATEVER, root, EVERYWHERE, { from: root });
+        await authorizer.removeRevoker(WHATEVER, root, EVERYWHERE, { from: root });
+
+        setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
+      });
+
+      context('when there is no delay associated with setting the authorizer', () => {
+        it('root can nominate an address to change the authorizer address set on the Vault', async () => {
+          // Give root powers to grant permissions again
+          await authorizer.addGranter(WHATEVER, root, EVERYWHERE, { from: root });
+
+          await authorizer.grantPermissions([setAuthorizerActionId], grantee, [vault.address], { from: root });
+
+          const newAuthorizer = NOT_WHERE;
+          await vault.connect(grantee).setAuthorizer(newAuthorizer);
+
+          expect(await vault.getAuthorizer()).to.be.eq(newAuthorizer);
+        });
+      });
+
+      context('when there is a delay associated with setting the authorizer', () => {
+        const delay = DAY;
+
+        sharedBeforeEach('set delay on setting the new authorizer', async () => {
+          await authorizer.setDelay(setAuthorizerActionId, delay, { from: root });
+        });
+
+        it('root can nominate an address to change the authorizer address set on the Vault', async () => {
+          // Give root powers to grant permissions again
+          await authorizer.addGranter(WHATEVER, root, EVERYWHERE, { from: root });
+
+          await authorizer.grantPermissions([setAuthorizerActionId], grantee, [vault.address], { from: root });
+
+          const newAuthorizer = NOT_WHERE;
+          const executionId = await authorizer.schedule(
+            vault,
+            vault.interface.encodeFunctionData('setAuthorizer', [newAuthorizer]),
+            [other],
+            { from: grantee }
+          );
+          await advanceTime(delay);
+          await authorizer.execute(executionId, { from: other });
+          expect(await vault.getAuthorizer()).to.be.eq(newAuthorizer);
+        });
+      });
+    });
+  });
 });
