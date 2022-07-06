@@ -188,6 +188,14 @@ describe('TimelockAuthorizer', () => {
         from = root;
       });
 
+      sharedBeforeEach('remove root global grant permission', async () => {
+        // The root address has global grant permissions for all action IDs.
+        // This also allows the root to add and remove granters for all action IDs, however it's possible for root
+        // to lose these global permissions under certain circumstances and root must be able to recover.
+        // We perform these tests under the conditions that root has lost this permission to ensure that it can recover.
+        await authorizer.removeGranter(WHATEVER, root, EVERYWHERE, { from: root });
+      });
+
       context('when granting permission', () => {
         context('for a specific action', () => {
           const actionId = ACTION_1;
@@ -650,6 +658,14 @@ describe('TimelockAuthorizer', () => {
     context('when the sender is the root', () => {
       beforeEach('set sender', async () => {
         from = root;
+      });
+
+      sharedBeforeEach('remove root global revoke permission', async () => {
+        // The root address has global revoke permissions for all action IDs.
+        // This also allows the root to add and remove revokers for all action IDs, however it's possible for root
+        // to lose these global permissions under certain circumstances and root must be able to recover.
+        // We perform these tests under the conditions that root has lost this permission to ensure that it can recover.
+        await authorizer.removeRevoker(WHATEVER, root, EVERYWHERE, { from: root });
       });
 
       context('when granting permission', () => {
