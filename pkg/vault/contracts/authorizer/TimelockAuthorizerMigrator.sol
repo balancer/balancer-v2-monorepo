@@ -105,12 +105,11 @@ contract TimelockAuthorizerMigrator {
                 _arr(address(this))
             );
         }
-        bytes32 grantActionId = _newAuthorizer.GRANT_ACTION_ID();
         for (uint256 i = 0; i < _grantDelaysData.length; i++) {
             // We're not wanting to set a delay greater than 1 month initially so fail early if we're doing so.
             require(_grantDelaysData[i].newDelay <= 30 days, "UNEXPECTED_LARGE_DELAY");
             _newAuthorizer.scheduleDelayChange(
-                _newAuthorizer.getExtendedActionId(grantActionId, _grantDelaysData[i].actionId),
+                _newAuthorizer.getGrantPermissionActionId(_grantDelaysData[i].actionId),
                 _grantDelaysData[i].newDelay,
                 _arr(address(this))
             );

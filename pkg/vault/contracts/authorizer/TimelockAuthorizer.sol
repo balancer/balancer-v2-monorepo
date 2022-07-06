@@ -220,7 +220,35 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @dev Returns the action ID for action `actionId` with specific params `how`.
+     * @dev Returns the action ID for granting a permission for action `actionId`.
+     */
+    function getGrantPermissionActionId(bytes32 actionId) public view returns (bytes32) {
+        return getExtendedActionId(GRANT_ACTION_ID, actionId);
+    }
+
+    /**
+     * @dev Returns the action ID for revoking a permission for action `actionId`.
+     */
+    function getRevokePermissionActionId(bytes32 actionId) public view returns (bytes32) {
+        return getExtendedActionId(REVOKE_ACTION_ID, actionId);
+    }
+
+    /**
+     * @dev Returns the action ID for executing the scheduled action with execution ID `executionId`.
+     */
+    function getExecuteExecutionActionId(uint256 executionId) public view returns (bytes32) {
+        return getExtendedActionId(EXECUTE_ACTION_ID, bytes32(executionId));
+    }
+
+    /**
+     * @dev Returns the action ID for scheduling setting a new delay for action `actionId`.
+     */
+    function getScheduleDelayActionId(bytes32 actionId) public view returns (bytes32) {
+        return getExtendedActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
+    }
+
+    /**
+     * @dev Returns the extended action ID for action `actionId` with specific params `how`.
      */
     function getExtendedActionId(bytes32 actionId, bytes32 how) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(actionId, how));
@@ -442,7 +470,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         uint256 actionDelay = _delaysPerActionId[actionId];
         uint256 executionDelay = newDelay < actionDelay ? Math.max(actionDelay - newDelay, MIN_DELAY) : MIN_DELAY;
 
-        bytes32 scheduleDelayActionId = getExtendedActionId(SCHEDULE_DELAY_ACTION_ID, actionId);
+        bytes32 scheduleDelayActionId = getScheduleDelayActionId(actionId);
         bytes memory data = abi.encodeWithSelector(this.setDelay.selector, actionId, newDelay);
         return _scheduleWithDelay(scheduleDelayActionId, address(this), data, executionDelay, executors);
     }
@@ -473,7 +501,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // solhint-disable-next-line not-rely-on-time
         require(block.timestamp >= scheduledExecution.executableAt, "ACTION_NOT_EXECUTABLE");
         if (scheduledExecution.protected) {
-            bytes32 executeScheduledActionId = getExtendedActionId(EXECUTE_ACTION_ID, bytes32(scheduledExecutionId));
+            bytes32 executeScheduledActionId = getExecuteExecutionActionId(scheduledExecutionId);
             bool isAllowed = hasPermission(executeScheduledActionId, msg.sender, address(this));
             _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
         }
@@ -532,7 +560,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bool isAllowed = isRoot(msg.sender) || (!allowed && isGranter(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
 
-        bytes32 grantPermissionsActionId = getExtendedActionId(GRANT_ACTION_ID, actionId);
+        bytes32 grantPermissionsActionId = getGrantPermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(grantPermissionsActionId, account, where);
     }
 
@@ -562,7 +590,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) external returns (uint256 scheduledExecutionId) {
         _require(isGranter(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         bytes memory data = abi.encodeWithSelector(this.grantPermissions.selector, _ar(actionId), account, _ar(where));
-        bytes32 grantPermissionId = getExtendedActionId(GRANT_ACTION_ID, actionId);
+        bytes32 grantPermissionId = getGrantPermissionActionId(actionId);
         return _schedule(grantPermissionId, address(this), data, executors);
     }
 
@@ -587,7 +615,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bool isAllowed = isRoot(msg.sender) || (!allowed && isRevoker(actionId, msg.sender, where));
         _require(isAllowed, Errors.SENDER_NOT_ALLOWED);
 
-        bytes32 revokePermissionsActionId = getExtendedActionId(REVOKE_ACTION_ID, actionId);
+        bytes32 revokePermissionsActionId = getRevokePermissionActionId(actionId);
         (allowed ? _grantPermission : _revokePermission)(revokePermissionsActionId, account, where);
     }
 
@@ -617,7 +645,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) external returns (uint256 scheduledExecutionId) {
         _require(isRevoker(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         bytes memory data = abi.encodeWithSelector(this.revokePermissions.selector, _ar(actionId), account, _ar(where));
-        bytes32 revokePermissionId = getExtendedActionId(REVOKE_ACTION_ID, actionId);
+        bytes32 revokePermissionId = getRevokePermissionActionId(actionId);
         return _schedule(revokePermissionId, address(this), data, executors);
     }
 
@@ -681,7 +709,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bool protected = executors.length > 0;
         _scheduledExecutions.push(ScheduledExecution(where, data, false, false, protected, executableAt));
 
-        bytes32 executeActionId = getExtendedActionId(EXECUTE_ACTION_ID, bytes32(scheduledExecutionId));
+        bytes32 executeActionId = getExecuteExecutionActionId(scheduledExecutionId);
         for (uint256 i = 0; i < executors.length; i++) {
             _grantPermission(executeActionId, executors[i], address(this));
         }

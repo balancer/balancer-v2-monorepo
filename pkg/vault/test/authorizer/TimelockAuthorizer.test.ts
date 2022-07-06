@@ -1157,7 +1157,7 @@ describe('TimelockAuthorizer', () => {
           let grantActionId: string;
 
           sharedBeforeEach('set constants', async () => {
-            grantActionId = await authorizer.getExtendedActionId(await authorizer.GRANT_ACTION_ID(), ACTION_1);
+            grantActionId = await authorizer.getGrantPermissionActionId(ACTION_1);
           });
 
           sharedBeforeEach('set delay', async () => {
@@ -1448,7 +1448,7 @@ describe('TimelockAuthorizer', () => {
             let revokeActionId: string;
 
             sharedBeforeEach('set constants', async () => {
-              revokeActionId = await authorizer.getExtendedActionId(await authorizer.REVOKE_ACTION_ID(), ACTION_1);
+              revokeActionId = await authorizer.getRevokePermissionActionId(ACTION_1);
             });
 
             sharedBeforeEach('set delay', async () => {
