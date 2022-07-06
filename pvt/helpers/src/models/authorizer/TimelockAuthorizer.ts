@@ -244,10 +244,6 @@ export default class TimelockAuthorizer {
   }
 
   async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
-    const from = params?.from ?? (await getSigner());
-    const SCHEDULE_DELAY_ACTION_ID = await this.SCHEDULE_DELAY_ACTION_ID();
-    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SCHEDULE_DELAY_ACTION_ID, action]);
-    await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);
