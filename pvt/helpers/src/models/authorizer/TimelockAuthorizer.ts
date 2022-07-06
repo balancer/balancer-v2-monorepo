@@ -18,15 +18,15 @@ export default class TimelockAuthorizer {
   static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;
-  admin: SignerWithAddress;
+  root: SignerWithAddress;
 
   static async create(deployment: TimelockAuthorizerDeployment = {}): Promise<TimelockAuthorizer> {
     return TimelockAuthorizerDeployer.deploy(deployment);
   }
 
-  constructor(instance: Contract, admin: SignerWithAddress) {
+  constructor(instance: Contract, root: SignerWithAddress) {
     this.instance = instance;
-    this.admin = admin;
+    this.root = root;
   }
 
   get address(): string {
