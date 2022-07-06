@@ -168,10 +168,7 @@ describe('TimelockAuthorizerMigrator', () => {
 
         const GRANT_ACTION_ID = await newAuthorizer.GRANT_ACTION_ID();
         for (const delayData of grantDelaysData) {
-          const grantActionId = await newAuthorizer['getActionId(bytes32,bytes32)'](
-            GRANT_ACTION_ID,
-            delayData.actionId
-          );
+          const grantActionId = await newAuthorizer.getExtendedActionId(GRANT_ACTION_ID, delayData.actionId);
           expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
         }
       });
