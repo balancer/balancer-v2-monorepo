@@ -44,6 +44,55 @@ contract BalancerQueries is AssetHelpers {
         vault = _vault;
     }
 
+    function querySwap(IVault.SingleSwap memory singleSwap, IVault.FundManagement memory funds)
+        external
+        returns (uint256)
+    {
+        // The Vault only supports batch swap queries, so we need to convert the swap call into an equivalent batch
+        // swap. The result will be identical.
+
+        // The main difference between swaps and batch swaps is that batch swaps require an assets array. We're going
+        // to place the asset in in index 0, and asset out in index 1.
+        IAsset[] memory assets = new IAsset[](2);
+        assets[0] = singleSwap.assetIn;
+        assets[1] = singleSwap.assetOut;
+
+        IVault.BatchSwapStep[] memory swaps = new IVault.BatchSwapStep[](1);
+        swaps[0] = IVault.BatchSwapStep({
+            poolId: singleSwap.poolId,
+            assetInIndex: 0,
+            assetOutIndex: 1,
+            amount: singleSwap.amount,
+            userData: singleSwap.userData
+        });
+
+        int256[] memory assetDeltas = vault.queryBatchSwap(singleSwap.kind, swaps, assets, funds);
+
+        // Batch swaps return the full Vault asset deltas, which in the special case of a single step swap contains more
+        // information than we need (as the amount in is known in a GIVEN_IN swap, and the amount out is known in a
+        // GIVEN_OUT swap). We extract the information we're interested in.
+        if (singleSwap.kind == IVault.SwapKind.GIVEN_IN) {
+            // The asset out will have a negative Vault delta (the assets are coming out of the Pool and the user is
+            // receiving them), so make it positive to match the `swap` interface.
+
+            _require(assetDeltas[1] <= 0, Errors.IMPOSSIBLE);
+            return uint256(-assetDeltas[1]);
+        } else {
+            // The asset in will have a positive Vault delta (the assets are going into the Pool and the user is
+            // sending them), so we don't need to do anything.
+            return uint256(assetDeltas[0]);
+        }
+    }
+
+    function queryBatchSwap(
+        IVault.SwapKind kind,
+        IVault.BatchSwapStep[] memory swaps,
+        IAsset[] memory assets,
+        IVault.FundManagement memory funds
+    ) external returns (int256[] memory assetDeltas) {
+        return vault.queryBatchSwap(kind, swaps, assets, funds);
+    }
+
     function queryJoin(
         bytes32 poolId,
         address sender,
