@@ -33,7 +33,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
  * It connects different functionalities of the protocol components to allow accessing information that would
  * have required a more cumbersome setup if we wanted to provide these already built-in.
  */
-contract BalancerHelpers is AssetHelpers {
+contract BalancerQueries is AssetHelpers {
     using Math for uint256;
     using BalanceAllocation for bytes32;
     using BalanceAllocation for bytes32[];
