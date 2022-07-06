@@ -1,7 +1,5 @@
-import { ethers } from 'hardhat';
 import { Interface } from 'ethers/lib/utils';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
-import { getSigner } from '@balancer-labs/v2-deployments/dist/src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '../../test/expectEvent';
@@ -256,10 +254,6 @@ export default class TimelockAuthorizer {
   }
 
   async setDelay(action: string, delay: number, params?: TxParams): Promise<void> {
-    const from = params?.from ?? (await getSigner());
-    const SCHEDULE_DELAY_ACTION_ID = await this.SCHEDULE_DELAY_ACTION_ID();
-    const setDelayAction = ethers.utils.solidityKeccak256(['bytes32', 'bytes32'], [SCHEDULE_DELAY_ACTION_ID, action]);
-    await this.grantPermissions(setDelayAction, this.toAddress(from), this, params);
     const id = await this.scheduleDelayChange(action, delay, [], params);
     await advanceToTimestamp((await this.getScheduledExecution(id)).executableAt);
     await this.execute(id);
