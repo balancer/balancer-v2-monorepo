@@ -6,7 +6,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
@@ -364,6 +364,24 @@ describe('StablePhantomPool', () => {
           const sender = (await ethers.getSigners())[0];
           await tokens.mint({ to: sender, amount: fp(100) });
           await tokens.approve({ from: sender, to: pool.vault });
+        });
+
+        it('fails if caller is not the vault', async () => {
+          const swapRequest = {
+            kind: SwapKind.GivenIn,
+            tokenIn: tokens.first.address,
+            tokenOut: tokens.get(1).address,
+            amount: fp(1),
+            poolId: pool.poolId,
+            lastChangeBlock: 0,
+            from: lp.address,
+            to: lp.address,
+            userData: '0x',
+          };
+
+          await expect(pool.instance.connect(lp).onSwap(swapRequest, initialBalances, 0, 1)).to.be.revertedWith(
+            'CALLER_NOT_VAULT'
+          );
         });
 
         context('token out given token in', () => {
@@ -1388,7 +1406,7 @@ describe('StablePhantomPool', () => {
               await pool.swapGivenIn({ in: pool.bpt, out: tokens.first, amount, from: lp, recipient });
 
               const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
-              const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITH_FEE, inRecoveryMode);
+              const expectedFee = getExpectedProtocolFee(amount, AmountKind.WITHOUT_FEE, inRecoveryMode);
 
               expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
             });
@@ -1442,7 +1460,7 @@ describe('StablePhantomPool', () => {
               });
 
               const currentBalance = await pool.balanceOf(protocolFeesCollector.address);
-              const expectedFee = getExpectedProtocolFee(bptAmount, AmountKind.WITH_FEE, inRecoveryMode);
+              const expectedFee = getExpectedProtocolFee(bptAmount, AmountKind.WITHOUT_FEE, inRecoveryMode);
 
               expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedFee, 0.01);
             });
@@ -1503,8 +1521,9 @@ describe('StablePhantomPool', () => {
         });
 
         it('reports correctly', async () => {
-          const swapFee = amount.mul(swapFeePercentage).div(fp(1));
-          const protocolFee = swapFee.mul(protocolFeePercentage).div(fp(1));
+          const amountWithFee = amount.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
+          const fee = amountWithFee.mul(swapFeePercentage).div(fp(1));
+          const protocolFee = fee.mul(protocolFeePercentage).div(fp(1));
 
           const senderBptBalance = await pool.balanceOf(lp);
 

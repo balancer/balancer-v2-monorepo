@@ -121,7 +121,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256 indexIn,
         uint256 indexOut,
         uint256 limit
-    ) private pure {
+    ) internal pure {
         _require(indexIn < limit && indexOut < limit, Errors.OUT_OF_BOUNDS);
     }
 }
