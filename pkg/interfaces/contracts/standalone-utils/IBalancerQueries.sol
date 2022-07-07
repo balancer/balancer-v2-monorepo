@@ -22,10 +22,10 @@ import "../vault/IVault.sol";
  * result they would have if called on the Vault given the current state. Note that the results will be affected by
  * other transactions interacting with the Pools involved.
  *
- * All query functions can be called both on-chain and off-chain. 
+ * All query functions can be called both on-chain and off-chain.
  *
- * If calling them from a contract, note that all query functions are not `view`. Despite this, these functions produce 
- * no net state change, and for all intents and purposes can be thought of as if they were indeed `view`. However, 
+ * If calling them from a contract, note that all query functions are not `view`. Despite this, these functions produce
+ * no net state change, and for all intents and purposes can be thought of as if they were indeed `view`. However,
  * calling them via STATICCALL will fail.
  *
  * If calling them from an off-chain client, make sure to use eth_call: most clients default to eth_sendTransaction for
