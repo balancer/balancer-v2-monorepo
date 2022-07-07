@@ -24,6 +24,8 @@ const LidoRelayer = new Task('20210812-lido-relayer', TaskMode.READ_ONLY, 'mainn
 // https://etherscan.io/address/0xc92e8bdf79f0507f65a392b0ab4667716bfe0110#code
 const GnosisProtocolRelayer = '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110';
 
+const SingleRecipientGauge = new Task('20220325-single-recipient-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
+
 const StablePool = new Task('20210624-stable-pool', TaskMode.READ_ONLY, 'mainnet');
 const MetaStablePool = new Task('20210727-meta-stable-pool', TaskMode.READ_ONLY, 'mainnet');
 const StablePhantomPool = new Task('20211208-stable-phantom-pool', TaskMode.READ_ONLY, 'mainnet');
@@ -38,7 +40,8 @@ const BALLERS_MULTISIG = '0x75a52c0e32397a3fc0c052e2ceb3479802713cf4';
 const LM_MULTISIG = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
 const TREASURY_MULTISIG = '0x7c68c42de679ffb0f16216154c996c354cf1161b';
 const EMERGENCY_SUBDAO_MULTISIG = '0xa29f61256e948f3fb707b4b3b138c5ccb9ef9888';
-const BLABS_OPS_MULTISIG = '0xd2eb7bd802a7ca68d9acd209bec4e664a9abdd7b';
+const BLABS_OPS_MULTISIG = '0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B';
+const BLABS_VEBAL_MULTISIG = '0xd2eb7bd802a7ca68d9acd209bec4e664a9abdd7b';
 const GAUNTLET_FEE_SETTER = '0xe4a8ed6c1d8d048bd29a00946bfcf2db10e7923b';
 
 export const root = DAO_MULTISIG;
@@ -134,11 +137,19 @@ const veBALPermissions: RoleData[] = flatten([
     SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
     SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
   ]),
+  createRoleData(DAO_MULTISIG, SmartWalletChecker.output({ network: 'mainnet' }).SmartWalletChecker, [
+    SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
+    SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
+  ]),
+  createRoleData(BLABS_OPS_MULTISIG, EVERYWHERE, [
+    // This permission grants powers to call `checkpoint()` on all of SingleRecipientGauges, PolygonRootGauges, ArbitrumRootGauges.
+    SingleRecipientGauge.actionId('SingleRecipientGauge', 'checkpoint()'),
+  ]),
   // BALTokenHolder.withdrawFunds(address, uint256) (veBAL BALTokenHolder)
   // Note this actionId can't be pulled from the json file as the BALTokenHolder is not listed there.
   {
     role: '0x79922681fd17c90b4f3409d605f5b059ffcbcef7b5440321ae93b87f3b5c1c78',
-    grantee: BLABS_OPS_MULTISIG,
+    grantee: BLABS_VEBAL_MULTISIG,
     target: '0x3c1d00181ff86fbac0c3c52991fbfd11f6491d70',
   },
 ]);
@@ -170,7 +181,11 @@ export const roles: RoleData[] = flatten([
   ...feesAndTargetsPermissions,
 ]);
 
-export const granters: RoleData[] = [];
+export const granters: RoleData[] = flatten([
+  createRoleData(BLABS_OPS_MULTISIG, EVERYWHERE, [
+    SingleRecipientGauge.actionId('SingleRecipientGauge', 'checkpoint()'),
+  ]),
+]);
 export const revokers: RoleData[] = [];
 export const executeDelays: DelayData[] = [
   { actionId: Vault.actionId('Vault', 'setAuthorizer(address)'), newDelay: 30 * DAY },
