@@ -211,7 +211,10 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public view override onlyVault(request.poolId) whenNotPaused returns (uint256) {
+    ) public view override onlyVault(request.poolId) returns (uint256) {
+        // Block all swaps when paused
+        _ensureNotPaused();
+
         // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
         // one of the three tokens is the BPT itself, a swap might also be a join (main/wrapped for BPT) or an exit
         // (BPT for main/wrapped).
