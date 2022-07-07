@@ -48,7 +48,7 @@ contract BalancerQueries is IBalancerQueries, AssetHelpers {
         // swap. The result will be identical.
 
         // The main difference between swaps and batch swaps is that batch swaps require an assets array. We're going
-        // to place the asset in in index 0, and asset out in index 1.
+        // to place the asset in at index 0, and asset out at index 1.
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = singleSwap.assetIn;
         assets[1] = singleSwap.assetOut;

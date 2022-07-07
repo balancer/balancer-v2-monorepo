@@ -152,7 +152,7 @@ const balancerErrorCodes: Record<string, string> = {
   '601': 'FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH',
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
   '603': 'AUM_FEE_PERCENTAGE_TOO_HIGH',
-  '999': 'IMPOSSIBLE',
+  '999': 'SHOULD_NOT_HAPPEN',
 };
 
 export class BalancerErrors {

@@ -39,7 +39,7 @@ describe('BalancerQueries', function () {
   });
 
   describe('querySwap', () => {
-    // These two values are superfluous, as they are not used by the helper
+    // These two values are superfluous, as they are not used by the query
     const fromInternalBalance = false;
     const toInternalBalance = false;
 
@@ -83,7 +83,7 @@ describe('BalancerQueries', function () {
   });
 
   describe('queryBatchSwap', () => {
-    // These two values are superfluous, as they are not used by the helper
+    // These two values are superfluous, as they are not used by the query
     const fromInternalBalance = false;
     const toInternalBalance = false;
 
