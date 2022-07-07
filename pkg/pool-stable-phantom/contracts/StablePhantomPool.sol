@@ -254,7 +254,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenNotPaused returns (uint256 amountOut) {
+    ) internal virtual override returns (uint256 amountOut) {
         _cacheTokenRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
@@ -317,7 +317,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenNotPaused returns (uint256 amountIn) {
+    ) internal virtual override returns (uint256 amountIn) {
         _cacheTokenRatesIfNecessary();
 
         uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
@@ -498,7 +498,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
         _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
 
