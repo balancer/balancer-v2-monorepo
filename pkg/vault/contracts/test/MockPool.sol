@@ -41,6 +41,14 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         return _poolId;
     }
 
+    function getSwapFeePercentage() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function getScalingFactors() external pure override returns (uint256[] memory) {
+        return new uint256[](0);
+    }
+
     function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
         _vault.registerTokens(_poolId, tokens, assetManagers);
     }
