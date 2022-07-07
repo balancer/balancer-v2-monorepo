@@ -366,11 +366,29 @@ describe('StablePhantomPool', () => {
           await tokens.approve({ from: sender, to: pool.vault });
         });
 
-        it('fails if caller is not the vault', async () => {
+        it('fails on a regular swap if caller is not the vault', async () => {
           const swapRequest = {
             kind: SwapKind.GivenIn,
             tokenIn: tokens.first.address,
             tokenOut: tokens.get(1).address,
+            amount: fp(1),
+            poolId: pool.poolId,
+            lastChangeBlock: 0,
+            from: lp.address,
+            to: lp.address,
+            userData: '0x',
+          };
+
+          await expect(pool.instance.connect(lp).onSwap(swapRequest, initialBalances, 0, 1)).to.be.revertedWith(
+            'CALLER_NOT_VAULT'
+          );
+        });
+
+        it('fails on a BPT swap if caller is not the vault', async () => {
+          const swapRequest = {
+            kind: SwapKind.GivenIn,
+            tokenIn: tokens.first.address,
+            tokenOut: pool.bpt.address,
             amount: fp(1),
             poolId: pool.poolId,
             lastChangeBlock: 0,
@@ -828,7 +846,7 @@ describe('StablePhantomPool', () => {
                 recipient: lp,
               });
 
-              expect(amountIn).to.be.equalWithError(queryResult.amountsIn[tokenIndex], 0.00001);
+              expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndex]);
             });
 
             it('reverts if paused', async () => {
@@ -929,8 +947,6 @@ describe('StablePhantomPool', () => {
             const bptIn = pct(await pool.balanceOf(lp), 0.2);
             const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
 
-            // Exit swap should give approximately the same number of tokens (modulo fees)
-            // If we charge fees the same, they should match exactly
             const amountOut = await pool.querySwapGivenIn({
               from: lp,
               in: pool.bpt,
@@ -938,7 +954,7 @@ describe('StablePhantomPool', () => {
               amount: bptIn,
               recipient: lp,
             });
-            expect(queryResult.amountsOut[tokenIndex]).to.equalWithError(amountOut, 0.0001);
+            expect(queryResult.amountsOut[tokenIndex]).to.equal(amountOut);
           });
 
           it('reverts if paused', async () => {
