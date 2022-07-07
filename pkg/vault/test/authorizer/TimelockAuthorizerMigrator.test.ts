@@ -166,12 +166,8 @@ describe('TimelockAuthorizerMigrator', () => {
       it('sets up granter delays properly', async () => {
         await migrator.executeDelays();
 
-        const GRANT_ACTION_ID = await newAuthorizer.GRANT_ACTION_ID();
         for (const delayData of grantDelaysData) {
-          const grantActionId = await newAuthorizer['getActionId(bytes32,bytes32)'](
-            GRANT_ACTION_ID,
-            delayData.actionId
-          );
+          const grantActionId = await newAuthorizer.getGrantPermissionActionId(delayData.actionId);
           expect(await newAuthorizer.getActionIdDelay(grantActionId)).to.be.eq(delayData.newDelay);
         }
       });
