@@ -103,4 +103,24 @@ interface IBasePool is IPoolSwapStructs {
      * not relevant for outside parties, but which might be useful for some types of Pools.
      */
     function getScalingFactors() external view returns (uint256[] memory);
+
+    function queryJoin(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) external returns (uint256 bptOut, uint256[] memory amountsIn);
+
+    function queryExit(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) external returns (uint256 bptIn, uint256[] memory amountsOut);
 }
