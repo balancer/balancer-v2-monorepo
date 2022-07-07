@@ -71,7 +71,7 @@ contract BalancerQueries is IBalancerQueries, AssetHelpers {
             // The asset out will have a negative Vault delta (the assets are coming out of the Pool and the user is
             // receiving them), so make it positive to match the `swap` interface.
 
-            _require(assetDeltas[1] <= 0, Errors.IMPOSSIBLE);
+            _require(assetDeltas[1] <= 0, Errors.SHOULD_NOT_HAPPEN);
             return uint256(-assetDeltas[1]);
         } else {
             // The asset in will have a positive Vault delta (the assets are going into the Pool and the user is
