@@ -46,7 +46,7 @@ interface ILinearPool is IBasePool {
     function getWrappedIndex() external view returns (uint256);
 
     /**
-     * @dev Returns the Pool's targets for the main token balance. These values have had the main's tokens scaling
+     * @dev Returns the Pool's targets for the main token balance. These values have had the main token's scaling
      * factor applied to them.
      */
     function getTargets() external view returns (uint256 lowerTarget, uint256 upperTarget);
