@@ -598,5 +598,41 @@ describe('FeeDistributor', () => {
         });
       });
     });
+
+    describe('only caller check', () => {
+      // Minimal setup to be able to call claim methods properly.
+      sharedBeforeEach('advance time past startTime', async () => {
+        tokens = await TokenList.create(['FEE']);
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      context('when disabled', () => {
+        it('works when the caller is the user', async () => {
+          await expect(feeDistributor.connect(user1).claimToken(user1.address, tokens.addresses[0])).to.not.be.reverted;
+          await expect(feeDistributor.connect(user1).claimTokens(user1.address, tokens.addresses)).to.not.be.reverted;
+        });
+
+        it('works when the caller is other', async () => {
+          await expect(feeDistributor.connect(other).claimToken(user1.address, tokens.addresses[0])).to.not.be.reverted;
+          await expect(feeDistributor.connect(other).claimTokens(user1.address, tokens.addresses)).to.not.be.reverted;
+        });
+      });
+
+      context('when enabled', () => {
+        sharedBeforeEach('enable only caller verification', async () => {
+          await feeDistributor.connect(user1).enableOnlyCaller(true);
+        });
+
+        it('works when the caller is the user', async () => {
+          await expect(feeDistributor.connect(user1).claimToken(user1.address, tokens.addresses[0])).to.not.be.reverted;
+          await expect(feeDistributor.connect(user1).claimTokens(user1.address, tokens.addresses)).to.not.be.reverted;
+        });
+
+        it('reverts when the caller is other', async () => {
+          await expect(feeDistributor.connect(other).claimToken(user1.address, tokens.addresses[0])).to.be.reverted;
+          await expect(feeDistributor.connect(other).claimTokens(user1.address, tokens.addresses)).to.be.reverted;
+        });
+      });
+    });
   });
 });
