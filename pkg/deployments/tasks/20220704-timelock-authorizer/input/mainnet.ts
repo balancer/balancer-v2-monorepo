@@ -20,6 +20,9 @@ const LiquidityGaugeV5 = new Task('20220325-mainnet-gauge-factory', TaskMode.REA
 
 const BalancerRelayer = new Task('20211203-batch-relayer', TaskMode.READ_ONLY, 'mainnet');
 const LidoRelayer = new Task('20210812-lido-relayer', TaskMode.READ_ONLY, 'mainnet');
+// https://forum.balancer.fi/t/proposal-balancer-v2-authorize-gnosis-protocol-v2-contracts-as-a-vault-relayer/1938
+// https://etherscan.io/address/0xc92e8bdf79f0507f65a392b0ab4667716bfe0110#code
+const GnosisProtocolRelayer = '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110';
 
 const StablePool = new Task('20210624-stable-pool', TaskMode.READ_ONLY, 'mainnet');
 const MetaStablePool = new Task('20210727-meta-stable-pool', TaskMode.READ_ONLY, 'mainnet');
@@ -74,6 +77,18 @@ const lidoRelayerPermissions = createRoleData(
       'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
     ),
     Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+    Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
+  ]
+);
+
+const gnosisProtocolRelayerPermissions = createRoleData(
+  GnosisProtocolRelayer,
+  Vault.output({ network: 'mainnet' }).Vault,
+  [
+    Vault.actionId(
+      'Vault',
+      'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
+    ),
     Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
   ]
 );
@@ -149,6 +164,7 @@ const feesAndTargetsPermissions: RoleData[] = flatten([
 export const roles: RoleData[] = flatten([
   ...batchRelayerPermissions,
   ...lidoRelayerPermissions,
+  ...gnosisProtocolRelayerPermissions,
   ...protocolFeesPermissions,
   ...veBALPermissions,
   ...feesAndTargetsPermissions,
