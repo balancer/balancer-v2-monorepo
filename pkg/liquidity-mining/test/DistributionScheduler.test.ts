@@ -182,7 +182,7 @@ describe('DistributionScheduler', () => {
               let insertedTime: BigNumber;
 
               sharedBeforeEach('set insertedTime', async () => {
-                insertedTime = startTime.add(52 * WEEK);
+                insertedTime = startTime.add(51 * WEEK);
               });
 
               it('updates the previous node to point at the new node', async () => {
