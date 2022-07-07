@@ -46,7 +46,7 @@ interface ISettlor {
                         bytes32 counterpartyRef;
                     }
     
-    function issueSecondary(address factory, address security, address currency, uint256 amount, uint256 fee, bytes32 id) external;
+    function issueSecondary(address security, address currency, uint256 amount, bytes32 id) external;
 
     function postSettlement(settlement calldata newTrade, bytes32 ref) external;
 

@@ -246,12 +246,16 @@ contract BalancerManager is IMarketMaker, Ownable{
             //create primary issue pool if it does not exist already
             for(uint x=0; x<pairedTokens[security].length; x++){
                 address lptoken = pairedTokens[security][x];
-                address newIssue = factory.create(security, lptoken, 
-                                                    qlTokens[security][lptoken].minPrice,
-                                                    qlTokens[security][lptoken].maxPrice,
-                                                    qlTokens[security][lptoken].amountIssued,
-                                                    issueFeePercentage,
-                                                    cutoffTime);                  
+                IPrimaryIssuePoolFactory.FactoryPoolParams memory poolparams = IPrimaryIssuePoolFactory.FactoryPoolParams({
+                    security : security,
+                    currency : lptoken,
+                    minimumPrice : qlTokens[security][lptoken].minPrice,
+                    basePrice : qlTokens[security][lptoken].maxPrice,
+                    maxAmountsIn : qlTokens[security][lptoken].amountIssued,
+                    issueFeePercentage : issueFeePercentage,
+                    cutOffTime : cutoffTime
+                });
+                address newIssue = factory.create(poolparams);
                 // store details of new pool created
                 issues[security].issuer = mmtokens[security][lptoken][0].owner;
                 issues[security].deadline = cutoffTime;

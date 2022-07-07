@@ -20,6 +20,10 @@ contract BalancerManager is ISettlor, Ownable {
 
     using Math for uint256;
 
+    // balancer variables
+    ISecondaryIssuePoolFactory public factory;
+    uint256 fee=0;
+
     // mapping settlement ref to trade execution data
     mapping(bytes32 => ISettlor.settlement) settlements;
 
@@ -36,18 +40,26 @@ contract BalancerManager is ISettlor, Ownable {
                         uint256 price,
                         address currency
                     );
+    
+    /**
+        Initializes this asset management contract
+        @param  _factory            reference to the secondary issue pool factory contract
+        @param  _issueFeePercentage  percentage of trading fee to be charged by the asset manager
+     */
+    function initialize(address _factory, uint256 _issueFeePercentage) onlyOwner public {
+        factory = ISecondaryIssuePoolFactory(_factory);
+        fee = _issueFeePercentage;
+    }
 
     /**
         Issues existing (secondary) tokenized assets into pool
-        @param  factory     reference to the secondary issue pool factory contract
         @param  security    reference to asset issued
         @param  currency    reference to cash (settlement) token
         @param  amount      amount of asset issued in pool
-        @param  fee         percentage of trading fee to be charged by the asset manager
         @param  id          identifier for asset issued
      */
-    function issueSecondary(address factory, address security, address currency, uint256 amount, uint256 fee, bytes32 id) override external {
-        address pool = ISecondaryIssuePoolFactory(factory).create(
+    function issueSecondary(address security, address currency, uint256 amount, bytes32 id) override external {
+        address pool = factory.create(
             ERC20(security).name(),
             ERC20(security).symbol(),
             security,

@@ -21,13 +21,7 @@ contract PrimaryIssuePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(address _security, 
-                    address _currency, 
-                    uint256 _minimumPrice,
-                    uint256 _basePrice,
-                    uint256 _maxAmountsIn,
-                    uint256 _issueFeePercentage,
-                    uint256 _cutOffTime
+    function create(IPrimaryIssuePoolFactory.FactoryPoolParams memory params
                     ) external returns (address){
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
@@ -36,15 +30,15 @@ contract PrimaryIssuePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
             _create(
                 abi.encode(
                     getVault(),
-                    _security,
-                    _currency,
-                    _minimumPrice,
-                    _basePrice,
-                    _maxAmountsIn,
-                    _issueFeePercentage,
+                    params.security,
+                    params.currency,
+                    params.minimumPrice,
+                    params.basePrice,
+                    params.maxAmountsIn,
+                    params.issueFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    _cutOffTime,
+                    params.cutOffTime,
                     msg.sender
                 ));
 
