@@ -54,7 +54,7 @@ import "./TimelockExecutor.sol";
  *   actions indiscriminately or only for a specific action ID. In this case, the permission's "baseActionId" is the
  *   action ID for scheduling a delay change, and the "specifier" is the action ID for which the delay will be changed.
  *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
- *   by computing `keccak256(baseActionId, specifier)`.
+ *   by calling `getExtendedActionId(baseActionId, specifier)`.
  */
 contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     using Address for address;
