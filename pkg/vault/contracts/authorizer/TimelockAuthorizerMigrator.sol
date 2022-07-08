@@ -23,7 +23,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "./TimelockAuthorizer.sol";
 
 contract TimelockAuthorizerMigrator {
-    bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    bytes32
+        public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // solhint-disable-previous-line max-line-length
     address public constant EVERYWHERE = address(-1);
     uint256 public constant CHANGE_ROOT_DELAY = 4 weeks;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
