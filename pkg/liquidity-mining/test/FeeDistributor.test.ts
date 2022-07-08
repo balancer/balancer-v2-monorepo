@@ -13,6 +13,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 const roundDownTimestamp = (timestamp: BigNumberish): BigNumber => {
   return BigNumber.from(timestamp).div(WEEK).mul(WEEK);
@@ -505,6 +506,15 @@ describe('FeeDistributor', () => {
 
             // For the week to become claimable we must wait until the next week starts
             await advanceToNextWeek();
+          });
+
+          it('transfers tokens to the user', async () => {
+            await expectBalanceChange(() => claimTokens(), tokens, {
+              account: user1.address,
+              changes: tokens
+                .map((token, i) => ({ [token.symbol]: tokenAmounts[i].div(2) }))
+                .reduce((prev, curr) => ({ ...prev, ...curr }), {}),
+            });
           });
 
           it('emits a TokensClaimed event', async () => {
