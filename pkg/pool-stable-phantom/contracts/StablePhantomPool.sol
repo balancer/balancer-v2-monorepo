@@ -573,7 +573,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
         _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
 

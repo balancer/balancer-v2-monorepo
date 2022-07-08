@@ -394,7 +394,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
+    ) external override returns (uint256 bptOut, uint256[] memory amountsIn) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
         _queryAction(
@@ -433,7 +433,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
+    ) external override returns (uint256 bptIn, uint256[] memory amountsOut) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
         _queryAction(
