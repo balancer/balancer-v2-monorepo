@@ -587,17 +587,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) public virtual override returns (uint256[] memory, uint256[] memory) {
-        //_cacheTokenRatesIfNecessary();
+        _cacheTokenRatesIfNecessary();
 
-        return super.onJoinPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            userData
-        );
+        return
+            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 
     /**
@@ -757,18 +750,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) public virtual override returns (uint256[] memory, uint256[] memory) {
         // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
         if (!userData.isRecoveryModeExitKind()) {
-            //_cacheTokenRatesIfNecessary();
+            _cacheTokenRatesIfNecessary();
         }
 
-        return super.onExitPool(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            userData
-        );
+        return
+            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 
     /**
