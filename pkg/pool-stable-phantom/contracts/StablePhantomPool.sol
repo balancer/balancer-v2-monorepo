@@ -387,8 +387,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         bool bptIsTokenIn = swapRequest.tokenIn == IERC20(this);
 
-        // Would like to use a function selector here, but it causes stack issues
+        // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (swapRequest.kind == IVault.SwapKind.GIVEN_IN) {
+            // Returning amountOut; tokens are leaving the Vault, so we round down
             return
                 _downscaleDown(
                     _onSwapBptGivenIn(
@@ -404,6 +405,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                     scalingFactors[indexOut]
                 );
         } else {
+            // Returning amountIn; tokens are entering the Vault, so we round up
             return
                 _downscaleUp(
                     _onSwapBptGivenOut(
@@ -425,7 +427,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * @dev Process a GivenIn swap involving BPT.
      */
     function _onSwapBptGivenIn(
-        uint256 upscaledAmount,
+        uint256 amount,
         uint256 indexIn,
         uint256 indexOut,
         bool bptIsTokenIn,
@@ -442,14 +444,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 amp,
                 balancesWithoutBpt,
                 _skipBptIndex(indexOut),
-                upscaledAmount,
+                amount,
                 virtualSupply,
                 swapFeePercentage
             );
         } else {
             // joinSwap
             uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
-            amountsIn[_skipBptIndex(indexIn)] = upscaledAmount;
+            amountsIn[_skipBptIndex(indexIn)] = amount;
 
             amountOut = StableMath._calcBptOutGivenExactTokensIn(
                 amp,
@@ -461,12 +463,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         if (protocolSwapFeePercentage > 0) {
-            _payDueProtocolFeeByBpt(bptIsTokenIn ? upscaledAmount : amountOut, protocolSwapFeePercentage);
+            _payDueProtocolFeeByBpt(bptIsTokenIn ? amount : amountOut, protocolSwapFeePercentage);
         }
     }
 
     function _onSwapBptGivenOut(
-        uint256 upscaledAmount,
+        uint256 amount,
         uint256 indexIn,
         uint256 indexOut,
         bool bptIsTokenIn,
@@ -480,7 +482,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         if (bptIsTokenIn) {
             // joinSwap
             uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
-            amountsOut[_skipBptIndex(indexOut)] = upscaledAmount;
+            amountsOut[_skipBptIndex(indexOut)] = amount;
 
             amountIn = StableMath._calcBptInGivenExactTokensOut(
                 amp,
@@ -496,14 +498,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 amp,
                 balancesWithoutBpt,
                 _skipBptIndex(indexIn),
-                upscaledAmount,
+                amount,
                 virtualSupply,
                 swapFeePercentage
             );
         }
 
         if (protocolSwapFeePercentage > 0) {
-            _payDueProtocolFeeByBpt(bptIsTokenIn ? amountIn : upscaledAmount, protocolSwapFeePercentage);
+            _payDueProtocolFeeByBpt(bptIsTokenIn ? amountIn : amount, protocolSwapFeePercentage);
         }
     }
 
