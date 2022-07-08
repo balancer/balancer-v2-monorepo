@@ -603,9 +603,12 @@ describe('FeeDistributor', () => {
 
           context('when the array of tokens contains duplicates', () => {
             it('ignores the second occurence of the token address', async () => {
-              expect(await feeDistributor.callStatic.claimTokens(user1.address, tokens.addresses)).to.be.almostEqual(
-                tokenAmounts.map((amount) => amount.div(3))
-              );
+              const duplicatedTokenArray = [tokens.addresses[0], tokens.addresses[0]];
+              const expectedClaimAmountsFromDuplicates = [tokenAmounts[0].div(3), fp(0)];
+
+              expect(
+                await feeDistributor.callStatic.claimTokens(user1.address, duplicatedTokenArray)
+              ).to.be.almostEqual(expectedClaimAmountsFromDuplicates);
             });
           });
         });
