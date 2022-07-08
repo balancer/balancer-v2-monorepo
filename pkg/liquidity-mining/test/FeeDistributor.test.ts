@@ -598,5 +598,72 @@ describe('FeeDistributor', () => {
         });
       });
     });
+
+    describe('only caller check', () => {
+      let sender: SignerWithAddress;
+
+      function itClaimsCorrectly() {
+        it('claimToken does not revert', async () => {
+          await expect(feeDistributor.connect(sender).claimToken(user1.address, tokens.addresses[0])).to.not.be
+            .reverted;
+        });
+
+        it('claimTokens does not revert', async () => {
+          await expect(feeDistributor.connect(sender).claimTokens(user1.address, tokens.addresses)).to.not.be.reverted;
+        });
+      }
+
+      // Minimal setup to be able to call claim methods properly.
+      sharedBeforeEach('advance time past startTime', async () => {
+        tokens = await TokenList.create(['FEE']);
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      context('when disabled', () => {
+        context('when the caller is the user', () => {
+          beforeEach(() => {
+            sender = user1;
+          });
+
+          itClaimsCorrectly();
+        });
+
+        context('when the caller is other', () => {
+          beforeEach(() => {
+            sender = other;
+          });
+
+          itClaimsCorrectly();
+        });
+      });
+
+      context('when enabled', () => {
+        sharedBeforeEach('enable only caller verification', async () => {
+          await feeDistributor.connect(user1).setOnlyCallerCheck(true);
+        });
+
+        context('when the caller is the user', () => {
+          beforeEach(() => {
+            sender = user1;
+          });
+
+          itClaimsCorrectly();
+        });
+
+        context('when the caller is other', () => {
+          beforeEach(() => {
+            sender = other;
+          });
+
+          it('claimToken reverts', async () => {
+            await expect(feeDistributor.connect(other).claimToken(user1.address, tokens.addresses[0])).to.be.reverted;
+          });
+
+          it('claimTokens reverts', async () => {
+            await expect(feeDistributor.connect(other).claimTokens(user1.address, tokens.addresses)).to.be.reverted;
+          });
+        });
+      });
+    });
   });
 });
