@@ -12,7 +12,7 @@ import { Account, NAry, TxParams } from '../types/types';
 import { advanceToTimestamp } from '../../time';
 
 export default class TimelockAuthorizer {
-  static WHATEVER = ONES_BYTES32;
+  static GENERAL_PERMISSION_SPECIFIER = ONES_BYTES32;
   static EVERYWHERE = ANY_ADDRESS;
 
   instance: Contract;

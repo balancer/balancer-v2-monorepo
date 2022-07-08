@@ -251,200 +251,275 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return super.onSwap(swapRequest, balances, indexIn, indexOut);
     }
 
-    // Typically, `_onSwapGivenIn` and `_onSwapGivenOut` handlers are meant to process swaps between Pool tokens.
-    // Since one of the Pool's tokens is the preminted BPT, we neeed to a) handle swaps where that tokens is involved
-    // separately (as they are effectively single-token joins or exits), and b) remove BPT from the balances array when
-    // processing regular swaps before calling the StableMath functions.
-    //
-    // Only single-token joins and exits are supported, and these are expected to occur very frequently due to the BPT
-    // of this Pool being included in other Pools. Because of this, we compute protocol fees in a relatively
-    // straightforward way instead of trying to measure invariant growth between joins and exits.
-    // Recall that due protocol fees are expressed as BPT amounts: for any swap involving BPT, we simply add the
-    // corresponding protocol swap fee to that amount, and for swaps without BPT we convert the fee amount to the
-    // equivalent BPT amount. Note that swap fees are charged by BaseGeneralPool.
-    //
-    // The given in and given out handlers are quite similar and could use an intermediate abstraction, but keeping the
-    // duplication seems to lead to more readable code, given the number of variants at play.
+    /**
+     * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
+     * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
+     * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
+     * b) remove BPT from the balances array when processing regular swaps, before calling the StableMath functions.
+     *
+     * At this point, the balances are unscaled.
+     *
+     * If this is a swap involving BPT, call `_onSwapBpt`, which computes the amountOut using the swapFeePercentage,
+     * in the same manner as single token join/exits, and charges protocol fees on the corresponding bptAmount.
+     * Otherwise, perform the default processing for a regular swap.
+     */
+    function _swapGivenIn(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256[] memory scalingFactors
+    ) internal virtual override whenNotPaused returns (uint256) {
+        return
+            (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
+                ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
+                : super._swapGivenIn(swapRequest, balances, indexIn, indexOut, scalingFactors);
+    }
 
+    /**
+     * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
+     * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
+     * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
+     * b) remove BPT from the balances array when processing regular swaps, before calling the StableMath functions.
+     *
+     * At this point, the balances are unscaled.
+     *
+     * If this is a swap involving BPT, call `_onSwapBpt`, which computes the amountIn using the swapFeePercentage,
+     * in the same manner as single token join/exits, and charges protocol fees on the corresponding bptAmount.
+     * Otherwise, perform the default processing for a regular swap.
+     */
+    function _swapGivenOut(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256[] memory scalingFactors
+    ) internal virtual override whenNotPaused returns (uint256) {
+        return
+            (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
+                ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
+                : super._swapGivenOut(swapRequest, balances, indexIn, indexOut, scalingFactors);
+    }
+
+    /**
+     * @dev Since we have overridden `onSwap` here to filter swaps involving BPT, this BaseGeneralPool hook will only
+     * be called for regular swaps.
+     */
     function _onSwapGivenIn(
         SwapRequest memory request,
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenNotPaused returns (uint256 amountOut) {
-        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
-
-        // Compute virtual BPT supply and token balances (sans BPT).
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-
-        if (request.tokenIn == IERC20(this)) {
-            amountOut = _onSwapTokenGivenBptIn(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
-
-            // For given in swaps, request.amount holds the amount in.
-            if (protocolSwapFeePercentage > 0) {
-                _payDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
-            }
-        } else if (request.tokenOut == IERC20(this)) {
-            amountOut = _onSwapBptGivenTokenIn(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
-
-            if (protocolSwapFeePercentage > 0) {
-                _payDueProtocolFeeByBpt(amountOut, protocolSwapFeePercentage);
-            }
-        } else {
-            // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
-            // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
-            // corresponds to protocol fees.
-
-            (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
-
-            amountOut = StableMath._calcOutGivenIn(
-                currentAmp,
-                balances,
-                _skipBptIndex(indexIn),
-                _skipBptIndex(indexOut),
-                request.amount,
-                invariant
-            );
-
-            if (protocolSwapFeePercentage > 0) {
-                // We could've stored these indices in stack variables, but that causes stack-too-deep issues.
-                uint256 newIndexIn = _skipBptIndex(indexIn);
-                uint256 newIndexOut = _skipBptIndex(indexOut);
-
-                uint256 amountInWithFee = _addSwapFeeAmount(request.amount);
-                balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
-                balances[newIndexOut] = balances[newIndexOut].sub(amountOut);
-
-                _payDueProtocolFeeByInvariantIncrement(
-                    invariant,
-                    currentAmp,
-                    balances,
-                    virtualSupply,
-                    protocolSwapFeePercentage
-                );
-            }
-        }
+    ) internal virtual override returns (uint256 amountOut) {
+        return _onRegularSwap(IVault.SwapKind.GIVEN_IN, request.amount, balancesIncludingBpt, indexIn, indexOut);
     }
 
+    /**
+     * @dev Since we have overridden `onSwap` here to filter swaps involving BPT, this BaseGeneralPool hook will only
+     * be called for regular swaps.
+     */
     function _onSwapGivenOut(
         SwapRequest memory request,
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) internal virtual override whenNotPaused returns (uint256 amountIn) {
-        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
+    ) internal virtual override returns (uint256 amountIn) {
+        return _onRegularSwap(IVault.SwapKind.GIVEN_OUT, request.amount, balancesIncludingBpt, indexIn, indexOut);
+    }
 
+    function _onRegularSwap(
+        IVault.SwapKind kind,
+        uint256 givenAmount,
+        uint256[] memory balancesIncludingBpt,
+        uint256 indexIn,
+        uint256 indexOut
+    ) private returns (uint256 calculatedAmount) {
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
-        if (request.tokenIn == IERC20(this)) {
-            amountIn = _onSwapBptGivenTokenOut(request.amount, _skipBptIndex(indexOut), virtualSupply, balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
-            if (protocolSwapFeePercentage > 0) {
-                _payDueProtocolFeeByBpt(amountIn, protocolSwapFeePercentage);
-            }
-        } else if (request.tokenOut == IERC20(this)) {
-            amountIn = _onSwapTokenGivenBptOut(request.amount, _skipBptIndex(indexIn), virtualSupply, balances);
+        // Adjust indices for BPT token
+        indexIn = _skipBptIndex(indexIn);
+        indexOut = _skipBptIndex(indexOut);
 
-            // For given out swaps, request.amount holds the amount out.
-            if (protocolSwapFeePercentage > 0) {
-                _payDueProtocolFeeByBpt(request.amount, protocolSwapFeePercentage);
-            }
-        } else {
-            // To compute accrued protocol fees in BPT, we measure the invariant before and after the swap, then compute
-            // the equivalent BPT amount that accounts for that growth and finally extract the percentage that
-            // corresponds to protocol fees.
-
-            (uint256 currentAmp, ) = _getAmplificationParameter();
-            uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
-
-            amountIn = StableMath._calcInGivenOut(
+        // Would like to use a function selector here, but it causes stack issues
+        if (kind == IVault.SwapKind.GIVEN_IN) {
+            calculatedAmount = StableMath._calcOutGivenIn(
                 currentAmp,
                 balances,
-                _skipBptIndex(indexIn),
-                _skipBptIndex(indexOut),
-                request.amount,
+                indexIn,
+                indexOut,
+                givenAmount,
                 invariant
             );
+        } else {
+            calculatedAmount = StableMath._calcInGivenOut(
+                currentAmp,
+                balances,
+                indexIn,
+                indexOut,
+                givenAmount,
+                invariant
+            );
+        }
 
-            if (protocolSwapFeePercentage > 0) {
-                // We could've stored these indices in stack variables, but that causes stack-too-deep issues.
-                uint256 newIndexIn = _skipBptIndex(indexIn);
-                uint256 newIndexOut = _skipBptIndex(indexOut);
+        if (protocolSwapFeePercentage > 0) {
+            uint256 amountInWithFee = _addSwapFeeAmount(
+                kind == IVault.SwapKind.GIVEN_IN ? givenAmount : calculatedAmount
+            );
+            uint256 amountOut = kind == IVault.SwapKind.GIVEN_IN ? calculatedAmount : givenAmount;
 
-                uint256 amountInWithFee = _addSwapFeeAmount(amountIn);
-                balances[newIndexIn] = balances[newIndexIn].add(amountInWithFee);
-                balances[newIndexOut] = balances[newIndexOut].sub(request.amount);
+            balances[indexIn] = balances[indexIn].add(amountInWithFee);
+            balances[indexOut] = balances[indexOut].sub(amountOut);
 
-                _payDueProtocolFeeByInvariantIncrement(
-                    invariant,
-                    currentAmp,
-                    balances,
-                    virtualSupply,
-                    protocolSwapFeePercentage
+            _payDueProtocolFeeByInvariantIncrement(
+                invariant,
+                currentAmp,
+                balances,
+                virtualSupply,
+                protocolSwapFeePercentage
+            );
+        }
+    }
+
+    function _onSwapWithBpt(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut,
+        uint256[] memory scalingFactors
+    ) private returns (uint256) {
+        _upscaleArray(balances, scalingFactors);
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
+        (uint256 amp, ) = _getAmplificationParameter();
+
+        bool bptIsTokenIn = swapRequest.tokenIn == IERC20(this);
+
+        // The lower level function return values are still upscaled, so we need to downscale the final return value
+        if (swapRequest.kind == IVault.SwapKind.GIVEN_IN) {
+            // Returning amountOut; tokens are leaving the Vault, so we round down
+            return
+                _downscaleDown(
+                    _onSwapBptGivenIn(
+                        _upscale(swapRequest.amount, scalingFactors[indexIn]),
+                        indexIn,
+                        indexOut,
+                        bptIsTokenIn,
+                        amp,
+                        protocolSwapFeePercentage,
+                        virtualSupply,
+                        balancesWithoutBpt
+                    ),
+                    scalingFactors[indexOut]
                 );
-            }
+        } else {
+            // Returning amountIn; tokens are entering the Vault, so we round up
+            return
+                _downscaleUp(
+                    _onSwapBptGivenOut(
+                        _upscale(swapRequest.amount, scalingFactors[indexOut]),
+                        indexIn,
+                        indexOut,
+                        bptIsTokenIn,
+                        amp,
+                        protocolSwapFeePercentage,
+                        virtualSupply,
+                        balancesWithoutBpt
+                    ),
+                    scalingFactors[indexIn]
+                );
         }
     }
 
     /**
-     * @dev Calculate token out for exact BPT in (exit)
+     * @dev Process a GivenIn swap involving BPT.
      */
-    function _onSwapTokenGivenBptIn(
-        uint256 bptIn,
-        uint256 tokenIndex,
+    function _onSwapBptGivenIn(
+        uint256 amount,
+        uint256 indexIn,
+        uint256 indexOut,
+        bool bptIsTokenIn,
+        uint256 amp,
+        uint256 protocolSwapFeePercentage,
         uint256 virtualSupply,
-        uint256[] memory balances
-    ) internal view returns (uint256 amountOut) {
-        // Use virtual total supply and zero swap fees for joins.
-        (uint256 amp, ) = _getAmplificationParameter();
-        amountOut = StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptIn, virtualSupply, 0);
+        uint256[] memory balancesWithoutBpt
+    ) private returns (uint256 amountOut) {
+        uint256 swapFeePercentage = getSwapFeePercentage();
+
+        if (bptIsTokenIn) {
+            // exitSwap
+            amountOut = StableMath._calcTokenOutGivenExactBptIn(
+                amp,
+                balancesWithoutBpt,
+                _skipBptIndex(indexOut),
+                amount,
+                virtualSupply,
+                swapFeePercentage
+            );
+        } else {
+            // joinSwap
+            uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
+            amountsIn[_skipBptIndex(indexIn)] = amount;
+
+            amountOut = StableMath._calcBptOutGivenExactTokensIn(
+                amp,
+                balancesWithoutBpt,
+                amountsIn,
+                virtualSupply,
+                swapFeePercentage
+            );
+        }
+
+        if (protocolSwapFeePercentage > 0) {
+            _payDueProtocolFeeByBpt(bptIsTokenIn ? amount : amountOut, protocolSwapFeePercentage);
+        }
     }
 
-    /**
-     * @dev Calculate token in for exact BPT out (join)
-     */
-    function _onSwapTokenGivenBptOut(
-        uint256 bptOut,
-        uint256 tokenIndex,
+    function _onSwapBptGivenOut(
+        uint256 amount,
+        uint256 indexIn,
+        uint256 indexOut,
+        bool bptIsTokenIn,
+        uint256 amp,
+        uint256 protocolSwapFeePercentage,
         uint256 virtualSupply,
-        uint256[] memory balances
-    ) internal view returns (uint256 amountIn) {
-        // Use virtual total supply and zero swap fees for joins
-        (uint256 amp, ) = _getAmplificationParameter();
-        amountIn = StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptOut, virtualSupply, 0);
-    }
+        uint256[] memory balancesWithoutBpt
+    ) private returns (uint256 amountIn) {
+        uint256 swapFeePercentage = getSwapFeePercentage();
 
-    /**
-     * @dev Calculate BPT in for exact token out (exit)
-     */
-    function _onSwapBptGivenTokenOut(
-        uint256 amountOut,
-        uint256 tokenIndex,
-        uint256 virtualSupply,
-        uint256[] memory balances
-    ) internal view returns (uint256 bptIn) {
-        // Avoid BPT balance for stable pool math. Use virtual total supply and zero swap fees for exits.
-        (uint256 amp, ) = _getAmplificationParameter();
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
-        amountsOut[tokenIndex] = amountOut;
-        bptIn = StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, virtualSupply, 0);
-    }
+        if (bptIsTokenIn) {
+            // joinSwap
+            uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
+            amountsOut[_skipBptIndex(indexOut)] = amount;
 
-    /**
-     * @dev Calculate BPT out for exact token in (join)
-     */
-    function _onSwapBptGivenTokenIn(
-        uint256 amountIn,
-        uint256 tokenIndex,
-        uint256 virtualSupply,
-        uint256[] memory balances
-    ) internal view returns (uint256 bptOut) {
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
-        amountsIn[tokenIndex] = amountIn;
-        (uint256 amp, ) = _getAmplificationParameter();
-        bptOut = StableMath._calcBptOutGivenExactTokensIn(amp, balances, amountsIn, virtualSupply, 0);
+            amountIn = StableMath._calcBptInGivenExactTokensOut(
+                amp,
+                balancesWithoutBpt,
+                amountsOut,
+                virtualSupply,
+                swapFeePercentage
+            );
+        } else {
+            // exitSwap
+            // Since the amount is BPT (always 18 decimals), it does not need scaling
+            amountIn = StableMath._calcTokenInGivenExactBptOut(
+                amp,
+                balancesWithoutBpt,
+                _skipBptIndex(indexIn),
+                amount,
+                virtualSupply,
+                swapFeePercentage
+            );
+        }
+
+        if (protocolSwapFeePercentage > 0) {
+            _payDueProtocolFeeByBpt(bptIsTokenIn ? amountIn : amount, protocolSwapFeePercentage);
+        }
     }
 
     /**
@@ -539,7 +614,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override whenNotPaused returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
         _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
 

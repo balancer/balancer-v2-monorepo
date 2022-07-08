@@ -47,18 +47,25 @@ import "./TimelockExecutor.sol";
  *   `keccak256(actionId, account, where)`.
  *
  * Permission granularity:
- *   In addition to the who/what/where of a permission, an extra notion of "how" is introduced to enable more granular
- *   configuration. This concept is used within the Authorizer to provide clarity among four ambiguous actions:
+ *   In addition to the who/what/where of a permission, an extra notion of a "specifier" is introduced to enable more
+ *   granular configuration. This concept is used within the Authorizer to provide clarity among four ambiguous actions:
  *   granting/revoking permissions, executing scheduled actions, and setting action delays. For example, in managing
  *   the permission to set action delays, it is desirable to delineate whether an account can set delays for all
- *   actions indiscriminately or only for a specific action ID. In this case, the permission's "what" is the action
- *   ID for scheduling a delay change, and the "how" is the action ID for which the delay will be changed. The "what"
- *   and "how" of a permission are combined into a single "extended" `actionId` by computing `keccak256(what, how)`.
+ *   actions indiscriminately or only for a specific action ID. In this case, the permission's "baseActionId" is the
+ *   action ID for scheduling a delay change, and the "specifier" is the action ID for which the delay will be changed.
+ *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
+ *   by calling `getExtendedActionId(baseActionId, specifier)`.
  */
 contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     using Address for address;
 
-    bytes32 public constant WHATEVER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    /**
+     * @notice An action specifier which grants a general permission to perform all variants of the base action.
+     */
+    bytes32
+        public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // solhint-disable-previous-line max-line-length
+
     address public constant EVERYWHERE = address(-1);
 
     // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
@@ -84,8 +91,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     // These action ids do not need to be used by external actors as the action ids above do.
     // Instead they're saved just for gas savings so we can keep them private.
-    bytes32 private immutable _GRANT_WHATEVER_ACTION_ID;
-    bytes32 private immutable _REVOKE_WHATEVER_ACTION_ID;
+    bytes32 private immutable _GENERAL_GRANT_ACTION_ID;
+    bytes32 private immutable _GENERAL_REVOKE_ACTION_ID;
 
     TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
@@ -154,18 +161,18 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
         bytes32 grantActionId = getActionId(TimelockAuthorizer.grantPermissions.selector);
         bytes32 revokeActionId = getActionId(TimelockAuthorizer.revokePermissions.selector);
-        bytes32 grantWhateverActionId = getExtendedActionId(grantActionId, WHATEVER);
-        bytes32 revokeWhateverActionId = getExtendedActionId(revokeActionId, WHATEVER);
+        bytes32 generalGrantActionId = getExtendedActionId(grantActionId, GENERAL_PERMISSION_SPECIFIER);
+        bytes32 generalRevokeActionId = getExtendedActionId(revokeActionId, GENERAL_PERMISSION_SPECIFIER);
 
-        _grantPermission(grantWhateverActionId, admin, EVERYWHERE);
-        _grantPermission(revokeWhateverActionId, admin, EVERYWHERE);
+        _grantPermission(generalGrantActionId, admin, EVERYWHERE);
+        _grantPermission(generalRevokeActionId, admin, EVERYWHERE);
 
         GRANT_ACTION_ID = grantActionId;
         REVOKE_ACTION_ID = revokeActionId;
         EXECUTE_ACTION_ID = getActionId(TimelockAuthorizer.execute.selector);
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
-        _GRANT_WHATEVER_ACTION_ID = grantWhateverActionId;
-        _REVOKE_WHATEVER_ACTION_ID = revokeWhateverActionId;
+        _GENERAL_GRANT_ACTION_ID = generalGrantActionId;
+        _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
     }
 
     /**
@@ -253,10 +260,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     }
 
     /**
-     * @notice Returns the extended action ID for action `actionId` with specific params `how`.
+     * @notice Returns the extended action ID for base action ID `baseActionId` with specific params `specifier`.
      */
-    function getExtendedActionId(bytes32 actionId, bytes32 how) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(actionId, how));
+    function getExtendedActionId(bytes32 baseActionId, bytes32 specifier) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(baseActionId, specifier));
     }
 
     /**
@@ -314,7 +321,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) public view returns (bool) {
-        return _hasPermissionOrWhatever(GRANT_ACTION_ID, account, where, actionId);
+        return _hasPermissionSpecificallyOrGenerally(GRANT_ACTION_ID, account, where, actionId);
     }
 
     /**
@@ -325,7 +332,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) public view returns (bool) {
-        return _hasPermissionOrWhatever(REVOKE_ACTION_ID, account, where, actionId);
+        return _hasPermissionSpecificallyOrGenerally(REVOKE_ACTION_ID, account, where, actionId);
     }
 
     /**
@@ -348,7 +355,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) public view returns (bool) {
-        return _canPerformOrWhatever(GRANT_ACTION_ID, account, where, actionId);
+        return _canPerformSpecificallyOrGenerally(GRANT_ACTION_ID, account, where, actionId);
     }
 
     /**
@@ -359,7 +366,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) public view returns (bool) {
-        return _canPerformOrWhatever(REVOKE_ACTION_ID, account, where, actionId);
+        return _canPerformSpecificallyOrGenerally(REVOKE_ACTION_ID, account, where, actionId);
     }
 
     /**
@@ -415,12 +422,12 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         _require(msg.sender == pendingRoot, Errors.SENDER_NOT_ALLOWED);
 
         // Grant powers to new root to grant or revoke any permission over any contract.
-        _grantPermission(_GRANT_WHATEVER_ACTION_ID, pendingRoot, EVERYWHERE);
-        _grantPermission(_REVOKE_WHATEVER_ACTION_ID, pendingRoot, EVERYWHERE);
+        _grantPermission(_GENERAL_GRANT_ACTION_ID, pendingRoot, EVERYWHERE);
+        _grantPermission(_GENERAL_REVOKE_ACTION_ID, pendingRoot, EVERYWHERE);
 
         // Revoke these powers from the outgoing root.
-        _revokePermission(_GRANT_WHATEVER_ACTION_ID, currentRoot, EVERYWHERE);
-        _revokePermission(_REVOKE_WHATEVER_ACTION_ID, currentRoot, EVERYWHERE);
+        _revokePermission(_GENERAL_GRANT_ACTION_ID, currentRoot, EVERYWHERE);
+        _revokePermission(_GENERAL_REVOKE_ACTION_ID, currentRoot, EVERYWHERE);
 
         // Complete the root transfer and reset the pending root.
         _setRoot(pendingRoot);
@@ -711,38 +718,62 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         }
     }
 
-    function _hasPermissionOrWhatever(
-        bytes32 actionId,
+    /**
+     * @notice Returns if `account` has permission to perform the action `(baseActionId, specifier)` on target `where`.
+     * @dev This function differs from `_canPerformSpecificallyOrGenerally` as it *doesn't* take into account whether
+     * there is a delay for the action associated with the permission being checked.
+     *
+     * The address `account` may have the permission associated with the provided action but that doesn't necessarily
+     * mean that it may perform that action. If there is no delay associated with this action, `account` may perform the
+     * action directly. If there is a delay, then `account` is instead able to schedule that action to be performed
+     * at a later date.
+     *
+     * This function returns true in both cases.
+     */
+    function _hasPermissionSpecificallyOrGenerally(
+        bytes32 baseActionId,
         address account,
         address where,
-        bytes32 how
+        bytes32 specifier
     ) internal view returns (bool) {
-        bytes32 granularActionId = getExtendedActionId(actionId, how);
-        bytes32 globalActionId = getExtendedActionId(actionId, WHATEVER);
-        return hasPermission(granularActionId, account, where) || hasPermission(globalActionId, account, where);
+        bytes32 specificActionId = getExtendedActionId(baseActionId, specifier);
+        bytes32 generalActionId = getExtendedActionId(baseActionId, GENERAL_PERMISSION_SPECIFIER);
+        return hasPermission(specificActionId, account, where) || hasPermission(generalActionId, account, where);
     }
 
-    function _canPerformOrWhatever(
-        bytes32 actionId,
+    /**
+     * @notice Returns if `account` can perform the action `(baseActionId, specifier)` on target `where`.
+     * @dev This function differs from `_hasPermissionSpecificallyOrGenerally` as it *does* take into account whether
+     * there is a delay for the action associated with the permission being checked.
+     *
+     * The address `account` may have the permission associated with the provided action but that doesn't necessarily
+     * mean that it may perform that action. If there is no delay associated with this action, `account` may perform the
+     * action directly. If there is a delay, then `account` is instead able to schedule that action to be performed
+     * at a later date.
+     *
+     * This function only returns true only in the first case (except for actions performed by the authorizer timelock).
+     */
+    function _canPerformSpecificallyOrGenerally(
+        bytes32 baseActionId,
         address account,
         address where,
-        bytes32 how
+        bytes32 specifier
     ) internal view returns (bool) {
-        // If there is a delay defined for the granular action ID, then the sender must be the authorizer (scheduled
+        // If there is a delay defined for the specific action ID, then the sender must be the authorizer (scheduled
         // execution)
-        bytes32 granularActionId = getExtendedActionId(actionId, how);
-        if (_delaysPerActionId[granularActionId] > 0) {
+        bytes32 specificActionId = getExtendedActionId(baseActionId, specifier);
+        if (_delaysPerActionId[specificActionId] > 0) {
             return account == address(_executor);
         }
 
         // If there is no delay, we check if the account has that permission
-        if (hasPermission(granularActionId, account, where)) {
+        if (hasPermission(specificActionId, account, where)) {
             return true;
         }
 
-        // If the account doesn't have the explicit permission, we repeat for the global permission
-        bytes32 globalActionId = getExtendedActionId(actionId, WHATEVER);
-        return canPerform(globalActionId, account, where);
+        // If the account doesn't have the explicit permission, we repeat for the general permission
+        bytes32 generalActionId = getExtendedActionId(baseActionId, GENERAL_PERMISSION_SPECIFIER);
+        return canPerform(generalActionId, account, where);
     }
 
     /**
