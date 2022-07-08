@@ -1443,7 +1443,7 @@ describe('StablePhantomPool', () => {
 
           it('exits use the new rates', async () => {
             const previousBptBalance = await pool.balanceOf(lp);
-            const bptIn = pct(previousBptBalance, 0.182);
+            const bptIn = pct(previousBptBalance, 0.082);
             const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
             const token = tokens.get(tokenIndex);
 
