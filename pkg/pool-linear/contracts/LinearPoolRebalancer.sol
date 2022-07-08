@@ -34,10 +34,7 @@ contract LinearPoolRebalancer {
     IERC20 private immutable _mainToken;
     IERC20 private immutable _wrappedToken;
 
-    uint256 private immutable _mainTokenIndex;
-    uint256 private immutable _wrappedTokenIndex;
     uint256 private immutable _mainTokenScalingFactor;
-    uint256 private immutable _wrappedTokenScalingFactor;
 
     IVault private immutable _vault;
 
@@ -48,15 +45,7 @@ contract LinearPoolRebalancer {
         IVault vault,
         IBalancerQueries queries
     ) {
-        uint256 mainTokenIndex = pool.getMainIndex();
-        uint256 wrappedTokenIndex = pool.getWrappedIndex();
-
-        uint256[] memory _scalingFactors = pool.getScalingFactors();
-
-        _mainTokenIndex = pool.getMainIndex();
-        _wrappedTokenIndex = pool.getWrappedIndex();
-        _mainTokenScalingFactor = _scalingFactors[mainTokenIndex];
-        _wrappedTokenScalingFactor = _scalingFactors[wrappedTokenIndex];
+        _mainTokenScalingFactor = pool.getScalingFactors()[pool.getMainIndex()];
 
         _pool = pool;
         _poolId = pool.getPoolId();
@@ -211,7 +200,8 @@ contract LinearPoolRebalancer {
         (uint256 lowerTarget, uint256 upperTarget) = _pool.getTargets();
         uint256 midpoint = (lowerTarget + upperTarget) / 2;
 
-        // The targets are upscaled by the main token's scaling factor, so we undo that.
+        // The targets are upscaled by the main token's scaling factor, so we undo that. Note that we're assuming that
+        // the main token's scaling factor is constant.
         return FixedPoint.divDown(midpoint, _mainTokenScalingFactor);
     }
 
