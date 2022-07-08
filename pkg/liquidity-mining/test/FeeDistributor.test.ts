@@ -8,7 +8,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { parseFixed } from '@ethersproject/bignumber';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -411,7 +411,7 @@ describe('FeeDistributor', () => {
       describe('checkpointToken', () => {
         sharedBeforeEach('Deploy protocol fee token', async () => {
           tokens = await TokenList.create(['FEE']);
-          tokenAmounts = tokens.map(() => parseFixed('1', 18));
+          tokenAmounts = tokens.map((_, i) => fp(i + 1));
         });
 
         itCheckpointsTokensCorrectly(() => feeDistributor.checkpointToken(tokens.addresses[0]));
@@ -420,7 +420,7 @@ describe('FeeDistributor', () => {
       describe('checkpointTokens', () => {
         sharedBeforeEach('Deploy protocol fee token', async () => {
           tokens = await TokenList.create(['FEE', 'FEE2']);
-          tokenAmounts = tokens.map(() => parseFixed('1', 18));
+          tokenAmounts = tokens.map((_, i) => fp(i + 1));
         });
 
         itCheckpointsTokensCorrectly(() => feeDistributor.checkpointTokens(tokens.addresses));
@@ -561,7 +561,7 @@ describe('FeeDistributor', () => {
     describe('claimToken', () => {
       sharedBeforeEach('Deploy protocol fee token', async () => {
         tokens = await TokenList.create(['FEE']);
-        tokenAmounts = tokens.map(() => parseFixed('1', 18));
+        tokenAmounts = tokens.map((_, i) => fp(i + 1));
       });
 
       // Return values from static-calling claimToken need to be converted into array format to standardise test code.
@@ -574,7 +574,7 @@ describe('FeeDistributor', () => {
     describe('claimTokens', () => {
       sharedBeforeEach('Deploy protocol fee token', async () => {
         tokens = await TokenList.create(['FEE', 'FEE2']);
-        tokenAmounts = tokens.map(() => parseFixed('1', 18));
+        tokenAmounts = tokens.map((_, i) => fp(i + 1));
       });
 
       itClaimsTokensCorrectly(
