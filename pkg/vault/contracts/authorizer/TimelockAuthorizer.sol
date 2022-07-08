@@ -718,6 +718,18 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         }
     }
 
+    /**
+     * @notice Returns if `account` has permission to perform the action `(baseActionId, specifier)` on target `where`.
+     * @dev This function differs from `_canPerformSpecificallyOrGenerally` as it *doesn't* take into account whether
+     * there is a delay for the action associated with the permission being checked.
+     *
+     * The address `account` may have the permission associated with the provided action but that doesn't necessarily
+     * mean that it may perform that action. If there is no delay associated with this action, `account` may perform the
+     * action directly. If there is a delay, then `account` is instead able to schedule that action to be performed
+     * at a later date.
+     *
+     * This function returns true in both cases.
+     */
     function _hasPermissionSpecificallyOrGenerally(
         bytes32 baseActionId,
         address account,
@@ -729,6 +741,18 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         return hasPermission(specificActionId, account, where) || hasPermission(generalActionId, account, where);
     }
 
+    /**
+     * @notice Returns if `account` can perform the action `(baseActionId, specifier)` on target `where`.
+     * @dev This function differs from `_hasPermissionSpecificallyOrGenerally` as it *does* take into account whether
+     * there is a delay for the action associated with the permission being checked.
+     *
+     * The address `account` may have the permission associated with the provided action but that doesn't necessarily
+     * mean that it may perform that action. If there is no delay associated with this action, `account` may perform the
+     * action directly. If there is a delay, then `account` is instead able to schedule that action to be performed
+     * at a later date.
+     *
+     * This function only returns true only in the first case (except for actions performed by the authorizer timelock).
+     */
     function _canPerformSpecificallyOrGenerally(
         bytes32 baseActionId,
         address account,
