@@ -18,12 +18,11 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 
 import "@balancer-labs/v2-vault/contracts/AssetHelpers.sol";
-
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
@@ -99,7 +98,7 @@ contract BalancerQueries is IBalancerQueries, AssetHelpers {
         (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
         IProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
-        (bptOut, amountsIn) = BasePool(pool).queryJoin(
+        (bptOut, amountsIn) = IBasePool(pool).queryJoin(
             poolId,
             sender,
             recipient,
@@ -120,7 +119,7 @@ contract BalancerQueries is IBalancerQueries, AssetHelpers {
         (uint256[] memory balances, uint256 lastChangeBlock) = _validateAssetsAndGetBalances(poolId, request.assets);
         IProtocolFeesCollector feesCollector = vault.getProtocolFeesCollector();
 
-        (bptIn, amountsOut) = BasePool(pool).queryExit(
+        (bptIn, amountsOut) = IBasePool(pool).queryExit(
             poolId,
             sender,
             recipient,

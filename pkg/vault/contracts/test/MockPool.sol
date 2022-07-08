@@ -152,4 +152,28 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
                 ? swapRequest.amount.mulDown(_multiplier)
                 : swapRequest.amount.divDown(_multiplier);
     }
+
+    function queryJoin(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory) {
+        return (0, new uint256[](0));
+    }
+
+    function queryExit(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory) {
+        return (0, new uint256[](0));
+    }
 }
