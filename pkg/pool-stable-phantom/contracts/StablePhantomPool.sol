@@ -234,6 +234,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _bptIndex;
     }
 
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) public virtual override returns (uint256) {
+        _cacheTokenRatesIfNecessary();
+
+        return super.onSwap(swapRequest, balances, indexIn, indexOut);
+    }
+
     // Typically, `_onSwapGivenIn` and `_onSwapGivenOut` handlers are meant to process swaps between Pool tokens.
     // Since one of the Pool's tokens is the preminted BPT, we neeed to a) handle swaps where that tokens is involved
     // separately (as they are effectively single-token joins or exits), and b) remove BPT from the balances array when
@@ -255,8 +266,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override whenNotPaused returns (uint256 amountOut) {
-        _cacheTokenRatesIfNecessary();
-
         uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
@@ -318,8 +327,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexIn,
         uint256 indexOut
     ) internal virtual override whenNotPaused returns (uint256 amountIn) {
-        _cacheTokenRatesIfNecessary();
-
         uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
 
         // Compute virtual BPT supply and token balances (sans BPT).
@@ -484,6 +491,28 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _payProtocolFees(protocolFeeAmount);
     }
 
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        //_cacheTokenRatesIfNecessary();
+
+        return super.onJoinPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
+    }
+
     /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
@@ -622,6 +651,28 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, amountsIn);
+    }
+
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        //_cacheTokenRatesIfNecessary();
+
+        return super.onExitPool(
+            poolId,
+            sender,
+            recipient,
+            balances,
+            lastChangeBlock,
+            protocolSwapFeePercentage,
+            userData
+        );
     }
 
     /**
