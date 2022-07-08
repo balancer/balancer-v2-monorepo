@@ -34,6 +34,9 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) public virtual override onlyVault(request.poolId) returns (uint256) {
+        // Block all swaps when paused
+        _ensureNotPaused();
+
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
