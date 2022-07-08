@@ -56,12 +56,6 @@ contract LinearPoolRebalancer {
     }
 
     function rebalance() public {
-        // 1. query swap to get balance to middle of acceptable range. Store swap parameters (input and output amts)
-        // 2. with AM power, withdraw excess token
-        // 3. transact with AAVE to swap tokens
-        // 4. deposit under-excess token into protocol
-        // 5. walk away with difference between amounts from 1. and 4.
-
         // The first thing we need to determine if whether the Pool is below or above the target level, which will
         // inform whether we need to deposit or withdraw main tokens.
         uint256 desiredMainTokenBalance = _getDesiredMainTokenBalance();
