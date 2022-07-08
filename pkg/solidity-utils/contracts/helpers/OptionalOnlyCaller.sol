@@ -18,14 +18,6 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IOptionalO
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
-/**
- * @dev Helper to add an opt-in validation to methods that are otherwise callable by any address.
- *
- * Derive this contract when an external method that affects a given address
- * (such as a token claim) needs to be restricted by a particular circumstance.
- *
- * When enabled, the verification will only allow the affected address to call the restricted method(s).
- */
 abstract contract OptionalOnlyCaller is IOptionalOnlyCaller {
     mapping(address => bool) private _isOnlyCallerEnabled;
 
@@ -38,9 +30,13 @@ abstract contract OptionalOnlyCaller is IOptionalOnlyCaller {
         _;
     }
 
-    function enableOnlyCaller(bool enabled) external override {
+    function setOnlyCallerCheck(bool enabled) external override {
         _isOnlyCallerEnabled[msg.sender] = enabled;
         emit OnlyCallerOptIn(msg.sender, enabled);
+    }
+
+    function isOnlyCallerEnabled(address user) external view override returns (bool) {
+        return _isOnlyCallerEnabled[user];
     }
 
     function _verifyCaller(address user) private view {

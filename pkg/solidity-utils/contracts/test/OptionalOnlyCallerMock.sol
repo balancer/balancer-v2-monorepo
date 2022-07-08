@@ -24,9 +24,9 @@ import "../helpers/OptionalOnlyCaller.sol";
  */
 contract OptionalOnlyCallerMock is OptionalOnlyCaller {
 
-    event TokensClaimed(address user);
+    event TestFunctionCalled(address user);
 
-    function claimTokens(address user) external optionalOnlyCaller(user) {
-        emit TokensClaimed(user);
+    function testFunction(address user) external optionalOnlyCaller(user) {
+        emit TestFunctionCalled(user);
     }
 }

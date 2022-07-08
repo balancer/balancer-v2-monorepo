@@ -19,52 +19,62 @@ describe('OptionalOnlyCaller', function () {
     optionalOnlyCaller = await deploy('OptionalOnlyCallerMock');
   });
 
-  context('when verification is disabled', () => {
-    it('works when the caller is the user', async () => {
-      const tx = await optionalOnlyCaller.connect(user).claimTokens(user.address);
+  context('when the only caller check is disabled', () => {
+    it('allows the user to call', async () => {
+      const tx = await optionalOnlyCaller.connect(user).testFunction(user.address);
       const receipt = await tx.wait();
-      expectEvent.inReceipt(receipt, 'TokensClaimed', { user: user.address });
+      expectEvent.inReceipt(receipt, 'TestFunctionCalled', { user: user.address });
     });
 
-    it('works when the caller is other', async () => {
-      const tx = await optionalOnlyCaller.connect(other).claimTokens(user.address);
+    it('allows other accounts to call', async () => {
+      const tx = await optionalOnlyCaller.connect(other).testFunction(user.address);
       const receipt = await tx.wait();
-      expectEvent.inReceipt(receipt, 'TokensClaimed', { user: user.address });
+      expectEvent.inReceipt(receipt, 'TestFunctionCalled', { user: user.address });
     });
 
-    it('emits events when enabling and disabling only caller feature', async () => {
-      const txOn = await optionalOnlyCaller.connect(user).enableOnlyCaller(true);
+    it('emits an event when enabling only caller check', async () => {
+      const txOn = await optionalOnlyCaller.connect(user).setOnlyCallerCheck(true);
       const receiptOn = await txOn.wait();
       expectEvent.inReceipt(receiptOn, 'OnlyCallerOptIn', { user: user.address, enabled: true });
+    });
 
-      const txOff = await optionalOnlyCaller.connect(user).enableOnlyCaller(false);
-      const receiptOff = await txOff.wait();
-      expectEvent.inReceipt(receiptOff, 'OnlyCallerOptIn', { user: user.address, enabled: false });
+    it('returns false when only caller check is queried for user', async () => {
+      expect(await optionalOnlyCaller.isOnlyCallerEnabled(user.address)).to.be.false;
     });
   });
 
-  context('when verification is enabled', () => {
-    beforeEach('deploy verifier mock and enable only caller verifications', async () => {
-      await optionalOnlyCaller.connect(user).enableOnlyCaller(true);
+  context('when the only caller check is enabled', () => {
+    beforeEach('deploy optional only caller mock and enable only caller checks', async () => {
+      await optionalOnlyCaller.connect(user).setOnlyCallerCheck(true);
     });
 
-    it('works when the caller is the user', async () => {
-      const tx = await optionalOnlyCaller.connect(user).claimTokens(user.address);
+    it('allows the user to call', async () => {
+      const tx = await optionalOnlyCaller.connect(user).testFunction(user.address);
       const receipt = await tx.wait();
-      expectEvent.inReceipt(receipt, 'TokensClaimed', { user: user.address });
+      expectEvent.inReceipt(receipt, 'TestFunctionCalled', { user: user.address });
     });
 
-    it('reverts when the caller is the user', async () => {
-      await expect(optionalOnlyCaller.connect(other).claimTokens(user.address)).to.be.revertedWith(
+    it('reverts when the caller is other account', async () => {
+      await expect(optionalOnlyCaller.connect(other).testFunction(user.address)).to.be.revertedWith(
         'SENDER_NOT_ALLOWED'
       );
     });
 
-    it('works when the caller is other after user disables verifications', async () => {
-      await optionalOnlyCaller.connect(user).enableOnlyCaller(false);
-      const tx = await optionalOnlyCaller.connect(other).claimTokens(user.address);
+    it('allows other accounts to call after user disables checks', async () => {
+      await optionalOnlyCaller.connect(user).setOnlyCallerCheck(false);
+      const tx = await optionalOnlyCaller.connect(other).testFunction(user.address);
       const receipt = await tx.wait();
-      expectEvent.inReceipt(receipt, 'TokensClaimed', { user: user.address });
+      expectEvent.inReceipt(receipt, 'TestFunctionCalled', { user: user.address });
+    });
+
+    it('emits an event when disabling only caller check', async () => {
+      const txOff = await optionalOnlyCaller.connect(user).setOnlyCallerCheck(false);
+      const receiptOff = await txOff.wait();
+      expectEvent.inReceipt(receiptOff, 'OnlyCallerOptIn', { user: user.address, enabled: false });
+    });
+
+    it('returns true when only caller check is queried for user', async () => {
+      expect(await optionalOnlyCaller.isOnlyCallerEnabled(user.address)).to.be.true;
     });
   });
 });
