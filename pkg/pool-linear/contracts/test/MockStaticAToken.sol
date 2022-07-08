@@ -52,4 +52,21 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
     function setReserveNormalizedIncome(uint256 newRate) external {
         _rate = newRate;
     }
+
+    function deposit(
+        address,
+        uint256,
+        uint16,
+        bool
+    ) external override returns (uint256) {
+        return 0;
+    }
+
+    function withdraw(
+        address,
+        uint256,
+        bool
+    ) external override returns (uint256, uint256) {
+        return (0, 0);
+    }
 }
