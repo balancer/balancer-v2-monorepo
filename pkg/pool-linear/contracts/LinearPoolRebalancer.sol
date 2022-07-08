@@ -189,8 +189,8 @@ contract LinearPoolRebalancer {
     }
 
     function _getDesiredMainTokenBalance() private view returns (uint256) {
-        // The desired main token balance is the midpoint of the lower and upper targets, which aims to maximize Pool swap
-        // volume by allowing for swaps in both directions with no rebalancing fees.
+        // The desired main token balance is the midpoint of the lower and upper targets, which aims to maximize
+        // Pool swap volume by allowing for swaps in both directions with no rebalancing fees.
         (uint256 lowerTarget, uint256 upperTarget) = _pool.getTargets();
         uint256 midpoint = (lowerTarget + upperTarget) / 2;
 
