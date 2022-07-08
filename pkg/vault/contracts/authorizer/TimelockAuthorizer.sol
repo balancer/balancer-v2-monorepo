@@ -64,6 +64,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
      */
     bytes32
         public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // solhint-disable-previous-line max-line-length
+
     address public constant EVERYWHERE = address(-1);
 
     // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting

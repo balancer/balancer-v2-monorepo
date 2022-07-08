@@ -25,6 +25,7 @@ import "./TimelockAuthorizer.sol";
 contract TimelockAuthorizerMigrator {
     bytes32
         public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    // solhint-disable-previous-line max-line-length
     address public constant EVERYWHERE = address(-1);
     uint256 public constant CHANGE_ROOT_DELAY = 7 days;
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
