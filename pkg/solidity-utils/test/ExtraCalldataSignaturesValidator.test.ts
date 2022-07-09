@@ -10,7 +10,7 @@ import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { RelayerAuthorization, RelayerAction } from '@balancer-labs/balancer-js';
 
-describe('SignaturesValidator', () => {
+describe('ExtraCalldataSignaturesValidator', () => {
   let validator: Contract;
   let user: SignerWithAddress, sender: SignerWithAddress, other: SignerWithAddress;
 
@@ -19,7 +19,7 @@ describe('SignaturesValidator', () => {
   });
 
   sharedBeforeEach('deploy validator', async () => {
-    validator = await deploy('SignaturesValidatorMock');
+    validator = await deploy('ExtraCalldataSignaturesValidatorMock');
   });
 
   describe('decoding', () => {

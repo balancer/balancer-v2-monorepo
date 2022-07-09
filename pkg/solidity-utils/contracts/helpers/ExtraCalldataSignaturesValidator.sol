@@ -25,9 +25,9 @@ import "../openzeppelin/EIP712.sol";
  * This contract relies on the fact that Solidity contracts can be called with extra calldata, and enables
  * meta-transaction schemes by appending an EIP712 signature of the original calldata at the end.
  *
- * Derived contracts must implement the `_typeHash` function to map function selectors to EIP712 structs.
+ * Derived contracts must implement the `_entrypointTypeHash` function to map function selectors to EIP712 structs.
  */
-abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
+abstract contract ExtraCalldataSignaturesValidator is ISignaturesValidator, EIP712 {
     // The appended data consists of a deadline, plus the [v,r,s] signature. For simplicity, we use a full 256 bit slot
     // for each of these values, even if 'v' is typically an 8 bit value.
     uint256 internal constant _EXTRA_CALLDATA_LENGTH = 4 * 32;
@@ -50,7 +50,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
     /**
      * @dev Reverts with `errorCode` unless a valid signature for `user` was appended to the calldata.
      */
-    function _validateSignature(address user, uint256 errorCode) internal {
+    function _validateExtraCalldataSignature(address user, uint256 errorCode) internal {
         uint256 nextNonce = _nextNonce[user]++;
         _require(_isSignatureValid(user, nextNonce), errorCode);
     }
@@ -64,7 +64,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
             return false;
         }
 
-        bytes32 typeHash = _typeHash();
+        bytes32 typeHash = _entrypointTypeHash();
         if (typeHash == bytes32(0)) {
             // Prevent accidental signature validation for functions that don't have an associated type hash.
             return false;
@@ -90,7 +90,7 @@ abstract contract SignaturesValidator is ISignaturesValidator, EIP712 {
      *
      * If 0x00, all signatures will be considered invalid.
      */
-    function _typeHash() internal view virtual returns (bytes32);
+    function _entrypointTypeHash() internal view virtual returns (bytes32);
 
     /**
      * @dev Extracts the signature deadline from extra calldata.

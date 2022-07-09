@@ -2,9 +2,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/SignaturesValidator.sol";
+import "../helpers/ExtraCalldataSignaturesValidator.sol";
 
-contract SignaturesValidatorMock is SignaturesValidator {
+contract ExtraCalldataSignaturesValidatorMock is ExtraCalldataSignaturesValidator {
     bytes32 internal immutable AUTH_TYPE_HASH = keccak256(
         "Authorization(bytes calldata,address sender,uint256 nonce,uint256 deadline)"
     );
@@ -12,7 +12,7 @@ contract SignaturesValidatorMock is SignaturesValidator {
     event Authenticated(address user, address sender);
     event CalldataDecoded(bytes data, uint256 deadline, uint8 v, bytes32 r, bytes32 s);
 
-    constructor() SignaturesValidator("Balancer V2 Vault") {
+    constructor() ExtraCalldataSignaturesValidator("Balancer V2 Vault") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -21,7 +21,7 @@ contract SignaturesValidatorMock is SignaturesValidator {
     }
 
     function authenticateCall(address user) external {
-        _validateSignature(user, Errors.INVALID_SIGNATURE);
+        _validateExtraCalldataSignature(user, Errors.INVALID_SIGNATURE);
         _decodeCalldata();
         emit Authenticated(user, msg.sender);
     }
@@ -39,7 +39,7 @@ contract SignaturesValidatorMock is SignaturesValidator {
         emit CalldataDecoded(_calldata(), _deadline(), v, r, s);
     }
 
-    function _typeHash() internal view override returns (bytes32) {
+    function _entrypointTypeHash() internal view override returns (bytes32) {
         return AUTH_TYPE_HASH;
     }
 }
