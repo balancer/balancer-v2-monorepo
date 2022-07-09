@@ -1351,8 +1351,19 @@ describe('StablePhantomPool', () => {
             });
           }
 
+          async function verifyScalingFactors(newScalingFactors: BigNumber[]): Promise<void> {
+            await tokens.asyncEach(async (token) => {
+              const expectedRate = await scaleRate(token);
+              const tokenIndex = await pool.getTokenIndex(token);
+              expect(newScalingFactors[tokenIndex]).to.be.equal(expectedRate);
+              expect(await pool.getScalingFactor(token)).to.be.equal(expectedRate);
+            });
+
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+          }
+
           sharedBeforeEach('fund lp and pool', async () => {
-            await tokens.mint({ to: lp, amount: fp(100) });
+            await tokens.mint({ to: lp, amount: fp(10000) });
             await tokens.approve({ from: lp, to: pool.vault });
 
             await pool.init({ initialBalances, recipient: lp });
@@ -1397,12 +1408,7 @@ describe('StablePhantomPool', () => {
             });
 
             // Verify the new rates are reflected in the scaling factors
-            const newScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < newScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(newScalingFactors[i]).to.not.equal(previousScalingFactors[i]);
-              }
-            }
+            await verifyScalingFactors(await pool.getScalingFactors());
 
             expect(amountOut).to.not.equal(previousAmountOut);
           });
@@ -1419,24 +1425,14 @@ describe('StablePhantomPool', () => {
             await updateExternalRates();
 
             // Verify the new rates are not yet loaded
-            const preOpScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < preOpScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(preOpScalingFactors[i]).to.equal(previousScalingFactors[i]);
-              }
-            }
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
 
             // And join again - amountIn should be different
             // This must be a real join - otherwise the rate changes would revert along with the query
             const newJoinResult = await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token });
 
             // Verify the new rates are reflected in the scaling factors
-            const newScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < newScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(newScalingFactors[i]).to.not.equal(previousScalingFactors[i]);
-              }
-            }
+            await verifyScalingFactors(await pool.getScalingFactors());
 
             expect(newJoinResult.amountsIn[tokenIndex]).to.not.equal(previousJoinResult.amountsIn[tokenIndex]);
           });
@@ -1453,24 +1449,14 @@ describe('StablePhantomPool', () => {
             await updateExternalRates();
 
             // Verify the new rates are not yet loaded
-            const preOpScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < preOpScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(preOpScalingFactors[i]).to.equal(previousScalingFactors[i]);
-              }
-            }
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
 
             // And exit again - amountOut should be different
             // This must be a real exit - otherwise the rate changes would revert along with the query
             const newExitResult = await pool.singleExitGivenIn({ from: lp, bptIn, token });
 
             // Verify the new rates are reflected in the scaling factors
-            const newScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < newScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(newScalingFactors[i]).to.not.equal(previousScalingFactors[i]);
-              }
-            }
+            await verifyScalingFactors(await pool.getScalingFactors());
 
             expect(newExitResult.amountsOut[tokenIndex]).to.not.equal(previousExitResult.amountsOut[tokenIndex]);
           });
@@ -1482,12 +1468,7 @@ describe('StablePhantomPool', () => {
             await updateExternalRates();
 
             // Verify the new rates are not yet loaded
-            const preOpScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < preOpScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(preOpScalingFactors[i]).to.equal(previousScalingFactors[i]);
-              }
-            }
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
 
             // Do a recovery mode exit
             const { balances, tokens: allTokens } = await pool.getTokens();
@@ -1501,12 +1482,7 @@ describe('StablePhantomPool', () => {
             });
 
             // Verify the operation did NOT update the cache
-            const newScalingFactors = await pool.getScalingFactors();
-            for (let i = 0; i < newScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
-                expect(newScalingFactors[i]).to.equal(previousScalingFactors[i]);
-              }
-            }
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
           });
         });
       });
