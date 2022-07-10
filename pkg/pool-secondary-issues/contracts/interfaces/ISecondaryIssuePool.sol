@@ -14,6 +14,8 @@ interface IPrimaryIssuePool {
 
     function getCurrency() external view returns (address);
 
+    function getSecurityOffered() external view returns(uint256);
+
     function exit() external;
 
 }

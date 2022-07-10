@@ -168,6 +168,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         return address(_currency);
     }
 
+    function getSecurityOffered() external view returns(uint256) {
+        return _MAX_TOKEN_BALANCE;
+    }
+
     function initialize() external {
         // join the pool
         IAsset[] memory _assets = new IAsset[](2);

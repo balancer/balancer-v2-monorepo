@@ -15,6 +15,14 @@ interface IPrimaryIssuePool {
 
     function getCurrency() external view returns (address);
 
+    function getMinimumPrice() external view returns(uint256);
+
+    function getMaximumPrice() external view returns(uint256);
+
+    function getSecurityOffered() external view returns(uint256);
+
+    function getIssueCutoffTime() external view returns(uint256);
+
     function exit() external;
 
 }

@@ -49,7 +49,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         uint256 maxPrice;
     }
 
-    event OpenIssue(address indexed security, uint256 openingPrice, uint256 securityOffered);
+    event OpenIssue(address indexed security, uint256 openingPrice, uint256 maxPrice, uint256 securityOffered, uint256 cutoffTime);
     event Subscription(address indexed security, address assetIn, string assetName, uint256 amount, address investor, uint256 price);
 
     constructor(
@@ -119,6 +119,22 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         return address(_currency);
     }
 
+    function getMinimumPrice() external view returns(uint256) {
+        return _minPrice;
+    }
+
+    function getMaximumPrice() external view returns(uint256) {
+        return _maxPrice;
+    }
+
+    function getSecurityOffered() external view returns(uint256) {
+        return _MAX_TOKEN_BALANCE;
+    }
+
+    function getIssueCutoffTime() external view returns(uint256) {
+        return _cutoffTime;
+    }
+
     function initialize() external {
         // join the pool
         IAsset[] memory _assets = new IAsset[](2);
@@ -135,7 +151,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         });
         IVault _vault = getVault();
         _vault.joinPool(getPoolId(), _balancerManager, address(this), request);
-        emit OpenIssue(address(_security), _minPrice, _maxAmountsIn[1]);
+        emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime);
     }
 
     function exit() external {
