@@ -20,7 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/ExtraCalldataSignaturesValidator.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ExtraCalldataEOASignaturesValidator.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
@@ -33,7 +33,7 @@ abstract contract VaultAuthorization is
     IVault,
     ReentrancyGuard,
     Authentication,
-    ExtraCalldataSignaturesValidator,
+    ExtraCalldataEOASignaturesValidator,
     TemporarilyPausable
 {
     // Ideally, we'd store the type hashes as immutable state variables to avoid computing the hash at runtime, but

@@ -26,7 +26,7 @@ import "./EOASignaturesValidator.sol";
  *
  * Derived contracts must implement the `_entrypointTypeHash` function to map function selectors to EIP712 structs.
  */
-abstract contract ExtraCalldataSignaturesValidator is EOASignaturesValidator {
+abstract contract ExtraCalldataEOASignaturesValidator is EOASignaturesValidator {
     // The appended data consists of a deadline, plus the [v,r,s] signature. For simplicity, we use a full 256 bit slot
     // for each of these values, even if 'v' is typically an 8 bit value.
     uint256 internal constant _EXTRA_CALLDATA_LENGTH = 4 * 32;

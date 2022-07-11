@@ -2,9 +2,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/ExtraCalldataSignaturesValidator.sol";
+import "../helpers/ExtraCalldataEOASignaturesValidator.sol";
 
-contract ExtraCalldataSignaturesValidatorMock is ExtraCalldataSignaturesValidator {
+contract ExtraCalldataEOASignaturesValidatorMock is ExtraCalldataEOASignaturesValidator {
     bytes32 internal immutable AUTH_TYPE_HASH = keccak256(
         "Authorization(bytes calldata,address sender,uint256 nonce,uint256 deadline)"
     );
