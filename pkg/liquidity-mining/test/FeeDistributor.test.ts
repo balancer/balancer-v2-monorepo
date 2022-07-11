@@ -22,11 +22,6 @@ const roundUpTimestamp = (timestamp: BigNumberish): BigNumber => {
   return roundDownTimestamp(BigNumber.from(timestamp).add(WEEK).sub(1));
 };
 
-const advanceToNextWeek = async (): Promise<void> => {
-  const nextWeek = roundUpTimestamp(await currentTimestamp());
-  await advanceToTimestamp(nextWeek);
-};
-
 function expectTimestampsMatch(timestamp: BigNumberish, expectedTimestamp: BigNumberish): void {
   const weekNumber = BigNumber.from(timestamp).div(WEEK).toNumber();
   const expectedWeekNumber = BigNumber.from(expectedTimestamp).div(WEEK).toNumber();
@@ -511,7 +506,8 @@ describe('FeeDistributor', () => {
           await feeDistributor.checkpointTokens(tokens.addresses);
 
           // For the week to become claimable we must wait until the next week starts
-          await advanceToNextWeek();
+          const nextWeek = roundUpTimestamp(await currentTimestamp());
+          await advanceToTimestamp(nextWeek.add(1));
         });
 
         it('emits a TokensClaimed event', async () => {
@@ -605,7 +601,8 @@ describe('FeeDistributor', () => {
               await feeDistributor.checkpointTokens(tokens.addresses);
 
               // For the week to become claimable we must wait until the next week starts
-              await advanceToNextWeek();
+              const nextWeek = roundUpTimestamp(await currentTimestamp());
+              await advanceToTimestamp(nextWeek.add(1));
             });
 
             context('when the array of tokens contains duplicates', () => {
