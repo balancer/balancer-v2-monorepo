@@ -26,7 +26,7 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
     // Replay attack prevention for each account.
     mapping(address => uint256) internal _nextNonce;
 
-    function getDomainSeparator() external view override returns (bytes32) {
+    function getDomainSeparator() public view override returns (bytes32) {
         return _domainSeparatorV4();
     }
 
