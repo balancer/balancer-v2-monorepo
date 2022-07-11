@@ -459,13 +459,26 @@ describe('FeeDistributor', () => {
 
       if (checkpointTypes.includes('token')) {
         it('checkpoints the token state', async () => {
-          const tx = await claimTokens();
+          const previousTimeCursors = await Promise.all(
+            tokens.addresses.map((token) => feeDistributor.getTokenTimeCursor(token))
+          );
 
-          // This only works as it is the first token checkpoint. Calls for the next day won't checkpoint
+          const tx = await claimTokens();
           const txTimestamp = await receiptTimestamp(tx.wait());
-          for (const token of tokens.addresses) {
+
+          // This replicates the rate limiting of performing token checkpoints in the FeeDistributor contract.
+          // If we've already checkpointed the token this week and we're not in the last day of the week then we
+          // shouldn't checkpoint the token.
+          const expectedTimeCursors = previousTimeCursors.map((prevTimeCursor) => {
+            const alreadyCheckpointedThisWeek = roundDownTimestamp(txTimestamp).eq(roundDownTimestamp(prevTimeCursor));
+            const nearingEndOfWeek = roundUpTimestamp(txTimestamp).sub(txTimestamp).lt(DAY);
+
+            return alreadyCheckpointedThisWeek && !nearingEndOfWeek ? prevTimeCursor : txTimestamp;
+          });
+
+          for (const [i, token] of tokens.addresses.entries()) {
             const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
-            expectTimestampsMatch(tokenTimeCursor, txTimestamp);
+            expectTimestampsMatch(tokenTimeCursor, expectedTimeCursors[i]);
           }
         });
       }
@@ -669,10 +682,10 @@ describe('FeeDistributor', () => {
                 await feeDistributor.claimToken(user1.address, token.address);
               });
 
-              // 'token' check doesn't pass due to rate limiting of checkpointing.
               itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
                 'global',
                 'user',
+                'token',
                 'user-token',
               ]);
 
