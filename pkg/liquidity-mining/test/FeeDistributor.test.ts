@@ -30,7 +30,11 @@ const advanceToNextWeek = async (): Promise<void> => {
 function expectTimestampsMatch(timestamp: BigNumberish, expectedTimestamp: BigNumberish): void {
   const weekNumber = BigNumber.from(timestamp).div(WEEK).toNumber();
   const expectedWeekNumber = BigNumber.from(expectedTimestamp).div(WEEK).toNumber();
-  expect(timestamp, `Timestamp is ${weekNumber - expectedWeekNumber} weeks off`).to.be.eq(expectedTimestamp);
+  const difference = weekNumber - expectedWeekNumber;
+  expect(
+    timestamp,
+    `Timestamp is ${Math.abs(difference)} weeks ${difference > 0 ? 'ahead' : 'behind'} expected value`
+  ).to.be.eq(expectedTimestamp);
 }
 
 describe('FeeDistributor', () => {
