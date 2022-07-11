@@ -446,22 +446,28 @@ describe('FeeDistributor', () => {
           await advanceToTimestamp(startTime.add(100));
         });
 
-        it('checkpoints the global, token and user state', async () => {
+        it('checkpoints the global state', async () => {
           const nextWeek = roundUpTimestamp(await currentTimestamp());
+          await claimTokens();
+
+          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
+        });
+
+        it('checkpoints the token state', async () => {
           const tx = await claimTokens();
 
-          // Global
-          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
-
-          // Token
           // This only works as it is the first token checkpoint. Calls for the next day won't checkpoint
           const txTimestamp = await receiptTimestamp(tx.wait());
           for (const token of tokens.addresses) {
             const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
             expectTimestampsMatch(tokenTimeCursor, txTimestamp);
           }
+        });
 
-          // User
+        it('checkpoints the user state', async () => {
+          const nextWeek = roundUpTimestamp(await currentTimestamp());
+          await claimTokens();
+
           expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
         });
 
