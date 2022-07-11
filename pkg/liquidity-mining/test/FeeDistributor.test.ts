@@ -656,6 +656,11 @@ describe('FeeDistributor', () => {
                 'global',
                 'token',
               ]);
+
+              itClaimsNothing(
+                () => feeDistributor.claimToken(user1.address, token.address),
+                async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
+              );
             });
 
             context('after claiming enough times to sync past the checkpoints', () => {
