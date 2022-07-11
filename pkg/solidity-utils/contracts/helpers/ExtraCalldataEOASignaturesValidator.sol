@@ -78,20 +78,12 @@ abstract contract ExtraCalldataEOASignaturesValidator is EOASignaturesValidator 
      * be considered a valid signature in the first place.
      */
     function _signature() internal pure returns (bytes memory) {
-        bytes memory signature = new bytes(65);
-
         // v, r and s are appended after the signature deadline, in that order.
         uint8 v = uint8(uint256(_decodeExtraCalldataWord(0x20)));
         bytes32 r = _decodeExtraCalldataWord(0x40);
         bytes32 s = _decodeExtraCalldataWord(0x60);
 
-        assembly {
-            mstore(add(signature, 32), r)
-            mstore(add(signature, 64), s)
-            mstore8(add(signature, 96), v)
-        }
-
-        return signature;
+        return _toArraySignature(v, r, s);
     }
 
     /**

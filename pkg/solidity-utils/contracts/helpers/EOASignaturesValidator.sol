@@ -86,4 +86,19 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
         return (recoveredAddress != address(0) && recoveredAddress == account);
     }
+
+    function _toArraySignature(
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal pure returns (bytes memory) {
+        bytes memory signature = new bytes(65);
+        assembly {
+            mstore(add(signature, 32), r)
+            mstore(add(signature, 64), s)
+            mstore8(add(signature, 96), v)
+        }
+
+        return signature;
+    }
 }
