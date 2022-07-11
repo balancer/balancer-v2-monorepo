@@ -10,9 +10,9 @@ contract ExtraCalldataSignaturesValidatorMock is ExtraCalldataSignaturesValidato
     );
 
     event Authenticated(address user, address sender);
-    event CalldataDecoded(bytes data, uint256 deadline, uint8 v, bytes32 r, bytes32 s);
+    event CalldataDecoded(bytes data, uint256 deadline, bytes signature);
 
-    constructor() ExtraCalldataSignaturesValidator("Balancer V2 Vault") {
+    constructor() EIP712("Balancer V2 Vault", "1") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -35,8 +35,7 @@ contract ExtraCalldataSignaturesValidatorMock is ExtraCalldataSignaturesValidato
     }
 
     function _decodeCalldata() internal {
-        (uint8 v, bytes32 r, bytes32 s) = _signature();
-        emit CalldataDecoded(_calldata(), _deadline(), v, r, s);
+        emit CalldataDecoded(_calldata(), _deadline(), _signature());
     }
 
     function _entrypointTypeHash() internal view override returns (bytes32) {

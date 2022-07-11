@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_GAS_LIMIT } from '@balancer-labs/v2-helpers/src/constants';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { RelayerAuthorization, RelayerAction } from '@balancer-labs/balancer-js';
@@ -36,9 +36,7 @@ describe('ExtraCalldataSignaturesValidator', () => {
         expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'CalldataDecoded', {
           data: calldata,
           deadline: 0,
-          v: 0,
-          r: ZERO_BYTES32,
-          s: ZERO_BYTES32,
+          signature: '0x'.concat('00'.repeat(1 + 32 + 32)),
         });
       });
     });
@@ -60,13 +58,10 @@ describe('ExtraCalldataSignaturesValidator', () => {
           gasLimit: MAX_GAS_LIMIT,
         });
 
-        const { v, r, s } = ethers.utils.splitSignature(signature);
         expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'CalldataDecoded', {
           data: calldata,
           deadline,
-          v,
-          r,
-          s,
+          signature,
         });
       });
     });
@@ -76,12 +71,12 @@ describe('ExtraCalldataSignaturesValidator', () => {
     let allowedSender: SignerWithAddress;
     let extraCalldata: undefined | string, allowedFunction: string, deadline: BigNumberish, nonce: BigNumberish;
 
-    const itReverts = () => {
+    const itReverts = (reason?: string) => {
       it('reverts', async () => {
         const data = await buildCalldata();
         await expect(
           sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT })
-        ).to.be.revertedWith('INVALID_SIGNATURE');
+        ).to.be.revertedWith(reason ?? 'INVALID_SIGNATURE');
       });
     };
 
@@ -136,14 +131,14 @@ describe('ExtraCalldataSignaturesValidator', () => {
     context('when there is no extra calldata given', () => {
       setExtraCallData('');
 
-      itReverts();
+      itReverts('');
     });
 
     context('when there is some extra calldata given', () => {
       context('when the extra calldata is malformed', () => {
         setExtraCallData('abcd');
 
-        itReverts();
+        itReverts('');
       });
 
       context('when the extra calldata is well formed', () => {
@@ -163,7 +158,7 @@ describe('ExtraCalldataSignaturesValidator', () => {
               context('when the deadline is in the past', () => {
                 setDeadlineOffset(-100);
 
-                itReverts();
+                itReverts('EXPIRED_SIGNATURE');
               });
 
               context('when the deadline is in the future', () => {
