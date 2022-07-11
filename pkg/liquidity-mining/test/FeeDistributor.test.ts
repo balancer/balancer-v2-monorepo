@@ -78,6 +78,12 @@ describe('FeeDistributor', () => {
     await votingEscrow.connect(user).create_lock(amount, now.add(lockDuration));
   }
 
+  async function depositForUser(user: SignerWithAddress, amount: BigNumberish): Promise<void> {
+    await bpt.mint(user, amount);
+    await bpt.approve(votingEscrow, amount, { from: user });
+    await votingEscrow.connect(user).deposit_for(user.address, amount);
+  }
+
   async function expectConsistentUserBalance(user: Account, timestamp: BigNumberish): Promise<void> {
     const userAddress = TypesConverter.toAddress(user);
     const cachedBalance = feeDistributor.getUserBalanceAtTimestamp(userAddress, timestamp);
@@ -551,13 +557,15 @@ describe('FeeDistributor', () => {
     }
 
     describe('claimToken', () => {
+      let token: Token;
       sharedBeforeEach('Deploy protocol fee token', async () => {
         tokens = await TokenList.create(['FEE']);
+        token = tokens.tokens[0];
         tokenAmounts = tokens.map(() => parseFixed('1', 18));
       });
 
       context('when performing the first claim', () => {
-        itRevertsBeforeStartTime(() => feeDistributor.claimToken(user1.address, tokens.addresses[0]));
+        itRevertsBeforeStartTime(() => feeDistributor.claimToken(user1.address, token.address));
 
         context('when startTime has passed', () => {
           sharedBeforeEach('advance time past startTime', async () => {
@@ -566,9 +574,139 @@ describe('FeeDistributor', () => {
 
           // Return values from static-calling claimToken need to be converted into array format to standardise test code.
           itClaimsTokensCorrectly(
-            () => feeDistributor.claimToken(user1.address, tokens.addresses[0]),
-            async () => [await feeDistributor.callStatic.claimToken(user1.address, tokens.addresses[0])]
+            () => feeDistributor.claimToken(user1.address, token.address),
+            async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
           );
+        });
+      });
+
+      context('when performing future claims', () => {
+        sharedBeforeEach('perform the first claim', async () => {
+          await advanceToTimestamp(startTime.add(1));
+          const tx = await feeDistributor.claimToken(user1.address, token.address);
+          const txTimestamp = await receiptTimestamp(tx.wait());
+
+          const thisWeek = roundDownTimestamp(txTimestamp);
+          const nextWeek = roundUpTimestamp(txTimestamp);
+
+          // Check that the first checkpoint left the FeeDistributor in the expected state.
+          expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
+          expectTimestampsMatch(await feeDistributor.getTokenTimeCursor(token.address), txTimestamp);
+          expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
+          expectTimestampsMatch(await feeDistributor.getUserTokenTimeCursor(user1.address, token.address), thisWeek);
+        });
+
+        context('when the user has many checkpoints', () => {
+          sharedBeforeEach('create many checkpoints', async () => {
+            // Creating many checkpoints now would prevent the user from checkpointing startTime+WEEK, which is only
+            // claimable at startTime+2*WEEK.
+
+            const NUM_CHECKPOINTS = 100;
+            for (let i = 0; i < NUM_CHECKPOINTS; i++) {
+              await depositForUser(user1, 1);
+            }
+            await advanceToTimestamp(startTime.add(WEEK).add(1));
+          });
+
+          context('when there are tokens to distribute to user', () => {
+            sharedBeforeEach('send tokens', async () => {
+              await feeDistributor.checkpointTokens(tokens.addresses);
+              for (const [index, token] of tokens.tokens.entries()) {
+                await token.mint(feeDistributor, tokenAmounts[index]);
+              }
+              await feeDistributor.checkpointTokens(tokens.addresses);
+
+              // For the week to become claimable we must wait until the next week starts
+              const nextWeek = roundUpTimestamp(await currentTimestamp());
+              await advanceToTimestamp(nextWeek.add(1));
+            });
+
+            it('checkpoints the global state', async () => {
+              const nextWeek = roundUpTimestamp(await currentTimestamp());
+              await feeDistributor.claimToken(user1.address, token.address);
+
+              expectTimestampsMatch(await feeDistributor.getTimeCursor(), nextWeek);
+            });
+
+            it('checkpoints the token state', async () => {
+              const tx = await feeDistributor.claimToken(user1.address, token.address);
+
+              // This only works as it is the first token checkpoint. Calls for the next day won't checkpoint
+              const txTimestamp = await receiptTimestamp(tx.wait());
+              for (const token of tokens.addresses) {
+                const tokenTimeCursor = await feeDistributor.getTokenTimeCursor(token);
+                expectTimestampsMatch(tokenTimeCursor, txTimestamp);
+              }
+            });
+
+            it('checkpoints the user state', async () => {
+              const nextWeek = roundUpTimestamp(await currentTimestamp());
+
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
+            });
+
+            it("updates the user's token time cursor to the most first unclaimed week", async () => {
+              const thisWeek = roundDownTimestamp(await currentTimestamp());
+
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              expectTimestampsMatch(
+                await feeDistributor.getUserTokenTimeCursor(user1.address, token.address),
+                thisWeek
+              );
+            });
+
+            it('emits a TokensClaimed event', async () => {
+              const thisWeek = roundDownTimestamp(await currentTimestamp());
+
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              const tx = await feeDistributor.claimToken(user1.address, token.address);
+              for (const [index, token] of tokens.tokens.entries()) {
+                expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+                  user: user1.address,
+                  token: token.address,
+                  amount: tokenAmounts[index].div(2),
+                  userTokenTimeCursor: thisWeek,
+                });
+              }
+            });
+
+            it('subtracts the number of tokens claimed from the cached balance', async () => {
+              const previousTokenLastBalances = await Promise.all(
+                tokens.addresses.map((token) => feeDistributor.getTokenLastBalance(token))
+              );
+
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              const tx = await feeDistributor.claimToken(user1.address, token.address);
+              const newTokenLastBalances = await Promise.all(
+                tokens.addresses.map((token) => feeDistributor.getTokenLastBalance(token))
+              );
+
+              for (const [index, token] of tokens.tokens.entries()) {
+                const {
+                  args: { amount },
+                } = expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+                  user: user1.address,
+                  token: token.address,
+                });
+                expect(newTokenLastBalances[index]).to.be.eq(previousTokenLastBalances[index].sub(amount));
+              }
+            });
+
+            it('returns the amount of tokens claimed', async () => {
+              await feeDistributor.claimToken(user1.address, token.address);
+              await feeDistributor.claimToken(user1.address, token.address);
+              expect([await feeDistributor.callStatic.claimToken(user1.address, token.address)]).to.be.eql(
+                tokenAmounts.map((amount) => amount.div(2))
+              );
+            });
+          });
         });
       });
     });
