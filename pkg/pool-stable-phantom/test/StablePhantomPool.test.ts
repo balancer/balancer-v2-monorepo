@@ -2012,7 +2012,7 @@ describe('StablePhantomPool', () => {
         expect(bptBalance).to.be.equalWithError(fp(numberOfTokens), 0.0000000000001);
 
         const feeCollectorBalanceAfter = await pool.balanceOf(protocolFeesCollector);
-        expect(feeCollectorBalanceAfter).to.equal(bn(0));
+        expect(feeCollectorBalanceAfter).to.be.equalWithError(bn(0), 0.0000000000001);
       });
     });
   }
