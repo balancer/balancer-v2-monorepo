@@ -194,7 +194,7 @@ describe('EOASignaturesValidator', () => {
                 deadline
               );
 
-              expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'Authenticated');
+              expectEvent.inReceipt(await tx.wait(), 'Authenticated');
             });
 
             it('increases the nonce of the user', async () => {
