@@ -441,16 +441,16 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
 
         UserState storage userState = _userState[user];
 
-        // weekCursor represents the timestamp of the beginning of the week from which we
-        // start checkpointing the user's VotingEscrow balance.
-        uint256 weekCursor = userState.timeCursor;
+        // `nextWeekToCheckpoint` represents the timestamp of the beginning of the first week
+        // which we haven't checkpointed the user's VotingEscrow balance yet.
+        uint256 nextWeekToCheckpoint = userState.timeCursor;
 
         uint256 userEpoch;
-        if (weekCursor == 0) {
+        if (nextWeekToCheckpoint == 0) {
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
         } else {
-            if (weekCursor == _roundDownTimestamp(block.timestamp)) {
+            if (nextWeekToCheckpoint == _roundDownTimestamp(block.timestamp)) {
                 // User has checkpointed this week already so perform early return
                 return;
             }
@@ -468,25 +468,25 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         // If this is the first checkpoint for the user, calculate the first week they're eligible for.
         // i.e. the timestamp of the first Thursday after they locked.
         // If this is earlier then the first distribution then fast forward to then.
-        if (weekCursor == 0) {
-            weekCursor = Math.max(_startTime, _roundUpTimestamp(userPoint.ts));
-            userState.startTime = uint64(weekCursor);
+        if (nextWeekToCheckpoint == 0) {
+            nextWeekToCheckpoint = Math.max(_startTime, _roundUpTimestamp(userPoint.ts));
+            userState.startTime = uint64(nextWeekToCheckpoint);
         }
 
-        // It's safe to increment `userEpoch` and `weekCursor` in this loop as epochs and timestamps
+        // It's safe to increment `userEpoch` and `nextWeekToCheckpoint` in this loop as epochs and timestamps
         // are always much smaller than 2^256 and are being incremented by small values.
         IVotingEscrow.Point memory oldUserPoint;
         for (uint256 i = 0; i < 50; ++i) {
             // Break if we're trying to cache the user's balance at a timestamp in the future
-            if (weekCursor > block.timestamp) {
+            if (nextWeekToCheckpoint > block.timestamp) {
                 break;
             }
 
-            if (weekCursor >= userPoint.ts && userEpoch <= maxUserEpoch) {
+            if (nextWeekToCheckpoint >= userPoint.ts && userEpoch <= maxUserEpoch) {
                 // The week being considered is contained in an epoch after the user epoch described by `oldUserPoint`.
                 // We then shift `userPoint` into `oldUserPoint` and query the Point for the next user epoch.
-                // We do this in order to step though epochs until we find the first epoch starting after `weekCursor`,
-                // making the previous epoch the one that contains `weekCursor`.
+                // We do this in order to step though epochs until we find the first epoch starting after
+                // `nextWeekToCheckpoint`, making the previous epoch the one that contains `nextWeekToCheckpoint`.
                 userEpoch += 1;
                 oldUserPoint = userPoint;
                 if (userEpoch > maxUserEpoch) {
@@ -498,27 +498,27 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
                 // The week being considered lies inside the user epoch described by `oldUserPoint`
                 // we can then use it to calculate the user's balance at the beginning of the week.
 
-                int128 dt = int128(weekCursor - oldUserPoint.ts);
+                int128 dt = int128(nextWeekToCheckpoint - oldUserPoint.ts);
                 uint256 userBalance = oldUserPoint.bias > oldUserPoint.slope * dt
                     ? uint256(oldUserPoint.bias - oldUserPoint.slope * dt)
                     : 0;
 
                 // User's lock has expired and they haven't relocked yet.
                 if (userBalance == 0 && userEpoch > maxUserEpoch) {
-                    weekCursor = _roundUpTimestamp(block.timestamp);
+                    nextWeekToCheckpoint = _roundUpTimestamp(block.timestamp);
                     break;
                 }
 
                 // User had a nonzero lock and so is eligible to collect fees.
-                _userBalanceAtTimestamp[user][weekCursor] = userBalance;
+                _userBalanceAtTimestamp[user][nextWeekToCheckpoint] = userBalance;
 
-                weekCursor += 1 weeks;
+                nextWeekToCheckpoint += 1 weeks;
             }
         }
 
         // userEpoch > 0 so this is safe.
         userState.lastEpochCheckpointed = uint64(userEpoch - 1);
-        userState.timeCursor = uint64(weekCursor);
+        userState.timeCursor = uint64(nextWeekToCheckpoint);
     }
 
     /**
