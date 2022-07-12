@@ -463,44 +463,44 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             userEpoch = 1;
         }
 
-        IVotingEscrow.Point memory userPoint = _votingEscrow.user_point_history(user, userEpoch);
+        IVotingEscrow.Point memory nextUserPoint = _votingEscrow.user_point_history(user, userEpoch);
 
         // If this is the first checkpoint for the user, calculate the first week they're eligible for.
         // i.e. the timestamp of the first Thursday after they locked.
         // If this is earlier then the first distribution then fast forward to then.
         if (nextWeekToCheckpoint == 0) {
-            nextWeekToCheckpoint = Math.max(_startTime, _roundUpTimestamp(userPoint.ts));
+            nextWeekToCheckpoint = Math.max(_startTime, _roundUpTimestamp(nextUserPoint.ts));
             userState.startTime = uint64(nextWeekToCheckpoint);
         }
 
         // It's safe to increment `userEpoch` and `nextWeekToCheckpoint` in this loop as epochs and timestamps
         // are always much smaller than 2^256 and are being incremented by small values.
-        IVotingEscrow.Point memory oldUserPoint;
+        IVotingEscrow.Point memory currentUserPoint;
         for (uint256 i = 0; i < 50; ++i) {
             // Break if we're trying to cache the user's balance at a timestamp in the future
             if (nextWeekToCheckpoint > block.timestamp) {
                 break;
             }
 
-            if (nextWeekToCheckpoint >= userPoint.ts && userEpoch <= maxUserEpoch) {
-                // The week being considered is contained in an epoch after the user epoch described by `oldUserPoint`.
-                // We then shift `userPoint` into `oldUserPoint` and query the Point for the next user epoch.
+            if (nextWeekToCheckpoint >= nextUserPoint.ts && userEpoch <= maxUserEpoch) {
+                // The week being considered is contained in a user epoch after that described by `currentUserPoint`.
+                // We then shift `nextUserPoint` into `currentUserPoint` and query the Point for the next user epoch.
                 // We do this in order to step though epochs until we find the first epoch starting after
                 // `nextWeekToCheckpoint`, making the previous epoch the one that contains `nextWeekToCheckpoint`.
                 userEpoch += 1;
-                oldUserPoint = userPoint;
+                currentUserPoint = nextUserPoint;
                 if (userEpoch > maxUserEpoch) {
-                    userPoint = IVotingEscrow.Point(0, 0, 0, 0);
+                    nextUserPoint = IVotingEscrow.Point(0, 0, 0, 0);
                 } else {
-                    userPoint = _votingEscrow.user_point_history(user, userEpoch);
+                    nextUserPoint = _votingEscrow.user_point_history(user, userEpoch);
                 }
             } else {
                 // The week being considered lies inside the user epoch described by `oldUserPoint`
                 // we can then use it to calculate the user's balance at the beginning of the week.
 
-                int128 dt = int128(nextWeekToCheckpoint - oldUserPoint.ts);
-                uint256 userBalance = oldUserPoint.bias > oldUserPoint.slope * dt
-                    ? uint256(oldUserPoint.bias - oldUserPoint.slope * dt)
+                int128 dt = int128(nextWeekToCheckpoint - currentUserPoint.ts);
+                uint256 userBalance = currentUserPoint.bias > currentUserPoint.slope * dt
+                    ? uint256(currentUserPoint.bias - currentUserPoint.slope * dt)
                     : 0;
 
                 // User's lock has expired and they haven't relocked yet.
