@@ -769,12 +769,15 @@ describe('StablePhantomPool', () => {
       });
 
       describe('join token in for exact BPT out', () => {
-        let tokenIndex: number;
+        let tokenIndexWithoutBpt: number;
+        let tokenIndexWithBpt: number;
         let token: Token;
 
         sharedBeforeEach('get token to join with', async () => {
-          tokenIndex = pool.bptIndex == 0 ? 1 : 0;
-          token = tokens.get(tokenIndex);
+          // tokens are sorted, and do not include BPT, so get the last one
+          tokenIndexWithoutBpt = numberOfTokens - 1;
+          token = tokens.get(tokenIndexWithoutBpt);
+          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
         });
 
         context('not in recovery mode', () => {
@@ -808,8 +811,8 @@ describe('StablePhantomPool', () => {
               const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
 
               // Only token in should be the one transferred
-              expect(result.amountsIn[tokenIndex]).to.be.equalWithError(expectedAmountIn, 0.001);
-              expect(result.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+              expect(result.amountsIn[tokenIndexWithBpt]).to.be.equalWithError(expectedAmountIn, 0.001);
+              expect(result.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
               // Make sure received BPT is close to what we expect
               const currentBptBalance = await pool.balanceOf(recipient);
@@ -824,11 +827,11 @@ describe('StablePhantomPool', () => {
               const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
 
               expect(queryResult.bptOut).to.be.equal(bptOut);
-              expect(queryResult.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+              expect(queryResult.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
               const result = await pool.joinGivenOut({ from: recipient, bptOut, token });
               // Query and join should match exactly
-              expect(result.amountsIn[tokenIndex]).to.equal(queryResult.amountsIn[tokenIndex]);
+              expect(result.amountsIn[tokenIndexWithBpt]).to.equal(queryResult.amountsIn[tokenIndexWithBpt]);
             });
 
             it('join and joinSwap give the same result', async () => {
@@ -846,7 +849,7 @@ describe('StablePhantomPool', () => {
                 recipient: lp,
               });
 
-              expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndex]);
+              expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndexWithBpt]);
             });
 
             it('reverts if paused', async () => {

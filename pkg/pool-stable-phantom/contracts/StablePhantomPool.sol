@@ -634,7 +634,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(balances.length - 1, amountsIn.length);
 
         // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
         (uint256[] memory scaledAmountsInWithBpt, uint256[] memory scaledAmountsInWithoutBpt) = _upscaleWithoutBpt(
@@ -671,22 +671,24 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        (uint256 bptAmountOut, uint256 tokenIndexWithoutBpt) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        _require(tokenIndexWithoutBpt < balances.length - 1, Errors.OUT_OF_BOUNDS);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // We join with a single token, so initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        uint256[] memory amountsIn = new uint256[](balances.length);
 
         // And then assign the result to the selected token
-        amountsIn[tokenIndex] = StableMath._calcTokenInGivenExactBptOut(
+        // The token index passed to the function must match the balances array (without BPT),
+        // But the amountsIn array passed to the Vault must include BPT
+        amountsIn[_addBptIndex(tokenIndexWithoutBpt)] = StableMath._calcTokenInGivenExactBptOut(
             currentAmp,
             balancesWithoutBpt,
-            tokenIndex,
+            tokenIndexWithoutBpt,
             bptAmountOut,
             virtualSupply,
             getSwapFeePercentage()
@@ -1034,8 +1036,19 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             super._isOwnerOnlyAction(actionId);
     }
 
+    // Convert from an index into an array including BPT (the Vault's registered token list), to an index
+    // into an array excluding BPT (usually from user input, such as amountsIn/Out).
+    // `index` should not be the BPT token index itself, or it would duplicate the preceeding index value.
     function _skipBptIndex(uint256 index) internal view returns (uint256) {
         return index < _bptIndex ? index : index.sub(1);
+    }
+
+    // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
+    // to an index into an array excluding BPT (the Vault's registered token list).
+    // `index` should not be the BPT token index itself, if it is the last element, or this would return an
+    // invalid index.
+    function _addBptIndex(uint256 index) internal view returns (uint256) {
+        return index < _bptIndex ? index : index.add(1);
     }
 
     /**
