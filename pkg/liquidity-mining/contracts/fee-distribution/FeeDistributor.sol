@@ -448,10 +448,18 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         uint256 userEpoch;
         if (nextWeekToCheckpoint == 0) {
             // First checkpoint for user so need to do the initial binary search
-            userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
+            userEpoch = _findTimestampUserEpoch(user, _startTime, 0, maxUserEpoch);
         } else {
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
+
+            // If the user has many checkpoints, find the one for `nextWeekToCheckpoint` with a binary search.
+            // This saves users which interact with `votingEscrow` frequently from iterating through every checkpoint.
+            // We assume that any such power users promptly claim any fees and so we only perform a binary search here
+            // rather than integrating it into the main search algorithm.
+            if (maxUserEpoch - userEpoch > 20) {
+                userEpoch = _findTimestampUserEpoch(user, nextWeekToCheckpoint, userEpoch, maxUserEpoch);
+            }
         }
 
         // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
@@ -571,9 +579,10 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     function _findTimestampUserEpoch(
         address user,
         uint256 timestamp,
+        uint256 minUserEpoch,
         uint256 maxUserEpoch
     ) internal view returns (uint256) {
-        uint256 min = 0;
+        uint256 min = minUserEpoch;
         uint256 max = maxUserEpoch;
 
         // Perform binary search through epochs to find epoch containing `timestamp`

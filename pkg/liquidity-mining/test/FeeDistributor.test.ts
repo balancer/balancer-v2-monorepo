@@ -713,36 +713,17 @@ describe('FeeDistributor', () => {
               await advanceToTimestamp(nextWeek.add(1));
             });
 
-            context("when claiming doesn't sync past the checkpoints", () => {
-              itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
-                'global',
-                'token',
-              ]);
+            itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
+              'global',
+              'user',
+              'token',
+              'user-token',
+            ]);
 
-              itClaimsNothing(
-                () => feeDistributor.claimToken(user1.address, token.address),
-                async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
-              );
-            });
-
-            context('after claiming enough times to sync past the checkpoints', () => {
-              sharedBeforeEach('claim tokens', async () => {
-                await feeDistributor.claimToken(user1.address, token.address);
-                await feeDistributor.claimToken(user1.address, token.address);
-              });
-
-              itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
-                'global',
-                'user',
-                'token',
-                'user-token',
-              ]);
-
-              itClaimsTokensCorrectly(
-                () => feeDistributor.claimToken(user1.address, token.address),
-                async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
-              );
-            });
+            itClaimsTokensCorrectly(
+              () => feeDistributor.claimToken(user1.address, token.address),
+              async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
+            );
           });
         });
       });
