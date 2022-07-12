@@ -74,6 +74,7 @@ describe('StablePhantomPool', () => {
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
+    const protocolFeeExemptYieldFlags: boolean[] = [];
 
     async function deployPool(params: RawStablePhantomPoolDeployment = {}, rates: BigNumberish[] = []): Promise<void> {
       tokens = params.tokens || (await TokenList.create(numberOfTokens, { sorted: true }));
@@ -82,12 +83,14 @@ describe('StablePhantomPool', () => {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
+        protocolFeeExemptYieldFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePhantomPool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations,
+        protocolFeeExemptYieldFlags,
         owner,
         admin,
         ...params,
@@ -206,6 +209,19 @@ describe('StablePhantomPool', () => {
           const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
           const expectedIndex = allTokens.indexOf(bpt);
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
+        });
+
+        it('sets the fee exemption flags correctly', async () => {
+          for (let i = 0; i < numberOfTokens; i++) {
+            const token = tokens.get(i).address;
+            // Initialized to true for even tokens
+            const expectedFlag = i % 2 == 0;
+
+            expect(await pool.instance.isTokenYieldExemptFromProtocolFees(token)).to.equal(expectedFlag);
+          }
+
+          // BPT is always false
+          expect(await pool.instance.isTokenYieldExemptFromProtocolFees(pool.address)).to.be.false;
         });
       });
 

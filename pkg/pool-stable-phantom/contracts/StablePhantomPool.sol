@@ -116,6 +116,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     IRateProvider internal immutable _rateProvider4;
     IRateProvider internal immutable _rateProvider5;
 
+    // Set true if the corresponding token should have its yield exempted from protocol fees.
+    // For example, the BPT of another PhantomStable Pool containing yield tokens.
+    bool internal immutable _protocolFeeExemptYieldToken0;
+    bool internal immutable _protocolFeeExemptYieldToken1;
+    bool internal immutable _protocolFeeExemptYieldToken2;
+    bool internal immutable _protocolFeeExemptYieldToken3;
+    bool internal immutable _protocolFeeExemptYieldToken4;
+    bool internal immutable _protocolFeeExemptYieldToken5;
+
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
@@ -127,6 +136,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         IERC20[] tokens;
         IRateProvider[] rateProviders;
         uint256[] tokenRateCacheDurations;
+        bool[] protocolFeeExemptYieldFlags;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
@@ -207,13 +217,18 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
+        // Do the same with protocolFeeExemptYield flags
+        bool[] memory protocolFeeExemptYieldFlags = new bool[](params.tokens.length + 1);
+
         for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
             if (i < bptIndex) {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i];
+                protocolFeeExemptYieldFlags[i] = params.protocolFeeExemptYieldFlags[i];
             } else if (i == bptIndex) {
                 tokensAndBPTRateProviders[i] = IRateProvider(0);
             } else {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
+                protocolFeeExemptYieldFlags[i] = params.protocolFeeExemptYieldFlags[i - 1];
             }
         }
 
@@ -224,6 +239,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
         _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
         _rateProvider5 = (tokensAndBPTRateProviders.length > 5) ? tokensAndBPTRateProviders[5] : IRateProvider(0);
+
+        _protocolFeeExemptYieldToken0 = protocolFeeExemptYieldFlags[0];
+        _protocolFeeExemptYieldToken1 = protocolFeeExemptYieldFlags[1];
+        _protocolFeeExemptYieldToken2 = protocolFeeExemptYieldFlags[2];
+        _protocolFeeExemptYieldToken3 = (tokensAndBPTRateProviders.length > 3) ? protocolFeeExemptYieldFlags[3] : false;
+        _protocolFeeExemptYieldToken4 = (tokensAndBPTRateProviders.length > 4) ? protocolFeeExemptYieldFlags[4] : false;
+        _protocolFeeExemptYieldToken5 = (tokensAndBPTRateProviders.length > 5) ? protocolFeeExemptYieldFlags[5] : false;
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -895,6 +917,25 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         else if (token == _token3) { return _rateProvider3; }
         else if (token == _token4) { return _rateProvider4; }
         else if (token == _token5) { return _rateProvider5; }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    /**
+     * @dev Return whether the given token is exempt from protocol fees. The BPT token will always return false,
+     * simply because that's the default bool value. There's no reason to set it to anything, as the BPT token itself
+     * is not used in any calculations. Calling this with the BPT token isn't meaningful, but shouldn't fail, since
+     * it is a valid pool token.
+     */
+    function isTokenYieldExemptFromProtocolFees(IERC20 token) public view returns (bool) {
+        // prettier-ignore
+        if (token == _token0) { return _protocolFeeExemptYieldToken0; }
+        else if (token == _token1) { return _protocolFeeExemptYieldToken1; }
+        else if (token == _token2) { return _protocolFeeExemptYieldToken2; }
+        else if (token == _token3) { return _protocolFeeExemptYieldToken3; }
+        else if (token == _token4) { return _protocolFeeExemptYieldToken4; }
+        else if (token == _token5) { return _protocolFeeExemptYieldToken5; }
         else {
             _revert(Errors.INVALID_TOKEN);
         }

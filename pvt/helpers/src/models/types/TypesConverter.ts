@@ -125,6 +125,7 @@ export default {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      protocolFeeExemptYieldFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -138,11 +139,13 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!protocolFeeExemptYieldFlags) protocolFeeExemptYieldFlags = Array(tokens.length).fill(false);
 
     return {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      protocolFeeExemptYieldFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
