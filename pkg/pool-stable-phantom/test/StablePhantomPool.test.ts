@@ -893,12 +893,15 @@ describe('StablePhantomPool', () => {
       });
 
       describe('exit BPT in for one token out', () => {
-        let tokenIndex: number;
+        let tokenIndexWithoutBpt: number;
+        let tokenIndexWithBpt: number;
         let token: Token;
 
         sharedBeforeEach('get token to exit with', async () => {
-          tokenIndex = pool.bptIndex == 0 ? 1 : 0;
-          token = tokens.get(tokenIndex);
+          // tokens are sorted, and do not include BPT, so get the last one
+          tokenIndexWithoutBpt = numberOfTokens - 1;
+          token = tokens.get(tokenIndexWithoutBpt);
+          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
         });
 
         context('not in recovery mode', () => {
@@ -923,8 +926,8 @@ describe('StablePhantomPool', () => {
             const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
 
             // Only token out should be the one transferred
-            expect(result.amountsOut[tokenIndex]).to.be.equalWithError(expectedTokenOut, 0.0001);
-            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+            expect(result.amountsOut[tokenIndexWithBpt]).to.be.equalWithError(expectedTokenOut, 0.0001);
+            expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
             const bptAfter = await pool.balanceOf(lp);
 
@@ -937,13 +940,13 @@ describe('StablePhantomPool', () => {
             const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
 
             expect(queryResult.bptIn).to.equal(bptIn);
-            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
             const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
-            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+            expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
             // Query and exit should match exactly
-            expect(result.amountsOut[tokenIndex]).to.equal(queryResult.amountsOut[tokenIndex]);
+            expect(result.amountsOut[tokenIndexWithBpt]).to.equal(queryResult.amountsOut[tokenIndexWithBpt]);
           });
 
           it('exit and exitSwap give the same result', async () => {
@@ -957,7 +960,7 @@ describe('StablePhantomPool', () => {
               amount: bptIn,
               recipient: lp,
             });
-            expect(queryResult.amountsOut[tokenIndex]).to.equal(amountOut);
+            expect(queryResult.amountsOut[tokenIndexWithBpt]).to.equal(amountOut);
           });
 
           it('reverts if paused', async () => {
