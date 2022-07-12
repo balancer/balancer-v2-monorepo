@@ -210,6 +210,8 @@ library Errors {
     uint256 internal constant IN_RECOVERY_MODE = 437;
     uint256 internal constant NOT_IN_RECOVERY_MODE = 438;
     uint256 internal constant INDUCED_FAILURE = 439;
+    uint256 internal constant EXPIRED_SIGNATURE = 440;
+    uint256 internal constant MALFORMED_SIGNATURE = 441;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
