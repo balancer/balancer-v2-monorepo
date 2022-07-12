@@ -38,7 +38,7 @@ contract ExtraCalldataEOASignaturesValidatorMock is ExtraCalldataEOASignaturesVa
         emit CalldataDecoded(_calldata(), _deadline(), _signature());
     }
 
-    function _entrypointTypeHash() internal view override returns (bytes32) {
+    function _entrypointTypeHash() internal pure override returns (bytes32) {
         return AUTH_TYPE_HASH;
     }
 }
