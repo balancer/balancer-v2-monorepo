@@ -37,7 +37,7 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EOASignaturesValida
     mapping(address => mapping(address => bool)) private _allowedMinter;
 
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SET_MINTER_APPROVAL_TYPEHASH = keccak256(
+    bytes32 private constant _SET_MINTER_APPROVAL_TYPEHASH = keccak256(
         "SetMinterApproval(address minter,bool approval,uint256 nonce,uint256 deadline)"
     );
 
