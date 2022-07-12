@@ -53,7 +53,7 @@ describe('FeeDistributor', () => {
 
     // startTime is rounded up to the beginning of next week
     startTime = roundUpTimestamp(await currentTimestamp());
-    feeDistributor = await deploy('FeeDistributor', {
+    feeDistributor = await deploy('TestFeeDistributor', {
       args: [votingEscrow.address, startTime],
     });
   });
@@ -312,6 +312,19 @@ describe('FeeDistributor', () => {
 
                 expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
               });
+
+              it('remains on the most recent user epoch', async () => {
+                const currentEpoch = await votingEscrow.user_point_epoch(user1.address);
+
+                // Check that we're on the most recent user epoch already
+                const previousLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
+                expect(previousLastCheckpointedEpoch).to.be.eq(currentEpoch);
+
+                await feeDistributor.checkpointUser(user1.address);
+
+                const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
+                expect(newLastCheckpointedEpoch).to.be.eq(currentEpoch);
+              });
             });
 
             context('when more checkpoints are created', () => {
@@ -328,6 +341,18 @@ describe('FeeDistributor', () => {
                 await feeDistributor.checkpointUser(user1.address);
 
                 expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
+              });
+
+              it('processes checkpoints for the current week', async () => {
+                const currentEpoch = await votingEscrow.user_point_epoch(user1.address);
+
+                const previousLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
+                expect(previousLastCheckpointedEpoch).to.be.lt(currentEpoch);
+
+                await feeDistributor.checkpointUser(user1.address);
+
+                const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
+                expect(newLastCheckpointedEpoch).to.be.eq(currentEpoch);
               });
             });
           });
