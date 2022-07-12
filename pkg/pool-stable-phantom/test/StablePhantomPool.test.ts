@@ -1970,5 +1970,50 @@ describe('StablePhantomPool', () => {
         });
       });
     });
+
+    describe('proportional join', () => {
+      let sender: SignerWithAddress;
+      let protocolFeesCollector: Contract;
+      const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
+
+      sharedBeforeEach('deploy pool', async () => {
+        const swapFeePercentage = fp(0.1); // 10 %
+        const protocolFeePercentage = fp(0.5); // 50 %
+
+        await deployPool({ swapFeePercentage });
+
+        await pool.vault.setSwapFeePercentage(protocolFeePercentage);
+
+        await pool.updateProtocolSwapFeePercentageCache();
+
+        protocolFeesCollector = await pool.vault.getFeesCollector();
+
+        sender = (await ethers.getSigners())[0];
+
+        const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
+          i == bptIndex ? bn(0) : fp(100)
+        );
+        await pool.init({ recipient: sender, initialBalances: equalBalances });
+
+        bptIndex = await pool.getBptIndex();
+
+        await tokens.mint({ to: lp, amount: fp(100) });
+        await tokens.approve({ from: lp, to: pool.vault });
+      });
+
+      it('proportional join should collect no protocol fee', async () => {
+        const feeCollectorBalanceBefore = await pool.balanceOf(protocolFeesCollector);
+        expect(feeCollectorBalanceBefore).to.equal(bn(0));
+
+        const amountsIn: BigNumber[] = ZEROS.map((n, i) => (i != bptIndex ? fp(1) : n));
+        await pool.joinGivenIn({ amountsIn, minimumBptOut: fp(0), recipient: lp, from: lp });
+
+        const bptBalance = await pool.balanceOf(lp);
+        expect(bptBalance).to.be.equalWithError(fp(numberOfTokens), 0.0000000000001);
+
+        const feeCollectorBalanceAfter = await pool.balanceOf(protocolFeesCollector);
+        expect(feeCollectorBalanceAfter).to.equal(bn(0));
+      });
+    });
   }
 });
