@@ -2006,10 +2006,7 @@ describe('StablePhantomPool', () => {
         expect(feeCollectorBalanceBefore).to.equal(bn(0));
 
         const amountsIn: BigNumber[] = ZEROS.map((n, i) => (i != bptIndex ? fp(1) : n));
-        await pool.joinGivenIn({ amountsIn, minimumBptOut: fp(0), recipient: lp, from: lp });
-
-        const bptBalance = await pool.balanceOf(lp);
-        expect(bptBalance).to.be.equalWithError(fp(numberOfTokens), 0.0000000000001);
+        await pool.joinGivenIn({ amountsIn, minimumBptOut: pct(fp(numberOfTokens), 0.9999), recipient: lp, from: lp });
 
         const feeCollectorBalanceAfter = await pool.balanceOf(protocolFeesCollector);
         expect(feeCollectorBalanceAfter).to.be.equalWithError(bn(0), 0.0000000000001);
