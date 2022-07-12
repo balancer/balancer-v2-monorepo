@@ -515,6 +515,9 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             }
         }
 
+        // We subtract off 1 from the userEpoch to step back once so that on the next attempt to checkpoint
+        // the current `currentUserPoint` will be loaded as `nextUserPoint`. This ensures that we can't skip over the
+        // user epoch containing `nextWeekToCheckpoint`.
         // userEpoch > 0 so this is safe.
         userState.lastEpochCheckpointed = uint64(userEpoch - 1);
         userState.timeCursor = uint64(nextWeekToCheckpoint);
