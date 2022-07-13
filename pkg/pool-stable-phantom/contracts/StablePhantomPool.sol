@@ -104,14 +104,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // Data is stored with the following structure:
     //
-    // [ 32 bits |  32 bits  |   96 bits  |   96 bits    ]
-    // [ expires | duration  | last rate  | current rate ]
-    // |MSB                                           LSB|
-
-    uint256 private constant _CURRENT_PRICE_RATE_OFFSET = 0;
-    uint256 private constant _POST_JOINEXIT_RATE_OFFSET = 64;
-    uint256 private constant _PRICE_RATE_DURATION_OFFSET = 128;
-    uint256 private constant _PRICE_RATE_EXPIRATION_OFFSET = 160;
+    // [   expires   | duration | last rate | current rate ]
+    // [   uint32    |  uint32  |   uint96  |   uint96     ]
 
     mapping(IERC20 => bytes32) private _tokenRateCaches;
 

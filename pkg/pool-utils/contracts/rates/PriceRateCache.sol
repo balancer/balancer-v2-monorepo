@@ -23,33 +23,40 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
  * useful for slow changing rates, such as those that arise from interest-bearing tokens (e.g. waDAI into DAI).
  *
  * The cache data is packed into a single bytes32 value with the following structure:
- * [   expires   | duration | price rate value ]
- * [   uint64    |  uint64  |      uint128     ]
- * [ MSB                                   LSB ]
+ * [ 32 bits |  32 bits  |   96 bits  |   96 bits    ]
+ * [ expires | duration  | last rate  | current rate ]
+*  |MSB                                           LSB|
  *
- *
- * 'rate' is an 18 decimal fixed point number, supporting rates of up to ~3e20. 'expires' is a Unix timestamp, and
+ * 'rate' is an 18 decimal fixed point number, supporting rates of up to ~3e10. 'expires' is a Unix timestamp, and
  * 'duration' is expressed in seconds.
  */
 library PriceRateCache {
     using WordCodec for bytes32;
 
-    uint256 private constant _PRICE_RATE_CACHE_VALUE_OFFSET = 0;
-    uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 128;
-    uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 128 + 64;
+    uint256 private constant _CURRENT_PRICE_RATE_OFFSET = 0;
+    uint256 private constant _POST_JOINEXIT_RATE_OFFSET = 96;
+    uint256 private constant _PRICE_RATE_CACHE_DURATION_OFFSET = 192;
+    uint256 private constant _PRICE_RATE_CACHE_EXPIRES_OFFSET = 224;
 
     /**
-     * @dev Returns the rate of a price rate cache.
+     * @dev Returns the current rate of a price rate cache.
      */
     function getRate(bytes32 cache) internal pure returns (uint256) {
-        return cache.decodeUint(_PRICE_RATE_CACHE_VALUE_OFFSET, 128);
+        return cache.decodeUint(_CURRENT_PRICE_RATE_OFFSET, 96);
+    }
+
+    /**
+     * @dev Returns the current rate of a price rate cache.
+     */
+    function getPostJoinExitRate(bytes32 cache) internal pure returns (uint256) {
+        return cache.decodeUint(_POST_JOINEXIT_RATE_OFFSET, 96);
     }
 
     /**
      * @dev Returns the duration of a price rate cache.
      */
     function getDuration(bytes32 cache) internal pure returns (uint256) {
-        return cache.decodeUint(_PRICE_RATE_CACHE_DURATION_OFFSET, 64);
+        return cache.decodeUint(_PRICE_RATE_CACHE_DURATION_OFFSET, 32);
     }
 
     /**
@@ -57,7 +64,7 @@ library PriceRateCache {
      */
     function getTimestamps(bytes32 cache) internal pure returns (uint256 duration, uint256 expires) {
         duration = getDuration(cache);
-        expires = cache.decodeUint(_PRICE_RATE_CACHE_EXPIRES_OFFSET, 64);
+        expires = cache.decodeUint(_PRICE_RATE_CACHE_EXPIRES_OFFSET, 32);
     }
 
     /**
@@ -65,13 +72,13 @@ library PriceRateCache {
      * from the current time.
      */
     function encode(uint256 rate, uint256 duration) internal view returns (bytes32) {
-        _require(rate >> 128 == 0, Errors.PRICE_RATE_OVERFLOW);
+        _require(rate >> 96 == 0, Errors.PRICE_RATE_OVERFLOW);
 
         // solhint-disable not-rely-on-time
         return
-            WordCodec.encodeUint(rate, _PRICE_RATE_CACHE_VALUE_OFFSET, 128) |
-            WordCodec.encodeUint(duration, _PRICE_RATE_CACHE_DURATION_OFFSET, 64) |
-            WordCodec.encodeUint(block.timestamp + duration, _PRICE_RATE_CACHE_EXPIRES_OFFSET, 64);
+            WordCodec.encodeUint(rate, _CURRENT_PRICE_RATE_OFFSET, 96) |
+            WordCodec.encodeUint(duration, _PRICE_RATE_CACHE_DURATION_OFFSET, 32) |
+            WordCodec.encodeUint(block.timestamp + duration, _PRICE_RATE_CACHE_EXPIRES_OFFSET, 32);
     }
 
     /**
