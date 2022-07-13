@@ -1088,7 +1088,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * @dev Returns the number of tokens in circulation.
      *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
-     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply." Both the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
      * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
