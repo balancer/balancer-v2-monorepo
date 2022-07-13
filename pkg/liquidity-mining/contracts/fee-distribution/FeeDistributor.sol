@@ -477,6 +477,8 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         // i.e. the timestamp of the first Thursday after they locked.
         // If this is earlier then the first distribution then fast forward to then.
         if (nextWeekToCheckpoint == 0) {
+            // Disallow checkpointing before `startTime`.
+            require(block.timestamp > _startTime, "Fee distribution has not started yet");
             nextWeekToCheckpoint = Math.max(_startTime, _roundUpTimestamp(nextUserPoint.ts));
             userState.startTime = uint64(nextWeekToCheckpoint);
         }
