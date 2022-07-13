@@ -119,6 +119,8 @@ const balancerErrorCodes: Record<string, string> = {
   '437': 'IN_RECOVERY_MODE',
   '438': 'NOT_IN_RECOVERY_MODE',
   '439': 'INDUCED_FAILURE',
+  '440': 'EXPIRED_SIGNATURE',
+  '441': 'MALFORMED_SIGNATURE',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',
