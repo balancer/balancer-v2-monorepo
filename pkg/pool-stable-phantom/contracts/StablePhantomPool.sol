@@ -36,13 +36,13 @@ import "./StableMath.sol";
  * price ratio, such as Compound's cTokens.
  *
  * BPT is preminted on Pool initialization and registered as one of the Pool's tokens, allowing for swaps to behave as
- * single-token joins or exits (by swapping a token for BPT). Regular joins and exits are disabled, since no BPT is
- * minted or burned after initialization.
+ * single-token joins or exits (by swapping a token for BPT). We also support regular joins and exits, which can mint
+ * and burn BPT.
  *
  * Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
  * the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
- * actually owned by some entity) instead.
+ * actually owned outside the Vault) instead.
  */
 contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     using WordCodec for bytes32;
@@ -332,7 +332,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         indexIn = _skipBptIndex(indexIn);
         indexOut = _skipBptIndex(indexOut);
 
-        // Would like to use a function selector here, but it causes stack issues
+        // Would like to use a function pointer here, but it causes stack issues
         if (kind == IVault.SwapKind.GIVEN_IN) {
             calculatedAmount = StableMath._calcOutGivenIn(
                 currentAmp,
@@ -493,7 +493,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
         } else {
             // exitSwap
-            // Since the amount is BPT (always 18 decimals), it does not need scaling
             amountIn = StableMath._calcTokenInGivenExactBptOut(
                 amp,
                 balancesWithoutBpt,
@@ -604,7 +603,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Supports multi-token joins, plus the special join kind that simply pays due protocol fees to the Vault.
+     * @dev Supports multi-token joins.
      */
     function _onJoinPool(
         bytes32,
@@ -902,7 +901,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     /**
      * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns 1e18.
+     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
      */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
@@ -1088,8 +1087,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     /**
      * @dev Returns the number of tokens in circulation.
      *
-     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
-     * remains constant, whereas `getVirtualSupply` increases as users join the pool and decreases as they exit it.
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply." Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
+     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
      */
     function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
