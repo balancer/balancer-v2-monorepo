@@ -70,7 +70,7 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         uint64 timeCursor;
         uint128 lastEpochCheckpointed;
     }
-    mapping(address => UserState) private _userState;
+    mapping(address => UserState) internal _userState;
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
     mapping(address => mapping(IERC20 => uint256)) private _userTokenTimeCursor;
 
@@ -458,10 +458,6 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
         } else {
-            if (nextWeekToCheckpoint == _roundDownTimestamp(block.timestamp)) {
-                // User has checkpointed this week already so perform early return
-                return;
-            }
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
         }
@@ -487,11 +483,6 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         // are always much smaller than 2^256 and are being incremented by small values.
         IVotingEscrow.Point memory currentUserPoint;
         for (uint256 i = 0; i < 50; ++i) {
-            // Break if we're trying to cache the user's balance at a timestamp in the future
-            if (nextWeekToCheckpoint > block.timestamp) {
-                break;
-            }
-
             if (nextWeekToCheckpoint >= nextUserPoint.ts && userEpoch <= maxUserEpoch) {
                 // The week being considered is contained in a user epoch after that described by `currentUserPoint`.
                 // We then shift `nextUserPoint` into `currentUserPoint` and query the Point for the next user epoch.
@@ -507,6 +498,12 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
             } else {
                 // The week being considered lies inside the user epoch described by `oldUserPoint`
                 // we can then use it to calculate the user's balance at the beginning of the week.
+                if (nextWeekToCheckpoint >= block.timestamp) {
+                    // Break if we're trying to cache the user's balance at a timestamp in the future.
+                    // We only perform this check here to ensure that we can still process checkpoints created
+                    // in the current week.
+                    break;
+                }
 
                 int128 dt = int128(nextWeekToCheckpoint - currentUserPoint.ts);
                 uint256 userBalance = currentUserPoint.bias > currentUserPoint.slope * dt
@@ -526,6 +523,9 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
             }
         }
 
+        // We subtract off 1 from the userEpoch to step back once so that on the next attempt to checkpoint
+        // the current `currentUserPoint` will be loaded as `nextUserPoint`. This ensures that we can't skip over the
+        // user epoch containing `nextWeekToCheckpoint`.
         // userEpoch > 0 so this is safe.
         userState.lastEpochCheckpointed = uint64(userEpoch - 1);
         userState.timeCursor = uint64(nextWeekToCheckpoint);
