@@ -53,6 +53,15 @@ library PriceRateCache {
     }
 
     /**
+     * @dev Sets the post join/exit rate in an existing cache record, and returns it.
+     */
+    function setPostJoinExitRate(bytes32 cache, uint256 rate) internal pure returns (bytes32) {
+        _require(rate >> 96 == 0, Errors.PRICE_RATE_OVERFLOW);
+
+        return cache.insertUint(rate, _POST_JOINEXIT_RATE_OFFSET, 96);
+    }
+
+    /**
      * @dev Returns the duration of a price rate cache.
      */
     function getDuration(bytes32 cache) internal pure returns (uint256) {
