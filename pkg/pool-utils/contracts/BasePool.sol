@@ -149,7 +149,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @notice Return the current value of the swap fee percentage.
      * @dev This is stored in the MSB 64 bits of the `_miscData`.
      */
-    function getSwapFeePercentage() public view virtual returns (uint256) {
+    function getSwapFeePercentage() public view virtual override returns (uint256) {
         return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
     }
 
@@ -394,7 +394,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256 bptOut, uint256[] memory amountsIn) {
+    ) external override returns (uint256 bptOut, uint256[] memory amountsIn) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
         _queryAction(
@@ -433,7 +433,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external returns (uint256 bptIn, uint256[] memory amountsOut) {
+    ) external override returns (uint256 bptIn, uint256[] memory amountsOut) {
         InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
 
         _queryAction(
@@ -599,7 +599,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function _scalingFactors() internal view virtual returns (uint256[] memory);
 
-    function getScalingFactors() external view returns (uint256[] memory) {
+    function getScalingFactors() external view override returns (uint256[] memory) {
         return _scalingFactors();
     }
 
