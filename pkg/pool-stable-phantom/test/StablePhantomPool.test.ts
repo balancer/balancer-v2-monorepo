@@ -1086,7 +1086,7 @@ describe('StablePhantomPool', () => {
         });
       });
 
-      const scaleRate = async (token: Token): Promise<BigNumber> => {
+      const getExpectedScalingFactor = async (token: Token): Promise<BigNumber> => {
         const index = tokens.indexOf(token);
         const rateProvider = rateProviders[index];
         const rate = await rateProvider.getRate();
@@ -1108,10 +1108,10 @@ describe('StablePhantomPool', () => {
               const scalingFactors = await pool.getScalingFactors();
 
               await tokens.asyncEach(async (token) => {
-                const expectedRate = await scaleRate(token);
+                const expectedScalingFactor = await getExpectedScalingFactor(token);
                 const tokenIndex = await pool.getTokenIndex(token);
-                expect(scalingFactors[tokenIndex]).to.be.equal(expectedRate);
-                expect(await pool.getScalingFactor(token)).to.be.equal(expectedRate);
+                expect(scalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
+                expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
               });
 
               expect(scalingFactors[pool.bptIndex]).to.be.equal(fp(1));
@@ -1353,10 +1353,10 @@ describe('StablePhantomPool', () => {
 
           async function verifyScalingFactors(newScalingFactors: BigNumber[]): Promise<void> {
             await tokens.asyncEach(async (token) => {
-              const expectedRate = await scaleRate(token);
+              const expectedScalingFactor = await getExpectedScalingFactor(token);
               const tokenIndex = await pool.getTokenIndex(token);
-              expect(newScalingFactors[tokenIndex]).to.be.equal(expectedRate);
-              expect(await pool.getScalingFactor(token)).to.be.equal(expectedRate);
+              expect(newScalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
+              expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
             });
 
             expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
