@@ -23,9 +23,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
  * useful for slow changing rates, such as those that arise from interest-bearing tokens (e.g. waDAI into DAI).
  *
  * The cache data is packed into a single bytes32 value with the following structure:
- * [ 32 bits |  32 bits  |   96 bits  |   96 bits    ]
- * [ expires | duration  | last rate  | current rate ]
-*  |MSB                                           LSB|
+ * [ 32 bits |  32 bits  |   96 bits  |    96 bits    ]
+ * [ expires | duration  | last rate  | current rate  ]
+ *  |MSB                                           LSB|
  *
  * 'rate' is an 18 decimal fixed point number, supporting rates of up to ~3e10. 'expires' is a Unix timestamp, and
  * 'duration' is expressed in seconds.
