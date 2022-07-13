@@ -31,8 +31,8 @@ interface IOptionalOnlyCaller {
     function setOnlyCallerCheck(bool enabled) external;
 
     function setOnlyCallerCheckWithSignature(
-        bool enabled,
         address user,
+        bool enabled,
         bytes memory signature
     ) external;
 

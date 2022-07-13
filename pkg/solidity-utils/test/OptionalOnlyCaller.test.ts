@@ -67,15 +67,15 @@ describe('OptionalOnlyCaller', function () {
 
         const types = {
           SetOnlyCallerCheck: [
-            { name: 'enabled', type: 'bool' },
             { name: 'user', type: 'address' },
+            { name: 'enabled', type: 'bool' },
             { name: 'nonce', type: 'uint256' },
           ],
         };
 
         const values = {
-          enabled,
           user: user.address,
+          enabled,
           nonce: (await optionalOnlyCaller.getNextNonce(user.address)).toString(),
         };
 
@@ -85,8 +85,8 @@ describe('OptionalOnlyCaller', function () {
       itEnablesAndDisablesTheCheck(async (enabled: boolean) =>
         (
           await optionalOnlyCaller.setOnlyCallerCheckWithSignature(
-            enabled,
             user.address,
+            enabled,
             await getSignature(enabled, user)
           )
         ).wait()

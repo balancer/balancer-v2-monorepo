@@ -23,7 +23,7 @@ abstract contract OptionalOnlyCaller is IOptionalOnlyCaller, SignaturesValidator
     mapping(address => bool) private _isOnlyCallerEnabled;
 
     bytes32 private constant _SET_ONLY_CALLER_CHECK_TYPEHASH = keccak256(
-        "SetOnlyCallerCheck(bool enabled,address user,uint256 nonce)"
+        "SetOnlyCallerCheck(address user,bool enabled,uint256 nonce)"
     );
 
     /**
@@ -36,20 +36,20 @@ abstract contract OptionalOnlyCaller is IOptionalOnlyCaller, SignaturesValidator
     }
 
     function setOnlyCallerCheck(bool enabled) external override {
-        _setOnlyCallerCheck(enabled, msg.sender);
+        _setOnlyCallerCheck(msg.sender, enabled);
     }
 
     function setOnlyCallerCheckWithSignature(
-        bool enabled,
         address user,
+        bool enabled,
         bytes memory signature
     ) external override {
-        bytes32 structHash = keccak256(abi.encode(_SET_ONLY_CALLER_CHECK_TYPEHASH, enabled, user, getNextNonce(user)));
+        bytes32 structHash = keccak256(abi.encode(_SET_ONLY_CALLER_CHECK_TYPEHASH, user, enabled, getNextNonce(user)));
         _ensureValidSignature(user, structHash, signature, Errors.INVALID_SIGNATURE);
-        _setOnlyCallerCheck(enabled, user);
+        _setOnlyCallerCheck(user, enabled);
     }
 
-    function _setOnlyCallerCheck(bool enabled, address user) private {
+    function _setOnlyCallerCheck(address user, bool enabled) private {
         _isOnlyCallerEnabled[user] = enabled;
         emit OnlyCallerOptIn(user, enabled);
     }
