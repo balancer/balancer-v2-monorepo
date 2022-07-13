@@ -1373,19 +1373,12 @@ describe('StablePhantomPool', () => {
             previousScalingFactors = await pool.getScalingFactors();
           });
 
-          it('swaps use the new rates', async () => {
-            const { balances, tokens: allTokens } = await pool.getTokens();
-            const tokenIndex = allTokens.indexOf(tokens.first.address);
-
-            const amountIn = balances[tokenIndex].div(5);
-
-            const previousAmountOut = await pool.querySwapGivenIn({
-              in: tokens.first,
-              out: tokens.second,
-              amount: amountIn,
-              from: lp,
-              recipient: lp,
-            });
+          async function expectScalingFactorsToBeUpdated(
+            query: () => Promise<BigNumberish>,
+            actual: () => Promise<BigNumberish>
+          ) {
+            // Perform a query with the current rate values
+            const queryAmount = await query();
 
             await updateExternalRates();
 
@@ -1397,20 +1390,32 @@ describe('StablePhantomPool', () => {
               }
             }
 
-            // And swap again - amountOut should be different
-            // This must be a real swap - otherwise the rate changes would revert along with the query
-            const { amountOut } = await pool.swapGivenIn({
+            // Now we perform the actual operation - the result should be different. This must not be a query as we want
+            // to check the updated state after the transaction.
+            const actualAmount = await actual();
+
+            // Verify the new rates are reflected in the scaling factors
+            await verifyScalingFactors(await pool.getScalingFactors());
+
+            expect(actualAmount).to.not.equal(queryAmount);
+          }
+
+          it('swaps use the new rates', async () => {
+            const { balances, tokens: allTokens } = await pool.getTokens();
+            const tokenIndex = allTokens.indexOf(tokens.first.address);
+
+            const amountIn = balances[tokenIndex].div(5);
+
+            const swapArgs = {
               in: tokens.first,
               out: tokens.second,
               amount: amountIn,
               from: lp,
               recipient: lp,
-            });
-
-            // Verify the new rates are reflected in the scaling factors
-            await verifyScalingFactors(await pool.getScalingFactors());
-
-            expect(amountOut).to.not.equal(previousAmountOut);
+            };
+            const query = () => pool.querySwapGivenIn(swapArgs);
+            const actual = async () => (await pool.swapGivenIn(swapArgs)).amountOut;
+            await expectScalingFactorsToBeUpdated(query, actual);
           });
 
           it('joins use the new rates', async () => {
@@ -1419,22 +1424,12 @@ describe('StablePhantomPool', () => {
             const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
             const token = tokens.get(tokenIndex);
 
-            const previousJoinResult = await pool.queryJoinGivenOut({ recipient: lp, bptOut, token });
+            const query = async () =>
+              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndex];
+            const actual = async () =>
+              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndex];
 
-            // Now update the rates
-            await updateExternalRates();
-
-            // Verify the new rates are not yet loaded
-            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
-
-            // And join again - amountIn should be different
-            // This must be a real join - otherwise the rate changes would revert along with the query
-            const newJoinResult = await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token });
-
-            // Verify the new rates are reflected in the scaling factors
-            await verifyScalingFactors(await pool.getScalingFactors());
-
-            expect(newJoinResult.amountsIn[tokenIndex]).to.not.equal(previousJoinResult.amountsIn[tokenIndex]);
+            await expectScalingFactorsToBeUpdated(query, actual);
           });
 
           it('exits use the new rates', async () => {
@@ -1443,22 +1438,12 @@ describe('StablePhantomPool', () => {
             const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
             const token = tokens.get(tokenIndex);
 
-            const previousExitResult = await pool.querySingleExitGivenIn({ from: lp, bptIn, token });
+            const query = async () =>
+              (await pool.querySingleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndex];
+            const actual = async () =>
+              (await pool.singleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndex];
 
-            // Now update the rates
-            await updateExternalRates();
-
-            // Verify the new rates are not yet loaded
-            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
-
-            // And exit again - amountOut should be different
-            // This must be a real exit - otherwise the rate changes would revert along with the query
-            const newExitResult = await pool.singleExitGivenIn({ from: lp, bptIn, token });
-
-            // Verify the new rates are reflected in the scaling factors
-            await verifyScalingFactors(await pool.getScalingFactors());
-
-            expect(newExitResult.amountsOut[tokenIndex]).to.not.equal(previousExitResult.amountsOut[tokenIndex]);
+            await expectScalingFactorsToBeUpdated(query, actual);
           });
 
           it('recovery mode exits do not update the cache', async () => {
