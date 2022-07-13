@@ -30,6 +30,12 @@ interface IOptionalOnlyCaller {
      */
     function setOnlyCallerCheck(bool enabled) external;
 
+    function setOnlyCallerCheckWithSignature(
+        bool enabled,
+        address user,
+        bytes memory signature
+    ) external;
+
     /**
      * @dev Returns true if caller verification is enabled for the given user, false otherwise.
      */

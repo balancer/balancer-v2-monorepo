@@ -74,7 +74,7 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
     mapping(address => mapping(IERC20 => uint256)) private _userTokenTimeCursor;
 
-    constructor(IVotingEscrow votingEscrow, uint256 startTime) {
+    constructor(IVotingEscrow votingEscrow, uint256 startTime) EIP712("FeeDistributor", "1") {
         _votingEscrow = votingEscrow;
 
         startTime = _roundDownTimestamp(startTime);
