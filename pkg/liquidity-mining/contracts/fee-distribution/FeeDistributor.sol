@@ -286,8 +286,6 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         optionalOnlyCaller(user)
         returns (uint256[] memory)
     {
-        // Prevent someone from assigning tokens to an inaccessible week.
-        require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
         _checkpointUserBalance(user);
 
