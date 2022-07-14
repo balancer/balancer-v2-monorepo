@@ -451,7 +451,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
         } else {
             // joinSwap
-            uint256[] memory amountsIn = new uint256[](balancesWithoutBpt.length);
+            uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
             amountsIn[_skipBptIndex(indexIn)] = amount;
 
             amountOut = StableMath._calcBptOutGivenExactTokensIn(
@@ -486,7 +486,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         if (bptIsTokenIn) {
             // joinSwap
-            uint256[] memory amountsOut = new uint256[](balancesWithoutBpt.length);
+            uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
             amountsOut[_skipBptIndex(indexOut)] = amount;
 
             amountIn = StableMath._calcBptInGivenExactTokensOut(
@@ -583,7 +583,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, scalingFactors.length);
+        InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, _getTotalTokens());
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
 
         (uint256 amp, ) = _getAmplificationParameter();
@@ -640,7 +640,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) private returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         // Balances are passed through from the Vault hook, and include BPT
-        InputHelpers.ensureInputLengthMatch(balances.length - 1, amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
 
         // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
         (uint256[] memory scaledAmountsInWithBpt, uint256[] memory scaledAmountsInWithoutBpt) = _upscaleWithoutBpt(
