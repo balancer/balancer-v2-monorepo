@@ -914,7 +914,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
+        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
     }
 
     /**
@@ -933,7 +933,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     {
         _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
-        rate = _tokenRateCaches[token].getRate();
+        rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }
 
@@ -970,8 +970,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 duration
     ) private {
         uint256 rate = provider.getRate();
-        bytes32 cache = PriceRateCache.encode(rate, duration);
-        _tokenRateCaches[token] = cache;
+        bytes32 cache = _tokenRateCaches[token];
+
+        _tokenRateCaches[token] = cache.updateRate(rate, duration);
+
         emit TokenRateCacheUpdated(token, rate);
     }
 

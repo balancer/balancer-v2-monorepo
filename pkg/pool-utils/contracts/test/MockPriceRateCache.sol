@@ -19,16 +19,16 @@ import "../rates/PriceRateCache.sol";
 contract MockPriceRateCache {
     bytes32 private _cache;
 
-    function getRate() public view returns (uint256) {
-        return PriceRateCache.getRate(_cache);
+    function getCurrentRate() public view returns (uint256) {
+        return PriceRateCache.getCurrentRate(_cache);
     }
 
-    function getPostJoinExitRate() external view returns (uint256) {
-        return PriceRateCache.getPostJoinExitRate(_cache);
+    function getOldRate() external view returns (uint256) {
+        return PriceRateCache.getOldRate(_cache);
     }
 
-    function setPostJoinExitRate(uint256 rate) external returns (bytes32) {
-        _cache = PriceRateCache.setPostJoinExitRate(_cache, rate);
+    function updateOldRate() external returns (bytes32) {
+        _cache = PriceRateCache.updateOldRate(_cache);
 
         return _cache;
     }
@@ -41,8 +41,8 @@ contract MockPriceRateCache {
         return PriceRateCache.getTimestamps(_cache);
     }
 
-    function encode(uint256 rate, uint256 duration) external returns (bytes32) {
-        _cache = PriceRateCache.encode(rate, duration);
+    function updateRate(uint256 rate, uint256 duration) external returns (bytes32) {
+        _cache = PriceRateCache.updateRate(_cache, rate, duration);
 
         return _cache;
     }

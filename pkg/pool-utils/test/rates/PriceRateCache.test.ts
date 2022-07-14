@@ -20,13 +20,17 @@ describe('PriceRateCache', () => {
     let now: BigNumber;
 
     sharedBeforeEach('encode values', async () => {
-      await cache.encode(rate, duration);
+      await cache.updateRate(rate, duration);
       now = await currentTimestamp();
       expectedExpiration = now.add(duration);
     });
 
     it('encodes the rate', async () => {
-      expect(await cache.getRate()).to.equal(rate);
+      expect(await cache.getCurrentRate()).to.equal(rate);
+    });
+
+    it('initializes the old rate to zero', async () => {
+      expect(await cache.getOldRate()).to.equal(0);
     });
 
     it('encodes the duration', async () => {
@@ -39,7 +43,7 @@ describe('PriceRateCache', () => {
       expect(expires).to.equal(expectedExpiration);
     });
 
-    it('decodes the encoding', async () => {
+    it('decodes the cached data', async () => {
       const { rate: rateResult, duration: durationResult, expires } = await cache.decode();
 
       expect(rateResult).to.equal(rate);
@@ -47,14 +51,12 @@ describe('PriceRateCache', () => {
       expect(expires).to.equal(expectedExpiration);
     });
 
-    it('encodes/decodes the postJoin rate', async () => {
-      const postJoinRate = pct(rate, 0.46);
+    it('updates the old rate', async () => {
+      await cache.updateOldRate();
 
-      await cache.setPostJoinExitRate(postJoinRate);
-
-      const rateResult = await cache.getPostJoinExitRate();
-      expect(rateResult).to.equal(postJoinRate);
-      expect(rateResult).to.not.equal(rate);
+      const rateResult = await cache.getOldRate();
+      expect(rateResult).to.equal(rate);
+      expect(rateResult).to.not.equal(0);
     });
   });
 
@@ -63,15 +65,11 @@ describe('PriceRateCache', () => {
     const badRate: BigNumber = bn(2 ** 96);
 
     it('fails with a bad duration', async () => {
-      await expect(cache.encode(rate, badDuration)).to.be.revertedWith('CODEC_OVERFLOW');
+      await expect(cache.updateRate(rate, badDuration)).to.be.revertedWith('CODEC_OVERFLOW');
     });
 
     it('fails with a bad rate', async () => {
-      await expect(cache.encode(badRate, duration)).to.be.revertedWith('PRICE_RATE_OVERFLOW');
-    });
-
-    it('fails with a bad postJoin rate', async () => {
-      await expect(cache.setPostJoinExitRate(badRate)).to.be.revertedWith('PRICE_RATE_OVERFLOW');
+      await expect(cache.updateRate(badRate, duration)).to.be.revertedWith('PRICE_RATE_OVERFLOW');
     });
   });
 });
