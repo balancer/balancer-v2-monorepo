@@ -37,7 +37,7 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
         uint256 amplificationParameter,
         IRateProvider[] memory rateProviders,
         uint256[] memory tokenRateCacheDurations,
-        bool[] memory protocolFeeExemptYieldFlags,
+        bool[] memory exemptFromYieldProtocolFeeFlags,
         uint256 swapFeePercentage,
         address owner
     ) external returns (StablePhantomPool) {
@@ -53,7 +53,7 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
                             tokens: tokens,
                             rateProviders: rateProviders,
                             tokenRateCacheDurations: tokenRateCacheDurations,
-                            protocolFeeExemptYieldFlags: protocolFeeExemptYieldFlags,
+                            exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags,
                             amplificationParameter: amplificationParameter,
                             swapFeePercentage: swapFeePercentage,
                             pauseWindowDuration: pauseWindowDuration,

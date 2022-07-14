@@ -118,12 +118,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     // Set true if the corresponding token should have its yield exempted from protocol fees.
     // For example, the BPT of another PhantomStable Pool containing yield tokens.
-    bool internal immutable _protocolFeeExemptYieldToken0;
-    bool internal immutable _protocolFeeExemptYieldToken1;
-    bool internal immutable _protocolFeeExemptYieldToken2;
-    bool internal immutable _protocolFeeExemptYieldToken3;
-    bool internal immutable _protocolFeeExemptYieldToken4;
-    bool internal immutable _protocolFeeExemptYieldToken5;
+    // Unlike the other numbered token variables, these indices correspond to the token array
+    // after dropping the BPT token.
+    bool internal immutable _exemptFromYieldProtocolFeeToken0;
+    bool internal immutable _exemptFromYieldProtocolFeeToken1;
+    bool internal immutable _exemptFromYieldProtocolFeeToken2;
+    bool internal immutable _exemptFromYieldProtocolFeeToken3;
+    bool internal immutable _exemptFromYieldProtocolFeeToken4;
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
@@ -136,7 +137,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         IERC20[] tokens;
         IRateProvider[] rateProviders;
         uint256[] tokenRateCacheDurations;
-        bool[] protocolFeeExemptYieldFlags;
+        bool[] exemptFromYieldProtocolFeeFlags;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
@@ -169,6 +170,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             params.rateProviders.length,
             params.tokenRateCacheDurations.length
         );
+        InputHelpers.ensureInputLengthMatch(params.tokens.length, params.exemptFromYieldProtocolFeeFlags.length);
 
         _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
@@ -217,18 +219,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
-        // Do the same with protocolFeeExemptYield flags
-        bool[] memory protocolFeeExemptYieldFlags = new bool[](params.tokens.length + 1);
+        // Do the same with protocolFeeExemptTokenFlags flags
+        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length);
 
         for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
             if (i < bptIndex) {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i];
-                protocolFeeExemptYieldFlags[i] = params.protocolFeeExemptYieldFlags[i];
             } else if (i == bptIndex) {
                 tokensAndBPTRateProviders[i] = IRateProvider(0);
             } else {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
-                protocolFeeExemptYieldFlags[i] = params.protocolFeeExemptYieldFlags[i - 1];
+            }
+
+            if (i < exemptFromYieldProtocolFeeFlags.length) {
+                exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
             }
         }
 
@@ -240,12 +244,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
         _rateProvider5 = (tokensAndBPTRateProviders.length > 5) ? tokensAndBPTRateProviders[5] : IRateProvider(0);
 
-        _protocolFeeExemptYieldToken0 = protocolFeeExemptYieldFlags[0];
-        _protocolFeeExemptYieldToken1 = protocolFeeExemptYieldFlags[1];
-        _protocolFeeExemptYieldToken2 = protocolFeeExemptYieldFlags[2];
-        _protocolFeeExemptYieldToken3 = (tokensAndBPTRateProviders.length > 3) ? protocolFeeExemptYieldFlags[3] : false;
-        _protocolFeeExemptYieldToken4 = (tokensAndBPTRateProviders.length > 4) ? protocolFeeExemptYieldFlags[4] : false;
-        _protocolFeeExemptYieldToken5 = (tokensAndBPTRateProviders.length > 5) ? protocolFeeExemptYieldFlags[5] : false;
+        _exemptFromYieldProtocolFeeToken0 = exemptFromYieldProtocolFeeFlags[0];
+        _exemptFromYieldProtocolFeeToken1 = exemptFromYieldProtocolFeeFlags[1];
+        _exemptFromYieldProtocolFeeToken2 = (exemptFromYieldProtocolFeeFlags.length > 2)
+            ? exemptFromYieldProtocolFeeFlags[2]
+            : false;
+        _exemptFromYieldProtocolFeeToken3 = (exemptFromYieldProtocolFeeFlags.length > 3)
+            ? exemptFromYieldProtocolFeeFlags[3]
+            : false;
+        _exemptFromYieldProtocolFeeToken4 = (exemptFromYieldProtocolFeeFlags.length > 4)
+            ? exemptFromYieldProtocolFeeFlags[4]
+            : false;
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -923,25 +932,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Return whether the given token is exempt from protocol fees. The BPT token will always return false,
-     * simply because that's the default bool value. There's no reason to set it to anything, as the BPT token itself
-     * is not used in any calculations. Calling this with the BPT token isn't meaningful, but shouldn't fail, since
-     * it is a valid pool token.
-     */
-    function isTokenYieldExemptFromProtocolFees(IERC20 token) public view returns (bool) {
-        // prettier-ignore
-        if (token == _token0) { return _protocolFeeExemptYieldToken0; }
-        else if (token == _token1) { return _protocolFeeExemptYieldToken1; }
-        else if (token == _token2) { return _protocolFeeExemptYieldToken2; }
-        else if (token == _token3) { return _protocolFeeExemptYieldToken3; }
-        else if (token == _token4) { return _protocolFeeExemptYieldToken4; }
-        else if (token == _token5) { return _protocolFeeExemptYieldToken5; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    /**
      * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
      * In case there is no rate provider for the provided token it returns 1e18.
      */
@@ -977,6 +967,31 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         rate = _tokenRateCaches[token].getRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
+    }
+
+    /**
+     * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
+     * Its length will be one less than the registered pool tokens, and it will correspond to the token
+     * list after removing the BPT token.
+     */
+    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
+        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
+        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
+
+        // prettier-ignore
+        {
+            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
+            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
+            if (tokensWithoutBPT > 2) {
+                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 3) {
+                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 4) {
+                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
+            } else { return protocolFeeExemptTokenFlags; }
+        }
     }
 
     /**

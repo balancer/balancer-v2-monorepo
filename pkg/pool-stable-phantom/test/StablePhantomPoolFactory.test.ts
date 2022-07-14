@@ -141,15 +141,11 @@ describe('StablePhantomPoolFactory', function () {
     });
 
     it('sets the protocol fee flags', async () => {
-      const poolId = await pool.getPoolId();
-      const { tokens: allTokens } = await vault.getPoolTokens(poolId);
-      const bptIndex = await pool.getBptIndex();
-      const finalFlaggedTokenIndex =
-        bptIndex <= PROTOCOL_FEE_EXEMPT_TOKEN_IDX ? PROTOCOL_FEE_EXEMPT_TOKEN_IDX + 1 : PROTOCOL_FEE_EXEMPT_TOKEN_IDX;
+      const expectedFlags = Array(tokens.length).fill(false);
+      expectedFlags[PROTOCOL_FEE_EXEMPT_TOKEN_IDX] = true;
 
-      // Calling it on the BPT index should return false
-      expect(await pool.isTokenYieldExemptFromProtocolFees(pool.address)).to.be.false;
-      expect(await pool.isTokenYieldExemptFromProtocolFees(allTokens[finalFlaggedTokenIndex])).to.be.true;
+      const flags = await pool.getProtocolFeeExemptTokenFlags();
+      expect(flags).to.deep.equal(expectedFlags);
     });
   });
 

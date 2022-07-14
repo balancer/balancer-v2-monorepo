@@ -74,7 +74,7 @@ describe('StablePhantomPool', () => {
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
-    const protocolFeeExemptYieldFlags: boolean[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(params: RawStablePhantomPoolDeployment = {}, rates: BigNumberish[] = []): Promise<void> {
       tokens = params.tokens || (await TokenList.create(numberOfTokens, { sorted: true }));
@@ -83,14 +83,14 @@ describe('StablePhantomPool', () => {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
-        protocolFeeExemptYieldFlags[i] = i % 2 == 0; // set true for even tokens
+        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePhantomPool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations,
-        protocolFeeExemptYieldFlags,
+        exemptFromYieldProtocolFeeFlags,
         owner,
         admin,
         ...params,
@@ -212,16 +212,14 @@ describe('StablePhantomPool', () => {
         });
 
         it('sets the fee exemption flags correctly', async () => {
-          for (let i = 0; i < numberOfTokens; i++) {
-            const token = tokens.get(i).address;
-            // Initialized to true for even tokens
-            const expectedFlag = i % 2 == 0;
+          const expectedFlags: boolean[] = [];
 
-            expect(await pool.instance.isTokenYieldExemptFromProtocolFees(token)).to.equal(expectedFlag);
+          for (let i = 0; i < numberOfTokens; i++) {
+            // Initialized to true for even tokens
+            expectedFlags[i] = i % 2 == 0;
           }
 
-          // BPT is always false
-          expect(await pool.instance.isTokenYieldExemptFromProtocolFees(pool.address)).to.be.false;
+          expect(await pool.instance.getProtocolFeeExemptTokenFlags()).to.deep.equal(expectedFlags);
         });
       });
 
@@ -242,6 +240,12 @@ describe('StablePhantomPool', () => {
           const rateProviders = [ZERO_ADDRESS];
 
           await expect(deployPool({ rateProviders })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        });
+
+        it('reverts if the protocol fee flags do not match the tokens length', async () => {
+          const exemptFromYieldProtocolFeeFlags = Array(numberOfTokens + 1).fill(false);
+
+          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the swap fee is too high', async () => {
