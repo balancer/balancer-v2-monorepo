@@ -129,24 +129,28 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     });
 
     joinUserData = WeightedPoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
-  } else if (poolName == 'StablePool') {
+  } else if (poolName == 'StablePhantomPool') {
     const amplificationParameter = bn(50);
+
+    const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    const cacheDurations = Array(tokens.length).fill(0);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokens.addresses, amplificationParameter, swapFeePercentage],
+      parameters: [tokens.addresses, amplificationParameter, rateProviders, cacheDurations, swapFeePercentage],
     });
-
-    joinUserData = StablePoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }
 
   const poolId = await pool.getPoolId();
+  const { tokens: allTokens } = await vault.getPoolTokens(poolId);
+  const initialBalances = allTokens.map((t) => (t == pool.address ? 0 : initialPoolBalance));
+  joinUserData = StablePoolEncoder.joinInit(initialBalances);
 
   await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {
-    assets: tokens.addresses,
-    maxAmountsIn: tokens.map(() => initialPoolBalance), // These end up being the actual join amounts
+    assets: allTokens,
+    maxAmountsIn: Array(allTokens.length).fill(MAX_UINT256), // These end up being the actual join amounts
     fromInternalBalance: false,
     userData: joinUserData,
   });
@@ -164,7 +168,7 @@ export async function getWeightedPool(vault: Vault, tokens: TokenList, size: num
 }
 
 export async function getStablePool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
-  return deployPool(vault, tokens.subset(size, offset), 'StablePool');
+  return deployPool(vault, tokens.subset(size, offset), 'StablePhantomPool');
 }
 
 export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
@@ -182,14 +186,14 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader, others };
 }
 
-type PoolName = 'WeightedPool' | 'StablePool' | 'ManagedPool';
+type PoolName = 'WeightedPool' | 'StablePhantomPool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Vault,
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
+  const fullName = `${poolName == 'StablePhantomPool' ? 'v2-pool-stable-phantom' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
   if (poolName == 'ManagedPool') {
     const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
