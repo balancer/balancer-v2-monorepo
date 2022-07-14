@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -507,13 +507,14 @@ describe('LidoWrapping', function () {
     let WETH: Token;
     let poolTokens: TokenList;
     let poolId: string;
-    let pool: StablePool;
+    let pool: StablePhantomPool;
+    let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
       poolTokens = new TokenList([WETH, wstETH]).sort();
 
-      pool = await StablePool.create({ tokens: poolTokens, vault });
+      pool = await StablePhantomPool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
 
       await WETH.mint(senderUser, fp(2));
@@ -528,7 +529,10 @@ describe('LidoWrapping', function () {
       await wstETH.instance.connect(admin).wrap(fp(150));
       await wstETH.approve(vault, MAX_UINT256, { from: admin });
 
-      await pool.init({ initialBalances: fp(100), from: admin });
+      bptIndex = await pool.getBptIndex();
+      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+
+      await pool.init({ initialBalances, from: admin });
     });
 
     describe('swap', () => {
@@ -756,7 +760,7 @@ describe('LidoWrapping', function () {
         poolId: string;
         sender: Account;
         recipient: Account;
-        assets: TokenList;
+        assets: string[];
         maxAmountsIn: BigNumberish[];
         userData: string;
         outputReference?: BigNumberish;
@@ -767,7 +771,7 @@ describe('LidoWrapping', function () {
           TypesConverter.toAddress(params.sender),
           TypesConverter.toAddress(params.recipient),
           {
-            assets: params.assets.addresses,
+            assets: params.assets,
             maxAmountsIn: params.maxAmountsIn,
             userData: params.userData,
             fromInternalBalance: false,
@@ -782,6 +786,8 @@ describe('LidoWrapping', function () {
       const amount = fp(1);
 
       sharedBeforeEach('join the pool', async () => {
+        const { tokens: allTokens } = await pool.getTokens();
+
         senderWstETHBalanceBefore = await wstETH.balanceOf(senderUser);
         receipt = await (
           await relayer.connect(senderUser).multicall([
@@ -789,10 +795,10 @@ describe('LidoWrapping', function () {
             encodeApprove(wstETH, MAX_UINT256),
             encodeJoin({
               poolId,
-              assets: poolTokens,
+              assets: allTokens,
               sender: relayer,
               recipient: recipientUser,
-              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
+              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
               userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
                 poolTokens.map((token) => (token === wstETH ? toChainedReference(0) : 0)),
                 0
