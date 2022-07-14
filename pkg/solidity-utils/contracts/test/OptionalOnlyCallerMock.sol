@@ -20,13 +20,14 @@ import "../helpers/OptionalOnlyCaller.sol";
  * @dev Mock with an external method that affects an address.
  *
  * The user can opt in to a verification, so that the method becomes callable
- * only by their address. 
+ * only by their address.
  */
 contract OptionalOnlyCallerMock is OptionalOnlyCaller {
+    constructor() EIP712("OptionalOnlyCallerMock", "1") {}
 
-    event TestFunctionCalled(address user);
+    event TestFunctionCalled();
 
     function testFunction(address user) external optionalOnlyCaller(user) {
-        emit TestFunctionCalled(user);
+        emit TestFunctionCalled();
     }
 }
