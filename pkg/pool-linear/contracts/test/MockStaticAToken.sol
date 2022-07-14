@@ -58,7 +58,7 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
         uint256,
         uint16,
         bool
-    ) external override returns (uint256) {
+    ) external pure override returns (uint256) {
         return 0;
     }
 
@@ -66,7 +66,11 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
         address,
         uint256,
         bool
-    ) external override returns (uint256, uint256) {
+    ) external pure override returns (uint256, uint256) {
         return (0, 0);
+    }
+
+    function staticToDynamicAmount(uint256 amount) external pure override returns (uint256) {
+        return amount;
     }
 }

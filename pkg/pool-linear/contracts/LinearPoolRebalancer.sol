@@ -56,11 +56,11 @@ contract LinearPoolRebalancer {
     }
 
     /**
-      * @notice Rebalance a Linear Pool from an asset manager, to maintain optimal operating conditions.
-      * @dev Use the asset manager mechanism to wrap/unwrap tokens as necessary to keep the main token
-      * balance as close as possible to the midpoint between the upper and lower targets: the fee-free zone
-      * where trading volume is highest.
-      */
+     * @notice Rebalance a Linear Pool from an asset manager, to maintain optimal operating conditions.
+     * @dev Use the asset manager mechanism to wrap/unwrap tokens as necessary to keep the main token
+     * balance as close as possible to the midpoint between the upper and lower targets: the fee-free zone
+     * where trading volume is highest.
+     */
     function rebalance() public {
         // The first thing we need to test is whether the Pool is below or above the target level, which will
         // determine whether we need to deposit or withdraw main tokens.
@@ -118,7 +118,7 @@ contract LinearPoolRebalancer {
     function _rebalanceExcessOfMainToken(uint256 excessMainAmount) private {
         // The Pool needs to reduce its main token balance, so we do a swap where we take the excess main token amount and send wrapped
         // tokens in exchange, that is, the main token is the token out. Since we know this amount, this is a 'given
-// out' swap.
+        // out' swap.
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: _poolId,
             kind: IVault.SwapKind.GIVEN_OUT,
@@ -142,11 +142,14 @@ contract LinearPoolRebalancer {
         // Pool's `onSwap` function is `view`, this is irrelevant.
 
         _withdrawFromPool(_mainToken, excessMainAmount);
-        _wrapTokens(excessMainAmount);
+        // We're not going to wrap the full amount, only what is required to get `wrappedAmountIn` back. Any remaining
+        // main tokens will be transferred to the sender to refund the gas cost.
+        _wrapTokens(_getRequiredTokensToWrap(wrappedAmountIn));
         _depositToPool(_wrappedToken, wrappedAmountIn);
 
-        // Transfer any excess wrapped tokens to the sender
-        _wrappedToken.safeTransfer(msg.sender, _wrappedToken.balanceOf(address(this)));
+        // This contract will now hold excess main token, since we didn't wrap all that was withdrawn. These are sent to
+        // the caller to refund the gas cost.
+        _mainToken.safeTransfer(msg.sender, _mainToken.balanceOf(address(this)));
     }
 
     function _withdrawFromPool(IERC20 token, uint256 amount) private {
@@ -210,5 +213,16 @@ contract LinearPoolRebalancer {
 
     function _unwrapTokens(uint256 amount) private {
         IStaticAToken(address(_wrappedToken)).withdraw(address(this), amount, true);
+    }
+
+    /**
+     * @dev Returns how many main tokens must be wrapped in order to get `wrappedAmount` back.
+     */
+    function _getRequiredTokensToWrap(uint256 wrappedAmount) private view returns (uint256) {
+        // staticToDynamic returns how many main tokens will be returned when unwrapping. Since there's fixed point
+        // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure
+        // the returned value will always be enough to get `wrappedAmount` when unwrapping. This might result in some
+        // dust being left in the Rebalancer.
+        return IStaticAToken(address(_wrappedToken)).staticToDynamicAmount(wrappedAmount) + 1;
     }
 }

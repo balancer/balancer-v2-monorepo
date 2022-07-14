@@ -46,4 +46,6 @@ interface IStaticAToken {
         uint256,
         bool
     ) external returns (uint256, uint256);
+
+    function staticToDynamicAmount(uint256 amount) external view returns (uint256);
 }
