@@ -81,9 +81,9 @@ contract LinearPoolRebalancer {
     }
 
     function _rebalanceLackOfMainToken(uint256 missingMainAmount) private {
-        // The Pool needs to increase the main token balance, so we prepare a swap where we provide the missing main token amount in
-        // exchange for wrapped tokens, that is, the main token is the token in. Since we know this amount, this is a
-        // 'given in' swap.
+        // The Pool needs to increase the main token balance, so we prepare a swap where we provide the missing main
+        // token amount in exchange for wrapped tokens, that is, the main token is the token in. Since we know this
+        // amount, this is a 'given in' swap.
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: _poolId,
             kind: IVault.SwapKind.GIVEN_IN,
@@ -116,9 +116,9 @@ contract LinearPoolRebalancer {
     }
 
     function _rebalanceExcessOfMainToken(uint256 excessMainAmount) private {
-        // The Pool needs to reduce its main token balance, so we do a swap where we take the excess main token amount and send wrapped
-        // tokens in exchange, that is, the main token is the token out. Since we know this amount, this is a 'given
-        // out' swap.
+        // The Pool needs to reduce its main token balance, so we do a swap where we take the excess main token amount
+        // and send wrapped tokens in exchange, that is, the main token is the token out. Since we know this amount,
+        // this is a 'given out' swap.
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: _poolId,
             kind: IVault.SwapKind.GIVEN_OUT,
