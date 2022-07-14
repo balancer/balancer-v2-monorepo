@@ -1,409 +1,338 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { Contract } from '@ethersproject/contracts';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_GAS_LIMIT, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { RelayerAuthorization, RelayerAction } from '@balancer-labs/balancer-js';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('SignaturesValidator', () => {
   let validator: Contract;
-  let user: SignerWithAddress, sender: SignerWithAddress, other: SignerWithAddress;
-
-  before('setup signers', async () => {
-    [, user, sender, other] = await ethers.getSigners();
-  });
+  let signer: SignerWithAddress | Contract;
+  let nonce: BigNumberish;
+  let getSignature: (amount?: BigNumberish) => Promise<string>;
+  const AMOUNT = 42;
 
   sharedBeforeEach('deploy validator', async () => {
     validator = await deploy('SignaturesValidatorMock');
   });
 
-  describe('decoding', () => {
-    let calldata: string;
-
-    beforeEach('compute calldata', async () => {
-      calldata = validator.interface.encodeFunctionData('decodeCalldata');
+  const setNonceOffset = (offset = 0) => {
+    beforeEach(`set nonce with offset ${offset}`, async () => {
+      // mock at least one nonce in case we want to test with an old one
+      await validator.increaseNonce(signer.address);
+      const nextNonce = await validator.getNextNonce(signer.address);
+      nonce = nextNonce.add(offset);
     });
+  };
 
-    context('when there is no signature encoded', () => {
-      it('decodes empty data', async () => {
-        const tx = await user.sendTransaction({ to: validator.address, data: calldata, gasLimit: MAX_GAS_LIMIT });
-
-        expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'CalldataDecoded', {
-          data: calldata,
-          deadline: 0,
-          v: 0,
-          r: ZERO_BYTES32,
-          s: ZERO_BYTES32,
-        });
-      });
-    });
-
-    context('when there is a signature encoded', () => {
-      const deadline = 15;
-
-      it('decodes it properly', async () => {
-        const signature = await user.signMessage('message');
-        const calldataWithSignature = await RelayerAuthorization.encodeCalldataAuthorization(
-          calldata,
-          deadline,
-          signature
-        );
-
-        const tx = await user.sendTransaction({
-          to: validator.address,
-          data: calldataWithSignature,
-          gasLimit: MAX_GAS_LIMIT,
-        });
-
-        const { v, r, s } = ethers.utils.splitSignature(signature);
-        expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'CalldataDecoded', {
-          data: calldata,
-          deadline,
-          v,
-          r,
-          s,
-        });
-      });
-    });
-  });
-
-  describe('authenticate', () => {
-    let allowedSender: SignerWithAddress;
-    let extraCalldata: undefined | string, allowedFunction: string, deadline: BigNumberish, nonce: BigNumberish;
-
-    const itReverts = () => {
-      it('reverts', async () => {
-        const data = await buildCalldata();
-        await expect(
-          sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT })
-        ).to.be.revertedWith('INVALID_SIGNATURE');
-      });
-    };
-
-    const buildCalldata = async () => {
-      const calldata = validator.interface.encodeFunctionData('authenticateCall', [user.address]);
-
-      if (extraCalldata !== undefined) return `${calldata}${extraCalldata}`;
-      const allowedCalldata = allowedFunction
-        ? validator.interface.encodeFunctionData(allowedFunction, [user.address])
-        : calldata;
-
-      const signature = await RelayerAuthorization.signAuthorizationFor(
-        'Authorization' as RelayerAction,
-        validator,
-        user,
-        allowedSender,
-        allowedCalldata,
-        deadline,
-        nonce
-      );
-      return RelayerAuthorization.encodeCalldataAuthorization(calldata, deadline, signature);
-    };
-
-    const setAllowedFunction = (fnName: string) => {
-      beforeEach(`set authorized functionality ${fnName}`, async () => {
-        allowedFunction = fnName;
-      });
-    };
-
-    const setNonceOffset = (offset = 0) => {
-      beforeEach(`set nonce with offset ${offset}`, async () => {
-        // mock at least one nonce in case we want to test with an old one
-        await validator.increaseNonce(user.address);
-        const nextNonce = await validator.getNextNonce(user.address);
-        nonce = nextNonce.add(offset);
-      });
-    };
-
-    const setDeadlineOffset = (offset = 0) => {
-      beforeEach(`set deadline with offset ${offset}`, async () => {
-        const now = await currentTimestamp();
-        deadline = now.add(offset);
-      });
-    };
-
-    const setExtraCallData = (calldata: string | undefined) => {
-      beforeEach('set extra calldata', async () => {
-        extraCalldata = calldata;
-      });
-    };
-
-    context('when there is no extra calldata given', () => {
-      setExtraCallData('');
-
-      itReverts();
-    });
-
-    context('when there is some extra calldata given', () => {
-      context('when the extra calldata is malformed', () => {
-        setExtraCallData('abcd');
-
-        itReverts();
-      });
-
-      context('when the extra calldata is well formed', () => {
-        setExtraCallData(undefined);
-
-        context('when the signature allows the sender', () => {
-          beforeEach('set authorized sender', async () => {
-            allowedSender = sender;
-          });
+  function itChecksSignaturesCorrectly() {
+    describe('signature validation', () => {
+      context('without deadline', () => {
+        context('when the signature is well formed', () => {
+          const itReverts = (reason?: string) => {
+            it('reverts', async () => {
+              await expect(
+                validator.authenticatedCall(signer.address, AMOUNT, await getSignature())
+              ).to.be.revertedWith(reason ?? 'INVALID_SIGNATURE');
+            });
+          };
 
           context('when the given nonce is the next one', () => {
             setNonceOffset(0);
 
-            context('when the authorized data is correct', () => {
-              setAllowedFunction('authenticateCall');
+            context('when the signature is for other data', () => {
+              it('reverts', async () => {
+                await expect(
+                  validator.authenticatedCall(signer.address, AMOUNT, await getSignature(AMOUNT + 1))
+                ).to.be.revertedWith('INVALID_SIGNATURE');
+              });
+            });
 
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
+            context('when the signature is for the correct data', () => {
+              it('allows the sender', async () => {
+                const tx = await validator.authenticatedCall(signer.address, AMOUNT, await getSignature());
 
-                itReverts();
+                expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'Authenticated');
               });
 
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
+              it('increases the nonce of the signer', async () => {
+                const previousNonce = await validator.getNextNonce(signer.address);
 
+                await validator.authenticatedCall(signer.address, AMOUNT, await getSignature());
+
+                const nextNonce = await validator.getNextNonce(signer.address);
+                expect(nextNonce).to.be.equal(previousNonce.add(1));
+              });
+
+              it('does not allow using the same signature twice', async () => {
+                const signature = await getSignature();
+                await validator.authenticatedCall(signer.address, AMOUNT, signature);
+
+                await expect(validator.authenticatedCall(signer.address, AMOUNT, signature)).to.be.revertedWith(
+                  'INVALID_SIGNATURE'
+                );
+              });
+            });
+          });
+
+          context('when the given nonce is a past one', () => {
+            setNonceOffset(-1);
+
+            itReverts();
+          });
+
+          context('when the given nonce is a future one', () => {
+            setNonceOffset(1);
+            itReverts();
+          });
+        });
+      });
+
+      describe('with deadline', () => {
+        let deadline: BigNumberish;
+
+        const setDeadlineOffset = (offset = 0) => {
+          beforeEach(`set deadline with offset ${offset}`, async () => {
+            const now = await currentTimestamp();
+            deadline = now.add(offset);
+          });
+        };
+
+        context('when the signature is well formed', () => {
+          const itReverts = (reason?: string) => {
+            it('reverts', async () => {
+              await expect(
+                validator.authenticatedCallWithDeadline(signer.address, AMOUNT, await getSignature(), deadline)
+              ).to.be.revertedWith(reason ?? 'INVALID_SIGNATURE');
+            });
+          };
+
+          context('when the given nonce is the next one', () => {
+            setNonceOffset(0);
+
+            context('when the deadline is in the past', () => {
+              setDeadlineOffset(-100);
+
+              itReverts('EXPIRED_SIGNATURE');
+            });
+
+            context('when the deadline is in the future', () => {
+              setDeadlineOffset(60 * 60);
+
+              context('when the signature is for other data', () => {
+                it('reverts', async () => {
+                  await expect(
+                    validator.authenticatedCallWithDeadline(
+                      signer.address,
+                      AMOUNT,
+                      await getSignature(AMOUNT + 1),
+                      deadline
+                    )
+                  ).to.be.revertedWith('INVALID_SIGNATURE');
+                });
+              });
+
+              context('when the signature is for the correct data', () => {
                 it('allows the sender', async () => {
-                  const data = await buildCalldata();
-                  const tx = await sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT });
+                  const tx = await validator.authenticatedCallWithDeadline(
+                    signer.address,
+                    AMOUNT,
+                    await getSignature(),
+                    deadline
+                  );
 
-                  expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'Authenticated', {
-                    user: user.address,
-                    sender: sender.address,
-                  });
+                  expectEvent.inIndirectReceipt(await tx.wait(), validator.interface, 'Authenticated');
                 });
 
-                it('increases the nonce of the user', async () => {
-                  const previousNonce = await validator.getNextNonce(user.address);
+                it('increases the nonce of the signer', async () => {
+                  const previousNonce = await validator.getNextNonce(signer.address);
 
-                  await sender.sendTransaction({
-                    to: validator.address,
-                    data: await buildCalldata(),
-                    gasLimit: MAX_GAS_LIMIT,
-                  });
+                  await validator.authenticatedCallWithDeadline(signer.address, AMOUNT, await getSignature(), deadline);
 
-                  const nextNonce = await validator.getNextNonce(user.address);
+                  const nextNonce = await validator.getNextNonce(signer.address);
                   expect(nextNonce).to.be.equal(previousNonce.add(1));
                 });
 
                 it('does not allow using the same signature twice', async () => {
-                  const data = await buildCalldata();
-                  await sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT });
+                  await validator.authenticatedCallWithDeadline(signer.address, AMOUNT, await getSignature(), deadline);
 
                   await expect(
-                    sender.sendTransaction({ to: validator.address, data, gasLimit: MAX_GAS_LIMIT })
+                    validator.authenticatedCallWithDeadline(signer.address, AMOUNT, await getSignature(), deadline)
                   ).to.be.revertedWith('INVALID_SIGNATURE');
                 });
               });
             });
-
-            context('when the authorized functionality is not correct', () => {
-              setAllowedFunction('anotherFunction');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
           });
 
           context('when the given nonce is a past one', () => {
             setNonceOffset(-1);
 
-            context('when the authorized data is correct', () => {
-              setAllowedFunction('authenticateCall');
+            context('when the deadline is in the past', () => {
+              setDeadlineOffset(-100);
 
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
+              itReverts();
             });
 
-            context('when the authorized functionality is not correct', () => {
-              setAllowedFunction('anotherFunction');
+            context('when the deadline is in the future', () => {
+              setDeadlineOffset(60 * 60);
 
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
+              itReverts();
             });
           });
 
           context('when the given nonce is a future one', () => {
             setNonceOffset(1);
 
-            context('when the authorized data is correct', () => {
-              setAllowedFunction('authenticateCall');
+            context('when the deadline is in the past', () => {
+              setDeadlineOffset(-100);
 
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
+              itReverts();
             });
 
-            context('when the authorized functionality is not correct', () => {
-              setAllowedFunction('anotherFunction');
+            context('when the deadline is in the future', () => {
+              setDeadlineOffset(60 * 60);
 
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
+              itReverts();
             });
           });
         });
+      });
+    });
+  }
 
-        context('when the signature allows another sender', () => {
-          beforeEach('set authorized sender', async () => {
-            allowedSender = other;
+  context('when the signer is an EOA', () => {
+    before('setup signer', async () => {
+      [, signer] = await ethers.getSigners();
+    });
+
+    before('setup signing', () => {
+      getSignature = async function (amount?: BigNumberish): Promise<string> {
+        const { chainId } = await validator.provider.getNetwork();
+
+        const domain = {
+          name: 'EOA Signatures Validator Mock',
+          version: '1',
+          chainId,
+          verifyingContract: validator.address,
+        };
+
+        const types = {
+          Authenticate: [
+            { name: 'amount', type: 'uint256' },
+            { name: 'nonce', type: 'uint256' },
+          ],
+        };
+
+        const values = {
+          amount: (amount ?? AMOUNT).toString(),
+          nonce: nonce.toString(),
+        };
+
+        return (signer as SignerWithAddress)._signTypedData(domain, types, values);
+      };
+    });
+
+    describe('malformed signature', () => {
+      context('without deadline', () => {
+        it('reverts', async () => {
+          // The signature must be 65 bytes long
+
+          await expect(validator.authenticatedCall(ZERO_ADDRESS, 0, '0x'.concat('00'.repeat(64)))).to.be.revertedWith(
+            'MALFORMED_SIGNATURE'
+          );
+
+          await expect(validator.authenticatedCall(ZERO_ADDRESS, 0, '0x'.concat('00'.repeat(66)))).to.be.revertedWith(
+            'MALFORMED_SIGNATURE'
+          );
+        });
+      });
+
+      context('with deadline', () => {
+        it('reverts', async () => {
+          // The signature must be 65 bytes long
+
+          await expect(
+            validator.authenticatedCallWithDeadline(ZERO_ADDRESS, 0, '0x'.concat('00'.repeat(64)), 0)
+          ).to.be.revertedWith('MALFORMED_SIGNATURE');
+
+          await expect(
+            validator.authenticatedCallWithDeadline(ZERO_ADDRESS, 0, '0x'.concat('00'.repeat(66)), 0)
+          ).to.be.revertedWith('MALFORMED_SIGNATURE');
+        });
+      });
+    });
+
+    itChecksSignaturesCorrectly();
+  });
+
+  context('when the signer is a contract', () => {
+    beforeEach('deploy signer', async () => {
+      signer = await deploy('ERC1271Mock');
+    });
+
+    context('when the contract accepts the signature as valid', () => {
+      before('setup signing', () => {
+        getSignature = async function (amount?: BigNumberish): Promise<string> {
+          amount = amount ?? AMOUNT;
+
+          const digest = await (validator as Contract).getDigest(amount, nonce);
+          const signature = bn(`${amount.toString()}${nonce.toString()}`).toHexString();
+
+          const erc1271 = signer as Contract;
+          await erc1271.setApproved(await erc1271.getKey(digest, signature));
+
+          return signature;
+        };
+      });
+
+      itChecksSignaturesCorrectly();
+    });
+
+    context('when the contract does not accept the signature as valid', () => {
+      setNonceOffset(0);
+
+      context('without deadline', () => {
+        it('reverts', async () => {
+          await expect(validator.authenticatedCall(signer.address, AMOUNT, '0x')).to.be.revertedWith(
+            'INVALID_SIGNATURE'
+          );
+        });
+      });
+
+      context('with deadline', () => {
+        it('reverts', async () => {
+          await expect(
+            validator.authenticatedCallWithDeadline(signer.address, AMOUNT, '0x', MAX_UINT256)
+          ).to.be.revertedWith('INVALID_SIGNATURE');
+        });
+      });
+    });
+
+    context('when the contract reverts', () => {
+      beforeEach(async () => {
+        await (signer as Contract).setRevert(true);
+      });
+
+      context('when the signature is correct', () => {
+        setNonceOffset(0);
+
+        context('without deadline', () => {
+          it('reverts', async () => {
+            await expect(validator.authenticatedCall(signer.address, AMOUNT, await getSignature())).to.be.revertedWith(
+              'ERC1271_MOCK_REVERT'
+            );
           });
+        });
 
-          context('when the given nonce is the next one', () => {
-            setNonceOffset(0);
-
-            context('when the authorized data is correct', () => {
-              setAllowedFunction('authenticateCall');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
-
-            context('when the authorized functionality is not correct', () => {
-              setAllowedFunction('anotherFunction');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
-          });
-
-          context('when the given nonce is a past one', () => {
-            setNonceOffset(-1);
-
-            context('when the authorized data is correct', () => {
-              setAllowedFunction('authenticateCall');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
-
-            context('when the authorized functionality is not correct', () => {
-              setAllowedFunction('anotherFunction');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
-          });
-
-          context('when the given nonce is a future one', () => {
-            setNonceOffset(1);
-
-            context('when the authorized data is correct', () => {
-              setAllowedFunction('authenticateCall');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
-
-            context('when the authorized functionality is not correct', () => {
-              setAllowedFunction('anotherFunction');
-
-              context('when the deadline is in the past', () => {
-                setDeadlineOffset(-100);
-
-                itReverts();
-              });
-
-              context('when the deadline is in the future', () => {
-                setDeadlineOffset(60 * 60);
-
-                itReverts();
-              });
-            });
+        context('with deadline', () => {
+          it('reverts', async () => {
+            await expect(
+              validator.authenticatedCallWithDeadline(signer.address, AMOUNT, await getSignature(), MAX_UINT256)
+            ).to.be.revertedWith('ERC1271_MOCK_REVERT');
           });
         });
       });

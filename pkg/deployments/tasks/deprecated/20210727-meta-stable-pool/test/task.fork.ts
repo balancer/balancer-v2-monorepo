@@ -5,7 +5,7 @@ import { Contract } from 'ethers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
