@@ -10,4 +10,4 @@ This package contains the source code of Balancer V2 Stable Phantom Pools, that 
 
 The only flavor currently in existence is [`StablePhantomPool`](./contracts/StablePhantomPool.sol) (basic five token version).
 
-Another useful contract is [`StableMath`](../pool-stable/contracts/StableMath.sol), which implements the low level calculations required for swaps, joins and exits.
+Another useful contract is [`StableMath`](../pool-stable-phantom/contracts/StableMath.sol), which implements the low level calculations required for swaps, joins and exits.

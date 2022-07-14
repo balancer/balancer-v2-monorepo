@@ -8,7 +8,7 @@ import {
   calcInGivenOut,
   calcOutGivenIn,
   calculateOneTokenSwapFeeAmount,
-} from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+} from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
 import { random } from 'lodash';
 
 const MAX_RELATIVE_ERROR = 0.001; //Max relative error

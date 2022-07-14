@@ -64,7 +64,7 @@ describe('BalancerMinter', () => {
 
         await expect(
           minterContract.setMinterApprovalWithSignature(minter.address, true, user.address, deadline, v, r, s)
-        ).to.be.revertedWith('Invalid signature');
+        ).to.be.revertedWith('INVALID_SIGNATURE');
       });
     });
 
@@ -81,7 +81,7 @@ describe('BalancerMinter', () => {
 
         await expect(
           minterContract.setMinterApprovalWithSignature(minter.address, true, user.address, deadline, v, r, s)
-        ).to.be.revertedWith('Signature expired');
+        ).to.be.revertedWith('EXPIRED_SIGNATURE');
       });
 
       it('rejects signatures from other users', async () => {
@@ -94,7 +94,7 @@ describe('BalancerMinter', () => {
 
         await expect(
           minterContract.setMinterApprovalWithSignature(minter.address, true, user.address, deadline, v, r, s)
-        ).to.be.revertedWith('Invalid signature');
+        ).to.be.revertedWith('INVALID_SIGNATURE');
       });
 
       it('rejects signatures for other minters', async () => {
@@ -107,7 +107,7 @@ describe('BalancerMinter', () => {
 
         await expect(
           minterContract.setMinterApprovalWithSignature(minter.address, true, user.address, deadline, v, r, s)
-        ).to.be.revertedWith('Invalid signature');
+        ).to.be.revertedWith('INVALID_SIGNATURE');
       });
 
       it('rejects approve signature for opposite approval', async () => {
@@ -121,7 +121,7 @@ describe('BalancerMinter', () => {
 
           await expect(
             minterContract.setMinterApprovalWithSignature(minter.address, approval, user.address, deadline, v, r, s)
-          ).to.be.revertedWith('Invalid signature');
+          ).to.be.revertedWith('INVALID_SIGNATURE');
         }
 
         await expectRejectIncorrectApproval(true);
@@ -138,7 +138,7 @@ describe('BalancerMinter', () => {
 
         await expect(
           minterContract.setMinterApprovalWithSignature(minter.address, true, ZERO_ADDRESS, deadline, v, r, s)
-        ).to.be.revertedWith('Invalid signature');
+        ).to.be.revertedWith('INVALID_SIGNATURE');
       });
 
       it('rejects invalid signatures for the zero address', async () => {
@@ -159,7 +159,7 @@ describe('BalancerMinter', () => {
             '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
             s
           )
-        ).to.be.revertedWith('Invalid signature');
+        ).to.be.revertedWith('INVALID_SIGNATURE');
       });
     });
   });

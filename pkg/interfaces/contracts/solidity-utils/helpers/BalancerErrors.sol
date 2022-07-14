@@ -211,6 +211,8 @@ library Errors {
     uint256 internal constant IN_RECOVERY_MODE = 437;
     uint256 internal constant NOT_IN_RECOVERY_MODE = 438;
     uint256 internal constant INDUCED_FAILURE = 439;
+    uint256 internal constant EXPIRED_SIGNATURE = 440;
+    uint256 internal constant MALFORMED_SIGNATURE = 441;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
@@ -248,4 +250,7 @@ library Errors {
     uint256 internal constant FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH = 601;
     uint256 internal constant INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT = 602;
     uint256 internal constant AUM_FEE_PERCENTAGE_TOO_HIGH = 603;
+
+    // Misc
+    uint256 internal constant SHOULD_NOT_HAPPEN = 999;
 }
