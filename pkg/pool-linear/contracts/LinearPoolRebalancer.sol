@@ -55,9 +55,15 @@ contract LinearPoolRebalancer {
         _queries = queries;
     }
 
+    /**
+      * @notice Rebalance a Linear Pool from an asset manager, to maintain optimal operating conditions.
+      * @dev Use the asset manager mechanism to wrap/unwrap tokens as necessary to keep the main token
+      * balance as close as possible to the midpoint between the upper and lower targets: the fee-free zone
+      * where trading volume is highest.
+      */
     function rebalance() public {
-        // The first thing we need to determine if whether the Pool is below or above the target level, which will
-        // inform whether we need to deposit or withdraw main tokens.
+        // The first thing we need to test is whether the Pool is below or above the target level, which will
+        // determine whether we need to deposit or withdraw main tokens.
         uint256 desiredMainTokenBalance = _getDesiredMainTokenBalance();
 
         // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
@@ -75,7 +81,7 @@ contract LinearPoolRebalancer {
     }
 
     function _rebalanceLackOfMainToken(uint256 missingMainAmount) private {
-        // The Pool desires more main token, so we prepare a swap where we provide the missing main token amount in
+        // The Pool needs to increase the main token balance, so we prepare a swap where we provide the missing main token amount in
         // exchange for wrapped tokens, that is, the main token is the token in. Since we know this amount, this is a
         // 'given in' swap.
         IVault.SingleSwap memory swap = IVault.SingleSwap({
@@ -105,15 +111,14 @@ contract LinearPoolRebalancer {
         _depositToPool(_mainToken, missingMainAmount);
 
         // This contract will now hold excess main token, since unwrapping `wrappedAmountOut` should have resulted in
-        // more than `missingMainAmount` being obtained. These are sent to the caller to pay back for the gas of this
-        // execution.
+        // more than `missingMainAmount` being obtained. These are sent to the caller to refund the gas cost.
         _mainToken.safeTransfer(msg.sender, _mainToken.balanceOf(address(this)));
     }
 
     function _rebalanceExcessOfMainToken(uint256 excessMainAmount) private {
-        // The Pool desires less main token, so we do a swap where we take the excess main token amount and send wrapped
+        // The Pool needs to reduce its main token balance, so we do a swap where we take the excess main token amount and send wrapped
         // tokens in exchange, that is, the main token is the token out. Since we know this amount, this is a 'given
-        // out' swap.
+// out' swap.
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: _poolId,
             kind: IVault.SwapKind.GIVEN_OUT,
@@ -132,15 +137,15 @@ contract LinearPoolRebalancer {
 
         // Since we lack the wrapepd tokens required to actually execute the swap, we instead use our Asset Manager
         // permission to withdraw main tokens from the Pool, wrap them, and then deposit them as wrapped tokens. The
-        // amounts involved will be the exact same amounts as the one in the swap above, meaning the overall state
-        // transition will be the same, except we will never actually call the Linear Pool. However, since the Linear
+        // amounts involved will be the exact same amounts as the those in the swap above, meaning the overall
+        // state will be the same, except we will never actually call the Linear Pool. However, since the Linear
         // Pool's `onSwap` function is `view`, this is irrelevant.
 
         _withdrawFromPool(_mainToken, excessMainAmount);
         _wrapTokens(excessMainAmount);
         _depositToPool(_wrappedToken, wrappedAmountIn);
 
-        // Any excess wrapped token is transfered to the sender
+        // Transfer any excess wrapped tokens to the sender
         _wrappedToken.safeTransfer(msg.sender, _wrappedToken.balanceOf(address(this)));
     }
 
@@ -151,7 +156,7 @@ contract LinearPoolRebalancer {
         // therefore lost to the Pool in their current format).
         IVault.PoolBalanceOp[] memory withdrawal = new IVault.PoolBalanceOp[](2);
 
-        // First, we withdraw the tokens, creating 'managed' balance in the Pool.
+        // First, we withdraw the tokens, creating a non-zero 'managed' balance in the Pool.
         withdrawal[0].kind = IVault.PoolBalanceOpKind.WITHDRAW;
         withdrawal[0].poolId = _poolId;
         withdrawal[0].amount = amount;
@@ -167,7 +172,7 @@ contract LinearPoolRebalancer {
     }
 
     function _depositToPool(IERC20 token, uint256 amount) private {
-        // Tokens can be deposited to the Vault with a 'deposit' operation, but that requires for prior 'managed'
+        // Tokens can be deposited to the Vault with a 'deposit' operation, but that requires a prior 'managed'
         // balance to exist. We therefore have to perform two operations: one to set the 'managed' balance (representing
         // the new tokens that resulted from wrapping or unwrapping and which we are managing for the Pool), and
         // another to deposit.
@@ -189,8 +194,8 @@ contract LinearPoolRebalancer {
     }
 
     function _getDesiredMainTokenBalance() private view returns (uint256) {
-        // The desired main token balance is the midpoint of the lower and upper targets, which aims to maximize
-        // Pool swap volume by allowing for swaps in both directions with no rebalancing fees.
+        // The desired main token balance is the midpoint of the lower and upper targets. Keeping the balance
+        // close to that value maximizes Pool swap volume by allowing zero-fee swaps in either direction.
         (uint256 lowerTarget, uint256 upperTarget) = _pool.getTargets();
         uint256 midpoint = (lowerTarget + upperTarget) / 2;
 
