@@ -188,10 +188,15 @@ describe('FeeDistributor', function () {
       ]).format();
 
       voterProxy = await ethers.getContractAt(voterProxyABI, VOTER_PROXY_ADDRESS);
-      await voterProxy.connect(voterProxyAdmin).setVote(ethers.utils.id('hello world'), true);
+      // VoterProxy contract doesn't actually use the signature; only voting with the right hash matters.
+      // This hash is the distributor's outcome when enabling the caller check form the VoterProxy with the first
+      // available nonce.
+      await voterProxy
+        .connect(voterProxyAdmin)
+        .setVote('0x42ddef8248764e4a994b64cebd88a22a83d85c0aec6a39cc76aa8c48e260a02b', true);
       await distributor
         .connect(voterProxyAdmin)
-        .setOnlyCallerCheckForUser(voterProxy.address, ethers.utils.toUtf8Bytes('hello world'), true);
+        .setOnlyCallerCheckWithSignature(voterProxy.address, true, ethers.utils.toUtf8Bytes('unused fake signature'));
     });
 
     context('in the third week, when every token is claimable', () => {
