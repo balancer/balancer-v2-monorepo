@@ -20,25 +20,24 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-contract LinearPoolRebalancer {
+abstract contract LinearPoolRebalancer {
     using SafeERC20 for IERC20;
 
-    ILinearPool private immutable _pool;
-    bytes32 private immutable _poolId;
+    ILinearPool internal immutable _pool;
+    bytes32 internal immutable _poolId;
 
-    IERC20 private immutable _mainToken;
-    IERC20 private immutable _wrappedToken;
+    IERC20 internal immutable _mainToken;
+    IERC20 internal immutable _wrappedToken;
 
-    uint256 private immutable _mainTokenScalingFactor;
+    uint256 internal immutable _mainTokenScalingFactor;
 
-    IVault private immutable _vault;
+    IVault internal immutable _vault;
 
-    IBalancerQueries private immutable _queries;
+    IBalancerQueries internal immutable _queries;
 
     constructor(
         ILinearPool pool,
@@ -207,22 +206,18 @@ contract LinearPoolRebalancer {
         return FixedPoint.divDown(midpoint, _mainTokenScalingFactor);
     }
 
-    function _wrapTokens(uint256 amount) private {
-        IStaticAToken(address(_wrappedToken)).deposit(address(this), amount, 0, true);
-    }
+    /**
+     * @dev Wraps `amount` of `_mainToken` into `_wrappedToken`.
+     */
+    function _wrapTokens(uint256 amount) internal virtual;
 
-    function _unwrapTokens(uint256 amount) private {
-        IStaticAToken(address(_wrappedToken)).withdraw(address(this), amount, true);
-    }
+    /**
+     * @dev Unwraps `amount` of `_wrappedToken` into `_mainToken`.
+     */
+    function _unwrapTokens(uint256 amount) internal virtual;
 
     /**
      * @dev Returns how many main tokens must be wrapped in order to get `wrappedAmount` back.
      */
-    function _getRequiredTokensToWrap(uint256 wrappedAmount) private view returns (uint256) {
-        // staticToDynamic returns how many main tokens will be returned when unwrapping. Since there's fixed point
-        // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure
-        // the returned value will always be enough to get `wrappedAmount` when unwrapping. This might result in some
-        // dust being left in the Rebalancer.
-        return IStaticAToken(address(_wrappedToken)).staticToDynamicAmount(wrappedAmount) + 1;
-    }
+    function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view virtual returns (uint256);
 }
