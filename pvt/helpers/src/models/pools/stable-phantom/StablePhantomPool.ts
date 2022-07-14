@@ -30,7 +30,7 @@ import {
   ExitResult,
   ExitQueryResult,
   PoolQueryResult,
-} from '../stable/types';
+} from '../stable-phantom/types';
 import {
   calcBptInGivenExactTokensOut,
   calcBptOutGivenExactTokensIn,
@@ -39,7 +39,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
-} from '../stable/math';
+} from '../stable-phantom/math';
 import BasePool from '../base/BasePool';
 import { currentTimestamp, DAY } from '../../../time';
 
@@ -270,6 +270,7 @@ export default class StablePhantomPool extends BasePool {
     await Promise.all(
       balances.map(async (balance, i) => {
         const token = this.tokens.get(i);
+
         await token.mint(from, balance);
         await token.approve(this.vault, balance, { from });
       })
@@ -423,7 +424,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.joinExactTokensInForBPTOutPhantom(amountsIn, params.minimumBptOut ?? 0),
+      data: StablePoolEncoder.joinExactTokensInForBPTOut(amountsIn, params.minimumBptOut ?? 0),
     };
   }
 
@@ -434,7 +435,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.joinTokenInForExactBPTOutPhantom(params.bptOut, this.tokens.indexOf(params.token)),
+      data: StablePoolEncoder.joinTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
     };
   }
 
@@ -448,7 +449,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.exitBPTInForExactTokensOutPhantom(amountsOut, params.maximumBptIn ?? MAX_UINT256),
+      data: StablePoolEncoder.exitBPTInForExactTokensOut(amountsOut, params.maximumBptIn ?? MAX_UINT256),
     };
   }
 
@@ -459,7 +460,7 @@ export default class StablePhantomPool extends BasePool {
       lastChangeBlock: params.lastChangeBlock,
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
-      data: StablePoolEncoder.exitExactBPTInForOneTokenOutPhantom(params.bptIn, this.tokens.indexOf(params.token)),
+      data: StablePoolEncoder.exitExactBPTInForOneTokenOut(params.bptIn, this.tokens.indexOf(params.token)),
     };
   }
 

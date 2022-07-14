@@ -3,7 +3,7 @@ import path from 'path';
 import { ActionType, RunSuperFunction, HardhatRuntimeEnvironment } from 'hardhat/types';
 
 const DIRECTORIES = ['artifacts'];
-const FUNCTIONS = ['queryBatchSwap', 'queryExit', 'queryJoin'];
+const FUNCTIONS = ['querySwap', 'queryBatchSwap', 'queryExit', 'queryJoin'];
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */

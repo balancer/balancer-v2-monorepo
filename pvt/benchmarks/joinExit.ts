@@ -37,13 +37,10 @@ async function main() {
   const joinWeightedUserData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
   const exitWeightedUserData = WeightedPoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
-  const joinStableUserData = StablePoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
-  const exitStableUserData = StablePoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
-
   // numTokens is the size of the pool: 2,4,6,8,...
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       true,
@@ -55,7 +52,7 @@ async function main() {
 
   for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
       true,
@@ -66,7 +63,7 @@ async function main() {
   console.log('\n');
 
   printTokens('Managed pool', maxManagedTokens);
-  await joinAndExitPool(
+  await joinAndExitWeightedPool(
     () => getWeightedPool(vault, tokens, maxManagedTokens),
     maxManagedTokens,
     true,
@@ -79,13 +76,7 @@ async function main() {
   // Stable have a max of 5
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
-    await joinAndExitPool(
-      () => getStablePool(vault, tokens, numTokens),
-      numTokens,
-      true,
-      joinStableUserData,
-      exitStableUserData
-    );
+    await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), true);
   }
   console.log('\n');
 
@@ -94,7 +85,7 @@ async function main() {
   // numTokens is the size of the pool: 2,4,6,8,...
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       false,
@@ -106,7 +97,7 @@ async function main() {
 
   for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
       false,
@@ -117,7 +108,7 @@ async function main() {
   console.log('\n');
 
   printTokens('Managed pool', maxManagedTokens);
-  await joinAndExitPool(
+  await joinAndExitWeightedPool(
     () => getWeightedPool(vault, tokens, maxManagedTokens),
     maxManagedTokens,
     false,
@@ -130,13 +121,7 @@ async function main() {
   // Stable have a max of 5
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
-    await joinAndExitPool(
-      () => getStablePool(vault, tokens, numTokens),
-      numTokens,
-      false,
-      joinStableUserData,
-      exitStableUserData
-    );
+    await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), false);
   }
   console.log('\n');
 
@@ -146,7 +131,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       true,
@@ -159,7 +144,7 @@ async function main() {
 
   for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
       true,
@@ -171,7 +156,7 @@ async function main() {
   console.log('\n');
 
   printTokens('Managed pool', maxManagedTokens);
-  await joinAndExitPool(
+  await joinAndExitWeightedPool(
     () => getWeightedPool(vault, tokens, maxManagedTokens),
     maxManagedTokens,
     true,
@@ -183,14 +168,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
-    await joinAndExitPool(
-      () => getStablePool(vault, tokens, numTokens),
-      numTokens,
-      true,
-      joinStableUserData,
-      exitStableUserData,
-      numberJoinsExits
-    );
+    await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), true, numberJoinsExits);
   }
   console.log('\n');
 
@@ -198,7 +176,7 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
       numTokens,
       false,
@@ -211,7 +189,7 @@ async function main() {
 
   for (let numTokens = managedPoolMin; numTokens <= managedPoolMax; numTokens += managedPoolStep) {
     printTokens('Managed pool', numTokens);
-    await joinAndExitPool(
+    await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens),
       numTokens,
       false,
@@ -223,7 +201,7 @@ async function main() {
   console.log('\n');
 
   printTokens('Managed pool', maxManagedTokens);
-  await joinAndExitPool(
+  await joinAndExitWeightedPool(
     () => getWeightedPool(vault, tokens, maxManagedTokens),
     maxManagedTokens,
     false,
@@ -235,18 +213,11 @@ async function main() {
 
   for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
     printTokens('Stable pool', numTokens);
-    await joinAndExitPool(
-      () => getStablePool(vault, tokens, numTokens),
-      numTokens,
-      false,
-      joinStableUserData,
-      exitStableUserData,
-      numberJoinsExits
-    );
+    await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), false, numberJoinsExits);
   }
 }
 
-async function joinAndExitPool(
+async function joinAndExitWeightedPool(
   getPoolId: () => Promise<string>,
   numTokens: number,
   transferTokens: boolean,
@@ -255,8 +226,10 @@ async function joinAndExitPool(
   stageIdx = 1
 ) {
   const poolId: string = await getPoolId();
+
   const { address: poolAddress } = await vault.getPool(poolId);
   const pool: Contract = await deployedAt('v2-pool-weighted/WeightedPool', poolAddress);
+
   const joinRequest = {
     assets: pickTokenAddresses(tokens, numTokens),
     maxAmountsIn: Array(numTokens).fill(MAX_UINT256),
@@ -270,6 +243,46 @@ async function joinAndExitPool(
     fromInternalBalance: !transferTokens,
   };
 
+  await joinAndExitInternal(poolId, pool, stageIdx, joinRequest, exitRequest);
+}
+
+async function joinAndExitStablePool(getPoolId: () => Promise<string>, transferTokens: boolean, stageIdx = 1) {
+  const poolId: string = await getPoolId();
+
+  const { address: poolAddress } = await vault.getPool(poolId);
+  const pool: Contract = await deployedAt('v2-pool-stable-phantom/StablePhantomPool', poolAddress);
+
+  const { tokens: allTokens } = await vault.getPoolTokens(poolId);
+
+  const bptIndex = allTokens.indexOf(pool.address);
+  const tokenIndex = bptIndex == 0 ? 1 : 0;
+
+  const joinData = StablePoolEncoder.joinTokenInForExactBPTOut(BPTAmount, tokenIndex);
+  const exitData = StablePoolEncoder.exitExactBPTInForOneTokenOut(BPTAmount, tokenIndex);
+
+  const joinRequest = {
+    assets: allTokens,
+    maxAmountsIn: Array(allTokens.length).fill(MAX_UINT256),
+    userData: joinData,
+    fromInternalBalance: !transferTokens,
+  };
+  const exitRequest = {
+    assets: allTokens,
+    minAmountsOut: Array(allTokens.length).fill(0),
+    userData: exitData,
+    fromInternalBalance: !transferTokens,
+  };
+
+  await joinAndExitInternal(poolId, pool, stageIdx, joinRequest, exitRequest);
+}
+
+async function joinAndExitInternal(
+  poolId: string,
+  pool: Contract,
+  stageIdx: number,
+  joinRequest: unknown,
+  exitRequest: unknown
+) {
   let receipt;
   let bpt;
 
