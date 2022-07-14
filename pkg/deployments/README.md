@@ -90,6 +90,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Preseeded Voting Escrow Delegation                   | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
 | Gauge Registrant V2, supporting new networks         | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
+| Optimism Root Gauges, for veBAL voting               | [`20220628-optimism-root-gauge-factory`](./tasks/20220628-optimism-root-gauge-factory)               |
 
 ## Scripts
 
