@@ -25,7 +25,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
  * The cache data is packed into a single bytes32 value with the following structure:
  * [ 32 bits |  32 bits  |  96 bits  |    96 bits    ]
  * [ expires | duration  | old rate  | current rate  ]
- *  |MSB                                          LSB|
+ * |MSB                                           LSB|
  *
  * 'rate' is an 18 decimal fixed point number, supporting rates of up to ~3e10. 'expires' is a Unix timestamp, and
  * 'duration' is expressed in seconds.
@@ -81,7 +81,7 @@ library PriceRateCache {
      * @dev Encodes rate and duration into a price rate cache. The expiration time is computed automatically, counting
      * from the current time.
      */
-    function updateRate(
+    function updateRateAndDuration(
         bytes32 cache,
         uint256 rate,
         uint256 duration
@@ -94,6 +94,27 @@ library PriceRateCache {
                 .insertUint(rate, _CURRENT_PRICE_RATE_OFFSET, _RATE_BIT_LENGTH)
                 .insertUint(duration, _PRICE_RATE_CACHE_DURATION_OFFSET, _DURATION_BIT_LENGTH)
                 .insertUint(block.timestamp + duration, _PRICE_RATE_CACHE_EXPIRES_OFFSET, _DURATION_BIT_LENGTH);
+    }
+
+    /**
+     * @dev Update the current rate in a price rate cache.
+     */
+    function updateCurrentRate(bytes32 cache, uint256 rate) internal pure returns (bytes32) {
+        _require(rate >> _RATE_BIT_LENGTH == 0, Errors.PRICE_RATE_OVERFLOW);
+
+        return cache.insertUint(rate, _CURRENT_PRICE_RATE_OFFSET, _RATE_BIT_LENGTH);
+    }
+
+    /**
+     * @dev Update the duration (and expiration) in a price rate cache.
+     */
+    function updateDuration(bytes32 cache, uint256 duration) internal view returns (bytes32) {
+        return
+            cache.insertUint(duration, _PRICE_RATE_CACHE_DURATION_OFFSET, _DURATION_BIT_LENGTH).insertUint(
+                block.timestamp + duration,
+                _PRICE_RATE_CACHE_EXPIRES_OFFSET,
+                _DURATION_BIT_LENGTH
+            );
     }
 
     /**

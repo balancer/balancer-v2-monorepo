@@ -41,8 +41,20 @@ contract MockPriceRateCache {
         return PriceRateCache.getTimestamps(_cache);
     }
 
-    function updateRate(uint256 rate, uint256 duration) external returns (bytes32) {
-        _cache = PriceRateCache.updateRate(_cache, rate, duration);
+    function updateRateAndDuration(uint256 rate, uint256 duration) external returns (bytes32) {
+        _cache = PriceRateCache.updateRateAndDuration(_cache, rate, duration);
+
+        return _cache;
+    }
+
+    function updateCurrentRate(uint256 rate) external returns (bytes32) {
+        _cache = PriceRateCache.updateCurrentRate(_cache, rate);
+
+        return _cache;
+    }
+
+    function updateDuration(uint256 duration) external returns (bytes32) {
+        _cache = PriceRateCache.updateDuration(_cache, duration);
 
         return _cache;
     }
