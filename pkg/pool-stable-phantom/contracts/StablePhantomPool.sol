@@ -219,9 +219,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
-        // Do the same with protocolFeeExemptTokenFlags flags
-        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length);
-
         for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
             if (i < bptIndex) {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i];
@@ -230,10 +227,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             } else {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
             }
+        }
 
-            if (i < exemptFromYieldProtocolFeeFlags.length) {
-                exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
-            }
+        // Do the same with exemptFromYieldProtocolFeeFlags
+        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length);
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
+            exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
