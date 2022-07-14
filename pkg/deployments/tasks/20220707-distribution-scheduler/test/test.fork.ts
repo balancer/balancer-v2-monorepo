@@ -16,7 +16,7 @@ describe('DistributionScheduler', function () {
   let lmCommittee: SignerWithAddress, distributor: SignerWithAddress;
   let scheduler: Contract, gauge: Contract, DAI: Contract, USDC: Contract;
 
-  const task = new Task('20220422-distribution-scheduler', TaskMode.TEST, getForkedNetwork(hre));
+  const task = new Task('20220707-distribution-scheduler', TaskMode.TEST, getForkedNetwork(hre));
 
   const LM_COMMITTEE_ADDRESS = '0xc38c5f97B34E175FFd35407fc91a937300E33860';
   const DISTRIBUTOR_ADDRESS = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'; // Owns DAI and USDC
