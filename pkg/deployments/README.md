@@ -68,9 +68,9 @@ Returns an object with all contracts from a deployment and their addresses.
 | Batch Relayer                                        | [`20211203-batch-relayer`](./tasks/20211203-batch-relayer)                                           |
 | Linear Pools for Aave aTokens                        | [`20211208-aave-linear-pool`](./tasks/20211208-aave-linear-pool)                                     |
 | Batch Relayer V2                                     | [`20220318-batch-relayer-v2`](./tasks/20220318-batch-relayer-v2)                                     |
-| Authorizer Adaptor for extending governance          | [`20220325-authorizer-adaptor `](./tasks/20220325-authorizer-adaptor)                                |
-| Wallet for the BAL token                             | [`20220325-bal-token-holder-factory `](./tasks/20220325-bal-token-holder-factory)                    |
-| Admin of the BAL token                               | [`20220325-balancer-token-admin `](./tasks/20220325-balancer-token-admin)                            |
+| Authorizer Adaptor for extending governance          | [`20220325-authorizer-adaptor`](./tasks/20220325-authorizer-adaptor)                                 |
+| Wallet for the BAL token                             | [`20220325-bal-token-holder-factory`](./tasks/20220325-bal-token-holder-factory)                     |
+| Admin of the BAL token                               | [`20220325-balancer-token-admin`](./tasks/20220325-balancer-token-admin)                             |
 | Gauge Registrant                                     | [`20220325-gauge-adder`](./tasks/20220325-gauge-adder)                                               |
 | Liquidity Mining: veBAL, Gauge Controller and Minter | [`20220325-gauge-controller`](./tasks/20220325-gauge-controller)                                     |
 | Mainnet Staking Gauges                               | [`20220325-mainnet-gauge-factory`](./tasks/20220325-mainnet-gauge-factory)                           |
