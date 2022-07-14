@@ -41,6 +41,7 @@ contract AaveLinearPool is LinearPool {
             mainToken,
             wrappedToken,
             upperTarget,
+            new address[](2),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
