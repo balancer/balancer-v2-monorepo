@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
 import { BasePoolEncoder, StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Task, { TaskMode } from '../../../src/task';
