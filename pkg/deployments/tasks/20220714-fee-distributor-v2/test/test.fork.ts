@@ -197,7 +197,7 @@ describe('FeeDistributor', function () {
         .setVote('0x42ddef8248764e4a994b64cebd88a22a83d85c0aec6a39cc76aa8c48e260a02b', true);
       await distributor
         .connect(voterProxyAdmin)
-        .setOnlyCallerCheckWithSignature(voterProxy.address, true, ethers.utils.toUtf8Bytes('unused fake signature'));
+        .setOnlyCallerCheckWithSignature(voterProxy.address, true, '0x');
     });
 
     context('in the third week, when every token is claimable', () => {
