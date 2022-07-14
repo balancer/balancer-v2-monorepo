@@ -13,21 +13,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
-import "../helpers/OptionalOnlyCaller.sol";
+import "../fee-distribution/FeeDistributor.sol";
 
-/**
- * @dev Mock with an external method that affects an address.
- *
- * The user can opt in to a verification, so that the method becomes callable
- * only by their address.
- */
-contract OptionalOnlyCallerMock is OptionalOnlyCaller {
-    constructor() EIP712("OptionalOnlyCallerMock", "1") {}
+contract TestFeeDistributor is FeeDistributor {
+    constructor(IVotingEscrow votingEscrow, uint256 startTime) FeeDistributor(votingEscrow, startTime) {}
 
-    event TestFunctionCalled();
-
-    function testFunction(address user) external optionalOnlyCaller(user) {
-        emit TestFunctionCalled();
+    function getUserLastEpochCheckpointed(address user) external view returns (uint256) {
+        return _userState[user].lastEpochCheckpointed;
     }
 }
