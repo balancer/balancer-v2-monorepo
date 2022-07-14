@@ -453,10 +453,12 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
 
-            // If the user has many checkpoints, find the one for `nextWeekToCheckpoint` with a binary search.
-            // This saves users which interact with `votingEscrow` frequently from iterating through every checkpoint.
-            // We assume that any such power users promptly claim any fees and so we only perform a binary search here
-            // rather than integrating it into the main search algorithm.
+            // This optimizes a scenario common for power users, which have frequent `VotingEscrow` interactions in
+            // the same week. We assume that any such user is also claiming fees every week, and so we only perform
+            // a binary search here rather than integrating it into the main search algorithm, effectively skipping
+            // most of the week's irrelevant checkpoints.
+            // The slight tradeoff is that users who have multiple infrequent `VotingEscrow` interactions and also don't
+            // claim frequently will also perform the binary search, despite it not leading to gas savings.
             if (maxUserEpoch - userEpoch > 20) {
                 userEpoch = _findTimestampUserEpoch(user, nextWeekToCheckpoint, userEpoch, maxUserEpoch);
             }
