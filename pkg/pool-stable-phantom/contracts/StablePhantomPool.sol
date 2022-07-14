@@ -235,6 +235,23 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
+     * @notice Top-level Vault hook for swaps.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) public virtual override returns (uint256) {
+        _cacheTokenRatesIfNecessary();
+
+        return super.onSwap(swapRequest, balances, indexIn, indexOut);
+    }
+
+    /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
      * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
@@ -253,8 +270,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal virtual override whenNotPaused returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
@@ -280,8 +295,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal virtual override whenNotPaused returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
@@ -559,6 +572,27 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
+     * @notice Top-level Vault hook for joins.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        _cacheTokenRatesIfNecessary();
+
+        return
+            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+    }
+
+    /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
      * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
@@ -696,6 +730,30 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, amountsIn);
+    }
+
+    /**
+     * @notice Top-level Vault hook for exits.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
+        if (!userData.isRecoveryModeExitKind()) {
+            _cacheTokenRatesIfNecessary();
+        }
+
+        return
+            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 
     /**

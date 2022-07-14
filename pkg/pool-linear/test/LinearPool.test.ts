@@ -30,6 +30,8 @@ describe('LinearPool', function () {
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
 
+  const ASSET_MANAGERS = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
+
   before('setup', async () => {
     [, lp, trader, admin, owner, other] = await ethers.getSigners();
   });
@@ -53,7 +55,7 @@ describe('LinearPool', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         upperTarget = fp(2000);
-        await deployPool({ mainToken, wrappedToken, upperTarget }, false);
+        await deployPool({ mainToken, wrappedToken, upperTarget, assetManagers: ASSET_MANAGERS }, false);
       });
 
       it('sets the vault', async () => {
@@ -74,10 +76,13 @@ describe('LinearPool', function () {
       });
 
       it('sets the asset managers', async () => {
-        await tokens.asyncEach(async (token) => {
+        await tokens.asyncEach(async (token, i) => {
           const { assetManager } = await pool.getTokenInfo(token);
-          expect(assetManager).to.be.zeroAddress;
+          expect(assetManager).to.equal(ASSET_MANAGERS[i]);
         });
+
+        const { assetManager: bptAssetManager } = await pool.vault.instance.getPoolTokenInfo(pool.poolId, pool.address);
+        expect(bptAssetManager).to.be.zeroAddress;
       });
 
       it('sets swap fee', async () => {
