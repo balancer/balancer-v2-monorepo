@@ -21,7 +21,7 @@ describe('FeeDistributor', function () {
 
   let VEBAL: Contract, BAL: Contract, WETH: Contract, voterProxy: Contract;
 
-  const task = new Task('20220714-fee-distributor', TaskMode.TEST, getForkedNetwork(hre));
+  const task = new Task('20220714-fee-distributor-v2', TaskMode.TEST, getForkedNetwork(hre));
 
   const VEBAL_HOLDER = '0xA2e7002E0FFC42e4228292D67C13a81FDd191870';
   const VEBAL_HOLDER_2 = '0x49a2dcc237a65cc1f412ed47e0594602f6141936';
@@ -59,6 +59,7 @@ describe('FeeDistributor', function () {
     WETH = await testBALTokenTask.instanceAt('TestBalancerToken', WETH_ADDRESS);
   });
 
+  // These tests are the same as in the 20220420-fee-distributor task.
   describe('claims', () => {
     context('in the first week', () => {
       before(async () => {
