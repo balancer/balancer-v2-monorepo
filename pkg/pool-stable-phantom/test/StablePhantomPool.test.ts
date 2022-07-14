@@ -769,13 +769,12 @@ describe('StablePhantomPool', () => {
       });
 
       describe('join token in for exact BPT out', () => {
-        let tokenIndexWithoutBpt: number;
         let tokenIndexWithBpt: number;
         let token: Token;
 
         sharedBeforeEach('get token to join with', async () => {
           // tokens are sorted, and do not include BPT, so get the last one
-          tokenIndexWithoutBpt = numberOfTokens - 1;
+          const tokenIndexWithoutBpt = numberOfTokens - 1;
           token = tokens.get(tokenIndexWithoutBpt);
           tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
         });
@@ -800,6 +799,15 @@ describe('StablePhantomPool', () => {
           context('once initialized', () => {
             sharedBeforeEach('initialize pool', async () => {
               await pool.init({ recipient, initialBalances });
+            });
+
+            it('reverts if the tokenIndex passed in is invalid', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              const bptOut = pct(previousBptBalance, 0.2);
+
+              await expect(pool.joinGivenOut({ from: recipient, recipient, bptOut, token: 100 })).to.be.revertedWith(
+                'OUT_OF_BOUNDS'
+              );
             });
 
             it('grants exact BPT for token in', async () => {
@@ -917,6 +925,13 @@ describe('StablePhantomPool', () => {
         });
 
         function itExitsExactBptInForOneTokenOutProperly() {
+          it('reverts if the tokenIndex passed in is invalid', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptIn = pct(previousBptBalance, 0.2);
+
+            await expect(pool.singleExitGivenIn({ from: lp, bptIn, token: 100 })).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
           it('grants one token for exact bpt', async () => {
             // 20% of previous balance
             const previousBptBalance = await pool.balanceOf(lp);
