@@ -36,13 +36,13 @@ import "./StableMath.sol";
  * price ratio, such as Compound's cTokens.
  *
  * BPT is preminted on Pool initialization and registered as one of the Pool's tokens, allowing for swaps to behave as
- * single-token joins or exits (by swapping a token for BPT). Regular joins and exits are disabled, since no BPT is
- * minted or burned after initialization.
+ * single-token joins or exits (by swapping a token for BPT). We also support regular joins and exits, which can mint
+ * and burn BPT.
  *
  * Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
  * the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
- * actually owned by some entity) instead.
+ * actually owned outside the Vault) instead.
  */
 contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     using WordCodec for bytes32;
@@ -235,6 +235,23 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
+     * @notice Top-level Vault hook for swaps.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) public virtual override returns (uint256) {
+        _cacheTokenRatesIfNecessary();
+
+        return super.onSwap(swapRequest, balances, indexIn, indexOut);
+    }
+
+    /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
      * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
@@ -253,8 +270,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal virtual override whenNotPaused returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
@@ -280,8 +295,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal virtual override whenNotPaused returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
@@ -332,7 +345,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         indexIn = _skipBptIndex(indexIn);
         indexOut = _skipBptIndex(indexOut);
 
-        // Would like to use a function selector here, but it causes stack issues
+        // Would like to use a function pointer here, but it causes stack issues
         if (kind == IVault.SwapKind.GIVEN_IN) {
             calculatedAmount = StableMath._calcOutGivenIn(
                 currentAmp,
@@ -493,7 +506,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
         } else {
             // exitSwap
-            // Since the amount is BPT (always 18 decimals), it does not need scaling
             amountIn = StableMath._calcTokenInGivenExactBptOut(
                 amp,
                 balancesWithoutBpt,
@@ -560,6 +572,27 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
+     * @notice Top-level Vault hook for joins.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        _cacheTokenRatesIfNecessary();
+
+        return
+            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+    }
+
+    /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
      * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
@@ -604,7 +637,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Supports multi-token joins, plus the special join kind that simply pays due protocol fees to the Vault.
+     * @dev Supports multi-token joins.
      */
     function _onJoinPool(
         bytes32,
@@ -697,6 +730,30 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, amountsIn);
+    }
+
+    /**
+     * @notice Top-level Vault hook for exits.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
+        if (!userData.isRecoveryModeExitKind()) {
+            _cacheTokenRatesIfNecessary();
+        }
+
+        return
+            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 
     /**
@@ -902,7 +959,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     /**
      * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns 1e18.
+     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
      */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
@@ -1088,8 +1145,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     /**
      * @dev Returns the number of tokens in circulation.
      *
-     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
-     * remains constant, whereas `getVirtualSupply` increases as users join the pool and decreases as they exit it.
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
+     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
      */
     function getVirtualSupply() external view returns (uint256) {
         (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
