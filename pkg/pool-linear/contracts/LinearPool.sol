@@ -152,7 +152,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     /**
-     * @dev Inserts a zero-valued entry in the `assetManagers` array at the BPT token index, ensuring that BPT is not 
+     * @dev Inserts a zero-valued entry in the `assetManagers` array at the BPT token index, ensuring that BPT is not
      * managed even if the main or wrapped tokens are.
      */
     function _insertNullBptAssetManager(
