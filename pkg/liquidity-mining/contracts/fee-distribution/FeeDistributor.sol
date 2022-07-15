@@ -456,6 +456,13 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
             // First checkpoint for user so need to do the initial binary search
             userEpoch = _findTimestampUserEpoch(user, _startTime, 0, maxUserEpoch);
         } else {
+            if (nextWeekToCheckpoint >= block.timestamp) {
+                // User has checkpointed the current week already so perform early return.
+                // This prevents a user from processing epochs created later in this week, however this is not an issue
+                // as if a significant number of these builds up then the user will skip past them with a binary search.
+                return;
+            }
+
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
 
