@@ -550,11 +550,11 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
      * @dev Cache the totalSupply of VotingEscrow token at the beginning of each new week
      */
     function _checkpointTotalSupply() internal {
-        uint256 timeCursor = _timeCursor;
+        uint256 nextWeekToCheckpoint = _timeCursor;
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
 
         // We expect `timeCursor == weekStart + 1 weeks` when fully up to date.
-        if (timeCursor >= weekStart) {
+        if (nextWeekToCheckpoint > weekStart || weekStart == block.timestamp) {
             // We've already checkpointed up to this week so perform early return
             return;
         }
@@ -563,15 +563,15 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
 
         // Step through the each week and cache the total supply at beginning of week on this contract
         for (uint256 i = 0; i < 20; ++i) {
-            if (timeCursor >= weekStart) break;
+            if (nextWeekToCheckpoint > weekStart) break;
 
-            _veSupplyCache[timeCursor] = _votingEscrow.totalSupply(timeCursor);
+            _veSupplyCache[nextWeekToCheckpoint] = _votingEscrow.totalSupply(nextWeekToCheckpoint);
 
             // This is safe as we're incrementing a timestamp
-            timeCursor += 1 weeks;
+            nextWeekToCheckpoint += 1 weeks;
         }
         // Update state to the end of the current week (`weekStart` + 1 weeks)
-        _timeCursor = timeCursor;
+        _timeCursor = nextWeekToCheckpoint;
     }
 
     // Helper functions
