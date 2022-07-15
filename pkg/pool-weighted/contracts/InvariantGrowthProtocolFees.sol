@@ -50,6 +50,27 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     IRateProvider internal immutable _rateProvider18;
     IRateProvider internal immutable _rateProvider19;
 
+    uint256 internal _lastRate0;
+    uint256 internal _lastRate1;
+    uint256 internal _lastRate2;
+    uint256 internal _lastRate3;
+    uint256 internal _lastRate4;
+    uint256 internal _lastRate5;
+    uint256 internal _lastRate6;
+    uint256 internal _lastRate7;
+    uint256 internal _lastRate8;
+    uint256 internal _lastRate9;
+    uint256 internal _lastRate10;
+    uint256 internal _lastRate11;
+    uint256 internal _lastRate12;
+    uint256 internal _lastRate13;
+    uint256 internal _lastRate14;
+    uint256 internal _lastRate15;
+    uint256 internal _lastRate16;
+    uint256 internal _lastRate17;
+    uint256 internal _lastRate18;
+    uint256 internal _lastRate19;
+
     constructor(IRateProvider[] memory rateProviders) {
         uint256 numTokens = rateProviders.length;
 
@@ -111,6 +132,314 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
             if (totalTokens > 17) { providers[17] = _rateProvider17; } else { return providers; }
             if (totalTokens > 18) { providers[18] = _rateProvider18; } else { return providers; }
             if (totalTokens > 19) { providers[19] = _rateProvider19; } else { return providers; }
+        }
+    }
+
+    /**
+     * @dev Returns the growth of each token's rate relative to 1
+     */
+    function _computeRateRatios() internal returns (uint256[] memory ratios) {
+        uint256 totalTokens = _getTotalTokens();
+        ratios = new uint256[](totalTokens);
+
+        // prettier-ignore
+        {
+            uint256 rate = 0;
+            if (_rateProvider0 != IRateProvider(0)) {
+                rate = _rateProvider0.getRate();
+                // Only collect fees if rate has increased
+                if (rate > _lastRate0) {
+                    ratios[0] = rate.divDown(_lastRate0);
+                    // TODO: Updating this here means the comparison is against all-time high rate
+                    _lastRate0 = rate;
+                } else {
+                    ratios[0] = FixedPoint.ONE;
+                }
+            } else {
+                // TODO: duplicated
+                ratios[0] = FixedPoint.ONE;
+            }
+            if (_rateProvider1 != IRateProvider(0)) {
+                rate = _rateProvider1.getRate();
+                if (rate > _lastRate1) {
+                    ratios[1] = rate.divDown(_lastRate1);
+                    _lastRate1 = rate;
+                } else {
+                    ratios[1] = FixedPoint.ONE;
+                }
+            } else {
+                ratios[1] = FixedPoint.ONE;
+            }
+            if (totalTokens > 2) {
+                if (_rateProvider2 != IRateProvider(0)) {
+                    rate = _rateProvider2.getRate();
+                    if (rate > _lastRate2) {
+                        ratios[2] = rate.divDown(_lastRate2);
+                        _lastRate2 = rate;
+                    } else {
+                        ratios[2] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[2] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 3) {
+                if (_rateProvider3 != IRateProvider(0)) {
+                    rate = _rateProvider3.getRate();
+                    if (rate > _lastRate3) {
+                        ratios[3] = rate.divDown(_lastRate3);
+                        _lastRate3 = rate;
+                    } else {
+                        ratios[3] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[3] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 4) {
+                if (_rateProvider4 != IRateProvider(0)) {
+                    rate = _rateProvider4.getRate();
+                    if (rate > _lastRate4) {
+                        ratios[4] = rate.divDown(_lastRate4);
+                        _lastRate4 = rate;
+                    } else {
+                        ratios[4] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[4] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 5) {
+                if (_rateProvider5 != IRateProvider(0)) {
+                    rate = _rateProvider5.getRate();
+                    if (rate > _lastRate5) {
+                        ratios[5] = rate.divDown(_lastRate5);
+                        _lastRate5 = rate;
+                    } else {
+                        ratios[5] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[5] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 6) {
+                if (_rateProvider6 != IRateProvider(0)) {
+                    rate = _rateProvider6.getRate();
+                    if (rate > _lastRate6) {
+                        ratios[6] = rate.divDown(_lastRate6);
+                        _lastRate6 = rate;
+                    } else {
+                        ratios[6] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[6] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 7) {
+                if (_rateProvider7 != IRateProvider(0)) {
+                    rate = _rateProvider7.getRate();
+                    if (rate > _lastRate7) {
+                        ratios[7] = rate.divDown(_lastRate7);
+                        _lastRate7 = rate;
+                    } else {
+                        ratios[7] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[7] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 8) {
+                if (_rateProvider8 != IRateProvider(0)) {
+                    rate = _rateProvider8.getRate();
+                    if (rate > _lastRate8) {
+                        ratios[8] = rate.divDown(_lastRate8);
+                        _lastRate8 = rate;
+                    } else {
+                        ratios[8] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[8] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 9) {
+                if (_rateProvider9 != IRateProvider(0)) {
+                    rate = _rateProvider9.getRate();
+                    if (rate > _lastRate9) {
+                        ratios[9] = rate.divDown(_lastRate9);
+                        _lastRate9 = rate;
+                    } else {
+                        ratios[9] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[9] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 10) {
+                if (_rateProvider10 != IRateProvider(0)) {
+                    rate = _rateProvider10.getRate();
+                    if (rate > _lastRate10) {
+                        ratios[10] = rate.divDown(_lastRate10);
+                        _lastRate10 = rate;
+                    } else {
+                        ratios[10] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[10] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 11) {
+                if (_rateProvider11 != IRateProvider(0)) {
+                    rate = _rateProvider11.getRate();
+                    if (rate > _lastRate11) {
+                        ratios[11] = rate.divDown(_lastRate11);
+                        _lastRate11 = rate;
+                    } else {
+                        ratios[11] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[11] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 12) {
+                if (_rateProvider12 != IRateProvider(0)) {
+                    rate = _rateProvider12.getRate();
+                    if (rate > _lastRate12) {
+                        ratios[12] = rate.divDown(_lastRate12);
+                        _lastRate12 = rate;
+                    } else {
+                        ratios[12] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[12] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 13) {
+                if (_rateProvider13 != IRateProvider(0)) {
+                    rate = _rateProvider13.getRate();
+                    if (rate > _lastRate13) {
+                        ratios[13] = rate.divDown(_lastRate13);
+                        _lastRate13 = rate;
+                    } else {
+                        ratios[13] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[13] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 14) {
+                if (_rateProvider14 != IRateProvider(0)) {
+                    rate = _rateProvider14.getRate();
+                    if (rate > _lastRate14) {
+                        ratios[14] = rate.divDown(_lastRate14);
+                        _lastRate14 = rate;
+                    } else {
+                        ratios[14] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[14] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 15) {
+                if (_rateProvider15 != IRateProvider(0)) {
+                    rate = _rateProvider15.getRate();
+                    if (rate > _lastRate15) {
+                        ratios[15] = rate.divDown(_lastRate15);
+                        _lastRate15 = rate;
+                    } else {
+                        ratios[15] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[15] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 16) {
+                if (_rateProvider16 != IRateProvider(0)) {
+                    rate = _rateProvider16.getRate();
+                    if (rate > _lastRate16) {
+                        ratios[16] = rate.divDown(_lastRate16);
+                        _lastRate16 = rate;
+                    } else {
+                        ratios[16] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[16] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 17) {
+                if (_rateProvider17 != IRateProvider(0)) {
+                    rate = _rateProvider17.getRate();
+                    if (rate > _lastRate17) {
+                        ratios[17] = rate.divDown(_lastRate17);
+                        _lastRate17 = rate;
+                    } else {
+                        ratios[17] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[17] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 18) {
+                if (_rateProvider18 != IRateProvider(0)) {
+                    rate = _rateProvider18.getRate();
+                    if (rate > _lastRate18) {
+                        ratios[18] = rate.divDown(_lastRate18);
+                        _lastRate18 = rate;
+                    } else {
+                        ratios[18] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[18] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
+            if (totalTokens > 19) {
+                if (_rateProvider19 != IRateProvider(0)) {
+                    rate = _rateProvider19.getRate();
+                    if (rate > _lastRate19) {
+                        ratios[19] = rate.divDown(_lastRate19);
+                        _lastRate19 = rate;
+                    } else {
+                        ratios[19] = FixedPoint.ONE;
+                    }
+                } else {
+                    ratios[19] = FixedPoint.ONE;
+                }
+            } else {
+                return ratios;
+            }
         }
     }
 
