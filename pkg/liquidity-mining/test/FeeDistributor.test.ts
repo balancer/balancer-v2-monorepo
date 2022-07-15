@@ -87,6 +87,11 @@ describe('FeeDistributor', () => {
     await votingEscrow.connect(user).deposit_for(user.address, amount);
   }
 
+  function getWeekTimestamps(end: BigNumberish): BigNumber[] {
+    const numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(startTime)).div(WEEK).toNumber();
+    return Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(startTime).add(i * WEEK));
+  }
+
   async function expectConsistentUserBalance(user: Account, timestamp: BigNumberish): Promise<void> {
     const userAddress = TypesConverter.toAddress(user);
     const cachedBalance = feeDistributor.getUserBalanceAtTimestamp(userAddress, timestamp);
@@ -94,19 +99,14 @@ describe('FeeDistributor', () => {
     expect(await cachedBalance).to.be.eq(await expectedBalance);
   }
 
-  function getWeekTimestamps(end: BigNumberish): BigNumber[] {
-    const numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(startTime)).div(WEEK).toNumber();
-    return Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(startTime).add(i * WEEK));
-  }
-
   async function expectConsistentUserBalancesUpToTimestamp(user: Account, timestamp: BigNumberish): Promise<void> {
     const userAddress = TypesConverter.toAddress(user);
     const weekTimestamps = getWeekTimestamps(await currentTimestamp());
-    for (let i = 0; i < weekTimestamps.length; i++) {
-      if (weekTimestamps[i].lt(timestamp)) {
-        await expectConsistentUserBalance(user, weekTimestamps[i]);
+    for (const weekTimestamp of weekTimestamps) {
+      if (weekTimestamp.lt(timestamp)) {
+        await expectConsistentUserBalance(user, weekTimestamp);
       } else {
-        expect(await feeDistributor.getUserBalanceAtTimestamp(userAddress, weekTimestamps[i])).to.be.eq(0);
+        expect(await feeDistributor.getUserBalanceAtTimestamp(userAddress, weekTimestamp)).to.be.eq(0);
       }
     }
   }
@@ -115,6 +115,17 @@ describe('FeeDistributor', () => {
     const cachedSupply = feeDistributor.getTotalSupplyAtTimestamp(timestamp);
     const expectedSupply = votingEscrow['totalSupply(uint256)'](timestamp);
     expect(await cachedSupply).to.be.eq(await expectedSupply);
+  }
+
+  async function expectConsistentTotalSuppliesUpToTimestamp(timestamp: BigNumberish): Promise<void> {
+    const weekTimestamps = getWeekTimestamps(await currentTimestamp());
+    for (const weekTimestamp of weekTimestamps) {
+      if (weekTimestamp.lt(timestamp)) {
+        await expectConsistentTotalSupply(weekTimestamp);
+      } else {
+        expect(await feeDistributor.getTotalSupplyAtTimestamp(weekTimestamp)).to.be.eq(0);
+      }
+    }
   }
 
   describe('constructor', () => {
@@ -143,7 +154,7 @@ describe('FeeDistributor', () => {
 
       context('when startTime has passed', () => {
         sharedBeforeEach('advance time past startTime', async () => {
-          await advanceToTimestamp(startTime);
+          await advanceToTimestamp(startTime.add(1));
         });
 
         context('when the contract has already been checkpointed', () => {
@@ -170,23 +181,16 @@ describe('FeeDistributor', () => {
           let end: BigNumber;
 
           sharedBeforeEach('advance time past startTime', async () => {
-            start = roundUpTimestamp(await currentTimestamp());
+            start = startTime.add(1);
           });
 
           function testCheckpoint() {
-            let numWeeks: number;
-            let checkpointTimestamps: BigNumber[];
-
             sharedBeforeEach('advance time to end of period to checkpoint', async () => {
-              numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
-              checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) =>
-                roundDownTimestamp(start).add(i * WEEK)
-              );
               await advanceToTimestamp(end);
             });
 
             it('advances the global time cursor to the start of the next week', async () => {
-              expectTimestampsMatch(await feeDistributor.getTimeCursor(), start);
+              expectTimestampsMatch(await feeDistributor.getTimeCursor(), startTime);
 
               const tx = await feeDistributor.checkpoint();
 
@@ -199,21 +203,15 @@ describe('FeeDistributor', () => {
             });
 
             it('stores the VotingEscrow supply at the start of each week', async () => {
-              for (let i = 0; i < numWeeks; i++) {
-                expect(await feeDistributor.getTotalSupplyAtTimestamp(checkpointTimestamps[i])).to.be.eq(0);
-              }
-
               await feeDistributor.checkpoint();
 
-              for (let i = 0; i < numWeeks; i++) {
-                await expectConsistentTotalSupply(checkpointTimestamps[i]);
-              }
+              await expectConsistentTotalSuppliesUpToTimestamp(end);
             });
           }
 
           context("when the contract hasn't checkpointed in a small number of weeks", () => {
             sharedBeforeEach('set end timestamp', async () => {
-              end = start.add(8 * WEEK - 1);
+              end = start.add(8 * WEEK + 1);
             });
             testCheckpoint();
           });
