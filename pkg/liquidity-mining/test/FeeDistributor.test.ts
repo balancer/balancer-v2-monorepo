@@ -207,7 +207,7 @@ describe('FeeDistributor', () => {
         let start: BigNumber;
         let end: BigNumber;
 
-        function testCheckpoint() {
+        function testCheckpoint(checkpointsPerWeek = 0) {
           // These tests will begin to fail as we increase the number of weeks which we are checkpointing
           // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
           // of user epochs in the period being checkpointed.
@@ -217,6 +217,14 @@ describe('FeeDistributor', () => {
           sharedBeforeEach('advance time to end of period to checkpoint', async () => {
             numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
             checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
+            for (let i = 0; i < numWeeks; i++) {
+              if (i > 0) {
+                await advanceToTimestamp(roundDownTimestamp(start).add(i * WEEK + 1));
+              }
+              for (let j = 0; j < checkpointsPerWeek; j++) {
+                await depositForUser(user, 1);
+              }
+            }
             await advanceToTimestamp(end);
           });
 
@@ -262,6 +270,7 @@ describe('FeeDistributor', () => {
               sharedBeforeEach('set end timestamp', async () => {
                 end = start.add(8 * WEEK - 1);
               });
+
               context('when user locked prior to the beginning of the week', () => {
                 sharedBeforeEach('set user', async () => {
                   user = user1;
@@ -274,6 +283,7 @@ describe('FeeDistributor', () => {
                   user = other;
                   await createLockForUser(other, parseFixed('1', 18), 365 * DAY);
                 });
+
                 testCheckpoint();
 
                 it('records a zero balance for the week in which they lock', async () => {
@@ -372,7 +382,7 @@ describe('FeeDistributor', () => {
                 sharedBeforeEach('set user', async () => {
                   user = user1;
                 });
-                testCheckpoint();
+                testCheckpoint(1);
               });
             });
           });
