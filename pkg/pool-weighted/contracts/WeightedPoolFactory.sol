@@ -35,6 +35,7 @@ contract WeightedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
+        IRateProvider[] memory rateProviders,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
         address owner
@@ -49,6 +50,7 @@ contract WeightedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow
                     symbol,
                     tokens,
                     weights,
+                    rateProviders,
                     assetManagers,
                     swapFeePercentage,
                     pauseWindowDuration,

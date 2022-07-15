@@ -101,6 +101,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
+        IRateProvider[] memory rateProviders,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -119,9 +120,11 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             owner,
             false
         )
+        InvariantGrowthProtocolFees(rateProviders)
     {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
+        InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         _totalTokens = numTokens;
 
