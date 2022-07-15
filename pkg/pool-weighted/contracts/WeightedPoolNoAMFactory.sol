@@ -35,6 +35,7 @@ contract WeightedPoolNoAMFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory weights,
+        IRateProvider[] memory rateProviders,
         uint256 swapFeePercentage,
         address owner
     ) external returns (address) {
@@ -48,6 +49,7 @@ contract WeightedPoolNoAMFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
                     symbol,
                     tokens,
                     weights,
+                    rateProviders,
                     new address[](tokens.length), // Don't allow asset managers
                     swapFeePercentage,
                     pauseWindowDuration,
