@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IFeeDistributor.
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVotingEscrow.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/OptionalOnlyCaller.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
@@ -34,7 +35,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
  * @dev Supports distributing arbitrarily many different tokens. In order to start distributing a new token to veBAL
  * holders simply transfer the tokens to the `FeeDistributor` contract and then call `checkpointToken`.
  */
-contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
+contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -73,7 +74,7 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
     mapping(address => mapping(uint256 => uint256)) private _userBalanceAtTimestamp;
     mapping(address => mapping(IERC20 => uint256)) private _userTokenTimeCursor;
 
-    constructor(IVotingEscrow votingEscrow, uint256 startTime) {
+    constructor(IVotingEscrow votingEscrow, uint256 startTime) EIP712("FeeDistributor", "1") {
         _votingEscrow = votingEscrow;
 
         startTime = _roundDownTimestamp(startTime);
@@ -255,7 +256,13 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
      * @param token - The ERC20 token address to be claimed.
      * @return The amount of `token` sent to `user` as a result of claiming.
      */
-    function claimToken(address user, IERC20 token) external override nonReentrant returns (uint256) {
+    function claimToken(address user, IERC20 token)
+        external
+        override
+        nonReentrant
+        optionalOnlyCaller(user)
+        returns (uint256)
+    {
         _checkpointTotalSupply();
         _checkpointToken(token, false);
         _checkpointUserBalance(user);
@@ -276,10 +283,9 @@ contract FeeDistributor is IFeeDistributor, ReentrancyGuard {
         external
         override
         nonReentrant
+        optionalOnlyCaller(user)
         returns (uint256[] memory)
     {
-        // Prevent someone from assigning tokens to an inaccessible week.
-        require(block.timestamp > _startTime, "Fee distribution has not started yet");
         _checkpointTotalSupply();
         _checkpointUserBalance(user);
 

@@ -8,7 +8,6 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
-import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
 import {
@@ -42,7 +41,7 @@ export default {
     return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
-  toRawVaultDeployment(params: RawWeightedPoolDeployment | RawStablePoolDeployment): RawVaultDeployment {
+  toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
     let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
@@ -99,37 +98,6 @@ export default {
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
-    };
-  },
-
-  toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let {
-      tokens,
-      rateProviders,
-      priceRateCacheDuration,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-    } = params;
-
-    if (!tokens) tokens = new TokenList();
-    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!priceRateCacheDuration) priceRateCacheDuration = Array(tokens.length).fill(DAY);
-    if (!amplificationParameter) amplificationParameter = bn(200);
-    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-
-    return {
-      tokens,
-      rateProviders,
-      priceRateCacheDuration,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner: params.owner,
     };
   },
 

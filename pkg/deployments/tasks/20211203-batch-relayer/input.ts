@@ -17,6 +17,10 @@ export default {
     Vault,
     wstETH: '0xa387b91e393cfb9356a460370842bc8dbb2f29af',
   },
+  goerli: {
+    Vault,
+    wstETH: '0x6320cD32aA674d2898A68ec82e869385Fc5f7E2f',
+  },
   rinkeby: {
     Vault,
     wstETH: '0x0000000000000000000000000000000000000000',

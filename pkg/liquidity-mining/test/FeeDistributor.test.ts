@@ -8,11 +8,12 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { parseFixed } from '@ethersproject/bignumber';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { Comparison, expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 const roundDownTimestamp = (timestamp: BigNumberish): BigNumber => {
   return BigNumber.from(timestamp).div(WEEK).mul(WEEK);
@@ -61,7 +62,9 @@ describe('FeeDistributor', () => {
   sharedBeforeEach('lock BPT into VotingEscrow', async () => {
     const bptAmount = parseFixed('1', 18);
     await createLockForUser(user1, bptAmount, 365 * DAY);
-    await createLockForUser(user2, bptAmount, 365 * DAY);
+    await createLockForUser(user2, bptAmount.mul(2), 365 * DAY);
+    // User 1 owns a third of the locked BPT - they'll have about a third of the veBAL supply (not exactly due to how
+    // decaying works).
 
     expect(await votingEscrow['balanceOf(address)'](user1.address)).to.be.gt(0, 'zero veBAL balance');
     expect(await votingEscrow['totalSupply()']()).to.be.gt(0, 'zero veBAL supply');
@@ -532,7 +535,7 @@ describe('FeeDistributor', () => {
       describe('checkpointToken', () => {
         sharedBeforeEach('Deploy protocol fee token', async () => {
           tokens = await TokenList.create(['FEE']);
-          tokenAmounts = tokens.map(() => parseFixed('1', 18));
+          tokenAmounts = tokens.map((_, i) => fp(i + 1));
         });
 
         itCheckpointsTokensCorrectly(() => feeDistributor.checkpointToken(tokens.addresses[0]));
@@ -541,7 +544,7 @@ describe('FeeDistributor', () => {
       describe('checkpointTokens', () => {
         sharedBeforeEach('Deploy protocol fee token', async () => {
           tokens = await TokenList.create(['FEE', 'FEE2']);
-          tokenAmounts = tokens.map(() => parseFixed('1', 18));
+          tokenAmounts = tokens.map((_, i) => fp(i + 1));
         });
 
         itCheckpointsTokensCorrectly(() => feeDistributor.checkpointTokens(tokens.addresses));
@@ -655,13 +658,23 @@ describe('FeeDistributor', () => {
 
         const tx = await claimTokens();
         for (const [index, token] of tokens.tokens.entries()) {
-          expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
+          const event = expectEvent.inReceipt(await tx.wait(), 'TokensClaimed', {
             user: user1.address,
             token: token.address,
-            amount: tokenAmounts[index].div(2),
             userTokenTimeCursor: thisWeek,
           });
+
+          expect(event.args.amount).to.be.almostEqual(tokenAmounts[index].div(3));
         }
+      });
+
+      it('transfers tokens to the user', async () => {
+        await expectBalanceChange(() => claimTokens(), tokens, {
+          account: user1.address,
+          changes: tokens
+            .map((token, i) => ({ [token.symbol]: ['very-near', tokenAmounts[i].div(3)] as Comparison }))
+            .reduce((prev, curr) => ({ ...prev, ...curr }), {}),
+        });
       });
 
       it('subtracts the number of tokens claimed from the cached balance', async () => {
@@ -685,7 +698,7 @@ describe('FeeDistributor', () => {
       });
 
       it('returns the amount of tokens claimed', async () => {
-        expect(await simulateClaimTokens()).to.be.eql(tokenAmounts.map((amount) => amount.div(2)));
+        expect(await simulateClaimTokens()).to.be.almostEqual(tokenAmounts.map((amount) => amount.div(3)));
       });
     }
 
@@ -800,7 +813,7 @@ describe('FeeDistributor', () => {
     describe('claimTokens', () => {
       sharedBeforeEach('Deploy protocol fee token', async () => {
         tokens = await TokenList.create(['FEE', 'FEE2']);
-        tokenAmounts = tokens.map(() => parseFixed('1', 18));
+        tokenAmounts = tokens.map((_, i) => fp(i + 1));
       });
 
       context('when performing the first claim', () => {
@@ -844,11 +857,78 @@ describe('FeeDistributor', () => {
 
             context('when the array of tokens contains duplicates', () => {
               it('ignores the second occurence of the token address', async () => {
-                expect(await feeDistributor.callStatic.claimTokens(user1.address, tokens.addresses)).to.be.eql(
-                  tokenAmounts.map((amount) => amount.div(2))
+                expect(await feeDistributor.callStatic.claimTokens(user1.address, tokens.addresses)).to.be.almostEqual(
+                  tokenAmounts.map((amount) => amount.div(3))
                 );
               });
             });
+          });
+        });
+      });
+    });
+
+    describe('only caller check', () => {
+      let sender: SignerWithAddress;
+
+      function itClaimsCorrectly() {
+        it('claimToken does not revert', async () => {
+          await expect(feeDistributor.connect(sender).claimToken(user1.address, tokens.addresses[0])).to.not.be
+            .reverted;
+        });
+
+        it('claimTokens does not revert', async () => {
+          await expect(feeDistributor.connect(sender).claimTokens(user1.address, tokens.addresses)).to.not.be.reverted;
+        });
+      }
+
+      // Minimal setup to be able to call claim methods properly.
+      sharedBeforeEach('advance time past startTime', async () => {
+        tokens = await TokenList.create(['FEE']);
+        await advanceToTimestamp(startTime.add(100));
+      });
+
+      context('when disabled', () => {
+        context('when the caller is the user', () => {
+          beforeEach(() => {
+            sender = user1;
+          });
+
+          itClaimsCorrectly();
+        });
+
+        context('when the caller is other', () => {
+          beforeEach(() => {
+            sender = other;
+          });
+
+          itClaimsCorrectly();
+        });
+      });
+
+      context('when enabled', () => {
+        sharedBeforeEach('enable only caller verification', async () => {
+          await feeDistributor.connect(user1).setOnlyCallerCheck(true);
+        });
+
+        context('when the caller is the user', () => {
+          beforeEach(() => {
+            sender = user1;
+          });
+
+          itClaimsCorrectly();
+        });
+
+        context('when the caller is other', () => {
+          beforeEach(() => {
+            sender = other;
+          });
+
+          it('claimToken reverts', async () => {
+            await expect(feeDistributor.connect(other).claimToken(user1.address, tokens.addresses[0])).to.be.reverted;
+          });
+
+          it('claimTokens reverts', async () => {
+            await expect(feeDistributor.connect(other).claimTokens(user1.address, tokens.addresses)).to.be.reverted;
           });
         });
       });
