@@ -8,7 +8,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceToTimestamp, currentTimestamp, DAY, receiptTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { parseFixed } from '@ethersproject/bignumber';
-import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -207,6 +207,23 @@ describe('FeeDistributor', () => {
         let start: BigNumber;
         let end: BigNumber;
 
+        function itProgressesTheCheckpointedEpoch() {
+          it('progresses the most recently checkpointed epoch', async () => {
+            const currentEpoch = await votingEscrow.user_point_epoch(user.address);
+            const previousLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user.address);
+
+            await feeDistributor.checkpointUser(user.address);
+
+            const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user.address);
+
+            if (previousLastCheckpointedEpoch.eq(currentEpoch)) {
+              expect(newLastCheckpointedEpoch).to.be.eq(currentEpoch);
+            } else {
+              expect(newLastCheckpointedEpoch).to.be.gt(previousLastCheckpointedEpoch);
+            }
+          });
+        }
+
         function testCheckpoint(checkpointsPerWeek = 0) {
           // These tests will begin to fail as we increase the number of weeks which we are checkpointing
           // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
@@ -236,6 +253,8 @@ describe('FeeDistributor', () => {
 
             expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
           });
+
+          itProgressesTheCheckpointedEpoch();
 
           it("stores the user's balance at the start of each week", async () => {
             for (let i = 0; i < numWeeks; i++) {
@@ -353,17 +372,7 @@ describe('FeeDistributor', () => {
                 expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
               });
 
-              it('processes checkpoints for the current week', async () => {
-                const currentEpoch = await votingEscrow.user_point_epoch(user1.address);
-
-                const previousLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
-                expect(previousLastCheckpointedEpoch).to.be.lt(currentEpoch);
-
-                await feeDistributor.checkpointUser(user1.address);
-
-                const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
-                expect(newLastCheckpointedEpoch).to.be.eq(currentEpoch);
-              });
+              itProgressesTheCheckpointedEpoch();
             });
           });
 
