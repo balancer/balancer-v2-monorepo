@@ -27,7 +27,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
     uint256 private _lastPostJoinExitInvariant;
-    uint256 private _lastYieldGrowth;
+    uint256 private _lastRateGrowthProduct;
 
     // Rate providers are used only for computing yield fees; they do not inform swap/join/exit.
     IRateProvider internal immutable _rateProvider0;
@@ -76,7 +76,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         _rateProvider19 = numTokens > 19 ? rateProviders[19] : IRateProvider(0);
 
         // TODO: Initialize this here instead of checking inside each join/exit?
-        _lastYieldGrowth = 0;
+        _lastRateGrowthProduct = 0;
     }
 
     /**
@@ -249,23 +249,23 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         );
 
         uint256 yieldFees = 0;
-        if (_lastYieldGrowth > 0) {
+        if (_lastRateGrowthProduct > 0) {
             uint256 rateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
 
             // Only collect protocol fees when yield growth exceeds previous all-time high.
-            if (rateGrowthProduct > _lastYieldGrowth) {
+            if (rateGrowthProduct > _lastRateGrowthProduct) {
                 yieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
                     totalSupply().add(swapFees),
-                    _lastYieldGrowth,
+                    _lastRateGrowthProduct,
                     rateGrowthProduct,
                     // TODO: This fee pct should come from a different source.
                     protocolSwapFeePercentage
                 );
 
-                _lastYieldGrowth = rateGrowthProduct;
+                _lastRateGrowthProduct = rateGrowthProduct;
             }
         } else {
-            _lastYieldGrowth = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
+            _lastRateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
         }
 
         _payProtocolFees(swapFees.add(yieldFees));
