@@ -81,7 +81,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Arbitrum Root Gauges, for veBAL voting               | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)               |
 | Polygon Root Gauges, for veBAL voting                | [`20220413-polygon-root-gauge-factory`](./tasks/20220413-polygon-root-gauge-factory)                 |
 | veBAL Smart Wallet Checker                           | [`20220420-smart-wallet-checker`](./tasks/20220420-smart-wallet-checker)                             |
-| Fee Distributor for veBAL holders                    | [`20220420-fee-distributor`](./tasks/20220420-fee-distributor)                                       |
 | Linear Pools for Unbutton tokens                     | [`20220425-unbutton-aave-linear-pool`](./tasks/20220425-unbutton-aave-linear-pool)                   |
 | Relayer with the fix for the Double Entrypoint issue | [`20220513-double-entrypoint-fix-relayer`](./tasks/20220513-double-entrypoint-fix-relayer)           |
 | Protocol Fee Withdrawer                              | [`20220517-protocol-fee-withdrawer`](./tasks/20220517-protocol-fee-withdrawer)                       |
@@ -90,7 +89,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Stable Pools V2 of up to 5 tokens                    | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
 | Gauge Registrant V2, supporting new networks         | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
 | Distribution Scheduler for reward tokens on gauges   | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
-
+| Fee Distributor for veBAL holders V2                 | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
 
 ## Scripts
 
@@ -125,3 +124,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
 | Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
 | Linear Pools for ERC4626 Tokens                  | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
+| Fee Distributor for veBAL holders                | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
