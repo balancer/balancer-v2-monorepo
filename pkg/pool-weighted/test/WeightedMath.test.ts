@@ -35,7 +35,10 @@ describe('WeightedMath', function () {
         const result = await mock.invariant(normalizedWeights, balances);
         const expectedInvariant = calculateInvariant(balances, normalizedWeights);
 
+        const weightedProduct = await mock.weightedProduct(normalizedWeights, balances);
+
         expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, weightedProduct, MAX_RELATIVE_ERROR);
       });
     });
     context('three tokens', () => {
@@ -46,7 +49,24 @@ describe('WeightedMath', function () {
         const result = await mock.invariant(normalizedWeights, balances);
         const expectedInvariant = calculateInvariant(balances, normalizedWeights);
 
+        const weightedProduct = await mock.weightedProduct(normalizedWeights, balances);
+
         expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, weightedProduct, MAX_RELATIVE_ERROR);
+      });
+    });
+    context('five tokens', () => {
+      it('returns invariant', async () => {
+        const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.1e18), bn(0.15e18), bn(0.25e18)];
+        const balances = [bn(10e18), bn(1e18), bn(12e18), bn(1e18), bn(14e18)];
+
+        const result = await mock.invariant(normalizedWeights, balances);
+        const expectedInvariant = calculateInvariant(balances, normalizedWeights);
+
+        const weightedProduct = await mock.weightedProduct(normalizedWeights, balances);
+
+        expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
+        expectEqualWithError(result, weightedProduct, MAX_RELATIVE_ERROR);
       });
     });
   });

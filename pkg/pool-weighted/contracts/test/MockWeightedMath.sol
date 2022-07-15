@@ -21,6 +21,10 @@ contract MockWeightedMath {
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
+    function weightedProduct(uint256[] memory normalizedWeights, uint256[] memory balances) external pure returns (uint256) {
+        return WeightedMath._calculateWeightedProduct(normalizedWeights, balances);
+    }
+
     function outGivenIn(
         uint256 tokenBalanceIn,
         uint256 tokenWeightIn,

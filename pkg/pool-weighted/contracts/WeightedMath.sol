@@ -73,6 +73,20 @@ library WeightedMath {
         _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
 
+    // Computes a weighted product (same math as invariant) while ignoring ones
+    function _calculateWeightedProduct(uint256[] memory normalizedWeights, uint256[] memory balances)
+        internal
+        pure
+        returns (uint256 product)
+    {
+        product = FixedPoint.ONE;
+        for (uint256 i = 0; i < normalizedWeights.length; i++) {
+            if (balances[i] != FixedPoint.ONE) {
+                product = product.mulDown(balances[i].powDown(normalizedWeights[i]));
+            }
+        }
+    }
+
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
     function _calcOutGivenIn(
