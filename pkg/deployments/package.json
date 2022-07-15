@@ -27,7 +27,7 @@
     "check-action-ids": "hardhat check-action-ids --network mainnet && hardhat check-action-ids --network polygon && hardhat check-action-ids --network arbitrum && hardhat check-action-ids --network optimism",
     "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
     "prepack": "yarn build",
-    "test": "hardhat test ./**/test/*.ts --fork mainnet --block-number 14850000",
+    "test": "hardhat test ./**/test/*.ts --fork mainnet --block-number 15120000",
     "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
   "devDependencies": {

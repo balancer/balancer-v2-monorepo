@@ -4,13 +4,14 @@ import { BigNumber, Contract } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { advanceToTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import { advanceToTimestamp, currentWeekTimestamp, DAY, HOUR, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { _TypedDataEncoder } from 'ethers/lib/utils';
 
 describe('FeeDistributor', function () {
   let veBALHolder: SignerWithAddress,
@@ -33,11 +34,12 @@ describe('FeeDistributor', function () {
   const VOTER_PROXY_ADDRESS = '0xaf52695e1bb01a16d33d7194c28c42b10e0dbec2';
 
   const balAmount = fp(42);
-  const wethAmount = fp(10);
+  const wethAmount = fp(5);
 
   let firstWeek: BigNumber;
 
   before('run task', async () => {
+    await advanceToTimestamp(1657756800 + HOUR);
     await task.run({ force: true });
     distributor = await task.instanceAt('FeeDistributor', task.output({ network: 'test' }).FeeDistributor);
   });
@@ -192,9 +194,29 @@ describe('FeeDistributor', function () {
       // VoterProxy contract doesn't actually use the signature; only voting with the right hash matters.
       // This hash is the distributor's outcome when enabling the caller check form the VoterProxy with the first
       // available nonce.
-      await voterProxy
-        .connect(voterProxyAdmin)
-        .setVote('0x42ddef8248764e4a994b64cebd88a22a83d85c0aec6a39cc76aa8c48e260a02b', true);
+
+      const domain = {
+        name: 'FeeDistributor',
+        version: '1',
+        chainId: (await distributor.provider.getNetwork()).chainId,
+        verifyingContract: distributor.address,
+      };
+
+      const types = {
+        SetOnlyCallerCheck: [
+          { name: 'user', type: 'address' },
+          { name: 'enabled', type: 'bool' },
+          { name: 'nonce', type: 'uint256' },
+        ],
+      };
+
+      const values = {
+        user: voterProxy.address,
+        enabled: true,
+        nonce: (await distributor.getNextNonce(voterProxy.address)).toString(),
+      };
+
+      await voterProxy.connect(voterProxyAdmin).setVote(_TypedDataEncoder.hash(domain, types, values), true);
       await distributor.connect(voterProxyAdmin).setOnlyCallerCheckWithSignature(voterProxy.address, true, '0x');
     });
 
