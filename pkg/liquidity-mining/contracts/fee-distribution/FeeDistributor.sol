@@ -264,8 +264,8 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         returns (uint256)
     {
         _checkpointTotalSupply();
-        _checkpointToken(token, false);
         _checkpointUserBalance(user);
+        _checkpointToken(token, false);
 
         uint256 amount = _claimToken(user, token);
         return amount;
@@ -307,9 +307,9 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
      */
     function _claimToken(address user, IERC20 token) internal returns (uint256) {
         TokenState storage tokenState = _tokenState[token];
-        uint256 userTimeCursor = _getUserTokenTimeCursor(user, token);
+        uint256 nextUserTokenWeekToClaim = _getUserTokenTimeCursor(user, token);
 
-        // The first week which cannot be safely claimed is the earliest of:
+        // The first week which cannot be correctly claimed is the earliest of:
         // - A) The global or user time cursor (whichever is earliest), rounded up to the end of the week.
         // - B) The token time cursor, rounded down to the beginning of the week.
         //
@@ -328,21 +328,21 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         uint256 amount;
         for (uint256 i = 0; i < 20; ++i) {
             // We clearly cannot claim for `firstUnclaimableWeek` and so we break here.
-            if (userTimeCursor >= firstUnclaimableWeek) break;
+            if (nextUserTokenWeekToClaim >= firstUnclaimableWeek) break;
 
             amount +=
-                (tokensPerWeek[userTimeCursor] * userBalanceAtTimestamp[userTimeCursor]) /
-                _veSupplyCache[userTimeCursor];
-            userTimeCursor += 1 weeks;
+                (tokensPerWeek[nextUserTokenWeekToClaim] * userBalanceAtTimestamp[nextUserTokenWeekToClaim]) /
+                _veSupplyCache[nextUserTokenWeekToClaim];
+            nextUserTokenWeekToClaim += 1 weeks;
         }
         // Update the stored user-token time cursor to prevent this user claiming this week again.
-        _userTokenTimeCursor[user][token] = userTimeCursor;
+        _userTokenTimeCursor[user][token] = nextUserTokenWeekToClaim;
 
         if (amount > 0) {
             // For a token to be claimable it must have been added to the cached balance so this is safe.
             tokenState.cachedBalance = uint128(tokenState.cachedBalance - amount);
             token.safeTransfer(user, amount);
-            emit TokensClaimed(user, token, amount, userTimeCursor);
+            emit TokensClaimed(user, token, amount, nextUserTokenWeekToClaim);
         }
 
         return amount;
@@ -388,28 +388,28 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         tokenState.timeCursor = uint64(block.timestamp);
 
         uint256 tokenBalance = token.balanceOf(address(this));
-        uint256 tokensToDistribute = tokenBalance.sub(tokenState.cachedBalance);
-        if (tokensToDistribute == 0) return;
+        uint256 newTokensToDistribute = tokenBalance.sub(tokenState.cachedBalance);
+        if (newTokensToDistribute == 0) return;
         require(tokenBalance <= type(uint128).max, "Maximum token balance exceeded");
         tokenState.cachedBalance = uint128(tokenBalance);
 
-        uint256 thisWeek = _roundDownTimestamp(lastTokenTime);
+        uint256 firstIncompleteWeek = _roundDownTimestamp(lastTokenTime);
         uint256 nextWeek = 0;
 
-        // Distribute `tokensToDistribute` evenly across the time period from `lastTokenTime` to now.
+        // Distribute `newTokensToDistribute` evenly across the time period from `lastTokenTime` to now.
         // These tokens are assigned to weeks proportionally to how much of this period falls into each week.
         mapping(uint256 => uint256) storage tokensPerWeek = _tokensPerWeek[token];
         for (uint256 i = 0; i < 20; ++i) {
             // This is safe as we're incrementing a timestamp.
-            nextWeek = thisWeek + 1 weeks;
+            nextWeek = firstIncompleteWeek + 1 weeks;
             if (block.timestamp < nextWeek) {
-                // `thisWeek` is now the beginning of the current week, i.e. this is the final iteration.
+                // `firstIncompleteWeek` is now the beginning of the current week, i.e. this is the final iteration.
                 if (timeSinceLastCheckpoint == 0 && block.timestamp == lastTokenTime) {
-                    tokensPerWeek[thisWeek] += tokensToDistribute;
+                    tokensPerWeek[firstIncompleteWeek] += newTokensToDistribute;
                 } else {
                     // block.timestamp >= lastTokenTime by definition.
-                    tokensPerWeek[thisWeek] +=
-                        (tokensToDistribute * (block.timestamp - lastTokenTime)) /
+                    tokensPerWeek[firstIncompleteWeek] +=
+                        (newTokensToDistribute * (block.timestamp - lastTokenTime)) /
                         timeSinceLastCheckpoint;
                 }
                 // As we've caught up to the present then we should now break.
@@ -418,21 +418,21 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
                 // We've gone a full week or more without checkpointing so need to distribute tokens to previous weeks.
                 if (timeSinceLastCheckpoint == 0 && nextWeek == lastTokenTime) {
                     // It shouldn't be possible to enter this block
-                    tokensPerWeek[thisWeek] += tokensToDistribute;
+                    tokensPerWeek[firstIncompleteWeek] += newTokensToDistribute;
                 } else {
                     // nextWeek > lastTokenTime by definition.
-                    tokensPerWeek[thisWeek] +=
-                        (tokensToDistribute * (nextWeek - lastTokenTime)) /
+                    tokensPerWeek[firstIncompleteWeek] +=
+                        (newTokensToDistribute * (nextWeek - lastTokenTime)) /
                         timeSinceLastCheckpoint;
                 }
             }
 
             // We've now "checkpointed" up to the beginning of next week so must update timestamps appropriately.
             lastTokenTime = nextWeek;
-            thisWeek = nextWeek;
+            firstIncompleteWeek = nextWeek;
         }
 
-        emit TokenCheckpointed(token, tokensToDistribute, lastTokenTime);
+        emit TokenCheckpointed(token, newTokensToDistribute, lastTokenTime);
     }
 
     /**
@@ -554,7 +554,7 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         uint256 weekStart = _roundDownTimestamp(block.timestamp);
 
         // We expect `timeCursor == weekStart + 1 weeks` when fully up to date.
-        if (timeCursor > weekStart) {
+        if (timeCursor >= weekStart) {
             // We've already checkpointed up to this week so perform early return
             return;
         }
@@ -563,7 +563,7 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
 
         // Step through the each week and cache the total supply at beginning of week on this contract
         for (uint256 i = 0; i < 20; ++i) {
-            if (timeCursor > weekStart) break;
+            if (timeCursor >= weekStart) break;
 
             _veSupplyCache[timeCursor] = _votingEscrow.totalSupply(timeCursor);
 
