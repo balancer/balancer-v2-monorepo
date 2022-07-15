@@ -461,14 +461,27 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
 
-        uint256 toMint = WeightedMath._calcDueProtocolSwapFeeBptAmount(
+        uint256 bptSwapFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
             totalSupply(),
             _lastPostJoinExitInvariant,
             preJoinExitInvariant,
             protocolSwapFeePercentage
         );
 
-        _payProtocolFees(toMint);
+        uint256 updatedSupply = totalSupply().add(bptSwapFees);
+
+        uint256[] memory rateRatios = _computeRateRatios();
+        uint256 rateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, rateRatios);
+
+        uint256 bptYieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
+            updatedSupply,
+            FixedPoint.ONE,
+            rateGrowthProduct,
+            // TODO: This fee pct should come from a different source
+            protocolSwapFeePercentage
+        );
+
+        _payProtocolFees(bptSwapFees.add(bptYieldFees));
     }
 
     function _afterJoinExit(
