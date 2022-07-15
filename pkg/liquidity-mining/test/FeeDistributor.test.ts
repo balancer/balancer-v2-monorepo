@@ -91,6 +91,23 @@ describe('FeeDistributor', () => {
     expect(await cachedBalance).to.be.eq(await expectedBalance);
   }
 
+  function getWeekTimestamps(end: BigNumberish): BigNumber[] {
+    const numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(startTime)).div(WEEK).toNumber();
+    return Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(startTime).add(i * WEEK));
+  }
+
+  async function expectConsistentUserBalancesUpToTimestamp(user: Account, timestamp: BigNumberish): Promise<void> {
+    const userAddress = TypesConverter.toAddress(user);
+    const weekTimestamps = getWeekTimestamps(await currentTimestamp());
+    for (let i = 0; i < weekTimestamps.length; i++) {
+      if (weekTimestamps[i].lt(timestamp)) {
+        await expectConsistentUserBalance(user, weekTimestamps[i]);
+      } else {
+        expect(await feeDistributor.getUserBalanceAtTimestamp(userAddress, weekTimestamps[i])).to.be.eq(0);
+      }
+    }
+  }
+
   async function expectConsistentTotalSupply(timestamp: BigNumberish): Promise<void> {
     const cachedSupply = feeDistributor.getTotalSupplyAtTimestamp(timestamp);
     const expectedSupply = votingEscrow['totalSupply(uint256)'](timestamp);
@@ -228,12 +245,9 @@ describe('FeeDistributor', () => {
           // These tests will begin to fail as we increase the number of weeks which we are checkpointing
           // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
           // of user epochs in the period being checkpointed.
-          let numWeeks: number;
-          let checkpointTimestamps: BigNumber[];
 
           sharedBeforeEach('advance time to end of period to checkpoint', async () => {
-            numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
-            checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
+            const numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
             for (let i = 0; i < numWeeks; i++) {
               if (i > 0) {
                 await advanceToTimestamp(roundDownTimestamp(start).add(i * WEEK + 1));
@@ -257,15 +271,13 @@ describe('FeeDistributor', () => {
           itProgressesTheCheckpointedEpoch();
 
           it("stores the user's balance at the start of each week", async () => {
-            for (let i = 0; i < numWeeks; i++) {
-              expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, checkpointTimestamps[i])).to.be.eq(0);
-            }
+            const userCursorBefore = await feeDistributor.getUserTimeCursor(user.address);
+            expectConsistentUserBalancesUpToTimestamp(user, userCursorBefore);
 
             await feeDistributor.checkpointUser(user.address);
 
-            for (let i = 0; i < numWeeks; i++) {
-              await expectConsistentUserBalance(user, checkpointTimestamps[i]);
-            }
+            const userCursorAfter = await feeDistributor.getUserTimeCursor(user.address);
+            expectConsistentUserBalancesUpToTimestamp(user, userCursorAfter);
           });
         }
 
