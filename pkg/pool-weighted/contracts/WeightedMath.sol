@@ -73,7 +73,7 @@ library WeightedMath {
         _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
 
-    // Computes a weighted product (same math as invariant) while ignoring ones
+    // Computes a weighted product (same math as invariant) while ignoring ones.
     function _calculateWeightedProduct(uint256[] memory normalizedWeights, uint256[] memory balances)
         internal
         pure
