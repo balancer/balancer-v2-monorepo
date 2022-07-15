@@ -191,6 +191,7 @@ task('check-action-ids', `Check that contract action-ids correspond the expected
   });
 
 task(TASK_TEST)
+  .addOptionalParam('id', 'Optional task name of the fork test to run.')
   .addOptionalParam('fork', 'Optional network name to be forked block number to fork in case of running fork tests.')
   .addOptionalParam('blockNumber', 'Optional block number to fork in case of running fork tests.', undefined, types.int)
   .setAction(test);

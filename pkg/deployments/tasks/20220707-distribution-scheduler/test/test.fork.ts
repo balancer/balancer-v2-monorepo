@@ -7,16 +7,17 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceTime, currentWeekTimestamp, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
+import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-describe('DistributionScheduler', function () {
+describeForkTest('DistributionScheduler', 14850000, function () {
   let lmCommittee: SignerWithAddress, distributor: SignerWithAddress;
   let scheduler: Contract, gauge: Contract, DAI: Contract, USDC: Contract;
 
-  const task = new Task('20220707-distribution-scheduler', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const LM_COMMITTEE_ADDRESS = '0xc38c5f97B34E175FFd35407fc91a937300E33860';
   const DISTRIBUTOR_ADDRESS = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503'; // Owns DAI and USDC
@@ -30,6 +31,7 @@ describe('DistributionScheduler', function () {
   const GAUGE_ADDRESS = '0x4E3c048BE671852277Ad6ce29Fd5207aA12fabff';
 
   before('run task', async () => {
+    task = new Task('20220707-distribution-scheduler', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     scheduler = await task.instanceAt('DistributionScheduler', task.output({ network: 'test' }).DistributionScheduler);
   });

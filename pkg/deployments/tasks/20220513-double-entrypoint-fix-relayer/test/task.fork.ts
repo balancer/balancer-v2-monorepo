@@ -5,13 +5,14 @@ import { Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describe('DoubleEntrypointFixRelayer', function () {
+describeForkTest('DoubleEntrypointFixRelayer', 14850000, function () {
   let govMultisig: SignerWithAddress;
   let btcBptHolder: SignerWithAddress, snxBptHolder: SignerWithAddress;
   let relayer: Contract;
@@ -20,7 +21,7 @@ describe('DoubleEntrypointFixRelayer', function () {
   let wBTCContract: Contract, renBTCContract: Contract, sBTCContract: Contract;
   let wethContract: Contract, snxContract: Contract;
 
-  const task = new Task('20220513-double-entrypoint-fix-relayer', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const BTC_STABLE_POOL_GAUGE = '0x57d40FF4cF7441A04A05628911F57bb940B6C238';
@@ -40,6 +41,7 @@ describe('DoubleEntrypointFixRelayer', function () {
   const SNX_IMPLEMENTATION = '0x639032d3900875a4cf4960aD6b9ee441657aA93C';
 
   before('run task', async () => {
+    task = new Task('20220513-double-entrypoint-fix-relayer', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     relayer = await task.deployedInstance('DoubleEntrypointFixRelayer');
   });

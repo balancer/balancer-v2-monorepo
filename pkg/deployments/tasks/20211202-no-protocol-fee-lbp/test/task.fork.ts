@@ -11,16 +11,17 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
+import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
+describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
-  const task = new Task('20211202-no-protocol-fee-lbp', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -39,6 +40,7 @@ describe('NoProtocolFeeLiquidityBootstrappingPoolFactory', function () {
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
 
   before('run task', async () => {
+    task = new Task('20211202-no-protocol-fee-lbp', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('NoProtocolFeeLiquidityBootstrappingPoolFactory');
   });

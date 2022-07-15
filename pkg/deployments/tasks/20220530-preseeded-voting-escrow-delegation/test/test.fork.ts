@@ -5,6 +5,7 @@ import { expect } from 'chai';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
+import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
@@ -14,16 +15,17 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describe('PreseededVotingEscrowDelegation', function () {
+describeForkTest('PreseededVotingEscrowDelegation', 14850000, function () {
   let oldDelegation: Contract;
   let receiver: SignerWithAddress;
   let delegation: Contract;
 
-  const task = new Task('preseeded-voting-escrow-delegation', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    task = new Task('preseeded-voting-escrow-delegation', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     delegation = await task.deployedInstance('PreseededVotingEscrowDelegation');
   });
