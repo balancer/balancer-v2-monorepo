@@ -27,8 +27,9 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
     uint256 private _lastPostJoinExitInvariant;
+    uint256 private _lastYieldGrowth;
 
-    // Rate providers are used only for computing yield fees; they do not inform swap/join/exit
+    // Rate providers are used only for computing yield fees; they do not inform swap/join/exit.
     IRateProvider internal immutable _rateProvider0;
     IRateProvider internal immutable _rateProvider1;
     IRateProvider internal immutable _rateProvider2;
@@ -49,27 +50,6 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     IRateProvider internal immutable _rateProvider17;
     IRateProvider internal immutable _rateProvider18;
     IRateProvider internal immutable _rateProvider19;
-
-    uint256 internal _lastRate0;
-    uint256 internal _lastRate1;
-    uint256 internal _lastRate2;
-    uint256 internal _lastRate3;
-    uint256 internal _lastRate4;
-    uint256 internal _lastRate5;
-    uint256 internal _lastRate6;
-    uint256 internal _lastRate7;
-    uint256 internal _lastRate8;
-    uint256 internal _lastRate9;
-    uint256 internal _lastRate10;
-    uint256 internal _lastRate11;
-    uint256 internal _lastRate12;
-    uint256 internal _lastRate13;
-    uint256 internal _lastRate14;
-    uint256 internal _lastRate15;
-    uint256 internal _lastRate16;
-    uint256 internal _lastRate17;
-    uint256 internal _lastRate18;
-    uint256 internal _lastRate19;
 
     constructor(IRateProvider[] memory rateProviders) {
         uint256 numTokens = rateProviders.length;
@@ -94,6 +74,9 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         _rateProvider17 = numTokens > 17 ? rateProviders[17] : IRateProvider(0);
         _rateProvider18 = numTokens > 18 ? rateProviders[18] : IRateProvider(0);
         _rateProvider19 = numTokens > 19 ? rateProviders[19] : IRateProvider(0);
+
+        // TODO: Initialize this here instead of checking inside each join/exit?
+        _lastYieldGrowth = 0;
     }
 
     /**
@@ -136,309 +119,106 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     }
 
     /**
-     * @dev Returns the growth of each token's rate relative to 1
+     * @dev Returns the token rates for all tokens. These are fixed-point values with 18 decimals.
+     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
      */
-    function _computeRateRatios() internal returns (uint256[] memory ratios) {
+    function _getRates() internal view returns (uint256[] memory rates) {
         uint256 totalTokens = _getTotalTokens();
-        ratios = new uint256[](totalTokens);
+        rates = new uint256[](totalTokens);
 
         // prettier-ignore
         {
-            uint256 rate = 0;
-            if (_rateProvider0 != IRateProvider(0)) {
-                rate = _rateProvider0.getRate();
-                // Only collect fees if rate has increased
-                if (rate > _lastRate0) {
-                    ratios[0] = rate.divDown(_lastRate0);
-                    // TODO: Updating this here means the comparison is against all-time high rate
-                    _lastRate0 = rate;
-                } else {
-                    ratios[0] = FixedPoint.ONE;
-                }
-            } else {
-                // TODO: duplicated
-                ratios[0] = FixedPoint.ONE;
-            }
-            if (_rateProvider1 != IRateProvider(0)) {
-                rate = _rateProvider1.getRate();
-                if (rate > _lastRate1) {
-                    ratios[1] = rate.divDown(_lastRate1);
-                    _lastRate1 = rate;
-                } else {
-                    ratios[1] = FixedPoint.ONE;
-                }
-            } else {
-                ratios[1] = FixedPoint.ONE;
-            }
+            rates[0] = _rateProvider0 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider0.getRate();
+            rates[1] = _rateProvider1 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider1.getRate();
             if (totalTokens > 2) {
-                if (_rateProvider2 != IRateProvider(0)) {
-                    rate = _rateProvider2.getRate();
-                    if (rate > _lastRate2) {
-                        ratios[2] = rate.divDown(_lastRate2);
-                        _lastRate2 = rate;
-                    } else {
-                        ratios[2] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[2] = FixedPoint.ONE;
-                }
+                rates[2] = _rateProvider2 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider2.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 3) {
-                if (_rateProvider3 != IRateProvider(0)) {
-                    rate = _rateProvider3.getRate();
-                    if (rate > _lastRate3) {
-                        ratios[3] = rate.divDown(_lastRate3);
-                        _lastRate3 = rate;
-                    } else {
-                        ratios[3] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[3] = FixedPoint.ONE;
-                }
+                rates[3] = _rateProvider3 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider3.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 4) {
-                if (_rateProvider4 != IRateProvider(0)) {
-                    rate = _rateProvider4.getRate();
-                    if (rate > _lastRate4) {
-                        ratios[4] = rate.divDown(_lastRate4);
-                        _lastRate4 = rate;
-                    } else {
-                        ratios[4] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[4] = FixedPoint.ONE;
-                }
+                rates[4] = _rateProvider4 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider4.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 5) {
-                if (_rateProvider5 != IRateProvider(0)) {
-                    rate = _rateProvider5.getRate();
-                    if (rate > _lastRate5) {
-                        ratios[5] = rate.divDown(_lastRate5);
-                        _lastRate5 = rate;
-                    } else {
-                        ratios[5] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[5] = FixedPoint.ONE;
-                }
+                rates[5] = _rateProvider5 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider5.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 6) {
-                if (_rateProvider6 != IRateProvider(0)) {
-                    rate = _rateProvider6.getRate();
-                    if (rate > _lastRate6) {
-                        ratios[6] = rate.divDown(_lastRate6);
-                        _lastRate6 = rate;
-                    } else {
-                        ratios[6] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[6] = FixedPoint.ONE;
-                }
+                rates[6] = _rateProvider6 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider6.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 7) {
-                if (_rateProvider7 != IRateProvider(0)) {
-                    rate = _rateProvider7.getRate();
-                    if (rate > _lastRate7) {
-                        ratios[7] = rate.divDown(_lastRate7);
-                        _lastRate7 = rate;
-                    } else {
-                        ratios[7] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[7] = FixedPoint.ONE;
-                }
+                rates[7] = _rateProvider7 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider7.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 8) {
-                if (_rateProvider8 != IRateProvider(0)) {
-                    rate = _rateProvider8.getRate();
-                    if (rate > _lastRate8) {
-                        ratios[8] = rate.divDown(_lastRate8);
-                        _lastRate8 = rate;
-                    } else {
-                        ratios[8] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[8] = FixedPoint.ONE;
-                }
+                rates[8] = _rateProvider8 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider8.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 9) {
-                if (_rateProvider9 != IRateProvider(0)) {
-                    rate = _rateProvider9.getRate();
-                    if (rate > _lastRate9) {
-                        ratios[9] = rate.divDown(_lastRate9);
-                        _lastRate9 = rate;
-                    } else {
-                        ratios[9] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[9] = FixedPoint.ONE;
-                }
+                rates[9] = _rateProvider9 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider9.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 10) {
-                if (_rateProvider10 != IRateProvider(0)) {
-                    rate = _rateProvider10.getRate();
-                    if (rate > _lastRate10) {
-                        ratios[10] = rate.divDown(_lastRate10);
-                        _lastRate10 = rate;
-                    } else {
-                        ratios[10] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[10] = FixedPoint.ONE;
-                }
+                rates[10] = _rateProvider10 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider10.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 11) {
-                if (_rateProvider11 != IRateProvider(0)) {
-                    rate = _rateProvider11.getRate();
-                    if (rate > _lastRate11) {
-                        ratios[11] = rate.divDown(_lastRate11);
-                        _lastRate11 = rate;
-                    } else {
-                        ratios[11] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[11] = FixedPoint.ONE;
-                }
+                rates[11] = _rateProvider11 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider11.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 12) {
-                if (_rateProvider12 != IRateProvider(0)) {
-                    rate = _rateProvider12.getRate();
-                    if (rate > _lastRate12) {
-                        ratios[12] = rate.divDown(_lastRate12);
-                        _lastRate12 = rate;
-                    } else {
-                        ratios[12] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[12] = FixedPoint.ONE;
-                }
+                rates[12] = _rateProvider12 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider12.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 13) {
-                if (_rateProvider13 != IRateProvider(0)) {
-                    rate = _rateProvider13.getRate();
-                    if (rate > _lastRate13) {
-                        ratios[13] = rate.divDown(_lastRate13);
-                        _lastRate13 = rate;
-                    } else {
-                        ratios[13] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[13] = FixedPoint.ONE;
-                }
+                rates[13] = _rateProvider13 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider13.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 14) {
-                if (_rateProvider14 != IRateProvider(0)) {
-                    rate = _rateProvider14.getRate();
-                    if (rate > _lastRate14) {
-                        ratios[14] = rate.divDown(_lastRate14);
-                        _lastRate14 = rate;
-                    } else {
-                        ratios[14] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[14] = FixedPoint.ONE;
-                }
+                rates[14] = _rateProvider14 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider14.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 15) {
-                if (_rateProvider15 != IRateProvider(0)) {
-                    rate = _rateProvider15.getRate();
-                    if (rate > _lastRate15) {
-                        ratios[15] = rate.divDown(_lastRate15);
-                        _lastRate15 = rate;
-                    } else {
-                        ratios[15] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[15] = FixedPoint.ONE;
-                }
+                rates[15] = _rateProvider15 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider15.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 16) {
-                if (_rateProvider16 != IRateProvider(0)) {
-                    rate = _rateProvider16.getRate();
-                    if (rate > _lastRate16) {
-                        ratios[16] = rate.divDown(_lastRate16);
-                        _lastRate16 = rate;
-                    } else {
-                        ratios[16] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[16] = FixedPoint.ONE;
-                }
+                rates[16] = _rateProvider16 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider16.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 17) {
-                if (_rateProvider17 != IRateProvider(0)) {
-                    rate = _rateProvider17.getRate();
-                    if (rate > _lastRate17) {
-                        ratios[17] = rate.divDown(_lastRate17);
-                        _lastRate17 = rate;
-                    } else {
-                        ratios[17] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[17] = FixedPoint.ONE;
-                }
+                rates[17] = _rateProvider17 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider17.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 18) {
-                if (_rateProvider18 != IRateProvider(0)) {
-                    rate = _rateProvider18.getRate();
-                    if (rate > _lastRate18) {
-                        ratios[18] = rate.divDown(_lastRate18);
-                        _lastRate18 = rate;
-                    } else {
-                        ratios[18] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[18] = FixedPoint.ONE;
-                }
+                rates[18] = _rateProvider18 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider18.getRate();
             } else {
-                return ratios;
+                return rates;
             }
             if (totalTokens > 19) {
-                if (_rateProvider19 != IRateProvider(0)) {
-                    rate = _rateProvider19.getRate();
-                    if (rate > _lastRate19) {
-                        ratios[19] = rate.divDown(_lastRate19);
-                        _lastRate19 = rate;
-                    } else {
-                        ratios[19] = FixedPoint.ONE;
-                    }
-                } else {
-                    ratios[19] = FixedPoint.ONE;
-                }
+                rates[19] = _rateProvider19 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider19.getRate();
             } else {
-                return ratios;
+                return rates;
             }
         }
     }
@@ -461,27 +241,34 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
 
-        uint256 bptSwapFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
+        uint256 swapFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
             totalSupply(),
             _lastPostJoinExitInvariant,
             preJoinExitInvariant,
             protocolSwapFeePercentage
         );
 
-        uint256 updatedSupply = totalSupply().add(bptSwapFees);
+        uint256 yieldFees = 0;
+        if (_lastYieldGrowth > 0) {
+            uint256 rateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
 
-        uint256[] memory rateRatios = _computeRateRatios();
-        uint256 rateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, rateRatios);
+            // Only collect protocol fees when yield growth exceeds previous all-time high.
+            if (rateGrowthProduct > _lastYieldGrowth) {
+                yieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
+                    totalSupply().add(swapFees),
+                    _lastYieldGrowth,
+                    rateGrowthProduct,
+                    // TODO: This fee pct should come from a different source.
+                    protocolSwapFeePercentage
+                );
 
-        uint256 bptYieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-            updatedSupply,
-            FixedPoint.ONE,
-            rateGrowthProduct,
-            // TODO: This fee pct should come from a different source
-            protocolSwapFeePercentage
-        );
+                _lastYieldGrowth = rateGrowthProduct;
+            }
+        } else {
+            _lastYieldGrowth = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
+        }
 
-        _payProtocolFees(bptSwapFees.add(bptYieldFees));
+        _payProtocolFees(swapFees.add(yieldFees));
     }
 
     function _afterJoinExit(
