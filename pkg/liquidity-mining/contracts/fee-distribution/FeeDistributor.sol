@@ -454,10 +454,20 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
         uint256 userEpoch;
         if (nextWeekToCheckpoint == 0) {
             // First checkpoint for user so need to do the initial binary search
-            userEpoch = _findTimestampUserEpoch(user, _startTime, maxUserEpoch);
+            userEpoch = _findTimestampUserEpoch(user, _startTime, 0, maxUserEpoch);
         } else {
             // Otherwise use the value saved from last time
             userEpoch = userState.lastEpochCheckpointed;
+
+            // This optimizes a scenario common for power users, which have frequent `VotingEscrow` interactions in
+            // the same week. We assume that any such user is also claiming fees every week, and so we only perform
+            // a binary search here rather than integrating it into the main search algorithm, effectively skipping
+            // most of the week's irrelevant checkpoints.
+            // The slight tradeoff is that users who have multiple infrequent `VotingEscrow` interactions and also don't
+            // claim frequently will also perform the binary search, despite it not leading to gas savings.
+            if (maxUserEpoch - userEpoch > 20) {
+                userEpoch = _findTimestampUserEpoch(user, nextWeekToCheckpoint, userEpoch, maxUserEpoch);
+            }
         }
 
         // Epoch 0 is always empty so bump onto the next one so that we start on a valid epoch.
@@ -577,9 +587,10 @@ contract FeeDistributor is IFeeDistributor, OptionalOnlyCaller, ReentrancyGuard 
     function _findTimestampUserEpoch(
         address user,
         uint256 timestamp,
+        uint256 minUserEpoch,
         uint256 maxUserEpoch
     ) internal view returns (uint256) {
-        uint256 min = 0;
+        uint256 min = minUserEpoch;
         uint256 max = maxUserEpoch;
 
         // Perform binary search through epochs to find epoch containing `timestamp`

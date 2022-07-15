@@ -94,6 +94,23 @@ describe('FeeDistributor', () => {
     expect(await cachedBalance).to.be.eq(await expectedBalance);
   }
 
+  function getWeekTimestamps(end: BigNumberish): BigNumber[] {
+    const numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(startTime)).div(WEEK).toNumber();
+    return Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(startTime).add(i * WEEK));
+  }
+
+  async function expectConsistentUserBalancesUpToTimestamp(user: Account, timestamp: BigNumberish): Promise<void> {
+    const userAddress = TypesConverter.toAddress(user);
+    const weekTimestamps = getWeekTimestamps(await currentTimestamp());
+    for (let i = 0; i < weekTimestamps.length; i++) {
+      if (weekTimestamps[i].lt(timestamp)) {
+        await expectConsistentUserBalance(user, weekTimestamps[i]);
+      } else {
+        expect(await feeDistributor.getUserBalanceAtTimestamp(userAddress, weekTimestamps[i])).to.be.eq(0);
+      }
+    }
+  }
+
   async function expectConsistentTotalSupply(timestamp: BigNumberish): Promise<void> {
     const cachedSupply = feeDistributor.getTotalSupplyAtTimestamp(timestamp);
     const expectedSupply = votingEscrow['totalSupply(uint256)'](timestamp);
@@ -210,38 +227,82 @@ describe('FeeDistributor', () => {
         let start: BigNumber;
         let end: BigNumber;
 
-        function testCheckpoint() {
-          // These tests will begin to fail as we increase the number of weeks which we are checkpointing
-          // This is as `_checkpointUserBalance` is limited to perform at most 50 iterations minus the number
-          // of user epochs in the period being checkpointed.
-          let numWeeks: number;
-          let checkpointTimestamps: BigNumber[];
+        function testCheckpoint(checkpointsPerWeek = 0) {
+          let expectFullySynced: boolean;
 
           sharedBeforeEach('advance time to end of period to checkpoint', async () => {
-            numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
-            checkpointTimestamps = Array.from({ length: numWeeks }, (_, i) => roundDownTimestamp(start).add(i * WEEK));
+            const numWeeks = roundDownTimestamp(end).sub(roundDownTimestamp(start)).div(WEEK).toNumber();
+            for (let i = 0; i < numWeeks; i++) {
+              if (i > 0) {
+                await advanceToTimestamp(roundDownTimestamp(start).add(i * WEEK + 1));
+              }
+              for (let j = 0; j < checkpointsPerWeek; j++) {
+                await depositForUser(user, 1);
+              }
+            }
             await advanceToTimestamp(end);
+
+            const lastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user.address);
+            const currentEpoch = await votingEscrow.user_point_epoch(user.address);
+
+            // In order to determine whether we expect the user to be fully checkpointed after a single call we must
+            // calculate the expected number of iterations of the for loop for the user to be fully up to date.
+            // We can then compare against the limit of iterations before it automatically breaks (50).
+            let iterations;
+            if (currentEpoch.sub(lastCheckpointedEpoch).lte(20)) {
+              // We use an iteration every time we either:
+              // a) write a value of the user's balance to storage, or
+              // b) move forwards an epoch.
+              iterations = numWeeks + checkpointsPerWeek * numWeeks;
+            } else {
+              // In this case, we skip the checkpoints in the first week as we trigger the binary search shortcut.
+              // We then remove another `checkpointsPerWeek` iterations.
+              iterations = numWeeks + Math.max(checkpointsPerWeek * (numWeeks - 1), 0);
+            }
+
+            expectFullySynced = iterations < 50;
           });
 
-          it("advances the user's time cursor to the start of the next week", async () => {
+          it("advances the user's time cursor", async () => {
+            const userCursorBefore = await feeDistributor.getUserTimeCursor(user.address);
+
             const tx = await feeDistributor.checkpointUser(user.address);
 
-            const txTimestamp = await receiptTimestamp(tx.wait());
-            const nextWeek = roundUpTimestamp(txTimestamp);
-
-            expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
+            if (expectFullySynced) {
+              // This is a stronger check to ensure that we're completely up to date.
+              const txTimestamp = await receiptTimestamp(tx.wait());
+              const nextWeek = roundUpTimestamp(txTimestamp);
+              expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user.address), nextWeek);
+            } else {
+              // If we're not fully syncing then just check that we've managed to progress at least one week.
+              const nextWeek = userCursorBefore.add(WEEK);
+              expect(await feeDistributor.getUserTimeCursor(user.address)).to.be.gte(nextWeek);
+            }
           });
 
-          it("stores the user's balance at the start of each week", async () => {
-            for (let i = 0; i < numWeeks; i++) {
-              expect(await feeDistributor.getUserBalanceAtTimestamp(user.address, checkpointTimestamps[i])).to.be.eq(0);
-            }
+          it('progresses the most recently checkpointed epoch', async () => {
+            const currentEpoch = await votingEscrow.user_point_epoch(user.address);
+            const previousLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user.address);
 
             await feeDistributor.checkpointUser(user.address);
 
-            for (let i = 0; i < numWeeks; i++) {
-              await expectConsistentUserBalance(user, checkpointTimestamps[i]);
+            const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user.address);
+
+            if (previousLastCheckpointedEpoch.eq(currentEpoch) || expectFullySynced) {
+              expect(newLastCheckpointedEpoch).to.be.eq(currentEpoch);
+            } else {
+              expect(newLastCheckpointedEpoch).to.be.gt(previousLastCheckpointedEpoch);
             }
+          });
+
+          it("stores the user's balance at the start of each week", async () => {
+            const userCursorBefore = await feeDistributor.getUserTimeCursor(user.address);
+            expectConsistentUserBalancesUpToTimestamp(user, userCursorBefore);
+
+            await feeDistributor.checkpointUser(user.address);
+
+            const userCursorAfter = await feeDistributor.getUserTimeCursor(user.address);
+            expectConsistentUserBalancesUpToTimestamp(user, userCursorAfter);
           });
         }
 
@@ -265,6 +326,7 @@ describe('FeeDistributor', () => {
               sharedBeforeEach('set end timestamp', async () => {
                 end = start.add(8 * WEEK - 1);
               });
+
               context('when user locked prior to the beginning of the week', () => {
                 sharedBeforeEach('set user', async () => {
                   user = user1;
@@ -277,6 +339,7 @@ describe('FeeDistributor', () => {
                   user = other;
                   await createLockForUser(other, parseFixed('1', 18), 365 * DAY);
                 });
+
                 testCheckpoint();
 
                 it('records a zero balance for the week in which they lock', async () => {
@@ -346,15 +409,12 @@ describe('FeeDistributor', () => {
                 expectTimestampsMatch(await feeDistributor.getUserTimeCursor(user1.address), nextWeek);
               });
 
-              it('processes checkpoints for the current week', async () => {
-                const currentEpoch = await votingEscrow.user_point_epoch(user1.address);
+              it('progresses the most recently checkpointed epoch', async () => {
+                await feeDistributor.checkpointUser(user.address);
 
-                const previousLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
-                expect(previousLastCheckpointedEpoch).to.be.lt(currentEpoch);
+                const currentEpoch = await votingEscrow.user_point_epoch(user.address);
+                const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user.address);
 
-                await feeDistributor.checkpointUser(user1.address);
-
-                const newLastCheckpointedEpoch = await feeDistributor.getUserLastEpochCheckpointed(user1.address);
                 expect(newLastCheckpointedEpoch).to.be.eq(currentEpoch);
               });
             });
@@ -371,11 +431,19 @@ describe('FeeDistributor', () => {
               sharedBeforeEach('set end timestamp', async () => {
                 end = start.add(8 * WEEK - 1);
               });
+
               context('when user locked prior to the beginning of the week', () => {
                 sharedBeforeEach('set user', async () => {
                   user = user1;
                 });
-                testCheckpoint();
+
+                context('when the user receives a small number of checkpoints', () => {
+                  testCheckpoint(2);
+                });
+
+                context('when the user receives enough checkpoints they cannot fully sync', () => {
+                  testCheckpoint(10);
+                });
               });
             });
           });
@@ -726,36 +794,17 @@ describe('FeeDistributor', () => {
               await advanceToTimestamp(nextWeek.add(1));
             });
 
-            context("when claiming doesn't sync past the checkpoints", () => {
-              itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
-                'global',
-                'token',
-              ]);
+            itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
+              'global',
+              'user',
+              'token',
+              'user-token',
+            ]);
 
-              itClaimsNothing(
-                () => feeDistributor.claimToken(user1.address, token.address),
-                async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
-              );
-            });
-
-            context('after claiming enough times to sync past the checkpoints', () => {
-              sharedBeforeEach('claim tokens', async () => {
-                await feeDistributor.claimToken(user1.address, token.address);
-                await feeDistributor.claimToken(user1.address, token.address);
-              });
-
-              itUpdatesCheckpointsCorrectly(() => feeDistributor.claimToken(user1.address, token.address), [
-                'global',
-                'user',
-                'token',
-                'user-token',
-              ]);
-
-              itClaimsTokensCorrectly(
-                () => feeDistributor.claimToken(user1.address, token.address),
-                async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
-              );
-            });
+            itClaimsTokensCorrectly(
+              () => feeDistributor.claimToken(user1.address, token.address),
+              async () => [await feeDistributor.callStatic.claimToken(user1.address, token.address)]
+            );
           });
         });
       });
