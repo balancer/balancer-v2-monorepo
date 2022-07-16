@@ -74,6 +74,7 @@ describe('StablePhantomPool', () => {
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(
       params: RawStablePhantomPoolDeployment = {},
@@ -86,12 +87,14 @@ describe('StablePhantomPool', () => {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
+        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePhantomPool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
+        exemptFromYieldProtocolFeeFlags,
         owner,
         admin,
         ...params,
@@ -211,6 +214,17 @@ describe('StablePhantomPool', () => {
           const expectedIndex = allTokens.indexOf(bpt);
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
         });
+
+        it('sets the fee exemption flags correctly', async () => {
+          const expectedFlags: boolean[] = [];
+
+          for (let i = 0; i < numberOfTokens; i++) {
+            // Initialized to true for even tokens
+            expectedFlags[i] = i % 2 == 0;
+          }
+
+          expect(await pool.instance.getProtocolFeeExemptTokenFlags()).to.deep.equal(expectedFlags);
+        });
       });
 
       context('when the creation fails', () => {
@@ -230,6 +244,12 @@ describe('StablePhantomPool', () => {
           const rateProviders = [ZERO_ADDRESS];
 
           await expect(deployPool({ rateProviders })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        });
+
+        it('reverts if the protocol fee flags do not match the tokens length', async () => {
+          const exemptFromYieldProtocolFeeFlags = Array(numberOfTokens + 1).fill(false);
+
+          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the swap fee is too high', async () => {
