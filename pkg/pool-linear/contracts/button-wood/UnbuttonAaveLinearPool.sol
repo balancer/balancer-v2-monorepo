@@ -59,6 +59,7 @@ contract UnbuttonAaveLinearPool is LinearPool {
             mainToken, // wAMPL
             wrappedToken, // wAaveAMPL
             upperTarget,
+            new address[](2),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
