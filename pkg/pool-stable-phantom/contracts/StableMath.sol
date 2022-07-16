@@ -121,7 +121,6 @@ library StableMath {
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
     // The amplification parameter equals: A n^(n-1)
-    // The invariant should be rounded up.
     function _calcOutGivenIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
@@ -162,7 +161,6 @@ library StableMath {
     // Computes how many tokens must be sent to a pool if `tokenAmountOut` are sent given the
     // current balances, using the Newton-Raphson approximation.
     // The amplification parameter equals: A n^(n-1)
-    // The invariant should be rounded up.
     function _calcInGivenOut(
         uint256 amplificationParameter,
         uint256[] memory balances,
