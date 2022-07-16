@@ -38,7 +38,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         // Block all swaps when paused
         _ensureNotPaused();
 
-        _validateIndexes(indexIn, indexOut, balances.length);
+        _validateIndexes(indexIn, indexOut, _getTotalTokens());
         uint256[] memory scalingFactors = _scalingFactors();
 
         return
