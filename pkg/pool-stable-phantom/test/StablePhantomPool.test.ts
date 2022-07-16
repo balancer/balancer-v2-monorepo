@@ -74,20 +74,27 @@ describe('StablePhantomPool', () => {
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
-    async function deployPool(params: RawStablePhantomPoolDeployment = {}, rates: BigNumberish[] = []): Promise<void> {
+    async function deployPool(
+      params: RawStablePhantomPoolDeployment = {},
+      rates: BigNumberish[] = [],
+      durations: number[] = []
+    ): Promise<void> {
       tokens = params.tokens || (await TokenList.create(numberOfTokens, { sorted: true }));
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
+        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePhantomPool.create({
         tokens,
         rateProviders,
-        tokenRateCacheDurations,
+        tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
+        exemptFromYieldProtocolFeeFlags,
         owner,
         admin,
         ...params,
@@ -207,6 +214,17 @@ describe('StablePhantomPool', () => {
           const expectedIndex = allTokens.indexOf(bpt);
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
         });
+
+        it('sets the fee exemption flags correctly', async () => {
+          const expectedFlags: boolean[] = [];
+
+          for (let i = 0; i < numberOfTokens; i++) {
+            // Initialized to true for even tokens
+            expectedFlags[i] = i % 2 == 0;
+          }
+
+          expect(await pool.instance.getProtocolFeeExemptTokenFlags()).to.deep.equal(expectedFlags);
+        });
       });
 
       context('when the creation fails', () => {
@@ -226,6 +244,12 @@ describe('StablePhantomPool', () => {
           const rateProviders = [ZERO_ADDRESS];
 
           await expect(deployPool({ rateProviders })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        });
+
+        it('reverts if the protocol fee flags do not match the tokens length', async () => {
+          const exemptFromYieldProtocolFeeFlags = Array(numberOfTokens + 1).fill(false);
+
+          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the swap fee is too high', async () => {
@@ -844,7 +868,7 @@ describe('StablePhantomPool', () => {
 
             it('join and joinSwap give the same result', async () => {
               const previousBptBalance = await pool.balanceOf(recipient);
-              // 20% of previous balance
+              // 32.5% of previous balance
               const bptOut = pct(previousBptBalance, 0.325);
 
               const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
@@ -1103,6 +1127,13 @@ describe('StablePhantomPool', () => {
         });
       });
 
+      const getExpectedScalingFactor = async (token: Token): Promise<BigNumber> => {
+        const index = tokens.indexOf(token);
+        const rateProvider = rateProviders[index];
+        const rate = await rateProvider.getRate();
+        return rate.mul(bn(10).pow(18 - token.decimals));
+      };
+
       context('with a rate provider', () => {
         sharedBeforeEach('deploy pool', async () => {
           const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
@@ -1113,22 +1144,15 @@ describe('StablePhantomPool', () => {
         });
 
         describe('scaling factors', () => {
-          const scaleRate = async (token: Token): Promise<BigNumber> => {
-            const index = tokens.indexOf(token);
-            const rateProvider = rateProviders[index];
-            const rate = await rateProvider.getRate();
-            return rate.mul(bn(10).pow(18 - token.decimals));
-          };
-
           const itAdaptsTheScalingFactorsCorrectly = () => {
             it('adapt the scaling factors with the price rate', async () => {
               const scalingFactors = await pool.getScalingFactors();
 
               await tokens.asyncEach(async (token) => {
-                const expectedRate = await scaleRate(token);
+                const expectedScalingFactor = await getExpectedScalingFactor(token);
                 const tokenIndex = await pool.getTokenIndex(token);
-                expect(scalingFactors[tokenIndex]).to.be.equal(expectedRate);
-                expect(await pool.getScalingFactor(token)).to.be.equal(expectedRate);
+                expect(scalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
+                expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
               });
 
               expect(scalingFactors[pool.bptIndex]).to.be.equal(fp(1));
@@ -1340,6 +1364,151 @@ describe('StablePhantomPool', () => {
 
               await expect(pool.updateTokenRateCache(token)).to.be.revertedWith('INDUCED_FAILURE');
             });
+          });
+        });
+      });
+
+      context('with a rate provider and zero durations', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
+          tokens = await TokenList.create(tokenParams, { sorted: true });
+
+          const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
+          const durations = Array(tokens.length).fill(0);
+          await deployPool({ tokens }, tokenRates, durations);
+        });
+
+        describe('when rates are updated between operations', () => {
+          let previousScalingFactors: BigNumber[];
+
+          async function updateExternalRates(): Promise<void> {
+            await tokens.asyncEach(async (token, i) => {
+              const previousCache = await pool.getTokenRateCache(token);
+              const value = Math.random() / 5;
+
+              await rateProviders[i].mockRate(
+                previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))
+              );
+            });
+          }
+
+          async function verifyScalingFactors(newScalingFactors: BigNumber[]): Promise<void> {
+            await tokens.asyncEach(async (token) => {
+              const expectedScalingFactor = await getExpectedScalingFactor(token);
+              const tokenIndex = await pool.getTokenIndex(token);
+              expect(newScalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
+              expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
+            });
+
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+          }
+
+          sharedBeforeEach('fund lp and pool', async () => {
+            await tokens.mint({ to: lp, amount: fp(10000) });
+            await tokens.approve({ from: lp, to: pool.vault });
+
+            await pool.init({ initialBalances, recipient: lp });
+          });
+
+          sharedBeforeEach('save starting values', async () => {
+            previousScalingFactors = await pool.getScalingFactors();
+          });
+
+          async function expectScalingFactorsToBeUpdated(
+            query: () => Promise<BigNumberish>,
+            actual: () => Promise<BigNumberish>
+          ) {
+            // Perform a query with the current rate values
+            const queryAmount = await query();
+
+            await updateExternalRates();
+
+            // Verify the new rates are not yet loaded
+            const preOpScalingFactors = await pool.getScalingFactors();
+            for (let i = 0; i < preOpScalingFactors.length; i++) {
+              if (i != pool.bptIndex) {
+                expect(preOpScalingFactors[i]).to.equal(previousScalingFactors[i]);
+              }
+            }
+
+            // Now we perform the actual operation - the result should be different. This must not be a query as we want
+            // to check the updated state after the transaction.
+            const actualAmount = await actual();
+
+            // Verify the new rates are reflected in the scaling factors
+            await verifyScalingFactors(await pool.getScalingFactors());
+
+            expect(actualAmount).to.not.equal(queryAmount);
+          }
+
+          it('swaps use the new rates', async () => {
+            const { balances, tokens: allTokens } = await pool.getTokens();
+            const tokenIndex = allTokens.indexOf(tokens.first.address);
+
+            const amountIn = balances[tokenIndex].div(5);
+
+            const swapArgs = {
+              in: tokens.first,
+              out: tokens.second,
+              amount: amountIn,
+              from: lp,
+              recipient: lp,
+            };
+            const query = () => pool.querySwapGivenIn(swapArgs);
+            const actual = async () => (await pool.swapGivenIn(swapArgs)).amountOut;
+            await expectScalingFactorsToBeUpdated(query, actual);
+          });
+
+          it('joins use the new rates', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptOut = pct(previousBptBalance, 0.18);
+            const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
+            const token = tokens.get(tokenIndex);
+
+            const query = async () =>
+              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndex];
+            const actual = async () =>
+              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndex];
+
+            await expectScalingFactorsToBeUpdated(query, actual);
+          });
+
+          it('exits use the new rates', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptIn = pct(previousBptBalance, 0.082);
+            const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
+            const token = tokens.get(tokenIndex);
+
+            const query = async () =>
+              (await pool.querySingleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndex];
+            const actual = async () =>
+              (await pool.singleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndex];
+
+            await expectScalingFactorsToBeUpdated(query, actual);
+          });
+
+          it('recovery mode exits do not update the cache', async () => {
+            // Enter recovery mode
+            await pool.enableRecoveryMode(admin);
+
+            await updateExternalRates();
+
+            // Verify the new rates are not yet loaded
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
+
+            // Do a recovery mode exit
+            const { balances, tokens: allTokens } = await pool.getTokens();
+            const bptIn = await pool.balanceOf(lp);
+
+            await pool.recoveryModeExit({
+              from: lp,
+              tokens: allTokens,
+              currentBalances: balances,
+              bptIn,
+            });
+
+            // Verify the operation did NOT update the cache
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
           });
         });
       });
@@ -1984,6 +2153,11 @@ describe('StablePhantomPool', () => {
             sharedBeforeEach('blow up pool', async () => {
               await pool.setInvariantFailure(true);
               await pool.setRateFailure(true);
+            });
+
+            it('verify invariant-dependent and external rate calls fail', async () => {
+              await expect(pool.getRate()).to.be.revertedWith('INDUCED_FAILURE');
+              await expect(pool.instance.getTokenRate(tokens.first.address)).to.be.revertedWith('INDUCED_FAILURE');
             });
 
             itAllowsBothLpsToExit();

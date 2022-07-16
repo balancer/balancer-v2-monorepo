@@ -372,16 +372,6 @@
       }
     }
   },
-  "20220422-distribution-scheduler": {
-    "DistributionScheduler": {
-      "useAdaptor": true,
-      "actionIds": {
-        "scheduleDistribution(address,address,uint256,uint256)": "0x73d1abbe8fdc1eada717f73299f34b7217a71930114175a6cede25a4735d27b6",
-        "startDistributionForToken(address,address)": "0x5b56750a9db9bac83e09e56bb50b0420b86c5bb5255075f7d616ce3700ef771a",
-        "startDistributions(address)": "0xc0b53b0850f307966f922a3dd4dfa9956a28f9db59b76735e38aacf43b63b35b"
-      }
-    }
-  },
   "20220425-unbutton-aave-linear-pool": {
     "UnbuttonAaveLinearPoolFactory": {
       "useAdaptor": true,
@@ -517,6 +507,33 @@
       "useAdaptor": true,
       "actionIds": {
         "performFirstStage()": "0x2d1d4edc9a58a12384cc67f67380d836276f917640a875c51c38dd00e99ce743"
+      }
+    }
+  },
+  "20220707-distribution-scheduler": {
+    "DistributionScheduler": {
+      "useAdaptor": true,
+      "actionIds": {
+        "scheduleDistribution(address,address,uint256,uint256)": "0x73d1abbe8fdc1eada717f73299f34b7217a71930114175a6cede25a4735d27b6",
+        "startDistributionForToken(address,address)": "0x5b56750a9db9bac83e09e56bb50b0420b86c5bb5255075f7d616ce3700ef771a",
+        "startDistributions(address)": "0xc0b53b0850f307966f922a3dd4dfa9956a28f9db59b76735e38aacf43b63b35b"
+      }
+    }
+  },
+  "20220714-fee-distributor-v2": {
+    "FeeDistributor": {
+      "useAdaptor": true,
+      "actionIds": {
+        "checkpoint()": "0x7f4b0536efcbd917495f0d8e7a96852c08739243c797e73f00d32999233f8d5d",
+        "checkpointToken(address)": "0xad5cc01d75c9557c6761cedd6747cc49bf2bbee8a7e86e342e08ec8cce2d1424",
+        "checkpointTokens(address[])": "0x57588509fc9c7809dd451800137b52b71251b8f33eaefe0a4a20704d7a794d14",
+        "checkpointUser(address)": "0x63bc3bcd657781bdff8cf1b98efbb542ce506d17e769c801b781afed58711bfd",
+        "claimToken(address,address)": "0x00b4bd03de78c530508635a32da0ce07094513baf09fd6a44ad6f1a202115d41",
+        "claimTokens(address,address[])": "0x2456837bbeb6da646c6790300119cc05a25ecbf93c466b752edb2520e198bd37",
+        "depositToken(address,uint256)": "0x24a4418c40f7071f7d5c76dd936c391fea8819e36d109605e19363663622cb61",
+        "depositTokens(address[],uint256[])": "0x4721716053738fe68d3d5b293f1873c5f26f1a865cb53ccaa3f1527038428a7c",
+        "setOnlyCallerCheck(bool)": "0x2a0fc3ce2c92fc37ba51c3aef11d928dcaf3488be8978d243a8b84e6e980a504",
+        "setOnlyCallerCheckWithSignature(address,bool,bytes)": "0xa09ee85edd2695bd611eb6941808ca62eba50b0cb60778cb30ddb57edafc3415"
       }
     }
   }

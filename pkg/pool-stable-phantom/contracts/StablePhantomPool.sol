@@ -96,16 +96,30 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
+    // The amplification data structure is as follows:
+    // [  64 bits |   64 bits  |  64 bits  |   64 bits   ]
+    // [ end time | start time | end value | start value ]
+    // |MSB                                           LSB|
+
+    uint256 private constant _AMP_START_VALUE_OFFSET = 0;
+    uint256 private constant _AMP_END_VALUE_OFFSET = 64;
+    uint256 private constant _AMP_START_TIME_OFFSET = 128;
+    uint256 private constant _AMP_END_TIME_OFFSET = 192;
+
+    uint256 private constant _AMP_VALUE_BIT_LENGTH = 64;
+    uint256 private constant _AMP_TIMESTAMP_BIT_LENGTH = 64;
+
     bytes32 private _packedAmplificationData;
 
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
 
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // Data is stored with the following structure:
+    // The "old rate" field is used for precise protocol fee calculation, to ensure that token yield is only
+    // "taxed" once. The data structure is as follows:
     //
-    // [   expires   | duration | price rate value ]
-    // [   uint64    |  uint64  |      uint128     ]
+    // [ expires | duration | old rate | current rate ]
+    // [ uint32  |  uint32  |  uint96  |   uint96     ]
 
     mapping(IERC20 => bytes32) private _tokenRateCaches;
 
@@ -115,6 +129,16 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     IRateProvider internal immutable _rateProvider3;
     IRateProvider internal immutable _rateProvider4;
     IRateProvider internal immutable _rateProvider5;
+
+    // Set true if the corresponding token should have its yield exempted from protocol fees.
+    // For example, the BPT of another PhantomStable Pool containing yield tokens.
+    // Unlike the other numbered token variables, these indices correspond to the token array
+    // after dropping the BPT token.
+    bool internal immutable _exemptFromYieldProtocolFeeToken0;
+    bool internal immutable _exemptFromYieldProtocolFeeToken1;
+    bool internal immutable _exemptFromYieldProtocolFeeToken2;
+    bool internal immutable _exemptFromYieldProtocolFeeToken3;
+    bool internal immutable _exemptFromYieldProtocolFeeToken4;
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
@@ -127,6 +151,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         IERC20[] tokens;
         IRateProvider[] rateProviders;
         uint256[] tokenRateCacheDurations;
+        bool[] exemptFromYieldProtocolFeeFlags;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
         uint256 pauseWindowDuration;
@@ -159,6 +184,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             params.rateProviders.length,
             params.tokenRateCacheDurations.length
         );
+        InputHelpers.ensureInputLengthMatch(params.tokens.length, params.exemptFromYieldProtocolFeeFlags.length);
 
         _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
@@ -217,6 +243,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             }
         }
 
+        // Do the same with exemptFromYieldProtocolFeeFlags
+        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length);
+        for (uint256 i = 0; i < params.tokens.length; ++i) {
+            exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
+        }
+
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _rateProvider0 = tokensAndBPTRateProviders[0];
         _rateProvider1 = tokensAndBPTRateProviders[1];
@@ -224,6 +256,18 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
         _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
         _rateProvider5 = (tokensAndBPTRateProviders.length > 5) ? tokensAndBPTRateProviders[5] : IRateProvider(0);
+
+        _exemptFromYieldProtocolFeeToken0 = exemptFromYieldProtocolFeeFlags[0];
+        _exemptFromYieldProtocolFeeToken1 = exemptFromYieldProtocolFeeFlags[1];
+        _exemptFromYieldProtocolFeeToken2 = (exemptFromYieldProtocolFeeFlags.length > 2)
+            ? exemptFromYieldProtocolFeeFlags[2]
+            : false;
+        _exemptFromYieldProtocolFeeToken3 = (exemptFromYieldProtocolFeeFlags.length > 3)
+            ? exemptFromYieldProtocolFeeFlags[3]
+            : false;
+        _exemptFromYieldProtocolFeeToken4 = (exemptFromYieldProtocolFeeFlags.length > 4)
+            ? exemptFromYieldProtocolFeeFlags[4]
+            : false;
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -232,6 +276,23 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     function getBptIndex() external view returns (uint256) {
         return _bptIndex;
+    }
+
+    /**
+     * @notice Top-level Vault hook for swaps.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onSwap(
+        SwapRequest memory swapRequest,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) public virtual override returns (uint256) {
+        _cacheTokenRatesIfNecessary();
+
+        return super.onSwap(swapRequest, balances, indexIn, indexOut);
     }
 
     /**
@@ -253,8 +314,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal virtual override whenNotPaused returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
@@ -280,8 +339,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) internal virtual override whenNotPaused returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
@@ -564,6 +621,27 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
+     * @notice Top-level Vault hook for joins.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onJoinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        _cacheTokenRatesIfNecessary();
+
+        return
+            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
+    }
+
+    /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
      * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
@@ -707,6 +785,30 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return (bptAmountOut, amountsIn);
+    }
+
+    /**
+     * @notice Top-level Vault hook for exits.
+     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
+     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
+     * expired would still use the old rates.
+     */
+    function onExitPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory balances,
+        uint256 lastChangeBlock,
+        uint256 protocolSwapFeePercentage,
+        bytes memory userData
+    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+        // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
+        if (!userData.isRecoveryModeExitKind()) {
+            _cacheTokenRatesIfNecessary();
+        }
+
+        return
+            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
     }
 
     /**
@@ -930,7 +1032,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
+        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
     }
 
     /**
@@ -949,8 +1051,33 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     {
         _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
-        rate = _tokenRateCaches[token].getRate();
+        rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
+    }
+
+    /**
+     * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
+     * Its length will be one less than the registered pool tokens, and it will correspond to the token
+     * list after removing the BPT token.
+     */
+    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
+        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
+        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
+
+        // prettier-ignore
+        {
+            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
+            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
+            if (tokensWithoutBPT > 2) {
+                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 3) {
+                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 4) {
+                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
+            } else { return protocolFeeExemptTokenFlags; }
+        }
     }
 
     /**
@@ -986,8 +1113,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 duration
     ) private {
         uint256 rate = provider.getRate();
-        bytes32 cache = PriceRateCache.encode(rate, duration);
-        _tokenRateCaches[token] = cache;
+        bytes32 cache = _tokenRateCaches[token];
+
+        _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
+
         emit TokenRateCacheUpdated(token, rate);
     }
 
@@ -1268,10 +1397,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 endTime
     ) private {
         _packedAmplificationData =
-            WordCodec.encodeUint(startValue, 0, 64) |
-            WordCodec.encodeUint(endValue, 64, 64) |
-            WordCodec.encodeUint(startTime, 64 * 2, 64) |
-            WordCodec.encodeUint(endTime, 64 * 3, 64);
+            WordCodec.encodeUint(startValue, _AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
+            WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
+            WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
+            WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
     }
 
     function _getAmplificationData()
@@ -1284,10 +1413,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             uint256 endTime
         )
     {
-        startValue = _packedAmplificationData.decodeUint(0, 64);
-        endValue = _packedAmplificationData.decodeUint(64, 64);
-        startTime = _packedAmplificationData.decodeUint(64 * 2, 64);
-        endTime = _packedAmplificationData.decodeUint(64 * 3, 64);
+        startValue = _packedAmplificationData.decodeUint(_AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
+        endValue = _packedAmplificationData.decodeUint(_AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
+        startTime = _packedAmplificationData.decodeUint(_AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
+        endTime = _packedAmplificationData.decodeUint(_AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
