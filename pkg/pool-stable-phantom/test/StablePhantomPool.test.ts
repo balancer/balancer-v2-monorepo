@@ -1343,7 +1343,7 @@ describe('StablePhantomPool', () => {
           async function updateExternalRates(): Promise<void> {
             await tokens.asyncEach(async (token, i) => {
               const previousCache = await pool.getTokenRateCache(token);
-              const value = Math.random();
+              const value = Math.random() / 5;
 
               await rateProviders[i].mockRate(
                 previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))

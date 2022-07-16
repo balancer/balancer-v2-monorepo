@@ -96,16 +96,30 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
+    // The amplification data structure is as follows:
+    // [  64 bits |   64 bits  |  64 bits  |   64 bits   ]
+    // [ end time | start time | end value | start value ]
+    // |MSB                                           LSB|
+
+    uint256 private constant _AMP_START_VALUE_OFFSET = 0;
+    uint256 private constant _AMP_END_VALUE_OFFSET = 64;
+    uint256 private constant _AMP_START_TIME_OFFSET = 128;
+    uint256 private constant _AMP_END_TIME_OFFSET = 192;
+
+    uint256 private constant _AMP_VALUE_BIT_LENGTH = 64;
+    uint256 private constant _AMP_TIMESTAMP_BIT_LENGTH = 64;
+
     bytes32 private _packedAmplificationData;
 
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
     event AmpUpdateStopped(uint256 currentValue);
 
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // Data is stored with the following structure:
+    // The "old rate" field is used for precise protocol fee calculation, to ensure that token yield is only
+    // "taxed" once. The data structure is as follows:
     //
-    // [   expires   | duration | price rate value ]
-    // [   uint64    |  uint64  |      uint128     ]
+    // [ expires | duration | old rate | current rate ]
+    // [ uint32  |  uint32  |  uint96  |   uint96     ]
 
     mapping(IERC20 => bytes32) private _tokenRateCaches;
 
@@ -972,7 +986,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getRate();
+        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
     }
 
     /**
@@ -991,7 +1005,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     {
         _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
-        rate = _tokenRateCaches[token].getRate();
+        rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
     }
 
@@ -1028,8 +1042,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 duration
     ) private {
         uint256 rate = provider.getRate();
-        bytes32 cache = PriceRateCache.encode(rate, duration);
-        _tokenRateCaches[token] = cache;
+        bytes32 cache = _tokenRateCaches[token];
+
+        _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
+
         emit TokenRateCacheUpdated(token, rate);
     }
 
@@ -1292,10 +1308,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 endTime
     ) private {
         _packedAmplificationData =
-            WordCodec.encodeUint(startValue, 0, 64) |
-            WordCodec.encodeUint(endValue, 64, 64) |
-            WordCodec.encodeUint(startTime, 64 * 2, 64) |
-            WordCodec.encodeUint(endTime, 64 * 3, 64);
+            WordCodec.encodeUint(startValue, _AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
+            WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
+            WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
+            WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
     }
 
     function _getAmplificationData()
@@ -1308,10 +1324,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             uint256 endTime
         )
     {
-        startValue = _packedAmplificationData.decodeUint(0, 64);
-        endValue = _packedAmplificationData.decodeUint(64, 64);
-        startTime = _packedAmplificationData.decodeUint(64 * 2, 64);
-        endTime = _packedAmplificationData.decodeUint(64 * 3, 64);
+        startValue = _packedAmplificationData.decodeUint(_AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
+        endValue = _packedAmplificationData.decodeUint(_AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
+        startTime = _packedAmplificationData.decodeUint(_AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
+        endTime = _packedAmplificationData.decodeUint(_AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
