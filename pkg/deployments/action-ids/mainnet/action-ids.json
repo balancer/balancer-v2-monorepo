@@ -620,6 +620,24 @@
       }
     }
   },
+  "20220628-optimism-root-gauge-factory": {
+    "OptimismRootGaugeFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(address)": "0xa2882493d12953b0ba758d53f8f10e58edabb8ce768788c41b8754d9d7b3e9d8",
+        "setOptimismGasLimit(uint32)": "0xc89b780137460c1010bc938658c3b615990dd348e27ff1d095be12e6fe617f64"
+      }
+    },
+    "OptimismRootGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "checkpoint()": "0x3f63974a377ba4713661ede455bceda6686a0395f8b8ed8701ad1f13bb926c4d",
+        "initialize(address)": "0x7cd4c1de57fa031316e3b61c1bca9160d4feb774986a819a7c4c04dc66d7d21e",
+        "killGauge()": "0xec1d467d9ab03a0079c22a89037209f5763aec973897ea763e2cf25d71a5f12e",
+        "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea"
+      }
+    }
+  },
   "20220707-distribution-scheduler": {
     "DistributionScheduler": {
       "useAdaptor": true,
