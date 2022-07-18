@@ -10,7 +10,7 @@ import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe.only('GaugeAdderMigrationCoordinator', function () {
+describe('GaugeAdderMigrationCoordinator', function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
