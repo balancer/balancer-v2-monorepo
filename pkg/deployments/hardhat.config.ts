@@ -4,7 +4,7 @@ import 'hardhat-local-networks-config-plugin';
 
 import '@balancer-labs/v2-common/setupTests';
 
-import { task, types } from 'hardhat/config';
+import { task } from 'hardhat/config';
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 
@@ -190,9 +190,7 @@ task('check-action-ids', `Check that contract action-ids correspond the expected
     checkActionIdUniqueness(hre.network.name);
   });
 
-task(TASK_TEST)
-  .addOptionalParam('id', 'Specific task ID of the fork test to run.')
-  .setAction(test);
+task(TASK_TEST).addOptionalParam('id', 'Specific task ID of the fork test to run.').setAction(test);
 
 export default {
   mocha: {

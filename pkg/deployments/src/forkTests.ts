@@ -3,12 +3,7 @@ import hre from 'hardhat';
 import { HttpNetworkConfig, HardhatNetworkConfig } from 'hardhat/types';
 import { Network } from './types';
 
-export function describeForkTest(
-  name: string,
-  forkNetwork: Network,
-  blockNumber: number,
-  callback: () => void,
-): void {
+export function describeForkTest(name: string, forkNetwork: Network, blockNumber: number, callback: () => void): void {
   describe(name, () => {
     before('setup fork test', async () => {
       const forkingNetworkName = Object.keys(hre.config.networks).find((networkName) => networkName === forkNetwork);

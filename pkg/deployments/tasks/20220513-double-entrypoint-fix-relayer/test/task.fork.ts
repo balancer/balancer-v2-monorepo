@@ -106,7 +106,9 @@ describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () 
         assets: [wBTC, renBTC, sBTC],
         minAmountsOut: [0, 0, 0],
         userData: StablePoolEncoder.exitBPTInForExactTokensOut(
-          [await poolContract.balanceOf(btcBptHolder.address)], MAX_UINT256),
+          [await poolContract.balanceOf(btcBptHolder.address)],
+          MAX_UINT256
+        ),
         toInternalBalance: false,
       }
     );

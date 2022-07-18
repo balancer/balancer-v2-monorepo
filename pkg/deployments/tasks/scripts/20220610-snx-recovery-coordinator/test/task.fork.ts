@@ -89,7 +89,9 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
         assets: [wBTC, renBTC, sBTC],
         minAmountsOut: [0, 0, 0],
         userData: StablePoolEncoder.exitBPTInForExactTokensOut(
-          [await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)], MAX_UINT256),
+          [await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)],
+          MAX_UINT256
+        ),
         toInternalBalance: false,
       })
     ).to.be.revertedWith(SYNTHETIX_INSUFFICIENT_BALANCE);
@@ -105,7 +107,9 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
         assets: [SNX, WETH],
         minAmountsOut: [0, 0],
         userData: WeightedPoolEncoder.exitBPTInForExactTokensOut(
-          [await poolContract.balanceOf(SNX_WEIGHTED_POOL_WHALE)], MAX_UINT256),
+          [await poolContract.balanceOf(SNX_WEIGHTED_POOL_WHALE)],
+          MAX_UINT256
+        ),
         toInternalBalance: false,
       })
     ).to.be.revertedWith('SafeMath: subtraction overflow');
@@ -152,7 +156,9 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
       assets: [wBTC, renBTC, sBTC],
       minAmountsOut: [0, 0, 0],
       userData: StablePoolEncoder.exitBPTInForExactTokensOut(
-        [await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)], MAX_UINT256),
+        [await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)],
+        MAX_UINT256
+      ),
       toInternalBalance: false,
     });
   });
