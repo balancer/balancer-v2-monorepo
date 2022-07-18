@@ -14,11 +14,11 @@ import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-describeForkTest('StablePoolFactory', 14850000, function () {
+describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress, govMultisig: SignerWithAddress;
   let factory: Contract, vault: Contract, authorizer: Contract, usdc: Contract, dai: Contract, usdt: Contract;
 
-  const task = new Task('20220609-stable-pool-v2', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -35,6 +35,7 @@ describeForkTest('StablePoolFactory', 14850000, function () {
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    task = new Task('20220609-stable-pool-v2', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('StablePoolFactory');
   });

@@ -15,7 +15,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describeForkTest('PreseededVotingEscrowDelegation', 14850000, function () {
+describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, function () {
   let oldDelegation: Contract;
   let receiver: SignerWithAddress;
   let delegation: Contract;

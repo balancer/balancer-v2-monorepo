@@ -13,7 +13,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('DistributionScheduler', 14850000, function () {
+describeForkTest('DistributionScheduler', 'mainnet', 14850000, function () {
   let lmCommittee: SignerWithAddress, distributor: SignerWithAddress;
   let scheduler: Contract, gauge: Contract, DAI: Contract, USDC: Contract;
 

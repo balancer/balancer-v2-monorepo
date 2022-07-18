@@ -13,7 +13,7 @@ import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
-describeForkTest('FeeDistributor', 14623150, function () {
+describeForkTest('FeeDistributor', 'mainnet', 14623150, function () {
   let veBALHolder: SignerWithAddress, veBALHolder2: SignerWithAddress, feeCollector: SignerWithAddress;
   let distributor: Contract;
 

@@ -5,13 +5,9 @@ import { RunSuperFunction, HardhatRuntimeEnvironment, HttpNetworkConfig, Hardhat
 
 export default async function (args: any, hre: HardhatRuntimeEnvironment, run: RunSuperFunction<any>): Promise<void> {
   console.log('Running fork tests...');
-  const idFilter = (file: string, id: string | undefined) => {
-    if (id !== undefined) {
-      return file.includes(id);
-    }
-    return true;
-  };
-  args.testFiles = args.testFiles.filter((file: string) => file.endsWith('.fork.ts') && idFilter(file, args.id));
+  if (args.id) {
+    args.testFiles = args.testFiles.filter((file: string) => file.includes(args.id));
+  }
   await run(args);
 }
 

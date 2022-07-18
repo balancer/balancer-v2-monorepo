@@ -17,7 +17,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 14850000, function () {
+describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 

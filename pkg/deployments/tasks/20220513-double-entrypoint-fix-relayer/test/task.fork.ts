@@ -11,8 +11,9 @@ import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('DoubleEntrypointFixRelayer', 14850000, function () {
+describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () {
   let govMultisig: SignerWithAddress;
   let btcBptHolder: SignerWithAddress, snxBptHolder: SignerWithAddress;
   let relayer: Contract;
@@ -104,7 +105,8 @@ describeForkTest('DoubleEntrypointFixRelayer', 14850000, function () {
       {
         assets: [wBTC, renBTC, sBTC],
         minAmountsOut: [0, 0, 0],
-        userData: StablePoolEncoder.exitExactBPTInForTokensOut(await poolContract.balanceOf(btcBptHolder.address)),
+        userData: StablePoolEncoder.exitBPTInForExactTokensOut(
+          [await poolContract.balanceOf(btcBptHolder.address)], MAX_UINT256),
         toInternalBalance: false,
       }
     );

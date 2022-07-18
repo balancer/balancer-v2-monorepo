@@ -20,7 +20,7 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 // We then place the gauge deployed for this test into the "Arbitrum" type.
 // In production a proper gauge type should be created for the gauges deployed by this factory.
 
-describeForkTest('OptimismRootGaugeFactory', 14850000, function () {
+describeForkTest('OptimismRootGaugeFactory', 'mainnet', 14850000, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
   let factory: Contract, gauge: Contract;
   let vault: Contract,
@@ -39,7 +39,7 @@ describeForkTest('OptimismRootGaugeFactory', 14850000, function () {
 
   before('run task', async () => {
     task = new Task('20220628-optimism-root-gauge-factory', TaskMode.TEST, getForkedNetwork(hre));
-    OptimismBAL = task.input().OptimismBAL;
+    ({ OptimismBAL } = task.input());
     await task.run({ force: true });
     factory = await task.deployedInstance('OptimismRootGaugeFactory');
   });

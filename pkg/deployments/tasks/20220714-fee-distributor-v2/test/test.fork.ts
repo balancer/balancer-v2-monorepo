@@ -14,7 +14,7 @@ import { impersonate } from '../../../src/signers';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { _TypedDataEncoder } from 'ethers/lib/utils';
 
-describeForkTest('FeeDistributor', 15130000, function () {
+describeForkTest('FeeDistributor', 'mainnet', 15130000, function () {
   let veBALHolder: SignerWithAddress,
     veBALHolder2: SignerWithAddress,
     feeCollector: SignerWithAddress,

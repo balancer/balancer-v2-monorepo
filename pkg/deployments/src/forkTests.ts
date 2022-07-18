@@ -1,12 +1,13 @@
 import hre from 'hardhat';
 
 import { HttpNetworkConfig, HardhatNetworkConfig } from 'hardhat/types';
+import { Network } from './types';
 
 export function describeForkTest(
   name: string,
+  forkNetwork: Network,
   blockNumber: number,
   callback: () => void,
-  forkNetwork = 'mainnet'
 ): void {
   describe(name, () => {
     before('setup fork test', async () => {
@@ -19,11 +20,11 @@ export function describeForkTest(
 
       await hre.network.provider.request({
         method: 'hardhat_reset',
-        params: [{ forking: { jsonRpcUrl: forkingNetworkConfig.url, blockNumber: blockNumber } }],
+        params: [{ forking: { jsonRpcUrl: forkingNetworkConfig.url, blockNumber } }],
       });
 
       const config = hre.network.config as HardhatNetworkConfig;
-      config.forking = { enabled: true, blockNumber: blockNumber, url: forkingNetworkConfig.url };
+      config.forking = { enabled: true, blockNumber, url: forkingNetworkConfig.url };
     });
     callback();
   });

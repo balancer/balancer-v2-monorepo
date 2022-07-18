@@ -6,21 +6,23 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 
-describe('veBALDeploymentCoordinator', function () {
+describeForkTest('veBALDeploymentCoordinator', 'mainnet', 14458084, function () {
   let balMultisig: SignerWithAddress, govMultisig: SignerWithAddress;
   let coordinator: Contract, authorizer: Contract, BAL: Contract;
 
-  const task = new Task('20220325-veBAL-deployment-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const BAL_TOKEN = '0xba100000625a3754423978a60c9317c58a424e3D';
   const BAL_MULTISIG = '0xCDcEBF1f28678eb4A1478403BA7f34C94F7dDBc5';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    task = new Task('20220325-veBAL-deployment-coordinator', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.deployedInstance('veBALDeploymentCoordinator');
   });
