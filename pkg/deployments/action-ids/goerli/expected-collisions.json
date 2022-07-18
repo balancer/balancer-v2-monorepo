@@ -303,6 +303,12 @@
       "contractName": "FeeDistributor",
       "signature": "checkpoint()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "checkpoint()",
+      "useAdaptor": true
     }
   ],
   "0x9f596268ae1d840bffec6468f35868d6215d48830f5874204b4b5202ce5f037e": [
@@ -608,6 +614,104 @@
       "taskId": "20220530-preseeded-voting-escrow-delegation",
       "contractName": "PreseededVotingEscrowDelegation",
       "signature": "set_delegation_status(address,address,bool)",
+      "useAdaptor": true
+    }
+  ],
+  "0xad5cc01d75c9557c6761cedd6747cc49bf2bbee8a7e86e342e08ec8cce2d1424": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "checkpointToken(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "checkpointToken(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x57588509fc9c7809dd451800137b52b71251b8f33eaefe0a4a20704d7a794d14": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "checkpointTokens(address[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "checkpointTokens(address[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x63bc3bcd657781bdff8cf1b98efbb542ce506d17e769c801b781afed58711bfd": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "checkpointUser(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "checkpointUser(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x00b4bd03de78c530508635a32da0ce07094513baf09fd6a44ad6f1a202115d41": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "claimToken(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "claimToken(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x2456837bbeb6da646c6790300119cc05a25ecbf93c466b752edb2520e198bd37": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "claimTokens(address,address[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "claimTokens(address,address[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x24a4418c40f7071f7d5c76dd936c391fea8819e36d109605e19363663622cb61": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "depositToken(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "depositToken(address,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x4721716053738fe68d3d5b293f1873c5f26f1a865cb53ccaa3f1527038428a7c": [
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "depositTokens(address[],uint256[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "depositTokens(address[],uint256[])",
       "useAdaptor": true
     }
   ]
