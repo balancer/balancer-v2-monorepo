@@ -14,7 +14,9 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IArbitrumFeeProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOptimismGasLimitProvider.sol";
 
 import "../BaseCoordinator.sol";
 
@@ -24,21 +26,27 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
     IGaugeController public immutable gaugeController;
 
+    ILiquidityGaugeFactory public immutable arbitrumRootGaugeFactory;
     ILiquidityGaugeFactory public immutable optimismRootGaugeFactory;
 
     address public immutable liquidityMiningCommitteeMultisig;
+    address public immutable gaugeCheckpointingMultisig;
 
     constructor(
         IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder _newGaugeAdder,
         IGaugeAdder _oldGaugeAdder,
+        ILiquidityGaugeFactory _arbitrumRootGaugeFactory,
         ILiquidityGaugeFactory _optimismRootGaugeFactory,
-        address _liquidityMiningCommitteeMultisig
+        address _liquidityMiningCommitteeMultisig,
+        address _gaugeCheckpointingMultisig
     ) BaseCoordinator(authorizerAdaptor) {
         newGaugeAdder = _newGaugeAdder;
         oldGaugeAdder = _oldGaugeAdder;
+        arbitrumRootGaugeFactory = _arbitrumRootGaugeFactory;
         optimismRootGaugeFactory = _optimismRootGaugeFactory;
         liquidityMiningCommitteeMultisig = _liquidityMiningCommitteeMultisig;
+        gaugeCheckpointingMultisig = _gaugeCheckpointingMultisig;
 
         gaugeController = _newGaugeAdder.getGaugeController();
     }
@@ -50,6 +58,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     }
 
     function _firstStage() private {
+        _grantPermissionsOverBridgeParameters();
         _setupOptimismGaugeType();
         _setupNewGaugeAdder();
         _deprecateOldGaugeAdder();
@@ -62,6 +71,23 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
     }
 
     // Internal functions
+
+    function _grantPermissionsOverBridgeParameters() private {
+        ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
+
+        authorizer.grantRole(
+            IAuthentication(address(arbitrumRootGaugeFactory)).getActionId(
+                IArbitrumFeeProvider.setArbitrumFees.selector
+            ),
+            gaugeCheckpointingMultisig
+        );
+        authorizer.grantRole(
+            IAuthentication(address(optimismRootGaugeFactory)).getActionId(
+                IOptimismGasLimitProvider.setOptimismGasLimit.selector
+            ),
+            gaugeCheckpointingMultisig
+        );
+    }
 
     function _setupOptimismGaugeType() private {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
