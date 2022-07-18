@@ -9,8 +9,10 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     input.AuthorizerAdaptor,
     input.NewGaugeAdder,
     input.OldGaugeAdder,
+    input.ArbitrumRootGaugeFactory,
     input.OptimismRootGaugeFactory,
     input.LiquidityMiningMultisig,
+    input.GaugeCheckpointingMultisig,
   ];
   await task.deployAndVerify('GaugeAdderMigrationCoordinator', args, from, force);
 };

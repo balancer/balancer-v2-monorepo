@@ -18,6 +18,11 @@
       },
       {
         "internalType": "contract ILiquidityGaugeFactory",
+        "name": "_arbitrumRootGaugeFactory",
+        "type": "address"
+      },
+      {
+        "internalType": "contract ILiquidityGaugeFactory",
         "name": "_optimismRootGaugeFactory",
         "type": "address"
       },
@@ -25,10 +30,41 @@
         "internalType": "address",
         "name": "_liquidityMiningCommitteeMultisig",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_gaugeCheckpointingMultisig",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "arbitrumRootGaugeFactory",
+    "outputs": [
+      {
+        "internalType": "contract ILiquidityGaugeFactory",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "gaugeCheckpointingMultisig",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
