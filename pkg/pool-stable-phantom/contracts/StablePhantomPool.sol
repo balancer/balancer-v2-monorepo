@@ -481,7 +481,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Process a GivenIn swap involving BPT.
+     * @dev Process a GivenIn swap involving BPT. At this point, amount has been upscaled, and the BPT token
+     * has been removed from balances. `indexIn` and `indexOut` include BPT.
      */
     function _onSwapBptGivenIn(
         uint256 amount,
@@ -524,6 +525,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
+    /**
+     * @dev Process a GivenOut swap involving BPT. At this point, amount has been upscaled, and the BPT token
+     * has been removed from balances. `indexIn` and `indexOut` include BPT.
+     */
     function _onSwapBptGivenOut(
         uint256 amount,
         uint256 indexIn,
@@ -654,6 +659,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
         _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
 
+        // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, _getTotalTokens());
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
@@ -711,6 +717,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
+        // Balances are passed through from the Vault hook, and include BPT
         InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
 
         // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
@@ -748,22 +755,26 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
+        // Since this index is sent in from the user, we interpret it as NOT including the BPT token.
+        (uint256 bptAmountOut, uint256 tokenIndexWithoutBpt) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        // Balances are passed through from the Vault hook, and include BPT
+        _require(tokenIndexWithoutBpt < balances.length - 1, Errors.OUT_OF_BOUNDS);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        // We join with a single token, so initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](_getTotalTokens());
+        // We join with a single token, so initialize amountsIn with zeros.
+        uint256[] memory amountsIn = new uint256[](balances.length);
 
-        // And then assign the result to the selected token
-        amountsIn[tokenIndex] = StableMath._calcTokenInGivenExactBptOut(
+        // And then assign the result to the selected token.
+        // The token index passed to the StableMath function must match the balances array (without BPT),
+        // But the amountsIn array passed back to the Vault must include BPT.
+        amountsIn[_addBptIndex(tokenIndexWithoutBpt)] = StableMath._calcTokenInGivenExactBptOut(
             currentAmp,
             balancesWithoutBpt,
-            tokenIndex,
+            tokenIndexWithoutBpt,
             bptAmountOut,
             virtualSupply,
             getSwapFeePercentage()
@@ -838,22 +849,26 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) private returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
+        // Since this index is sent in from the user, we interpret it as NOT including the BPT token
+        (uint256 bptAmountIn, uint256 tokenIndexWithoutBpt) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        _require(tokenIndex < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        // The balances array passed in includes BPT.
+        _require(tokenIndexWithoutBpt < balances.length - 1, Errors.OUT_OF_BOUNDS);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // We exit in a single token, so initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](_getTotalTokens());
+        uint256[] memory amountsOut = new uint256[](balances.length);
 
-        // And then assign the result to the selected token
-        amountsOut[tokenIndex] = StableMath._calcTokenOutGivenExactBptIn(
+        // And then assign the result to the selected token.
+        // The token index passed to the StableMath function must match the balances array (without BPT),
+        // But the amountsOut array passed back to the Vault must include BPT.
+        amountsOut[_addBptIndex(tokenIndexWithoutBpt)] = StableMath._calcTokenOutGivenExactBptIn(
             currentAmp,
             balancesWithoutBpt,
-            tokenIndex,
+            tokenIndexWithoutBpt,
             bptAmountIn,
             virtualSupply,
             getSwapFeePercentage()
@@ -882,6 +897,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             scalingFactors
         );
 
+        // The balances array passed in includes BPT.
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
@@ -1162,8 +1178,26 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             super._isOwnerOnlyAction(actionId);
     }
 
+    // Convert from an index into an array including BPT (the Vault's registered token list), to an index
+    // into an array excluding BPT (usually from user input, such as amountsIn/Out).
+    // `index` must not be the BPT token index itself.
     function _skipBptIndex(uint256 index) internal view returns (uint256) {
+        // Currently this is never called with an index passed in from user input, so this check
+        // should not be necessary. Included for completion (and future proofing).
+        _require(index != _bptIndex, Errors.OUT_OF_BOUNDS);
+
         return index < _bptIndex ? index : index.sub(1);
+    }
+
+    // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
+    // to an index into an array excluding BPT (the Vault's registered token list).
+    // `index` must not be the BPT token index itself, if it is the last element, and the result must be
+    // in the range of registered tokens.
+    function _addBptIndex(uint256 index) internal view returns (uint256 indexWithBpt) {
+        // This can be called from an index passed in from user input.
+        indexWithBpt = index < _bptIndex ? index : index.add(1);
+
+        _require(indexWithBpt < _getTotalTokens() && indexWithBpt != _bptIndex, Errors.OUT_OF_BOUNDS);
     }
 
     /**
