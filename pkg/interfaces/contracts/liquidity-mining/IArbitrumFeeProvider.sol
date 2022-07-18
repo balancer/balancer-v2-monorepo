@@ -23,4 +23,10 @@ interface IArbitrumFeeProvider {
             uint256 gasPrice,
             uint256 maxSubmissionCost
         );
+
+    function setArbitrumFees(
+        uint64 gasLimit,
+        uint64 gasPrice,
+        uint64 maxSubmissionCost
+    ) external;
 }
