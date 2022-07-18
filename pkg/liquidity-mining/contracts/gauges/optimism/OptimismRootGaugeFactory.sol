@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipient
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
-import "./IOptimismGasLimitProvider.sol";
 import "./OptimismRootGauge.sol";
 
 contract OptimismRootGaugeFactory is ISingleRecipientGaugeFactory, IOptimismGasLimitProvider, SingletonAuthentication {
@@ -104,7 +103,7 @@ contract OptimismRootGaugeFactory is ISingleRecipientGaugeFactory, IOptimismGasL
     /**
      * @notice Set the gas limit for the Optimism side of the bridging transaction
      */
-    function setOptimismGasLimit(uint32 gasLimit) external authenticate {
+    function setOptimismGasLimit(uint32 gasLimit) external override authenticate {
         _gasLimit = gasLimit;
         emit OptimismGasLimitModified(gasLimit);
     }
