@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/LinearPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
@@ -49,7 +50,7 @@ import "./LinearMath.sol";
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  * Accordingly, this Pool also does not pay any protocol fees.
  */
-abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
+abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePool {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -107,6 +108,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -118,7 +120,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
             name,
             symbol,
             _sortTokens(mainToken, wrappedToken, this),
-            new address[](_TOTAL_TOKENS),
+            _insertNullBptAssetManager(mainToken, wrappedToken, assetManagers),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -149,23 +151,48 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         _setTargets(mainToken, lowerTarget, upperTarget);
     }
 
-    function getMainToken() public view returns (address) {
-        return address(_mainToken);
+    /**
+     * @dev Inserts a zero-valued entry in the `assetManagers` array at the BPT token index, ensuring that BPT is not
+     * managed even if the main or wrapped tokens are.
+     */
+    function _insertNullBptAssetManager(
+        IERC20 mainToken,
+        IERC20 wrappedToken,
+        address[] memory assetManagers
+    ) private view returns (address[] memory) {
+        (, , uint256 bptIndex) = _getSortedTokenIndexes(mainToken, wrappedToken, this);
+
+        address[] memory extendedAssetManagers = new address[](assetManagers.length + 1);
+        for (uint256 i = 0; i < extendedAssetManagers.length; ++i) {
+            if (i < bptIndex) {
+                extendedAssetManagers[i] = assetManagers[i];
+            } else if (i > bptIndex) {
+                extendedAssetManagers[i] = assetManagers[i - 1];
+            } else {
+                extendedAssetManagers[i] = address(0);
+            }
+        }
+
+        return extendedAssetManagers;
     }
 
-    function getWrappedToken() public view returns (address) {
-        return address(_wrappedToken);
+    function getMainToken() public view override returns (IERC20) {
+        return _mainToken;
     }
 
-    function getBptIndex() external view returns (uint256) {
+    function getWrappedToken() public view override returns (IERC20) {
+        return _wrappedToken;
+    }
+
+    function getBptIndex() external view override returns (uint256) {
         return _bptIndex;
     }
 
-    function getMainIndex() external view returns (uint256) {
+    function getMainIndex() external view override returns (uint256) {
         return _mainIndex;
     }
 
-    function getWrappedIndex() external view returns (uint256) {
+    function getWrappedIndex() external view override returns (uint256) {
         return _wrappedIndex;
     }
 
@@ -210,7 +237,10 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public view override onlyVault(request.poolId) whenNotPaused returns (uint256) {
+    ) public view override onlyVault(request.poolId) returns (uint256) {
+        // Block all swaps when paused
+        _ensureNotPaused();
+
         // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
         // one of the three tokens is the BPT itself, a swap might also be a join (main/wrapped for BPT) or an exit
         // (BPT for main/wrapped).
@@ -394,7 +424,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
         address recipient,
         uint256[] memory,
         bytes memory
-    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
         _require(sender == address(this), Errors.INVALID_INITIALIZATION);
         _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
@@ -556,7 +586,7 @@ abstract contract LinearPool is BasePool, IGeneralPool, IRateProvider {
      */
     function _getWrappedTokenRate() internal view virtual returns (uint256);
 
-    function getTargets() public view returns (uint256 lowerTarget, uint256 upperTarget) {
+    function getTargets() public view override returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
         lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, 96);
         upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, 96);

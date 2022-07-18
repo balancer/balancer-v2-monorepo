@@ -8,7 +8,6 @@ import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
-import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
 import {
@@ -42,7 +41,7 @@ export default {
     return { mocked, admin, pauseWindowDuration, bufferPeriodDuration };
   },
 
-  toRawVaultDeployment(params: RawWeightedPoolDeployment | RawStablePoolDeployment): RawVaultDeployment {
+  toRawVaultDeployment(params: RawWeightedPoolDeployment): RawVaultDeployment {
     let { admin, pauseWindowDuration, bufferPeriodDuration } = params;
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
@@ -102,49 +101,20 @@ export default {
     };
   },
 
-  toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
-    let {
-      tokens,
-      rateProviders,
-      priceRateCacheDuration,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-    } = params;
-
-    if (!tokens) tokens = new TokenList();
-    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!priceRateCacheDuration) priceRateCacheDuration = Array(tokens.length).fill(DAY);
-    if (!amplificationParameter) amplificationParameter = bn(200);
-    if (!swapFeePercentage) swapFeePercentage = bn(1e12);
-    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
-    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-
-    return {
-      tokens,
-      rateProviders,
-      priceRateCacheDuration,
-      amplificationParameter,
-      swapFeePercentage,
-      pauseWindowDuration,
-      bufferPeriodDuration,
-      owner: params.owner,
-    };
-  },
-
   toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
-    let { upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+    let { upperTarget, assetManagers, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
 
     if (!upperTarget) upperTarget = bn(0);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!assetManagers) assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
 
     return {
       mainToken: params.mainToken,
       wrappedToken: params.wrappedToken,
       upperTarget,
+      assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -157,6 +127,7 @@ export default {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -170,11 +141,13 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
 
     return {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,

@@ -59,6 +59,7 @@ contract UnbuttonAaveLinearPool is LinearPool {
             mainToken, // wAMPL
             wrappedToken, // wAaveAMPL
             upperTarget,
+            new address[](2),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -85,12 +86,12 @@ contract UnbuttonAaveLinearPool is LinearPool {
      */
     function _getWrappedTokenRate() internal view override returns (uint256) {
         // 1e18 wAaveAMPL = r1 aaveAMPL
-        uint256 r1 = IUnbuttonToken(getWrappedToken()).wrapperToUnderlying(FixedPoint.ONE);
+        uint256 r1 = IUnbuttonToken(address(getWrappedToken())).wrapperToUnderlying(FixedPoint.ONE);
 
         // r1 aaveAMPL = r1 AMPL (AMPL and aaveAMPL have a 1:1 exchange rate)
 
         // r1 AMPL = r2 wAMPL
-        uint256 r2 = IUnbuttonToken(getMainToken()).underlyingToWrapper(r1);
+        uint256 r2 = IUnbuttonToken(address(getMainToken())).underlyingToWrapper(r1);
 
         // 1e18 wAaveAMPL = r2 wAMPL
         return r2;

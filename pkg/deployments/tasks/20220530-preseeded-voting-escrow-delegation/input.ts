@@ -76,4 +76,8 @@ export default {
       },
     ],
   },
+  goerli: {
+    PreseededBoostCalls: [],
+    PreseededApprovalCalls: [],
+  },
 };

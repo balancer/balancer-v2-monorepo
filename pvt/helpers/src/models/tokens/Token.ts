@@ -49,7 +49,11 @@ export default class Token {
     if (this.symbol === 'WETH') {
       await token.deposit({ value: amount });
       await token.transfer(TypesConverter.toAddress(to), amount);
-    } else {
+    } else if (this.symbol !== 'wstETH' && this.symbol != 'wampl') {
+      // wstETH and wampl need permissioned calls (wrap() in the case of wstETH); calling it
+      // generically from init() would fail. So tests that mint these tokens (e.g.,
+      // UnbuttonAaveLinearPool) need to do it separately, and we need to add these exceptions
+      // here, so that mint() is a no-op for these tokens.
       await token.mint(TypesConverter.toAddress(to), amount ?? MAX_UINT256);
     }
   }
