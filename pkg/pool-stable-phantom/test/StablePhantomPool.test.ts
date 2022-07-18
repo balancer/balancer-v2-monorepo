@@ -1380,6 +1380,8 @@ describe('StablePhantomPool', () => {
 
         describe('when rates are updated between operations', () => {
           let previousScalingFactors: BigNumber[];
+          let token: Token;
+          let tokenIndexWithBpt: number;
 
           async function updateExternalRates(): Promise<void> {
             await tokens.asyncEach(async (token, i) => {
@@ -1410,8 +1412,12 @@ describe('StablePhantomPool', () => {
             await pool.init({ initialBalances, recipient: lp });
           });
 
-          sharedBeforeEach('save starting values', async () => {
+          sharedBeforeEach('save starting values and compute tokenIndex', async () => {
             previousScalingFactors = await pool.getScalingFactors();
+
+            const tokenIndexWithoutBpt = numberOfTokens - 1;
+            token = tokens.get(tokenIndexWithoutBpt);
+            tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
           });
 
           async function expectScalingFactorsToBeUpdated(
@@ -1462,13 +1468,11 @@ describe('StablePhantomPool', () => {
           it('joins use the new rates', async () => {
             const previousBptBalance = await pool.balanceOf(lp);
             const bptOut = pct(previousBptBalance, 0.18);
-            const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
-            const token = tokens.get(tokenIndex);
 
             const query = async () =>
-              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndex];
+              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
             const actual = async () =>
-              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndex];
+              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
 
             await expectScalingFactorsToBeUpdated(query, actual);
           });
@@ -1476,13 +1480,11 @@ describe('StablePhantomPool', () => {
           it('exits use the new rates', async () => {
             const previousBptBalance = await pool.balanceOf(lp);
             const bptIn = pct(previousBptBalance, 0.082);
-            const tokenIndex = pool.bptIndex == 0 ? 1 : 0;
-            const token = tokens.get(tokenIndex);
 
             const query = async () =>
-              (await pool.querySingleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndex];
+              (await pool.querySingleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndexWithBpt];
             const actual = async () =>
-              (await pool.singleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndex];
+              (await pool.singleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndexWithBpt];
 
             await expectScalingFactorsToBeUpdated(query, actual);
           });
