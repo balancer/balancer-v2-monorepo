@@ -241,8 +241,9 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
 
+        uint256 supply = totalSupply();
         uint256 swapFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-            totalSupply(),
+            supply,
             _lastPostJoinExitInvariant,
             preJoinExitInvariant,
             protocolSwapFeePercentage
@@ -255,7 +256,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
             // Only collect protocol fees when yield growth exceeds previous all-time high.
             if (rateGrowthProduct > _lastRateGrowthProduct) {
                 yieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-                    totalSupply().add(swapFees),
+                    supply.add(swapFees),
                     _lastRateGrowthProduct,
                     rateGrowthProduct,
                     // TODO: This fee pct should come from a different source.
