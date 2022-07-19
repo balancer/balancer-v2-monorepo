@@ -119,8 +119,15 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     }
 
     /**
-     * @dev Returns the token rates for all tokens. These are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
+     * @dev Returns the rate from provider. All rates are fixed-point values with 18 decimals.
+     * In case provider is the zero address, it returns FixedPoint.ONE.
+     */
+    function _getRate(IRateProvider provider) internal view returns (uint256) {
+        return provider == IRateProvider(0) ? FixedPoint.ONE : provider.getRate();
+    }
+
+    /**
+     * @dev Returns the rates for all tokens.
      */
     function _getRates() internal view returns (uint256[] memory rates) {
         uint256 totalTokens = _getTotalTokens();
@@ -128,98 +135,26 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         // prettier-ignore
         {
-            rates[0] = _rateProvider0 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider0.getRate();
-            rates[1] = _rateProvider1 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider1.getRate();
-            if (totalTokens > 2) {
-                rates[2] = _rateProvider2 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider2.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 3) {
-                rates[3] = _rateProvider3 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider3.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 4) {
-                rates[4] = _rateProvider4 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider4.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 5) {
-                rates[5] = _rateProvider5 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider5.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 6) {
-                rates[6] = _rateProvider6 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider6.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 7) {
-                rates[7] = _rateProvider7 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider7.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 8) {
-                rates[8] = _rateProvider8 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider8.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 9) {
-                rates[9] = _rateProvider9 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider9.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 10) {
-                rates[10] = _rateProvider10 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider10.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 11) {
-                rates[11] = _rateProvider11 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider11.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 12) {
-                rates[12] = _rateProvider12 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider12.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 13) {
-                rates[13] = _rateProvider13 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider13.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 14) {
-                rates[14] = _rateProvider14 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider14.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 15) {
-                rates[15] = _rateProvider15 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider15.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 16) {
-                rates[16] = _rateProvider16 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider16.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 17) {
-                rates[17] = _rateProvider17 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider17.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 18) {
-                rates[18] = _rateProvider18 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider18.getRate();
-            } else {
-                return rates;
-            }
-            if (totalTokens > 19) {
-                rates[19] = _rateProvider19 == IRateProvider(0) ? FixedPoint.ONE : _rateProvider19.getRate();
-            } else {
-                return rates;
-            }
+            rates[0] = _getRate(_rateProvider0);
+            rates[1] = _getRate(_rateProvider1);
+            if (totalTokens > 2) { rates[2] = _getRate(_rateProvider2); } else { return rates; }
+            if (totalTokens > 3) { rates[3] = _getRate(_rateProvider3); } else { return rates; }
+            if (totalTokens > 4) { rates[4] = _getRate(_rateProvider4); } else { return rates; }
+            if (totalTokens > 5) { rates[5] = _getRate(_rateProvider5); } else { return rates; }
+            if (totalTokens > 6) { rates[6] = _getRate(_rateProvider6); } else { return rates; }
+            if (totalTokens > 7) { rates[7] = _getRate(_rateProvider7); } else { return rates; }
+            if (totalTokens > 8) { rates[8] = _getRate(_rateProvider8); } else { return rates; }
+            if (totalTokens > 9) { rates[9] = _getRate(_rateProvider9); } else { return rates; }
+            if (totalTokens > 10) { rates[10] = _getRate(_rateProvider10); } else { return rates; }
+            if (totalTokens > 11) { rates[11] = _getRate(_rateProvider11); } else { return rates; }
+            if (totalTokens > 12) { rates[12] = _getRate(_rateProvider12); } else { return rates; }
+            if (totalTokens > 13) { rates[13] = _getRate(_rateProvider13); } else { return rates; }
+            if (totalTokens > 14) { rates[14] = _getRate(_rateProvider14); } else { return rates; }
+            if (totalTokens > 15) { rates[15] = _getRate(_rateProvider15); } else { return rates; }
+            if (totalTokens > 16) { rates[16] = _getRate(_rateProvider16); } else { return rates; }
+            if (totalTokens > 17) { rates[17] = _getRate(_rateProvider17); } else { return rates; }
+            if (totalTokens > 18) { rates[18] = _getRate(_rateProvider18); } else { return rates; }
+            if (totalTokens > 19) { rates[19] = _getRate(_rateProvider19); } else { return rates; }
         }
     }
 
