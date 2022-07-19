@@ -1260,6 +1260,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
         // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
         // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
+        // remains constant.
         (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
 
         // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
