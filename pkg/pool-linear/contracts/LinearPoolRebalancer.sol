@@ -134,7 +134,7 @@ abstract contract LinearPoolRebalancer {
         IVault.FundManagement memory funds; // This is unused in the query, so we don't bother initializing it.
         uint256 wrappedAmountIn = _queries.querySwap(swap, funds);
 
-        // Since we lack the wrapepd tokens required to actually execute the swap, we instead use our Asset Manager
+        // Since we lack the wrapped tokens required to actually execute the swap, we instead use our Asset Manager
         // permission to withdraw main tokens from the Pool, wrap them, and then deposit them as wrapped tokens. The
         // amounts involved will be the exact same amounts as the those in the swap above, meaning the overall
         // state will be the same, except we will never actually call the Linear Pool. However, since the Linear
