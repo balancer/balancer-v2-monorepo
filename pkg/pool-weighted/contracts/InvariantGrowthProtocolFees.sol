@@ -27,7 +27,11 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
     uint256 private _lastPostJoinExitInvariant;
-    uint256 private _lastRateGrowthProduct;
+
+    // All-time high value of the weighted product of the pool's token rates. Comparing such weighted products across
+    // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
+    // but that growth is captured in the invariant; rate growth is not.
+    uint256 private _athRateProduct;
 
     // Rate providers are used only for computing yield fees; they do not inform swap/join/exit.
     IRateProvider internal immutable _rateProvider0;
@@ -76,7 +80,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         _rateProvider19 = numTokens > 19 ? rateProviders[19] : IRateProvider(0);
 
         // TODO: Initialize this here instead of checking inside each join/exit?
-        _lastRateGrowthProduct = 0;
+        _athRateProduct = 0;
     }
 
     /**
@@ -185,23 +189,27 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         );
 
         uint256 yieldFees = 0;
-        if (_lastRateGrowthProduct > 0) {
-            uint256 rateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
+        uint256 athRateProduct = _athRateProduct;
+        if (athRateProduct == 0) {
+            // Initialize the all-time high rate product. This will occur during the INIT join just after pool
+            // creation. This variable is used for comparison across time, so it must be initialized properly to avoid
+            // overpaying protocol fees.
+            _athRateProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
+        } else {
+            uint256 rateProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
 
             // Only collect protocol fees when yield growth exceeds previous all-time high.
-            if (rateGrowthProduct > _lastRateGrowthProduct) {
+            if (rateProduct > athRateProduct) {
                 yieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
                     supply.add(swapFees),
-                    _lastRateGrowthProduct,
-                    rateGrowthProduct,
+                    athRateProduct,
+                    rateProduct,
                     // TODO: This fee pct should come from a different source.
                     protocolSwapFeePercentage
                 );
 
-                _lastRateGrowthProduct = rateGrowthProduct;
+                _athRateProduct = rateProduct;
             }
-        } else {
-            _lastRateGrowthProduct = WeightedMath._calculateWeightedProduct(normalizedWeights, _getRates());
         }
 
         _payProtocolFees(swapFees.add(yieldFees));
