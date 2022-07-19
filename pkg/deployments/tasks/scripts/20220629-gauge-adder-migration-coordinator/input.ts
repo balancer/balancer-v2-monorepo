@@ -17,9 +17,8 @@ const NewGaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY);
 const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY);
 const OptimismRootGaugeFactory = new Task('20220628-optimism-root-gauge-factory', TaskMode.READ_ONLY);
 
-// Placeholders
-const LiquidityMiningMultisig = '0x0000000000000000000000000000000000000420';
-const GaugeCheckpointingMultisig = '0x0000000000000000000000000000000000000421';
+const LiquidityMiningMultisig = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
+const GaugeCheckpointingMultisig = '0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B';
 
 export default {
   mainnet: {
