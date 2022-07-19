@@ -718,7 +718,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) private returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         // Balances are passed through from the Vault hook, and include BPT
-        InputHelpers.ensureInputLengthMatch(_getTotalTokens() - 1, amountsIn.length);
+        InputHelpers.ensureInputLengthMatch(balances.length - 1, amountsIn.length);
 
         // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
         (uint256[] memory scaledAmountsInWithBpt, uint256[] memory scaledAmountsInWithoutBpt) = _upscaleWithoutBpt(
