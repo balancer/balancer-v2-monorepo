@@ -74,15 +74,17 @@ library WeightedMath {
     }
 
     // Computes a weighted product (same math as invariant) while ignoring ones.
-    function _calculateWeightedProduct(uint256[] memory normalizedWeights, uint256[] memory balances)
+    function _calculateWeightedProduct(uint256[] memory normalizedWeights, uint256[] memory amounts)
         internal
         pure
         returns (uint256 product)
     {
         product = FixedPoint.ONE;
         for (uint256 i = 0; i < normalizedWeights.length; i++) {
-            if (balances[i] != FixedPoint.ONE) {
-                product = product.mulDown(balances[i].powDown(normalizedWeights[i]));
+            // Raising 1 to a power is a waste of computation, but a token balance is unlikely ever to be exactly 1, so
+            // this comparison would be wasteful in _calculateInvariant.
+            if (amounts[i] != FixedPoint.ONE) {
+                product = product.mulDown(amounts[i].powDown(normalizedWeights[i]));
             }
         }
     }
