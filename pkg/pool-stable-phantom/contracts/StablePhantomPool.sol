@@ -425,12 +425,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             balances[indexOut] = balances[indexOut].sub(amountOut);
 
             // Mutates balances to use the old rate (for exempt tokens)
-            uint256[] memory ratios = _dropBptItem(_tokenRateRatios());
-            for (uint256 i = 0; i < balances.length; ++i) {
-                if (ratios[i] != FixedPoint.ONE) {
-                    balances[i] = FixedPoint.mulDown(balances[i], ratios[i]);
-                }
-            }
+            _adjustBalancesByTokenRatios(balances);
 
             _payDueProtocolFeeByInvariantIncrement(
                 invariant,
@@ -519,6 +514,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 swapFeePercentage
             );
+
+            if (protocolSwapFeePercentage > 0) {
+                _payDueProtocolFeeByBpt(amount, protocolSwapFeePercentage);
+            }
         } else {
             // joinSwap
             uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
@@ -531,10 +530,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 swapFeePercentage
             );
-        }
 
-        if (protocolSwapFeePercentage > 0) {
-            _payDueProtocolFeeByBpt(bptIsTokenIn ? amount : amountOut, protocolSwapFeePercentage);
+            if (protocolSwapFeePercentage > 0) {
+                _adjustBalancesByTokenRatios(balancesWithoutBpt);
+
+                uint256 adjustedAmountOut = StableMath._calcBptOutGivenExactTokensIn(
+                    amp,
+                    balancesWithoutBpt,
+                    amountsIn,
+                    virtualSupply,
+                    swapFeePercentage
+                );
+
+                _payDueProtocolFeeByBpt(adjustedAmountOut, protocolSwapFeePercentage);
+            }
         }
 
         _updateOldRatesAfterJoinExit();
@@ -568,6 +577,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 swapFeePercentage
             );
+
+            if (protocolSwapFeePercentage > 0) {
+                _adjustBalancesByTokenRatios(balancesWithoutBpt);
+
+                uint256 adjustedAmountIn = StableMath._calcBptInGivenExactTokensOut(
+                    amp,
+                    balancesWithoutBpt,
+                    amountsOut,
+                    virtualSupply,
+                    swapFeePercentage
+                );
+
+                _payDueProtocolFeeByBpt(adjustedAmountIn, protocolSwapFeePercentage);
+            }
         } else {
             // exitSwap
             amountIn = StableMath._calcTokenInGivenExactBptOut(
@@ -578,10 +601,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 swapFeePercentage
             );
-        }
 
-        if (protocolSwapFeePercentage > 0) {
-            _payDueProtocolFeeByBpt(bptIsTokenIn ? amountIn : amount, protocolSwapFeePercentage);
+            if (protocolSwapFeePercentage > 0) {
+                _payDueProtocolFeeByBpt(amount, protocolSwapFeePercentage);
+            }
         }
 
         _updateOldRatesAfterJoinExit();
@@ -769,12 +792,22 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 getSwapFeePercentage()
             );
-        }
 
-        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
+            _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
-        if (protocolSwapFeePercentage > 0) {
-            _payDueProtocolFeeByBpt(bptAmountOut, protocolSwapFeePercentage);
+            if (protocolSwapFeePercentage > 0) {
+                _adjustBalancesByTokenRatios(balancesWithoutBpt);
+
+                uint256 adjustedAmountOut = StableMath._calcBptOutGivenExactTokensIn(
+                    currentAmp,
+                    balancesWithoutBpt,
+                    scaledAmountsInWithoutBpt,
+                    virtualSupply,
+                    getSwapFeePercentage()
+                );
+
+                _payDueProtocolFeeByBpt(adjustedAmountOut, protocolSwapFeePercentage);
+            }
         }
 
         return (bptAmountOut, scaledAmountsInWithBpt);
@@ -942,7 +975,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         if (protocolSwapFeePercentage > 0) {
-            _payDueProtocolFeeByBpt(bptAmountIn, protocolSwapFeePercentage);
+            _adjustBalancesByTokenRatios(balancesWithoutBpt);
+
+            uint256 adjustedAmountIn = StableMath._calcBptInGivenExactTokensOut(
+                currentAmp,
+                balancesWithoutBpt,
+                scaledAmountsOutWithoutBpt,
+                virtualSupply,
+                getSwapFeePercentage()
+            );
+
+            _payDueProtocolFeeByBpt(adjustedAmountIn, protocolSwapFeePercentage);
         }
 
         return (bptAmountIn, scaledAmountsOutWithBpt);
@@ -1055,6 +1098,19 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
 
         return rateRatios;
+    }
+
+    /**
+     * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
+     * Mutates the balances in place.
+     */
+    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt) internal view {
+        uint256[] memory ratios = _dropBptItem(_tokenRateRatios());
+        for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
+            if (ratios[i] != FixedPoint.ONE) {
+                balancesWithoutBpt[i] = FixedPoint.mulDown(balancesWithoutBpt[i], ratios[i]);
+            }
+        }
     }
 
     // Token rates
