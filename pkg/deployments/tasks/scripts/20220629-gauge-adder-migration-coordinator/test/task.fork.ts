@@ -19,6 +19,9 @@ describe('GaugeAdderMigrationCoordinator', function () {
   let oldGaugeAdder: Contract;
   let newGaugeAdder: Contract;
 
+  let arbitrumRootGaugeFactory: Contract;
+  let optimismRootGaugeFactory: Contract;
+
   const task = new Task('20220629-gauge-adder-migration-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
@@ -44,6 +47,20 @@ describe('GaugeAdderMigrationCoordinator', function () {
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');
+
+    const arbitrumRootGaugeFactoryTask = new Task(
+      '20220413-arbitrum-root-gauge-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
+    arbitrumRootGaugeFactory = await arbitrumRootGaugeFactoryTask.deployedInstance('ArbitrumRootGaugeFactory');
+
+    const optimismRootGaugeFactoryTask = new Task(
+      '20220628-optimism-root-gauge-factory',
+      TaskMode.READ_ONLY,
+      getForkedNetwork(hre)
+    );
+    optimismRootGaugeFactory = await optimismRootGaugeFactoryTask.deployedInstance('OptimismRootGaugeFactory');
   });
 
   before('grant permissions', async () => {
@@ -106,6 +123,20 @@ describe('GaugeAdderMigrationCoordinator', function () {
       const permission = await actionId(newGaugeAdder, addGaugeFunction);
       expect(await authorizer.canPerform(permission, multisig, newGaugeAdder.address)).to.be.false;
     }
+  });
+
+  it('grants permissions for checkpointing multisig to set the bridge parameters', async () => {
+    const multisig = task.input().GaugeCheckpointingMultisig;
+
+    const setArbitrumFeesAction = await actionId(
+      arbitrumRootGaugeFactory,
+      'setArbitrumFees(uint64 gasLimit,uint64 gasPrice,uint64 maxSubmissionCost)'
+    );
+    expect(await authorizer.canPerform(setArbitrumFeesAction, multisig, arbitrumRootGaugeFactory.address)).to.be.true;
+
+    const setOptimismGasLimitAction = await actionId(optimismRootGaugeFactory, 'setOptimismGasLimit(uint32 gasLimit)');
+    expect(await authorizer.canPerform(setOptimismGasLimitAction, multisig, optimismRootGaugeFactory.address)).to.be
+      .true;
   });
 
   it('renounces the admin role', async () => {
