@@ -216,14 +216,13 @@ describe('StablePhantomPool', () => {
         });
 
         it('sets the fee exemption flags correctly', async () => {
-          const expectedFlags: boolean[] = [];
-
           for (let i = 0; i < numberOfTokens; i++) {
             // Initialized to true for even tokens
-            expectedFlags[i] = i % 2 == 0;
-          }
+            const expectedFlag = i % 2 == 0;
+            const token = tokens.get(i);
 
-          expect(await pool.instance.getProtocolFeeExemptTokenFlags()).to.deep.equal(expectedFlags);
+            await expect(await pool.instance.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
+          }
         });
       });
 

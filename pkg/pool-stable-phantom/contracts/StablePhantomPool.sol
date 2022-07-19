@@ -132,13 +132,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     // Set true if the corresponding token should have its yield exempted from protocol fees.
     // For example, the BPT of another PhantomStable Pool containing yield tokens.
-    // Unlike the other numbered token variables, these indices correspond to the token array
-    // after dropping the BPT token.
+    // The flag will always be false for the BPT token.
     bool internal immutable _exemptFromYieldProtocolFeeToken0;
     bool internal immutable _exemptFromYieldProtocolFeeToken1;
     bool internal immutable _exemptFromYieldProtocolFeeToken2;
     bool internal immutable _exemptFromYieldProtocolFeeToken3;
     bool internal immutable _exemptFromYieldProtocolFeeToken4;
+    bool internal immutable _exemptFromYieldProtocolFeeToken5;
 
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
@@ -215,6 +215,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             if (params.rateProviders[i] != IRateProvider(0)) {
                 _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
                 emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+
+                if (params.exemptFromYieldProtocolFeeFlags[i]) {
+                    // Initialize the old rates as well, in case they are referenced before the first join.
+                    _updateOldRate(params.tokens[i]);
+                }
             }
         }
 
@@ -233,20 +238,19 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
+        // Do the same with exemptFromYieldProtocolFeeFlags
+        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length + 1);
+
         for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
             if (i < bptIndex) {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i];
+                exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
             } else if (i == bptIndex) {
                 tokensAndBPTRateProviders[i] = IRateProvider(0);
             } else {
                 tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
+                exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i - 1];
             }
-        }
-
-        // Do the same with exemptFromYieldProtocolFeeFlags
-        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length);
-        for (uint256 i = 0; i < params.tokens.length; ++i) {
-            exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -259,14 +263,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         _exemptFromYieldProtocolFeeToken0 = exemptFromYieldProtocolFeeFlags[0];
         _exemptFromYieldProtocolFeeToken1 = exemptFromYieldProtocolFeeFlags[1];
-        _exemptFromYieldProtocolFeeToken2 = (exemptFromYieldProtocolFeeFlags.length > 2)
-            ? exemptFromYieldProtocolFeeFlags[2]
-            : false;
-        _exemptFromYieldProtocolFeeToken3 = (exemptFromYieldProtocolFeeFlags.length > 3)
+        _exemptFromYieldProtocolFeeToken2 = exemptFromYieldProtocolFeeFlags[2];
+        _exemptFromYieldProtocolFeeToken3 = (tokensAndBPTRateProviders.length > 3)
             ? exemptFromYieldProtocolFeeFlags[3]
             : false;
-        _exemptFromYieldProtocolFeeToken4 = (exemptFromYieldProtocolFeeFlags.length > 4)
+        _exemptFromYieldProtocolFeeToken4 = (tokensAndBPTRateProviders.length > 4)
             ? exemptFromYieldProtocolFeeFlags[4]
+            : false;
+        _exemptFromYieldProtocolFeeToken5 = (tokensAndBPTRateProviders.length > 5)
+            ? exemptFromYieldProtocolFeeFlags[5]
             : false;
     }
 
@@ -419,6 +424,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             balances[indexIn] = balances[indexIn].add(amountInWithFee);
             balances[indexOut] = balances[indexOut].sub(amountOut);
 
+            // Mutates balances to use the old rate (for exempt tokens)
+            _rateAdjustBalances(balances);
+
             _payDueProtocolFeeByInvariantIncrement(
                 invariant,
                 currentAmp,
@@ -426,6 +434,23 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 protocolSwapFeePercentage
             );
+        }
+    }
+
+    // Mutate balances to adjust rates for protocol fee exempt yield tokens
+    function _rateAdjustBalances(uint256[] memory balances) private view {
+        // Exclude BPT from the scaling factor arrays, to match the cardinality of balances.
+        uint256[] memory currentRateScalingFactors = _dropBptItem(_scalingFactors());
+        uint256[] memory oldRateScalingFactors = _dropBptItem(_oldRateScalingFactors());
+
+        // Could call the array scaling functions; optimize for a smaller number of exempt tokens.
+        for (uint256 i = 0; i < _getTotalTokens() - 1; i++) {
+            if (oldRateScalingFactors[i] != currentRateScalingFactors[i]) {
+                // Undo the current rate scaling
+                _downscaleUp(balances[i], currentRateScalingFactors[i]);
+                // Then apply the old rate scaling
+                _upscale(balances[i], oldRateScalingFactors[i]);
+            }
         }
     }
 
@@ -523,6 +548,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         if (protocolSwapFeePercentage > 0) {
             _payDueProtocolFeeByBpt(bptIsTokenIn ? amount : amountOut, protocolSwapFeePercentage);
         }
+
+        _updateOldRatesAfterJoinExit();
     }
 
     /**
@@ -568,6 +595,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         if (protocolSwapFeePercentage > 0) {
             _payDueProtocolFeeByBpt(bptIsTokenIn ? amountIn : amount, protocolSwapFeePercentage);
         }
+
+        _updateOldRatesAfterJoinExit();
     }
 
     /**
@@ -683,6 +712,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _mintPoolTokens(sender, initialBpt);
         amountsInIncludingBpt[_bptIndex] = initialBpt;
 
+        _updateOldRatesAfterJoinExit();
+
         return (bptAmountOut, amountsInIncludingBpt);
     }
 
@@ -700,14 +731,25 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
+        uint256 bptAmountOut;
+        uint256[] memory amountsIn;
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, scalingFactors, protocolSwapFeePercentage, userData);
+            (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
+                balances,
+                scalingFactors,
+                protocolSwapFeePercentage,
+                userData
+            );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, protocolSwapFeePercentage, userData);
+            (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(balances, protocolSwapFeePercentage, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
+
+        _updateOldRatesAfterJoinExit();
+
+        return (bptAmountOut, amountsIn);
     }
 
     function _joinExactTokensInForBPTOut(
@@ -840,6 +882,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+
+        _updateOldRatesAfterJoinExit();
 
         return (bptAmountIn, amountsOut);
     }
@@ -984,6 +1028,49 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
+    // Returns the OldRate for a token marked as exempt from protocol fees on yield.
+    // Otherwise, returns the same value as `_scalingFactor`.
+    function _oldRateScalingFactor(IERC20 token) internal view returns (uint256) {
+        uint256 scalingFactor;
+        bool exemptFlag;
+
+        if (token == _token0) {
+            scalingFactor = _getScalingFactor0();
+            exemptFlag = _exemptFromYieldProtocolFeeToken0;
+        } else if (token == _token1) {
+            scalingFactor = _getScalingFactor1();
+            exemptFlag = _exemptFromYieldProtocolFeeToken1;
+        } else if (token == _token2) {
+            scalingFactor = _getScalingFactor2();
+            exemptFlag = _exemptFromYieldProtocolFeeToken2;
+        } else if (token == _token3) {
+            scalingFactor = _getScalingFactor3();
+            exemptFlag = _exemptFromYieldProtocolFeeToken3;
+        } else if (token == _token4) {
+            scalingFactor = _getScalingFactor4();
+            exemptFlag = _exemptFromYieldProtocolFeeToken4;
+        } else if (token == _token5) {
+            scalingFactor = _getScalingFactor5();
+            exemptFlag = _exemptFromYieldProtocolFeeToken5;
+        } else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        // The exemptFlag can only be set on non-BPT tokens with a provider, so no checks are necessary on the cache.
+        return scalingFactor.mulDown(exemptFlag ? _tokenRateCaches[token].getOldRate() : getTokenRate(token));
+    }
+
+    function _oldRateScalingFactors() internal view returns (uint256[] memory) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256[] memory scalingFactors = new uint256[](_getTotalTokens());
+
+        for (uint256 i = 0; i < _getTotalTokens(); i++) {
+            scalingFactors[i] = _oldRateScalingFactor(tokens[i]);
+        }
+
+        return scalingFactors;
+    }
+
     // Token rates
 
     /**
@@ -1015,6 +1102,54 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         else {
             _revert(Errors.INVALID_TOKEN);
         }
+    }
+
+    /**
+     * @dev Returns whether the token is exempt from protocol fees on the yield.
+     * If the BPT token is passed in (which doesn't make much sense, but shouldn't fail,
+     * since it is a valid pool token), the corresponding flag will be false.
+     */
+    function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
+        // prettier-ignore
+        {
+            if (token == _token0) { return _exemptFromYieldProtocolFeeToken0; }
+            else if (token == _token1) { return _exemptFromYieldProtocolFeeToken1; }
+            else if (token == _token2) { return _exemptFromYieldProtocolFeeToken2; }
+            else if (token == _token3) { return _exemptFromYieldProtocolFeeToken3; }
+            else if (token == _token4) { return _exemptFromYieldProtocolFeeToken4; }
+            else if (token == _token5) { return _exemptFromYieldProtocolFeeToken5; }
+            else {
+                _revert(Errors.INVALID_TOKEN);
+            }
+        }
+    }
+
+    function _updateOldRatesAfterJoinExit() internal {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+
+        // Since we are getting the tokens from the Vault, we know they are all valid.
+        // Per the logic in the constructor, we also know the flags will be false for
+        // indices greater than the actual number of tokens in the pool, and also false
+        // for the BPT token.
+        //
+        // Therefore, we will never call _updateOldRate with the BPT or an invalid token,
+        // so no checks need to be done there.
+
+        // prettier-ignore
+        {
+            if (_exemptFromYieldProtocolFeeToken0) { _updateOldRate(tokens[0]); }
+            if (_exemptFromYieldProtocolFeeToken1) { _updateOldRate(tokens[1]); }
+            if (_exemptFromYieldProtocolFeeToken2) { _updateOldRate(tokens[2]); }
+            if (_exemptFromYieldProtocolFeeToken3) { _updateOldRate(tokens[3]); }
+            if (_exemptFromYieldProtocolFeeToken4) { _updateOldRate(tokens[4]); }
+            if (_exemptFromYieldProtocolFeeToken5) { _updateOldRate(tokens[5]); }
+        }
+    }
+
+    // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
+    function _updateOldRate(IERC20 token) private {
+        bytes32 cache = _tokenRateCaches[token];
+        _tokenRateCaches[token] = cache.updateOldRate();
     }
 
     /**
@@ -1053,31 +1188,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
-    }
-
-    /**
-     * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
-     * Its length will be one less than the registered pool tokens, and it will correspond to the token
-     * list after removing the BPT token.
-     */
-    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
-        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
-        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
-
-        // prettier-ignore
-        {
-            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
-            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
-            if (tokensWithoutBPT > 2) {
-                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
-            } else { return protocolFeeExemptTokenFlags; }
-            if (tokensWithoutBPT > 3) {
-                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
-            } else { return protocolFeeExemptTokenFlags; }
-            if (tokensWithoutBPT > 4) {
-                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
-            } else { return protocolFeeExemptTokenFlags; }
-        }
     }
 
     /**
