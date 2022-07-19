@@ -425,7 +425,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             balances[indexOut] = balances[indexOut].sub(amountOut);
 
             // Mutates balances to use the old rate (for exempt tokens)
-            _rateAdjustBalances(balances);
+            uint256[] memory ratios = _dropBptItem(_tokenRateRatios());
+            for (uint256 i = 0; i < balances.length; ++i) {
+                if (ratios[i] != FixedPoint.ONE) {
+                    balances[i] = FixedPoint.mulDown(balances[i], ratios[i]);
+                }
+            }
 
             _payDueProtocolFeeByInvariantIncrement(
                 invariant,
@@ -434,23 +439,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 virtualSupply,
                 protocolSwapFeePercentage
             );
-        }
-    }
-
-    // Mutate balances to adjust rates for protocol fee exempt yield tokens
-    function _rateAdjustBalances(uint256[] memory balances) private view {
-        // Exclude BPT from the scaling factor arrays, to match the cardinality of balances.
-        uint256[] memory currentRateScalingFactors = _dropBptItem(_scalingFactors());
-        uint256[] memory oldRateScalingFactors = _dropBptItem(_oldRateScalingFactors());
-
-        // Could call the array scaling functions; optimize for a smaller number of exempt tokens.
-        for (uint256 i = 0; i < _getTotalTokens() - 1; i++) {
-            if (oldRateScalingFactors[i] != currentRateScalingFactors[i]) {
-                // Undo the current rate scaling
-                _downscaleUp(balances[i], currentRateScalingFactors[i]);
-                // Then apply the old rate scaling
-                _upscale(balances[i], oldRateScalingFactors[i]);
-            }
         }
     }
 
@@ -1028,47 +1016,45 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
-    // Returns the OldRate for a token marked as exempt from protocol fees on yield.
-    // Otherwise, returns the same value as `_scalingFactor`.
-    function _oldRateScalingFactor(IERC20 token) internal view returns (uint256) {
-        uint256 scalingFactor;
+    /**
+     * @dev Returns the ratio of the old rate to the new rate for a token marked as exempt from protocol fees on yield.
+     * Otherwise, returns 1.
+     */
+    function _tokenRateRatio(IERC20 token) internal view returns (uint256) {
         bool exemptFlag;
 
-        if (token == _token0) {
-            scalingFactor = _getScalingFactor0();
-            exemptFlag = _exemptFromYieldProtocolFeeToken0;
-        } else if (token == _token1) {
-            scalingFactor = _getScalingFactor1();
-            exemptFlag = _exemptFromYieldProtocolFeeToken1;
-        } else if (token == _token2) {
-            scalingFactor = _getScalingFactor2();
-            exemptFlag = _exemptFromYieldProtocolFeeToken2;
-        } else if (token == _token3) {
-            scalingFactor = _getScalingFactor3();
-            exemptFlag = _exemptFromYieldProtocolFeeToken3;
-        } else if (token == _token4) {
-            scalingFactor = _getScalingFactor4();
-            exemptFlag = _exemptFromYieldProtocolFeeToken4;
-        } else if (token == _token5) {
-            scalingFactor = _getScalingFactor5();
-            exemptFlag = _exemptFromYieldProtocolFeeToken5;
-        } else {
+        // prettier-ignore
+        if (token == _token0) { exemptFlag = _exemptFromYieldProtocolFeeToken0; }
+        else if (token == _token1) { exemptFlag = _exemptFromYieldProtocolFeeToken1; }
+        else if (token == _token2) { exemptFlag = _exemptFromYieldProtocolFeeToken2; }
+        else if (token == _token3) { exemptFlag = _exemptFromYieldProtocolFeeToken3; }
+        else if (token == _token4) { exemptFlag = _exemptFromYieldProtocolFeeToken4; }
+        else if (token == _token5) { exemptFlag = _exemptFromYieldProtocolFeeToken5; }
+        else {
             _revert(Errors.INVALID_TOKEN);
         }
 
         // The exemptFlag can only be set on non-BPT tokens with a provider, so no checks are necessary on the cache.
-        return scalingFactor.mulDown(exemptFlag ? _tokenRateCaches[token].getOldRate() : getTokenRate(token));
+        if (exemptFlag) {
+            bytes32 cache = _tokenRateCaches[token];
+            return cache.getOldRate().divUp(cache.getCurrentRate());
+        } else {
+            return FixedPoint.ONE;
+        }
     }
 
-    function _oldRateScalingFactors() internal view returns (uint256[] memory) {
+    /**
+     * @dev Return the complete set of  token ratios (including BPT, which will always be 1).
+     */
+    function _tokenRateRatios() internal view returns (uint256[] memory) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256[] memory scalingFactors = new uint256[](_getTotalTokens());
+        uint256[] memory rateRatios = new uint256[](_getTotalTokens());
 
         for (uint256 i = 0; i < _getTotalTokens(); i++) {
-            scalingFactors[i] = _oldRateScalingFactor(tokens[i]);
+            rateRatios[i] = _tokenRateRatio(tokens[i]);
         }
 
-        return scalingFactors;
+        return rateRatios;
     }
 
     // Token rates
