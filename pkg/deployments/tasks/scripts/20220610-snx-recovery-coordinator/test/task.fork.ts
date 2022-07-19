@@ -2,6 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
+import { defaultAbiCoder } from '@ethersproject/abi';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -9,10 +10,9 @@ import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
-import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
 describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
   let govMultisig: SignerWithAddress;
@@ -82,15 +82,17 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
   it('reverts on large exits from the sBTC pool', async () => {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
     const whale = await impersonate(BTC_STABLE_POOL_WHALE, fp(100));
     await expect(
       vault.connect(whale).exitPool(BTC_STABLE_POOL_ID, BTC_STABLE_POOL_WHALE, BTC_STABLE_POOL_WHALE, {
         assets: [wBTC, renBTC, sBTC],
         minAmountsOut: [0, 0, 0],
-        userData: StablePoolEncoder.exitBPTInForExactTokensOut(
-          [await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)],
-          MAX_UINT256
+        // The helper used to encode user data has been removed; this is how it was encoded in the original fork test.
+        userData: defaultAbiCoder.encode(
+          ['uint256', 'uint256'],
+          [EXACT_BPT_IN_FOR_TOKENS_OUT, await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)]
         ),
         toInternalBalance: false,
       })
@@ -106,10 +108,7 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
       vault.connect(whale).exitPool(SNX_WEIGHTED_POOL_ID, SNX_WEIGHTED_POOL_WHALE, SNX_WEIGHTED_POOL_WHALE, {
         assets: [SNX, WETH],
         minAmountsOut: [0, 0],
-        userData: WeightedPoolEncoder.exitBPTInForExactTokensOut(
-          [await poolContract.balanceOf(SNX_WEIGHTED_POOL_WHALE)],
-          MAX_UINT256
-        ),
+        userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(await poolContract.balanceOf(SNX_WEIGHTED_POOL_WHALE)),
         toInternalBalance: false,
       })
     ).to.be.revertedWith('SafeMath: subtraction overflow');
@@ -150,14 +149,16 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
   it('allows large exits from the sBTC pool', async () => {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
     const whale = await impersonate(BTC_STABLE_POOL_WHALE, fp(100));
     await vault.connect(whale).exitPool(BTC_STABLE_POOL_ID, BTC_STABLE_POOL_WHALE, BTC_STABLE_POOL_WHALE, {
       assets: [wBTC, renBTC, sBTC],
       minAmountsOut: [0, 0, 0],
-      userData: StablePoolEncoder.exitBPTInForExactTokensOut(
-        [await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)],
-        MAX_UINT256
+      // The helper used to encode user data has been removed; this is how it was encoded in the original fork test.
+      userData: defaultAbiCoder.encode(
+        ['uint256', 'uint256'],
+        [EXACT_BPT_IN_FOR_TOKENS_OUT, await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)]
       ),
       toInternalBalance: false,
     });

@@ -2,6 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
+import { defaultAbiCoder } from '@ethersproject/abi';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -10,8 +11,7 @@ import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
 describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () {
   let govMultisig: SignerWithAddress;
@@ -97,6 +97,7 @@ describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () 
   it('exits from the sBTC pool', async () => {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
     const [, expectedAmountsOut] = await balancerHelpers.callStatic.queryExit(
       BTC_STABLE_POOL_ID,
@@ -105,9 +106,10 @@ describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () 
       {
         assets: [wBTC, renBTC, sBTC],
         minAmountsOut: [0, 0, 0],
-        userData: StablePoolEncoder.exitBPTInForExactTokensOut(
-          [await poolContract.balanceOf(btcBptHolder.address)],
-          MAX_UINT256
+        // The helper used to encode user data has been removed; this is how it was encoded in the original fork test.
+        userData: defaultAbiCoder.encode(
+          ['uint256', 'uint256'],
+          [EXACT_BPT_IN_FOR_TOKENS_OUT, await poolContract.balanceOf(btcBptHolder.address)]
         ),
         toInternalBalance: false,
       }
