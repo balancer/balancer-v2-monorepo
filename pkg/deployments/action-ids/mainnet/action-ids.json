@@ -538,16 +538,6 @@
       }
     }
   },
-  "20220422-distribution-scheduler": {
-    "DistributionScheduler": {
-      "useAdaptor": true,
-      "actionIds": {
-        "scheduleDistribution(address,address,uint256,uint256)": "0x78b9d18aecaef104543c2c0a83f669b307a2caf6916e3f67db526200ff23dadc",
-        "startDistributionForToken(address,address)": "0x0beb101788410c70b157a708569fb30c6f34e8fe821fa8b574dd0cef1900045b",
-        "startDistributions(address)": "0x37818fdb4cb8ffb00dd0ad7286a89f1d12a83269d7af8eb6f915140403fc8f04"
-      }
-    }
-  },
   "20220513-double-entrypoint-fix-relayer": {
     "DoubleEntrypointFixRelayer": {
       "useAdaptor": true,
@@ -627,6 +617,51 @@
         "addOptimismGauge(address)": "0xc63b7b73283233470a85ad7ec28f772b7571c0f6ba90d506999809c2e25a7da6",
         "addPolygonGauge(address)": "0x5c62111a5fb2cd09521d2805fb5080f8db7f341691a1e38c34a5ededb8f8bfd3",
         "addZKSyncGauge(address)": "0xa4316d4b75fe3bdf53b4f8d8251adb2dc5e213f09a2ece3c11e0726fb1799063"
+      }
+    }
+  },
+  "20220628-optimism-root-gauge-factory": {
+    "OptimismRootGaugeFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(address)": "0xa2882493d12953b0ba758d53f8f10e58edabb8ce768788c41b8754d9d7b3e9d8",
+        "setOptimismGasLimit(uint32)": "0xc89b780137460c1010bc938658c3b615990dd348e27ff1d095be12e6fe617f64"
+      }
+    },
+    "OptimismRootGauge": {
+      "useAdaptor": true,
+      "actionIds": {
+        "checkpoint()": "0x3f63974a377ba4713661ede455bceda6686a0395f8b8ed8701ad1f13bb926c4d",
+        "initialize(address)": "0x7cd4c1de57fa031316e3b61c1bca9160d4feb774986a819a7c4c04dc66d7d21e",
+        "killGauge()": "0xec1d467d9ab03a0079c22a89037209f5763aec973897ea763e2cf25d71a5f12e",
+        "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea"
+      }
+    }
+  },
+  "20220707-distribution-scheduler": {
+    "DistributionScheduler": {
+      "useAdaptor": true,
+      "actionIds": {
+        "scheduleDistribution(address,address,uint256,uint256)": "0x78b9d18aecaef104543c2c0a83f669b307a2caf6916e3f67db526200ff23dadc",
+        "startDistributionForToken(address,address)": "0x0beb101788410c70b157a708569fb30c6f34e8fe821fa8b574dd0cef1900045b",
+        "startDistributions(address)": "0x37818fdb4cb8ffb00dd0ad7286a89f1d12a83269d7af8eb6f915140403fc8f04"
+      }
+    }
+  },
+  "20220714-fee-distributor-v2": {
+    "FeeDistributor": {
+      "useAdaptor": true,
+      "actionIds": {
+        "checkpoint()": "0x3f63974a377ba4713661ede455bceda6686a0395f8b8ed8701ad1f13bb926c4d",
+        "checkpointToken(address)": "0x84f74b497b7b8786ad28575751bcba78a869980750e3e59d9f753ecd753e7d50",
+        "checkpointTokens(address[])": "0x7e339947ebceb8dcc3475abfefba6050fd835e6d1eff9b9e9678e810d369682e",
+        "checkpointUser(address)": "0x9ccd42be79895ab5d68baf1ceb99044358d23c13dc7fd911b5af3d528ee8da8c",
+        "claimToken(address,address)": "0x3f0bd81e3d4307c9d877450060e9f456cdce2cd0dcc13c55435ca418fad441af",
+        "claimTokens(address,address[])": "0x2a02b42776ae382b5868eddf4a925d0eec90785dde1a5d48aaa55cd7cb9cf37a",
+        "depositToken(address,uint256)": "0xdf028848b388713ac0b5fd66beb36b7e230fb62844ad43ed9e894034570ecb71",
+        "depositTokens(address[],uint256[])": "0x683bdec204c4a35996ebfb23eea0f4f62343598147ef9bf5a43fabbd0e9ed8d0",
+        "setOnlyCallerCheck(bool)": "0x8d64b78bf73ff6f57b6c2db19905917825de771752190fd9d99d852acfa360eb",
+        "setOnlyCallerCheckWithSignature(address,bool,bytes)": "0x54b5a7c13c04005e425e936705297503e6c8d31f1413b2763d27845ef03eb0d1"
       }
     }
   }

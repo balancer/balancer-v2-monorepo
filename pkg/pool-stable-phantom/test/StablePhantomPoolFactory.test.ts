@@ -23,8 +23,10 @@ describe('StablePhantomPoolFactory', function () {
   const PRICE_RATE_CACHE_DURATION = MONTH;
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
+  const PROTOCOL_FEE_EXEMPT_TOKEN_IDX = 2; // not including BPT
 
   let createTime: BigNumber;
+  let protocolFeeExemptFlags: boolean[];
 
   before('setup signers', async () => {
     [, owner] = await ethers.getSigners();
@@ -37,9 +39,11 @@ describe('StablePhantomPoolFactory', function () {
 
     tokens = await TokenList.create(['baDAI', 'baUSDC', 'baUSDT'], { sorted: true });
     rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    protocolFeeExemptFlags = Array(tokens.length).fill(false);
     rateProviders[0] = (await deploy('v2-pool-utils/MockRateProvider')).address;
     rateProviders[1] = (await deploy('v2-pool-utils/MockRateProvider')).address;
     rateProviders[2] = (await deploy('v2-pool-utils/MockRateProvider')).address;
+    protocolFeeExemptFlags[PROTOCOL_FEE_EXEMPT_TOKEN_IDX] = true;
   });
 
   async function createPool(): Promise<Contract> {
@@ -50,6 +54,7 @@ describe('StablePhantomPoolFactory', function () {
       AMP,
       rateProviders,
       Array(tokens.length).fill(PRICE_RATE_CACHE_DURATION),
+      protocolFeeExemptFlags,
       POOL_SWAP_FEE_PERCENTAGE,
       owner.address
     );
@@ -133,6 +138,14 @@ describe('StablePhantomPoolFactory', function () {
     it('sets the cache rate duration', async () => {
       const firstTokenCache = await pool.getTokenRateCache(tokens.first.address);
       expect(firstTokenCache.duration).to.equal(PRICE_RATE_CACHE_DURATION);
+    });
+
+    it('sets the protocol fee flags', async () => {
+      const expectedFlags = Array(tokens.length).fill(false);
+      expectedFlags[PROTOCOL_FEE_EXEMPT_TOKEN_IDX] = true;
+
+      const flags = await pool.getProtocolFeeExemptTokenFlags();
+      expect(flags).to.deep.equal(expectedFlags);
     });
   });
 

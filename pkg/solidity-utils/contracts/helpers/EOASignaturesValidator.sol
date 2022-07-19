@@ -51,7 +51,7 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         uint256 errorCode
     ) internal {
         bytes32 digest = _hashTypedDataV4(structHash);
-        _require(_isValidEOASignature(account, digest, signature), errorCode);
+        _require(_isValidSignature(account, digest, signature), errorCode);
 
         // We could check for the deadline before validating the signature, but this leads to saner error processing (as
         // we only care about expired deadlines if the signature is correct) and only affects the gas cost of the revert
@@ -60,14 +60,17 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         // solhint-disable-next-line not-rely-on-time
         _require(deadline >= block.timestamp, Errors.EXPIRED_SIGNATURE);
 
+        // We only advance the nonce after validating the signature. This is irrelevant for this module, but it can be
+        // important in derived contracts that override _isValidSignature (e.g. SignaturesValidator), as we want for
+        // the observable state to still have the current nonce as the next valid one.
         _nextNonce[account] += 1;
     }
 
-    function _isValidEOASignature(
+    function _isValidSignature(
         address account,
         bytes32 digest,
         bytes memory signature
-    ) private pure returns (bool) {
+    ) internal view virtual returns (bool) {
         _require(signature.length == 65, Errors.MALFORMED_SIGNATURE);
 
         bytes32 r;

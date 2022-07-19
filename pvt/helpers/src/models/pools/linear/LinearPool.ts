@@ -27,6 +27,7 @@ export default class LinearPool {
   bptToken: Token;
   lowerTarget: BigNumberish;
   upperTarget: BigNumberish;
+  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   vault: Vault;
   owner?: SignerWithAddress;
@@ -69,6 +70,7 @@ export default class LinearPool {
     bptToken: Token,
     lowerTarget: BigNumberish,
     upperTarget: BigNumberish,
+    assetManagers: string[],
     swapFeePercentage: BigNumberish,
     owner?: SignerWithAddress
   ) {
@@ -80,6 +82,7 @@ export default class LinearPool {
     this.bptToken = bptToken;
     this.lowerTarget = lowerTarget;
     this.upperTarget = upperTarget;
+    this.assetManagers = assetManagers;
     this.swapFeePercentage = swapFeePercentage;
     this.owner = owner;
   }
