@@ -237,42 +237,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
-        IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
+        IRateProvider[] memory tokensAndRateProviders = new IRateProvider[](params.tokens.length + 1);
         // Do the same with exemptFromYieldProtocolFeeFlags
-        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length + 1);
+        bool[] memory exemptFromYieldFlags = new bool[](tokensAndRateProviders.length);
 
-        for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
+        for (uint256 i = 0; i < tokensAndRateProviders.length; ++i) {
             if (i < bptIndex) {
-                tokensAndBPTRateProviders[i] = params.rateProviders[i];
-                exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
+                tokensAndRateProviders[i] = params.rateProviders[i];
+                exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
             } else if (i == bptIndex) {
-                tokensAndBPTRateProviders[i] = IRateProvider(0);
+                tokensAndRateProviders[i] = IRateProvider(0);
             } else {
-                tokensAndBPTRateProviders[i] = params.rateProviders[i - 1];
-                exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i - 1];
+                tokensAndRateProviders[i] = params.rateProviders[i - 1];
+                exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i - 1];
             }
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _rateProvider0 = tokensAndBPTRateProviders[0];
-        _rateProvider1 = tokensAndBPTRateProviders[1];
-        _rateProvider2 = tokensAndBPTRateProviders[2];
-        _rateProvider3 = (tokensAndBPTRateProviders.length > 3) ? tokensAndBPTRateProviders[3] : IRateProvider(0);
-        _rateProvider4 = (tokensAndBPTRateProviders.length > 4) ? tokensAndBPTRateProviders[4] : IRateProvider(0);
-        _rateProvider5 = (tokensAndBPTRateProviders.length > 5) ? tokensAndBPTRateProviders[5] : IRateProvider(0);
+        _rateProvider0 = tokensAndRateProviders[0];
+        _rateProvider1 = tokensAndRateProviders[1];
+        _rateProvider2 = tokensAndRateProviders[2];
+        _rateProvider3 = (tokensAndRateProviders.length > 3) ? tokensAndRateProviders[3] : IRateProvider(0);
+        _rateProvider4 = (tokensAndRateProviders.length > 4) ? tokensAndRateProviders[4] : IRateProvider(0);
+        _rateProvider5 = (tokensAndRateProviders.length > 5) ? tokensAndRateProviders[5] : IRateProvider(0);
 
-        _exemptFromYieldProtocolFeeToken0 = exemptFromYieldProtocolFeeFlags[0];
-        _exemptFromYieldProtocolFeeToken1 = exemptFromYieldProtocolFeeFlags[1];
-        _exemptFromYieldProtocolFeeToken2 = exemptFromYieldProtocolFeeFlags[2];
-        _exemptFromYieldProtocolFeeToken3 = (tokensAndBPTRateProviders.length > 3)
-            ? exemptFromYieldProtocolFeeFlags[3]
-            : false;
-        _exemptFromYieldProtocolFeeToken4 = (tokensAndBPTRateProviders.length > 4)
-            ? exemptFromYieldProtocolFeeFlags[4]
-            : false;
-        _exemptFromYieldProtocolFeeToken5 = (tokensAndBPTRateProviders.length > 5)
-            ? exemptFromYieldProtocolFeeFlags[5]
-            : false;
+        _exemptFromYieldProtocolFeeToken0 = exemptFromYieldFlags[0];
+        _exemptFromYieldProtocolFeeToken1 = exemptFromYieldFlags[1];
+        _exemptFromYieldProtocolFeeToken2 = exemptFromYieldFlags[2];
+        _exemptFromYieldProtocolFeeToken3 = (tokensAndRateProviders.length > 3) ? exemptFromYieldFlags[3] : false;
+        _exemptFromYieldProtocolFeeToken4 = (tokensAndRateProviders.length > 4) ? exemptFromYieldFlags[4] : false;
+        _exemptFromYieldProtocolFeeToken5 = (tokensAndRateProviders.length > 5) ? exemptFromYieldFlags[5] : false;
     }
 
     function getMinimumBpt() external pure returns (uint256) {
@@ -1060,56 +1054,48 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Returns the ratio of the old rate to the new rate for a token marked as exempt from protocol fees on yield.
-     * Otherwise, returns 1.
+     * @dev Return the complete set of token ratios (including BPT, which will always be 1).
      */
-    function _tokenRateRatio(IERC20 token) internal view returns (uint256) {
-        bool exemptFlag;
+    function _getTokenRateRatios() internal view returns (uint256[] memory rateRatios) {
+        uint256 totalTokens = _getTotalTokens();
+        rateRatios = new uint256[](totalTokens);
 
         // prettier-ignore
-        if (token == _token0) { exemptFlag = _exemptFromYieldProtocolFeeToken0; }
-        else if (token == _token1) { exemptFlag = _exemptFromYieldProtocolFeeToken1; }
-        else if (token == _token2) { exemptFlag = _exemptFromYieldProtocolFeeToken2; }
-        else if (token == _token3) { exemptFlag = _exemptFromYieldProtocolFeeToken3; }
-        else if (token == _token4) { exemptFlag = _exemptFromYieldProtocolFeeToken4; }
-        else if (token == _token5) { exemptFlag = _exemptFromYieldProtocolFeeToken5; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        // The exemptFlag can only be set on non-BPT tokens with a provider, so no checks are necessary on the cache.
-        if (exemptFlag) {
-            bytes32 cache = _tokenRateCaches[token];
-            return cache.getOldRate().divUp(cache.getCurrentRate());
-        } else {
-            return FixedPoint.ONE;
+        {
+            if (_exemptFromYieldProtocolFeeToken0) { rateRatios[0] = _computeRateRatio(_tokenRateCaches[_token0]);
+            } else { rateRatios[0] = FixedPoint.ONE; }
+            if (_exemptFromYieldProtocolFeeToken1) { rateRatios[1] = _computeRateRatio(_tokenRateCaches[_token1]);
+            } else { rateRatios[1] = FixedPoint.ONE; }
+            if (_exemptFromYieldProtocolFeeToken2) { rateRatios[2] = _computeRateRatio(_tokenRateCaches[_token2]);
+            } else { rateRatios[2] = FixedPoint.ONE; }
+            if (totalTokens > 3) {
+                if (_exemptFromYieldProtocolFeeToken3) { rateRatios[3] = _computeRateRatio(_tokenRateCaches[_token3]);
+                } else { rateRatios[3] = FixedPoint.ONE; }
+            } else { return rateRatios; }
+            if (totalTokens > 4) {
+                if (_exemptFromYieldProtocolFeeToken4) { rateRatios[4] = _computeRateRatio(_tokenRateCaches[_token4]);
+                } else { rateRatios[4] = FixedPoint.ONE; }
+            } else { return rateRatios; }
+            if (totalTokens > 5) {
+                if (_exemptFromYieldProtocolFeeToken5) { rateRatios[5] = _computeRateRatio(_tokenRateCaches[_token5]);
+                } else { rateRatios[5] = FixedPoint.ONE; }
+            } else { return rateRatios; }
         }
     }
 
-    /**
-     * @dev Return the complete set of  token ratios (including BPT, which will always be 1).
-     */
-    function _tokenRateRatios() internal view returns (uint256[] memory) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256[] memory rateRatios = new uint256[](_getTotalTokens());
-
-        for (uint256 i = 0; i < _getTotalTokens(); i++) {
-            rateRatios[i] = _tokenRateRatio(tokens[i]);
-        }
-
-        return rateRatios;
+    function _computeRateRatio(bytes32 cache) private pure returns (uint256) {
+        return cache.getOldRate().divUp(cache.getCurrentRate());
     }
 
     /**
      * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
-     * Mutates the balances in place.
+     * Mutates the balances in place. `_getTokenRateRatios` includes BPT, so we need to remove that ratio to
+     * match the cardinality of balancesWithoutBpt.
      */
     function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt) internal view {
-        uint256[] memory ratios = _dropBptItem(_tokenRateRatios());
+        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios());
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            if (ratios[i] != FixedPoint.ONE) {
-                balancesWithoutBpt[i] = FixedPoint.mulDown(balancesWithoutBpt[i], ratios[i]);
-            }
+            balancesWithoutBpt[i] = FixedPoint.mulDown(balancesWithoutBpt[i], ratiosWithoutBpt[i]);
         }
     }
 
@@ -1167,10 +1153,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     function _updateOldRatesAfterJoinExit() internal {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        // Since we are getting the tokens from the Vault, we know they are all valid.
-        // Per the logic in the constructor, we also know the flags will be false for
+        // Per the logic in the constructor, we know the flags will be false for
         // indices greater than the actual number of tokens in the pool, and also false
         // for the BPT token.
         //
@@ -1179,12 +1162,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         // prettier-ignore
         {
-            if (_exemptFromYieldProtocolFeeToken0) { _updateOldRate(tokens[0]); }
-            if (_exemptFromYieldProtocolFeeToken1) { _updateOldRate(tokens[1]); }
-            if (_exemptFromYieldProtocolFeeToken2) { _updateOldRate(tokens[2]); }
-            if (_exemptFromYieldProtocolFeeToken3) { _updateOldRate(tokens[3]); }
-            if (_exemptFromYieldProtocolFeeToken4) { _updateOldRate(tokens[4]); }
-            if (_exemptFromYieldProtocolFeeToken5) { _updateOldRate(tokens[5]); }
+            if (_exemptFromYieldProtocolFeeToken0) { _updateOldRate(_token0); }
+            if (_exemptFromYieldProtocolFeeToken1) { _updateOldRate(_token1); }
+            if (_exemptFromYieldProtocolFeeToken2) { _updateOldRate(_token2); }
+            if (_exemptFromYieldProtocolFeeToken3) { _updateOldRate(_token3); }
+            if (_exemptFromYieldProtocolFeeToken4) { _updateOldRate(_token4); }
+            if (_exemptFromYieldProtocolFeeToken5) { _updateOldRate(_token5); }
         }
     }
 
