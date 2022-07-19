@@ -536,5 +536,42 @@
         "setOnlyCallerCheckWithSignature(address,bool,bytes)": "0xa09ee85edd2695bd611eb6941808ca62eba50b0cb60778cb30ddb57edafc3415"
       }
     }
+  },
+  "2022xxxx-batch-relayer-v3": {
+    "BatchRelayerLibrary": {
+      "useAdaptor": true,
+      "actionIds": {
+        "approveVault(address,uint256)": "0x7e71d5c2d145f4c81011b6407caf19e007135dbc32c6f0f4fc213fad4e299150",
+        "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])": "0x54feb236f9f78c009d49ee155b50671b2a1d23db16c1cdf405a59d46d1e51b1e",
+        "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])": "0x4fce71aaaee5b0e28c0b6975dbaacbecb63706f78b414620684e6abb046b58ef",
+        "gaugeClaimRewards(address[])": "0x997473a433293588efab15f70f22f954797c0b7a3fbbda50589bc00b012c99c3",
+        "gaugeDeposit(address,address,address,uint256)": "0xc56a1d33d405aa23088f3903c85452a9ddf0b4038101058f5ab5b41077ca1ed1",
+        "gaugeMint(address[],uint256)": "0x9ab5aae7bbe5eb6d8035a7bf80b7ad6f8ddcd08139e15e26a723983e43eec4f7",
+        "gaugeSetMinterApproval(bool,address,uint256,uint8,bytes32,bytes32)": "0x27d55f1136bf6d7c2802bd0bab88829c30d5af0f48f6c96f90f272ad65b85b5b",
+        "gaugeWithdraw(address,address,address,uint256)": "0xb65f171df6a700174b28a605a44628ea5fc8dcb0ee9c2d995e15838749d431d2",
+        "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)": "0x5e31bbb459ace7e3dc6f5bf9857b5687b281508f942f502605977ea408185b49",
+        "manageUserBalance((uint8,address,uint256,address,address)[],uint256)": "0x2e05a6c8f54ccb34498ebc128fcd4ae9debd708af102157d030786fdb51e113b",
+        "setRelayerApproval(address,bool,bytes)": "0xcdcf738ebeaa2629e5107d3214c2246116d95e8e507d771614e3ed9e108c00f6",
+        "stakeETH(address,uint256,uint256)": "0x3e5995991fa6590f94a998f5016816175aa4c74c6333a0f55004158c414603e1",
+        "stakeETHAndWrap(address,uint256,uint256)": "0xa78fe983ad4b824ce92b642c9bf4b1f4ca2def1f4e40c778a4cfb10f2b04d29b",
+        "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)": "0xdb12b915d7cecc94c4ea2c61139b80aa641a2d38b5471f09d5335e7bc5bc0148",
+        "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)": "0x56e7b514ac51fd278742f48a75478a98c345fc7fa1ab4100c01bd90b0b36a9fb",
+        "unwrapERC4626(address,address,address,uint256,uint256)": "0x0a644389487c01618a55c33e75980c454d4398fceee9080261ca2d932e9b4585",
+        "unwrapUnbuttonToken(address,address,address,uint256,uint256)": "0x638fb56d85c32a1e61263f9012ee514b9318c7563a5810b292da737f4b55595a",
+        "unwrapWstETH(address,address,uint256,uint256)": "0xdb07889951437a5d23b60d16407fe8218d9d9fcd73048951d748f24c774d4b17",
+        "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)": "0xf2da0c0a72d250c77c8b3feb9d744e9b70b6077e84ea1648a8e3e1e653942581",
+        "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)": "0x13819141ff0f4cbaec1cb35f7e2310776a0cf4d520511be91360abda2d59909a",
+        "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)": "0xf55a2e940b90ecfc63d6f2d5ab6d9441d5a6b097b72e7c41a5e4fde799d30abb",
+        "wrapERC4626(address,address,address,uint256,uint256)": "0xee23b5186dce1ffdf27eb1474c87ed9d7823790a410d0b6a4b4e1deec743c568",
+        "wrapStETH(address,address,uint256,uint256)": "0xb613cf0a8971487f11a1ecb75f8ed2ef585a4cc1a6a5b62e3339d07ec71b014e",
+        "wrapUnbuttonToken(address,address,address,uint256,uint256)": "0x14990c54a7682af95d01fa41f50fe098e73fbb72c21b59ecd5f6ce0bb2266f18"
+      }
+    },
+    "BalancerRelayer": {
+      "useAdaptor": true,
+      "actionIds": {
+        "multicall(bytes[])": "0x3f1c6da046c01fb8c9201a73d729522abd0f2e2fd48e8e1b0691925c37c6dec5"
+      }
+    }
   }
 }
