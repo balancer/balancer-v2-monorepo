@@ -76,6 +76,8 @@ describe('StablePhantomPool', () => {
     const tokenRateCacheDurations: number[] = [];
     const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
+    const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
+
     async function deployPool(
       params: RawStablePhantomPoolDeployment = {},
       rates: BigNumberish[] = [],
@@ -686,8 +688,6 @@ describe('StablePhantomPool', () => {
     });
 
     describe('onJoinPool', () => {
-      const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
-
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ admin });
       });
@@ -1685,6 +1685,17 @@ describe('StablePhantomPool', () => {
         });
 
         itAccountsForProtocolFees();
+      });
+
+      it('proportional join should collect no protocol fee', async () => {
+        const feeCollectorBalanceBefore = await pool.balanceOf(protocolFeesCollector);
+        expect(feeCollectorBalanceBefore).to.equal(bn(0));
+
+        const amountsIn: BigNumber[] = ZEROS.map((n, i) => (i != bptIndex ? fp(1) : n));
+        await pool.joinGivenIn({ amountsIn, minimumBptOut: pct(fp(numberOfTokens), 0.9999), recipient: lp, from: lp });
+
+        const feeCollectorBalanceAfter = await pool.balanceOf(protocolFeesCollector);
+        expect(feeCollectorBalanceAfter).to.be.zero;
       });
     });
 
