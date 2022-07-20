@@ -422,6 +422,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _upscaleArray(balances, scalingFactors);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        // The protocol fee function does not mutate balancesWithoutBpt
         _payProtocolFeesBeforeJoinExit(virtualSupply, balancesWithoutBpt);
 
         bool bptIsTokenIn = swapRequest.tokenIn == IERC20(this);
@@ -657,6 +658,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        // The protocol fee function does not mutate balancesWithoutBpt
         _payProtocolFeesBeforeJoinExit(virtualSupply, balancesWithoutBpt);
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -786,6 +788,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+        // The protocol fee function does not mutate balancesWithoutBpt
         _payProtocolFeesBeforeJoinExit(virtualSupply, balancesWithoutBpt);
 
         if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
@@ -892,11 +895,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * at the time of the previous join or exit), in order to exclude the yield from the calculation.
      */
     function _payProtocolFeesBeforeJoinExit(uint256 virtualSupply, uint256[] memory balancesWithoutBpt) private {
+        // Copy so that we don't mutate the values in the caller
+        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
+        for (uint256 i = 0; i < balancesWithoutBpt.length; i++) {
+            balances[i] = balancesWithoutBpt[i];
+        }
+
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
         // and apply the old rate.
-        _adjustBalancesByTokenRatios(balancesWithoutBpt);
+        _adjustBalancesByTokenRatios(balances);
 
-        uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, balancesWithoutBpt);
+        uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, balances);
 
         // Charge the protocol fee in BPT, using the growth in invariant between _postJoinExitInvariant
         // and preJoinInvariant.
