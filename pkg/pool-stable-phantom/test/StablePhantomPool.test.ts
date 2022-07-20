@@ -1515,7 +1515,7 @@ describe('StablePhantomPool', () => {
       });
     });
 
-    describe('protocol swap fees', () => {
+    describe.skip('protocol swap fees', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
       let protocolFeesCollector: Contract;
@@ -1714,7 +1714,7 @@ describe('StablePhantomPool', () => {
         });
       });
 
-      context('with protocol fees', () => {
+      context.skip('with protocol fees', () => {
         const amount = fp(50);
 
         sharedBeforeEach('swap bpt in', async () => {
