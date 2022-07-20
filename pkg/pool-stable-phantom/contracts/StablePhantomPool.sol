@@ -512,7 +512,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.add);
         }
 
-        _updateInvariantAfterJoinExit(balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
     }
 
     /**
@@ -565,7 +565,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.add);
         }
 
-        _updateInvariantAfterJoinExit(balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
     }
 
     // Joins
@@ -703,7 +703,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             // Add amountsIn to get post-join balances
             _mutateAmounts(balancesWithoutBpt, scaledAmountsInWithoutBpt, FixedPoint.add);
 
-            _updateInvariantAfterJoinExit(balancesWithoutBpt);
+            _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
         }
 
         return (bptAmountOut, scaledAmountsInWithBpt);
@@ -740,7 +740,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Add amountsIn to get post-join balances
         _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
 
-        _updateInvariantAfterJoinExit(balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountOut, amountsIn);
     }
@@ -828,7 +828,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Subtract amountsOut to get post-exit balances
         _mutateAmounts(balancesWithoutBpt, scaledAmountsOutWithoutBpt, FixedPoint.sub);
 
-        _updateInvariantAfterJoinExit(balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountIn, scaledAmountsOutWithBpt);
     }
@@ -863,7 +863,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Subtract amountsOut to get post-exit balances
         _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
 
-        _updateInvariantAfterJoinExit(balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountIn, amountsOut);
     }
@@ -931,8 +931,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
     // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
-    function _updateInvariantAfterJoinExit(uint256[] memory balancesWithoutBpt) internal {
-        (uint256 currentAmp, ) = _getAmplificationParameter();
+    function _updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balancesWithoutBpt) internal {
         _postJoinExitAmp = currentAmp;
         _postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
