@@ -124,7 +124,6 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
     {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
-        InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         _totalTokens = numTokens;
 
