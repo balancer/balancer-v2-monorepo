@@ -247,36 +247,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
-        IRateProvider[] memory tokensAndRateProviders = new IRateProvider[](params.tokens.length + 1);
+        IRateProvider[] memory rateProviders = new IRateProvider[](params.tokens.length + 1);
         // Do the same with exemptFromYieldProtocolFeeFlags
-        bool[] memory exemptFromYieldFlags = new bool[](tokensAndRateProviders.length);
+        bool[] memory exemptFromYieldFlags = new bool[](rateProviders.length);
 
-        for (uint256 i = 0; i < tokensAndRateProviders.length; ++i) {
+        for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (i < bptIndex) {
-                tokensAndRateProviders[i] = params.rateProviders[i];
+                rateProviders[i] = params.rateProviders[i];
                 exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
             } else if (i == bptIndex) {
-                tokensAndRateProviders[i] = IRateProvider(0);
+                rateProviders[i] = IRateProvider(0);
             } else {
-                tokensAndRateProviders[i] = params.rateProviders[i - 1];
+                rateProviders[i] = params.rateProviders[i - 1];
                 exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i - 1];
             }
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _rateProvider0 = tokensAndRateProviders[0];
-        _rateProvider1 = tokensAndRateProviders[1];
-        _rateProvider2 = tokensAndRateProviders[2];
-        _rateProvider3 = (tokensAndRateProviders.length > 3) ? tokensAndRateProviders[3] : IRateProvider(0);
-        _rateProvider4 = (tokensAndRateProviders.length > 4) ? tokensAndRateProviders[4] : IRateProvider(0);
-        _rateProvider5 = (tokensAndRateProviders.length > 5) ? tokensAndRateProviders[5] : IRateProvider(0);
+        _rateProvider0 = rateProviders[0];
+        _rateProvider1 = rateProviders[1];
+        _rateProvider2 = rateProviders[2];
+        _rateProvider3 = (rateProviders.length > 3) ? rateProviders[3] : IRateProvider(0);
+        _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
+        _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
 
         _exemptFromYieldProtocolFeeToken0 = exemptFromYieldFlags[0];
         _exemptFromYieldProtocolFeeToken1 = exemptFromYieldFlags[1];
         _exemptFromYieldProtocolFeeToken2 = exemptFromYieldFlags[2];
-        _exemptFromYieldProtocolFeeToken3 = (tokensAndRateProviders.length > 3) ? exemptFromYieldFlags[3] : false;
-        _exemptFromYieldProtocolFeeToken4 = (tokensAndRateProviders.length > 4) ? exemptFromYieldFlags[4] : false;
-        _exemptFromYieldProtocolFeeToken5 = (tokensAndRateProviders.length > 5) ? exemptFromYieldFlags[5] : false;
+        _exemptFromYieldProtocolFeeToken3 = (rateProviders.length > 3) ? exemptFromYieldFlags[3] : false;
+        _exemptFromYieldProtocolFeeToken4 = (rateProviders.length > 4) ? exemptFromYieldFlags[4] : false;
+        _exemptFromYieldProtocolFeeToken5 = (rateProviders.length > 5) ? exemptFromYieldFlags[5] : false;
     }
 
     // Swaps
