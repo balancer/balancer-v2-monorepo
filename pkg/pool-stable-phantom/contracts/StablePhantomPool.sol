@@ -476,7 +476,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) private returns (uint256 amountOut) {
         uint256 swapFeePercentage = getSwapFeePercentage();
         // amountsIn for a joinSwap; amountsOut for an exitSwap
-        uint256[] memory amounts = new uint256[](_getTotalTokens() - 1);
+        uint256[] memory amounts = new uint256[](balancesWithoutBpt.length);
 
         if (bptIsTokenIn) {
             indexOut = _skipBptIndex(indexOut);
@@ -496,9 +496,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.sub);
         } else {
             // joinSwap
-            //uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
-            // amountsIn
-            amounts[_skipBptIndex(indexIn)] = amount;
+            amounts[_skipBptIndex(indexIn)] = amount; // amountsIn
 
             amountOut = StableMath._calcBptOutGivenExactTokensIn(
                 amp,
@@ -529,7 +527,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256[] memory balancesWithoutBpt
     ) private returns (uint256 amountIn) {
         // amountsOut for a joinSwap; amountsIn for an exitSwap
-        uint256[] memory amounts = new uint256[](_getTotalTokens() - 1);
+        uint256[] memory amounts = new uint256[](balancesWithoutBpt.length);
         uint256 swapFeePercentage = getSwapFeePercentage();
 
         if (bptIsTokenIn) {
@@ -611,7 +609,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, _getTotalTokens());
+        InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, scalingFactors.length);
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
 
         (uint256 amp, ) = _getAmplificationParameter();
