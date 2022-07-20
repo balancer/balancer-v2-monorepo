@@ -427,46 +427,6 @@ library StableMath {
         return amountsOut;
     }
 
-    // The amplification parameter equals: A n^(n-1)
-    function _calcDueTokenProtocolSwapFeeAmount(
-        uint256 amplificationParameter,
-        uint256[] memory balances,
-        uint256 lastInvariant,
-        uint256 tokenIndex,
-        uint256 protocolSwapFeePercentage
-    ) internal pure returns (uint256) {
-        /**************************************************************************************************************
-        // oneTokenSwapFee - polynomial equation to solve                                                            //
-        // af = fee amount to calculate in one token                                                                 //
-        // bf = balance of fee token                                                                                 //
-        // f = bf - af (finalBalanceFeeToken)                                                                        //
-        // D = old invariant                                            D                     D^(n+1)                //
-        // A = amplification coefficient               f^2 + ( S - ----------  - D) * f -  ------------- = 0         //
-        // n = number of tokens                                    (A * n^n)               A * n^2n * P              //
-        // S = sum of final balances but f                                                                           //
-        // P = product of final balances but f                                                                       //
-        **************************************************************************************************************/
-
-        // Protocol swap fee amount, so we round down overall.
-
-        uint256 finalBalanceFeeToken = _getTokenBalanceGivenInvariantAndAllOtherBalances(
-            amplificationParameter,
-            balances,
-            lastInvariant,
-            tokenIndex
-        );
-
-        if (balances[tokenIndex] <= finalBalanceFeeToken) {
-            // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
-            // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
-            return 0;
-        }
-
-        // Result is rounded down
-        uint256 accumulatedTokenSwapFees = balances[tokenIndex] - finalBalanceFeeToken;
-        return accumulatedTokenSwapFees.mulDown(protocolSwapFeePercentage);
-    }
-
     // This function calculates the balance of a given token (tokenIndex)
     // given all the other balances and the invariant
     function _getTokenBalanceGivenInvariantAndAllOtherBalances(
