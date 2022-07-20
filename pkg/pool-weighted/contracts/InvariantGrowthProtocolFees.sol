@@ -55,8 +55,8 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     IRateProvider internal immutable _rateProvider18;
     IRateProvider internal immutable _rateProvider19;
 
-    constructor(IRateProvider[] memory rateProviders) {
-        uint256 numTokens = rateProviders.length;
+    constructor(IRateProvider[] memory rateProviders, uint256 numTokens) {
+        InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         _rateProvider0 = rateProviders[0];
         _rateProvider1 = rateProviders[1];
