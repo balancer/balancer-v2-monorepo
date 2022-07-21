@@ -79,13 +79,13 @@ describe('BatchRelayerLibrary', function () {
     const destinationGauge = await task.instanceAt('IERC20', ETH_DAI_GAUGE);
     expect(await destinationGauge.balanceOf(sender.address)).to.be.equal(0);
 
-    // We use the relayer as the intermediate token holder, as that saves gas (since there's fewer transfers, relayer
-    // permission checks, etc.), and also sidesteps the issue that not all BPT has Vault allowance (which is required to
+    // We use the relayer as the intermediate token holder as that saves gas (since there's fewer transfers, relayer
+    // permission checks, etc.) and also sidesteps the issue that not all BPT has Vault allowance (which is required to
     // transfer them via the Vault, e.g. for staking).
 
     const stakedBalance = await (await task.instanceAt('IERC20', ETH_STETH_GAUGE)).balanceOf(sender.address);
 
-    // There's no chained ouput here as the input equals the output
+    // There's no chained output here as the input equals the output
     const unstakeCalldata = library.interface.encodeFunctionData('gaugeWithdraw', [
       ETH_STETH_GAUGE,
       sender.address,
@@ -101,7 +101,7 @@ describe('BatchRelayerLibrary', function () {
 
     const exitCalldata = library.interface.encodeFunctionData('exitPool', [
       ETH_STETH_POOL,
-      0, // Even if this a Stable Pool, the Batch Relayer is unaware of their encodings, and the Weighted Pool encoding
+      0, // Even if this a Stable Pool, the Batch Relayer is unaware of their encodings and the Weighted Pool encoding
       // happens to match here
       relayer.address,
       relayer.address,
