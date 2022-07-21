@@ -23,7 +23,7 @@ export default {
 
     const pool = await this._deployStandalone(deployment, vault);
 
-    const { owner, mainToken, wrappedToken, upperTarget, swapFeePercentage } = deployment;
+    const { owner, mainToken, wrappedToken, upperTarget, assetManagers, swapFeePercentage } = deployment;
 
     const poolId = await pool.getPoolId();
     const name = await pool.name();
@@ -41,6 +41,7 @@ export default {
       bptToken,
       lowerTarget,
       upperTarget,
+      assetManagers,
       swapFeePercentage,
       owner
     );
@@ -51,6 +52,7 @@ export default {
       mainToken,
       wrappedToken,
       upperTarget,
+      assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -67,6 +69,7 @@ export default {
         mainToken.address,
         wrappedToken.address,
         upperTarget,
+        assetManagers,
         swapFeePercentage,
         pauseWindowDuration,
         bufferPeriodDuration,

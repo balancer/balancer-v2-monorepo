@@ -134,10 +134,18 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
     const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     const cacheDurations = Array(tokens.length).fill(0);
+    const protocolFeeFlags = Array(tokens.length).fill(false);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokens.addresses, amplificationParameter, rateProviders, cacheDurations, swapFeePercentage],
+      parameters: [
+        tokens.addresses,
+        amplificationParameter,
+        rateProviders,
+        cacheDurations,
+        protocolFeeFlags,
+        swapFeePercentage,
+      ],
     });
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);

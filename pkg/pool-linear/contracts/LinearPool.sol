@@ -108,6 +108,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -119,7 +120,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
             name,
             symbol,
             _sortTokens(mainToken, wrappedToken, this),
-            new address[](_TOTAL_TOKENS),
+            _insertNullBptAssetManager(mainToken, wrappedToken, assetManagers),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -148,6 +149,31 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         // Otherwise the pool will owe fees at start which results in a manipulable rate.
         uint256 lowerTarget = 0;
         _setTargets(mainToken, lowerTarget, upperTarget);
+    }
+
+    /**
+     * @dev Inserts a zero-valued entry in the `assetManagers` array at the BPT token index, ensuring that BPT is not
+     * managed even if the main or wrapped tokens are.
+     */
+    function _insertNullBptAssetManager(
+        IERC20 mainToken,
+        IERC20 wrappedToken,
+        address[] memory assetManagers
+    ) private view returns (address[] memory) {
+        (, , uint256 bptIndex) = _getSortedTokenIndexes(mainToken, wrappedToken, this);
+
+        address[] memory extendedAssetManagers = new address[](assetManagers.length + 1);
+        for (uint256 i = 0; i < extendedAssetManagers.length; ++i) {
+            if (i < bptIndex) {
+                extendedAssetManagers[i] = assetManagers[i];
+            } else if (i > bptIndex) {
+                extendedAssetManagers[i] = assetManagers[i - 1];
+            } else {
+                extendedAssetManagers[i] = address(0);
+            }
+        }
+
+        return extendedAssetManagers;
     }
 
     function getMainToken() public view override returns (IERC20) {
