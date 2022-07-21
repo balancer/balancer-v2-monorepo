@@ -22,7 +22,7 @@ describe('GaugeAdderMigrationCoordinator', function () {
   let arbitrumRootGaugeFactory: Contract;
   let optimismRootGaugeFactory: Contract;
 
-  const task = new Task('20220629-gauge-adder-migration-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  const task = new Task('20220721-gauge-adder-migration-coordinator', TaskMode.TEST, getForkedNetwork(hre));
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 

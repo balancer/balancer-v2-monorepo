@@ -1,4 +1,4 @@
-# 2022-06-29 - GaugeAdder Migration Coordinator
+# 2022-07-21 - GaugeAdder Migration Coordinator
 
 Deployment of the `GaugeAdderMigrationCoordinator`, responsible for migrating the active version of the `GaugeAdder` contract.
 
