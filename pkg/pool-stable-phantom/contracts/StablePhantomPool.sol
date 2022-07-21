@@ -1293,6 +1293,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return StableMath._getRate(balances, currentAmp, virtualSupply);
     }
 
+    function _getMaxTokens() internal pure override returns (uint256) {
+        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
+        return StableMath._MAX_STABLE_TOKENS + 1;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
     // Amplification
 
     /**
@@ -1371,15 +1380,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             isUpdating = false;
             value = endValue;
         }
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
-        return StableMath._MAX_STABLE_TOKENS + 1;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
     }
 
     function _setAmplificationData(uint256 value) private {
