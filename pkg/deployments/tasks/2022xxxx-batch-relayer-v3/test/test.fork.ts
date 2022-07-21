@@ -110,16 +110,11 @@ describe('BatchRelayerLibrary', function () {
         minAmountsOut: ethStethTokens.map(() => 0),
         // Note that we use the same input as before
         userData: defaultAbiCoder.encode(['uint256', 'uint256', 'uint256'], [0, stakedBalance, stableWethIndex]),
-        toInternalBalance: false,
+        toInternalBalance: true,
       },
       // Only store a chained reference for the WETH amount out, as the rest will be zero
       [{ key: toChainedReference(42), index: stableWethIndex }],
     ]);
-
-    // Before joining from WETH, the relayer must approve it in the Vault. We optimize for the scenario in which the
-    // token features 'infinite' allowance, as passing the correct value would require a lot of extra work to set a
-    // second chained reference.
-    const approveCalldata = library.interface.encodeFunctionData('approveVault', [WETH, MAX_UINT256]);
 
     // Join from WETH
     const ethDaiTokens: Array<string> = (await vault.getPoolTokens(ETH_DAI_POOL)).tokens;
@@ -136,7 +131,7 @@ describe('BatchRelayerLibrary', function () {
         assets: ethDaiTokens,
         maxAmountsIn: ethDaiTokens.map(() => MAX_UINT256),
         userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(ethDaiAmountsIn, 0),
-        fromInternalBalance: false,
+        fromInternalBalance: true, // Since we're joining from internal balance, we don't need to grant token allowance
       },
       0, // No eth
       toChainedReference(17), // Store a reference for later staking
@@ -149,9 +144,7 @@ describe('BatchRelayerLibrary', function () {
       toChainedReference(17), // Stake all BPT from the join
     ]);
 
-    await relayer
-      .connect(sender)
-      .multicall([unstakeCalldata, exitCalldata, approveCalldata, joinCalldata, stakeCalldata]);
+    await relayer.connect(sender).multicall([unstakeCalldata, exitCalldata, joinCalldata, stakeCalldata]);
 
     expect(await destinationGauge.balanceOf(sender.address)).to.be.gt(0);
   });
