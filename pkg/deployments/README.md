@@ -90,7 +90,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Distribution Scheduler for reward tokens on gauges   | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                 | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
 | Batch Relayer V3                                     | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
-| Balancer Queries                                     | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
+| Swap, join and exit simulations (queries)            | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
 
 ## Scripts
 
