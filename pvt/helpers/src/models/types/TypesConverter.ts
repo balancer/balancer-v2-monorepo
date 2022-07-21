@@ -105,17 +105,19 @@ export default {
   },
 
   toLinearPoolDeployment(params: RawLinearPoolDeployment): LinearPoolDeployment {
-    let { upperTarget, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
+    let { upperTarget, assetManagers, swapFeePercentage, pauseWindowDuration, bufferPeriodDuration } = params;
 
     if (!upperTarget) upperTarget = bn(0);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!assetManagers) assetManagers = [ZERO_ADDRESS, ZERO_ADDRESS];
 
     return {
       mainToken: params.mainToken,
       wrappedToken: params.wrappedToken,
       upperTarget,
+      assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -128,6 +130,7 @@ export default {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
@@ -141,11 +144,13 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
 
     return {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       amplificationParameter,
       swapFeePercentage,
       pauseWindowDuration,
