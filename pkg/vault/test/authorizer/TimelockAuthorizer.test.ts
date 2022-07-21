@@ -2085,6 +2085,16 @@ describe('TimelockAuthorizer', () => {
         await expect(schedule()).to.be.revertedWith('CANNOT_SCHEDULE_AUTHORIZER_ACTIONS');
       });
     });
+
+    context('when the target is the executor', () => {
+      sharedBeforeEach('set where', async () => {
+        where = await authorizer.instance.getExecutor();
+      });
+
+      it('reverts', async () => {
+        await expect(schedule()).to.be.revertedWith('ATTEMPTING_EXECUTOR_REENTRANCY');
+      });
+    });
   });
 
   describe('execute', () => {
