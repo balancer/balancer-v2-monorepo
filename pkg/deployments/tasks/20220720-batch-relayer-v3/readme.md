@@ -1,4 +1,4 @@
-# 2022-xx-xx - Batch Relayer V3
+# 2022-07-20 - Batch Relayer V3
 
 Deployment of the second `BalancerRelayer` using `BatchRelayerLibrary`, for combining multiple operations (swaps, joins, etc.) in a single transaction.
 

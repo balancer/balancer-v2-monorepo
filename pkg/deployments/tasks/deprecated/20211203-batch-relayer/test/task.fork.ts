@@ -4,9 +4,9 @@ import { BigNumber, Contract } from 'ethers';
 
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate, impersonateWhale, setBalance } from '../../../src/signers';
+import Task, { TaskMode } from '../../../../src/task';
+import { getForkedNetwork } from '../../../../src/test';
+import { getSigner, impersonate, impersonateWhale, setBalance } from '../../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { RelayerAuthorization, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
