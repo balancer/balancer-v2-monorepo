@@ -278,6 +278,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _bptIndex;
     }
 
+    function _getMaxTokens() internal pure override returns (uint256) {
+        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
+        return StableMath._MAX_STABLE_TOKENS + 1;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    // Swap Hooks
+
     /**
      * @notice Top-level Vault hook for swaps.
      * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
@@ -570,6 +581,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
+    // Protocol Fees
+
     /**
      * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
      */
@@ -619,6 +632,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         _payProtocolFees(protocolFeeAmount);
     }
+
+    // Join Hooks
 
     /**
      * @notice Top-level Vault hook for joins.
@@ -786,6 +801,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         return (bptAmountOut, amountsIn);
     }
+
+    // Exit Hooks
 
     /**
      * @notice Top-level Vault hook for exits.
@@ -995,15 +1012,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return StableMath._getRate(balances, currentAmp, virtualSupply);
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
-        return StableMath._MAX_STABLE_TOKENS + 1;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
     }
 
     // Virtual Supply
