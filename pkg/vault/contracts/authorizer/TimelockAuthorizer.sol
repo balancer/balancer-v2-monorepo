@@ -23,6 +23,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "./TimelockExecutor.sol";
 
 /**
@@ -56,12 +57,13 @@ import "./TimelockExecutor.sol";
  *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
  *   by calling `getExtendedActionId(baseActionId, specifier)`.
  *
- * Note that the TimelockAuthorizer doesn't make use of reentrancy guards. The only function which makes an external
- * non-view call (and so could initate a reentrancy attack) is `execute` which executes a scheduled execution.
+ * Note that the TimelockAuthorizer doesn't make use of reentrancy guards on the majority of external functions.
+ * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
+ * which executes a scheduled execution and so this is the only protected function.
  * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
  * is necessary in order to be able to call these.
  */
-contract TimelockAuthorizer is IAuthorizer, IAuthentication {
+contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     using Address for address;
 
     /**
@@ -518,7 +520,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @notice Executes a scheduled action `scheduledExecutionId`.
      */
-    function execute(uint256 scheduledExecutionId) external returns (bytes memory result) {
+    function execute(uint256 scheduledExecutionId) external nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
         ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
