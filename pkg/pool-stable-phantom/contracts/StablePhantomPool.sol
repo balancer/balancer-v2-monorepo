@@ -935,77 +935,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-    // Token rates
-
-    /**
-     * @dev Returns the rate providers configured for each token (in the same order as registered).
-     */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
-        uint256 totalTokens = _getTotalTokens();
-        providers = new IRateProvider[](totalTokens);
-
-        // prettier-ignore
-        {
-            providers[0] = _rateProvider0;
-            providers[1] = _rateProvider1;
-            providers[2] = _rateProvider2;
-            if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
-            if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
-            if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
-        }
-    }
-
-    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        // prettier-ignore
-        if (token == _token0) { return _rateProvider0; }
-        else if (token == _token1) { return _rateProvider1; }
-        else if (token == _token2) { return _rateProvider2; }
-        else if (token == _token3) { return _rateProvider3; }
-        else if (token == _token4) { return _rateProvider4; }
-        else if (token == _token5) { return _rateProvider5; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
-    /**
-     * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
-     */
-    function getTokenRate(IERC20 token) public view virtual returns (uint256) {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since we don't need
-        // the provider at all).
-
-        if (token == this) {
-            return FixedPoint.ONE;
-        }
-
-        bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
-    }
-
-    /**
-     * @dev Returns the cached value for token's rate.
-     * Note it could return an empty value if the requested token does not have one or if the token does not belong
-     * to the pool.
-     */
-    function getTokenRateCache(IERC20 token)
-        external
-        view
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-
-        rate = _tokenRateCaches[token].getCurrentRate();
-        (duration, expires) = _tokenRateCaches[token].getTimestamps();
-    }
-
     /**
      * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
      * Its length will be one less than the registered pool tokens, and it will correspond to the token
@@ -1028,83 +957,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             if (tokensWithoutBPT > 4) {
                 protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
             } else { return protocolFeeExemptTokenFlags; }
-        }
-    }
-
-    /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current token rate is fetched again.
-     */
-    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        _updateTokenRateCache(token, provider, duration);
-        emit TokenRateProviderSet(token, provider, duration);
-    }
-
-    /**
-     * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have an associated rate provider.
-     */
-    function updateTokenRateCache(IERC20 token) public virtual {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        uint256 duration = _tokenRateCaches[token].getDuration();
-        _updateTokenRateCache(token, provider, duration);
-    }
-
-    /**
-     * @dev Internal function to update a token rate cache for a known provider and duration.
-     * It trusts the given values, and does not perform any checks.
-     */
-    function _updateTokenRateCache(
-        IERC20 token,
-        IRateProvider provider,
-        uint256 duration
-    ) private {
-        uint256 rate = provider.getRate();
-        bytes32 cache = _tokenRateCaches[token];
-
-        _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
-
-        emit TokenRateCacheUpdated(token, rate);
-    }
-
-    /**
-     * @dev Caches the rates of all tokens if necessary
-     */
-    function _cacheTokenRatesIfNecessary() internal {
-        uint256 totalTokens = _getTotalTokens();
-        // prettier-ignore
-        {
-            _cacheTokenRateIfNecessary(_token0);
-            _cacheTokenRateIfNecessary(_token1);
-            _cacheTokenRateIfNecessary(_token2);
-            if (totalTokens > 3) { _cacheTokenRateIfNecessary(_token3); } else { return; }
-            if (totalTokens > 4) { _cacheTokenRateIfNecessary(_token4); } else { return; }
-            if (totalTokens > 5) { _cacheTokenRateIfNecessary(_token5); } else { return; }
-        }
-    }
-
-    /**
-     * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
-     */
-    function _cacheTokenRateIfNecessary(IERC20 token) internal virtual {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
-        // we might not need the provider if the cache is still valid).
-
-        if (token == this) return;
-
-        bytes32 cache = _tokenRateCaches[token];
-        if (cache != bytes32(0)) {
-            (uint256 duration, uint256 expires) = _tokenRateCaches[token].getTimestamps();
-            if (block.timestamp > expires) {
-                // solhint-disable-previous-line not-rely-on-time
-                _updateTokenRateCache(token, _getRateProvider(token), duration);
-            }
         }
     }
 
@@ -1251,6 +1103,154 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
         return _totalTokens;
+    }
+
+    // Token rates
+
+    /**
+     * @dev Returns the rate providers configured for each token (in the same order as registered).
+     */
+    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+        uint256 totalTokens = _getTotalTokens();
+        providers = new IRateProvider[](totalTokens);
+
+        // prettier-ignore
+        {
+            providers[0] = _rateProvider0;
+            providers[1] = _rateProvider1;
+            providers[2] = _rateProvider2;
+            if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
+            if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
+            if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
+        }
+    }
+
+    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
+        // prettier-ignore
+        if (token == _token0) { return _rateProvider0; }
+        else if (token == _token1) { return _rateProvider1; }
+        else if (token == _token2) { return _rateProvider2; }
+        else if (token == _token3) { return _rateProvider3; }
+        else if (token == _token4) { return _rateProvider4; }
+        else if (token == _token5) { return _rateProvider5; }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    /**
+     * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
+     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
+     */
+    function getTokenRate(IERC20 token) public view virtual returns (uint256) {
+        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
+        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
+        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since we don't need
+        // the provider at all).
+
+        if (token == this) {
+            return FixedPoint.ONE;
+        }
+
+        bytes32 tokenRateCache = _tokenRateCaches[token];
+        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
+    }
+
+    /**
+     * @dev Returns the cached value for token's rate.
+     * Note it could return an empty value if the requested token does not have one or if the token does not belong
+     * to the pool.
+     */
+    function getTokenRateCache(IERC20 token)
+        external
+        view
+        returns (
+            uint256 rate,
+            uint256 duration,
+            uint256 expires
+        )
+    {
+        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
+        rate = _tokenRateCaches[token].getCurrentRate();
+        (duration, expires) = _tokenRateCaches[token].getTimestamps();
+    }
+
+    /**
+     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
+     * Note this function also updates the current cached value.
+     * @param duration Number of seconds until the current token rate is fetched again.
+     */
+    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        IRateProvider provider = _getRateProvider(token);
+        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        _updateTokenRateCache(token, provider, duration);
+        emit TokenRateProviderSet(token, provider, duration);
+    }
+
+    /**
+     * @dev Forces a rate cache hit for a token.
+     * It will revert if the requested token does not have an associated rate provider.
+     */
+    function updateTokenRateCache(IERC20 token) public virtual {
+        IRateProvider provider = _getRateProvider(token);
+        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        uint256 duration = _tokenRateCaches[token].getDuration();
+        _updateTokenRateCache(token, provider, duration);
+    }
+
+    /**
+     * @dev Internal function to update a token rate cache for a known provider and duration.
+     * It trusts the given values, and does not perform any checks.
+     */
+    function _updateTokenRateCache(
+        IERC20 token,
+        IRateProvider provider,
+        uint256 duration
+    ) private {
+        uint256 rate = provider.getRate();
+        bytes32 cache = _tokenRateCaches[token];
+
+        _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
+
+        emit TokenRateCacheUpdated(token, rate);
+    }
+
+    /**
+     * @dev Caches the rates of all tokens if necessary
+     */
+    function _cacheTokenRatesIfNecessary() internal {
+        uint256 totalTokens = _getTotalTokens();
+        // prettier-ignore
+        {
+            _cacheTokenRateIfNecessary(_token0);
+            _cacheTokenRateIfNecessary(_token1);
+            _cacheTokenRateIfNecessary(_token2);
+            if (totalTokens > 3) { _cacheTokenRateIfNecessary(_token3); } else { return; }
+            if (totalTokens > 4) { _cacheTokenRateIfNecessary(_token4); } else { return; }
+            if (totalTokens > 5) { _cacheTokenRateIfNecessary(_token5); } else { return; }
+        }
+    }
+
+    /**
+     * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
+     */
+    function _cacheTokenRateIfNecessary(IERC20 token) internal virtual {
+        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
+        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
+        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
+        // we might not need the provider if the cache is still valid).
+
+        if (token == this) return;
+
+        bytes32 cache = _tokenRateCaches[token];
+        if (cache != bytes32(0)) {
+            (uint256 duration, uint256 expires) = _tokenRateCaches[token].getTimestamps();
+            if (block.timestamp > expires) {
+                // solhint-disable-previous-line not-rely-on-time
+                _updateTokenRateCache(token, _getRateProvider(token), duration);
+            }
+        }
     }
 
     // Scaling Factors
