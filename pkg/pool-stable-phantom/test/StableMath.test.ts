@@ -1,13 +1,12 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, decimal, fp, BigNumber } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, BigNumber } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateAnalyticalInvariantForTwoTokens,
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateOneTokenSwapFeeAmount,
 } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
 import { random } from 'lodash';
 
@@ -131,56 +130,6 @@ describe('StableMath', function () {
         const expectedAmountOut = calcOutGivenIn(balances, amp, tokenIndexIn, tokenIndexOut, amountIn);
 
         expectEqualWithError(result, bn(expectedAmountOut.toFixed(0)), MAX_RELATIVE_ERROR);
-      });
-    });
-  });
-
-  context('protocol swap fees', () => {
-    context('two tokens', () => {
-      it('returns protocol swap fees', async () => {
-        const amp = bn(100);
-        const balances = [fp(10), fp(11)];
-        const lastInvariant = fp(10);
-        const tokenIndex = 0;
-
-        const protocolSwapFeePercentage = fp(0.1);
-
-        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
-          amp.mul(AMP_PRECISION),
-          balances,
-          lastInvariant,
-          tokenIndex,
-          protocolSwapFeePercentage
-        );
-
-        const expectedFeeAmount = calculateOneTokenSwapFeeAmount(balances, amp, lastInvariant, tokenIndex);
-        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
-
-        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
-      });
-    });
-
-    context('three tokens', () => {
-      it('returns protocol swap fees', async () => {
-        const amp = bn(100);
-        const balances = [fp(10), fp(11), fp(12)];
-        const lastInvariant = fp(10);
-        const tokenIndex = 0;
-
-        const protocolSwapFeePercentage = fp(0.1);
-
-        const result = await mock.calculateDueTokenProtocolSwapFeeAmount(
-          amp.mul(AMP_PRECISION),
-          balances,
-          lastInvariant,
-          tokenIndex,
-          protocolSwapFeePercentage
-        );
-        const expectedFeeAmount = calculateOneTokenSwapFeeAmount(balances, amp, lastInvariant, tokenIndex);
-
-        const expectedProtocolFeeAmount = expectedFeeAmount.mul(decimal(protocolSwapFeePercentage).div(1e18));
-
-        expectEqualWithError(result, bn(expectedProtocolFeeAmount.toFixed(0)), MAX_RELATIVE_ERROR);
       });
     });
   });

@@ -11,6 +11,7 @@ export type RawLinearPoolDeployment = {
   mainToken: Token;
   wrappedToken: Token;
   upperTarget?: BigNumber;
+  assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
@@ -24,6 +25,7 @@ export type LinearPoolDeployment = {
   mainToken: Token;
   wrappedToken: Token;
   upperTarget: BigNumber;
+  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
