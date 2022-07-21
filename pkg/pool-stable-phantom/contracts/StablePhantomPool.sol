@@ -994,7 +994,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // Protocol Fee Exemption
 
     /**
-     * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
+     * @dev Returns the protocolFeeExemptTokenFlags flags. Note that this token list *excludes* BPT.
      * Its length will be one less than the registered pool tokens, and it will correspond to the token
      * list after removing the BPT token.
      */
@@ -1102,9 +1102,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Returns the cached value for token's rate.
-     * Note it could return an empty value if the requested token does not have one or if the token does not belong
-     * to the pool.
+     * @dev Returns the cached value for token's rate. Reverts if the token doesn't belong to the pool or has no rate
+     * provider.
      */
     function getTokenRateCache(IERC20 token)
         external
