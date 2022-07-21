@@ -664,5 +664,14 @@
         "setOnlyCallerCheckWithSignature(address,bool,bytes)": "0x54b5a7c13c04005e425e936705297503e6c8d31f1413b2763d27845ef03eb0d1"
       }
     }
+  },
+  "20220721-gauge-adder-migration-coordinator": {
+    "GaugeAdderMigrationCoordinator": {
+      "useAdaptor": false,
+      "actionIds": {
+        "performNextStage()": "0x945b1637627fa36f3bb618b74050045ffa67875ffd8acd04f5135f3463ab9880",
+        "registerStages()": "0x08900d9a13d156ace75a5694772406e876e8f8f25d35af7a7639c1a95a2c2689"
+      }
+    }
   }
 }
