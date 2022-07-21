@@ -96,14 +96,15 @@ Returns an object with all contracts from a deployment and their addresses.
 
 These are deployments for script-like contracts (often called 'coordinators') which are typically granted some permission by Governance and then executed, after which they become useless.
 
-| Description                                         | Task ID                                                                                                  |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Coordination of the veBAL deployment                | [`20220325-veBAL-deployment-coordinator`](./tasks/scripts/20220325-veBAL-deployment-coordinator)         |
-| Coordination of setup of L2 gauges for veBAL system | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/scripts/20220415-veBAL-L2-gauge-setup-coordinator) |
-| Coordination of veBAL gauges fix (Option 1)         | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/scripts/20220418-veBAL-gauge-fix-coordinator)           |
-| veBAL Smart Wallet Checker Coordinator              | [`20220421-smart-wallet-checker-coordinator`](./tasks/scripts/20220421-smart-wallet-checker-coordinator) |
-| Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)         |
-| Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                 |
+| Description                                         | Task ID                                                                                                    |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Coordination of the veBAL deployment                | [`20220325-veBAL-deployment-coordinator`](./tasks/scripts/20220325-veBAL-deployment-coordinator)           |
+| Coordination of setup of L2 gauges for veBAL system | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/scripts/20220415-veBAL-L2-gauge-setup-coordinator)   |
+| Coordination of veBAL gauges fix (Option 1)         | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/scripts/20220418-veBAL-gauge-fix-coordinator)             |
+| veBAL Smart Wallet Checker Coordinator              | [`20220421-smart-wallet-checker-coordinator`](./tasks/scripts/20220421-smart-wallet-checker-coordinator)   |
+| Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)           |
+| Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                   |
+| Coordination of the Gauge Adder migration           | [`20220721-gauge-adder-migration-coordinator`](./tasks/scripts/20220721-gauge-adder-migration-coordinator) |
 
 ## Deprecated Deployments
 
