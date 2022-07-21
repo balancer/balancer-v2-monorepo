@@ -14,7 +14,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { defaultAbiCoder } from '@ethersproject/abi/lib/abi-coder';
 
 describe('BatchRelayerLibrary', function () {
-  const task = new Task('2022xxxx-batch-relayer-v3', TaskMode.TEST, getForkedNetwork(hre));
+  const task = new Task('20220720-batch-relayer-v3', TaskMode.TEST, getForkedNetwork(hre));
 
   let relayer: Contract, library: Contract;
   let sender: SignerWithAddress;
