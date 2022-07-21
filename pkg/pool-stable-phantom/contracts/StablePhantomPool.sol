@@ -952,29 +952,22 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-    /**
-     * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
-     * Its length will be one less than the registered pool tokens, and it will correspond to the token
-     * list after removing the BPT token.
-     */
-    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
-        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
-        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
+    // Miscellaneous
 
-        // prettier-ignore
-        {
-            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
-            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
-            if (tokensWithoutBPT > 2) {
-                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
-            } else { return protocolFeeExemptTokenFlags; }
-            if (tokensWithoutBPT > 3) {
-                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
-            } else { return protocolFeeExemptTokenFlags; }
-            if (tokensWithoutBPT > 4) {
-                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
-            } else { return protocolFeeExemptTokenFlags; }
-        }
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time.
+     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     */
+    function getRate() public view virtual override returns (uint256) {
+        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return StableMath._getRate(balances, currentAmp, virtualSupply);
     }
 
     /**
@@ -998,20 +991,31 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             super._isOwnerOnlyAction(actionId);
     }
 
+    // Protocol Fee Exemption
+
     /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     * @dev Returns the exemptFromYieldProtocolFeeToken flags. Note that this token list *excludes* BPT.
+     * Its length will be one less than the registered pool tokens, and it will correspond to the token
+     * list after removing the BPT token.
      */
-    function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
+        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
+        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
 
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
+        // prettier-ignore
+        {
+            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
+            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
+            if (tokensWithoutBPT > 2) {
+                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 3) {
+                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 4) {
+                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
+            } else { return protocolFeeExemptTokenFlags; }
+        }
     }
 
     // Virtual Supply
