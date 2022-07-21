@@ -871,9 +871,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
     }
 
     /**
-     * @dev Update the circuit breaker ratios
+     * @notice Set the initial circuit breaker ratios.
+     * @dev Setting both ratios to zero will "skip" a token.
      */
-    function setCircuitBreakerRatio(uint256[] memory minRatios, uint256[] memory maxRatios)
+    function initializeCircuitBreakerRatios(uint256[] memory minRatios, uint256[] memory maxRatios)
         external
         authenticate
         whenNotPaused
@@ -897,6 +898,37 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
                 );
             }
         }
+    }
+
+    /**
+     * @notice Set/update the circuit breaker for a single token.
+     */
+    function setCircuitBreakerRatios(
+        IERC20 token,
+        uint256 minRatio,
+        uint256 maxRatio
+    ) external authenticate whenNotPaused {
+        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 supply = totalSupply();
+        bool tokenFound;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == token) {
+                _setCircuitBreakerRatio(
+                    token,
+                    supply.divUp(balances[i].divDown(normalizedWeights[i])),
+                    minRatio,
+                    maxRatio
+                );
+
+                tokenFound = true;
+                break;
+            }
+        }
+
+        _require(tokenFound, Errors.INVALID_TOKEN);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
