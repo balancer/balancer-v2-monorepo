@@ -14,11 +14,11 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IArbitrumFeeProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
 
 import "../StakelessGauge.sol";
 import "./IGatewayRouter.sol";
-import "./IArbitrumFeeProvider.sol";
 
 contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
     address private immutable _gateway;
