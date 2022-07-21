@@ -1040,9 +1040,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Returns the cached value for token's rate.
-     * Note it could return an empty value if the requested token does not have one or if the token does not belong
-     * to the pool.
+     * @dev Returns the cached value for token's rate. Reverts if the token doesn't belong to the pool or has no rate
+     * provider.
      */
     function getTokenRateCache(IERC20 token)
         external

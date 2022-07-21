@@ -65,9 +65,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Vault, main protocol contract                        | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Weighted Pools of up to 8 tokens                     | [`20210418-weighted-pool`](./tasks/20210418-weighted-pool)                                           |
 | Rate Provider for wstETH                             | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
-| Batch Relayer                                        | [`20211203-batch-relayer`](./tasks/20211203-batch-relayer)                                           |
 | Linear Pools for Aave aTokens                        | [`20211208-aave-linear-pool`](./tasks/20211208-aave-linear-pool)                                     |
-| Batch Relayer V2                                     | [`20220318-batch-relayer-v2`](./tasks/20220318-batch-relayer-v2)                                     |
 | Authorizer Adaptor for extending governance          | [`20220325-authorizer-adaptor`](./tasks/20220325-authorizer-adaptor)                                 |
 | Wallet for the BAL token                             | [`20220325-bal-token-holder-factory`](./tasks/20220325-bal-token-holder-factory)                     |
 | Admin of the BAL token                               | [`20220325-balancer-token-admin`](./tasks/20220325-balancer-token-admin)                             |
@@ -91,19 +89,21 @@ Returns an object with all contracts from a deployment and their addresses.
 | Optimism Root Gauges, for veBAL voting               | [`20220628-optimism-root-gauge-factory`](./tasks/20220628-optimism-root-gauge-factory)               |
 | Distribution Scheduler for reward tokens on gauges   | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                 | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
+| Batch Relayer V3                                     | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
 
 ## Scripts
 
 These are deployments for script-like contracts (often called 'coordinators') which are typically granted some permission by Governance and then executed, after which they become useless.
 
-| Description                                         | Task ID                                                                                                  |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Coordination of the veBAL deployment                | [`20220325-veBAL-deployment-coordinator`](./tasks/scripts/20220325-veBAL-deployment-coordinator)         |
-| Coordination of setup of L2 gauges for veBAL system | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/scripts/20220415-veBAL-L2-gauge-setup-coordinator) |
-| Coordination of veBAL gauges fix (Option 1)         | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/scripts/20220418-veBAL-gauge-fix-coordinator)           |
-| veBAL Smart Wallet Checker Coordinator              | [`20220421-smart-wallet-checker-coordinator`](./tasks/scripts/20220421-smart-wallet-checker-coordinator) |
-| Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)         |
-| Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                 |
+| Description                                         | Task ID                                                                                                    |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Coordination of the veBAL deployment                | [`20220325-veBAL-deployment-coordinator`](./tasks/scripts/20220325-veBAL-deployment-coordinator)           |
+| Coordination of setup of L2 gauges for veBAL system | [`20220415-veBAL-L2-gauge-setup-coordinator`](./tasks/scripts/20220415-veBAL-L2-gauge-setup-coordinator)   |
+| Coordination of veBAL gauges fix (Option 1)         | [`20220418-veBAL-gauge-fix-coordinator`](./tasks/scripts/20220418-veBAL-gauge-fix-coordinator)             |
+| veBAL Smart Wallet Checker Coordinator              | [`20220421-smart-wallet-checker-coordinator`](./tasks/scripts/20220421-smart-wallet-checker-coordinator)   |
+| Tribe BAL Minter Coordinator                        | [`20220606-tribe-bal-minter-coordinator`](./tasks/scripts/20220606-tribe-bal-minter-coordinator)           |
+| Coordination of the double entrypoint issue fix     | [`20220610-snx-recovery-coordinator`](./tasks/scripts/20220610-snx-recovery-coordinator)                   |
+| Coordination of the Gauge Adder migration           | [`20220721-gauge-adder-migration-coordinator`](./tasks/scripts/20220721-gauge-adder-migration-coordinator) |
 
 ## Deprecated Deployments
 
@@ -123,6 +123,8 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/deprecated/20210920-vita-merkle)                                   |
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
+| Batch Relayer                                    | [`20211203-batch-relayer`](./tasks/deprecated/20211203-batch-relayer)                               |
 | Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
 | Linear Pools for ERC4626 Tokens                  | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
+| Batch Relayer V2                                 | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                         |
 | Fee Distributor for veBAL holders                | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
