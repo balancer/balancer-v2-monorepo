@@ -935,55 +935,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-    // Scaling factors
-
-    function getScalingFactor(IERC20 token) external view returns (uint256) {
-        return _scalingFactor(token);
-    }
-
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        uint256 scalingFactor;
-
-        // prettier-ignore
-        if (token == _token0) { scalingFactor = _getScalingFactor0(); }
-        else if (token == _token1) { scalingFactor = _getScalingFactor1(); }
-        else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
-        else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
-        else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
-        else if (token == _token5) { scalingFactor = _getScalingFactor5(); }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        return scalingFactor.mulDown(getTokenRate(token));
-    }
-
-    /**
-     * @dev Overrides scaling factor getter to introduce the tokens' rates.
-     */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
-        // There is no need to check the arrays length since both are based on `_getTotalTokens`
-        uint256 totalTokens = _getTotalTokens();
-        scalingFactors = new uint256[](totalTokens);
-
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        // prettier-ignore
-        {
-            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
-            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
-            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
-            if (totalTokens > 3) {
-                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
-            } else { return scalingFactors; }
-            if (totalTokens > 4) {
-                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
-            } else { return scalingFactors; }
-            if (totalTokens > 5) {
-                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
-            } else { return scalingFactors; }
-        }
-    }
-
     // Token rates
 
     /**
@@ -1302,6 +1253,79 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _totalTokens;
     }
 
+    // Scaling Factors
+
+    function getScalingFactor(IERC20 token) external view returns (uint256) {
+        return _scalingFactor(token);
+    }
+
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        uint256 scalingFactor;
+
+        // prettier-ignore
+        if (token == _token0) { scalingFactor = _getScalingFactor0(); }
+        else if (token == _token1) { scalingFactor = _getScalingFactor1(); }
+        else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
+        else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
+        else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
+        else if (token == _token5) { scalingFactor = _getScalingFactor5(); }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        return scalingFactor.mulDown(getTokenRate(token));
+    }
+
+    /**
+     * @dev Overrides scaling factor getter to introduce the tokens' rates.
+     */
+    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+        // There is no need to check the arrays length since both are based on `_getTotalTokens`
+        uint256 totalTokens = _getTotalTokens();
+        scalingFactors = new uint256[](totalTokens);
+
+        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
+        // prettier-ignore
+        {
+            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+            if (totalTokens > 3) {
+                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
+            } else { return scalingFactors; }
+            if (totalTokens > 4) {
+                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
+            } else { return scalingFactors; }
+            if (totalTokens > 5) {
+                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
+            } else { return scalingFactors; }
+        }
+    }
+
+    function _getScalingFactor0() internal view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() internal view returns (uint256) {
+        return _scalingFactor1;
+    }
+
+    function _getScalingFactor2() internal view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() internal view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    function _getScalingFactor4() internal view returns (uint256) {
+        return _scalingFactor4;
+    }
+
+    function _getScalingFactor5() internal view returns (uint256) {
+        return _scalingFactor5;
+    }
+
     // Amplification
 
     function getAmplificationParameter()
@@ -1424,29 +1448,5 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
             WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
             WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-    }
-
-    function _getScalingFactor0() internal view returns (uint256) {
-        return _scalingFactor0;
-    }
-
-    function _getScalingFactor1() internal view returns (uint256) {
-        return _scalingFactor1;
-    }
-
-    function _getScalingFactor2() internal view returns (uint256) {
-        return _scalingFactor2;
-    }
-
-    function _getScalingFactor3() internal view returns (uint256) {
-        return _scalingFactor3;
-    }
-
-    function _getScalingFactor4() internal view returns (uint256) {
-        return _scalingFactor4;
-    }
-
-    function _getScalingFactor5() internal view returns (uint256) {
-        return _scalingFactor5;
     }
 }
