@@ -486,7 +486,25 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes memory data,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
+        // Allowing scheduling arbitrary calls into the TimelockAuthorizer is dangerous.
+        //
+        // It is expected that only the `root` account can initiate a root transfer as this condition is enforced
+        // by the `scheduleRootChange` function which is the expected method of scheduling a call to `setPendingRoot`.
+        // If a call to `setPendingRoot` could be scheduled using this function as well as `scheduleRootChange` then
+        // accounts other than `root` could initiate a root transfer (provided they had the necessary permission).
+        //
+        // For this reason we disallow this function from scheduling calls to functions on the Authorizer to ensure that
+        // these actions can only be scheduled through specialised functions.
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
+
+        // We also disallow the TimelockExecutor from attempting to call into itself. Otherwise the above protection
+        // could be bypassed by wrapping a call to `setPendingRoot` inside of a call causing the TimelockExecutor to
+        // reenter itself, essentially hiding the fact that `where == address(this)` inside `data`.
+        //
+        // Note: The TimelockExecutor only accepts calls from the TimelockAuthorizer (i.e. not from itself) so this
+        // scenario should be impossible but this check is cheap so we enforce it here as well anyway.
+        require(where != address(_executor), "ATTEMPTING_EXECUTOR_REENTRANCY");
+
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         _require(hasPermission(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         return _schedule(actionId, where, data, executors);
