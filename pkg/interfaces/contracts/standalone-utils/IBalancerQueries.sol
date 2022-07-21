@@ -30,6 +30,9 @@ import "../vault/IVault.sol";
  *
  * If calling them from an off-chain client, make sure to use eth_call: most clients default to eth_sendTransaction for
  * non-view functions.
+ *
+ * In all cases, the `fromInternalBalance` and `toInternalBalance` fields are entirely ignored: we just use the same
+ * structs for simplicity.
  */
 interface IBalancerQueries {
     function querySwap(IVault.SingleSwap memory singleSwap, IVault.FundManagement memory funds)
