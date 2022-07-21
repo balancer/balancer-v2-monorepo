@@ -982,6 +982,33 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time.
+     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     */
+    function getRate() public view virtual override returns (uint256) {
+        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return StableMath._getRate(balances, currentAmp, virtualSupply);
+    }
+
+    function _getMaxTokens() internal pure override returns (uint256) {
+        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
+        return StableMath._MAX_STABLE_TOKENS + 1;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    // Virtual Supply
+
+    /**
      * @dev Returns the number of tokens in circulation.
      *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
@@ -1009,31 +1036,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
-    }
-
-    /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
-     */
-    function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balancesIncludingBpt, _scalingFactors());
-
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
-        return StableMath._MAX_STABLE_TOKENS + 1;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
     }
 
     // Token rates
