@@ -31,7 +31,7 @@ describe('TimelockAuthorizer', () => {
   const EVERYWHERE = TimelockAuthorizer.EVERYWHERE;
   const NOT_WHERE = ethers.Wallet.createRandom().address;
 
-  const MIN_DELAY = 3 * DAY;
+  const MIN_DELAY = 5 * DAY;
 
   sharedBeforeEach('deploy authorizer', async () => {
     const oldAuthorizer = await TimelockAuthorizer.create({ root });
@@ -2083,6 +2083,16 @@ describe('TimelockAuthorizer', () => {
 
       it('reverts', async () => {
         await expect(schedule()).to.be.revertedWith('CANNOT_SCHEDULE_AUTHORIZER_ACTIONS');
+      });
+    });
+
+    context('when the target is the executor', () => {
+      sharedBeforeEach('set where', async () => {
+        where = await authorizer.instance.getExecutor();
+      });
+
+      it('reverts', async () => {
+        await expect(schedule()).to.be.revertedWith('ATTEMPTING_EXECUTOR_REENTRANCY');
       });
     });
   });
