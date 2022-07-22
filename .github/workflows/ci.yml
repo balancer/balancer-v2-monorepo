@@ -133,6 +133,8 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Build Balancer JS
         run: yarn workspace @balancer-labs/balancer-js build
+      - name: Build v2-distributors
+        run: yarn workspace @balancer-labs/v2-distributors build
       - name: Forked Network Cache
         # Hardhat caches node requests when working with forked networks (e.g. when querying contract code, storage,
         # etc.) to save time in future runs. We cache this directory accross runs.
