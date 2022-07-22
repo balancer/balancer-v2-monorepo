@@ -17,7 +17,7 @@ export enum WeightedPoolType {
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
-  rateProviders?: string[];
+  rateProviders?: Account[];
   assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
@@ -39,7 +39,7 @@ export type RawWeightedPoolDeployment = {
 export type WeightedPoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
-  rateProviders: string[];
+  rateProviders: Account[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
