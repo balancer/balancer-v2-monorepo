@@ -14,11 +14,10 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOptimismGasLimitProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
 
 import "../StakelessGauge.sol";
-
-import "./IOptimismGasLimitProvider.sol";
 
 interface IL1StandardBridge {
     function depositERC20To(
