@@ -15,4 +15,5 @@ runs:
         key: yarn-v1-${{ hashFiles('**/yarn.lock') }}
     - name: Install
       run: yarn --immutable
+      shell: bash
       if: steps.cache.outputs.cache-hit != 'true'
