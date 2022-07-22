@@ -1078,27 +1078,32 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 totalTokens = _getTotalTokens();
         rateRatios = new uint256[](totalTokens);
 
-        // prettier-ignore
-        {
-            if (_exemptFromYieldProtocolFeeToken0) { rateRatios[0] = _computeRateRatio(_tokenRateCaches[_token0]);
-            } else { rateRatios[0] = FixedPoint.ONE; }
-            if (_exemptFromYieldProtocolFeeToken1) { rateRatios[1] = _computeRateRatio(_tokenRateCaches[_token1]);
-            } else { rateRatios[1] = FixedPoint.ONE; }
-            if (_exemptFromYieldProtocolFeeToken2) { rateRatios[2] = _computeRateRatio(_tokenRateCaches[_token2]);
-            } else { rateRatios[2] = FixedPoint.ONE; }
-            if (totalTokens > 3) {
-                if (_exemptFromYieldProtocolFeeToken3) { rateRatios[3] = _computeRateRatio(_tokenRateCaches[_token3]);
-                } else { rateRatios[3] = FixedPoint.ONE; }
-            } else { return rateRatios; }
-            if (totalTokens > 4) {
-                if (_exemptFromYieldProtocolFeeToken4) { rateRatios[4] = _computeRateRatio(_tokenRateCaches[_token4]);
-                } else { rateRatios[4] = FixedPoint.ONE; }
-            } else { return rateRatios; }
-            if (totalTokens > 5) {
-                if (_exemptFromYieldProtocolFeeToken5) { rateRatios[5] = _computeRateRatio(_tokenRateCaches[_token5]);
-                } else { rateRatios[5] = FixedPoint.ONE; }
-            } else { return rateRatios; }
-        }
+        // The Pool will always have at least 3 tokens so we always load these three ratios.
+        rateRatios[0] = _exemptFromYieldProtocolFeeToken0
+            ? _computeRateRatio(_tokenRateCaches[_token0])
+            : FixedPoint.ONE;
+        rateRatios[1] = _exemptFromYieldProtocolFeeToken1
+            ? _computeRateRatio(_tokenRateCaches[_token1])
+            : FixedPoint.ONE;
+        rateRatios[2] = _exemptFromYieldProtocolFeeToken2
+            ? _computeRateRatio(_tokenRateCaches[_token2])
+            : FixedPoint.ONE;
+
+        // Before we load the remaining ratios we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return rateRatios;
+        rateRatios[3] = _exemptFromYieldProtocolFeeToken3
+            ? _computeRateRatio(_tokenRateCaches[_token3])
+            : FixedPoint.ONE;
+
+        if (totalTokens == 4) return rateRatios;
+        rateRatios[4] = _exemptFromYieldProtocolFeeToken4
+            ? _computeRateRatio(_tokenRateCaches[_token4])
+            : FixedPoint.ONE;
+
+        if (totalTokens == 5) return rateRatios;
+        rateRatios[5] = _exemptFromYieldProtocolFeeToken5
+            ? _computeRateRatio(_tokenRateCaches[_token5])
+            : FixedPoint.ONE;
     }
 
     function _computeRateRatio(bytes32 cache) private pure returns (uint256) {
@@ -1163,13 +1168,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        // prettier-ignore
-        if (token == _token0) { return _rateProvider0; }
-        else if (token == _token1) { return _rateProvider1; }
-        else if (token == _token2) { return _rateProvider2; }
-        else if (token == _token3) { return _rateProvider3; }
-        else if (token == _token4) { return _rateProvider4; }
-        else if (token == _token5) { return _rateProvider5; }
+        if (token == _token0) return _rateProvider0;
+        if (token == _token1) return _rateProvider1;
+        if (token == _token2) return _rateProvider2;
+        if (token == _token3) return _rateProvider3;
+        if (token == _token4) return _rateProvider4;
+        if (token == _token5) return _rateProvider5;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -1283,22 +1287,21 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 totalTokens = _getTotalTokens();
         scalingFactors = new uint256[](totalTokens);
 
+        // The Pool will always have at least 3 tokens so we always load these three scaling factors.
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        // prettier-ignore
-        {
-            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
-            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
-            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
-            if (totalTokens > 3) {
-                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
-            } else { return scalingFactors; }
-            if (totalTokens > 4) {
-                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
-            } else { return scalingFactors; }
-            if (totalTokens > 5) {
-                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
-            } else { return scalingFactors; }
-        }
+        scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+        scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+        scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+
+        // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return scalingFactors;
+        scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
+
+        if (totalTokens == 4) return scalingFactors;
+        scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
+
+        if (totalTokens == 5) return scalingFactors;
+        scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
