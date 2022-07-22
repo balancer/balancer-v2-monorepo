@@ -454,7 +454,7 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Need to decrease precision
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.005);
       });
 
       it('gets end weights if called after the end time', async () => {
@@ -462,7 +462,7 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Need to decrease precision
-        expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.005);
       });
 
       for (let pct = 5; pct < 100; pct += 5) {
@@ -614,7 +614,7 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Need to decrease precision
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.005);
       });
 
       it('gets end weights if called after the end time', async () => {
@@ -622,7 +622,7 @@ describe('LiquidityBootstrappingPool', function () {
         const normalizedWeights = await pool.getNormalizedWeights();
 
         // Need to decrease precision
-        expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.0001);
+        expect(normalizedWeights).to.equalWithError(finalEndWeights, 0.005);
       });
 
       for (let pct = 5; pct < 100; pct += 5) {
