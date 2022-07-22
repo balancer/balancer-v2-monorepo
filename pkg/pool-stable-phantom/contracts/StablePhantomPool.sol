@@ -278,6 +278,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return _bptIndex;
     }
 
+    function _getMaxTokens() internal pure override returns (uint256) {
+        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
+        return StableMath._MAX_STABLE_TOKENS + 1;
+    }
+
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
+    // Swap Hooks
+
     /**
      * @notice Top-level Vault hook for swaps.
      * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
@@ -570,6 +581,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
+    // Protocol Fees
+
     /**
      * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
      */
@@ -619,6 +632,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         _payProtocolFees(protocolFeeAmount);
     }
+
+    // Join Hooks
 
     /**
      * @notice Top-level Vault hook for joins.
@@ -787,6 +802,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountOut, amountsIn);
     }
 
+    // Exit Hooks
+
     /**
      * @notice Top-level Vault hook for exits.
      * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
@@ -935,53 +952,102 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-    // Scaling factors
+    // Miscellaneous
 
-    function getScalingFactor(IERC20 token) external view returns (uint256) {
-        return _scalingFactor(token);
-    }
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time.
+     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     */
+    function getRate() public view virtual override returns (uint256) {
+        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        uint256 scalingFactor;
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
 
-        // prettier-ignore
-        if (token == _token0) { scalingFactor = _getScalingFactor0(); }
-        else if (token == _token1) { scalingFactor = _getScalingFactor1(); }
-        else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
-        else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
-        else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
-        else if (token == _token5) { scalingFactor = _getScalingFactor5(); }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return scalingFactor.mulDown(getTokenRate(token));
+        return StableMath._getRate(balances, currentAmp, virtualSupply);
     }
 
     /**
-     * @dev Overrides scaling factor getter to introduce the tokens' rates.
+     * @dev Overrides only owner action to allow setting the cache duration for the token rates
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
-        // There is no need to check the arrays length since both are based on `_getTotalTokens`
-        uint256 totalTokens = _getTotalTokens();
-        scalingFactors = new uint256[](totalTokens);
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(
+            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            BasePool,
+            BasePoolAuthorization
+        )
+        returns (bool)
+    {
+        return
+            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
+            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
+            super._isOwnerOnlyAction(actionId);
+    }
 
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
+    // Protocol Fee Exemption
+
+    /**
+     * @dev Returns the protocolFeeExemptTokenFlags flags. Note that this token list *excludes* BPT.
+     * Its length will be one less than the registered pool tokens, and it will correspond to the token
+     * list after removing the BPT token.
+     */
+    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
+        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
+        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
+
         // prettier-ignore
         {
-            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
-            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
-            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
-            if (totalTokens > 3) {
-                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
-            } else { return scalingFactors; }
-            if (totalTokens > 4) {
-                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
-            } else { return scalingFactors; }
-            if (totalTokens > 5) {
-                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
-            } else { return scalingFactors; }
+            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
+            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
+            if (tokensWithoutBPT > 2) {
+                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 3) {
+                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
+            } else { return protocolFeeExemptTokenFlags; }
+            if (tokensWithoutBPT > 4) {
+                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
+            } else { return protocolFeeExemptTokenFlags; }
         }
+    }
+
+    // Virtual Supply
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
+     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
+     */
+    function getVirtualSupply() external view returns (uint256) {
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
+        // remains constant.
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // one.
+        // This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
+    }
+
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply().sub(bptBalance);
     }
 
     // Token rates
@@ -1052,31 +1118,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
-    }
-
-    /**
-     * @dev Returns the protocolFeeExemptTokenFlags flags. Note that this token list *excludes* BPT.
-     * Its length will be one less than the registered pool tokens, and it will correspond to the token
-     * list after removing the BPT token.
-     */
-    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
-        uint256 tokensWithoutBPT = _getTotalTokens() - 1;
-        protocolFeeExemptTokenFlags = new bool[](tokensWithoutBPT);
-
-        // prettier-ignore
-        {
-            protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
-            protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
-            if (tokensWithoutBPT > 2) {
-                protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
-            } else { return protocolFeeExemptTokenFlags; }
-            if (tokensWithoutBPT > 3) {
-                protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
-            } else { return protocolFeeExemptTokenFlags; }
-            if (tokensWithoutBPT > 4) {
-                protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
-            } else { return protocolFeeExemptTokenFlags; }
-        }
     }
 
     /**
@@ -1156,26 +1197,204 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
-    /**
-     * @dev Overrides only owner action to allow setting the cache duration for the token rates
-     */
-    function _isOwnerOnlyAction(bytes32 actionId)
-        internal
-        view
-        virtual
-        override(
-            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
-            BasePool,
-            BasePoolAuthorization
-        )
-        returns (bool)
-    {
-        return
-            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
-            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+    // Scaling Factors
+
+    function getScalingFactor(IERC20 token) external view returns (uint256) {
+        return _scalingFactor(token);
     }
+
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        uint256 scalingFactor;
+
+        // prettier-ignore
+        if (token == _token0) { scalingFactor = _getScalingFactor0(); }
+        else if (token == _token1) { scalingFactor = _getScalingFactor1(); }
+        else if (token == _token2) { scalingFactor = _getScalingFactor2(); }
+        else if (token == _token3) { scalingFactor = _getScalingFactor3(); }
+        else if (token == _token4) { scalingFactor = _getScalingFactor4(); }
+        else if (token == _token5) { scalingFactor = _getScalingFactor5(); }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        return scalingFactor.mulDown(getTokenRate(token));
+    }
+
+    /**
+     * @dev Overrides scaling factor getter to introduce the tokens' rates.
+     */
+    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+        // There is no need to check the arrays length since both are based on `_getTotalTokens`
+        uint256 totalTokens = _getTotalTokens();
+        scalingFactors = new uint256[](totalTokens);
+
+        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
+        // prettier-ignore
+        {
+            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+            if (totalTokens > 3) {
+                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
+            } else { return scalingFactors; }
+            if (totalTokens > 4) {
+                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
+            } else { return scalingFactors; }
+            if (totalTokens > 5) {
+                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
+            } else { return scalingFactors; }
+        }
+    }
+
+    function _getScalingFactor0() internal view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() internal view returns (uint256) {
+        return _scalingFactor1;
+    }
+
+    function _getScalingFactor2() internal view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() internal view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    function _getScalingFactor4() internal view returns (uint256) {
+        return _scalingFactor4;
+    }
+
+    function _getScalingFactor5() internal view returns (uint256) {
+        return _scalingFactor5;
+    }
+
+    // Amplification
+
+    function getAmplificationParameter()
+        external
+        view
+        returns (
+            uint256 value,
+            bool isUpdating,
+            uint256 precision
+        )
+    {
+        (value, isUpdating) = _getAmplificationParameter();
+        precision = StableMath._AMP_PRECISION;
+    }
+
+    function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
+        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
+
+        // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
+
+        if (block.timestamp < endTime) {
+            isUpdating = true;
+
+            // We can skip checked arithmetic as:
+            //  - block.timestamp is always larger or equal to startTime
+            //  - endTime is always larger than startTime
+            //  - the value delta is bounded by the largest amplification parameter, which never causes the
+            //    multiplication to overflow.
+            // This also means that the following computation will never revert nor yield invalid results.
+            if (endValue > startValue) {
+                value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            } else {
+                value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
+            }
+        } else {
+            isUpdating = false;
+            value = endValue;
+        }
+    }
+
+    function _getAmplificationData()
+        private
+        view
+        returns (
+            uint256 startValue,
+            uint256 endValue,
+            uint256 startTime,
+            uint256 endTime
+        )
+    {
+        startValue = _packedAmplificationData.decodeUint(_AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
+        endValue = _packedAmplificationData.decodeUint(_AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
+        startTime = _packedAmplificationData.decodeUint(_AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
+        endTime = _packedAmplificationData.decodeUint(_AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
+    }
+
+    /**
+     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
+     * `endTime` is reached, when it will be `rawEndValue`.
+     *
+     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
+     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
+     */
+    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
+        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
+
+        uint256 duration = Math.sub(endTime, block.timestamp);
+        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
+
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
+
+        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
+
+        // daily rate = (endValue / currentValue) / duration * 1 day
+        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
+        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
+        uint256 dailyRate = endValue > currentValue
+            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
+            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
+        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
+
+        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
+    }
+
+    /**
+     * @dev Stops the amplification parameter change process, keeping the current value.
+     */
+    function stopAmplificationParameterUpdate() external authenticate {
+        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
+        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
+
+        _setAmplificationData(currentValue);
+    }
+
+    function _setAmplificationData(uint256 value) private {
+        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
+        emit AmpUpdateStopped(value);
+    }
+
+    function _setAmplificationData(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 startTime,
+        uint256 endTime
+    ) private {
+        _storeAmplificationData(startValue, endValue, startTime, endTime);
+        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
+    }
+
+    function _storeAmplificationData(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 startTime,
+        uint256 endTime
+    ) private {
+        _packedAmplificationData =
+            WordCodec.encodeUint(startValue, _AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
+            WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
+            WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
+            WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
+    }
+
+    // Low-level helpers
 
     // Convert from an index into an array including BPT (the Vault's registered token list), to an index
     // into an array excluding BPT (usually from user input, such as amountsIn/Out).
@@ -1244,208 +1463,5 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _upscaleArray(scaledWithBpt, scalingFactors);
 
         scaledWithoutBpt = _dropBptItem(scaledWithBpt);
-    }
-
-    /**
-     * @dev Returns the number of tokens in circulation.
-     *
-     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
-     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
-     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
-     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
-     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
-     */
-    function getVirtualSupply() external view returns (uint256) {
-        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
-        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
-        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
-        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
-        // remains constant.
-        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
-
-        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
-        // one.
-        // This addition cannot overflow due to the Vault's balance limits.
-        return _getVirtualSupply(cash + managed);
-    }
-
-    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
-    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-    // virtualSupply = totalSupply() - _balances[_bptIndex]
-    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
-        return totalSupply().sub(bptBalance);
-    }
-
-    /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
-     */
-    function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balancesIncludingBpt, _scalingFactors());
-
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
-    }
-
-    // Amplification
-
-    /**
-     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
-     * `endTime` is reached, when it will be `rawEndValue`.
-     *
-     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
-     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
-     */
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
-        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
-        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
-
-        uint256 duration = Math.sub(endTime, block.timestamp);
-        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
-
-        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
-
-        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
-
-        // daily rate = (endValue / currentValue) / duration * 1 day
-        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
-        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
-        uint256 dailyRate = endValue > currentValue
-            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
-            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
-        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
-
-        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
-    }
-
-    /**
-     * @dev Stops the amplification parameter change process, keeping the current value.
-     */
-    function stopAmplificationParameterUpdate() external authenticate {
-        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
-
-        _setAmplificationData(currentValue);
-    }
-
-    function getAmplificationParameter()
-        external
-        view
-        returns (
-            uint256 value,
-            bool isUpdating,
-            uint256 precision
-        )
-    {
-        (value, isUpdating) = _getAmplificationParameter();
-        precision = StableMath._AMP_PRECISION;
-    }
-
-    function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
-        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
-
-        // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
-
-        if (block.timestamp < endTime) {
-            isUpdating = true;
-
-            // We can skip checked arithmetic as:
-            //  - block.timestamp is always larger or equal to startTime
-            //  - endTime is always larger than startTime
-            //  - the value delta is bounded by the largest amplification parameter, which never causes the
-            //    multiplication to overflow.
-            // This also means that the following computation will never revert nor yield invalid results.
-            if (endValue > startValue) {
-                value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
-            } else {
-                value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
-            }
-        } else {
-            isUpdating = false;
-            value = endValue;
-        }
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
-        return StableMath._MAX_STABLE_TOKENS + 1;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
-    }
-
-    function _setAmplificationData(uint256 value) private {
-        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
-        emit AmpUpdateStopped(value);
-    }
-
-    function _setAmplificationData(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) private {
-        _storeAmplificationData(startValue, endValue, startTime, endTime);
-        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
-    }
-
-    function _storeAmplificationData(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) private {
-        _packedAmplificationData =
-            WordCodec.encodeUint(startValue, _AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
-            WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
-            WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
-            WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-    }
-
-    function _getAmplificationData()
-        private
-        view
-        returns (
-            uint256 startValue,
-            uint256 endValue,
-            uint256 startTime,
-            uint256 endTime
-        )
-    {
-        startValue = _packedAmplificationData.decodeUint(_AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
-        endValue = _packedAmplificationData.decodeUint(_AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
-        startTime = _packedAmplificationData.decodeUint(_AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-        endTime = _packedAmplificationData.decodeUint(_AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-    }
-
-    function _getScalingFactor0() internal view returns (uint256) {
-        return _scalingFactor0;
-    }
-
-    function _getScalingFactor1() internal view returns (uint256) {
-        return _scalingFactor1;
-    }
-
-    function _getScalingFactor2() internal view returns (uint256) {
-        return _scalingFactor2;
-    }
-
-    function _getScalingFactor3() internal view returns (uint256) {
-        return _scalingFactor3;
-    }
-
-    function _getScalingFactor4() internal view returns (uint256) {
-        return _scalingFactor4;
-    }
-
-    function _getScalingFactor5() internal view returns (uint256) {
-        return _scalingFactor5;
     }
 }
