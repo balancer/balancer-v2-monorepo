@@ -153,10 +153,10 @@ jobs:
       - name: Prepare Config
         run: yarn workspace @balancer-labs/v2-deployments ci:prepare-config
         env:
-          ALCHEMY_MAINNET_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT }}
-          ALCHEMY_POLYGON_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
-          ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
-          ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
+          MAINNET_RPC_ENDPOINT: ${{ secrets.ALCHEMY_MAINNET_ARCHIVE_ENDPOINT }}
+          POLYGON_RPC_ENDPOINT: ${{ secrets.ALCHEMY_POLYGON_ARCHIVE_ENDPOINT }}
+          ARBITRUM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_ARBITRUM_ARCHIVE_ENDPOINT }}
+          OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
 
