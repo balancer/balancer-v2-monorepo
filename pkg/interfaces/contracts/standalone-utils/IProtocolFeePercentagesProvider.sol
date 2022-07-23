@@ -86,8 +86,10 @@ library ProtocolFeeType {
     // extended with new fee types as they are registered, to keep them all in one place and reduce
     // likelihood of user error.
 
-    uint256 constant SWAP = 0;
-    uint256 constant FLASH_LOAN = 1;
-    uint256 constant YIELD = 2;
-    uint256 constant AUM = 3;
+    // solhint-disable private-vars-leading-underscore
+    uint256 internal constant SWAP = 0;
+    uint256 internal constant FLASH_LOAN = 1;
+    uint256 internal constant YIELD = 2;
+    uint256 internal constant AUM = 3;
+    // solhint-enable private-vars-leading-underscore
 }
