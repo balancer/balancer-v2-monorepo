@@ -5,6 +5,7 @@ import { Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
@@ -12,7 +13,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-describe('TribeBALMinterCoordinator', function () {
+describeForkTest('TribeBALMinterCoordinator', 'mainnet', 14850000, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -21,7 +22,7 @@ describe('TribeBALMinterCoordinator', function () {
 
   let mintRole: string;
 
-  const task = new Task('20220606-tribe-bal-minter-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const BAL = '0xba100000625a3754423978a60c9317c58a424e3D';
@@ -30,6 +31,7 @@ describe('TribeBALMinterCoordinator', function () {
   const TRIBE_BAL_MINT_AMOUNT = '34343783425791862574551';
 
   before('run task', async () => {
+    task = new Task('20220606-tribe-bal-minter-coordinator', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.deployedInstance('TribeBALMinterCoordinator');
   });

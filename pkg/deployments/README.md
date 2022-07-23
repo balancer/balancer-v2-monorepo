@@ -121,7 +121,6 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Relayer for Lido stETH wrapping/unwrapping       | [`20210812-lido-relayer`](./tasks/deprecated/20210812-lido-relayer)                                 |
 | Basic Investment Pools for few tokens            | [`20210907-investment-pool`](./tasks/deprecated/20210907-investment-pool)                           |
 | Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/deprecated/20210913-bal-arbitrum-merkle)                   |
-| Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/deprecated/20210920-vita-merkle)                                   |
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
 | Batch Relayer                                    | [`20211203-batch-relayer`](./tasks/deprecated/20211203-batch-relayer)                               |
