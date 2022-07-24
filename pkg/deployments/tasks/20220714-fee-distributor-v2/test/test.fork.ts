@@ -7,13 +7,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceToTimestamp, currentWeekTimestamp, DAY, HOUR, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
+import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { _TypedDataEncoder } from 'ethers/lib/utils';
 
-describe('FeeDistributor', function () {
+describeForkTest('FeeDistributor', 'mainnet', 15130000, function () {
   let veBALHolder: SignerWithAddress,
     veBALHolder2: SignerWithAddress,
     feeCollector: SignerWithAddress,
@@ -22,7 +23,7 @@ describe('FeeDistributor', function () {
 
   let VEBAL: Contract, BAL: Contract, WETH: Contract, voterProxy: Contract;
 
-  const task = new Task('20220714-fee-distributor-v2', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const VEBAL_HOLDER = '0xA2e7002E0FFC42e4228292D67C13a81FDd191870';
   const VEBAL_HOLDER_2 = '0x49a2dcc237a65cc1f412ed47e0594602f6141936';
@@ -39,6 +40,7 @@ describe('FeeDistributor', function () {
   let firstWeek: BigNumber;
 
   before('run task', async () => {
+    task = new Task('20220714-fee-distributor-v2', TaskMode.TEST, getForkedNetwork(hre));
     await advanceToTimestamp(1657756800 + HOUR);
     await task.run({ force: true });
     distributor = await task.instanceAt('FeeDistributor', task.output({ network: 'test' }).FeeDistributor);
