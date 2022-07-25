@@ -130,6 +130,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     IRateProvider internal immutable _rateProvider4;
     IRateProvider internal immutable _rateProvider5;
 
+    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
+    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
+
     // Set true if the corresponding token should have its yield exempted from protocol fees.
     // For example, the BPT of another PhantomStable Pool containing yield tokens.
     // Unlike the other numbered token variables, these indices correspond to the token array
@@ -139,9 +142,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     bool internal immutable _exemptFromYieldProtocolFeeToken2;
     bool internal immutable _exemptFromYieldProtocolFeeToken3;
     bool internal immutable _exemptFromYieldProtocolFeeToken4;
-
-    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
-    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
