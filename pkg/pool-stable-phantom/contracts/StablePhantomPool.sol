@@ -251,7 +251,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             // The exemptFromYieldFlag should never be set on a token without a rate provider.
             // This would cause division by zero errors downstream.
             _require(
-                !exemptFromYieldFlags[i] || rateProviders[i] != IRateProvider(0),
+                !(exemptFromYieldFlags[i] && rateProviders[i] == IRateProvider(0)),
                 Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER
             );
         }
