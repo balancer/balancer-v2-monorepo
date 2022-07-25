@@ -911,28 +911,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // Protocol Fee Exemption
 
     /**
-     * @dev Returns the protocolFeeExemptTokenFlags flags. Note that this token list *excludes* BPT.
-     * Its length will be one less than the registered pool tokens, and it will correspond to the token
-     * list after removing the BPT token.
+     * @dev Returns whether the token is exempt from protocol fees on the yield.
+     * If the BPT token is passed in (which doesn't make much sense, but shouldn't fail,
+     * since it is a valid pool token), the corresponding flag will be false.
      */
-    function getProtocolFeeExemptTokenFlags() external view returns (bool[] memory protocolFeeExemptTokenFlags) {
-        uint256 totalTokens = _getTotalTokens();
-        protocolFeeExemptTokenFlags = new bool[](totalTokens);
-
-        // The Pool will always have at least 3 tokens so we always load these three flags.
-        protocolFeeExemptTokenFlags[0] = _exemptFromYieldProtocolFeeToken0;
-        protocolFeeExemptTokenFlags[1] = _exemptFromYieldProtocolFeeToken1;
-        protocolFeeExemptTokenFlags[2] = _exemptFromYieldProtocolFeeToken2;
-
-        // Before we load the remaining flags we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return protocolFeeExemptTokenFlags;
-        protocolFeeExemptTokenFlags[3] = _exemptFromYieldProtocolFeeToken3;
-
-        if (totalTokens == 4) return protocolFeeExemptTokenFlags;
-        protocolFeeExemptTokenFlags[4] = _exemptFromYieldProtocolFeeToken4;
-
-        if (totalTokens == 5) return protocolFeeExemptTokenFlags;
-        protocolFeeExemptTokenFlags[5] = _exemptFromYieldProtocolFeeToken5;
+    function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
+        if (token == _token0) return _exemptFromYieldProtocolFeeToken0;
+        if (token == _token1) return _exemptFromYieldProtocolFeeToken1;
+        if (token == _token2) return _exemptFromYieldProtocolFeeToken2;
+        if (token == _token3) return _exemptFromYieldProtocolFeeToken3;
+        if (token == _token4) return _exemptFromYieldProtocolFeeToken4;
+        if (token == _token5) return _exemptFromYieldProtocolFeeToken5;
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
     }
 
     // Virtual Supply
