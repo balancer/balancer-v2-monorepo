@@ -121,6 +121,7 @@ const balancerErrorCodes: Record<string, string> = {
   '439': 'INDUCED_FAILURE',
   '440': 'EXPIRED_SIGNATURE',
   '441': 'MALFORMED_SIGNATURE',
+  '442': 'SAFE_CAST_VALUE_CANT_FIT_UINT64',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',

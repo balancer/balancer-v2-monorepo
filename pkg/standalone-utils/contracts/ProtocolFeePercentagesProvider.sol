@@ -19,13 +19,16 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IProtocolFeesCollector.sol"
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 
 contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, SingletonAuthentication {
+    using SafeCast for uint256;
+
     IProtocolFeesCollector private immutable _protocolFeesCollector;
 
     struct FeeTypeData {
-        uint256 value;
-        uint256 maximum;
+        uint64 value;
+        uint64 maximum;
         bool registered;
         string name;
     }
@@ -92,8 +95,8 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         _feeTypeData[feeType] = FeeTypeData({
             registered: true,
             name: name,
-            maximum: maximumValue,
-            value: initialValue
+            maximum: maximumValue.toUint64(),
+            value: initialValue.toUint64()
         });
 
         emit ProtocolFeeTypeRegistered(feeType, name, maximumValue);
@@ -123,7 +126,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         } else if (feeType == ProtocolFeeType.FLASH_LOAN) {
             _protocolFeesCollector.setFlashLoanFeePercentage(newValue);
         } else {
-            _feeTypeData[feeType].value = newValue;
+            _feeTypeData[feeType].value = newValue.toUint64();
         }
 
         emit ProtocolFeePercentageChanged(feeType, newValue);
