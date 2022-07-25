@@ -581,58 +581,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
-    // Protocol Fees
-
-    /**
-     * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
-     */
-    function _payDueProtocolFeeByInvariantIncrement(
-        uint256 previousInvariant,
-        uint256 amp,
-        uint256[] memory postSwapBalances,
-        uint256 virtualSupply,
-        uint256 protocolSwapFeePercentage
-    ) private {
-        // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
-        // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
-        // amount of BPT that would cause such an increase.
-        //
-        // Invariant growth is related to new BPT and supply by:
-        // invariant ratio = (bpt amount + supply) / supply
-        // With some manipulation, this becomes:
-        // (invariant ratio - 1) * supply = bpt amount
-        //
-        // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
-        // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
-
-        // We round down, favoring LP fees.
-
-        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
-        uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
-
-        if (invariantRatio > FixedPoint.ONE) {
-            // This condition should always be met outside of rounding errors (for non-zero swap fees).
-
-            uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
-                invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
-            );
-
-            _payProtocolFees(protocolFeeAmount);
-        }
-    }
-
-    /**
-     * @dev Pays protocol fees charged after a swap where `bptAmount` was either sent or received (i.e. a
-     * single-token join or exit).
-     */
-    function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
-        uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
-
-        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
-
-        _payProtocolFees(protocolFeeAmount);
-    }
-
     // Join Hooks
 
     /**
@@ -1027,6 +975,58 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
+    }
+
+    // Protocol Fees
+
+    /**
+     * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
+     */
+    function _payDueProtocolFeeByInvariantIncrement(
+        uint256 previousInvariant,
+        uint256 amp,
+        uint256[] memory postSwapBalances,
+        uint256 virtualSupply,
+        uint256 protocolSwapFeePercentage
+    ) private {
+        // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
+        // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
+        // amount of BPT that would cause such an increase.
+        //
+        // Invariant growth is related to new BPT and supply by:
+        // invariant ratio = (bpt amount + supply) / supply
+        // With some manipulation, this becomes:
+        // (invariant ratio - 1) * supply = bpt amount
+        //
+        // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
+        // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
+
+        // We round down, favoring LP fees.
+
+        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
+        uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
+
+        if (invariantRatio > FixedPoint.ONE) {
+            // This condition should always be met outside of rounding errors (for non-zero swap fees).
+
+            uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
+                invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
+            );
+
+            _payProtocolFees(protocolFeeAmount);
+        }
+    }
+
+    /**
+     * @dev Pays protocol fees charged after a swap where `bptAmount` was either sent or received (i.e. a
+     * single-token join or exit).
+     */
+    function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
+        uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
+
+        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
+
+        _payProtocolFees(protocolFeeAmount);
     }
 
     // Token rates
