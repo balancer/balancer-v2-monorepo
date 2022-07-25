@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/StablePhantomPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -146,6 +147,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
         IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
         string name;
         string symbol;
         IERC20[] tokens;
@@ -172,7 +174,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             params.bufferPeriodDuration,
             params.owner
         )
-        ProtocolFeeCache(params.vault, ProtocolFeeCache.DELEGATE_PROTOCOL_FEES_SENTINEL)
+        ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_FEES_SENTINEL)
     {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
         // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total

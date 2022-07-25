@@ -34,7 +34,7 @@ describe('StablePhantomPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('StablePhantomPoolFactory', { args: [vault.address] });
+    factory = await deploy('StablePhantomPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['baDAI', 'baUSDC', 'baUSDT'], { sorted: true });
