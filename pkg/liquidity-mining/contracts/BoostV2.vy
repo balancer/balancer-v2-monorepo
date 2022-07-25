@@ -231,6 +231,16 @@ def boost(_to: address, _amount: uint256, _endtime: uint256, _from: address = ms
 
 @external
 def migrate(_token_id: uint256):
+    self._migrate(_token_id)
+
+@external
+def migrate_many(_token_ids: uint256[16]):
+    for i in range(16):
+        if (_token_ids[i] == 0) break
+        self._migrate(_token_ids[i])
+
+@internal
+def _migrate(_token_id: uint256):
     assert not self.migrated[_token_id]
 
     self._boost(
