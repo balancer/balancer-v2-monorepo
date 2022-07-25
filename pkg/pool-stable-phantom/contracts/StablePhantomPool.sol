@@ -1049,19 +1049,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
-    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        // prettier-ignore
-        if (token == _token0) { return _rateProvider0; }
-        else if (token == _token1) { return _rateProvider1; }
-        else if (token == _token2) { return _rateProvider2; }
-        else if (token == _token3) { return _rateProvider3; }
-        else if (token == _token4) { return _rateProvider4; }
-        else if (token == _token5) { return _rateProvider5; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-    }
-
     /**
      * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
      * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
@@ -1097,6 +1084,18 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
+    }
+
+    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
+        if (token == _token0) return _rateProvider0;
+        if (token == _token1) return _rateProvider1;
+        if (token == _token2) return _rateProvider2;
+        if (token == _token3) return _rateProvider3;
+        if (token == _token4) return _rateProvider4;
+        if (token == _token5) return _rateProvider5;
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
     }
 
     /**
