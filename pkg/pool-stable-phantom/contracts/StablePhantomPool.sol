@@ -130,6 +130,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     IRateProvider internal immutable _rateProvider4;
     IRateProvider internal immutable _rateProvider5;
 
+    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
+    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
+
     // Set true if the corresponding token should have its yield exempted from protocol fees.
     // For example, the BPT of another PhantomStable Pool containing yield tokens.
     // Unlike the other numbered token variables, these indices correspond to the token array
@@ -139,9 +142,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     bool internal immutable _exemptFromYieldProtocolFeeToken2;
     bool internal immutable _exemptFromYieldProtocolFeeToken3;
     bool internal immutable _exemptFromYieldProtocolFeeToken4;
-
-    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
-    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -581,58 +581,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         }
     }
 
-    // Protocol Fees
-
-    /**
-     * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
-     */
-    function _payDueProtocolFeeByInvariantIncrement(
-        uint256 previousInvariant,
-        uint256 amp,
-        uint256[] memory postSwapBalances,
-        uint256 virtualSupply,
-        uint256 protocolSwapFeePercentage
-    ) private {
-        // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
-        // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
-        // amount of BPT that would cause such an increase.
-        //
-        // Invariant growth is related to new BPT and supply by:
-        // invariant ratio = (bpt amount + supply) / supply
-        // With some manipulation, this becomes:
-        // (invariant ratio - 1) * supply = bpt amount
-        //
-        // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
-        // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
-
-        // We round down, favoring LP fees.
-
-        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
-        uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
-
-        if (invariantRatio > FixedPoint.ONE) {
-            // This condition should always be met outside of rounding errors (for non-zero swap fees).
-
-            uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
-                invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
-            );
-
-            _payProtocolFees(protocolFeeAmount);
-        }
-    }
-
-    /**
-     * @dev Pays protocol fees charged after a swap where `bptAmount` was either sent or received (i.e. a
-     * single-token join or exit).
-     */
-    function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
-        uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
-
-        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
-
-        _payProtocolFees(protocolFeeAmount);
-    }
-
     // Join Hooks
 
     /**
@@ -952,45 +900,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-    // Miscellaneous
-
-    /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
-     */
-    function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balancesIncludingBpt, _scalingFactors());
-
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
-    }
-
-    /**
-     * @dev Overrides only owner action to allow setting the cache duration for the token rates
-     */
-    function _isOwnerOnlyAction(bytes32 actionId)
-        internal
-        view
-        virtual
-        override(
-            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
-            BasePool,
-            BasePoolAuthorization
-        )
-        returns (bool)
-    {
-        return
-            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
-            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
-            super._isOwnerOnlyAction(actionId);
-    }
-
     // Protocol Fee Exemption
 
     /**
@@ -1050,6 +959,76 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return totalSupply().sub(bptBalance);
     }
 
+    // BPT rate
+
+    /**
+     * @dev This function returns the appreciation of one BPT relative to the
+     * underlying tokens. This starts at 1 when the pool is created and grows over time.
+     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     */
+    function getRate() public view virtual override returns (uint256) {
+        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return StableMath._getRate(balances, currentAmp, virtualSupply);
+    }
+
+    // Protocol Fees
+
+    /**
+     * @dev Pay protocol fees charged after a swap where BPT was not involved (i.e. a regular swap).
+     */
+    function _payDueProtocolFeeByInvariantIncrement(
+        uint256 previousInvariant,
+        uint256 amp,
+        uint256[] memory postSwapBalances,
+        uint256 virtualSupply,
+        uint256 protocolSwapFeePercentage
+    ) private {
+        // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
+        // to swap fees), extract the portion that corresponds to protocol swap fees, and then compute the equivalent
+        // amount of BPT that would cause such an increase.
+        //
+        // Invariant growth is related to new BPT and supply by:
+        // invariant ratio = (bpt amount + supply) / supply
+        // With some manipulation, this becomes:
+        // (invariant ratio - 1) * supply = bpt amount
+        //
+        // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
+        // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
+
+        // We round down, favoring LP fees.
+
+        uint256 postSwapInvariant = StableMath._calculateInvariant(amp, postSwapBalances);
+        uint256 invariantRatio = postSwapInvariant.divDown(previousInvariant);
+
+        if (invariantRatio > FixedPoint.ONE) {
+            // This condition should always be met outside of rounding errors (for non-zero swap fees).
+
+            uint256 protocolFeeAmount = protocolSwapFeePercentage.mulDown(
+                invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
+            );
+
+            _payProtocolFees(protocolFeeAmount);
+        }
+    }
+
+    /**
+     * @dev Pays protocol fees charged after a swap where `bptAmount` was either sent or received (i.e. a
+     * single-token join or exit).
+     */
+    function _payDueProtocolFeeByBpt(uint256 bptAmount, uint256 protocolSwapFeePercentage) private {
+        uint256 feeAmount = _addSwapFeeAmount(bptAmount).sub(bptAmount);
+
+        uint256 protocolFeeAmount = feeAmount.mulDown(protocolSwapFeePercentage);
+
+        _payProtocolFees(protocolFeeAmount);
+    }
+
     // Token rates
 
     /**
@@ -1067,19 +1046,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             if (totalTokens > 3) { providers[3] = _rateProvider3; } else { return providers; }
             if (totalTokens > 4) { providers[4] = _rateProvider4; } else { return providers; }
             if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
-        }
-    }
-
-    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        // prettier-ignore
-        if (token == _token0) { return _rateProvider0; }
-        else if (token == _token1) { return _rateProvider1; }
-        else if (token == _token2) { return _rateProvider2; }
-        else if (token == _token3) { return _rateProvider3; }
-        else if (token == _token4) { return _rateProvider4; }
-        else if (token == _token5) { return _rateProvider5; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
         }
     }
 
@@ -1118,6 +1084,18 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         rate = _tokenRateCaches[token].getCurrentRate();
         (duration, expires) = _tokenRateCaches[token].getTimestamps();
+    }
+
+    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
+        if (token == _token0) return _rateProvider0;
+        if (token == _token1) return _rateProvider1;
+        if (token == _token2) return _rateProvider2;
+        if (token == _token3) return _rateProvider3;
+        if (token == _token4) return _rateProvider4;
+        if (token == _token5) return _rateProvider5;
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
     }
 
     /**
@@ -1394,7 +1372,46 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
     }
 
-    // Low-level helpers
+    // Permissioned functions
+
+    /**
+     * @dev Overrides only owner action to allow setting the cache duration for the token rates
+     */
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(
+            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            BasePool,
+            BasePoolAuthorization
+        )
+        returns (bool)
+    {
+        return
+            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
+            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
+            super._isOwnerOnlyAction(actionId);
+    }
+
+    // Helpers
+
+    /**
+     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
+     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
+     */
+    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
+        internal
+        view
+        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
+    {
+        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
+        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
+        _upscaleArray(scaledWithBpt, scalingFactors);
+
+        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
+    }
 
     // Convert from an index into an array including BPT (the Vault's registered token list), to an index
     // into an array excluding BPT (usually from user input, such as amountsIn/Out).
@@ -1447,21 +1464,5 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         for (uint256 i = 0; i < amountsWithBpt.length; i++) {
             amountsWithBpt[i] = i == _bptIndex ? bptAmount : amounts[i < _bptIndex ? i : i - 1];
         }
-    }
-
-    /**
-     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
-     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
-     */
-    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
-        internal
-        view
-        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
-    {
-        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
-        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
-        _upscaleArray(scaledWithBpt, scalingFactors);
-
-        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
     }
 }
