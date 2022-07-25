@@ -379,6 +379,14 @@ describe('ProtocolFeePercentagesProvider', function () {
           });
         });
 
+        context('when the maximum value is 0%', () => {
+          it('reverts', async () => {
+            await expect(provider.connect(authorized).registerFeeType(NEW_FEE_TYPE, '', 0, 0)).to.be.revertedWith(
+              'Invalid maximum fee percentage'
+            );
+          });
+        });
+
         context('when the maximum value is above 100%', () => {
           it('reverts', async () => {
             await expect(

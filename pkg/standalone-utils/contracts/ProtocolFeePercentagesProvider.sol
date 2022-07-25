@@ -86,7 +86,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
         uint256 maximumValue,
         uint256 initialValue
     ) private {
-        require(maximumValue <= _MAX_PROTOCOL_FEE_PERCENTAGE, "Invalid maximum fee percentage");
+        require((maximumValue > 0) && (maximumValue <= _MAX_PROTOCOL_FEE_PERCENTAGE), "Invalid maximum fee percentage");
         require(initialValue <= maximumValue, "Invalid initial percentage");
 
         _feeTypeData[feeType] = FeeTypeData({
