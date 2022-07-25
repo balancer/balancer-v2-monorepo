@@ -15,10 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolSplitCodeFactory.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 /**
  * @notice Base contract for Pool factories.
@@ -34,7 +35,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.
  * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
  * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory, SingletonAuthentication {
+abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSplitCodeFactory, SingletonAuthentication {
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
@@ -48,25 +49,15 @@ abstract contract BasePoolSplitCodeFactory is BaseSplitCodeFactory, SingletonAut
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /**
-     * @dev Returns true if `pool` was created by this factory.
-     */
-    function isPoolFromFactory(address pool) external view returns (bool) {
+    function isPoolFromFactory(address pool) external view override returns (bool) {
         return _isPoolFromFactory[pool];
     }
 
-    /**
-     * @dev Check whether the derived factory has been disabled.
-     */
-    function isDisabled() public view returns (bool) {
+    function isDisabled() public view override returns (bool) {
         return _disabled;
     }
 
-    /**
-     * @dev Disable the factory, preventing the creation of more pools. Already existing pools are unaffected.
-     * Once a factory is disabled, it cannot be re-enabled.
-     */
-    function disable() external authenticate {
+    function disable() external override authenticate {
         _ensureEnabled();
 
         _disabled = true;
