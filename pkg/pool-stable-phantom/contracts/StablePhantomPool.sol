@@ -254,12 +254,16 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.rateProviders[i];
-                exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
+                exemptFromYieldFlags[i] =
+                    params.exemptFromYieldProtocolFeeFlags[i] &&
+                    params.rateProviers[i] != IRateProvider(0);
             } else if (i == bptIndex) {
                 rateProviders[i] = IRateProvider(0);
             } else {
                 rateProviders[i] = params.rateProviders[i - 1];
-                exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i - 1];
+                exemptFromYieldFlags[i] =
+                    params.exemptFromYieldProtocolFeeFlags[i - 1] &&
+                    params.rateProviders[i] != IRateProvider(0);
             }
         }
 
