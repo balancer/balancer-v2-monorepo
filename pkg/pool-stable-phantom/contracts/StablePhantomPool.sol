@@ -1206,22 +1206,21 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 totalTokens = _getTotalTokens();
         scalingFactors = new uint256[](totalTokens);
 
+        // The Pool will always have at least 3 tokens so we always load these three scaling factors.
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        // prettier-ignore
-        {
-            scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
-            scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
-            scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
-            if (totalTokens > 3) {
-                scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
-            } else { return scalingFactors; }
-            if (totalTokens > 4) {
-                scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
-            } else { return scalingFactors; }
-            if (totalTokens > 5) {
-                scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
-            } else { return scalingFactors; }
-        }
+        scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_token0));
+        scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_token1));
+        scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_token2));
+
+        // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return scalingFactors;
+        scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_token3));
+
+        if (totalTokens == 4) return scalingFactors;
+        scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_token4));
+
+        if (totalTokens == 5) return scalingFactors;
+        scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
