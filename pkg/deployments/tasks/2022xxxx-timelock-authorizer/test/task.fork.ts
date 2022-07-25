@@ -14,7 +14,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 
-describeForkTest('TimelockAuthorizer', 'mainnet', 15130000, function () {
+describeForkTest.skip('TimelockAuthorizer', 'mainnet', 15130000, function () {
   let input: TimelockAuthorizerDeployment;
   let EVERYWHERE: string, DEFAULT_ADMIN_ROLE: string;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
