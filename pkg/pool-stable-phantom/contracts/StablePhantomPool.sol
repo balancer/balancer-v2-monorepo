@@ -900,7 +900,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
-
     // Protocol Fee Exemption
 
     /**
