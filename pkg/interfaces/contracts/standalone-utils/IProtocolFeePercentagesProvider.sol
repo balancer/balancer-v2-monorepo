@@ -49,6 +49,11 @@ interface IProtocolFeePercentagesProvider {
     ) external;
 
     /**
+     * @dev Returns true if `feeType` has been registered and can be queried.
+     */
+    function isValidFeeType(uint256 feeType) external view returns (bool);
+
+    /**
      * @dev Returns true if `value` is a valid percentage value for `feeType`.
      */
     function isValidFeeTypePercentage(uint256 feeType, uint256 value) external view returns (bool);

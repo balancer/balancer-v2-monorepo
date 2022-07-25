@@ -106,6 +106,10 @@ describe('ProtocolFeePercentagesProvider', function () {
     describe('fee type configuration', () => {
       function itReturnsNameAndMaximum(feeType: number, name: string, maximum: BigNumber, initialValue?: BigNumberish) {
         context(`fee type ${FeeType[feeType]}`, () => {
+          it('returns the fee type as valid', async () => {
+            expect(await provider.isValidFeeType(feeType)).to.equal(true);
+          });
+
           it('returns the fee type name', async () => {
             expect(await provider.getFeeTypeName(feeType)).to.equal(name);
           });
@@ -135,6 +139,10 @@ describe('ProtocolFeePercentagesProvider', function () {
       });
 
       context('invalid fee type', () => {
+        it('isValidFeeType returns false', async () => {
+          expect(await provider.isValidFeeType(INVALID_FEE_TYPE)).to.equal(false);
+        });
+
         it('get name reverts', async () => {
           await expect(provider.getFeeTypeName(INVALID_FEE_TYPE)).to.be.revertedWith('Non-existent fee type');
         });
@@ -416,6 +424,14 @@ describe('ProtocolFeePercentagesProvider', function () {
             expect(await provider.getFeeTypeName(NEW_FEE_TYPE)).to.equal('New Fee Type');
             expect(await provider.getFeeTypeMaximumPercentage(NEW_FEE_TYPE)).to.equal(NEW_FEE_TYPE_MAXIMUM);
             expect(await provider.getFeeTypePercentage(NEW_FEE_TYPE)).to.equal(initial);
+          });
+
+          it('marks the fee type as valid', async () => {
+            await provider
+              .connect(authorized)
+              .registerFeeType(NEW_FEE_TYPE, 'New Fee Type', NEW_FEE_TYPE_MAXIMUM, initial);
+
+            expect(await provider.isValidFeeType(NEW_FEE_TYPE)).to.equal(true);
           });
 
           it('emits a ProtocolFeeTypeRegistered event', async () => {

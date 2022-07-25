@@ -69,7 +69,7 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
     }
 
     modifier withValidFeeType(uint256 feeType) {
-        require(_feeTypeData[feeType].registered, "Non-existent fee type");
+        require(isValidFeeType(feeType), "Non-existent fee type");
         _;
     }
 
@@ -101,6 +101,10 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
 
         emit ProtocolFeeTypeRegistered(feeType, name, maximumValue);
         emit ProtocolFeePercentageChanged(feeType, initialValue);
+    }
+
+    function isValidFeeType(uint256 feeType) public view override returns (bool) {
+        return _feeTypeData[feeType].registered;
     }
 
     function isValidFeeTypePercentage(uint256 feeType, uint256 value)
