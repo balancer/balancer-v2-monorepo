@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "./RecoveryMode.sol";
 
@@ -38,29 +38,26 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     // Matches ProtocolFeesCollector
     uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
-    bool private immutable _delegatedProtocolFees;
+    bool private immutable _delegatedProtocolSwapFees;
 
-    // Only valid when `_delegatedProtocolFees` is false
+    // Only valid when `_delegatedProtocolSwapFees` is false
     uint256 private immutable _fixedProtocolSwapFeePercentage;
 
-    // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
-    IProtocolFeesCollector private immutable _protocolFeesCollector;
+    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     uint256 private _protocolSwapFeePercentageCache;
 
     event ProtocolSwapFeePercentageCacheUpdated(uint256 protocolSwapFeePercentage);
 
-    constructor(IVault vault, uint256 protocolSwapFeePercentage) {
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage) {
         // Protocol fees are delegated to the value reported by the Fee Collector if the sentinel value is passed.
-        bool delegatedProtocolFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
+        bool delegatedProtocolSwapFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
 
-        _delegatedProtocolFees = delegatedProtocolFees;
+        _delegatedProtocolSwapFees = delegatedProtocolSwapFees;
+        _protocolFeeProvider = protocolFeeProvider;
 
-        IProtocolFeesCollector protocolFeesCollector = vault.getProtocolFeesCollector();
-        _protocolFeesCollector = protocolFeesCollector;
-
-        if (delegatedProtocolFees) {
-            _updateProtocolSwapFeeCache(protocolFeesCollector);
+        if (delegatedProtocolSwapFees) {
+            _updateProtocolSwapFeeCache(protocolFeeProvider);
         } else {
             _require(
                 protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
@@ -75,7 +72,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         }
 
         // As `_fixedProtocolSwapFeePercentage` is immutable we must set a value, but just set to zero if it's not used.
-        _fixedProtocolSwapFeePercentage = delegatedProtocolFees ? 0 : protocolSwapFeePercentage;
+        _fixedProtocolSwapFeePercentage = delegatedProtocolSwapFees ? 0 : protocolSwapFeePercentage;
     }
 
     /**
@@ -97,18 +94,18 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     function updateProtocolSwapFeePercentageCache() external {
         _require(getProtocolFeeDelegation(), Errors.INVALID_OPERATION);
 
-        _updateProtocolSwapFeeCache(_protocolFeesCollector);
+        _updateProtocolSwapFeeCache(_protocolFeeProvider);
     }
 
     /**
      * @dev Returns whether this Pool tracks protocol fee changes in the Fee Collector.
      */
     function getProtocolFeeDelegation() public view returns (bool) {
-        return _delegatedProtocolFees;
+        return _delegatedProtocolSwapFees;
     }
 
-    function _updateProtocolSwapFeeCache(IProtocolFeesCollector protocolFeeCollector) private {
-        uint256 currentProtocolSwapFeePercentage = protocolFeeCollector.getSwapFeePercentage();
+    function _updateProtocolSwapFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider) private {
+        uint256 currentProtocolSwapFeePercentage = protocolFeeProvider.getFeeTypePercentage(ProtocolFeeType.SWAP);
 
         emit ProtocolSwapFeePercentageCacheUpdated(currentProtocolSwapFeePercentage);
 

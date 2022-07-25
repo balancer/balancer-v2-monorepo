@@ -18,6 +18,7 @@ describe('ProtocolFeeCache', () => {
   let protocolFeeCache: Contract;
   let admin: SignerWithAddress;
   let vault: Vault;
+  let protocolFeeProvider: Contract;
 
   before('setup signers', async () => {
     [, admin] = await ethers.getSigners();
@@ -25,6 +26,9 @@ describe('ProtocolFeeCache', () => {
 
   sharedBeforeEach('deploy vault', async () => {
     vault = await Vault.create({ admin });
+    protocolFeeProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
+      args: [vault.address, 1, 1],
+    });
   });
 
   context('with delegated fee', () => {
@@ -32,7 +36,10 @@ describe('ProtocolFeeCache', () => {
       await vault.setSwapFeePercentage(VAULT_PROTOCOL_FEE, { from: admin });
 
       // The sentinel value used to designate delegated fees is MAX_UINT256
-      protocolFeeCache = await deploy('MockProtocolFeeCache', { args: [vault.address, MAX_UINT256], from: admin });
+      protocolFeeCache = await deploy('MockProtocolFeeCache', {
+        args: [protocolFeeProvider.address, MAX_UINT256],
+        from: admin,
+      });
     });
 
     context('with recovery mode disabled', () => {
@@ -84,7 +91,7 @@ describe('ProtocolFeeCache', () => {
   context('with fixed fee', () => {
     sharedBeforeEach('deploy fixed fee cache', async () => {
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
-        args: [vault.address, FIXED_PROTOCOL_FEE],
+        args: [protocolFeeProvider.address, FIXED_PROTOCOL_FEE],
         from: admin,
       });
     });
@@ -100,7 +107,7 @@ describe('ProtocolFeeCache', () => {
 
       it('reverts if fee is too high', async () => {
         await expect(
-          deploy('MockProtocolFeeCache', { args: [vault.address, MAX_PROTOCOL_FEE.add(1)] })
+          deploy('MockProtocolFeeCache', { args: [protocolFeeProvider.address, MAX_PROTOCOL_FEE.add(1)] })
         ).to.be.revertedWith('SWAP_FEE_PERCENTAGE_TOO_HIGH');
       });
 
