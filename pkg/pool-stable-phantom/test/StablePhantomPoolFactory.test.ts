@@ -141,11 +141,11 @@ describe('StablePhantomPoolFactory', function () {
     });
 
     it('sets the protocol fee flags', async () => {
-      const expectedFlags = Array(tokens.length).fill(false);
-      expectedFlags[PROTOCOL_FEE_EXEMPT_TOKEN_IDX] = true;
-
-      const flags = await pool.getProtocolFeeExemptTokenFlags();
-      expect(flags).to.deep.equal(expectedFlags);
+      await tokens.asyncEach(async (token, i) => {
+        expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(
+          i == PROTOCOL_FEE_EXEMPT_TOKEN_IDX
+        );
+      });
     });
   });
 
