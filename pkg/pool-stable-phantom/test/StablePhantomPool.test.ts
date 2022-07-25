@@ -1126,6 +1126,21 @@ describe('StablePhantomPool', () => {
         });
       });
 
+      it('reverts when setting an exempt flag with no rate provider', async () => {
+        const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
+        tokens = await TokenList.create(tokenParams, { sorted: true, varyDecimals: true });
+
+        await expect(
+          StablePhantomPool.create({
+            tokens,
+            rateProviders: Array(tokens.length).fill(ZERO_ADDRESS),
+            exemptFromYieldProtocolFeeFlags: Array(tokens.length).fill(true),
+            tokenRateCacheDurations: new Array(tokens.length).fill(0),
+            owner,
+          })
+        ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+      });
+
       const getExpectedScalingFactor = async (token: Token): Promise<BigNumber> => {
         const index = tokens.indexOf(token);
         const rateProvider = rateProviders[index];
