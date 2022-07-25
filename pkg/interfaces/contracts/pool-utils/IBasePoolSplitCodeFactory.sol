@@ -24,6 +24,14 @@ interface IBasePoolSplitCodeFactory is IAuthentication {
     function isPoolFromFactory(address pool) external view returns (bool);
 
     /**
+     * @dev Returns the address of the last Pool created by this factory.
+     *
+     * This is typically only useful in complex Pool deployment schemes, where multiple subsystems need to know about
+     * each other. Note that this value will only be updated once construction of the last created Pool finishes.
+     */
+    function getLastCreatedPool() external view returns (address);
+
+    /**
      * @dev Check whether the derived factory has been disabled.
      */
     function isDisabled() external view returns (bool);

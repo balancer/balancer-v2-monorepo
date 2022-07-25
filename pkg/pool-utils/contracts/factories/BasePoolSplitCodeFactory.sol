@@ -37,6 +37,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  */
 abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSplitCodeFactory, SingletonAuthentication {
     mapping(address => bool) private _isPoolFromFactory;
+    address private _lastCreatedPool;
     bool private _disabled;
 
     event PoolCreated(address indexed pool);
@@ -51,6 +52,10 @@ abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSpl
 
     function isPoolFromFactory(address pool) external view override returns (bool) {
         return _isPoolFromFactory[pool];
+    }
+
+    function getLastCreatedPool() external view override returns (address) {
+        return _lastCreatedPool;
     }
 
     function isDisabled() public view override returns (bool) {
@@ -75,6 +80,8 @@ abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSpl
         address pool = super._create(constructorArgs);
 
         _isPoolFromFactory[pool] = true;
+        _lastCreatedPool = pool;
+
         emit PoolCreated(pool);
 
         return pool;

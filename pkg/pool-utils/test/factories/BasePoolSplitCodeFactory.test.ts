@@ -58,6 +58,10 @@ describe('BasePoolSplitCodeFactory', function () {
     it('does not track pools that were not created by the factory', async () => {
       expect(await factory.isPoolFromFactory(other.address)).to.be.false;
     });
+
+    it('returns the address of the last pool crated by the factory', async () => {
+      expect(await factory.getLastCreatedPool()).to.equal(pool);
+    });
   });
 
   describe('disable', () => {
