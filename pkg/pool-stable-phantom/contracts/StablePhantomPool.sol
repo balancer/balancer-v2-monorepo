@@ -236,8 +236,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // Do the same with exemptFromYieldProtocolFeeFlags
         bool[] memory exemptFromYieldFlags = new bool[](rateProviders.length);
 
-        IRateProvider[] memory tokensAndBPTRateProviders = new IRateProvider[](params.tokens.length + 1);
-        for (uint256 i = 0; i < tokensAndBPTRateProviders.length; ++i) {
+        for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.rateProviders[i];
                 exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
@@ -255,12 +254,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 !(exemptFromYieldFlags[i] && rateProviders[i] == IRateProvider(0)),
                 Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER
             );
-        }
-
-        // Do the same with exemptFromYieldProtocolFeeFlags
-        bool[] memory exemptFromYieldProtocolFeeFlags = new bool[](params.tokens.length);
-        for (uint256 i = 0; i < params.tokens.length; ++i) {
-            exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
