@@ -254,17 +254,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.rateProviders[i];
-                exemptFromYieldFlags[i] =
-                    params.exemptFromYieldProtocolFeeFlags[i] &&
-                    params.rateProviders[i] != IRateProvider(0);
+                exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i];
             } else if (i == bptIndex) {
                 rateProviders[i] = IRateProvider(0);
             } else {
                 rateProviders[i] = params.rateProviders[i - 1];
-                exemptFromYieldFlags[i] =
-                    params.exemptFromYieldProtocolFeeFlags[i - 1] &&
-                    params.rateProviders[i] != IRateProvider(0);
+                exemptFromYieldFlags[i] = params.exemptFromYieldProtocolFeeFlags[i - 1];
             }
+
+            // The exemptFromYieldFlag should never be set on a token without a rate provider.
+            // This would cause division by zero errors downstream.
+            _require(
+                !exemptFromYieldFlags[i] || rateProviders[i] != IRateProvider(0),
+                Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER
+            );
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
