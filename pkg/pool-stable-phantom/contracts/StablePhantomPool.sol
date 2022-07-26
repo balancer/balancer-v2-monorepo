@@ -198,7 +198,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     ) internal virtual override whenNotPaused returns (uint256) {
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
-                ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
+                ? _swapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
                 : super._swapGivenIn(swapRequest, balances, indexIn, indexOut, scalingFactors);
     }
 
@@ -223,7 +223,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     ) internal virtual override whenNotPaused returns (uint256) {
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
-                ? _onSwapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
+                ? _swapWithBpt(swapRequest, balances, indexIn, indexOut, scalingFactors)
                 : super._swapGivenOut(swapRequest, balances, indexIn, indexOut, scalingFactors);
     }
 
@@ -311,7 +311,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         }
     }
 
-    function _onSwapWithBpt(
+    function _swapWithBpt(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
         uint256 indexIn,

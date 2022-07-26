@@ -8,6 +8,8 @@ export type RawVaultDeployment = {
   admin?: SignerWithAddress;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
+  maxYieldValue?: BigNumberish;
+  maxAUMValue?: BigNumberish;
   from?: SignerWithAddress;
 };
 
@@ -15,6 +17,8 @@ export type VaultDeployment = {
   mocked: boolean;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
+  maxYieldValue: BigNumberish;
+  maxAUMValue: BigNumberish;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
 };
@@ -77,3 +81,10 @@ export type QueryBatchSwap = {
   assets: string[];
   funds: FundManagement;
 };
+
+export enum ProtocolFee {
+  SWAP = 0,
+  FLASH_LOAN = 1,
+  YIELD = 2,
+  AUM = 3,
+}
