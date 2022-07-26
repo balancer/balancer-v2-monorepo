@@ -445,9 +445,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) private returns (uint256) {
         _upscaleArray(balances, scalingFactors);
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-        // The protocol fee function does not mutate balancesWithoutBpt
-        _payProtocolFeesBeforeJoinExit(virtualSupply, balancesWithoutBpt);
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
 
         bool bptIsTokenIn = swapRequest.tokenIn == IERC20(this);
         (uint256 amp, ) = _getAmplificationParameter();
@@ -681,9 +679,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-        // The protocol fee function does not mutate balancesWithoutBpt
-        _payProtocolFeesBeforeJoinExit(virtualSupply, balancesWithoutBpt);
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return _joinExactTokensInForBPTOut(virtualSupply, balancesWithoutBpt, scalingFactors, userData);
@@ -807,9 +803,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) internal override returns (uint256, uint256[] memory) {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-        // The protocol fee function does not mutate balancesWithoutBpt
-        _payProtocolFeesBeforeJoinExit(virtualSupply, balancesWithoutBpt);
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
 
         if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(virtualSupply, balancesWithoutBpt, scalingFactors, userData);
@@ -964,12 +958,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * @dev Before joins or exits, calculate the invariant using the old rates for exempt tokens (i.e., the rates
      * at the time of the previous join or exit), in order to exclude the yield from the calculation.
      */
-    function _payProtocolFeesBeforeJoinExit(uint256 virtualSupply, uint256[] memory balancesWithoutBpt) private {
+    function _payProtocolFeesBeforeJoinExit(uint256[] memory balances) private returns (uint256, uint256[] memory) {
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
         // and apply the old rate. This function copies the values in `balancesWithoutBpt and so doesn't mutate it.
-        uint256[] memory balances = _adjustBalancesByTokenRatios(balancesWithoutBpt);
+        uint256[] memory adjustedBalances = _adjustBalancesByTokenRatios(balancesWithoutBpt);
 
-        uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, balances);
+        uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, adjustedBalances);
 
         // Charge the protocol fee in BPT, using the growth in invariant between _postJoinExitInvariant
         // and preJoinInvariant.
@@ -989,15 +985,18 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // We round down, favoring LP fees.
 
         uint256 invariantRatio = preJoinInvariant.divDown(_postJoinExitInvariant);
+        uint256 protocolFeeAmount;
         if (invariantRatio > FixedPoint.ONE) {
             // This condition should always be met outside of rounding errors (for non-zero swap fees).
 
-            uint256 protocolFeeAmount = getProtocolSwapFeePercentageCache().mulDown(
+            protocolFeeAmount = getProtocolSwapFeePercentageCache().mulDown(
                 invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
             );
 
             _payProtocolFees(protocolFeeAmount);
         }
+        // For this addition to overflow, the actual total supply would have already overflowed.
+        return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
     }
 
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
