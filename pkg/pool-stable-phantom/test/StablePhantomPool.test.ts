@@ -22,6 +22,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 
 describe('StablePhantomPool', () => {
   let lp: SignerWithAddress,
@@ -65,6 +66,150 @@ describe('StablePhantomPool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(6, { sorted: true });
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
+    });
+  });
+
+  describe.only('with non-18 decimal tokens', () => {
+    // Use non-round numbers
+    const SWAP_FEE_PERCENTAGE = fp(0.0234);
+    const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.34);
+
+    let tokens: TokenList;
+    let pool: StablePhantomPool;
+    let bptIndex: number;
+    let initialBalances: BigNumberish[];
+    let scalingFactors: BigNumber[];
+    let tokenRates: BigNumber[];
+    let protocolFeesCollector: Contract;
+
+    const rateProviders: Contract[] = [];
+    const tokenRateCacheDurations: BigNumberish[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
+
+    sharedBeforeEach('deploy tokens', async () => {
+      // Ensure we cover the full range, from 0 to 17
+      // Including common non-18 values of 6 and 8
+      tokens = await TokenList.create([
+        { decimals: 17, symbol: 'TK17' },
+        { decimals: 11, symbol: 'TK11' },
+        { decimals: 8, symbol: 'TK8' },
+        { decimals: 6, symbol: 'TK6' },
+        { decimals: 0, symbol: 'TK0' },
+      ]);
+      // NOTE: must sort after creation!
+      // TokenList.create with the sort option will strip off the decimals
+      tokens = tokens.sort();
+      tokenRates = Array.from({ length: tokens.length }, (_, i) => fp(1 + (i + 1) / 10));
+
+      // Balances are all "100"
+      initialBalances = Array(tokens.length + 1).fill(fp(100));
+      // Except the BPT token, which is 0
+      initialBalances[bptIndex] = fp(0);
+    });
+
+    function _skipBptIndex(bptIndex: number, index: number): number {
+      return index < bptIndex ? index : index - 1;
+    }
+
+    function _dropBptItem(bptIndex: number, items: BigNumberish[]): BigNumberish[] {
+      const result = [];
+      for (let i = 0; i < items.length - 1; i++) result[i] = items[i < bptIndex ? i : i + 1];
+      return result;
+    }
+
+    async function deployPool(
+      params: RawStablePhantomPoolDeployment = {},
+      rates: BigNumberish[] = [],
+      protocolSwapFeePercentage: BigNumber
+    ): Promise<void> {
+      // 0th token has no rate provider, to test that case
+      const rateProviderAddresses: Account[] = Array(tokens.length).fill(ZERO_ADDRESS);
+      tokenRateCacheDurations[0] = 0;
+      exemptFromYieldProtocolFeeFlags[0] = false;
+
+      for (let i = 1; i < tokens.length; i++) {
+        rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
+        rateProviderAddresses[i] = rateProviders[i].address;
+
+        await rateProviders[i].mockRate(rates[i] || fp(1));
+        tokenRateCacheDurations[i] = params.tokenRateCacheDurations ? params.tokenRateCacheDurations[i] : 0;
+        exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags
+          ? params.exemptFromYieldProtocolFeeFlags[i]
+          : false;
+      }
+
+      pool = await StablePhantomPool.create({
+        tokens,
+        rateProviders: rateProviderAddresses,
+        tokenRateCacheDurations,
+        exemptFromYieldProtocolFeeFlags,
+        owner,
+        admin,
+        ...params,
+      });
+
+      bptIndex = await pool.getBptIndex();
+      scalingFactors = await pool.getScalingFactors();
+
+      await pool.vault.setSwapFeePercentage(protocolSwapFeePercentage);
+      await pool.updateProtocolSwapFeePercentageCache();
+      protocolFeesCollector = await pool.vault.getFeesCollector();
+    }
+
+    context('when initialized', () => {
+      sharedBeforeEach('initialize pool', async () => {
+        // Set rates to 1 to test decimal scaling independently
+        const unaryRates = Array(tokens.length).fill(fp(1));
+
+        await deployPool(
+          { swapFeePercentage: SWAP_FEE_PERCENTAGE, amplificationParameter: AMPLIFICATION_PARAMETER },
+          unaryRates,
+          PROTOCOL_SWAP_FEE_PERCENTAGE
+        );
+
+        // This is the unscaled input for the balances. For instance, "100" is "100" for 0 decimals, and "100000000" for 6 decimals
+        const unscaledBalances = await pool.downscale(initialBalances);
+
+        for (let i = 0; i < initialBalances.length; i++) {
+          if (i != bptIndex) {
+            const token = tokens.get(_skipBptIndex(bptIndex, i));
+            await token.instance.mint(recipient.address, unscaledBalances[i]);
+          }
+        }
+        await tokens.approve({ from: recipient, to: pool.vault });
+        await pool.init({ recipient, initialBalances: unscaledBalances });
+      });
+
+      it('sets scaling factors', async () => {
+        const tokenScalingFactors: BigNumber[] = [];
+
+        for (let i = 0; i < tokens.length + 1; i++) {
+          if (i == bptIndex) {
+            tokenScalingFactors[i] = fp(1);
+          } else {
+            const j = _skipBptIndex(bptIndex, i);
+            tokenScalingFactors[i] = fp(10 ** (18 - tokens.get(j).decimals));
+          }
+        }
+
+        expect(tokenScalingFactors).to.deep.equal(scalingFactors);
+      });
+
+      it('initializes with uniform initial balances', async () => {
+        const balances = await pool.getBalances();
+        // Upscaling the result will recover the initial balances: all fp(100)
+        const upscaledBalances = await pool.upscale(balances);
+
+        expect(_dropBptItem(bptIndex, upscaledBalances)).to.deep.equal(_dropBptItem(bptIndex, initialBalances));
+      });
+
+      it('grants the invariant amount of BPT', async () => {
+        const balances = await pool.getBalances();
+        const invariant = await pool.estimateInvariant(await pool.upscale(balances));
+
+        // Initial balances should equal invariant
+        expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.001);
+      });
     });
   });
 
