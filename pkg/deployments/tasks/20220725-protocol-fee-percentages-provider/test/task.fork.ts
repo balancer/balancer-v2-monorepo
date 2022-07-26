@@ -65,7 +65,7 @@ describeForkTest('ProtocolFeePercentagesProvider', 'mainnet', 15130000, function
     itRevertsSettingFee(FeeType.Swap, fp(0.0857));
 
     context('with swapFeePercentage permission', () => {
-      before('grant setSwapFeePercentage permission to fees collector', async () => {
+      before('grant setSwapFeePercentage permission to fees provider', async () => {
         await authorizer
           .connect(admin)
           .grantRole(await actionId(feesCollector, 'setSwapFeePercentage'), protocolFeePercentagesProvider.address);
