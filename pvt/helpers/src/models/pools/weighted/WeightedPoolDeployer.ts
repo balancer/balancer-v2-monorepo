@@ -118,6 +118,7 @@ export default {
               aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
+            vault.protocolFeesProvider.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,

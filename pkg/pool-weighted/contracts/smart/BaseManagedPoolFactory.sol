@@ -64,6 +64,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         managementAumFeePercentage: poolParams.managementAumFeePercentage
                     }),
                     getVault(),
+                    _protocolFeeProvider,
                     owner,
                     pauseWindowDuration,
                     bufferPeriodDuration
