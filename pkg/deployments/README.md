@@ -91,6 +91,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Fee Distributor for veBAL holders V2                 | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
 | Batch Relayer V3                                     | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
 | Swap, join and exit simulations (queries)            | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
+| Protocol fee percentages provider                    | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 
 ## Scripts
 
