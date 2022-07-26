@@ -2271,12 +2271,15 @@ describe('ManagedPool', function () {
   describe('non-zero AUM protocol fees', () => {
     let authorizedVault: Contract;
     let feesCollector: Contract;
+    let protocolFeesProvider: Contract;
     let vault: Vault;
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
     const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.1);
+    const maxYieldValue = fp(1);
+    const maxAUMValue = fp(1);
 
     sharedBeforeEach('deploy and set protocol AUM fee', async () => {
       const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
@@ -2284,14 +2287,17 @@ describe('ManagedPool', function () {
       authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
       authorizedVault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
       feesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', { args: [authorizedVault.address] });
-
+      protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
+        args: [authorizedVault.address, maxYieldValue, maxAUMValue],
+      });
       const action = await actionId(feesCollector, 'setAumFeePercentage');
       await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
       await feesCollector.connect(admin).setAumFeePercentage(AUM_PROTOCOL_FEE_PERCENTAGE);
     });
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      vault = new Vault(false, authorizedVault, authorizer, admin);
+      // protocolFeesProvider unused for now
+      vault = new Vault(false, authorizedVault, authorizer, protocolFeesProvider, admin);
 
       const params = {
         tokens: poolTokens,
