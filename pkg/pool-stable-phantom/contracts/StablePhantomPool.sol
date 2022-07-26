@@ -406,8 +406,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexIn,
         uint256 indexOut
     ) private view returns (uint256 calculatedAmount) {
-        // Compute virtual BPT supply and token balances (sans BPT).
-        (, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+        uint256[] memory balances = _dropBptItem(balancesIncludingBpt);
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
 
