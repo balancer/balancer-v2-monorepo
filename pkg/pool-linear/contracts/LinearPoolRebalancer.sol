@@ -54,6 +54,10 @@ abstract contract LinearPoolRebalancer {
         _queries = queries;
     }
 
+    function getPool() external view returns (ILinearPool) {
+        return _pool;
+    }
+
     /**
      * @notice Rebalance a Linear Pool from an asset manager, to maintain optimal operating conditions.
      * @dev Use the asset manager mechanism to wrap/unwrap tokens as necessary to keep the main token

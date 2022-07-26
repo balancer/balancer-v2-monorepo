@@ -29,7 +29,8 @@ describe('AaveLinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('AaveLinearPoolFactory', { args: [vault.address] });
+    const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    factory = await deploy('AaveLinearPoolFactory', { args: [vault.address, queries.address] });
     creationTime = await currentTimestamp();
 
     const mainToken = await Token.create('DAI');
@@ -83,12 +84,14 @@ describe('AaveLinearPoolFactory', function () {
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
 
-    it('sets no asset managers', async () => {
+    it('sets a rebalancer as the asset manager', async () => {
       const poolId = await pool.getPoolId();
-      await tokens.asyncEach(async (token) => {
-        const info = await vault.getPoolTokenInfo(poolId, token);
-        expect(info.assetManager).to.equal(ZERO_ADDRESS);
-      });
+      // We only check the first token, but this will be the asset manager for both main and wrapped
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
+
+      const rebalancer = await deployedAt('AaveLinearPoolRebalancer', assetManager);
+
+      expect(await rebalancer.getPool()).to.equal(pool.address);
     });
 
     it('sets swap fee', async () => {

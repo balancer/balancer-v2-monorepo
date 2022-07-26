@@ -22,34 +22,46 @@ import "../LinearPool.sol";
 contract AaveLinearPool is LinearPool {
     ILendingPool private immutable _lendingPool;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20 mainToken,
-        IERC20 wrappedToken,
-        uint256 upperTarget,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
+    struct ConstructorArgs {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20 mainToken;
+        IERC20 wrappedToken;
+        address assetManager;
+        uint256 upperTarget;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+    }
+
+    constructor(ConstructorArgs memory args)
         LinearPool(
-            vault,
-            name,
-            symbol,
-            mainToken,
-            wrappedToken,
-            upperTarget,
-            new address[](2),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            args.vault,
+            args.name,
+            args.symbol,
+            args.mainToken,
+            args.wrappedToken,
+            args.upperTarget,
+            _toAssetManagerArray(args),
+            args.swapFeePercentage,
+            args.pauseWindowDuration,
+            args.bufferPeriodDuration,
+            args.owner
         )
     {
-        _lendingPool = IStaticAToken(address(wrappedToken)).LENDING_POOL();
-        _require(address(mainToken) == IStaticAToken(address(wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);
+        _lendingPool = IStaticAToken(address(args.wrappedToken)).LENDING_POOL();
+        _require(address(args.mainToken) == IStaticAToken(address(args.wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);
+    }
+
+    function _toAssetManagerArray(ConstructorArgs memory args) private pure returns (address[] memory) {
+        // We assign the same asset manager to both the main and wrapped tokens.
+        address[] memory assetManagers = new address[](2);
+        assetManagers[0] = args.assetManager;
+        assetManagers[1] = args.assetManager;
+
+        return assetManagers;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
