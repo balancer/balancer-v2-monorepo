@@ -203,6 +203,35 @@ abstract contract StablePoolStorage is BasePool {
         return amountsWithoutBpt;
     }
 
+    // Helpers
+
+    /**
+     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
+     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
+     */
+    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
+        internal
+        view
+        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
+    {
+        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
+        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
+        _upscaleArray(scaledWithBpt, scalingFactors);
+
+        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
+    }
+
+    function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
+        internal
+        view
+        returns (uint256[] memory amountsWithBpt)
+    {
+        amountsWithBpt = new uint256[](amounts.length + 1);
+        for (uint256 i = 0; i < amountsWithBpt.length; i++) {
+            amountsWithBpt[i] = i == getBptIndex() ? bptAmount : amounts[i < getBptIndex() ? i : i - 1];
+        }
+    }
+
     function _tokenScalingFactor(IERC20 token) internal view returns (uint256 scalingFactor) {
         // prettier-ignore
         if (token == _getToken0()) { scalingFactor = _getScalingFactor0(); }
