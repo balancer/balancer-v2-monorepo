@@ -29,7 +29,9 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "./StableMath.sol";
+import "./StablePoolStorage.sol";
+
+import "hardhat/console.sol";
 
 /**
  * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
@@ -44,45 +46,16 @@ import "./StableMath.sol";
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
  * actually owned outside the Vault) instead.
  */
-contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
+contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage, ProtocolFeeCache {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
     using StablePhantomPoolUserData for bytes;
     using BasePoolUserData for bytes;
 
-    // The Pool will register n+1 tokens, where n are the actual tokens in the Pool, and the other one is the BPT
-    // itself.
-    uint256 private immutable _totalTokens;
-
-    // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
-    // is therefore _MIN_TOKENS + 1.
-    uint256 private constant _MIN_TOKENS = 2;
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
     // We are preminting half of that value (rounded up).
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
-
-    // The index of BPT in the tokens and balances arrays, i.e. its index when calling IVault.registerTokens().
-    uint256 private immutable _bptIndex;
-
-    // These are the registered tokens: one of them will be the BPT.
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
-    IERC20 internal immutable _token4;
-    IERC20 internal immutable _token5;
-
-    // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
-    // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
-    // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
-
-    uint256 internal immutable _scalingFactor0;
-    uint256 internal immutable _scalingFactor1;
-    uint256 internal immutable _scalingFactor2;
-    uint256 internal immutable _scalingFactor3;
-    uint256 internal immutable _scalingFactor4;
-    uint256 internal immutable _scalingFactor5;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -172,13 +145,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             params.bufferPeriodDuration,
             params.owner
         )
+        StablePoolStorage(_insertSorted(params.tokens, IERC20(this)))
         ProtocolFeeCache(params.vault, ProtocolFeeCache.DELEGATE_PROTOCOL_FEES_SENTINEL)
     {
-        // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
-        // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total
-        // tokens for this contract is actually three, including the BPT).
-        _require(params.tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
-
         InputHelpers.ensureInputLengthMatch(
             params.tokens.length,
             params.rateProviders.length,
@@ -188,25 +157,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
-
-        IERC20[] memory registeredTokens = _insertSorted(params.tokens, IERC20(this));
-        uint256 totalTokens = registeredTokens.length;
-        _totalTokens = totalTokens;
-
-        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = registeredTokens[0];
-        _token1 = registeredTokens[1];
-        _token2 = registeredTokens[2];
-        _token3 = totalTokens > 3 ? registeredTokens[3] : IERC20(0);
-        _token4 = totalTokens > 4 ? registeredTokens[4] : IERC20(0);
-        _token5 = totalTokens > 5 ? registeredTokens[5] : IERC20(0);
-
-        _scalingFactor0 = _computeScalingFactor(registeredTokens[0]);
-        _scalingFactor1 = _computeScalingFactor(registeredTokens[1]);
-        _scalingFactor2 = _computeScalingFactor(registeredTokens[2]);
-        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(registeredTokens[3]) : 0;
-        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(registeredTokens[4]) : 0;
-        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(registeredTokens[5]) : 0;
 
         uint256 initialAmp = Math.mul(params.amplificationParameter, StableMath._AMP_PRECISION);
         _setAmplificationData(initialAmp);
@@ -218,15 +168,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             }
         }
 
-        // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
-        // this ordering to be able to identify it when balances arrays are received. Since the tokens array is sorted,
-        // we need to find the correct BPT index in the array returned by `_insertSorted()`.
-        // See `IVault.getPoolTokens()` for more information regarding token ordering.
         uint256 bptIndex;
         for (bptIndex = params.tokens.length; bptIndex > 0 && params.tokens[bptIndex - 1] > IERC20(this); bptIndex--) {
             // solhint-disable-previous-line no-empty-blocks
         }
-        _bptIndex = bptIndex;
 
         // The rate providers are stored as immutable state variables, and for simplicity when accessing those we'll
         // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
@@ -274,19 +219,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
     function getMinimumBpt() external pure returns (uint256) {
         return _getMinimumBpt();
-    }
-
-    function getBptIndex() external view returns (uint256) {
-        return _bptIndex;
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
-        return StableMath._MAX_STABLE_TOKENS + 1;
-    }
-
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokens;
     }
 
     // Swap Hooks
@@ -521,7 +453,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
         } else {
             // joinSwap
-            uint256[] memory amountsIn = new uint256[](_getTotalTokens() - 1);
+            uint256[] memory amountsIn = new uint256[](balancesWithoutBpt.length);
             amountsIn[_skipBptIndex(indexIn)] = amount;
 
             amountOut = StableMath._calcBptOutGivenExactTokensIn(
@@ -556,7 +488,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         if (bptIsTokenIn) {
             // joinSwap
-            uint256[] memory amountsOut = new uint256[](_getTotalTokens() - 1);
+            uint256[] memory amountsOut = new uint256[](balancesWithoutBpt.length);
             amountsOut[_skipBptIndex(indexOut)] = amount;
 
             amountIn = StableMath._calcBptInGivenExactTokensOut(
@@ -599,7 +531,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
         _cacheTokenRatesIfNecessary();
 
         return
@@ -626,7 +558,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, _getTotalTokens());
+        InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, scalingFactors.length);
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
 
         (uint256 amp, ) = _getAmplificationParameter();
@@ -646,7 +578,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 initialBpt = _PREMINTED_TOKEN_BALANCE.sub(bptAmountOut);
 
         _mintPoolTokens(sender, initialBpt);
-        amountsInIncludingBpt[_bptIndex] = initialBpt;
+        amountsInIncludingBpt[getBptIndex()] = initialBpt;
 
         return (bptAmountOut, amountsInIncludingBpt);
     }
@@ -768,7 +700,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override returns (uint256[] memory, uint256[] memory) {
+    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
         // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
         if (!userData.isRecoveryModeExitKind()) {
             _cacheTokenRatesIfNecessary();
@@ -856,7 +788,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) private returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         // amountsOut are unscaled, and do not include BPT
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, _getTotalTokens() - 1);
+        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length - 1);
 
         // The user-provided amountsIn is unscaled and does not include BPT, so we address that.
         (uint256[] memory scaledAmountsOutWithBpt, uint256[] memory scaledAmountsOutWithoutBpt) = _upscaleWithoutBpt(
@@ -1217,30 +1149,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_token5));
     }
 
-    function _getScalingFactor0() internal view returns (uint256) {
-        return _scalingFactor0;
-    }
-
-    function _getScalingFactor1() internal view returns (uint256) {
-        return _scalingFactor1;
-    }
-
-    function _getScalingFactor2() internal view returns (uint256) {
-        return _scalingFactor2;
-    }
-
-    function _getScalingFactor3() internal view returns (uint256) {
-        return _scalingFactor3;
-    }
-
-    function _getScalingFactor4() internal view returns (uint256) {
-        return _scalingFactor4;
-    }
-
-    function _getScalingFactor5() internal view returns (uint256) {
-        return _scalingFactor5;
-    }
-
     // Amplification
 
     function getAmplificationParameter()
@@ -1406,46 +1314,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         scaledWithoutBpt = _dropBptItem(scaledWithBpt);
     }
 
-    // Convert from an index into an array including BPT (the Vault's registered token list), to an index
-    // into an array excluding BPT (usually from user input, such as amountsIn/Out).
-    // `index` must not be the BPT token index itself.
-    function _skipBptIndex(uint256 index) internal view returns (uint256) {
-        // Currently this is never called with an index passed in from user input, so this check
-        // should not be necessary. Included for completion (and future proofing).
-        _require(index != _bptIndex, Errors.OUT_OF_BOUNDS);
-
-        return index < _bptIndex ? index : index.sub(1);
-    }
-
-    // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
-    // to an index into an array excluding BPT (the Vault's registered token list).
-    // `index` must not be the BPT token index itself, if it is the last element, and the result must be
-    // in the range of registered tokens.
-    function _addBptIndex(uint256 index) internal view returns (uint256 indexWithBpt) {
-        // This can be called from an index passed in from user input.
-        indexWithBpt = index < _bptIndex ? index : index.add(1);
-
-        _require(indexWithBpt < _getTotalTokens() && indexWithBpt != _bptIndex, Errors.OUT_OF_BOUNDS);
-    }
-
-    /**
-     * @dev Remove the item at `_bptIndex` from an arbitrary array (e.g., amountsIn).
-     */
-    function _dropBptItem(uint256[] memory amounts) internal view returns (uint256[] memory) {
-        uint256[] memory amountsWithoutBpt = new uint256[](amounts.length - 1);
-        for (uint256 i = 0; i < amountsWithoutBpt.length; i++) {
-            amountsWithoutBpt[i] = amounts[i < _bptIndex ? i : i + 1];
-        }
-
-        return amountsWithoutBpt;
-    }
-
     /**
      * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
      * current Pool balances.
      */
     function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
-        return (_getVirtualSupply(balances[_bptIndex]), _dropBptItem(balances));
+        return (_getVirtualSupply(balances[getBptIndex()]), _dropBptItem(balances));
     }
 
     function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
@@ -1455,7 +1329,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     {
         amountsWithBpt = new uint256[](amounts.length + 1);
         for (uint256 i = 0; i < amountsWithBpt.length; i++) {
-            amountsWithBpt[i] = i == _bptIndex ? bptAmount : amounts[i < _bptIndex ? i : i - 1];
+            amountsWithBpt[i] = i == getBptIndex() ? bptAmount : amounts[i < getBptIndex() ? i : i - 1];
         }
     }
 }
