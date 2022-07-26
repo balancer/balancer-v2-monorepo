@@ -18,8 +18,8 @@ import { Interface } from '@ethersproject/abi';
 export default class Vault {
   mocked: boolean;
   instance: Contract;
-  authorizer?: Contract;
-  protocolFeesProvider?: Contract;
+  authorizer: Contract;
+  protocolFeesProvider: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
 
@@ -34,8 +34,8 @@ export default class Vault {
   constructor(
     mocked: boolean,
     instance: Contract,
-    authorizer?: Contract,
-    protocolFeesProvider?: Contract,
+    authorizer: Contract,
+    protocolFeesProvider: Contract,
     admin?: SignerWithAddress
   ) {
     this.mocked = mocked;

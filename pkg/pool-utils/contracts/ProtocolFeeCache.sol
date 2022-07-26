@@ -17,58 +17,72 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
+
 import "./RecoveryMode.sol";
 
 /**
- * @title Store a fixed or cache the delegated Protocol Swap Fee Percentage
- * @author Balancer Labs
  * @dev The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
- * value), so we need to fetch it ourselves from the Vault's ProtocolFeeCollector. However, this value changes so
- * rarely that it doesn't make sense to perform the required calls to get the current value in every single swap.
- * Instead, we keep a local copy that can be permissionlessly updated by anyone with the real value.
+ * value), so for swaps that need this value, we would have to to fetch it ourselves from the
+ * ProtocolFeePercentagesProvider. Additionally, other protocol fee types (such as Yield or AUM) can only be obtained
+ * by making said call.
  *
- * When initialized with the sentinel value, the fee is delegated, meaning the mutable protocol swap fee cache is
- * set to the current value stored in the Vault's ProtocolFeeCollector, and can be updated by anyone with a call to
- * `updateProtocolSwapFeePercentageCache`. Any other value means the protocol swap fee is fixed, so it is instead
+ * However, these values change so rarely that it doesn't make sense to perform the required calls to get the current
+ * values in every single user interaction. Instead, we keep a local copy that can be permissionlessly updated by anyone
+ * with the real value. We also pack these values together, performing a single storage read to get them all.
+ *
+ * When initialized with a special sentinel value, the swap fee is delegated, meaning the mutable protocol swap fee
+ * cache is set to the current value stored in the ProtocolFeePercentagesProvider, and can be updated by anyone with a
+ * call to `updateProtocolFeePercentageCache`. Any other value means the protocol swap fee is fixed, so it is instead
  * stored in the immutable `_fixedProtocolSwapFeePercentage`.
  */
 abstract contract ProtocolFeeCache is RecoveryMode {
-    uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
+    using SafeCast for uint256;
 
-    // Matches ProtocolFeesCollector
-    uint256 private constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
+
+    // Protocol Fee Percentages can never be larger than 100% (1e18), which fits in ~59 bits, so using 64 for each type
+    // is sufficient.
+    struct FeeTypeCache {
+        uint64 swapFee;
+        uint64 YieldFee;
+        uint64 aumFee;
+    }
+
+    FeeTypeCache private _cache;
+
+    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolSwapFeePercentage);
+
+    // Swap fees can be set to a fixed value at construction, or delegated to the ProtocolFeePercentagesProvider if
+    // passing the special sentinel value.
+    uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
 
     bool private immutable _delegatedProtocolSwapFees;
 
     // Only valid when `_delegatedProtocolSwapFees` is false
     uint256 private immutable _fixedProtocolSwapFeePercentage;
 
-    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
-
-    uint256 private _protocolSwapFeePercentageCache;
-
-    event ProtocolSwapFeePercentageCacheUpdated(uint256 protocolSwapFeePercentage);
-
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage) {
-        // Protocol fees are delegated to the value reported by the Fee Collector if the sentinel value is passed.
+        // Protocol fees are delegated to the value reported by the ProtocolFeePercentagesProvider if the sentinel value
+        // is passed.
         bool delegatedProtocolSwapFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
 
         _delegatedProtocolSwapFees = delegatedProtocolSwapFees;
         _protocolFeeProvider = protocolFeeProvider;
 
         if (delegatedProtocolSwapFees) {
-            _updateProtocolSwapFeeCache(protocolFeeProvider);
+            _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP);
         } else {
             _require(
-                protocolSwapFeePercentage <= _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE,
+                protocolSwapFeePercentage <= protocolFeeProvider.getFeeTypeMaximumPercentage(ProtocolFeeType.SWAP),
                 Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
             );
 
             // We cannot set `_fixedProtocolSwapFeePercentage` here due to it being immutable so instead we must set it
             // in the main function scope with a value based on whether protocol fees are delegated.
 
-            // Emit an event as we do in `_updateProtocolSwapFeeCache` to appear the same to offchain indexers.
-            emit ProtocolSwapFeePercentageCacheUpdated(protocolSwapFeePercentage);
+            // Emit an event as we do in `_updateProtocolFeeCache` to appear the same to offchain indexers.
+            emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.SWAP, protocolSwapFeePercentage);
         }
 
         // As `_fixedProtocolSwapFeePercentage` is immutable we must set a value, but just set to zero if it's not used.
@@ -76,39 +90,59 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
-     * @dev Returns the current protocol swap fee percentage. If `getProtocolFeeDelegation()` is false, this value is
-     * immutable. Alternatively, it will track the global fee percentage set in the Fee Collector.
+     * @dev Returns the cached protocol fee percentage. If `getProtocolSwapFeeDelegation()` is false, this value is
+     * immutable for swap fee queries. Alternatively, it will track the global fee percentage set in the
+     * ProtocolFeePercentagesProvider.
      */
-    function getProtocolSwapFeePercentageCache() public view returns (uint256) {
+    function getProtocolFeePercentageCache(uint256 feeType) public view returns (uint256) {
         if (inRecoveryMode()) {
             return 0;
+        }
+
+        if (feeType == ProtocolFeeType.SWAP) {
+            return getProtocolSwapFeeDelegation() ? _cache.swapFee : _fixedProtocolSwapFeePercentage;
+        } else if (feeType == ProtocolFeeType.YIELD) {
+            return _cache.YieldFee;
+        } else if (feeType == ProtocolFeeType.AUM) {
+            return _cache.aumFee;
         } else {
-            return getProtocolFeeDelegation() ? _protocolSwapFeePercentageCache : _fixedProtocolSwapFeePercentage;
+            _revert(Errors.UNHANDLED_FEE_TYPE);
         }
     }
 
     /**
-     * @dev Can be called by anyone to update the cache swap fee percentage (when delegated).
+     * @dev Can be called by anyone to update the cached fee percentages (swap fee is only updated when delegated).
      * Updates the cache to the latest value set by governance.
      */
-    function updateProtocolSwapFeePercentageCache() external {
-        _require(getProtocolFeeDelegation(), Errors.INVALID_OPERATION);
+    function updateProtocolFeePercentageCache() external {
+        if (getProtocolSwapFeeDelegation()) {
+            _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP);
+        }
 
-        _updateProtocolSwapFeeCache(_protocolFeeProvider);
+        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.YIELD);
+        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.AUM);
     }
 
     /**
-     * @dev Returns whether this Pool tracks protocol fee changes in the Fee Collector.
+     * @dev Returns whether this Pool tracks protocol swap fee changes in the IProtocolFeePercentagesProvider.
      */
-    function getProtocolFeeDelegation() public view returns (bool) {
+    function getProtocolSwapFeeDelegation() public view returns (bool) {
         return _delegatedProtocolSwapFees;
     }
 
-    function _updateProtocolSwapFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider) private {
-        uint256 currentProtocolSwapFeePercentage = protocolFeeProvider.getFeeTypePercentage(ProtocolFeeType.SWAP);
+    function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeType) private {
+        uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(feeType);
 
-        emit ProtocolSwapFeePercentageCacheUpdated(currentProtocolSwapFeePercentage);
+        if (feeType == ProtocolFeeType.SWAP) {
+            _cache.swapFee = currentValue.toUint64();
+        } else if (feeType == ProtocolFeeType.YIELD) {
+            _cache.YieldFee = currentValue.toUint64();
+        } else if (feeType == ProtocolFeeType.AUM) {
+            _cache.aumFee = currentValue.toUint64();
+        } else {
+            _revert(Errors.UNHANDLED_FEE_TYPE);
+        }
 
-        _protocolSwapFeePercentageCache = currentProtocolSwapFeePercentage;
+        emit ProtocolFeePercentageCacheUpdated(feeType, currentValue);
     }
 }

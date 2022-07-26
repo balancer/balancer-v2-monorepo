@@ -395,7 +395,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     ) private returns (uint256 calculatedAmount) {
         // Compute virtual BPT supply and token balances (sans BPT).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
@@ -454,7 +454,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         _upscaleArray(balances, scalingFactors);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
         (uint256 amp, ) = _getAmplificationParameter();
 
         bool bptIsTokenIn = swapRequest.tokenIn == IERC20(this);
