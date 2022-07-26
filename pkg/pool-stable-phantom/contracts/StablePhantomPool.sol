@@ -966,15 +966,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * at the time of the previous join or exit), in order to exclude the yield from the calculation.
      */
     function _payProtocolFeesBeforeJoinExit(uint256 virtualSupply, uint256[] memory balancesWithoutBpt) private {
-        // Copy so that we don't mutate the values in the caller
-        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
-        for (uint256 i = 0; i < balancesWithoutBpt.length; i++) {
-            balances[i] = balancesWithoutBpt[i];
-        }
-
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
-        // and apply the old rate.
-        _adjustBalancesByTokenRatios(balances);
+        // and apply the old rate. This function copies the values in `balancesWithoutBpt and so doesn't mutate it.
+        uint256[] memory balances = _adjustBalancesByTokenRatios(balancesWithoutBpt);
 
         uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, balances);
 
@@ -1068,10 +1062,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
      * Mutates the balances in place. `_getTokenRateRatios` includes BPT, so we need to remove that ratio to
      * match the cardinality of balancesWithoutBpt.
      */
-    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt) internal view {
+    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
+        internal
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
         uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios());
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            balancesWithoutBpt[i] = FixedPoint.mulDown(balancesWithoutBpt[i], ratiosWithoutBpt[i]);
+            balances[i] = FixedPoint.mulDown(balancesWithoutBpt[i], ratiosWithoutBpt[i]);
         }
     }
 
