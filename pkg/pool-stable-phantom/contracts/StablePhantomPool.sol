@@ -31,8 +31,6 @@ import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "./StablePoolStorage.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @dev StablePool with preminted BPT and rate providers for each token, allowing for e.g. wrapped tokens with a known
  * price ratio, such as Compound's cTokens.

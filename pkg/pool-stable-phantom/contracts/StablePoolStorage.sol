@@ -21,7 +21,6 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "./StableMath.sol";
-import "hardhat/console.sol";
 
 abstract contract StablePoolStorage is BasePool {
     using FixedPoint for uint256;
