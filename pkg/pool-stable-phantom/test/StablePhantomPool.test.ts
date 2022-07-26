@@ -68,6 +68,61 @@ describe('StablePhantomPool', () => {
     });
   });
 
+  describe('with non-18 decimal tokens', () => {
+    const NUM_TOKENS = 5;
+    const SWAP_FEE_PERCENTAGE = fp(0.02);
+
+    let tokens: TokenList;
+    let pool: StablePhantomPool;
+    let bptIndex: number;
+
+    const rateProviders: Contract[] = [];
+    const tokenRateCacheDurations: number[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
+
+    sharedBeforeEach('deploy tokens', async () => {
+      // Ensure we cover the full range, from 0 to 17
+      // Including common non-18 values of 6 and 8
+      tokens = await TokenList.create(
+        [
+          { decimals: 17, symbol: 'TK17' },
+          { decimals: 11, symbol: 'TK11' },
+          { decimals: 8, symbol: 'TK8' },
+          { decimals: 6, symbol: 'TK6' },
+          { decimals: 0, symbol: 'TK0' },
+        ]
+      );
+      // NOTE: must sort after creation!
+      // TokenList.create with the sort option will strip off the decimals
+      tokens = tokens.sort();
+    });
+
+    async function deployPool(
+      params: RawStablePhantomPoolDeployment = {},
+      rates: BigNumberish[] = [],
+      durations: number[] = []
+    ): Promise<void> {
+      for (let i = 0; i < tokens.length; i++) {
+        rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
+        await rateProviders[i].mockRate(rates[i] || fp(1));
+        tokenRateCacheDurations[i] = MONTH + i;
+        exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags? params.exemptFromYieldProtocolFeeFlags[i] : false;
+      }
+
+      pool = await StablePhantomPool.create({
+        tokens,
+        rateProviders,
+        tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
+        exemptFromYieldProtocolFeeFlags,
+        owner,
+        admin,
+        ...params,
+      });
+
+      bptIndex = await pool.getBptIndex();
+    }
+  });
+
   function itBehavesAsStablePhantomPool(numberOfTokens: number): void {
     let pool: StablePhantomPool, tokens: TokenList;
     let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
