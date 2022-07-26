@@ -803,6 +803,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         return totalSupply().sub(bptBalance);
     }
 
+    /**
+     * @dev Same as `_dropBptItem` in StablePoolStorage, except the virtual supply is also returned, and `balances`
+     * is assumed to be the current Pool balances.
+     */
+    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
+        return (_getVirtualSupply(balances[getBptIndex()]), _dropBptItem(balances));
+    }
+
     // BPT rate
 
     /**
@@ -1169,15 +1177,5 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
             (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
             super._isOwnerOnlyAction(actionId);
-    }
-
-    // Helpers
-
-    /**
-     * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
-     * current Pool balances.
-     */
-    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
-        return (_getVirtualSupply(balances[getBptIndex()]), _dropBptItem(balances));
     }
 }
