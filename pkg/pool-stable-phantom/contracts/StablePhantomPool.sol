@@ -711,25 +711,21 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             scalingFactors
         );
 
-        uint256 bptAmountOut;
-        // New scope to avoid stack-too-deep issues
-        {
-            (uint256 currentAmp, ) = _getAmplificationParameter();
-            bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
-                currentAmp,
-                balancesWithoutBpt,
-                scaledAmountsInWithoutBpt,
-                virtualSupply,
-                getSwapFeePercentage()
-            );
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
+            currentAmp,
+            balancesWithoutBpt,
+            scaledAmountsInWithoutBpt,
+            virtualSupply,
+            getSwapFeePercentage()
+        );
 
-            _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
+        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
-            // Add amountsIn to get post-join balances
-            _mutateAmounts(balancesWithoutBpt, scaledAmountsInWithoutBpt, FixedPoint.add);
+        // Add amountsIn to get post-join balances
+        _mutateAmounts(balancesWithoutBpt, scaledAmountsInWithoutBpt, FixedPoint.add);
 
-            _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
-        }
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountOut, scaledAmountsInWithBpt);
     }
