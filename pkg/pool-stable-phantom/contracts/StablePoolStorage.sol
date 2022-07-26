@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
@@ -55,7 +56,28 @@ abstract contract StablePoolStorage is BasePool {
     uint256 internal immutable _scalingFactor4;
     uint256 internal immutable _scalingFactor5;
 
-    constructor(IERC20[] memory registeredTokens) {
+    IRateProvider internal immutable _rateProvider0;
+    IRateProvider internal immutable _rateProvider1;
+    IRateProvider internal immutable _rateProvider2;
+    IRateProvider internal immutable _rateProvider3;
+    IRateProvider internal immutable _rateProvider4;
+    IRateProvider internal immutable _rateProvider5;
+
+    // Set true if the corresponding token should have its yield exempted from protocol fees.
+    // For example, the BPT of another PhantomStable Pool containing yield tokens.
+    // The flag will always be false for the BPT token.
+    bool internal immutable _exemptFromYieldProtocolFeeToken0;
+    bool internal immutable _exemptFromYieldProtocolFeeToken1;
+    bool internal immutable _exemptFromYieldProtocolFeeToken2;
+    bool internal immutable _exemptFromYieldProtocolFeeToken3;
+    bool internal immutable _exemptFromYieldProtocolFeeToken4;
+    bool internal immutable _exemptFromYieldProtocolFeeToken5;
+
+    constructor(
+        IERC20[] memory registeredTokens,
+        IRateProvider[] memory tokenRateProviders,
+        bool[] memory exemptFromYieldProtocolFeeFlags
+    ) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
         // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total
         // tokens for this contract is actually three, including the BPT).
@@ -92,6 +114,46 @@ abstract contract StablePoolStorage is BasePool {
             // solhint-disable-previous-line no-empty-blocks
         }
         _bptIndex = bptIndex;
+
+        // The rate providers are stored as immutable state variables, and for simplicity when accessing those we'll
+        // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
+        // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
+        // simpler to create a new memory array with the values we want to assign to the immutable state variables.
+        IRateProvider[] memory rateProviders = new IRateProvider[](registeredTokens.length);
+        // Do the same with exemptFromYieldProtocolFeeFlags
+        bool[] memory exemptFromYieldFlags = new bool[](registeredTokens.length);
+
+        for (uint256 i = 0; i < registeredTokens.length; ++i) {
+            if (i < bptIndex) {
+                rateProviders[i] = tokenRateProviders[i];
+                exemptFromYieldFlags[i] = exemptFromYieldProtocolFeeFlags[i];
+            } else if (i != bptIndex) {
+                rateProviders[i] = tokenRateProviders[i - 1];
+                exemptFromYieldFlags[i] = exemptFromYieldProtocolFeeFlags[i - 1];
+            }
+
+            // The exemptFromYieldFlag should never be set on a token without a rate provider.
+            // This would cause division by zero errors downstream.
+            _require(
+                !(exemptFromYieldFlags[i] && rateProviders[i] == IRateProvider(0)),
+                Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER
+            );
+        }
+
+        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
+        _rateProvider0 = rateProviders[0];
+        _rateProvider1 = rateProviders[1];
+        _rateProvider2 = rateProviders[2];
+        _rateProvider3 = (rateProviders.length > 3) ? rateProviders[3] : IRateProvider(0);
+        _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
+        _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
+
+        _exemptFromYieldProtocolFeeToken0 = exemptFromYieldFlags[0];
+        _exemptFromYieldProtocolFeeToken1 = exemptFromYieldFlags[1];
+        _exemptFromYieldProtocolFeeToken2 = exemptFromYieldFlags[2];
+        _exemptFromYieldProtocolFeeToken3 = (rateProviders.length > 3) ? exemptFromYieldFlags[3] : false;
+        _exemptFromYieldProtocolFeeToken4 = (rateProviders.length > 4) ? exemptFromYieldFlags[4] : false;
+        _exemptFromYieldProtocolFeeToken5 = (rateProviders.length > 5) ? exemptFromYieldFlags[5] : false;
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
@@ -141,6 +203,90 @@ abstract contract StablePoolStorage is BasePool {
         return amountsWithoutBpt;
     }
 
+    function _tokenScalingFactor(IERC20 token) internal view returns (uint256 scalingFactor) {
+        // prettier-ignore
+        if (token == _getToken0()) { scalingFactor = _getScalingFactor0(); }
+        else if (token == _getToken1()) { scalingFactor = _getScalingFactor1(); }
+        else if (token == _getToken2()) { scalingFactor = _getScalingFactor2(); }
+        else if (token == _getToken3()) { scalingFactor = _getScalingFactor3(); }
+        else if (token == _getToken4()) { scalingFactor = _getScalingFactor4(); }
+        else if (token == _getToken5()) { scalingFactor = _getScalingFactor5(); }
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    /**
+     * @dev Returns the rate providers configured for each token (in the same order as registered).
+     */
+    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+        uint256 totalTokens = _getTotalTokens();
+        providers = new IRateProvider[](totalTokens);
+
+        // prettier-ignore
+        {
+            providers[0] = _getRateProvider0();
+            providers[1] = _getRateProvider1();
+            providers[2] = _getRateProvider2();
+            if (totalTokens > 3) { providers[3] = _getRateProvider3(); } else { return providers; }
+            if (totalTokens > 4) { providers[4] = _getRateProvider4(); } else { return providers; }
+            if (totalTokens > 5) { providers[5] = _getRateProvider5(); } else { return providers; }
+        }
+    }
+
+    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
+        if (token == _getToken0()) return _getRateProvider0();
+        if (token == _getToken1()) return _getRateProvider1();
+        if (token == _getToken2()) return _getRateProvider2();
+        if (token == _getToken3()) return _getRateProvider3();
+        if (token == _getToken4()) return _getRateProvider4();
+        if (token == _getToken5()) return _getRateProvider5();
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    /**
+     * @dev Returns whether the token is exempt from protocol fees on the yield.
+     * If the BPT token is passed in (which doesn't make much sense, but shouldn't fail,
+     * since it is a valid pool token), the corresponding flag will be false.
+     */
+    function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
+        if (token == _getToken0()) return _exemptFromYieldProtocolFeeToken0;
+        if (token == _getToken1()) return _exemptFromYieldProtocolFeeToken1;
+        if (token == _getToken2()) return _exemptFromYieldProtocolFeeToken2;
+        if (token == _getToken3()) return _exemptFromYieldProtocolFeeToken3;
+        if (token == _getToken4()) return _exemptFromYieldProtocolFeeToken4;
+        if (token == _getToken5()) return _exemptFromYieldProtocolFeeToken5;
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
+    }
+
+    function _getToken0() internal view returns (IERC20) {
+        return _token0;
+    }
+
+    function _getToken1() internal view returns (IERC20) {
+        return _token1;
+    }
+
+    function _getToken2() internal view returns (IERC20) {
+        return _token2;
+    }
+
+    function _getToken3() internal view returns (IERC20) {
+        return _token3;
+    }
+
+    function _getToken4() internal view returns (IERC20) {
+        return _token4;
+    }
+
+    function _getToken5() internal view returns (IERC20) {
+        return _token5;
+    }
+
     function _getScalingFactor0() internal view returns (uint256) {
         return _scalingFactor0;
     }
@@ -163,5 +309,29 @@ abstract contract StablePoolStorage is BasePool {
 
     function _getScalingFactor5() internal view returns (uint256) {
         return _scalingFactor5;
+    }
+
+    function _getRateProvider0() internal view returns (IRateProvider) {
+        return _rateProvider0;
+    }
+
+    function _getRateProvider1() internal view returns (IRateProvider) {
+        return _rateProvider1;
+    }
+
+    function _getRateProvider2() internal view returns (IRateProvider) {
+        return _rateProvider2;
+    }
+
+    function _getRateProvider3() internal view returns (IRateProvider) {
+        return _rateProvider3;
+    }
+
+    function _getRateProvider4() internal view returns (IRateProvider) {
+        return _rateProvider4;
+    }
+
+    function _getRateProvider5() internal view returns (IRateProvider) {
+        return _rateProvider5;
     }
 }
