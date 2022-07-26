@@ -442,151 +442,134 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexIn,
         uint256 indexOut,
         uint256[] memory scalingFactors
-    ) private returns (uint256) {
+    ) private returns (uint256 result) {
         _upscaleArray(balances, scalingFactors);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
 
-        bool bptIsTokenIn = swapRequest.tokenIn == IERC20(this);
+        bool isJoinSwap = swapRequest.tokenOut == IERC20(this);
+        bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
+
+        uint256 upscaledAmount = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
         (uint256 amp, ) = _getAmplificationParameter();
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
-        if (swapRequest.kind == IVault.SwapKind.GIVEN_IN) {
-            // Returning amountOut; tokens are leaving the Vault, so we round down
+        if (isJoinSwap) {
+            uint256 indexInNoBpt = _skipBptIndex(indexIn);
+            uint256 unknownAmount = _onSwapBptJoin(
+                upscaledAmount,
+                indexInNoBpt,
+                isGivenIn,
+                amp,
+                virtualSupply,
+                balancesWithoutBpt
+            );
+
+            if (isGivenIn) {
+                balancesWithoutBpt[indexInNoBpt] += upscaledAmount;
+                // If join is "given in" then `unknownAmount` is the amount of BPT received, so we round down.
+                result = _downscaleDown(unknownAmount, scalingFactors[indexOut]);
+            } else {
+                balancesWithoutBpt[indexInNoBpt] += unknownAmount;
+                // If join is "given out" then `unknownAmount` is the amount of tokens sent to the Vault, so we round up.
+                result = _downscaleUp(unknownAmount, scalingFactors[indexIn]);
+            }
+        } else {
+            uint256 indexOutNoBpt = _skipBptIndex(indexOut);
+            uint256 unknownAmount = _onSwapBptExit(
+                upscaledAmount,
+                indexOutNoBpt,
+                isGivenIn,
+                amp,
+                virtualSupply,
+                balancesWithoutBpt
+            );
+
+            if (isGivenIn) {
+                balancesWithoutBpt[indexOutNoBpt] -= unknownAmount;
+                // If exit is "given in" then `unknownAmount` is the amount of tokens received, so we round down.
+                result = _downscaleDown(unknownAmount, scalingFactors[indexOut]);
+            } else {
+                balancesWithoutBpt[indexOutNoBpt] -= upscaledAmount;
+                // If exit is "given out" then `unknownAmount` is the amount of BPT burned, so we round up.
+                result = _downscaleUp(unknownAmount, scalingFactors[indexIn]);
+            }
+        }
+
+        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
+    }
+
+    /**
+     * @dev Process a GivenIn swap involving BPT. At this point, amount has been upscaled, and the BPT token
+     * has been removed from balances. `indexIn` does not include BPT.
+     */
+    function _onSwapBptJoin(
+        uint256 amount,
+        uint256 indexIn,
+        bool givenIn,
+        uint256 amp,
+        uint256 virtualSupply,
+        uint256[] memory balancesWithoutBpt
+    ) private view returns (uint256) {
+        if (givenIn) {
+            uint256[] memory amountsIn = new uint256[](balancesWithoutBpt.length);
+            amountsIn[indexIn] = amount;
+
             return
-                _downscaleDown(
-                    _onSwapBptGivenIn(
-                        _upscale(swapRequest.amount, scalingFactors[indexIn]),
-                        indexIn,
-                        indexOut,
-                        bptIsTokenIn,
-                        amp,
-                        virtualSupply,
-                        balancesWithoutBpt
-                    ),
-                    scalingFactors[indexOut]
+                StableMath._calcBptOutGivenExactTokensIn(
+                    amp,
+                    balancesWithoutBpt,
+                    amountsIn,
+                    virtualSupply,
+                    getSwapFeePercentage()
                 );
         } else {
-            // Returning amountIn; tokens are entering the Vault, so we round up
             return
-                _downscaleUp(
-                    _onSwapBptGivenOut(
-                        _upscale(swapRequest.amount, scalingFactors[indexOut]),
-                        indexIn,
-                        indexOut,
-                        bptIsTokenIn,
-                        amp,
-                        virtualSupply,
-                        balancesWithoutBpt
-                    ),
-                    scalingFactors[indexIn]
+                StableMath._calcTokenInGivenExactBptOut(
+                    amp,
+                    balancesWithoutBpt,
+                    indexIn,
+                    amount,
+                    virtualSupply,
+                    getSwapFeePercentage()
                 );
         }
     }
 
     /**
      * @dev Process a GivenIn swap involving BPT. At this point, amount has been upscaled, and the BPT token
-     * has been removed from balances. `indexIn` and `indexOut` include BPT.
+     * has been removed from balances. `indexOut` does not include BPT.
      */
-    function _onSwapBptGivenIn(
+    function _onSwapBptExit(
         uint256 amount,
-        uint256 indexIn,
         uint256 indexOut,
-        bool bptIsTokenIn,
+        bool givenIn,
         uint256 amp,
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt
-    ) private returns (uint256 amountOut) {
-        uint256 swapFeePercentage = getSwapFeePercentage();
-        // amountsIn for a joinSwap; amountsOut for an exitSwap
-        uint256[] memory amounts = new uint256[](balancesWithoutBpt.length);
-
-        if (bptIsTokenIn) {
-            indexOut = _skipBptIndex(indexOut);
-
-            // exitSwap
-            amountOut = StableMath._calcTokenOutGivenExactBptIn(
-                amp,
-                balancesWithoutBpt,
-                indexOut, // adjusted for BPT above
-                amount,
-                virtualSupply,
-                swapFeePercentage
-            );
-
-            // Subtract amountsOut to get post-exit balances
-            amounts[indexOut] = amountOut;
-            _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.sub);
+    ) private view returns (uint256) {
+        if (givenIn) {
+            return
+                StableMath._calcTokenOutGivenExactBptIn(
+                    amp,
+                    balancesWithoutBpt,
+                    indexOut,
+                    amount,
+                    virtualSupply,
+                    getSwapFeePercentage()
+                );
         } else {
-            // joinSwap
-            amounts[_skipBptIndex(indexIn)] = amount;
-
-            amountOut = StableMath._calcBptOutGivenExactTokensIn(
-                amp,
-                balancesWithoutBpt,
-                amounts,
-                virtualSupply,
-                swapFeePercentage
-            );
-
-            // Add amountsIn to get post-join balances
-            _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.add);
+            uint256[] memory amountsOut = new uint256[](balancesWithoutBpt.length);
+            amountsOut[indexOut] = amount;
+            return
+                StableMath._calcBptInGivenExactTokensOut(
+                    amp,
+                    balancesWithoutBpt,
+                    amountsOut,
+                    virtualSupply,
+                    getSwapFeePercentage()
+                );
         }
-
-        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
-    }
-
-    /**
-     * @dev Process a GivenOut swap involving BPT. At this point, amount has been upscaled, and the BPT token
-     * has been removed from balances. `indexIn` and `indexOut` include BPT.
-     */
-    function _onSwapBptGivenOut(
-        uint256 amount,
-        uint256 indexIn,
-        uint256 indexOut,
-        bool bptIsTokenIn,
-        uint256 amp,
-        uint256 virtualSupply,
-        uint256[] memory balancesWithoutBpt
-    ) private returns (uint256 amountIn) {
-        // amountsOut for a joinSwap; amountsIn for an exitSwap
-        uint256[] memory amounts = new uint256[](balancesWithoutBpt.length);
-        uint256 swapFeePercentage = getSwapFeePercentage();
-
-        if (bptIsTokenIn) {
-            // joinSwap
-            amounts[_skipBptIndex(indexOut)] = amount;
-
-            amountIn = StableMath._calcBptInGivenExactTokensOut(
-                amp,
-                balancesWithoutBpt,
-                amounts, // amountsOut
-                virtualSupply,
-                swapFeePercentage
-            );
-
-            // Subtract amountsOut to get post-join balances
-            _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.sub);
-        } else {
-            indexIn = _skipBptIndex(indexIn);
-
-            // exitSwap
-            amountIn = StableMath._calcTokenInGivenExactBptOut(
-                amp,
-                balancesWithoutBpt,
-                indexIn, // adjusted for BPT above
-                amount,
-                virtualSupply,
-                swapFeePercentage
-            );
-
-            amounts[indexIn] = amountIn;
-
-            // Add amountsIn to get post-exit balances
-            _mutateAmounts(balancesWithoutBpt, amounts, FixedPoint.add);
-        }
-
-        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
     }
 
     // Join Hooks
