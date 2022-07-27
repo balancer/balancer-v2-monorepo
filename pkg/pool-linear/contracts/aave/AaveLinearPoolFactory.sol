@@ -54,6 +54,8 @@ contract AaveLinearPoolFactory is
     function _create(bytes memory constructorArgs) internal virtual override returns (address) {
         address pool = super._create(constructorArgs);
         _lastCreatedPool = pool;
+
+        return pool;
     }
 
     /**
