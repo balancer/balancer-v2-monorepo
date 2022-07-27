@@ -63,8 +63,24 @@ abstract contract LinearPoolRebalancer {
      * @dev Use the asset manager mechanism to wrap/unwrap tokens as necessary to keep the main token
      * balance as close as possible to the midpoint between the upper and lower targets: the fee-free zone
      * where trading volume is highest.
+     *
+     * Note that this function may fail if called while the Pool is in the no-fee zone - use `rebalanceWithExtraMain` to
+     * guarantee a successful execution.
      */
-    function rebalance(address recipient) public {
+    function rebalance(address recipient) external returns (uint256) {
+        return _rebalance(recipient, 0);
+    }
+
+    /**
+     * @notice Same as `rebalance`, except this also works in scenarios where the Pool is in the no-fee zone by first
+     * taking `extraMain` tokens from the caller, to cover for rounding errors that are normally offset by acccumulated
+     * fees. Any extra tokens unused during the rebalance are sent to the recipient as usual.
+     */
+    function rebalanceWithExtraMain(address recipient, uint256 extraMain) external returns (uint256) {
+        return _rebalance(recipient, extraMain);
+    }
+
+    function _rebalance(address recipient, uint256 extraMain) private returns (uint256) {
         // The first thing we need to test is whether the Pool is below or above the target level, which will
         // determine whether we need to deposit or withdraw main tokens.
         uint256 desiredMainTokenBalance = _getDesiredMainTokenBalance();
@@ -77,13 +93,55 @@ abstract contract LinearPoolRebalancer {
         (uint256 mainTokenBalance, , , ) = _vault.getPoolTokenInfo(_poolId, _mainToken);
 
         if (mainTokenBalance < desiredMainTokenBalance) {
-            _rebalanceLackOfMainToken(desiredMainTokenBalance - mainTokenBalance, recipient);
-        } else {
-            _rebalanceExcessOfMainToken(mainTokenBalance - desiredMainTokenBalance, recipient);
+            if (extraMain > 0) {
+                _receiveExtraMainDuringLackOfMain(mainTokenBalance, extraMain);
+            }
+
+            return _rebalanceLackOfMainToken(desiredMainTokenBalance - mainTokenBalance, recipient);
+        } else if (mainTokenBalance > desiredMainTokenBalance) {
+            if (extraMain > 0) {
+                _receiveExtraMainDuringExcessOfMain(mainTokenBalance, extraMain);
+            }
+
+            return _rebalanceExcessOfMainToken(mainTokenBalance - desiredMainTokenBalance, recipient);
         }
     }
 
-    function _rebalanceLackOfMainToken(uint256 missingMainAmount, address recipient) private {
+    function _receiveExtraMainDuringLackOfMain(uint256 mainTokenBalance, uint256 extraMain) private {
+        // The Pool lacks main tokens, but if the main balance is above the lower target (i.e. it is still in the no-fee
+        // zone), then there's no accumulated fees. It is therefore possible that the amount of wrapped tokens the Pool
+        // will give us in exchange for main cannot be unwrapped into the amount of main tokens desired by the Pool, due
+        // to  the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
+        //
+        // This is typically a non-issue as the Linear Pool accumulated fees more than cover for said rounding error,
+        // but in scenarios with no fees we require some extra main tokens to be able to make the Pool whole. Any excess
+        // will be sent at the end of the transaction to the recipient.
+
+        (uint256 lowerTarget, ) = _pool.getTargets();
+        // The lower target is upscaled, so we undo that
+        if (mainTokenBalance > FixedPoint.divDown(lowerTarget, _mainTokenScalingFactor)) {
+            _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
+        }
+    }
+
+    function _receiveExtraMainDuringExcessOfMain(uint256 mainTokenBalance, uint256 extraMain) private {
+        // The Pool has excess of main tokens, but if the main balance is below the upper target (i.e. it is still in
+        // the no-fee zone), then there's no accumulated fees. It is therefore possible that the amount of main tokens
+        // the Pool will give us in exchange for wrapped cannot be wrapped into the amount of wrapped tokens desired by
+        // the Pool, due to the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
+        //
+        // This is typically a non-issue as the Linear Pool accumulated fees more than cover for said rounding error,
+        // but in scenarios with no fees we require some extra main tokens to be able to make the Pool whole. Any excess
+        // will be sent at the end of the transaction to the recipient.
+
+        (, uint256 upperTarget) = _pool.getTargets();
+        // The upper target is upscaled, so we undo that
+        if (mainTokenBalance < FixedPoint.divDown(upperTarget, _mainTokenScalingFactor)) {
+            _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
+        }
+    }
+
+    function _rebalanceLackOfMainToken(uint256 missingMainAmount, address recipient) private returns (uint256) {
         // The Pool needs to increase the main token balance, so we prepare a swap where we provide the missing main
         // token amount in exchange for wrapped tokens, that is, the main token is the token in. Since we know this
         // amount, this is a 'given in' swap.
@@ -115,10 +173,12 @@ abstract contract LinearPoolRebalancer {
 
         // This contract will now hold excess main token, since unwrapping `wrappedAmountOut` should have resulted in
         // more than `missingMainAmount` being obtained. These are sent to the caller to refund the gas cost.
-        _mainToken.safeTransfer(recipient, _mainToken.balanceOf(address(this)));
+        uint256 reward = _mainToken.balanceOf(address(this));
+        _mainToken.safeTransfer(recipient, reward);
+        return reward;
     }
 
-    function _rebalanceExcessOfMainToken(uint256 excessMainAmount, address recipient) private {
+    function _rebalanceExcessOfMainToken(uint256 excessMainAmount, address recipient) private returns (uint256) {
         // The Pool needs to reduce its main token balance, so we do a swap where we take the excess main token amount
         // and send wrapped tokens in exchange, that is, the main token is the token out. Since we know this amount,
         // this is a 'given out' swap.
@@ -152,7 +212,9 @@ abstract contract LinearPoolRebalancer {
 
         // This contract will now hold excess main token, since we didn't wrap all that was withdrawn. These are sent to
         // the caller to refund the gas cost.
-        _mainToken.safeTransfer(recipient, _mainToken.balanceOf(address(this)));
+        uint256 reward = _mainToken.balanceOf(address(this));
+        _mainToken.safeTransfer(recipient, reward);
+        return reward;
     }
 
     function _withdrawFromPool(IERC20 token, uint256 amount) private {
@@ -196,6 +258,8 @@ abstract contract LinearPoolRebalancer {
         deposit[1].amount = amount;
         deposit[1].token = token;
 
+        // Before we can deposit tokens into the Vault however, we must approve them.
+        token.approve(address(_vault), amount);
         _vault.managePoolBalance(deposit);
     }
 
