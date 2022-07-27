@@ -454,6 +454,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (swapRequest.tokenOut == IERC20(this)) {
             // Join Swap
+
             uint256 indexInNoBpt = _skipBptIndex(indexIn);
             uint256 amountCalculated = _onSwapBptJoin(
                 upscaledAmountGiven,
