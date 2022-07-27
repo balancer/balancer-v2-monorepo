@@ -450,14 +450,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         bool isJoinSwap = swapRequest.tokenOut == IERC20(this);
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
-        uint256 upscaledAmount = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
+        uint256 amountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
         (uint256 amp, ) = _getAmplificationParameter();
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (isJoinSwap) {
             uint256 indexInNoBpt = _skipBptIndex(indexIn);
-            uint256 calculatedAmount = _onSwapBptJoin(
-                upscaledAmount,
+            uint256 amountCalculated = _onSwapBptJoin(
+                amountGiven,
                 indexInNoBpt,
                 isGivenIn,
                 amp,
@@ -466,19 +466,19 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
 
             if (isGivenIn) {
-                balancesWithoutBpt[indexInNoBpt] += upscaledAmount;
-                // If join is "given in" then `calculatedAmount` is an amountOut (BPT from the Vault), so we round down.
+                balancesWithoutBpt[indexInNoBpt] += amountGiven;
+                // If join is "given in" then `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
                 // so we round down.
-                result = _downscaleDown(calculatedAmount, scalingFactors[indexOut]);
+                result = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
-                balancesWithoutBpt[indexInNoBpt] += calculatedAmount;
-                // If join is "given out" then `calculatedAmount` is an amountIn (tokens to the Vault), so we round up.
-                result = _downscaleUp(calculatedAmount, scalingFactors[indexIn]);
+                balancesWithoutBpt[indexInNoBpt] += amountCalculated;
+                // If join is "given out" then `amountCalculated` is an amountIn (tokens to the Vault), so we round up.
+                result = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         } else {
             uint256 indexOutNoBpt = _skipBptIndex(indexOut);
-            uint256 calculatedAmount = _onSwapBptExit(
-                upscaledAmount,
+            uint256 amountCalculated = _onSwapBptExit(
+                amountGiven,
                 indexOutNoBpt,
                 isGivenIn,
                 amp,
@@ -487,14 +487,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
 
             if (isGivenIn) {
-                balancesWithoutBpt[indexOutNoBpt] -= calculatedAmount;
-                // If exit is "given in" then `calculatedAmount` is an amountOut (tokens from the Vault),
+                balancesWithoutBpt[indexOutNoBpt] -= amountCalculated;
+                // If exit is "given in" then `amountCalculated` is an amountOut (tokens from the Vault),
                 // so we round down.
-                result = _downscaleDown(calculatedAmount, scalingFactors[indexOut]);
+                result = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
-                balancesWithoutBpt[indexOutNoBpt] -= upscaledAmount;
-                // If exit is "given out" then `calculatedAmount` is an amountIn (BPT burned), so we round up.
-                result = _downscaleUp(calculatedAmount, scalingFactors[indexIn]);
+                balancesWithoutBpt[indexOutNoBpt] -= amountGiven;
+                // If exit is "given out" then `amountCalculated` is an amountIn (BPT burned), so we round up.
+                result = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         }
 
