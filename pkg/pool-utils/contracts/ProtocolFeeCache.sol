@@ -63,8 +63,8 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     uint256 private immutable _fixedProtocolSwapFeePercentage;
 
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage) {
-        // Protocol fees are delegated to the value reported by the ProtocolFeePercentagesProvider if the sentinel value
-        // is passed.
+        // Protocol swap fees are delegated to the value reported by the ProtocolFeePercentagesProvider if the sentinel 
+        // value is passed.
         bool delegatedProtocolSwapFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL;
 
         _delegatedProtocolSwapFees = delegatedProtocolSwapFees;
