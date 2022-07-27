@@ -12,8 +12,7 @@ import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('ProtocolFeeCache', () => {
-  const VAULT_PROTOCOL_FEE = fp(0.3); // 30%
-  const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
+  const FIXED_SWAP_PROTOCOL_FEE = fp(0.1); // 10%
 
   let protocolFeeCache: Contract;
   let admin: SignerWithAddress;
@@ -43,6 +42,16 @@ describe('ProtocolFeeCache', () => {
         vault.protocolFeesProvider.address,
         [feesCollector.address, feesCollector.address]
       );
+  });
+
+  sharedBeforeEach('set initial fee percentages', async () => {
+    await Promise.all(
+      Object.values(ProtocolFee)
+        .filter((val) => typeof val != 'string')
+        .map((fee) =>
+          vault.protocolFeesProvider.connect(admin).setFeeTypePercentage(fee, fp((1 + (fee as number)) / 1000))
+        )
+    );
   });
 
   function itReturnsAndUpdatesProtocolFeePercentages(feeType: number) {
@@ -90,8 +99,6 @@ describe('ProtocolFeeCache', () => {
 
   context('with delegated swap fee', () => {
     sharedBeforeEach('deploy delegated swap fee cache', async () => {
-      await vault.setSwapFeePercentage(VAULT_PROTOCOL_FEE, { from: admin });
-
       // The sentinel value used to designate delegated fees is MAX_UINT256
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
         args: [vault.protocolFeesProvider.address, MAX_UINT256],
@@ -134,7 +141,7 @@ describe('ProtocolFeeCache', () => {
   context('with fixed swap fee', () => {
     sharedBeforeEach('deploy fixed swap fee cache', async () => {
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
-        args: [vault.protocolFeesProvider.address, FIXED_PROTOCOL_FEE],
+        args: [vault.protocolFeesProvider.address, FIXED_SWAP_PROTOCOL_FEE],
         from: admin,
       });
     });
@@ -153,7 +160,9 @@ describe('ProtocolFeeCache', () => {
 
       describe('swap fees', () => {
         it('sets the fixed protocol swap fee', async () => {
-          expect(await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP)).to.equal(FIXED_PROTOCOL_FEE);
+          expect(await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP)).to.equal(
+            FIXED_SWAP_PROTOCOL_FEE
+          );
         });
 
         it('reverts if swap fee is too high', async () => {
@@ -166,7 +175,9 @@ describe('ProtocolFeeCache', () => {
 
         it('does not update the fixed fee', async () => {
           await protocolFeeCache.updateProtocolFeePercentageCache();
-          expect(await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP)).to.equal(FIXED_PROTOCOL_FEE);
+          expect(await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP)).to.equal(
+            FIXED_SWAP_PROTOCOL_FEE
+          );
         });
       });
     });

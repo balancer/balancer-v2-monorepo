@@ -70,6 +70,9 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         _delegatedProtocolSwapFees = delegatedProtocolSwapFees;
         _protocolFeeProvider = protocolFeeProvider;
 
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM);
+
         if (delegatedProtocolSwapFees) {
             _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP);
         } else {
