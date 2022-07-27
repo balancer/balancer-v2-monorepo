@@ -465,17 +465,20 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 balancesWithoutBpt
             );
 
+            // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
+            // invariant.
             if (isGivenIn) {
                 balancesWithoutBpt[indexInNoBpt] += amountGiven;
-                // If join is "given in" then `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
-                // so we round down.
+                // Join is "given in" so `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
                 result = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexInNoBpt] += amountCalculated;
-                // If join is "given out" then `amountCalculated` is an amountIn (tokens to the Vault), so we round up.
+                // Join is "given out" so `amountCalculated` is an amountIn (tokens to the Vault), so we round up.
                 result = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         } else {
+            // Exit Swap
+
             uint256 indexOutNoBpt = _skipBptIndex(indexOut);
             uint256 amountCalculated = _onSwapBptExit(
                 amountGiven,
@@ -486,14 +489,15 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 balancesWithoutBpt
             );
 
+            // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
+            // invariant.
             if (isGivenIn) {
                 balancesWithoutBpt[indexOutNoBpt] -= amountCalculated;
-                // If exit is "given in" then `amountCalculated` is an amountOut (tokens from the Vault),
-                // so we round down.
+                // Exit is "given in" so `amountCalculated` is an amountOut (tokens from the Vault), so we round down.
                 result = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= amountGiven;
-                // If exit is "given out" then `amountCalculated` is an amountIn (BPT burned), so we round up.
+                // Exit is "given out" so `amountCalculated` is an amountIn (BPT from the Vault), so we round up.
                 result = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         }
