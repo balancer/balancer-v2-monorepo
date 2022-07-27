@@ -497,7 +497,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= upscaledAmountGiven;
-                // Exit is "given out" so `amountCalculated` is an amountIn (BPT from the Vault), so we round up.
+                // Exit is "given out" so `amountCalculated` is an amountIn (BPT to the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         }
