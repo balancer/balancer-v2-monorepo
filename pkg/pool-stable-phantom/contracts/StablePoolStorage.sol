@@ -329,15 +329,20 @@ abstract contract StablePoolStorage is BasePool {
         uint256 totalTokens = _getTotalTokens();
         providers = new IRateProvider[](totalTokens);
 
-        // prettier-ignore
-        {
-            providers[0] = _getRateProvider0();
-            providers[1] = _getRateProvider1();
-            providers[2] = _getRateProvider2();
-            if (totalTokens > 3) { providers[3] = _getRateProvider3(); } else { return providers; }
-            if (totalTokens > 4) { providers[4] = _getRateProvider4(); } else { return providers; }
-            if (totalTokens > 5) { providers[5] = _getRateProvider5(); } else { return providers; }
-        }
+        // The Pool will always have at least 3 tokens so we always load these three rate providers.
+        providers[0] = _getRateProvider0();
+        providers[1] = _getRateProvider1();
+        providers[2] = _getRateProvider2();
+
+        // Before we load the remaining rate providers we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return providers;
+        providers[3] = _getRateProvider3();
+
+        if (totalTokens == 4) return providers;
+        providers[4] = _getRateProvider4();
+
+        if (totalTokens == 5) return providers;
+        providers[5] = _getRateProvider5();
     }
 
     function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
