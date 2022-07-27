@@ -456,7 +456,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (isJoinSwap) {
             uint256 indexInNoBpt = _skipBptIndex(indexIn);
-            uint256 unknownAmount = _onSwapBptJoin(
+            uint256 calculatedAmount = _onSwapBptJoin(
                 upscaledAmount,
                 indexInNoBpt,
                 isGivenIn,
@@ -467,16 +467,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
             if (isGivenIn) {
                 balancesWithoutBpt[indexInNoBpt] += upscaledAmount;
-                // If join is "given in" then `unknownAmount` is the amount of BPT received, so we round down.
-                result = _downscaleDown(unknownAmount, scalingFactors[indexOut]);
+                // If join is "given in" then `calculatedAmount` is an amountOut (BPT from the Vault), so we round down.
+                // so we round down.
+                result = _downscaleDown(calculatedAmount, scalingFactors[indexOut]);
             } else {
-                balancesWithoutBpt[indexInNoBpt] += unknownAmount;
-                // If join is "given out" then `unknownAmount` is the amount of tokens sent to the Vault, so we round up.
-                result = _downscaleUp(unknownAmount, scalingFactors[indexIn]);
+                balancesWithoutBpt[indexInNoBpt] += calculatedAmount;
+                // If join is "given out" then `calculatedAmount` is an amountIn (tokens to the Vault), so we round up.
+                result = _downscaleUp(calculatedAmount, scalingFactors[indexIn]);
             }
         } else {
             uint256 indexOutNoBpt = _skipBptIndex(indexOut);
-            uint256 unknownAmount = _onSwapBptExit(
+            uint256 calculatedAmount = _onSwapBptExit(
                 upscaledAmount,
                 indexOutNoBpt,
                 isGivenIn,
@@ -486,13 +487,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             );
 
             if (isGivenIn) {
-                balancesWithoutBpt[indexOutNoBpt] -= unknownAmount;
-                // If exit is "given in" then `unknownAmount` is the amount of tokens received, so we round down.
-                result = _downscaleDown(unknownAmount, scalingFactors[indexOut]);
+                balancesWithoutBpt[indexOutNoBpt] -= calculatedAmount;
+                // If exit is "given in" then `calculatedAmount` is an amountOut (tokens from the Vault),
+                // so we round down.
+                result = _downscaleDown(calculatedAmount, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= upscaledAmount;
-                // If exit is "given out" then `unknownAmount` is the amount of BPT burned, so we round up.
-                result = _downscaleUp(unknownAmount, scalingFactors[indexIn]);
+                // If exit is "given out" then `calculatedAmount` is an amountIn (BPT burned), so we round up.
+                result = _downscaleUp(calculatedAmount, scalingFactors[indexIn]);
             }
         }
 
