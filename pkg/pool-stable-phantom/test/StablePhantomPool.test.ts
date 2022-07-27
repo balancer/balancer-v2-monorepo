@@ -81,6 +81,7 @@ describe('StablePhantomPool', () => {
     let scalingFactors: BigNumber[];
     let tokenRates: BigNumber[];
     let protocolFeesCollector: Contract;
+    let previousFeeBalance: BigNumber;
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: BigNumberish[] = [];
@@ -156,6 +157,7 @@ describe('StablePhantomPool', () => {
       await pool.vault.setSwapFeePercentage(protocolSwapFeePercentage);
       await pool.updateProtocolSwapFeePercentageCache();
       protocolFeesCollector = await pool.vault.getFeesCollector();
+      previousFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
     }
 
     async function initializePool(): Promise<void> {
@@ -295,14 +297,16 @@ describe('StablePhantomPool', () => {
             // These will be the "downscaled" raw input swap amounts
             const scaledSwapAmounts = Array(tokens.length).fill(fp(10));
             unscaledAmounts = await pool.downscale(scaledSwapAmounts);
+            expect(previousFeeBalance).to.be.zero;
           });
 
           function itPerformsARegularSwap(kind: SwapKind, indexIn: number, indexOut: number) {
             it('performs a regular swap', async () => {
-              const amount = kind == SwapKind.GivenIn ? unscaledAmounts[indexIn] : unscaledAmounts[indexOut];
+              // const amount = kind == SwapKind.GivenIn ? unscaledAmounts[indexIn] : unscaledAmounts[indexOut];
               const rateFactor = fp(1.1);
               let oldRate: BigNumber;
 
+              console.log(`unscaled amounts: ${unscaledAmounts}`);
               // predict results
               // do swap
               // validate results
@@ -483,10 +487,11 @@ describe('StablePhantomPool', () => {
           // These will be the "downscaled" raw input swap amounts
           scaledSwapAmounts = Array(tokens.length).fill(fp(10));
           unscaledAmounts = await pool.downscale(scaledSwapAmounts);
+          console.log(`unscaled amounts: ${unscaledAmounts}`);
         });
 
         function itPerformsASingleTokenJoin(tokenIndex: number) {
-          it('calculates fees for single token joins', async () => {
+          it(`calculates fees for single token joins with index ${tokenIndex}`, async () => {
             // Process a bunch of swaps (amp will also change during these)
             await incurProtocolFees();
 
@@ -513,8 +518,8 @@ describe('StablePhantomPool', () => {
 
         function itPerformsAMultiTokenJoin(amountInRatios: number[]) {
           it('calculates fees for multi-token joins', async () => {
-            const amountsIn = scaledSwapAmounts.map((a, i) => a.mul(fp(amountInRatios[i])));
-
+            console.log(`ratios: ${amountInRatios}`);
+            // const amountsIn = scaledSwapAmounts.map((a, i) => a.mul(fp(amountInRatios[i])));
             // Do multi token join with the given amountsIn
             // Check protocol fees (using oldRates/newRates, etc.)
             // Check updated amp/invariant values, and that oldRates have been updated
@@ -578,10 +583,11 @@ describe('StablePhantomPool', () => {
           // These will be the "downscaled" raw input swap amounts
           scaledSwapAmounts = Array(tokens.length).fill(fp(10));
           unscaledAmounts = await pool.downscale(scaledSwapAmounts);
+          console.log(`unscaled amounts: ${unscaledAmounts}`);
         });
 
         function itPerformsASingleTokenExit(tokenIndex: number) {
-          it('calculates fees for single token exits', async () => {
+          it(`calculates fees for single token exits with token index ${tokenIndex}`, async () => {
             // Process a bunch of swaps (amp will also change during these)
             await incurProtocolFees();
 
@@ -608,8 +614,8 @@ describe('StablePhantomPool', () => {
 
         function itPerformsAMultiTokenExit(amountOutRatios: number[]) {
           it('calculates fees for multi-token joins', async () => {
-            const amountsOut = scaledSwapAmounts.map((a, i) => a.mul(fp(amountOutRatios[i])));
-
+            console.log(`amountOutRatios: ${amountOutRatios}`);
+            // const amountsOut = scaledSwapAmounts.map((a, i) => a.mul(fp(amountOutRatios[i])));
             // Do multi token exit with the given amountsOut
             // Check protocol fees (using oldRates/newRates, etc.)
             // Check updated amp/invariant values, and that oldRates have been updated
