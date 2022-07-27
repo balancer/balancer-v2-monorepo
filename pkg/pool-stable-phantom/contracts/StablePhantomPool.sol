@@ -442,7 +442,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexIn,
         uint256 indexOut,
         uint256[] memory scalingFactors
-    ) private returns (uint256 result) {
+    ) private returns (uint256 downscaledAmountCalculated) {
         _upscaleArray(balances, scalingFactors);
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
@@ -470,11 +470,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             if (isGivenIn) {
                 balancesWithoutBpt[indexInNoBpt] += amountGiven;
                 // Join is "given in" so `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
-                result = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
+                downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexInNoBpt] += amountCalculated;
                 // Join is "given out" so `amountCalculated` is an amountIn (tokens to the Vault), so we round up.
-                result = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
+                downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         } else {
             // Exit Swap
@@ -494,11 +494,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             if (isGivenIn) {
                 balancesWithoutBpt[indexOutNoBpt] -= amountCalculated;
                 // Exit is "given in" so `amountCalculated` is an amountOut (tokens from the Vault), so we round down.
-                result = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
+                downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= amountGiven;
                 // Exit is "given out" so `amountCalculated` is an amountIn (BPT from the Vault), so we round up.
-                result = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
+                downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         }
 
