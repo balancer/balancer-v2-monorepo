@@ -1057,7 +1057,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
         uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios());
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            balances[i] = FixedPoint.mulDown(balancesWithoutBpt[i], ratiosWithoutBpt[i]);
+            balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
         }
     }
 
