@@ -405,7 +405,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    ) private view returns (uint256 calculatedAmount) {
+    ) private view returns (uint256 amountCalculated) {
         uint256[] memory balances = _dropBptItem(balancesIncludingBpt);
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
@@ -416,7 +416,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
         // Would like to use a function pointer here, but it causes stack issues
         if (kind == IVault.SwapKind.GIVEN_IN) {
-            calculatedAmount = StableMath._calcOutGivenIn(
+            amountCalculated = StableMath._calcOutGivenIn(
                 currentAmp,
                 balances,
                 indexIn,
@@ -425,7 +425,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 invariant
             );
         } else {
-            calculatedAmount = StableMath._calcInGivenOut(
+            amountCalculated = StableMath._calcInGivenOut(
                 currentAmp,
                 balances,
                 indexIn,
