@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
@@ -27,16 +28,32 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "./AaveLinearPool.sol";
 import "./AaveLinearPoolRebalancer.sol";
 
-contract AaveLinearPoolFactory is BasePoolSplitCodeFactory, ReentrancyGuard, FactoryWidePauseWindow {
+contract AaveLinearPoolFactory is
+    ILastCreatedPoolFactory,
+    BasePoolSplitCodeFactory,
+    ReentrancyGuard,
+    FactoryWidePauseWindow
+{
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
     IBalancerQueries private immutable _queries;
 
+    address private _lastCreatedPool;
+
     constructor(IVault vault, IBalancerQueries queries)
         BasePoolSplitCodeFactory(vault, type(AaveLinearPool).creationCode)
     {
         _queries = queries;
+    }
+
+    function getLastCreatedPool() external view override returns (address) {
+        return _lastCreatedPool;
+    }
+
+    function _create(bytes memory constructorArgs) internal virtual override returns (address) {
+        address pool = super._create(constructorArgs);
+        _lastCreatedPool = pool;
     }
 
     /**
