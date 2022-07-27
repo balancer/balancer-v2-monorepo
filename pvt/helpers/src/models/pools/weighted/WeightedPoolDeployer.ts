@@ -160,7 +160,6 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
