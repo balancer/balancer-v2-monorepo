@@ -443,18 +443,17 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         uint256 indexOut,
         uint256[] memory scalingFactors
     ) private returns (uint256 downscaledAmountCalculated) {
-        _upscaleArray(balances, scalingFactors);
-
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
-
-        bool isJoinSwap = swapRequest.tokenOut == IERC20(this);
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
+        _upscaleArray(balances, scalingFactors);
         uint256 upscaledAmountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 amp, ) = _getAmplificationParameter();
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
-        if (isJoinSwap) {
+        if (swapRequest.tokenOut == IERC20(this)) {
+            // Join Swap
             uint256 indexInNoBpt = _skipBptIndex(indexIn);
             uint256 amountCalculated = _onSwapBptJoin(
                 upscaledAmountGiven,
