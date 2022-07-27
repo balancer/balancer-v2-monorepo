@@ -211,7 +211,6 @@ export default {
           protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
-          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {
