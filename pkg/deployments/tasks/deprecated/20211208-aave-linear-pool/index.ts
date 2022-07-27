@@ -1,5 +1,5 @@
-import Task from '../../src/task';
-import { TaskRunOptions } from '../../src/types';
+import Task from '../../../src/task';
+import { TaskRunOptions } from '../../../src/types';
 import { AaveLinearPoolDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
