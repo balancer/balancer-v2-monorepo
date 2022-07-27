@@ -450,14 +450,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
         bool isJoinSwap = swapRequest.tokenOut == IERC20(this);
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
-        uint256 amountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
+        uint256 upscaledAmountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
         (uint256 amp, ) = _getAmplificationParameter();
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (isJoinSwap) {
             uint256 indexInNoBpt = _skipBptIndex(indexIn);
             uint256 amountCalculated = _onSwapBptJoin(
-                amountGiven,
+                upscaledAmountGiven,
                 indexInNoBpt,
                 isGivenIn,
                 amp,
@@ -468,7 +468,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
             // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
             // invariant.
             if (isGivenIn) {
-                balancesWithoutBpt[indexInNoBpt] += amountGiven;
+                balancesWithoutBpt[indexInNoBpt] += upscaledAmountGiven;
                 // Join is "given in" so `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
@@ -481,7 +481,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
 
             uint256 indexOutNoBpt = _skipBptIndex(indexOut);
             uint256 amountCalculated = _onSwapBptExit(
-                amountGiven,
+                upscaledAmountGiven,
                 indexOutNoBpt,
                 isGivenIn,
                 amp,
@@ -496,7 +496,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
                 // Exit is "given in" so `amountCalculated` is an amountOut (tokens from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
-                balancesWithoutBpt[indexOutNoBpt] -= amountGiven;
+                balancesWithoutBpt[indexOutNoBpt] -= upscaledAmountGiven;
                 // Exit is "given out" so `amountCalculated` is an amountIn (BPT from the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
