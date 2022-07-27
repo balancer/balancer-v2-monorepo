@@ -220,14 +220,13 @@ abstract contract StablePoolStorage is BasePool {
         return _scalingFactor5;
     }
 
-    function _tokenScalingFactor(IERC20 token) internal view returns (uint256 scalingFactor) {
-        // prettier-ignore
-        if (token == _getToken0()) { scalingFactor = _getScalingFactor0(); }
-        else if (token == _getToken1()) { scalingFactor = _getScalingFactor1(); }
-        else if (token == _getToken2()) { scalingFactor = _getScalingFactor2(); }
-        else if (token == _getToken3()) { scalingFactor = _getScalingFactor3(); }
-        else if (token == _getToken4()) { scalingFactor = _getScalingFactor4(); }
-        else if (token == _getToken5()) { scalingFactor = _getScalingFactor5(); }
+    function _tokenScalingFactor(IERC20 token) internal view returns (uint256) {
+        if (token == _getToken0()) return _getScalingFactor0();
+        if (token == _getToken1()) return _getScalingFactor1();
+        if (token == _getToken2()) return _getScalingFactor2();
+        if (token == _getToken3()) return _getScalingFactor3();
+        if (token == _getToken4()) return _getScalingFactor4();
+        if (token == _getToken5()) return _getScalingFactor5();
         else {
             _revert(Errors.INVALID_TOKEN);
         }
