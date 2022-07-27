@@ -16,15 +16,19 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 
 import "../LinearPoolRebalancer.sol";
 
 contract AaveLinearPoolRebalancer is LinearPoolRebalancer {
-    constructor(
-        ILinearPool pool,
-        IVault vault,
-        IBalancerQueries queries
-    ) LinearPoolRebalancer(pool, vault, queries) {}
+    // These Rebalancers can only be deployed from a factory to work around a circular dependency: the Pool must know
+    // the address of the Rebalancer in order to register it, and the Rebalancer must know the address of the Pool
+    // during construction.
+    constructor(IVault vault, IBalancerQueries queries)
+        LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries)
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function _wrapTokens(uint256 amount) internal override {
         // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC).
