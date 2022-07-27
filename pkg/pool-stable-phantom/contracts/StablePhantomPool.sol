@@ -502,8 +502,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Process a GivenIn swap involving BPT. At this point, amount has been upscaled, and the BPT token
-     * has been removed from balances. `indexIn` does not include BPT.
+     * @dev Process a swap from one of the Pool's tokens into BPT. At this point, amount has been upscaled, and the BPT
+     * token has been removed from balances. `indexIn` is the input token's position within `balancesWithoutBpt`.
      */
     function _onSwapBptJoin(
         uint256 amount,
@@ -539,8 +539,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, ProtocolFeeCache {
     }
 
     /**
-     * @dev Process a GivenIn swap involving BPT. At this point, amount has been upscaled, and the BPT token
-     * has been removed from balances. `indexOut` does not include BPT.
+     * @dev Process a swap from BPT into one of the Pool's tokens. At this point, amount has been upscaled, and the BPT
+     * token has been removed from balances. `indexOut` is the output token's position within `balancesWithoutBpt`.
      */
     function _onSwapBptExit(
         uint256 amount,
