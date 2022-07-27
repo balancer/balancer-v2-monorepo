@@ -45,7 +45,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     // is sufficient.
     struct FeeTypeCache {
         uint64 swapFee;
-        uint64 YieldFee;
+        uint64 yieldFee;
         uint64 aumFee;
     }
 
@@ -55,7 +55,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     // Swap fees can be set to a fixed value at construction, or delegated to the ProtocolFeePercentagesProvider if
     // passing the special sentinel value.
-    uint256 public constant DELEGATE_PROTOCOL_FEES_SENTINEL = type(uint256).max;
+    uint256 public constant DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL = type(uint256).max;
 
     bool private immutable _delegatedProtocolSwapFees;
 
@@ -65,7 +65,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage) {
         // Protocol fees are delegated to the value reported by the ProtocolFeePercentagesProvider if the sentinel value
         // is passed.
-        bool delegatedProtocolSwapFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_FEES_SENTINEL;
+        bool delegatedProtocolSwapFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL;
 
         _delegatedProtocolSwapFees = delegatedProtocolSwapFees;
         _protocolFeeProvider = protocolFeeProvider;
@@ -102,7 +102,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         if (feeType == ProtocolFeeType.SWAP) {
             return getProtocolSwapFeeDelegation() ? _cache.swapFee : _fixedProtocolSwapFeePercentage;
         } else if (feeType == ProtocolFeeType.YIELD) {
-            return _cache.YieldFee;
+            return _cache.yieldFee;
         } else if (feeType == ProtocolFeeType.AUM) {
             return _cache.aumFee;
         } else {
@@ -136,7 +136,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         if (feeType == ProtocolFeeType.SWAP) {
             _cache.swapFee = currentValue.toUint64();
         } else if (feeType == ProtocolFeeType.YIELD) {
-            _cache.YieldFee = currentValue.toUint64();
+            _cache.yieldFee = currentValue.toUint64();
         } else if (feeType == ProtocolFeeType.AUM) {
             _cache.aumFee = currentValue.toUint64();
         } else {
