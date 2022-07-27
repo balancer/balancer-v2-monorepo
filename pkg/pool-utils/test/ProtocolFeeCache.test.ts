@@ -6,14 +6,13 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('ProtocolFeeCache', () => {
   const VAULT_PROTOCOL_FEE = fp(0.3); // 30%
-  const NEW_VAULT_PROTOCOL_FEE = fp(0.2); // 20%
   const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
 
   let protocolFeeCache: Contract;
