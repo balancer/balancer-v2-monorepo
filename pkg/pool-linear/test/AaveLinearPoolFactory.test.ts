@@ -129,6 +129,18 @@ describe('AaveLinearPoolFactory', function () {
     });
   });
 
+  describe('with a created pool', () => {
+    let pool: Contract;
+
+    sharedBeforeEach('create pool', async () => {
+      pool = await createPool();
+    });
+
+    it('returns the address of the last pool created by the factory', async () => {
+      expect(await factory.getLastCreatedPool()).to.equal(pool.address);
+    });
+  });
+
   describe('temporarily pausable', () => {
     it('pools have the correct window end times', async () => {
       const pool = await createPool();
