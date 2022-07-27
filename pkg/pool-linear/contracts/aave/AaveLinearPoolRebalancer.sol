@@ -26,7 +26,9 @@ contract AaveLinearPoolRebalancer is LinearPoolRebalancer {
     // during construction.
     constructor(IVault vault, IBalancerQueries queries)
         LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries)
-    {}
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function _wrapTokens(uint256 amount) internal override {
         // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC).
