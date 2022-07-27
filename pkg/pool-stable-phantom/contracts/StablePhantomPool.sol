@@ -966,15 +966,21 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _cacheTokenRatesIfNecessary() internal {
         uint256 totalTokens = _getTotalTokens();
-        // prettier-ignore
-        {
-            _cacheTokenRateIfNecessary(_getToken0());
-            _cacheTokenRateIfNecessary(_getToken1());
-            _cacheTokenRateIfNecessary(_getToken2());
-            if (totalTokens > 3) { _cacheTokenRateIfNecessary(_getToken3()); } else { return; }
-            if (totalTokens > 4) { _cacheTokenRateIfNecessary(_getToken4()); } else { return; }
-            if (totalTokens > 5) { _cacheTokenRateIfNecessary(_getToken5()); } else { return; }
-        }
+
+        // The Pool will always have at least 3 tokens so we always try to update these three caches.
+        _cacheTokenRateIfNecessary(_token0);
+        _cacheTokenRateIfNecessary(_token1);
+        _cacheTokenRateIfNecessary(_token2);
+
+        // Before we update the remaining caches we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return;
+        _cacheTokenRateIfNecessary(_token3);
+
+        if (totalTokens == 4) return;
+        _cacheTokenRateIfNecessary(_token4);
+
+        if (totalTokens == 5) return;
+        _cacheTokenRateIfNecessary(_token5);
     }
 
     /**
