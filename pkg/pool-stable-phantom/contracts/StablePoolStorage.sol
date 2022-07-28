@@ -134,7 +134,7 @@ abstract contract StablePoolStorage is BasePool {
                 rateProviders[i] = tokenRateProviders[i - 1];
                 if (exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << (i - 1);
+                    exemptFlagBitmap += 1 << i;
                 }
             }
         }

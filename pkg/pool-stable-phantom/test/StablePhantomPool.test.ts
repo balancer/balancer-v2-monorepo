@@ -787,7 +787,7 @@ describe('StablePhantomPool', () => {
             const expectedFlag = i % 2 == 0;
             const token = tokens.get(i);
 
-            await expect(await pool.instance.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
+            expect(await pool.instance.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
           }
         });
       });
