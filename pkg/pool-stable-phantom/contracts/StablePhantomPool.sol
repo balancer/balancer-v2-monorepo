@@ -883,15 +883,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // Therefore, we will never call _updateOldRate with the BPT or an invalid token,
         // so no checks need to be done there.
 
-        // prettier-ignore
-        {
-            if (_exemptFromYieldProtocolFeeToken0) { _updateOldRate(_token0); }
-            if (_exemptFromYieldProtocolFeeToken1) { _updateOldRate(_token1); }
-            if (_exemptFromYieldProtocolFeeToken2) { _updateOldRate(_token2); }
-            if (_exemptFromYieldProtocolFeeToken3) { _updateOldRate(_token3); }
-            if (_exemptFromYieldProtocolFeeToken4) { _updateOldRate(_token4); }
-            if (_exemptFromYieldProtocolFeeToken5) { _updateOldRate(_token5); }
-        }
+        if (_isTokenExemptFromYieldProtocolFee(0)) _updateOldRate(_token0);
+        if (_isTokenExemptFromYieldProtocolFee(1)) _updateOldRate(_token1);
+        if (_isTokenExemptFromYieldProtocolFee(2)) _updateOldRate(_token2);
+        if (_isTokenExemptFromYieldProtocolFee(3)) _updateOldRate(_token3);
+        if (_isTokenExemptFromYieldProtocolFee(4)) _updateOldRate(_token4);
+        if (_isTokenExemptFromYieldProtocolFee(5)) _updateOldRate(_token5);
     }
 
     // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
@@ -925,29 +922,29 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         rateRatios = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always load these three ratios.
-        rateRatios[0] = _exemptFromYieldProtocolFeeToken0
+        rateRatios[0] = _isTokenExemptFromYieldProtocolFee(0)
             ? _computeRateRatio(_tokenRateCaches[_token0])
             : FixedPoint.ONE;
-        rateRatios[1] = _exemptFromYieldProtocolFeeToken1
+        rateRatios[1] = _isTokenExemptFromYieldProtocolFee(1)
             ? _computeRateRatio(_tokenRateCaches[_token1])
             : FixedPoint.ONE;
-        rateRatios[2] = _exemptFromYieldProtocolFeeToken2
+        rateRatios[2] = _isTokenExemptFromYieldProtocolFee(2)
             ? _computeRateRatio(_tokenRateCaches[_token2])
             : FixedPoint.ONE;
 
         // Before we load the remaining ratios we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return rateRatios;
-        rateRatios[3] = _exemptFromYieldProtocolFeeToken3
+        rateRatios[3] = _isTokenExemptFromYieldProtocolFee(3)
             ? _computeRateRatio(_tokenRateCaches[_token3])
             : FixedPoint.ONE;
 
         if (totalTokens == 4) return rateRatios;
-        rateRatios[4] = _exemptFromYieldProtocolFeeToken4
+        rateRatios[4] = _isTokenExemptFromYieldProtocolFee(4)
             ? _computeRateRatio(_tokenRateCaches[_token4])
             : FixedPoint.ONE;
 
         if (totalTokens == 5) return rateRatios;
-        rateRatios[5] = _exemptFromYieldProtocolFeeToken5
+        rateRatios[5] = _isTokenExemptFromYieldProtocolFee(5)
             ? _computeRateRatio(_tokenRateCaches[_token5])
             : FixedPoint.ONE;
     }
