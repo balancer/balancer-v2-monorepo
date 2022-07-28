@@ -64,15 +64,11 @@ abstract contract StablePoolStorage is BasePool {
     IRateProvider internal immutable _rateProvider4;
     IRateProvider internal immutable _rateProvider5;
 
-    // Set true if the corresponding token should have its yield exempted from protocol fees.
+    // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
+    // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
     // For example, the BPT of another PhantomStable Pool containing yield tokens.
     // The flag will always be false for the BPT token.
-    bool internal immutable _exemptFromYieldProtocolFeeToken0;
-    bool internal immutable _exemptFromYieldProtocolFeeToken1;
-    bool internal immutable _exemptFromYieldProtocolFeeToken2;
-    bool internal immutable _exemptFromYieldProtocolFeeToken3;
-    bool internal immutable _exemptFromYieldProtocolFeeToken4;
-    bool internal immutable _exemptFromYieldProtocolFeeToken5;
+    uint256 internal immutable _exemptFromYieldProtocolFeeTokens;
 
     constructor(
         IERC20[] memory registeredTokens,
@@ -121,24 +117,26 @@ abstract contract StablePoolStorage is BasePool {
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory rateProviders = new IRateProvider[](registeredTokens.length);
+
         // Do the same with exemptFromYieldProtocolFeeFlags
-        bool[] memory exemptFromYieldFlags = new bool[](registeredTokens.length);
+        // The exemptFromYieldFlag should never be set on a token without a rate provider.
+        // This would cause division by zero errors downstream.
+        uint256 exemptFlagBitmap;
 
         for (uint256 i = 0; i < registeredTokens.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = tokenRateProviders[i];
-                exemptFromYieldFlags[i] = exemptFromYieldProtocolFeeFlags[i];
+                if (exemptFromYieldProtocolFeeFlags[i]) {
+                    _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+                    exemptFlagBitmap += 1 << i;
+                }
             } else if (i != bptIndex) {
                 rateProviders[i] = tokenRateProviders[i - 1];
-                exemptFromYieldFlags[i] = exemptFromYieldProtocolFeeFlags[i - 1];
+                if (exemptFromYieldProtocolFeeFlags[i - 1]) {
+                    _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+                    exemptFlagBitmap += 1 << i;
+                }
             }
-
-            // The exemptFromYieldFlag should never be set on a token without a rate provider.
-            // This would cause division by zero errors downstream.
-            _require(
-                !(exemptFromYieldFlags[i] && rateProviders[i] == IRateProvider(0)),
-                Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER
-            );
         }
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
@@ -149,12 +147,7 @@ abstract contract StablePoolStorage is BasePool {
         _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
         _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
 
-        _exemptFromYieldProtocolFeeToken0 = exemptFromYieldFlags[0];
-        _exemptFromYieldProtocolFeeToken1 = exemptFromYieldFlags[1];
-        _exemptFromYieldProtocolFeeToken2 = exemptFromYieldFlags[2];
-        _exemptFromYieldProtocolFeeToken3 = (rateProviders.length > 3) ? exemptFromYieldFlags[3] : false;
-        _exemptFromYieldProtocolFeeToken4 = (rateProviders.length > 4) ? exemptFromYieldFlags[4] : false;
-        _exemptFromYieldProtocolFeeToken5 = (rateProviders.length > 5) ? exemptFromYieldFlags[5] : false;
+        _exemptFromYieldProtocolFeeTokens = exemptFlagBitmap;
     }
 
     // Tokens
@@ -366,14 +359,19 @@ abstract contract StablePoolStorage is BasePool {
      * These immutables are only accessed once, so we don't need individual getters.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
-        if (token == _getToken0()) return _exemptFromYieldProtocolFeeToken0;
-        if (token == _getToken1()) return _exemptFromYieldProtocolFeeToken1;
-        if (token == _getToken2()) return _exemptFromYieldProtocolFeeToken2;
-        if (token == _getToken3()) return _exemptFromYieldProtocolFeeToken3;
-        if (token == _getToken4()) return _exemptFromYieldProtocolFeeToken4;
-        if (token == _getToken5()) return _exemptFromYieldProtocolFeeToken5;
+        if (token == _getToken0()) return _isTokenExemptFromYieldProtocolFee(0);
+        if (token == _getToken1()) return _isTokenExemptFromYieldProtocolFee(1);
+        if (token == _getToken2()) return _isTokenExemptFromYieldProtocolFee(2);
+        if (token == _getToken3()) return _isTokenExemptFromYieldProtocolFee(3);
+        if (token == _getToken4()) return _isTokenExemptFromYieldProtocolFee(4);
+        if (token == _getToken5()) return _isTokenExemptFromYieldProtocolFee(5);
         else {
             _revert(Errors.INVALID_TOKEN);
         }
+    }
+
+    // This assumes the tokenIndex is valid. If it's not, it will just return false.
+    function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
+        return _exemptFromYieldProtocolFeeTokens & (1 << tokenIndex) > 0;
     }
 }
