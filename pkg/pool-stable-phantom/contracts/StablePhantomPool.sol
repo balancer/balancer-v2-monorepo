@@ -164,10 +164,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
                 _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
                 emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
 
-                if (params.exemptFromYieldProtocolFeeFlags[i]) {
-                    // Initialize the old rates as well, in case they are referenced before the first join.
-                    _updateOldRate(params.tokens[i]);
-                }
+                // Initialize the old rates as well, in case they are referenced before the first join.
+                _updateOldRate(params.tokens[i]);
             }
         }
     }
@@ -837,9 +835,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // oldRates applied to all tokens: i.e., excluding yield entirely, to measure the growth due to swap fees alone.
         // This function copies the values in `balancesWithoutBpt`, and so doesn't mutate it.
 
-        (uint256[] memory totalGrowthBalances, uint256[] memory swapGrowthBalances) = _adjustBalancesByTokenRatios(
-            balancesWithoutBpt
-        );
+        // Do not ignore the exempt flags when calculating total growth = swap fees + non-exempt token yield.
+        uint256[] memory totalGrowthBalances = _adjustBalancesByTokenRatios(balancesWithoutBpt, false);
+        // Ignore the exempt flags to use the oldRate for all tokens, corresponding to the growth from swap fees alone.
+        uint256[] memory swapGrowthBalances = _adjustBalancesByTokenRatios(balancesWithoutBpt, true);
 
         // Charge the protocol fee in BPT, using the growth in invariant between _postJoinExitInvariant
         // and adjusted versions of the current invariant. We have separate protocol fee percentages for growth based
@@ -912,12 +911,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
         uint256 totalTokens = _getTotalTokens();
 
-        if (getBptIndex() != 0) _updateOldRate(_token0);
-        if (getBptIndex() != 1) _updateOldRate(_token1);
-        if (getBptIndex() != 2) _updateOldRate(_token2);
-        if (totalTokens > 3 && getBptIndex() != 3) _updateOldRate(_token3);
-        if (totalTokens > 4 && getBptIndex() != 4) _updateOldRate(_token4);
-        if (totalTokens > 5 && getBptIndex() != 5) _updateOldRate(_token5);
+        if (_hasCacheEntry(0)) _updateOldRate(_token0);
+        if (_hasCacheEntry(1)) _updateOldRate(_token1);
+        if (_hasCacheEntry(2)) _updateOldRate(_token2);
+        if (totalTokens > 3 && _hasCacheEntry(3)) _updateOldRate(_token3);
+        if (totalTokens > 4 && _hasCacheEntry(4)) _updateOldRate(_token4);
+        if (totalTokens > 5 && _hasCacheEntry(5)) _updateOldRate(_token5);
     }
 
     // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
@@ -934,26 +933,19 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      * We also need to apply the old rates regardless of the exempt flag, which filters out any yield, and
      * gives the balances that would result from swap fees alone.
      */
-    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
+    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt, bool ignoreExemptFlags)
         internal
         view
-        returns (uint256[] memory, uint256[] memory)
+        returns (uint256[] memory)
     {
         // Adjust balances by the oldRate if exempt, and the currentRate otherwise.
-        uint256[] memory totalGrowthBalances = new uint256[](balancesWithoutBpt.length);
-        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios(false));
+        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
+        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios(ignoreExemptFlags));
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            totalGrowthBalances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
+            balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
         }
 
-        // Adjust balances by the oldRate, regardless of exempt status.
-        uint256[] memory swapGrowthBalances = new uint256[](balancesWithoutBpt.length);
-        ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios(true));
-        for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            swapGrowthBalances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
-        }
-
-        return (totalGrowthBalances, swapGrowthBalances);
+        return balances;
     }
 
     /**
@@ -965,35 +957,44 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         rateRatios = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always load these three ratios.
-        rateRatios[0] = _exemptFromYieldProtocolFeeToken0 || (ignoreExemptFlags && getBptIndex() != 0)
+        rateRatios[0] = _exemptFromYieldProtocolFeeToken0 || (ignoreExemptFlags && _hasCacheEntry(0))
             ? _computeRateRatio(_tokenRateCaches[_token0])
             : FixedPoint.ONE;
-        rateRatios[1] = _exemptFromYieldProtocolFeeToken1 || (ignoreExemptFlags && getBptIndex() != 1)
+        rateRatios[1] = _exemptFromYieldProtocolFeeToken1 || (ignoreExemptFlags && _hasCacheEntry(1))
             ? _computeRateRatio(_tokenRateCaches[_token1])
             : FixedPoint.ONE;
-        rateRatios[2] = _exemptFromYieldProtocolFeeToken2 || (ignoreExemptFlags && getBptIndex() != 2)
+        rateRatios[2] = _exemptFromYieldProtocolFeeToken2 || (ignoreExemptFlags && _hasCacheEntry(2))
             ? _computeRateRatio(_tokenRateCaches[_token2])
             : FixedPoint.ONE;
 
         // Before we load the remaining ratios we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return rateRatios;
-        rateRatios[3] = _exemptFromYieldProtocolFeeToken3 || (ignoreExemptFlags && getBptIndex() != 3)
+        rateRatios[3] = _exemptFromYieldProtocolFeeToken3 || (ignoreExemptFlags && _hasCacheEntry(3))
             ? _computeRateRatio(_tokenRateCaches[_token3])
             : FixedPoint.ONE;
 
         if (totalTokens == 4) return rateRatios;
-        rateRatios[4] = _exemptFromYieldProtocolFeeToken4 || (ignoreExemptFlags && getBptIndex() != 4)
+        rateRatios[4] = _exemptFromYieldProtocolFeeToken4 || (ignoreExemptFlags && _hasCacheEntry(4))
             ? _computeRateRatio(_tokenRateCaches[_token4])
             : FixedPoint.ONE;
 
         if (totalTokens == 5) return rateRatios;
-        rateRatios[5] = _exemptFromYieldProtocolFeeToken5 || (ignoreExemptFlags && getBptIndex() != 5)
+        rateRatios[5] = _exemptFromYieldProtocolFeeToken5 || (ignoreExemptFlags && _hasCacheEntry(5))
             ? _computeRateRatio(_tokenRateCaches[_token5])
             : FixedPoint.ONE;
     }
 
     function _computeRateRatio(bytes32 cache) private pure returns (uint256) {
         return cache.getOldRate().divUp(cache.getCurrentRate());
+    }
+
+    function _hasCacheEntry(uint256 index) private view returns (bool) {
+        if (index == 0) return _getRateProvider0() != IRateProvider(0) && getBptIndex() != 0;
+        if (index == 1) return _getRateProvider1() != IRateProvider(0) && getBptIndex() != 1;
+        if (index == 2) return _getRateProvider2() != IRateProvider(0) && getBptIndex() != 2;
+        if (index == 3) return _getRateProvider3() != IRateProvider(0) && getBptIndex() != 3;
+        if (index == 4) return _getRateProvider4() != IRateProvider(0) && getBptIndex() != 4;
+        if (index == 5) return _getRateProvider5() != IRateProvider(0) && getBptIndex() != 5;
     }
 
     // Token rates
