@@ -170,6 +170,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         }
     }
 
+    /**
+     * @notice Return the minimum BPT balance, required to avoid minimum token balances.
+     * @dev This amount is minted and immediately burned on pool initialization, so that the total supply
+     * (and therefore post-exit token balances), can never be zero. This keeps the math well-behaved when
+     * liquidity is low. (It also provides an easy way to check whether a pool has been initialized, to
+     * ensure this is only done once.)
+     */
     function getMinimumBpt() external pure returns (uint256) {
         return _getMinimumBpt();
     }
@@ -196,14 +203,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
-     * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
-     * b) remove BPT from the balances array when processing regular swaps, before calling the StableMath functions.
+     * tokens is the preminted BPT, we need to handle swaps where BPT is involved separately.
      *
      * At this point, the balances are unscaled.
      *
-     * If this is a swap involving BPT, call `_onSwapBpt`, which computes the amountOut using the swapFeePercentage,
-     * in the same manner as single token join/exits, and charges protocol fees on the corresponding bptAmount.
-     * Otherwise, perform the default processing for a regular swap.
+     * If this is a swap involving BPT, call `_swapWithBpt`, which computes the amountOut using the swapFeePercentage
+     * and charges protocol fees, in the same manner as single token join/exits. Otherwise, perform the default
+     * processing for a regular swap.
      */
     function _swapGivenIn(
         SwapRequest memory swapRequest,
@@ -221,14 +227,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
-     * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
-     * b) remove BPT from the balances array when processing regular swaps, before calling the StableMath functions.
+     * tokens is the preminted BPT, we need to handle swaps where BPT is involved separately.
      *
      * At this point, the balances are unscaled.
      *
-     * If this is a swap involving BPT, call `_onSwapBpt`, which computes the amountIn using the swapFeePercentage,
-     * in the same manner as single token join/exits, and charges protocol fees on the corresponding bptAmount.
-     * Otherwise, perform the default processing for a regular swap.
+     * If this is a swap involving BPT, call `_swapWithBpt`, which computes the amountOut using the swapFeePercentage
+     * and charges protocol fees, in the same manner as single token join/exits. Otherwise, perform the default
+     * processing for a regular swap.
      */
     function _swapGivenOut(
         SwapRequest memory swapRequest,
@@ -269,6 +274,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         return _onRegularSwap(IVault.SwapKind.GIVEN_OUT, request.amount, balancesIncludingBpt, indexIn, indexOut);
     }
 
+    // Perform a swap between non-BPT tokens
     function _onRegularSwap(
         IVault.SwapKind kind,
         uint256 givenAmount,

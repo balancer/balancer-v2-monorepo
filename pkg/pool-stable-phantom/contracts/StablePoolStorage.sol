@@ -261,6 +261,13 @@ abstract contract StablePoolStorage is BasePool {
         _require(indexWithBpt < _totalTokens && indexWithBpt != getBptIndex(), Errors.OUT_OF_BOUNDS);
     }
 
+    /**
+     * @dev Take an array of arbitrary values the size of the token set without BPT, and insert the given
+     * bptAmount at the bptIndex location.
+     *
+     * The caller is responsible for ensuring the `amounts` input array is sized properly; this function
+     * performs no checks.
+     */
     function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
         internal
         view
