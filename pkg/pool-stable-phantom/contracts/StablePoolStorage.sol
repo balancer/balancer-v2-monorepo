@@ -146,7 +146,7 @@ abstract contract StablePoolStorage is BasePool {
         _rateProvider3 = (rateProviders.length > 3) ? rateProviders[3] : IRateProvider(0);
         _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
         _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
-          
+
         _exemptFromYieldProtocolFeeTokens = exemptFlagBitmap;
     }
 
