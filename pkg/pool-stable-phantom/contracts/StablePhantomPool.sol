@@ -829,8 +829,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
-        // and apply the old rate. This function copies the values in `balancesWithoutBpt and so doesn't mutate it.
-        uint256[] memory adjustedBalances = _adjustBalancesByTokenRatios(balancesWithoutBpt);
+        // and apply the old rate. This function copies the values in `balances` and so doesn't mutate it.
+        uint256[] memory adjustedBalances = _dropBptItem(_getAdjustedBalances(balances));
 
         uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, adjustedBalances);
 
@@ -898,61 +898,43 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
-     * `_getTokenRateRatios` includes BPT, so we need to remove that ratio to match the cardinality of
-     * balancesWithoutBpt.
+     * @dev Apply the token ratios to a set of balances to adjust for any exempt yield tokens.
+     * The `balances` array is assumed to include BPT to ensure that token indices align.
      */
-    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
-        internal
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
-        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios());
-        for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
-        }
-
-        return balances;
-    }
-
-    /**
-     * @dev Return the complete set of token ratios (including BPT, which will always be 1).
-     */
-    function _getTokenRateRatios() internal view returns (uint256[] memory rateRatios) {
-        uint256 totalTokens = _getTotalTokens();
-        rateRatios = new uint256[](totalTokens);
+    function _getAdjustedBalances(uint256[] memory balances) internal view returns (uint256[] memory adjustedBalances) {
+        uint256 totalTokens = balances.length;
+        adjustedBalances = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always load these three ratios.
-        rateRatios[0] = _isTokenExemptFromYieldProtocolFee(0)
-            ? _computeRateRatio(_tokenRateCaches[_token0])
-            : FixedPoint.ONE;
-        rateRatios[1] = _isTokenExemptFromYieldProtocolFee(1)
-            ? _computeRateRatio(_tokenRateCaches[_token1])
-            : FixedPoint.ONE;
-        rateRatios[2] = _isTokenExemptFromYieldProtocolFee(2)
-            ? _computeRateRatio(_tokenRateCaches[_token2])
-            : FixedPoint.ONE;
+        adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0)
+            ? _adjustedBalance(balances[0], _tokenRateCaches[_token0])
+            : balances[0];
+        adjustedBalances[1] = _isTokenExemptFromYieldProtocolFee(1)
+            ? _adjustedBalance(balances[1], _tokenRateCaches[_token1])
+            : balances[1];
+        adjustedBalances[2] = _isTokenExemptFromYieldProtocolFee(2)
+            ? _adjustedBalance(balances[2], _tokenRateCaches[_token2])
+            : balances[2];
 
         // Before we load the remaining ratios we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return rateRatios;
-        rateRatios[3] = _isTokenExemptFromYieldProtocolFee(3)
-            ? _computeRateRatio(_tokenRateCaches[_token3])
-            : FixedPoint.ONE;
+        if (totalTokens == 3) return adjustedBalances;
+        adjustedBalances[3] = _isTokenExemptFromYieldProtocolFee(3)
+            ? _adjustedBalance(balances[3], _tokenRateCaches[_token3])
+            : balances[3];
 
-        if (totalTokens == 4) return rateRatios;
-        rateRatios[4] = _isTokenExemptFromYieldProtocolFee(4)
-            ? _computeRateRatio(_tokenRateCaches[_token4])
-            : FixedPoint.ONE;
+        if (totalTokens == 4) return adjustedBalances;
+        adjustedBalances[4] = _isTokenExemptFromYieldProtocolFee(4)
+            ? _adjustedBalance(balances[4], _tokenRateCaches[_token4])
+            : balances[4];
 
-        if (totalTokens == 5) return rateRatios;
-        rateRatios[5] = _isTokenExemptFromYieldProtocolFee(5)
-            ? _computeRateRatio(_tokenRateCaches[_token5])
-            : FixedPoint.ONE;
+        if (totalTokens == 5) return adjustedBalances;
+        adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5)
+            ? _adjustedBalance(balances[5], _tokenRateCaches[_token5])
+            : balances[5];
     }
 
-    function _computeRateRatio(bytes32 cache) private pure returns (uint256) {
-        return cache.getOldRate().divUp(cache.getCurrentRate());
+    function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
+        return balance.mulDown(cache.getOldRate()).divUp(cache.getCurrentRate());
     }
 
     // Token rates
