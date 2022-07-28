@@ -899,8 +899,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
-     * Mutates the balances in place. `_getTokenRateRatios` includes BPT, so we need to remove that ratio to
-     * match the cardinality of balancesWithoutBpt.
+     * `_getTokenRateRatios` includes BPT, so we need to remove that ratio to match the cardinality of
+     * balancesWithoutBpt.
      */
     function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
         internal
@@ -912,6 +912,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
             balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
         }
+
+        return balances;
     }
 
     /**
