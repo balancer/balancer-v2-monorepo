@@ -905,7 +905,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256 totalTokens = balances.length;
         adjustedBalances = new uint256[](totalTokens);
 
-        // The Pool will always have at least 3 tokens so we always load these three ratios.
+        // The Pool will always have at least 3 tokens so we always adjust these three balances.
         adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0)
             ? _adjustedBalance(balances[0], _tokenRateCaches[_getToken0()])
             : balances[0];
@@ -916,7 +916,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             ? _adjustedBalance(balances[2], _tokenRateCaches[_getToken2()])
             : balances[2];
 
-        // Before we load the remaining ratios we must check that the Pool contains enough tokens.
+        // Before we adjust the remaining balances we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return adjustedBalances;
         adjustedBalances[3] = _isTokenExemptFromYieldProtocolFee(3)
             ? _adjustedBalance(balances[3], _tokenRateCaches[_getToken3()])
