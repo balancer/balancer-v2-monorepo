@@ -72,4 +72,8 @@ contract MockGaugeController is IGaugeController {
     function change_type_weight(int128, uint256) external override {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function gauge_exists(address gauge) external view override returns (bool) {
+        return _gaugeType[gauge] > 0;
+    }
 }
