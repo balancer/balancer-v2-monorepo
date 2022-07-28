@@ -5,12 +5,13 @@ import { Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describe('GaugeAdderMigrationCoordinator', function () {
+describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -22,11 +23,12 @@ describe('GaugeAdderMigrationCoordinator', function () {
   let arbitrumRootGaugeFactory: Contract;
   let optimismRootGaugeFactory: Contract;
 
-  const task = new Task('20220721-gauge-adder-migration-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    task = new Task('20220721-gauge-adder-migration-coordinator', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.deployedInstance('GaugeAdderMigrationCoordinator');
   });

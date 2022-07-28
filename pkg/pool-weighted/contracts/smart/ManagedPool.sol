@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -23,7 +24,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/AumProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
@@ -54,7 +54,7 @@ import "../BaseWeightedPool.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -192,12 +192,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
         uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
-        IAumProtocolFeesCollector aumProtocolFeesCollector;
     }
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -214,8 +214,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
             owner,
             true
         )
-        ProtocolFeeCache(vault, params.protocolSwapFeePercentage)
-        AumProtocolFeeCache(params.aumProtocolFeesCollector)
+        ProtocolFeeCache(protocolFeeProvider, params.protocolSwapFeePercentage)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
@@ -1100,7 +1099,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
         // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
         uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
 
         if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
@@ -1557,7 +1556,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, AumProtocolFeeCache,
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
             // Compute the protocol's share of the AUM fee
-            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolAumFeePercentageCache());
+            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
             uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
             _payProtocolFees(protocolBptAmount);
