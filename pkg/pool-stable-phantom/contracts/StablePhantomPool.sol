@@ -531,8 +531,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Supports single- and multi-token joins, except for explicit proportional joins.
-     * Pay protocol fees here, before the join, based on the value accrued since the previous join or exit.
-     * The specific join routines are responsible for updating the postJoinExit values after the join.
      */
     function _onJoinPool(
         bytes32,
@@ -558,8 +556,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Multi-token join. Proportional joins will pay no protocol fees. Calls `_updateInvariantAfterJoinExit` with
-     * final post-join balances, to reset the basis for protocol fees.
+     * @dev Multi-token join. Proportional joins will pay no protocol fees.
      */
     function _joinExactTokensInForBPTOut(
         uint256 virtualSupply,
@@ -597,8 +594,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Single-token join, equivalent to swapping a pool token for BPT. Calls `_updateInvariantAfterJoinExit` with
-     * final post-join balances, to reset the basis for protocol fees.
+     * @dev Single-token join, equivalent to swapping a pool token for BPT.
      */
     function _joinTokenInForExactBPTOut(
         uint256 virtualSupply,
@@ -663,8 +659,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Support single- and multi-token exits, but not explicit proportional exits. Pay protocol fees here,
-     * before the join, based on the value accrued since the previous join or exit.
+     * @dev Support single- and multi-token exits, but not explicit proportional exits.
      * Note that recovery mode exits do not call`_onExitPool`.
      */
     function _onExitPool(
@@ -691,8 +686,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Multi-token exit. Proportional exits will pay no protocol fees. Calls `_updateInvariantAfterJoinExit` with
-     * final post-exit balances, to reset the basis for protocol fees.
+     * @dev Multi-token exit. Proportional exits will pay no protocol fees.
      */
     function _exitBPTInForExactTokensOut(
         uint256 virtualSupply,
@@ -729,8 +723,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Single-token exit, equivalent to swapping BPT for a pool token. Calls `_updateInvariantAfterJoinExit` with
-     * final post-exit balances, to reset the basis for protocol fees.
+     * @dev Single-token exit, equivalent to swapping BPT for a pool token.
      */
     function _exitExactBPTInForTokenOut(
         uint256 virtualSupply,
