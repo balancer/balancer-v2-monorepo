@@ -8,7 +8,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS, MAX_UINT256 } from '../../../constants';
-import { GeneralSwap, QueryBatchSwap } from '../../vault/types';
+import { GeneralSwap, ProtocolFee, QueryBatchSwap } from '../../vault/types';
 import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
 
 import Vault from '../../vault/Vault';
@@ -118,11 +118,11 @@ export default class StablePhantomPool extends BasePool {
   }
 
   async getProtocolSwapFeePercentageCache(): Promise<BigNumber> {
-    return this.instance.getProtocolSwapFeePercentageCache();
+    return this.instance.getProtocolFeePercentageCache(ProtocolFee.SWAP);
   }
 
-  async updateProtocolSwapFeePercentageCache(): Promise<ContractTransaction> {
-    return this.instance.updateProtocolSwapFeePercentageCache();
+  async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {
+    return this.instance.updateProtocolFeePercentageCache();
   }
 
   async setTokenRateCacheDuration(token: Token, duration: BigNumber, params?: TxParams): Promise<ContractTransaction> {

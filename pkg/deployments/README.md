@@ -90,6 +90,8 @@ Returns an object with all contracts from a deployment and their addresses.
 | Distribution Scheduler for reward tokens on gauges   | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                 | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
 | Batch Relayer V3                                     | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
+| Swap, join and exit simulations (queries)            | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
+| Protocol fee percentages provider                    | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 
 ## Scripts
 
@@ -120,7 +122,6 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Relayer for Lido stETH wrapping/unwrapping       | [`20210812-lido-relayer`](./tasks/deprecated/20210812-lido-relayer)                                 |
 | Basic Investment Pools for few tokens            | [`20210907-investment-pool`](./tasks/deprecated/20210907-investment-pool)                           |
 | Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/deprecated/20210913-bal-arbitrum-merkle)                   |
-| Distributor contract for VITA rewards            | [`20210920-vita-merkle`](./tasks/deprecated/20210920-vita-merkle)                                   |
 | Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
 | Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
 | Batch Relayer                                    | [`20211203-batch-relayer`](./tasks/deprecated/20211203-batch-relayer)                               |

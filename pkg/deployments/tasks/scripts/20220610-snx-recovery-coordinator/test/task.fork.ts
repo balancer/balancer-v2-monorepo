@@ -2,17 +2,19 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
+import { defaultAbiCoder } from '@ethersproject/abi';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
-import { StablePoolEncoder, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
-describe('SNXRecoveryCoordinator', function () {
+describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -21,7 +23,7 @@ describe('SNXRecoveryCoordinator', function () {
 
   let allowlistTokenRole: string, withdrawCollectedFeesRole: string;
 
-  const task = new Task('20220610-snx-recovery-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
@@ -46,6 +48,7 @@ describe('SNXRecoveryCoordinator', function () {
   const SYNTHETIX_INSUFFICIENT_BALANCE = 'Insufficient balance after any settlement owing';
 
   before('run task', async () => {
+    task = new Task('20220610-snx-recovery-coordinator', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.deployedInstance('SNXRecoveryCoordinator');
   });
@@ -79,13 +82,18 @@ describe('SNXRecoveryCoordinator', function () {
   it('reverts on large exits from the sBTC pool', async () => {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
     const whale = await impersonate(BTC_STABLE_POOL_WHALE, fp(100));
     await expect(
       vault.connect(whale).exitPool(BTC_STABLE_POOL_ID, BTC_STABLE_POOL_WHALE, BTC_STABLE_POOL_WHALE, {
         assets: [wBTC, renBTC, sBTC],
         minAmountsOut: [0, 0, 0],
-        userData: StablePoolEncoder.exitExactBPTInForTokensOut(await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)),
+        // The helper used to encode user data has been removed; this is how it was encoded in the original fork test.
+        userData: defaultAbiCoder.encode(
+          ['uint256', 'uint256'],
+          [EXACT_BPT_IN_FOR_TOKENS_OUT, await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)]
+        ),
         toInternalBalance: false,
       })
     ).to.be.revertedWith(SYNTHETIX_INSUFFICIENT_BALANCE);
@@ -141,12 +149,17 @@ describe('SNXRecoveryCoordinator', function () {
   it('allows large exits from the sBTC pool', async () => {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
+    const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
     const whale = await impersonate(BTC_STABLE_POOL_WHALE, fp(100));
     await vault.connect(whale).exitPool(BTC_STABLE_POOL_ID, BTC_STABLE_POOL_WHALE, BTC_STABLE_POOL_WHALE, {
       assets: [wBTC, renBTC, sBTC],
       minAmountsOut: [0, 0, 0],
-      userData: StablePoolEncoder.exitExactBPTInForTokensOut(await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)),
+      // The helper used to encode user data has been removed; this is how it was encoded in the original fork test.
+      userData: defaultAbiCoder.encode(
+        ['uint256', 'uint256'],
+        [EXACT_BPT_IN_FOR_TOKENS_OUT, await poolContract.balanceOf(BTC_STABLE_POOL_WHALE)]
+      ),
       toInternalBalance: false,
     });
   });

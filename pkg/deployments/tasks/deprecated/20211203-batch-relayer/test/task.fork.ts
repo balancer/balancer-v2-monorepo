@@ -4,6 +4,7 @@ import { BigNumber, Contract } from 'ethers';
 
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { getSigner, impersonate, impersonateWhale, setBalance } from '../../../../src/signers';
@@ -12,8 +13,8 @@ import { RelayerAuthorization, SwapKind, WeightedPoolEncoder } from '@balancer-l
 import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-describe('BatchRelayerLibrary', function () {
-  const task = new Task('20211203-batch-relayer', TaskMode.TEST, getForkedNetwork(hre));
+describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
+  let task: Task;
 
   let relayer: Contract, library: Contract;
   let sender: SignerWithAddress, admin: SignerWithAddress;
@@ -34,6 +35,7 @@ describe('BatchRelayerLibrary', function () {
   }
 
   before('run task', async () => {
+    task = new Task('20211203-batch-relayer', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     library = await task.deployedInstance('BatchRelayerLibrary');
     relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());
