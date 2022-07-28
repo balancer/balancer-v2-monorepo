@@ -80,7 +80,6 @@ describe('PrimaryPool', function () {
         await tokens.asyncEach(async (token) => {
           const { assetManager } = await pool.getTokenInfo(token);
           expect(assetManager).to.be.equal(ZERO_ADDRESS);
-          // expect(assetManager).to.be.zeroAddress;
         });
       });
 
@@ -109,13 +108,13 @@ describe('PrimaryPool', function () {
       });
     });
   });
-
+  /*
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
       // minimum price should be given as non-zero value so that zero-division error won't occur
       await deployPool({ securityToken, currencyToken, minimumPrice: BigNumber.from(1) }, false);
     });
-
+    
     it('initialize pool', async () => {
       const previousBalances = await pool.getBalances();
       expect(testAllEqualTo(previousBalances, 0)).to.be.equal(true);
@@ -143,5 +142,5 @@ describe('PrimaryPool', function () {
       await pool.initialize();
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
-  });
+  });*/
 });

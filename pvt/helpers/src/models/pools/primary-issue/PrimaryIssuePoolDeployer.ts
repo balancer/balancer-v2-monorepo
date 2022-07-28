@@ -11,6 +11,7 @@ import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 
 export default {
+  
   async deploy(params: RawPrimaryPoolDeployment, mockedVault: boolean): Promise<PrimaryPool> {
     const vaultParams = TypesConverter.toRawVaultDeployment(params);
     vaultParams.mocked = mockedVault;
