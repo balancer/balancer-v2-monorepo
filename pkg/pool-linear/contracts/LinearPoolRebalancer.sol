@@ -72,9 +72,10 @@ abstract contract LinearPoolRebalancer {
     }
 
     /**
-     * @notice Same as `rebalance`, except this also works in scenarios where the Pool is in the no-fee zone by first
-     * taking `extraMain` tokens from the caller, to cover for rounding errors that are normally offset by acccumulated
-     * fees. Any extra tokens unused during the rebalance are sent to the recipient as usual.
+     * @notice Rebalance a Linear Pool from an asset manager to maintain optimal operating conditions.
+     * @dev This function performs the same action as `rebalance`, except this also works in scenarios where the Pool
+     * is in the no-fee zone. This is done by first taking `extraMain` tokens from the caller, to cover for rounding errors
+     * that are normally offset by acccumulated fees. Any extra tokens unused during the rebalance are sent to the recipient as usual.
      */
     function rebalanceWithExtraMain(address recipient, uint256 extraMain) external returns (uint256) {
         return _rebalance(recipient, extraMain);
@@ -111,15 +112,15 @@ abstract contract LinearPoolRebalancer {
         // The Pool lacks main tokens, but if the main balance is above the lower target (i.e. it is still in the no-fee
         // zone), then there's no accumulated fees. It is therefore possible that the amount of wrapped tokens the Pool
         // will give us in exchange for main cannot be unwrapped into the amount of main tokens desired by the Pool, due
-        // to  the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
+        // to the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
         //
-        // This is typically a non-issue as the Linear Pool accumulated fees more than cover for said rounding error,
+        // This is typically a non-issue as the Linear Pool's accumulated fees more than cover for said rounding error,
         // but in scenarios with no fees we require some extra main tokens to be able to make the Pool whole. Any excess
-        // will be sent at the end of the transaction to the recipient.
+        // will be sent to the recipient at the end of the transaction.
 
         (uint256 lowerTarget, ) = _pool.getTargets();
         // The lower target is upscaled, so we undo that
-        if (mainTokenBalance > FixedPoint.divDown(lowerTarget, _mainTokenScalingFactor)) {
+        if (mainTokenBalance >= FixedPoint.divDown(lowerTarget, _mainTokenScalingFactor)) {
             _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
         }
     }
@@ -130,13 +131,13 @@ abstract contract LinearPoolRebalancer {
         // the Pool will give us in exchange for wrapped cannot be wrapped into the amount of wrapped tokens desired by
         // the Pool, due to the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
         //
-        // This is typically a non-issue as the Linear Pool accumulated fees more than cover for said rounding error,
+        // This is typically a non-issue as the Linear Pool's accumulated fees more than cover for said rounding error,
         // but in scenarios with no fees we require some extra main tokens to be able to make the Pool whole. Any excess
-        // will be sent at the end of the transaction to the recipient.
+        // will be sent  to the recipient at the end of the transaction.
 
         (, uint256 upperTarget) = _pool.getTargets();
         // The upper target is upscaled, so we undo that
-        if (mainTokenBalance < FixedPoint.divDown(upperTarget, _mainTokenScalingFactor)) {
+        if (mainTokenBalance <= FixedPoint.divDown(upperTarget, _mainTokenScalingFactor)) {
             _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
         }
     }
