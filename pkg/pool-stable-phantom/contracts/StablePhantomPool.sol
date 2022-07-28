@@ -271,7 +271,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     function _onRegularSwap(
         IVault.SwapKind kind,
-        uint256 givenAmount,
+        uint256 amountGiven,
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
@@ -291,7 +291,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
                 balances,
                 indexIn,
                 indexOut,
-                givenAmount,
+                amountGiven,
                 invariant
             );
         } else {
@@ -300,7 +300,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
                 balances,
                 indexIn,
                 indexOut,
-                givenAmount,
+                amountGiven,
                 invariant
             );
         }
