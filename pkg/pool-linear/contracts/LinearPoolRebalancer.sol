@@ -59,7 +59,7 @@ abstract contract LinearPoolRebalancer {
     }
 
     /**
-     * @notice Rebalance a Linear Pool from an asset manager, to maintain optimal operating conditions.
+     * @notice Rebalance a Linear Pool from an asset manager to maintain optimal operating conditions.
      * @dev Use the asset manager mechanism to wrap/unwrap tokens as necessary to keep the main token
      * balance as close as possible to the midpoint between the upper and lower targets: the fee-free zone
      * where trading volume is highest.
