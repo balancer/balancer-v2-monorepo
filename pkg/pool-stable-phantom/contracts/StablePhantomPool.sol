@@ -901,9 +901,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      * @dev Apply the token ratios to a set of balances to adjust for any exempt yield tokens.
      * The `balances` array is assumed to include BPT to ensure that token indices align.
      */
-    function _getAdjustedBalances(uint256[] memory balances) internal view returns (uint256[] memory adjustedBalances) {
+    function _getAdjustedBalances(uint256[] memory balances) internal view returns (uint256[] memory) {
         uint256 totalTokens = balances.length;
-        adjustedBalances = new uint256[](totalTokens);
+        uint256[] memory adjustedBalances = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always adjust these three balances.
         adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0)
@@ -931,6 +931,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5)
             ? _adjustedBalance(balances[5], _tokenRateCaches[_getToken5()])
             : balances[5];
+
+        return adjustedBalances;
     }
 
     function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
@@ -1072,10 +1074,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     /**
      * @dev Overrides scaling factor getter to introduce the tokens' rates.
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
-        scalingFactors = new uint256[](totalTokens);
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always load these three scaling factors.
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
@@ -1092,6 +1094,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         if (totalTokens == 5) return scalingFactors;
         scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_getToken5()));
+
+        return scalingFactors;
     }
 
     // Amplification
