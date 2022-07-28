@@ -854,11 +854,13 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
         // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
 
-        uint256 totalGrowthInvariant = StableMath._calculateInvariant(_getPostJoinExitAmp(), totalGrowthBalances);
-        uint256 swapGrowthInvariant = StableMath._calculateInvariant(_getPostJoinExitAmp(), swapGrowthBalances);
+        uint256 postJoinExitAmp = _postJoinExitAmp;
 
-        // Total Growth = Invariant with masked rates / last invariant: swap fees + non-exempt token yields
-        // Swap Fee Growth = Invariant with old rates / last invariant: swap fees alone
+        uint256 totalGrowthInvariant = StableMath._calculateInvariant(postJoinExitAmp, totalGrowthBalances);
+        uint256 swapGrowthInvariant = StableMath._calculateInvariant(postJoinExitAmp, swapGrowthBalances);
+
+        // Total Growth = Invariant with old rates for exempt tokens / last invariant: swap fees + token yields
+        // Swap Fee Growth = Invariant with old rates for all tokens / last invariant: swap fees alone
         // Growth due to yield = Total Growth / Swap Fee Growth
         //                     = Invariant with masked rates / Invariant with old rates.
 
@@ -867,8 +869,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             ? totalGrowthInvariant.divDown(swapGrowthInvariant)
             : FixedPoint.ONE;
 
-        uint256 swapGrowthRatio = swapGrowthInvariant > _getPostJoinExitInvariant()
-            ? swapGrowthInvariant.divDown(_getPostJoinExitInvariant())
+        uint256 postJoinExitInvariant = _postJoinExitInvariant;
+
+        uint256 swapGrowthRatio = swapGrowthInvariant > postJoinExitInvariant
+            ? swapGrowthInvariant.divDown(postJoinExitInvariant)
             : FixedPoint.ONE;
 
         // Apply separate protocol fee rates on yield and swap fee growth.
@@ -884,6 +888,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             _payProtocolFees(protocolFeeAmount);
         }
 
+        // We pay fees before a join or exit to ensure the pool is debt-free, so that swap fee and quote calculations
+        // based on the virtual supply reflect only the current user's transaction. We have just increased the virtual
+        // supply by minting the protocol fee tokens, so those are included in the return value.
+        //
         // For this addition to overflow, the actual total supply would have already overflowed.
         return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
     }
@@ -895,14 +903,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         _postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
         _updateOldRates();
-    }
-
-    function _getPostJoinExitAmp() internal view returns (uint256) {
-        return _postJoinExitAmp;
-    }
-
-    function _getPostJoinExitInvariant() internal view returns (uint256) {
-        return _postJoinExitInvariant;
     }
 
     function _updateOldRates() private {
@@ -970,12 +970,14 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     function _hasCacheEntry(uint256 index) private view returns (bool) {
-        if (index == 0) return _getRateProvider0() != IRateProvider(0) && getBptIndex() != 0;
-        if (index == 1) return _getRateProvider1() != IRateProvider(0) && getBptIndex() != 1;
-        if (index == 2) return _getRateProvider2() != IRateProvider(0) && getBptIndex() != 2;
-        if (index == 3) return _getRateProvider3() != IRateProvider(0) && getBptIndex() != 3;
-        if (index == 4) return _getRateProvider4() != IRateProvider(0) && getBptIndex() != 4;
-        if (index == 5) return _getRateProvider5() != IRateProvider(0) && getBptIndex() != 5;
+        uint256 bptIndex = getBptIndex();
+
+        if (index == 0) return _getRateProvider0() != IRateProvider(0) && bptIndex != 0;
+        if (index == 1) return _getRateProvider1() != IRateProvider(0) && bptIndex != 1;
+        if (index == 2) return _getRateProvider2() != IRateProvider(0) && bptIndex != 2;
+        if (index == 3) return _getRateProvider3() != IRateProvider(0) && bptIndex != 3;
+        if (index == 4) return _getRateProvider4() != IRateProvider(0) && bptIndex != 4;
+        if (index == 5) return _getRateProvider5() != IRateProvider(0) && bptIndex != 5;
     }
 
     // Token rates
