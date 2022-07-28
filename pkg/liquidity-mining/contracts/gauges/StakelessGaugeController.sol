@@ -22,10 +22,15 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGaugeC
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 import "./arbitrum/ArbitrumRootGauge.sol";
 
-contract StakelessGaugeController is IStakelessGaugeController {
+/**
+ * @title Stakeless Gauge Controller
+ * @notice Implements IStakelessGaugeController; refer to it for API documentation.
+ */
+contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(GaugeType => EnumerableSet.AddressSet) private _gauges;
@@ -47,6 +52,9 @@ contract StakelessGaugeController is IStakelessGaugeController {
         _gaugeFactories[GaugeType.OPTIMISM] = optimismFactory;
     }
 
+    /**
+     * @dev See IStakelessGaugeController#addGauges.
+     */
     function addGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external override {
         ILiquidityGaugeFactory factory = _gaugeFactories[gaugeType];
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
@@ -60,6 +68,9 @@ contract StakelessGaugeController is IStakelessGaugeController {
         }
     }
 
+    /**
+     * @dev See IStakelessGaugeController#removeGauges.
+     */
     function removeGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external override {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
@@ -70,20 +81,32 @@ contract StakelessGaugeController is IStakelessGaugeController {
         }
     }
 
+    /**
+     * @dev See IStakelessGaugeController#hasGauge.
+     */
     function hasGauge(GaugeType gaugeType, IStakelessGauge gauge) external view override returns (bool) {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
+    /**
+     * @dev See IStakelessGaugeController#getTotalGauges.
+     */
     function getTotalGauges(GaugeType gaugeType) external view override returns (uint256) {
         return _gauges[gaugeType].length();
     }
 
+    /**
+     * @dev See IStakelessGaugeController#getGaugeAt.
+     */
     function getGaugeAt(GaugeType gaugeType, uint256 index) external view override returns (address) {
         return _gauges[gaugeType].at(index);
     }
 
-    // TODO(jubeira): non-reentrant?
-    function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override {
+    /**
+     * @dev See IStakelessGaugeController#checkpointGaugesAboveRelativeWeight.
+     * Unspent ETH is sent back to sender.
+     */
+    function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
         (uint256 singleArbitrumGaugeBridgeETH, uint256 totalArbitrumETH) = _getArbitrumBridgeCosts();
 
         // solhint-disable-next-line not-rely-on-time
@@ -98,6 +121,10 @@ contract StakelessGaugeController is IStakelessGaugeController {
         Address.sendValue(msg.sender, msg.value - totalArbitrumETH);
     }
 
+    /**
+     * @dev Returns a tuple with the ETH cost to checkpoint an individual gauge, and the cost to checkpoint all gauges.
+     * Reverts if the transaction does not have enough ETH to cover the total cost of the operation.
+     */
     function _getArbitrumBridgeCosts() private view returns (uint256, uint256) {
         uint256 totalGauges = _gauges[GaugeType.ARBITRUM].length();
         if (totalGauges == 0) {
@@ -114,6 +141,14 @@ contract StakelessGaugeController is IStakelessGaugeController {
         return (singleGaugeBridgeCost, totalArbETH);
     }
 
+    /**
+    * @dev Performs checkpoints for all gauges of the given type whose relative weight is at least the specified one.
+    * @param gaugeType - Type of the gauges to checkpoint.
+    * @param minRelativeWeight - Threshold to filter out gauges below it.
+    * @param currentPeriod - Current block time rounded down to the start of the week.
+    * @param costPerCheckpoint - Value in ETH to be spent for each gauge to checkpoint to cover bridging costs.
+    * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
+    */
     function _checkpointGauges(
         GaugeType gaugeType,
         uint256 minRelativeWeight,
