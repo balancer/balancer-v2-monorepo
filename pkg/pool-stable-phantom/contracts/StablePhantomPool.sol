@@ -827,8 +827,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      * percentage to each type.
      */
     function _payProtocolFeesBeforeJoinExit(uint256[] memory balances) private returns (uint256, uint256[] memory) {
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
-
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
         // and apply the old rate. These functions copy the values in `balances` and so doesn't mutate it.
 
@@ -873,6 +871,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256 swapGrowthRatio = swapGrowthInvariant > postJoinExitInvariant
             ? swapGrowthInvariant.divDown(postJoinExitInvariant)
             : FixedPoint.ONE;
+
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         // Apply separate protocol fee rates on yield and swap fee growth.
         // Total protocol fee rate = (FeeOnYield * (yieldGrowthRatio - 1) + FeeOnSwap * (swapGrowthRatio - 1))
