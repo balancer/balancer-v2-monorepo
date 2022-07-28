@@ -883,12 +883,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // Therefore, we will never call _updateOldRate with the BPT or an invalid token,
         // so no checks need to be done there.
 
-        if (_isTokenExemptFromYieldProtocolFee(0)) _updateOldRate(_token0);
-        if (_isTokenExemptFromYieldProtocolFee(1)) _updateOldRate(_token1);
-        if (_isTokenExemptFromYieldProtocolFee(2)) _updateOldRate(_token2);
-        if (_isTokenExemptFromYieldProtocolFee(3)) _updateOldRate(_token3);
-        if (_isTokenExemptFromYieldProtocolFee(4)) _updateOldRate(_token4);
-        if (_isTokenExemptFromYieldProtocolFee(5)) _updateOldRate(_token5);
+        if (_isTokenExemptFromYieldProtocolFee(0)) _updateOldRate(_getToken0());
+        if (_isTokenExemptFromYieldProtocolFee(1)) _updateOldRate(_getToken1());
+        if (_isTokenExemptFromYieldProtocolFee(2)) _updateOldRate(_getToken2());
+        if (_isTokenExemptFromYieldProtocolFee(3)) _updateOldRate(_getToken3());
+        if (_isTokenExemptFromYieldProtocolFee(4)) _updateOldRate(_getToken4());
+        if (_isTokenExemptFromYieldProtocolFee(5)) _updateOldRate(_getToken5());
     }
 
     // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
@@ -907,29 +907,29 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         // The Pool will always have at least 3 tokens so we always load these three ratios.
         adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0)
-            ? _adjustedBalance(balances[0], _tokenRateCaches[_token0])
+            ? _adjustedBalance(balances[0], _tokenRateCaches[_getToken0()])
             : balances[0];
         adjustedBalances[1] = _isTokenExemptFromYieldProtocolFee(1)
-            ? _adjustedBalance(balances[1], _tokenRateCaches[_token1])
+            ? _adjustedBalance(balances[1], _tokenRateCaches[_getToken1()])
             : balances[1];
         adjustedBalances[2] = _isTokenExemptFromYieldProtocolFee(2)
-            ? _adjustedBalance(balances[2], _tokenRateCaches[_token2])
+            ? _adjustedBalance(balances[2], _tokenRateCaches[_getToken2()])
             : balances[2];
 
         // Before we load the remaining ratios we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return adjustedBalances;
         adjustedBalances[3] = _isTokenExemptFromYieldProtocolFee(3)
-            ? _adjustedBalance(balances[3], _tokenRateCaches[_token3])
+            ? _adjustedBalance(balances[3], _tokenRateCaches[_getToken3()])
             : balances[3];
 
         if (totalTokens == 4) return adjustedBalances;
         adjustedBalances[4] = _isTokenExemptFromYieldProtocolFee(4)
-            ? _adjustedBalance(balances[4], _tokenRateCaches[_token4])
+            ? _adjustedBalance(balances[4], _tokenRateCaches[_getToken4()])
             : balances[4];
 
         if (totalTokens == 5) return adjustedBalances;
         adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5)
-            ? _adjustedBalance(balances[5], _tokenRateCaches[_token5])
+            ? _adjustedBalance(balances[5], _tokenRateCaches[_getToken5()])
             : balances[5];
     }
 
@@ -1023,19 +1023,19 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256 totalTokens = _getTotalTokens();
 
         // The Pool will always have at least 3 tokens so we always try to update these three caches.
-        _cacheTokenRateIfNecessary(_token0);
-        _cacheTokenRateIfNecessary(_token1);
-        _cacheTokenRateIfNecessary(_token2);
+        _cacheTokenRateIfNecessary(_getToken0());
+        _cacheTokenRateIfNecessary(_getToken1());
+        _cacheTokenRateIfNecessary(_getToken2());
 
         // Before we update the remaining caches we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return;
-        _cacheTokenRateIfNecessary(_token3);
+        _cacheTokenRateIfNecessary(_getToken3());
 
         if (totalTokens == 4) return;
-        _cacheTokenRateIfNecessary(_token4);
+        _cacheTokenRateIfNecessary(_getToken4());
 
         if (totalTokens == 5) return;
-        _cacheTokenRateIfNecessary(_token5);
+        _cacheTokenRateIfNecessary(_getToken5());
     }
 
     /**
