@@ -37,38 +37,38 @@ abstract contract StablePoolStorage is BasePool {
     uint256 private immutable _bptIndex;
 
     // These are the registered tokens: one of them will be the BPT.
-    IERC20 internal immutable _token0;
-    IERC20 internal immutable _token1;
-    IERC20 internal immutable _token2;
-    IERC20 internal immutable _token3;
-    IERC20 internal immutable _token4;
-    IERC20 internal immutable _token5;
+    IERC20 private immutable _token0;
+    IERC20 private immutable _token1;
+    IERC20 private immutable _token2;
+    IERC20 private immutable _token3;
+    IERC20 private immutable _token4;
+    IERC20 private immutable _token5;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
 
-    uint256 internal immutable _scalingFactor0;
-    uint256 internal immutable _scalingFactor1;
-    uint256 internal immutable _scalingFactor2;
-    uint256 internal immutable _scalingFactor3;
-    uint256 internal immutable _scalingFactor4;
-    uint256 internal immutable _scalingFactor5;
+    uint256 private immutable _scalingFactor0;
+    uint256 private immutable _scalingFactor1;
+    uint256 private immutable _scalingFactor2;
+    uint256 private immutable _scalingFactor3;
+    uint256 private immutable _scalingFactor4;
+    uint256 private immutable _scalingFactor5;
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
-    IRateProvider internal immutable _rateProvider0;
-    IRateProvider internal immutable _rateProvider1;
-    IRateProvider internal immutable _rateProvider2;
-    IRateProvider internal immutable _rateProvider3;
-    IRateProvider internal immutable _rateProvider4;
-    IRateProvider internal immutable _rateProvider5;
+    IRateProvider private immutable _rateProvider0;
+    IRateProvider private immutable _rateProvider1;
+    IRateProvider private immutable _rateProvider2;
+    IRateProvider private immutable _rateProvider3;
+    IRateProvider private immutable _rateProvider4;
+    IRateProvider private immutable _rateProvider5;
 
     // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
     // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
     // For example, the BPT of another PhantomStable Pool containing yield tokens.
     // The flag will always be false for the BPT token.
-    uint256 internal immutable _exemptFromYieldProtocolFeeTokens;
+    uint256 private immutable _exemptFromYieldProtocolFeeTokens;
 
     constructor(
         IERC20[] memory registeredTokens,
