@@ -825,23 +825,29 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Before joins or exits, calculate the invariant using the old rates for exempt tokens (i.e., the rates
-     * at the time of the previous join or exit), in order to exclude the yield from the calculation.
+     * at the time of the previous join or exit), in order to exclude the yield from the calculation for those tokens.
+     * Calculate the (non-exempt) yield and swap fee growth separately, and apply the corresponding protocol fee
+     * percentage to each type.
      */
     function _payProtocolFeesBeforeJoinExit(uint256[] memory balances) private returns (uint256, uint256[] memory) {
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
-        // and apply the old rate. This function copies the values in `balancesWithoutBpt and so doesn't mutate it.
-        uint256[] memory adjustedBalances = _adjustBalancesByTokenRatios(balancesWithoutBpt);
+        // and apply the old rate, to get the balances that reflect total growth. We also need the balances with
+        // oldRates applied to all tokens: i.e., excluding yield entirely, to measure the growth due to swap fees alone.
+        // This function copies the values in `balancesWithoutBpt`, and so doesn't mutate it.
 
-        uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, adjustedBalances);
+        (uint256[] memory totalGrowthBalances, uint256[] memory swapGrowthBalances) = _adjustBalancesByTokenRatios(
+            balancesWithoutBpt
+        );
 
         // Charge the protocol fee in BPT, using the growth in invariant between _postJoinExitInvariant
-        // and preJoinInvariant.
+        // and adjusted versions of the current invariant. We have separate protocol fee percentages for growth based
+        // on yield and growth based on swap fees, so we need to compute each type separately.
 
-        // To convert the protocol swap fees to a BPT amount, we compute the invariant growth (which is due exclusively
-        // to swap fees and yield on non-exempt tokens), extract the portion that corresponds to protocol swap fees,
-        //  and then compute the equivalent amount of BPT that would cause such an increase.
+        // To convert each protocol fee to a BPT amount for each type of growth, we compute the relevant invariant
+        // growth, extract the portion due the protocol, and then compute the equivalent amount of BPT that would cause
+        // such an increase.
         //
         // Invariant growth is related to new BPT and supply by:
         // invariant ratio = (bpt amount + supply) / supply
@@ -851,19 +857,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
         // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
 
+        uint256 totalGrowthInvariant = StableMath._calculateInvariant(_getPostJoinExitAmp(), totalGrowthBalances);
+        uint256 swapGrowthInvariant = StableMath._calculateInvariant(_getPostJoinExitAmp(), swapGrowthBalances);
+
+        // Total Growth = Invariant with masked rates / last invariant: swap fees + non-exempt token yields
+        // Swap Fee Growth = Invariant with old rates / last invariant: swap fees alone
+        // Growth due to yield = Total Growth / Swap Fee Growth
+        //                     = Invariant with masked rates / Invariant with old rates.
+
+        // If the "growth" is negative, set the ratio to ONE: multiplying by (ratio - 1) will then result in zero fees.
+        uint256 yieldGrowthRatio = totalGrowthInvariant > swapGrowthInvariant
+            ? totalGrowthInvariant.divDown(swapGrowthInvariant)
+            : FixedPoint.ONE;
+
+        uint256 swapGrowthRatio = swapGrowthInvariant > _getPostJoinExitInvariant()
+            ? swapGrowthInvariant.divDown(_getPostJoinExitInvariant())
+            : FixedPoint.ONE;
+
+        // Apply separate protocol fee rates on yield and swap fee growth.
+        // Total protocol fee rate = (FeeOnYield * (yieldGrowthRatio - 1) + FeeOnSwap * (swapGrowthRatio - 1))
+
         // We round down, favoring LP fees.
+        uint256 protocolFeeAmount = getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
+            .mulDown(yieldGrowthRatio.sub(FixedPoint.ONE))
+            .add(getProtocolFeePercentageCache(ProtocolFeeType.SWAP).mulDown(swapGrowthRatio.sub(FixedPoint.ONE)))
+            .mulDown(virtualSupply);
 
-        uint256 invariantRatio = preJoinInvariant.divDown(_postJoinExitInvariant);
-        uint256 protocolFeeAmount;
-        if (invariantRatio > FixedPoint.ONE) {
-            // This condition should always be met outside of rounding errors (for non-zero swap fees).
-
-            protocolFeeAmount = getProtocolFeePercentageCache(ProtocolFeeType.SWAP).mulDown(
-                invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
-            );
-
+        if (protocolFeeAmount > 0) {
             _payProtocolFees(protocolFeeAmount);
         }
+
         // For this addition to overflow, the actual total supply would have already overflowed.
         return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
     }
@@ -877,23 +900,24 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         _updateOldRates();
     }
 
-    function _updateOldRates() private {
-        // Per the logic in the constructor, we know the flags will be false for
-        // indices greater than the actual number of tokens in the pool, and also false
-        // for the BPT token.
-        //
-        // Therefore, we will never call _updateOldRate with the BPT or an invalid token,
-        // so no checks need to be done there.
+    function _getPostJoinExitAmp() internal view returns (uint256) {
+        return _postJoinExitAmp;
+    }
 
-        // prettier-ignore
-        {
-            if (_exemptFromYieldProtocolFeeToken0) { _updateOldRate(_token0); }
-            if (_exemptFromYieldProtocolFeeToken1) { _updateOldRate(_token1); }
-            if (_exemptFromYieldProtocolFeeToken2) { _updateOldRate(_token2); }
-            if (_exemptFromYieldProtocolFeeToken3) { _updateOldRate(_token3); }
-            if (_exemptFromYieldProtocolFeeToken4) { _updateOldRate(_token4); }
-            if (_exemptFromYieldProtocolFeeToken5) { _updateOldRate(_token5); }
-        }
+    function _getPostJoinExitInvariant() internal view returns (uint256) {
+        return _postJoinExitInvariant;
+    }
+
+    function _updateOldRates() private {
+        // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
+        uint256 totalTokens = _getTotalTokens();
+
+        if (getBptIndex() != 0) _updateOldRate(_token0);
+        if (getBptIndex() != 1) _updateOldRate(_token1);
+        if (getBptIndex() != 2) _updateOldRate(_token2);
+        if (totalTokens > 3 && getBptIndex() != 3) _updateOldRate(_token3);
+        if (totalTokens > 4 && getBptIndex() != 4) _updateOldRate(_token4);
+        if (totalTokens > 5 && getBptIndex() != 5) _updateOldRate(_token5);
     }
 
     // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
@@ -904,52 +928,66 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
-     * Mutates the balances in place. `_getTokenRateRatios` includes BPT, so we need to remove that ratio to
-     * match the cardinality of balancesWithoutBpt.
+     * `_getTokenRateRatios` includes BPT, so we need to remove that ratio to match the cardinality of
+     * balancesWithoutBpt.
+     *
+     * We also need to apply the old rates regardless of the exempt flag, which filters out any yield, and
+     * gives the balances that would result from swap fees alone.
      */
     function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
         internal
         view
-        returns (uint256[] memory)
+        returns (uint256[] memory, uint256[] memory)
     {
-        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
-        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios());
+        // Adjust balances by the oldRate if exempt, and the currentRate otherwise.
+        uint256[] memory totalGrowthBalances = new uint256[](balancesWithoutBpt.length);
+        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios(false));
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
+            totalGrowthBalances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
         }
+
+        // Adjust balances by the oldRate, regardless of exempt status.
+        uint256[] memory swapGrowthBalances = new uint256[](balancesWithoutBpt.length);
+        ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios(true));
+        for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
+            swapGrowthBalances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
+        }
+
+        return (totalGrowthBalances, swapGrowthBalances);
     }
 
     /**
      * @dev Return the complete set of token ratios (including BPT, which will always be 1).
+     * If ignoreExemptFlags is set, always return the old rates (required for yield protocol fee calculation).
      */
-    function _getTokenRateRatios() internal view returns (uint256[] memory rateRatios) {
+    function _getTokenRateRatios(bool ignoreExemptFlags) internal view returns (uint256[] memory rateRatios) {
         uint256 totalTokens = _getTotalTokens();
         rateRatios = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always load these three ratios.
-        rateRatios[0] = _exemptFromYieldProtocolFeeToken0
+        rateRatios[0] = _exemptFromYieldProtocolFeeToken0 || (ignoreExemptFlags && getBptIndex() != 0)
             ? _computeRateRatio(_tokenRateCaches[_token0])
             : FixedPoint.ONE;
-        rateRatios[1] = _exemptFromYieldProtocolFeeToken1
+        rateRatios[1] = _exemptFromYieldProtocolFeeToken1 || (ignoreExemptFlags && getBptIndex() != 1)
             ? _computeRateRatio(_tokenRateCaches[_token1])
             : FixedPoint.ONE;
-        rateRatios[2] = _exemptFromYieldProtocolFeeToken2
+        rateRatios[2] = _exemptFromYieldProtocolFeeToken2 || (ignoreExemptFlags && getBptIndex() != 2)
             ? _computeRateRatio(_tokenRateCaches[_token2])
             : FixedPoint.ONE;
 
         // Before we load the remaining ratios we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return rateRatios;
-        rateRatios[3] = _exemptFromYieldProtocolFeeToken3
+        rateRatios[3] = _exemptFromYieldProtocolFeeToken3 || (ignoreExemptFlags && getBptIndex() != 3)
             ? _computeRateRatio(_tokenRateCaches[_token3])
             : FixedPoint.ONE;
 
         if (totalTokens == 4) return rateRatios;
-        rateRatios[4] = _exemptFromYieldProtocolFeeToken4
+        rateRatios[4] = _exemptFromYieldProtocolFeeToken4 || (ignoreExemptFlags && getBptIndex() != 4)
             ? _computeRateRatio(_tokenRateCaches[_token4])
             : FixedPoint.ONE;
 
         if (totalTokens == 5) return rateRatios;
-        rateRatios[5] = _exemptFromYieldProtocolFeeToken5
+        rateRatios[5] = _exemptFromYieldProtocolFeeToken5 || (ignoreExemptFlags && getBptIndex() != 5)
             ? _computeRateRatio(_tokenRateCaches[_token5])
             : FixedPoint.ONE;
     }
