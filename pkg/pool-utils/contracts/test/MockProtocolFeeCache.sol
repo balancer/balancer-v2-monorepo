@@ -19,10 +19,10 @@ import "../ProtocolFeeCache.sol";
 contract MockProtocolFeeCache is ProtocolFeeCache {
     // We make the caller the owner and make all functions owner only, letting the deployer perform all permissioned
     // actions.
-    constructor(IVault vault, uint256 protocolSwapFeePercentage)
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(msg.sender)
-        ProtocolFeeCache(vault, protocolSwapFeePercentage)
+        ProtocolFeeCache(protocolFeeProvider, protocolSwapFeePercentage)
     {
         // solhint-disable-prev-line no-empty-blocks
     }

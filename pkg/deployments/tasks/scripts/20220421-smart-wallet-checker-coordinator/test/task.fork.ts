@@ -6,21 +6,23 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { getSigner, impersonate } from '../../../../src/signers';
 
-describe('SmartWalletCheckerCoordinator', function () {
+describeForkTest('SmartWalletCheckerCoordinator', 'mainnet', 14850000, function () {
   let govMultisig: SignerWithAddress, other: SignerWithAddress;
   let coordinator: Contract;
 
   let vault: Contract, authorizer: Contract, veBAL: Contract, smartWalletChecker: Contract;
 
-  const task = new Task('20220421-smart-wallet-checker-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    task = new Task('20220421-smart-wallet-checker-coordinator', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.instanceAt(
       'SmartWalletCheckerCoordinator',

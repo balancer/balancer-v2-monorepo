@@ -31,4 +31,16 @@ library SafeCast {
         _require(value >> 255 == 0, Errors.SAFE_CAST_VALUE_CANT_FIT_INT256);
         return int256(value);
     }
+
+    /**
+     * @dev Converts an unsigned uint256 into an unsigned uint64.
+     *
+     * Requirements:
+     *
+     * - input must be less than or equal to maxUint64.
+     */
+    function toUint64(uint256 value) internal pure returns (uint64) {
+        _require(value <= type(uint64).max, Errors.SAFE_CAST_VALUE_CANT_FIT_UINT64);
+        return uint64(value);
+    }
 }
