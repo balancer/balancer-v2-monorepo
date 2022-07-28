@@ -151,7 +151,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             params.rateProviders.length,
             params.tokenRateCacheDurations.length
         );
-        InputHelpers.ensureInputLengthMatch(params.tokens.length, params.exemptFromYieldProtocolFeeFlags.length);
 
         _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
         _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
@@ -277,7 +276,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     // Perform a swap between non-BPT tokens
     function _onRegularSwap(
         IVault.SwapKind kind,
-        uint256 givenAmount,
+        uint256 amountGiven,
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
@@ -297,7 +296,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
                 balances,
                 indexIn,
                 indexOut,
-                givenAmount,
+                amountGiven,
                 invariant
             );
         } else {
@@ -306,7 +305,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
                 balances,
                 indexIn,
                 indexOut,
-                givenAmount,
+                amountGiven,
                 invariant
             );
         }

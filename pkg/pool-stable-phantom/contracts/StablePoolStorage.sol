@@ -80,6 +80,11 @@ abstract contract StablePoolStorage is BasePool {
         // tokens for this contract is actually three, including the BPT).
         uint256 totalTokens = registeredTokens.length;
         _require(totalTokens > _MIN_TOKENS, Errors.MIN_TOKENS);
+        InputHelpers.ensureInputLengthMatch(
+            totalTokens - 1,
+            tokenRateProviders.length,
+            exemptFromYieldProtocolFeeFlags.length
+        );
 
         _totalTokens = totalTokens;
 

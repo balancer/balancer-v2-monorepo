@@ -805,6 +805,12 @@ describe('StablePhantomPool', () => {
           await expect(deployPool({ tokenRateCacheDurations })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
+        it('reverts if the exemption flags do not match the tokens length', async () => {
+          const exemptFromYieldProtocolFeeFlags = [true];
+
+          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        });
+
         it('reverts if the rate providers do not match the tokens length', async () => {
           const rateProviders = Array(numberOfTokens + 1).fill(ANY_ADDRESS);
 
