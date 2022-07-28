@@ -883,15 +883,12 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // Therefore, we will never call _updateOldRate with the BPT or an invalid token,
         // so no checks need to be done there.
 
-        // prettier-ignore
-        {
-            if (_exemptFromYieldProtocolFeeToken0) { _updateOldRate(_token0); }
-            if (_exemptFromYieldProtocolFeeToken1) { _updateOldRate(_token1); }
-            if (_exemptFromYieldProtocolFeeToken2) { _updateOldRate(_token2); }
-            if (_exemptFromYieldProtocolFeeToken3) { _updateOldRate(_token3); }
-            if (_exemptFromYieldProtocolFeeToken4) { _updateOldRate(_token4); }
-            if (_exemptFromYieldProtocolFeeToken5) { _updateOldRate(_token5); }
-        }
+        if (_exemptFromYieldProtocolFeeToken0) _updateOldRate(_token0);
+        if (_exemptFromYieldProtocolFeeToken1) _updateOldRate(_token1);
+        if (_exemptFromYieldProtocolFeeToken2) _updateOldRate(_token2);
+        if (_exemptFromYieldProtocolFeeToken3) _updateOldRate(_token3);
+        if (_exemptFromYieldProtocolFeeToken4) _updateOldRate(_token4);
+        if (_exemptFromYieldProtocolFeeToken5) _updateOldRate(_token5);
     }
 
     // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
@@ -902,8 +899,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
-     * Mutates the balances in place. `_getTokenRateRatios` includes BPT, so we need to remove that ratio to
-     * match the cardinality of balancesWithoutBpt.
+     * `_getTokenRateRatios` includes BPT, so we need to remove that ratio to match the cardinality of
+     * balancesWithoutBpt.
      */
     function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
         internal
@@ -915,6 +912,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
             balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
         }
+
+        return balances;
     }
 
     /**
