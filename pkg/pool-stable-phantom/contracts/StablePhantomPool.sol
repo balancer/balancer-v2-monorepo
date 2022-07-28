@@ -934,7 +934,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
-        return balance.mulDown(cache.getOldRate()).divUp(cache.getCurrentRate());
+        return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
     }
 
     // Token rates
