@@ -34,7 +34,7 @@ describe('StablePhantomPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('StablePhantomPoolFactory', { args: [vault.address] });
+    factory = await deploy('StablePhantomPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['baDAI', 'baUSDC', 'baUSDT'], { sorted: true });
@@ -141,11 +141,11 @@ describe('StablePhantomPoolFactory', function () {
     });
 
     it('sets the protocol fee flags', async () => {
-      const expectedFlags = Array(tokens.length).fill(false);
-      expectedFlags[PROTOCOL_FEE_EXEMPT_TOKEN_IDX] = true;
-
-      const flags = await pool.getProtocolFeeExemptTokenFlags();
-      expect(flags).to.deep.equal(expectedFlags);
+      await tokens.asyncEach(async (token, i) => {
+        expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(
+          i == PROTOCOL_FEE_EXEMPT_TOKEN_IDX
+        );
+      });
     });
   });
 

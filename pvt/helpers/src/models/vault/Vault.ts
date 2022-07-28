@@ -12,13 +12,14 @@ import { deployedAt } from '../../contract';
 import { BigNumberish } from '../../numbers';
 import { Account, NAry, TxParams } from '../types/types';
 import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '../../constants';
-import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap, QueryBatchSwap } from './types';
+import { ExitPool, JoinPool, RawVaultDeployment, MinimalSwap, GeneralSwap, QueryBatchSwap, ProtocolFee } from './types';
 import { Interface } from '@ethersproject/abi';
 
 export default class Vault {
   mocked: boolean;
   instance: Contract;
-  authorizer?: Contract;
+  authorizer: Contract;
+  protocolFeesProvider: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
 
@@ -30,10 +31,17 @@ export default class Vault {
     return VaultDeployer.deploy(deployment);
   }
 
-  constructor(mocked: boolean, instance: Contract, authorizer?: Contract, admin?: SignerWithAddress) {
+  constructor(
+    mocked: boolean,
+    instance: Contract,
+    authorizer: Contract,
+    protocolFeesProvider: Contract,
+    admin?: SignerWithAddress
+  ) {
     this.mocked = mocked;
     this.instance = instance;
     this.authorizer = authorizer;
+    this.protocolFeesProvider = protocolFeesProvider;
     this.admin = admin;
   }
 
@@ -200,11 +208,11 @@ export default class Vault {
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getSwapFeePercentage();
+    return this.getFeesProvider().getFeeTypePercentage(ProtocolFee.SWAP);
   }
 
   async getFlashLoanFeePercentage(): Promise<BigNumber> {
-    return (await this.getFeesCollector()).getFlashLoanFeePercentage();
+    return this.getFeesProvider().getFeeTypePercentage(ProtocolFee.FLASH_LOAN);
   }
 
   async getFeesCollector(): Promise<Contract> {
@@ -213,6 +221,12 @@ export default class Vault {
       this.feesCollector = await deployedAt('v2-vault/ProtocolFeesCollector', instance);
     }
     return this.feesCollector;
+  }
+
+  getFeesProvider(): Contract {
+    if (!this.protocolFeesProvider) throw Error('Missing ProtocolFeePercentagesProvider');
+
+    return this.protocolFeesProvider;
   }
 
   async setSwapFeePercentage(swapFeePercentage: BigNumber, { from }: TxParams = {}): Promise<ContractTransaction> {
