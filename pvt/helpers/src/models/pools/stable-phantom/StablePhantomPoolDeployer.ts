@@ -53,6 +53,7 @@ export default {
       args: [
         {
           vault: vault.address,
+          protocolFeeProvider: vault.getFeesProvider().address,
           name: NAME,
           symbol: SYMBOL,
           tokens: tokens.addresses,

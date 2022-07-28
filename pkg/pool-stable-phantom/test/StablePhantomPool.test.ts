@@ -155,7 +155,7 @@ describe('StablePhantomPool', () => {
       scalingFactors = await pool.getScalingFactors();
 
       await pool.vault.setSwapFeePercentage(protocolSwapFeePercentage);
-      await pool.updateProtocolSwapFeePercentageCache();
+      await pool.updateProtocolFeePercentageCache();
       protocolFeesCollector = await pool.vault.getFeesCollector();
       previousFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
     }
@@ -2103,7 +2103,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolSwapFeePercentageCache();
+        await pool.updateProtocolFeePercentageCache();
 
         protocolFeesCollector = await pool.vault.getFeesCollector();
 
@@ -2124,7 +2124,7 @@ describe('StablePhantomPool', () => {
           let previousBalance: BigNumber;
 
           sharedBeforeEach('update cache', async () => {
-            await pool.updateProtocolSwapFeePercentageCache();
+            await pool.updateProtocolFeePercentageCache();
             inRecoveryMode = await pool.inRecoveryMode();
           });
 
@@ -2287,7 +2287,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolSwapFeePercentageCache();
+        await pool.updateProtocolFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
@@ -2339,7 +2339,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolSwapFeePercentageCache();
+        await pool.updateProtocolFeePercentageCache();
       });
 
       context('before initialized', () => {

@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/StablePhantomPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -111,6 +112,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
         IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
         string name;
         string symbol;
         IERC20[] tokens;
@@ -142,7 +144,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             params.rateProviders,
             params.exemptFromYieldProtocolFeeFlags
         )
-        ProtocolFeeCache(params.vault, ProtocolFeeCache.DELEGATE_PROTOCOL_FEES_SENTINEL)
+        ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         InputHelpers.ensureInputLengthMatch(
             params.tokens.length,
@@ -856,7 +858,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         if (invariantRatio > FixedPoint.ONE) {
             // This condition should always be met outside of rounding errors (for non-zero swap fees).
 
-            protocolFeeAmount = getProtocolSwapFeePercentageCache().mulDown(
+            protocolFeeAmount = getProtocolFeePercentageCache(ProtocolFeeType.SWAP).mulDown(
                 invariantRatio.sub(FixedPoint.ONE).mulDown(virtualSupply)
             );
 

@@ -118,6 +118,7 @@ export default {
               aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
+            vault.protocolFeesProvider.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -159,7 +160,6 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -189,7 +189,7 @@ export default {
       }
       case WeightedPoolType.MANAGED_POOL: {
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
 
@@ -210,7 +210,6 @@ export default {
           protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
-          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {
