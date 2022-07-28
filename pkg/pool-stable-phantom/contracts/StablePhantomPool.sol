@@ -829,8 +829,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
-        // and apply the old rate. This function copies the values in `balancesWithoutBpt and so doesn't mutate it.
-        uint256[] memory adjustedBalances = _adjustBalancesByTokenRatios(balancesWithoutBpt);
+        // and apply the old rate. This function copies the values in `balances` and so doesn't mutate it.
+        uint256[] memory adjustedBalances = _dropBptItem(_getAdjustedBalances(balances));
 
         uint256 preJoinInvariant = StableMath._calculateInvariant(_postJoinExitAmp, adjustedBalances);
 
@@ -898,61 +898,45 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     }
 
     /**
-     * @dev Apply the token ratios to a set of balances (without BPT), to adjust for any exempt yield tokens.
-     * `_getTokenRateRatios` includes BPT, so we need to remove that ratio to match the cardinality of
-     * balancesWithoutBpt.
+     * @dev Apply the token ratios to a set of balances to adjust for any exempt yield tokens.
+     * The `balances` array is assumed to include BPT to ensure that token indices align.
      */
-    function _adjustBalancesByTokenRatios(uint256[] memory balancesWithoutBpt)
-        internal
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory balances = new uint256[](balancesWithoutBpt.length);
-        uint256[] memory ratiosWithoutBpt = _dropBptItem(_getTokenRateRatios());
-        for (uint256 i = 0; i < balancesWithoutBpt.length; ++i) {
-            balances[i] = balancesWithoutBpt[i].mulDown(ratiosWithoutBpt[i]);
-        }
+    function _getAdjustedBalances(uint256[] memory balances) internal view returns (uint256[] memory) {
+        uint256 totalTokens = balances.length;
+        uint256[] memory adjustedBalances = new uint256[](totalTokens);
 
-        return balances;
+        // The Pool will always have at least 3 tokens so we always adjust these three balances.
+        adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0)
+            ? _adjustedBalance(balances[0], _tokenRateCaches[_getToken0()])
+            : balances[0];
+        adjustedBalances[1] = _isTokenExemptFromYieldProtocolFee(1)
+            ? _adjustedBalance(balances[1], _tokenRateCaches[_getToken1()])
+            : balances[1];
+        adjustedBalances[2] = _isTokenExemptFromYieldProtocolFee(2)
+            ? _adjustedBalance(balances[2], _tokenRateCaches[_getToken2()])
+            : balances[2];
+
+        // Before we adjust the remaining balances we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return adjustedBalances;
+        adjustedBalances[3] = _isTokenExemptFromYieldProtocolFee(3)
+            ? _adjustedBalance(balances[3], _tokenRateCaches[_getToken3()])
+            : balances[3];
+
+        if (totalTokens == 4) return adjustedBalances;
+        adjustedBalances[4] = _isTokenExemptFromYieldProtocolFee(4)
+            ? _adjustedBalance(balances[4], _tokenRateCaches[_getToken4()])
+            : balances[4];
+
+        if (totalTokens == 5) return adjustedBalances;
+        adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5)
+            ? _adjustedBalance(balances[5], _tokenRateCaches[_getToken5()])
+            : balances[5];
+
+        return adjustedBalances;
     }
 
-    /**
-     * @dev Return the complete set of token ratios (including BPT, which will always be 1).
-     */
-    function _getTokenRateRatios() internal view returns (uint256[] memory rateRatios) {
-        uint256 totalTokens = _getTotalTokens();
-        rateRatios = new uint256[](totalTokens);
-
-        // The Pool will always have at least 3 tokens so we always load these three ratios.
-        rateRatios[0] = _isTokenExemptFromYieldProtocolFee(0)
-            ? _computeRateRatio(_tokenRateCaches[_getToken0()])
-            : FixedPoint.ONE;
-        rateRatios[1] = _isTokenExemptFromYieldProtocolFee(1)
-            ? _computeRateRatio(_tokenRateCaches[_getToken1()])
-            : FixedPoint.ONE;
-        rateRatios[2] = _isTokenExemptFromYieldProtocolFee(2)
-            ? _computeRateRatio(_tokenRateCaches[_getToken2()])
-            : FixedPoint.ONE;
-
-        // Before we load the remaining ratios we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return rateRatios;
-        rateRatios[3] = _isTokenExemptFromYieldProtocolFee(3)
-            ? _computeRateRatio(_tokenRateCaches[_getToken3()])
-            : FixedPoint.ONE;
-
-        if (totalTokens == 4) return rateRatios;
-        rateRatios[4] = _isTokenExemptFromYieldProtocolFee(4)
-            ? _computeRateRatio(_tokenRateCaches[_getToken4()])
-            : FixedPoint.ONE;
-
-        if (totalTokens == 5) return rateRatios;
-        rateRatios[5] = _isTokenExemptFromYieldProtocolFee(5)
-            ? _computeRateRatio(_tokenRateCaches[_getToken5()])
-            : FixedPoint.ONE;
-    }
-
-    function _computeRateRatio(bytes32 cache) private pure returns (uint256) {
-        return cache.getOldRate().divUp(cache.getCurrentRate());
+    function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
+        return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
     }
 
     // Token rates
@@ -1090,10 +1074,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     /**
      * @dev Overrides scaling factor getter to introduce the tokens' rates.
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
-        scalingFactors = new uint256[](totalTokens);
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
 
         // The Pool will always have at least 3 tokens so we always load these three scaling factors.
         // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
@@ -1110,6 +1094,8 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         if (totalTokens == 5) return scalingFactors;
         scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_getToken5()));
+
+        return scalingFactors;
     }
 
     // Amplification
