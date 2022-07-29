@@ -127,6 +127,7 @@ const veBALPermissions: RoleData[] = flatten([
     GaugeAdder.actionId('GaugeAdder', 'addEthereumGauge(address)'),
     GaugeAdder.actionId('GaugeAdder', 'addPolygonGauge(address)'),
     GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
+    GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
   ]),
   createRoleData(LM_MULTISIG, EVERYWHERE, [
     LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'add_reward(address,address)'),
