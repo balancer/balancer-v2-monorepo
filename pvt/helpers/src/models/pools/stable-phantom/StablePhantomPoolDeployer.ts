@@ -39,6 +39,7 @@ export default {
       tokens,
       rateProviders,
       tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -52,11 +53,13 @@ export default {
       args: [
         {
           vault: vault.address,
+          protocolFeeProvider: vault.getFeesProvider().address,
           name: NAME,
           symbol: SYMBOL,
           tokens: tokens.addresses,
           rateProviders: TypesConverter.toAddresses(rateProviders),
           tokenRateCacheDurations,
+          exemptFromYieldProtocolFeeFlags,
           amplificationParameter,
           swapFeePercentage,
           pauseWindowDuration,

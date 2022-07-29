@@ -6,6 +6,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 
+import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { impersonate } from '../../../src/signers';
 import { getForkedNetwork } from '../../../src/test';
@@ -13,14 +14,15 @@ import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describe.only('TimelockAuthorizer', function () {
+describeForkTest.only('TimelockAuthorizer', 'mainnet', 15238369, function () {
   let input: TimelockAuthorizerDeployment;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
   let root: SignerWithAddress;
 
-  const task = new Task('20220704-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   before('run task', async () => {
+    task = new Task('20220704-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     input = task.input() as TimelockAuthorizerDeployment;
     migrator = await task.deployedInstance('TimelockAuthorizerMigrator');

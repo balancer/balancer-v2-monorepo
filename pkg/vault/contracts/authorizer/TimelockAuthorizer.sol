@@ -23,6 +23,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "./TimelockExecutor.sol";
 
 /**
@@ -55,8 +56,14 @@ import "./TimelockExecutor.sol";
  *   action ID for scheduling a delay change, and the "specifier" is the action ID for which the delay will be changed.
  *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
  *   by calling `getExtendedActionId(baseActionId, specifier)`.
+ *
+ * Note that the TimelockAuthorizer doesn't make use of reentrancy guards on the majority of external functions.
+ * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
+ * which executes a scheduled execution and so this is the only protected function.
+ * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
+ * is necessary in order to be able to call these.
  */
-contract TimelockAuthorizer is IAuthorizer, IAuthentication {
+contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     using Address for address;
 
     /**
@@ -72,7 +79,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     // an arbitrarily long delay.
     uint256 public constant MAX_DELAY = 2 * (365 days);
     // We need a minimum delay period to ensure that scheduled actions may be properly scrutinised.
-    uint256 public constant MIN_DELAY = 3 days;
+    uint256 public constant MIN_DELAY = 5 days;
 
     struct ScheduledExecution {
         address where;
@@ -486,7 +493,25 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes memory data,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
+        // Allowing scheduling arbitrary calls into the TimelockAuthorizer is dangerous.
+        //
+        // It is expected that only the `root` account can initiate a root transfer as this condition is enforced
+        // by the `scheduleRootChange` function which is the expected method of scheduling a call to `setPendingRoot`.
+        // If a call to `setPendingRoot` could be scheduled using this function as well as `scheduleRootChange` then
+        // accounts other than `root` could initiate a root transfer (provided they had the necessary permission).
+        //
+        // For this reason we disallow this function from scheduling calls to functions on the Authorizer to ensure that
+        // these actions can only be scheduled through specialised functions.
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
+
+        // We also disallow the TimelockExecutor from attempting to call into itself. Otherwise the above protection
+        // could be bypassed by wrapping a call to `setPendingRoot` inside of a call causing the TimelockExecutor to
+        // reenter itself, essentially hiding the fact that `where == address(this)` inside `data`.
+        //
+        // Note: The TimelockExecutor only accepts calls from the TimelockAuthorizer (i.e. not from itself) so this
+        // scenario should be impossible but this check is cheap so we enforce it here as well anyway.
+        require(where != address(_executor), "ATTEMPTING_EXECUTOR_REENTRANCY");
+
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         _require(hasPermission(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         return _schedule(actionId, where, data, executors);
@@ -495,7 +520,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @notice Executes a scheduled action `scheduledExecutionId`.
      */
-    function execute(uint256 scheduledExecutionId) external returns (bytes memory result) {
+    function execute(uint256 scheduledExecutionId) external nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
         ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
@@ -510,6 +535,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         }
 
         scheduledExecution.executed = true;
+        // Note that this is the only place in the entire contract we perform a non-view call to an external contract.
         result = _executor.execute(scheduledExecution.where, scheduledExecution.data);
         emit ExecutionExecuted(scheduledExecutionId);
     }

@@ -17,6 +17,6 @@ export default {
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
   vyper: {
-    version: '0.3.1',
+    compilers: [{ version: '0.3.1' }, { version: '0.3.3' }],
   },
 };

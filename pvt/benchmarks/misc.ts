@@ -79,10 +79,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
 
-    const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
-      args: [vault.address],
-    });
-
     switch (poolName) {
       case 'ManagedPool': {
         const newPoolParams: ManagedPoolParams = {
@@ -97,7 +93,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
           managementAumFeePercentage: aumFee,
-          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -134,10 +129,18 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
     const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     const cacheDurations = Array(tokens.length).fill(0);
+    const protocolFeeFlags = Array(tokens.length).fill(false);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokens.addresses, amplificationParameter, rateProviders, cacheDurations, swapFeePercentage],
+      parameters: [
+        tokens.addresses,
+        amplificationParameter,
+        rateProviders,
+        cacheDurations,
+        protocolFeeFlags,
+        swapFeePercentage,
+      ],
     });
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
@@ -195,9 +198,17 @@ async function deployPoolFromFactory(
 ): Promise<Contract> {
   const fullName = `${poolName == 'StablePhantomPool' ? 'v2-pool-stable-phantom' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
+  const protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
+    args: [vault.address, fp(1), fp(1)],
+  });
+
   if (poolName == 'ManagedPool') {
-    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
+    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+      args: [vault.address, protocolFeesProvider.address],
+    });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
+  } else if (poolName == 'StablePhantomPool') {
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, protocolFeesProvider.address] });
   } else {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
   }

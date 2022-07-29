@@ -110,6 +110,7 @@ export type RawStablePhantomPoolDeployment = {
   amplificationParameter?: BigNumberish;
   rateProviders?: Account[];
   tokenRateCacheDurations?: BigNumberish[];
+  exemptFromYieldProtocolFeeFlags?: boolean[];
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: SignerWithAddress;
@@ -125,6 +126,7 @@ export type StablePhantomPoolDeployment = {
   amplificationParameter: BigNumberish;
   rateProviders: Account[];
   tokenRateCacheDurations: BigNumberish[];
+  exemptFromYieldProtocolFeeFlags: boolean[];
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: SignerWithAddress;

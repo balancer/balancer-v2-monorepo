@@ -6,6 +6,7 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { getSigner, impersonate } from '../../../../src/signers';
@@ -16,16 +17,17 @@ function encodeElement(address: string, balance: BigNumber): string {
   return ethers.utils.solidityKeccak256(['address', 'uint'], [address, balance]);
 }
 
-describe('MerkleRedeem', function () {
+describeForkTest('MerkleRedeem', 'arbitrum', 846769, function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = new Task('20210913-bal-arbitrum-merkle', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const BAL_TOKEN_ADDRESS = '0x040d1edc9569d4bab2d15287dc5a4f10f56a56b8'; // BAL on arbitrum
   const BAL_WHALE_ADDRESS = '0x056d433ad1eafcab3c4544bf4f98b9f40b1b1738';
 
   before('run task', async () => {
+    task = new Task('20210913-bal-arbitrum-merkle', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     distributor = await task.instanceAt('MerkleRedeem', task.output().MerkleRedeem);
   });
@@ -33,7 +35,7 @@ describe('MerkleRedeem', function () {
   before('load signers and transfer ownership', async () => {
     lp = await getSigner(2);
     other = await getSigner(3);
-    whale = await impersonate(BAL_WHALE_ADDRESS);
+    whale = await impersonate(BAL_WHALE_ADDRESS, fp(100));
     token = await task.instanceAt('IERC20', BAL_TOKEN_ADDRESS);
 
     await distributor.transferOwnership(whale.address);

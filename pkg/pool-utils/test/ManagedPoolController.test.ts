@@ -90,10 +90,6 @@ async function deployControllerAndPool(
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
   assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
 
-  const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
-    args: [vault.address],
-  });
-
   const params = {
     vault,
     tokens: allTokens,
@@ -104,7 +100,6 @@ async function deployControllerAndPool(
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
     protocolSwapFeePercentage: protocolSwapFeePercentage,
-    aumProtocolFeesCollector: aumProtocolFeesCollector.address,
   };
   pool = await WeightedPool.create(params);
 }

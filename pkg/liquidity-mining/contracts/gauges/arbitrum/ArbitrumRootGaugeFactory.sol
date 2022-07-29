@@ -22,7 +22,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
 import "./ArbitrumRootGauge.sol";
-import "./IArbitrumFeeProvider.sol";
 
 contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvider, SingletonAuthentication {
     ArbitrumRootGauge private _gaugeImplementation;
@@ -126,7 +125,7 @@ contract ArbitrumRootGaugeFactory is ILiquidityGaugeFactory, IArbitrumFeeProvide
         uint64 gasLimit,
         uint64 gasPrice,
         uint64 maxSubmissionCost
-    ) external authenticate {
+    ) external override authenticate {
         _gasLimit = gasLimit;
         _gasPrice = gasPrice;
         _maxSubmissionCost = maxSubmissionCost;

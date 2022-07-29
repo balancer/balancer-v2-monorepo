@@ -8,7 +8,7 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
 import {
   advanceTime,
@@ -22,6 +22,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 
 describe('StablePhantomPool', () => {
   let lp: SignerWithAddress,
@@ -68,26 +69,598 @@ describe('StablePhantomPool', () => {
     });
   });
 
+  describe('with non-18 decimal tokens', () => {
+    // Use non-round numbers
+    const SWAP_FEE_PERCENTAGE = fp(0.0234);
+    const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.34);
+
+    let tokens: TokenList;
+    let pool: StablePhantomPool;
+    let bptIndex: number;
+    let initialBalances: BigNumberish[];
+    let scalingFactors: BigNumber[];
+    let tokenRates: BigNumber[];
+    let protocolFeesCollector: Contract;
+    let previousFeeBalance: BigNumber;
+
+    const rateProviders: Contract[] = [];
+    const tokenRateCacheDurations: BigNumberish[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
+
+    // Used a fixed 5-token pool with all non-18 decimal tokens, including extreme values (0, 17),
+    // and common non-18 values (6, 8).
+    sharedBeforeEach('deploy tokens', async () => {
+      // Ensure we cover the full range, from 0 to 17
+      // Including common non-18 values of 6 and 8
+      tokens = await TokenList.create([
+        { decimals: 17, symbol: 'TK17' },
+        { decimals: 11, symbol: 'TK11' },
+        { decimals: 8, symbol: 'TK8' },
+        { decimals: 6, symbol: 'TK6' },
+        { decimals: 0, symbol: 'TK0' },
+      ]);
+      // NOTE: must sort after creation!
+      // TokenList.create with the sort option will strip off the decimals
+      tokens = tokens.sort();
+      tokenRates = Array.from({ length: tokens.length }, (_, i) => fp(1 + (i + 1) / 10));
+
+      // Balances are all "100" to the Vault
+      initialBalances = Array(tokens.length + 1).fill(fp(100));
+      // Except the BPT token, which is 0
+      initialBalances[bptIndex] = fp(0);
+    });
+
+    function _skipBptIndex(bptIndex: number, index: number): number {
+      return index < bptIndex ? index : index - 1;
+    }
+
+    function _dropBptItem(bptIndex: number, items: BigNumberish[]): BigNumberish[] {
+      const result = [];
+      for (let i = 0; i < items.length - 1; i++) result[i] = items[i < bptIndex ? i : i + 1];
+      return result;
+    }
+
+    async function deployPool(
+      params: RawStablePhantomPoolDeployment = {},
+      rates: BigNumberish[] = [],
+      protocolSwapFeePercentage: BigNumber
+    ): Promise<void> {
+      // 0th token has no rate provider, to test that case
+      const rateProviderAddresses: Account[] = Array(tokens.length).fill(ZERO_ADDRESS);
+      tokenRateCacheDurations[0] = 0;
+      exemptFromYieldProtocolFeeFlags[0] = false;
+
+      for (let i = 1; i < tokens.length; i++) {
+        rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
+        rateProviderAddresses[i] = rateProviders[i].address;
+
+        await rateProviders[i].mockRate(rates[i] || fp(1));
+        tokenRateCacheDurations[i] = params.tokenRateCacheDurations ? params.tokenRateCacheDurations[i] : 0;
+        exemptFromYieldProtocolFeeFlags[i] = params.exemptFromYieldProtocolFeeFlags
+          ? params.exemptFromYieldProtocolFeeFlags[i]
+          : false;
+      }
+
+      pool = await StablePhantomPool.create({
+        tokens,
+        rateProviders: rateProviderAddresses,
+        tokenRateCacheDurations,
+        exemptFromYieldProtocolFeeFlags,
+        owner,
+        admin,
+        ...params,
+      });
+
+      bptIndex = await pool.getBptIndex();
+      scalingFactors = await pool.getScalingFactors();
+
+      await pool.vault.setSwapFeePercentage(protocolSwapFeePercentage);
+      await pool.updateProtocolFeePercentageCache();
+      protocolFeesCollector = await pool.vault.getFeesCollector();
+      previousFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
+    }
+
+    async function initializePool(): Promise<void> {
+      // This is the unscaled input for the balances. For instance, "100" is "100" for 0 decimals, and "100000000" for 6 decimals
+      const unscaledBalances = await pool.downscale(initialBalances);
+
+      for (let i = 0; i < initialBalances.length; i++) {
+        if (i != bptIndex) {
+          const token = tokens.get(_skipBptIndex(bptIndex, i));
+          await token.instance.mint(recipient.address, unscaledBalances[i]);
+        }
+      }
+      await tokens.approve({ from: recipient, to: pool.vault });
+      await pool.init({ recipient, initialBalances: unscaledBalances });
+    }
+
+    context('with unary rates', () => {
+      sharedBeforeEach('initialize pool', async () => {
+        // Set rates to 1 to test decimal scaling independently
+        const unaryRates = Array(tokens.length).fill(fp(1));
+
+        await deployPool(
+          { swapFeePercentage: SWAP_FEE_PERCENTAGE, amplificationParameter: AMPLIFICATION_PARAMETER },
+          unaryRates,
+          PROTOCOL_SWAP_FEE_PERCENTAGE
+        );
+
+        await initializePool();
+      });
+
+      it('sets scaling factors', async () => {
+        const tokenScalingFactors: BigNumber[] = [];
+
+        for (let i = 0; i < tokens.length + 1; i++) {
+          if (i == bptIndex) {
+            tokenScalingFactors[i] = fp(1);
+          } else {
+            const j = _skipBptIndex(bptIndex, i);
+            tokenScalingFactors[i] = fp(10 ** (18 - tokens.get(j).decimals));
+          }
+        }
+
+        expect(tokenScalingFactors).to.deep.equal(scalingFactors);
+      });
+
+      it('initializes with uniform initial balances', async () => {
+        const balances = await pool.getBalances();
+        // Upscaling the result will recover the initial balances: all fp(100)
+        const upscaledBalances = await pool.upscale(balances);
+
+        expect(_dropBptItem(bptIndex, upscaledBalances)).to.deep.equal(_dropBptItem(bptIndex, initialBalances));
+      });
+
+      it('grants the invariant amount of BPT', async () => {
+        const balances = await pool.getBalances();
+        const invariant = await pool.estimateInvariant(await pool.upscale(balances));
+
+        // Initial balances should equal invariant
+        expect(await pool.balanceOf(recipient)).to.be.equalWithError(invariant, 0.001);
+      });
+    });
+
+    /**
+     * The intent here is to test every path through the code, ensuring decimal scaling and rate scaling are
+     * correctly employed in each case, and the protocol fees collected match expectations.
+     */
+    describe('protocol fees, scaling, and rates', () => {
+      const tokenNoRateIndex = 0;
+      const tokenWithRateIndex = 1;
+      const tokenWithRateExemptIndex = 2; // exempt flags are set for "even" indices (2 and 4)
+
+      sharedBeforeEach('initialize pool', async () => {
+        // Set indices 2 and 4 to be exempt (even)
+        const exemptFlags = [false, false, true, false, true];
+
+        await deployPool(
+          {
+            swapFeePercentage: SWAP_FEE_PERCENTAGE,
+            amplificationParameter: AMPLIFICATION_PARAMETER,
+            exemptFromYieldProtocolFeeFlags: exemptFlags,
+          },
+          tokenRates,
+          PROTOCOL_SWAP_FEE_PERCENTAGE
+        );
+
+        await initializePool();
+      });
+
+      // Do a bunch of regular swaps to incur fees / change the invariant
+      async function incurProtocolFees(): Promise<void> {
+        // This should change the balance of all tokens (at least the 3 being used below)
+      }
+
+      /**
+       * A swap could be:
+       * 1) regular swap, given in or out, between two non-BPT tokens
+       * 2) a BPT swap, given in or out: one of the tokens is the BPT token
+       *
+       * Regular swaps have no interaction with the protocol fee system, but they change balances,
+       * causing the invariant to increase.
+       *
+       * BPT swaps are joins or exits, so they trigger payment of protocol fees
+       * (and updating the cache needed for the next join/exit)
+       */
+      describe('swaps', () => {
+        /**
+         * 1) StablePhantomPool.onSwap:
+         *    update rates, if necessary (can set the duration to 0 so it will always update them)
+         *    This is done to ensure we are *always* using the latest rates for operations (e.g.,
+         *    if swaps are infrequent and we didn't do this, the rate could be very stale)
+         * 2) BaseGeneralPool.onSwap:
+         *    compute scaling factors, which includes both token decimals and rates
+         *    determine GivenIn vs. GivenOut
+         *        StablePhantomPool._swapGivenIn:
+         *            Determine it is a regular swap
+         *            BaseGeneralPool._swapGivenIn:
+         *                Subtract swap fee from amountIn
+         *                Apply scaling to balances and amounts
+         *                Call StablePhantomPool._onSwapGivenIn to compute amountOut: see #3
+         *                Downscale amountOut and return to Vault
+         *        StablePhantomPool._swapGivenOut:
+         *            Determine it is a regular swap
+         *            BaseGeneralPool._swapGivenOut:
+         *                Apply scaling to balances and amounts
+         *                Call StablePhantomPool._onSwapGivenOut to compute amountIn: see #3
+         *                Add swap fee to amountIn
+         *                Downscale amountIn and return to Vault
+         * 3) StablePhantomPool._onSwapGivenIn/Out:
+         *        StablePhantomPool._onRegularSwap:
+         *            Call StableMath with scaled balances and current amp to compute amountIn/Out
+         */
+        context('regular swaps', () => {
+          // Swap 10% of the value
+          let unscaledAmounts: BigNumberish[];
+
+          sharedBeforeEach('calculate swap amounts', async () => {
+            // These will be the "downscaled" raw input swap amounts
+            const scaledSwapAmounts = Array(tokens.length).fill(fp(10));
+            unscaledAmounts = await pool.downscale(scaledSwapAmounts);
+            expect(previousFeeBalance).to.be.zero;
+          });
+
+          function itPerformsARegularSwap(kind: SwapKind, indexIn: number, indexOut: number) {
+            it('performs a regular swap', async () => {
+              // const amount = kind == SwapKind.GivenIn ? unscaledAmounts[indexIn] : unscaledAmounts[indexOut];
+              const rateFactor = fp(1.1);
+              let oldRate: BigNumber;
+
+              console.log(`unscaled amounts: ${unscaledAmounts}`);
+              // predict results
+              // do swap
+              // validate results
+
+              // Change rates between GivenIn and GivenOut
+              if (kind == SwapKind.GivenIn) {
+                // Change rate (remember 0 has no provider)
+                if (indexIn > 0) {
+                  oldRate = await rateProviders[indexIn].getRate();
+                  await rateProviders[indexIn].mockRate(
+                    Math.random() > 0.5 ? oldRate.mul(rateFactor) : oldRate.div(rateFactor)
+                  );
+                }
+                oldRate = await rateProviders[indexOut].getRate();
+                await rateProviders[indexOut].mockRate(
+                  Math.random() > 0.5 ? oldRate.mul(rateFactor) : oldRate.div(rateFactor)
+                );
+              }
+            });
+          }
+
+          // Swap each token with the next (don't need all permutations), both GivenIn and GivenOut, changing
+          // rates in between. i < tokens.length - 1; tokens isn't defined outside an it
+          for (let i = 0; i < 4; i++) {
+            itPerformsARegularSwap(SwapKind.GivenIn, i, i + 1);
+            // The GivenIn swap changes the rate
+            itPerformsARegularSwap(SwapKind.GivenOut, i, i + 1);
+          }
+        });
+
+        /**
+         * 1) StablePhantomPool.onSwap:
+         *    update rates, if necessary (can set the duration to 0 so it will always update them)
+         *    This is done to ensure we are *always* using the latest rates for operations (e.g.,
+         *    if swaps are infrequent and we didn't do this, the rate could be very stale)
+         * 2) BaseGeneralPool.onSwap:
+         *    compute scaling factors, which includes both token decimals and rates
+         *    determine GivenIn vs. GivenOut
+         *        StablePhantomPool._swapGivenIn:
+         *            Determine it is a BPT swap
+         *            StablePhantomPool._swapWithBpt:
+         *                Apply scaling factors to balances
+         *                Pay protocol fees (based on invariant growth)
+         *                Call StablePhantomPool._onSwapBptGivenIn to compute amountOut; see #3
+         *                Downscale amountOut and return to Vault
+         *        StablePhantomPool._swapGivenOut:
+         *            Determine it is a BPT swap
+         *            StablePhantomPool._swapWithBpt:
+         *                Apply scaling factors to balances
+         *                Pay protocol fees (based on invariant growth)
+         *                Call StablePhantomPool._onSwapBptGivenOut to compute amountIn; see #3
+         *                Downscale amountIn and return to Vault
+         * 3) StablePhantomPool._onSwapBptGivenIn:
+         *        If tokenIn is BPT: (exitSwap)
+         *            Calculate amountOut with _calcTokenOutGivenExactBptIn; subtract amountOut from balances
+         *        else: (joinSwap)
+         *            Calculate BPTOut with _calcBptOutGivenExactTokensIn; add amountIn to balances
+         *    StablePhantomPool._onSwapBptGivenOut:
+         *        If tokenIn is BPT: (joinSwap)
+         *            Calculate BPTIn with _calcBptInGivenExactTokensOut; subtract amountsOut from balances
+         *       else: (exitSwap)
+         *           Calculate amountIn with _calcTokenInGivenExactBptOut; add amountsIn to balances
+         * 4) StablePhantomPool._updateInvariantAfterJoinExit:
+         *        Using the post-swap balances calculated above
+         *        _postJoinExitAmp = current amp
+         *        _postJoinExitInvariant = calculate invariant using the current amp and post-swap balances
+         *        Set oldRate = currentRate for any exempt tokens
+         */
+        context('BPT swaps', () => {
+          // The cached amp and postJoinExit invariant will already be set from the pool initialization
+          // So we want to test:
+          // 1) If the first thing we do is a join or exit swap, there should be no protocol fees
+          // 2) The amp and invariant should be set to the current values
+          // 3) We should test both GivenIn and GivenOut, with the "other" token being 0 (no rate provider), and 1 (with rate provider)
+          const NEW_AMP = AMPLIFICATION_PARAMETER.mul(3);
+          const rateFactor = fp(1.1);
+          let oldRate: BigNumber;
+
+          sharedBeforeEach('start an amp change', async () => {
+            const startTime = await currentTimestamp();
+            const endTime = startTime.add(DAY * 2);
+
+            await pool.startAmpChange(NEW_AMP, endTime);
+          });
+
+          function itPerformsABptSwapOnly(kind: SwapKind, tokenIndex: number) {
+            it('performs a BPT swap as the first operation', async () => {
+              // Advance time so that amp changes (should be reflected in postJoinExit invariant, which should be different from invariant before the operation)
+              if (tokenIndex != tokenNoRateIndex) {
+                // Change the rate before the operation
+                oldRate = await rateProviders[tokenIndex].getRate();
+                await rateProviders[tokenIndex].mockRate(
+                  Math.random() > 0.5 ? oldRate.mul(rateFactor) : oldRate.div(rateFactor)
+                );
+              }
+              // Do the swap, with the request set to BPT + token with the given index
+              // Zero protocol fees, postJoinExits set properly
+            });
+          }
+
+          function itPerformsABptSwapWithInterveningSwaps(kind: SwapKind, tokenIndex: number) {
+            it('performs a BPT swap with intervening swaps', async () => {
+              let oldRate: BigNumber;
+              let newRate: BigNumber;
+
+              // incur protocol fees - this changes the balances and ensures a different invariant
+              // Advance time so that the amp changes
+              if (tokenIndex != tokenNoRateIndex) {
+                // Change the rate before the operation; may need the old one for fee calculation
+                oldRate = await rateProviders[tokenIndex].getRate();
+                newRate = Math.random() > 0.5 ? oldRate.mul(rateFactor) : oldRate.div(rateFactor);
+
+                await rateProviders[tokenIndex].mockRate(newRate);
+              }
+              // Do the swap, with the request set to BPT + token with the given index
+              // Protocol fees (using old rate and old amp, if exempt, or old amp and new rate otherwise)
+              // postJoinExits set properly (current amp)
+              // Verify that old rates are updated after the operation
+            });
+          }
+
+          for (const kind of [SwapKind.GivenIn, SwapKind.GivenOut]) {
+            for (const tokenIndex of [tokenNoRateIndex, tokenWithRateIndex, tokenWithRateExemptIndex]) {
+              itPerformsABptSwapOnly(kind, tokenIndex);
+            }
+            for (const tokenIndex of [tokenNoRateIndex, tokenWithRateIndex, tokenWithRateExemptIndex]) {
+              itPerformsABptSwapWithInterveningSwaps(kind, tokenIndex);
+            }
+          }
+        });
+      });
+
+      /**
+       * A join can be single token or "exact tokens in," either of which trigger protocol fee collection and caching.
+       * A proportional join should pay no protocol fees.
+       *
+       * 1) StablePhantomPool.onJoinPool:
+       *     update rates, if necessary (can set the duration to 0 so it will always update them)
+       *     BasePool.onJoinPool:
+       *         compute scaling factors, which includes both token decimals and rates
+       *         Apply scaling factors to balances
+       *         Call StablePhantomPool._onJoinPool to compute BPT amountOut and amountsIn; see #2
+       *         mint BPTOut to recipient
+       *         downscale and return amountsIn to the Vault
+       * 2) StablePhantomPool._onJoinPool:
+       *        Pay protocol fees (based on invariant growth)
+       *        Check for one-token or multi-token:
+       *        If multi-token, StablePhantomPool._joinExactTokensInForBPTOut:
+       *            Apply scaling factors to amounts in (decimals and rates)
+       *            Call _calcBptOutGivenExactTokensIn to compute BPT Out, and check limits passed in from caller
+       *            Add amountsIn to compute post-join balances
+       *        If one-token, StablePhantomPool._joinTokenInForExactBPTOut:
+       *            Call _calcTokenInGivenExactBptOut to compute the amountIn
+       *            Add amountsIn to compute post-join balances
+       * 3) StablePhantomPool._updateInvariantAfterJoinExit:
+       *        Using the post-join balances calculated above
+       *        _postJoinExitAmp = current amp
+       *        _postJoinExitInvariant = calculate invariant using the current amp and post-swap balances
+       *        Set oldRate = currentRate for any exempt tokens
+       */
+      describe('joins', () => {
+        const NEW_AMP = AMPLIFICATION_PARAMETER.mul(3);
+        const rateFactor = fp(1.1);
+
+        let scaledSwapAmounts: BigNumber[];
+        let unscaledAmounts: BigNumberish[];
+        const oldRates: BigNumber[] = [];
+        const newRates: BigNumber[] = [];
+
+        sharedBeforeEach('start an amp change', async () => {
+          const startTime = await currentTimestamp();
+          const endTime = startTime.add(DAY * 2);
+
+          await pool.startAmpChange(NEW_AMP, endTime);
+        });
+
+        sharedBeforeEach('calculate join amounts', async () => {
+          // These will be the "downscaled" raw input swap amounts
+          scaledSwapAmounts = Array(tokens.length).fill(fp(10));
+          unscaledAmounts = await pool.downscale(scaledSwapAmounts);
+          console.log(`unscaled amounts: ${unscaledAmounts}`);
+        });
+
+        function itPerformsASingleTokenJoin(tokenIndex: number) {
+          it(`calculates fees for single token joins with index ${tokenIndex}`, async () => {
+            // Process a bunch of swaps (amp will also change during these)
+            await incurProtocolFees();
+
+            // Change all the rates (recall that 0 has no provider)
+            oldRates[0] = fp(1);
+            newRates[0] = fp(1);
+            for (let i = 1; i < tokens.length; i++) {
+              // Change the rate before the operation; may need the old one for fee calculation
+              oldRates[i] = await rateProviders[i].getRate();
+              newRates[i] = Math.random() > 0.5 ? oldRates[i].mul(rateFactor) : oldRates[i].div(rateFactor);
+
+              await rateProviders[i].mockRate(newRates[i]);
+            }
+
+            // Do single token join with the given index
+            // Check protocol fees (using oldRates/newRates, etc.)
+            // Check updated amp/invariant values, and that oldRates have been updated
+          });
+        }
+
+        for (const tokenIndex of [tokenNoRateIndex, tokenWithRateIndex, tokenWithRateExemptIndex]) {
+          itPerformsASingleTokenJoin(tokenIndex);
+        }
+
+        function itPerformsAMultiTokenJoin(amountInRatios: number[]) {
+          it('calculates fees for multi-token joins', async () => {
+            console.log(`ratios: ${amountInRatios}`);
+            // const amountsIn = scaledSwapAmounts.map((a, i) => a.mul(fp(amountInRatios[i])));
+            // Do multi token join with the given amountsIn
+            // Check protocol fees (using oldRates/newRates, etc.)
+            // Check updated amp/invariant values, and that oldRates have been updated
+          });
+        }
+
+        const unbalancedJoin = [0.8, 1.2, 2, 0.05, 0.45];
+        const proportionalJoin = Array(5).fill(1);
+
+        itPerformsAMultiTokenJoin(unbalancedJoin);
+        // Should have no fees
+        itPerformsAMultiTokenJoin(proportionalJoin);
+      });
+
+      /**
+       * An exit can be single token or "exact tokens out," either of which trigger protocol fee collection and caching.
+       * A proportional exit should pay no protocol fees.
+       *
+       * 1) StablePhantomPool.onExitPool:
+       *     update rates, if necessary (can set the duration to 0 so it will always update them)
+       *     BasePool.onExitPool:
+       *         Check for recovery mode exit - if so, do that one instead
+       *         compute scaling factors, which includes both token decimals and rates
+       *         Apply scaling factors to balances
+       *         Call StablePhantomPool._onExitPool to compute BPT amountIn and amountsOut; see #2
+       *         burn BPTIn from sender
+       *         downscale and return amountsOut to the Vault
+       * 2) StablePhantomPool._onExitPool:
+       *        Pay protocol fees (based on invariant growth)
+       *        Check for one-token or multi-token:
+       *        If multi-token, StablePhantomPool._exitBPTInForExactTokensOut:
+       *            Apply scaling factors to amounts out (decimals and rates)
+       *            Call _calcBptInGivenExactTokensOut to compute BPT In, and check limits passed in from caller
+       *            Subtract amountsOut to compute post-exit balances
+       *        If one-token, StablePhantomPool._exitExactBPTInForTokenOut:
+       *            Call _calcTokenOutGivenExactBptIn to compute the amountOut
+       *            Subtract amountsOut to compute post-exit balances
+       * 3) StablePhantomPool._updateInvariantAfterJoinExit:
+       *        Using the post-join balances calculated above
+       *        _postJoinExitAmp = current amp
+       *        _postJoinExitInvariant = calculate invariant using the current amp and post-swap balances
+       *        Set oldRate = currentRate for any exempt tokens
+       */
+      describe('exits', () => {
+        const NEW_AMP = AMPLIFICATION_PARAMETER.mul(3);
+        const rateFactor = fp(1.1);
+
+        let scaledSwapAmounts: BigNumber[];
+        let unscaledAmounts: BigNumberish[];
+        const oldRates: BigNumber[] = [];
+        const newRates: BigNumber[] = [];
+
+        sharedBeforeEach('start an amp change', async () => {
+          const startTime = await currentTimestamp();
+          const endTime = startTime.add(DAY * 2);
+
+          await pool.startAmpChange(NEW_AMP, endTime);
+        });
+
+        sharedBeforeEach('calculate exit amounts', async () => {
+          // These will be the "downscaled" raw input swap amounts
+          scaledSwapAmounts = Array(tokens.length).fill(fp(10));
+          unscaledAmounts = await pool.downscale(scaledSwapAmounts);
+          console.log(`unscaled amounts: ${unscaledAmounts}`);
+        });
+
+        function itPerformsASingleTokenExit(tokenIndex: number) {
+          it(`calculates fees for single token exits with token index ${tokenIndex}`, async () => {
+            // Process a bunch of swaps (amp will also change during these)
+            await incurProtocolFees();
+
+            // Change all the rates (recall that 0 has no provider)
+            oldRates[0] = fp(1);
+            newRates[0] = fp(1);
+            for (let i = 1; i < tokens.length; i++) {
+              // Change the rate before the operation; may need the old one for fee calculation
+              oldRates[i] = await rateProviders[i].getRate();
+              newRates[i] = Math.random() > 0.5 ? oldRates[i].mul(rateFactor) : oldRates[i].div(rateFactor);
+
+              await rateProviders[i].mockRate(newRates[i]);
+            }
+
+            // Do single token join with the given index
+            // Check protocol fees (using oldRates/newRates, etc.)
+            // Check updated amp/invariant values, and that oldRates have been updated
+          });
+        }
+
+        for (const tokenIndex of [tokenNoRateIndex, tokenWithRateIndex, tokenWithRateExemptIndex]) {
+          itPerformsASingleTokenExit(tokenIndex);
+        }
+
+        function itPerformsAMultiTokenExit(amountOutRatios: number[]) {
+          it('calculates fees for multi-token joins', async () => {
+            console.log(`amountOutRatios: ${amountOutRatios}`);
+            // const amountsOut = scaledSwapAmounts.map((a, i) => a.mul(fp(amountOutRatios[i])));
+            // Do multi token exit with the given amountsOut
+            // Check protocol fees (using oldRates/newRates, etc.)
+            // Check updated amp/invariant values, and that oldRates have been updated
+          });
+        }
+
+        const unbalancedExit = [0.62, 1.08, 1.88, 0.25, 0.78];
+        const proportionalExit = Array(5).fill(1);
+
+        itPerformsAMultiTokenExit(unbalancedExit);
+        // Should have no fees
+        itPerformsAMultiTokenExit(proportionalExit);
+      });
+    });
+  });
+
   function itBehavesAsStablePhantomPool(numberOfTokens: number): void {
     let pool: StablePhantomPool, tokens: TokenList;
     let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
+    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
-    async function deployPool(params: RawStablePhantomPoolDeployment = {}, rates: BigNumberish[] = []): Promise<void> {
+    const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
+
+    async function deployPool(
+      params: RawStablePhantomPoolDeployment = {},
+      rates: BigNumberish[] = [],
+      durations: number[] = []
+    ): Promise<void> {
       tokens = params.tokens || (await TokenList.create(numberOfTokens, { sorted: true }));
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
         await rateProviders[i].mockRate(rates[i] || fp(1));
         tokenRateCacheDurations[i] = MONTH + i;
+        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await StablePhantomPool.create({
         tokens,
         rateProviders,
-        tokenRateCacheDurations,
+        tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
+        exemptFromYieldProtocolFeeFlags,
         owner,
         admin,
         ...params,
@@ -207,6 +780,16 @@ describe('StablePhantomPool', () => {
           const expectedIndex = allTokens.indexOf(bpt);
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
         });
+
+        it('sets the fee exemption flags correctly', async () => {
+          for (let i = 0; i < numberOfTokens; i++) {
+            // Initialized to true for even tokens
+            const expectedFlag = i % 2 == 0;
+            const token = tokens.get(i);
+
+            expect(await pool.instance.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
+          }
+        });
       });
 
       context('when the creation fails', () => {
@@ -222,10 +805,22 @@ describe('StablePhantomPool', () => {
           await expect(deployPool({ tokenRateCacheDurations })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
+        it('reverts if the exemption flags do not match the tokens length', async () => {
+          const exemptFromYieldProtocolFeeFlags = [true];
+
+          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        });
+
         it('reverts if the rate providers do not match the tokens length', async () => {
-          const rateProviders = [ZERO_ADDRESS];
+          const rateProviders = Array(numberOfTokens + 1).fill(ANY_ADDRESS);
 
           await expect(deployPool({ rateProviders })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        });
+
+        it('reverts if the protocol fee flags do not match the tokens length', async () => {
+          const exemptFromYieldProtocolFeeFlags = Array(numberOfTokens + 1).fill(false);
+
+          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the swap fee is too high', async () => {
@@ -663,8 +1258,6 @@ describe('StablePhantomPool', () => {
     });
 
     describe('onJoinPool', () => {
-      const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
-
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ admin });
       });
@@ -769,12 +1362,14 @@ describe('StablePhantomPool', () => {
       });
 
       describe('join token in for exact BPT out', () => {
-        let tokenIndex: number;
+        let tokenIndexWithBpt: number;
         let token: Token;
 
         sharedBeforeEach('get token to join with', async () => {
-          tokenIndex = pool.bptIndex == 0 ? 1 : 0;
-          token = tokens.get(tokenIndex);
+          // tokens are sorted, and do not include BPT, so get the last one
+          const tokenIndexWithoutBpt = numberOfTokens - 1;
+          token = tokens.get(tokenIndexWithoutBpt);
+          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
         });
 
         context('not in recovery mode', () => {
@@ -799,6 +1394,15 @@ describe('StablePhantomPool', () => {
               await pool.init({ recipient, initialBalances });
             });
 
+            it('reverts if the tokenIndex passed in is invalid', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              const bptOut = pct(previousBptBalance, 0.2);
+
+              await expect(pool.joinGivenOut({ from: recipient, recipient, bptOut, token: 100 })).to.be.revertedWith(
+                'OUT_OF_BOUNDS'
+              );
+            });
+
             it('grants exact BPT for token in', async () => {
               const previousBptBalance = await pool.balanceOf(recipient);
               // 20% of previous balance
@@ -808,8 +1412,8 @@ describe('StablePhantomPool', () => {
               const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
 
               // Only token in should be the one transferred
-              expect(result.amountsIn[tokenIndex]).to.be.equalWithError(expectedAmountIn, 0.001);
-              expect(result.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+              expect(result.amountsIn[tokenIndexWithBpt]).to.be.equalWithError(expectedAmountIn, 0.001);
+              expect(result.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
               // Make sure received BPT is close to what we expect
               const currentBptBalance = await pool.balanceOf(recipient);
@@ -824,16 +1428,16 @@ describe('StablePhantomPool', () => {
               const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
 
               expect(queryResult.bptOut).to.be.equal(bptOut);
-              expect(queryResult.amountsIn.filter((_, i) => i != tokenIndex)).to.be.zeros;
+              expect(queryResult.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
               const result = await pool.joinGivenOut({ from: recipient, bptOut, token });
               // Query and join should match exactly
-              expect(result.amountsIn[tokenIndex]).to.equal(queryResult.amountsIn[tokenIndex]);
+              expect(result.amountsIn[tokenIndexWithBpt]).to.equal(queryResult.amountsIn[tokenIndexWithBpt]);
             });
 
             it('join and joinSwap give the same result', async () => {
               const previousBptBalance = await pool.balanceOf(recipient);
-              // 20% of previous balance
+              // 32.5% of previous balance
               const bptOut = pct(previousBptBalance, 0.325);
 
               const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
@@ -846,7 +1450,7 @@ describe('StablePhantomPool', () => {
                 recipient: lp,
               });
 
-              expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndex]);
+              expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndexWithBpt]);
             });
 
             it('reverts if paused', async () => {
@@ -890,12 +1494,15 @@ describe('StablePhantomPool', () => {
       });
 
       describe('exit BPT in for one token out', () => {
-        let tokenIndex: number;
+        let tokenIndexWithoutBpt: number;
+        let tokenIndexWithBpt: number;
         let token: Token;
 
         sharedBeforeEach('get token to exit with', async () => {
-          tokenIndex = pool.bptIndex == 0 ? 1 : 0;
-          token = tokens.get(tokenIndex);
+          // tokens are sorted, and do not include BPT, so get the last one
+          tokenIndexWithoutBpt = numberOfTokens - 1;
+          token = tokens.get(tokenIndexWithoutBpt);
+          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
         });
 
         context('not in recovery mode', () => {
@@ -911,6 +1518,13 @@ describe('StablePhantomPool', () => {
         });
 
         function itExitsExactBptInForOneTokenOutProperly() {
+          it('reverts if the tokenIndex passed in is invalid', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptIn = pct(previousBptBalance, 0.2);
+
+            await expect(pool.singleExitGivenIn({ from: lp, bptIn, token: 100 })).to.be.revertedWith('OUT_OF_BOUNDS');
+          });
+
           it('grants one token for exact bpt', async () => {
             // 20% of previous balance
             const previousBptBalance = await pool.balanceOf(lp);
@@ -920,8 +1534,8 @@ describe('StablePhantomPool', () => {
             const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
 
             // Only token out should be the one transferred
-            expect(result.amountsOut[tokenIndex]).to.be.equalWithError(expectedTokenOut, 0.0001);
-            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+            expect(result.amountsOut[tokenIndexWithBpt]).to.be.equalWithError(expectedTokenOut, 0.0001);
+            expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
             const bptAfter = await pool.balanceOf(lp);
 
@@ -934,13 +1548,13 @@ describe('StablePhantomPool', () => {
             const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
 
             expect(queryResult.bptIn).to.equal(bptIn);
-            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
             const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
-            expect(result.amountsOut.filter((_, i) => i != tokenIndex)).to.be.zeros;
+            expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
             // Query and exit should match exactly
-            expect(result.amountsOut[tokenIndex]).to.equal(queryResult.amountsOut[tokenIndex]);
+            expect(result.amountsOut[tokenIndexWithBpt]).to.equal(queryResult.amountsOut[tokenIndexWithBpt]);
           });
 
           it('exit and exitSwap give the same result', async () => {
@@ -954,7 +1568,7 @@ describe('StablePhantomPool', () => {
               amount: bptIn,
               recipient: lp,
             });
-            expect(queryResult.amountsOut[tokenIndex]).to.equal(amountOut);
+            expect(queryResult.amountsOut[tokenIndexWithBpt]).to.equal(amountOut);
           });
 
           it('reverts if paused', async () => {
@@ -1082,6 +1696,28 @@ describe('StablePhantomPool', () => {
         });
       });
 
+      it('reverts when setting an exempt flag with no rate provider', async () => {
+        const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
+        tokens = await TokenList.create(tokenParams, { sorted: true, varyDecimals: true });
+
+        await expect(
+          StablePhantomPool.create({
+            tokens,
+            rateProviders: Array(tokens.length).fill(ZERO_ADDRESS),
+            exemptFromYieldProtocolFeeFlags: Array(tokens.length).fill(true),
+            tokenRateCacheDurations: new Array(tokens.length).fill(0),
+            owner,
+          })
+        ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+      });
+
+      const getExpectedScalingFactor = async (token: Token): Promise<BigNumber> => {
+        const index = tokens.indexOf(token);
+        const rateProvider = rateProviders[index];
+        const rate = await rateProvider.getRate();
+        return rate.mul(bn(10).pow(18 - token.decimals));
+      };
+
       context('with a rate provider', () => {
         sharedBeforeEach('deploy pool', async () => {
           const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
@@ -1092,22 +1728,15 @@ describe('StablePhantomPool', () => {
         });
 
         describe('scaling factors', () => {
-          const scaleRate = async (token: Token): Promise<BigNumber> => {
-            const index = tokens.indexOf(token);
-            const rateProvider = rateProviders[index];
-            const rate = await rateProvider.getRate();
-            return rate.mul(bn(10).pow(18 - token.decimals));
-          };
-
           const itAdaptsTheScalingFactorsCorrectly = () => {
             it('adapt the scaling factors with the price rate', async () => {
               const scalingFactors = await pool.getScalingFactors();
 
               await tokens.asyncEach(async (token) => {
-                const expectedRate = await scaleRate(token);
+                const expectedScalingFactor = await getExpectedScalingFactor(token);
                 const tokenIndex = await pool.getTokenIndex(token);
-                expect(scalingFactors[tokenIndex]).to.be.equal(expectedRate);
-                expect(await pool.getScalingFactor(token)).to.be.equal(expectedRate);
+                expect(scalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
+                expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
               });
 
               expect(scalingFactors[pool.bptIndex]).to.be.equal(fp(1));
@@ -1322,9 +1951,156 @@ describe('StablePhantomPool', () => {
           });
         });
       });
+
+      context('with a rate provider and zero durations', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
+          tokens = await TokenList.create(tokenParams, { sorted: true });
+
+          const tokenRates = Array.from({ length: numberOfTokens }, (_, i) => fp(1 + (i + 1) / 10));
+          const durations = Array(tokens.length).fill(0);
+          await deployPool({ tokens }, tokenRates, durations);
+        });
+
+        describe('when rates are updated between operations', () => {
+          let previousScalingFactors: BigNumber[];
+          let token: Token;
+          let tokenIndexWithBpt: number;
+
+          async function updateExternalRates(): Promise<void> {
+            await tokens.asyncEach(async (token, i) => {
+              const previousCache = await pool.getTokenRateCache(token);
+              const value = Math.random() / 5;
+
+              await rateProviders[i].mockRate(
+                previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))
+              );
+            });
+          }
+
+          async function verifyScalingFactors(newScalingFactors: BigNumber[]): Promise<void> {
+            await tokens.asyncEach(async (token) => {
+              const expectedScalingFactor = await getExpectedScalingFactor(token);
+              const tokenIndex = await pool.getTokenIndex(token);
+              expect(newScalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
+              expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
+            });
+
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+          }
+
+          sharedBeforeEach('fund lp and pool', async () => {
+            await tokens.mint({ to: lp, amount: fp(10000) });
+            await tokens.approve({ from: lp, to: pool.vault });
+
+            await pool.init({ initialBalances, recipient: lp });
+          });
+
+          sharedBeforeEach('save starting values and compute tokenIndex', async () => {
+            previousScalingFactors = await pool.getScalingFactors();
+
+            const tokenIndexWithoutBpt = numberOfTokens - 1;
+            token = tokens.get(tokenIndexWithoutBpt);
+            tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
+          });
+
+          async function expectScalingFactorsToBeUpdated(
+            query: () => Promise<BigNumberish>,
+            actual: () => Promise<BigNumberish>
+          ) {
+            // Perform a query with the current rate values
+            const queryAmount = await query();
+
+            await updateExternalRates();
+
+            // Verify the new rates are not yet loaded
+            const preOpScalingFactors = await pool.getScalingFactors();
+            for (let i = 0; i < preOpScalingFactors.length; i++) {
+              if (i != pool.bptIndex) {
+                expect(preOpScalingFactors[i]).to.equal(previousScalingFactors[i]);
+              }
+            }
+
+            // Now we perform the actual operation - the result should be different. This must not be a query as we want
+            // to check the updated state after the transaction.
+            const actualAmount = await actual();
+
+            // Verify the new rates are reflected in the scaling factors
+            await verifyScalingFactors(await pool.getScalingFactors());
+
+            expect(actualAmount).to.not.equal(queryAmount);
+          }
+
+          it('swaps use the new rates', async () => {
+            const { balances, tokens: allTokens } = await pool.getTokens();
+            const tokenIndex = allTokens.indexOf(tokens.first.address);
+
+            const amountIn = balances[tokenIndex].div(5);
+
+            const swapArgs = {
+              in: tokens.first,
+              out: tokens.second,
+              amount: amountIn,
+              from: lp,
+              recipient: lp,
+            };
+            const query = () => pool.querySwapGivenIn(swapArgs);
+            const actual = async () => (await pool.swapGivenIn(swapArgs)).amountOut;
+            await expectScalingFactorsToBeUpdated(query, actual);
+          });
+
+          it('joins use the new rates', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptOut = pct(previousBptBalance, 0.18);
+
+            const query = async () =>
+              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
+            const actual = async () =>
+              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
+
+            await expectScalingFactorsToBeUpdated(query, actual);
+          });
+
+          it('exits use the new rates', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptIn = pct(previousBptBalance, 0.082);
+
+            const query = async () =>
+              (await pool.querySingleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndexWithBpt];
+            const actual = async () =>
+              (await pool.singleExitGivenIn({ from: lp, bptIn, token })).amountsOut[tokenIndexWithBpt];
+
+            await expectScalingFactorsToBeUpdated(query, actual);
+          });
+
+          it('recovery mode exits do not update the cache', async () => {
+            // Enter recovery mode
+            await pool.enableRecoveryMode(admin);
+
+            await updateExternalRates();
+
+            // Verify the new rates are not yet loaded
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
+
+            // Do a recovery mode exit
+            const { balances, tokens: allTokens } = await pool.getTokens();
+            const bptIn = await pool.balanceOf(lp);
+
+            await pool.recoveryModeExit({
+              from: lp,
+              tokens: allTokens,
+              currentBalances: balances,
+              bptIn,
+            });
+
+            // Verify the operation did NOT update the cache
+            expect(await pool.getScalingFactors()).to.deep.equal(previousScalingFactors);
+          });
+        });
+      });
     });
 
-    describe('protocol swap fees', () => {
+    describe.skip('protocol swap fees', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
       let protocolFeesCollector: Contract;
@@ -1333,7 +2109,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolSwapFeePercentageCache();
+        await pool.updateProtocolFeePercentageCache();
 
         protocolFeesCollector = await pool.vault.getFeesCollector();
 
@@ -1354,7 +2130,7 @@ describe('StablePhantomPool', () => {
           let previousBalance: BigNumber;
 
           sharedBeforeEach('update cache', async () => {
-            await pool.updateProtocolSwapFeePercentageCache();
+            await pool.updateProtocolFeePercentageCache();
             inRecoveryMode = await pool.inRecoveryMode();
           });
 
@@ -1495,6 +2271,17 @@ describe('StablePhantomPool', () => {
 
         itAccountsForProtocolFees();
       });
+
+      it('proportional join should collect no protocol fee', async () => {
+        const feeCollectorBalanceBefore = await pool.balanceOf(protocolFeesCollector);
+        expect(feeCollectorBalanceBefore).to.equal(bn(0));
+
+        const amountsIn: BigNumber[] = ZEROS.map((n, i) => (i != bptIndex ? fp(1) : n));
+        await pool.joinGivenIn({ amountsIn, minimumBptOut: pct(fp(numberOfTokens), 0.9999), recipient: lp, from: lp });
+
+        const feeCollectorBalanceAfter = await pool.balanceOf(protocolFeesCollector);
+        expect(feeCollectorBalanceAfter).to.be.zero;
+      });
     });
 
     describe('virtual supply', () => {
@@ -1506,7 +2293,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolSwapFeePercentageCache();
+        await pool.updateProtocolFeePercentageCache();
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
@@ -1523,7 +2310,7 @@ describe('StablePhantomPool', () => {
         });
       });
 
-      context('with protocol fees', () => {
+      context.skip('with protocol fees', () => {
         const amount = fp(50);
 
         sharedBeforeEach('swap bpt in', async () => {
@@ -1558,7 +2345,7 @@ describe('StablePhantomPool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolSwapFeePercentageCache();
+        await pool.updateProtocolFeePercentageCache();
       });
 
       context('before initialized', () => {
@@ -1963,6 +2750,11 @@ describe('StablePhantomPool', () => {
             sharedBeforeEach('blow up pool', async () => {
               await pool.setInvariantFailure(true);
               await pool.setRateFailure(true);
+            });
+
+            it('verify invariant-dependent and external rate calls fail', async () => {
+              await expect(pool.getRate()).to.be.revertedWith('INDUCED_FAILURE');
+              await expect(pool.instance.getTokenRate(tokens.first.address)).to.be.revertedWith('INDUCED_FAILURE');
             });
 
             itAllowsBothLpsToExit();
