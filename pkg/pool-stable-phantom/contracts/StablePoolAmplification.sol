@@ -14,12 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "./StableMath.sol";
 
-abstract contract StablePoolAmplification is BasePool {
+abstract contract StablePoolAmplification is BasePoolAuthorization {
     using WordCodec for bytes32;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
@@ -193,7 +193,6 @@ abstract contract StablePoolAmplification is BasePool {
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector));
     }
 }
