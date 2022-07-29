@@ -531,6 +531,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Supports single- and multi-token joins, except for explicit proportional joins.
+     * Pays protocol fees before the join, and calls `_updateInvariantAfterJoinExit` afterward.
      */
     function _onJoinPool(
         bytes32,
@@ -541,18 +542,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(virtualSupply, balancesWithoutBpt, scalingFactors, userData);
+            (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                scalingFactors,
+                userData
+            );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(virtualSupply, balancesWithoutBpt, userData);
+            (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                userData
+            );
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
+
+        // Add amountsIn to get post-join balances
+        _mutateAmounts(balancesWithoutBpt, amountsIn, FixedPoint.add);
+
+        // Pass in the post-join balances to reset the protocol fee basis.
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
     }
 
     /**
@@ -560,10 +579,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _joinExactTokensInForBPTOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         // Balances are passed through from the Vault hook, and include BPT
         InputHelpers.ensureInputLengthMatch(balancesWithoutBpt.length, amountsIn.length);
@@ -574,7 +594,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             scalingFactors
         );
 
-        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
             currentAmp,
             balancesWithoutBpt,
@@ -585,11 +604,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
-        // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, scaledAmountsInWithoutBpt, FixedPoint.add);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
-
         return (bptAmountOut, scaledAmountsInWithBpt);
     }
 
@@ -598,9 +612,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _joinTokenInForExactBPTOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         // Since this index is sent in from the user, we interpret it as NOT including the BPT token.
         (uint256 bptAmountOut, uint256 tokenIndexWithoutBpt) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
@@ -610,7 +625,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         // We join with a single token, so initialize amountsIn with zeros.
         uint256[] memory amountsIn = new uint256[](balancesWithoutBpt.length + 1);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // And then assign the result to the selected token.
         // The token index passed to the StableMath function must match the balances array (without BPT),
@@ -623,11 +637,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             virtualSupply,
             getSwapFeePercentage()
         );
-
-        // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountOut, amountsIn);
     }
@@ -660,6 +669,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Support single- and multi-token exits, but not explicit proportional exits.
+     * Pays protocol fees before the exit, and calls `_updateInvariantAfterJoinExit` afterward.
      * Note that recovery mode exits do not call`_onExitPool`.
      */
     function _onExitPool(
@@ -671,18 +681,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(virtualSupply, balancesWithoutBpt, scalingFactors, userData);
+            (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                scalingFactors,
+                userData
+            );
         } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(virtualSupply, balancesWithoutBpt, userData);
+            (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                userData
+            );
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+
+        // Subtract amountsOut to get post-exit balances
+        _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
+
+        // Pass in the post-exit balances to reset the protocol fee basis.
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
     }
 
     /**
@@ -690,10 +718,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _exitBPTInForExactTokensOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         // amountsOut are unscaled, and do not include BPT
         InputHelpers.ensureInputLengthMatch(amountsOut.length, balancesWithoutBpt.length);
@@ -704,7 +733,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             scalingFactors
         );
 
-        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
             balancesWithoutBpt,
@@ -714,11 +742,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
-        // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, scaledAmountsOutWithoutBpt, FixedPoint.sub);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
-
         return (bptAmountIn, scaledAmountsOutWithBpt);
     }
 
@@ -727,9 +750,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _exitExactBPTInForTokenOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         // Since this index is sent in from the user, we interpret it as NOT including the BPT token
         (uint256 bptAmountIn, uint256 tokenIndexWithoutBpt) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
@@ -738,7 +762,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         // We exit in a single token, so initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](balancesWithoutBpt.length + 1);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // And then assign the result to the selected token.
         // The token index passed to the StableMath function must match the balances array (without BPT),
@@ -751,11 +774,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             virtualSupply,
             getSwapFeePercentage()
         );
-
-        // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountIn, amountsOut);
     }
