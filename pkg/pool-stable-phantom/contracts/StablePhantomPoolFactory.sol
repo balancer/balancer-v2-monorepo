@@ -51,7 +51,7 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
             StablePhantomPool(
                 _create(
                     abi.encode(
-                        StablePhantomPool.NewPoolParams({
+                        IStablePhantomPoolParams.NewPoolParams({
                             vault: getVault(),
                             protocolFeeProvider: _protocolFeeProvider,
                             name: name,

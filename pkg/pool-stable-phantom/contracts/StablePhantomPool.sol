@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/StablePhantomPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -27,7 +26,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "./StablePoolStorage.sol";
 import "./StablePoolRates.sol";
 import "./StableMath.sol";
 
@@ -44,7 +42,7 @@ import "./StableMath.sol";
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
  * actually owned outside the Vault) instead.
  */
-contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage, StablePoolRates, ProtocolFeeCache {
+contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolRates, ProtocolFeeCache {
     //using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -69,24 +67,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     // store `_postJoinExitInvariant`.
     uint256 private _postJoinExitAmp;
 
-    // The constructor arguments are received in a struct to work around stack-too-deep issues
-    struct NewPoolParams {
-        IVault vault;
-        IProtocolFeePercentagesProvider protocolFeeProvider;
-        string name;
-        string symbol;
-        IERC20[] tokens;
-        IRateProvider[] rateProviders;
-        uint256[] tokenRateCacheDurations;
-        bool[] exemptFromYieldProtocolFeeFlags;
-        uint256 amplificationParameter;
-        uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
-    }
-
-    constructor(NewPoolParams memory params)
+    constructor(IStablePhantomPoolParams.NewPoolParams memory params)
         BasePool(
             params.vault,
             IVault.PoolSpecialization.GENERAL,
@@ -99,17 +80,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             params.bufferPeriodDuration,
             params.owner
         )
-        StablePoolStorage(
-            _insertSorted(params.tokens, IERC20(this)),
-            params.rateProviders,
-            params.exemptFromYieldProtocolFeeFlags
-        )
-        StablePoolRates(
-            params.amplificationParameter,
-            params.tokens,
-            params.rateProviders,
-            params.tokenRateCacheDurations
-        )
+        StablePoolRates(params)
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         // solhint-disable-previous-line no-empty-blocks

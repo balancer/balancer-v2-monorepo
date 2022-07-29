@@ -14,18 +14,20 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/IStablePhantomPoolParams.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
+import "./StablePoolStorage.sol";
 import "./StableMath.sol";
 
-abstract contract StablePoolRates is Authentication {
+abstract contract StablePoolRates is StablePoolStorage {
     using PriceRateCache for bytes32;
     using WordCodec for bytes32;
-    
+
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
@@ -67,31 +69,31 @@ abstract contract StablePoolRates is Authentication {
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
-    constructor(
-      uint256 amplificationParameter,
-      IERC20[] memory tokens,
-      IRateProvider[] memory rateProviders,
-      uint256[] memory tokenRateCacheDurations
-    ) {
-        //TODO uint256 numTokens = tokens.length
+    constructor(IStablePhantomPoolParams.NewPoolParams memory params)
+        StablePoolStorage(
+            _insertSorted(params.tokens, IERC20(this)),
+            params.rateProviders,
+            params.exemptFromYieldProtocolFeeFlags
+        )
+    {
         InputHelpers.ensureInputLengthMatch(
-            tokens.length,
-            rateProviders.length,
-            tokenRateCacheDurations.length
+            params.tokens.length,
+            params.rateProviders.length,
+            params.tokenRateCacheDurations.length
         );
-        _require(amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
-        _require(amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
+        _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
+        _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
 
-        uint256 initialAmp = Math.mul(amplificationParameter, StableMath._AMP_PRECISION);
+        uint256 initialAmp = Math.mul(params.amplificationParameter, StableMath._AMP_PRECISION);
         _setAmplificationData(initialAmp);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (rateProviders[i] != IRateProvider(0)) {
-                _updateTokenRateCache(tokens[i], rateProviders[i], tokenRateCacheDurations[i]);
-                emit TokenRateProviderSet(tokens[i], rateProviders[i], tokenRateCacheDurations[i]);
+        for (uint256 i = 0; i < params.tokens.length; i++) {
+            if (params.rateProviders[i] != IRateProvider(0)) {
+                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
 
                 // Initialize the old rates as well, in case they are referenced before the first join.
-                _updateOldRate(tokens[i]);
+                _updateOldRate(params.tokens[i]);
             }
         }
     }
