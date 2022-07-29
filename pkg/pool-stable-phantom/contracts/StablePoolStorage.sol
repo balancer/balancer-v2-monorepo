@@ -41,8 +41,6 @@ abstract contract StablePoolStorage is BasePool {
     IERC20 private immutable _token1;
     IERC20 private immutable _token2;
     IERC20 private immutable _token3;
-    IERC20 private immutable _token4;
-    IERC20 private immutable _token5;
 
     // All token balances are normalized to behave as if the token had 18 decimals. We assume a token's decimals will
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
@@ -52,8 +50,6 @@ abstract contract StablePoolStorage is BasePool {
     uint256 private immutable _scalingFactor1;
     uint256 private immutable _scalingFactor2;
     uint256 private immutable _scalingFactor3;
-    uint256 private immutable _scalingFactor4;
-    uint256 private immutable _scalingFactor5;
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
@@ -61,8 +57,6 @@ abstract contract StablePoolStorage is BasePool {
     IRateProvider private immutable _rateProvider1;
     IRateProvider private immutable _rateProvider2;
     IRateProvider private immutable _rateProvider3;
-    IRateProvider private immutable _rateProvider4;
-    IRateProvider private immutable _rateProvider5;
 
     // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
     // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
@@ -93,15 +87,11 @@ abstract contract StablePoolStorage is BasePool {
         _token1 = registeredTokens[1];
         _token2 = registeredTokens[2];
         _token3 = totalTokens > 3 ? registeredTokens[3] : IERC20(0);
-        _token4 = totalTokens > 4 ? registeredTokens[4] : IERC20(0);
-        _token5 = totalTokens > 5 ? registeredTokens[5] : IERC20(0);
 
         _scalingFactor0 = _computeScalingFactor(registeredTokens[0]);
         _scalingFactor1 = _computeScalingFactor(registeredTokens[1]);
         _scalingFactor2 = _computeScalingFactor(registeredTokens[2]);
         _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(registeredTokens[3]) : 0;
-        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(registeredTokens[4]) : 0;
-        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(registeredTokens[5]) : 0;
 
         // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
         // this ordering to be able to identify it when balances arrays are received. Since the tokens array is sorted,
@@ -149,8 +139,6 @@ abstract contract StablePoolStorage is BasePool {
         _rateProvider1 = rateProviders[1];
         _rateProvider2 = rateProviders[2];
         _rateProvider3 = (rateProviders.length > 3) ? rateProviders[3] : IRateProvider(0);
-        _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
-        _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
 
         _exemptFromYieldProtocolFeeTokens = exemptFlagBitmap;
     }
@@ -162,8 +150,8 @@ abstract contract StablePoolStorage is BasePool {
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
-        // The BPT will be one of the Pool tokens, but it is unaffected by the Stable 5 token limit.
-        return StableMath._MAX_STABLE_TOKENS + 1;
+        // Three tokens + theBPT
+        return 4;
     }
 
     function getBptIndex() public view returns (uint256) {
@@ -186,14 +174,6 @@ abstract contract StablePoolStorage is BasePool {
         return _token3;
     }
 
-    function _getToken4() internal view returns (IERC20) {
-        return _token4;
-    }
-
-    function _getToken5() internal view returns (IERC20) {
-        return _token5;
-    }
-
     function _getScalingFactor0() internal view returns (uint256) {
         return _scalingFactor0;
     }
@@ -210,21 +190,11 @@ abstract contract StablePoolStorage is BasePool {
         return _scalingFactor3;
     }
 
-    function _getScalingFactor4() internal view returns (uint256) {
-        return _scalingFactor4;
-    }
-
-    function _getScalingFactor5() internal view returns (uint256) {
-        return _scalingFactor5;
-    }
-
     function _tokenScalingFactor(IERC20 token) internal view returns (uint256) {
         if (token == _getToken0()) return _getScalingFactor0();
         if (token == _getToken1()) return _getScalingFactor1();
         if (token == _getToken2()) return _getScalingFactor2();
         if (token == _getToken3()) return _getScalingFactor3();
-        if (token == _getToken4()) return _getScalingFactor4();
-        if (token == _getToken5()) return _getScalingFactor5();
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -311,14 +281,6 @@ abstract contract StablePoolStorage is BasePool {
         return _rateProvider3;
     }
 
-    function _getRateProvider4() internal view returns (IRateProvider) {
-        return _rateProvider4;
-    }
-
-    function _getRateProvider5() internal view returns (IRateProvider) {
-        return _rateProvider5;
-    }
-
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
@@ -334,12 +296,6 @@ abstract contract StablePoolStorage is BasePool {
         // Before we load the remaining rate providers we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return providers;
         providers[3] = _getRateProvider3();
-
-        if (totalTokens == 4) return providers;
-        providers[4] = _getRateProvider4();
-
-        if (totalTokens == 5) return providers;
-        providers[5] = _getRateProvider5();
     }
 
     function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
@@ -347,8 +303,6 @@ abstract contract StablePoolStorage is BasePool {
         if (token == _getToken1()) return _getRateProvider1();
         if (token == _getToken2()) return _getRateProvider2();
         if (token == _getToken3()) return _getRateProvider3();
-        if (token == _getToken4()) return _getRateProvider4();
-        if (token == _getToken5()) return _getRateProvider5();
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -368,8 +322,6 @@ abstract contract StablePoolStorage is BasePool {
         if (token == _getToken1()) return _isTokenExemptFromYieldProtocolFee(1);
         if (token == _getToken2()) return _isTokenExemptFromYieldProtocolFee(2);
         if (token == _getToken3()) return _isTokenExemptFromYieldProtocolFee(3);
-        if (token == _getToken4()) return _isTokenExemptFromYieldProtocolFee(4);
-        if (token == _getToken5()) return _isTokenExemptFromYieldProtocolFee(5);
         else {
             _revert(Errors.INVALID_TOKEN);
         }

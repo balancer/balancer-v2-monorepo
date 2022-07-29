@@ -54,17 +54,9 @@ describe('StablePhantomPool', () => {
     itBehavesAsStablePhantomPool(3);
   });
 
-  context('for a 4 token pool', () => {
-    itBehavesAsStablePhantomPool(4);
-  });
-
-  context('for a 5 token pool', () => {
-    itBehavesAsStablePhantomPool(5);
-  });
-
-  context('for a 6 token pool', () => {
+  context('for a  4 token pool', () => {
     it('reverts', async () => {
-      const tokens = await TokenList.create(6, { sorted: true });
+      const tokens = await TokenList.create(4, { sorted: true });
       await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
     });
   });
@@ -93,8 +85,6 @@ describe('StablePhantomPool', () => {
       // Ensure we cover the full range, from 0 to 17
       // Including common non-18 values of 6 and 8
       tokens = await TokenList.create([
-        { decimals: 17, symbol: 'TK17' },
-        { decimals: 11, symbol: 'TK11' },
         { decimals: 8, symbol: 'TK8' },
         { decimals: 6, symbol: 'TK6' },
         { decimals: 0, symbol: 'TK0' },
@@ -230,8 +220,8 @@ describe('StablePhantomPool', () => {
       const tokenWithRateExemptIndex = 2; // exempt flags are set for "even" indices (2 and 4)
 
       sharedBeforeEach('initialize pool', async () => {
-        // Set indices 2 and 4 to be exempt (even)
-        const exemptFlags = [false, false, true, false, true];
+        // Set index 2 as exempt
+        const exemptFlags = [false, false, true];
 
         await deployPool(
           {
@@ -330,7 +320,7 @@ describe('StablePhantomPool', () => {
 
           // Swap each token with the next (don't need all permutations), both GivenIn and GivenOut, changing
           // rates in between. i < tokens.length - 1; tokens isn't defined outside an it
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < 2; i++) {
             itPerformsARegularSwap(SwapKind.GivenIn, i, i + 1);
             // The GivenIn swap changes the rate
             itPerformsARegularSwap(SwapKind.GivenOut, i, i + 1);

@@ -912,8 +912,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         if (_hasCacheEntry(1)) _updateOldRate(_getToken1());
         if (_hasCacheEntry(2)) _updateOldRate(_getToken2());
         if (totalTokens > 3 && _hasCacheEntry(3)) _updateOldRate(_getToken3());
-        if (totalTokens > 4 && _hasCacheEntry(4)) _updateOldRate(_getToken4());
-        if (totalTokens > 5 && _hasCacheEntry(5)) _updateOldRate(_getToken5());
     }
 
     // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
@@ -951,16 +949,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             ? _adjustedBalance(balances[3], _tokenRateCaches[_getToken3()])
             : balances[3];
 
-        if (totalTokens == 4) return adjustedBalances;
-        adjustedBalances[4] = _isTokenExemptFromYieldProtocolFee(4) || (ignoreExemptFlags && _hasCacheEntry(4))
-            ? _adjustedBalance(balances[4], _tokenRateCaches[_getToken4()])
-            : balances[4];
-
-        if (totalTokens == 5) return adjustedBalances;
-        adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5) || (ignoreExemptFlags && _hasCacheEntry(5))
-            ? _adjustedBalance(balances[5], _tokenRateCaches[_getToken5()])
-            : balances[5];
-
         return adjustedBalances;
     }
 
@@ -975,8 +963,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         if (index == 1) return _getRateProvider1() != IRateProvider(0) && bptIndex != 1;
         if (index == 2) return _getRateProvider2() != IRateProvider(0) && bptIndex != 2;
         if (index == 3) return _getRateProvider3() != IRateProvider(0) && bptIndex != 3;
-        if (index == 4) return _getRateProvider4() != IRateProvider(0) && bptIndex != 4;
-        if (index == 5) return _getRateProvider5() != IRateProvider(0) && bptIndex != 5;
     }
 
     // Token rates
@@ -1072,12 +1058,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // Before we update the remaining caches we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return;
         _cacheTokenRateIfNecessary(_getToken3());
-
-        if (totalTokens == 4) return;
-        _cacheTokenRateIfNecessary(_getToken4());
-
-        if (totalTokens == 5) return;
-        _cacheTokenRateIfNecessary(_getToken5());
     }
 
     /**
@@ -1128,12 +1108,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
         if (totalTokens == 3) return scalingFactors;
         scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_getToken3()));
-
-        if (totalTokens == 4) return scalingFactors;
-        scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_getToken4()));
-
-        if (totalTokens == 5) return scalingFactors;
-        scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_getToken5()));
 
         return scalingFactors;
     }
