@@ -46,84 +46,65 @@ const GAUNTLET_FEE_SETTER = '0xe4a8ed6c1d8d048bd29a00946bfcf2db10e7923b';
 
 export const root = DAO_MULTISIG;
 
-const batchRelayerPermissions = createRoleData(
-  BalancerRelayer.output({ network: 'mainnet' }).BalancerRelayer,
-  Vault.output({ network: 'mainnet' }).Vault,
-  [
-    Vault.actionId('Vault', 'setRelayerApproval(address,address,bool)'),
+const batchRelayerPermissions = createRoleData(BalancerRelayer.output().BalancerRelayer, Vault.output().Vault, [
+  Vault.actionId('Vault', 'setRelayerApproval(address,address,bool)'),
+  Vault.actionId(
+    'Vault',
+    'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
+  ),
+  Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+  Vault.actionId(
+    'Vault',
+    'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
+  ),
+  Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+  Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
+]);
 
-    Vault.actionId(
-      'Vault',
-      'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
-    ),
-    Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-    Vault.actionId(
-      'Vault',
-      'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
-    ),
-    Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-    Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
-  ]
-);
+const lidoRelayerPermissions = createRoleData(LidoRelayer.output().LidoRelayer, Vault.output().Vault, [
+  Vault.actionId(
+    'Vault',
+    'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
+  ),
+  Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+  Vault.actionId(
+    'Vault',
+    'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
+  ),
+  Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+  Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
+]);
 
-const lidoRelayerPermissions = createRoleData(
-  LidoRelayer.output({ network: 'mainnet' }).LidoRelayer,
-  Vault.output({ network: 'mainnet' }).Vault,
-  [
-    Vault.actionId(
-      'Vault',
-      'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
-    ),
-    Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-    Vault.actionId(
-      'Vault',
-      'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
-    ),
-    Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-    Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
-  ]
-);
-
-const gnosisProtocolRelayerPermissions = createRoleData(
-  GnosisProtocolRelayer,
-  Vault.output({ network: 'mainnet' }).Vault,
-  [
-    Vault.actionId(
-      'Vault',
-      'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
-    ),
-    Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
-  ]
-);
+const gnosisProtocolRelayerPermissions = createRoleData(GnosisProtocolRelayer, Vault.output().Vault, [
+  Vault.actionId(
+    'Vault',
+    'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
+  ),
+  Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
+]);
 
 const protocolFeesPermissions: RoleData[] = flatten([
   createRoleData(
-    ProtocolFeesWithdrawer.output({ network: 'mainnet' }).ProtocolFeesWithdrawer,
-    ProtocolFeesCollector.output({ network: 'mainnet' }).ProtocolFeesCollector,
+    ProtocolFeesWithdrawer.output().ProtocolFeesWithdrawer,
+    ProtocolFeesCollector.output().ProtocolFeesCollector,
     [Vault.actionId('ProtocolFeesCollector', 'withdrawCollectedFees(address[],uint256[],address)')]
   ),
-  createRoleData(TREASURY_MULTISIG, ProtocolFeesWithdrawer.output({ network: 'mainnet' }).ProtocolFeesWithdrawer, [
+  createRoleData(TREASURY_MULTISIG, ProtocolFeesWithdrawer.output().ProtocolFeesWithdrawer, [
     ProtocolFeesWithdrawer.actionId('ProtocolFeesWithdrawer', 'withdrawCollectedFees(address[],uint256[],address)'),
   ]),
-  createRoleData(
-    EMERGENCY_SUBDAO_MULTISIG,
-    ProtocolFeesWithdrawer.output({ network: 'mainnet' }).ProtocolFeesWithdrawer,
-    [ProtocolFeesWithdrawer.actionId('ProtocolFeesWithdrawer', 'denylistToken(address)')]
-  ),
+  createRoleData(EMERGENCY_SUBDAO_MULTISIG, ProtocolFeesWithdrawer.output().ProtocolFeesWithdrawer, [
+    ProtocolFeesWithdrawer.actionId('ProtocolFeesWithdrawer', 'denylistToken(address)'),
+  ]),
 ]);
 
 const veBALPermissions: RoleData[] = flatten([
-  createRoleData(
-    BalancerMinter.output({ network: 'mainnet' }).BalancerMinter,
-    BalancerTokenAdmin.output({ network: 'mainnet' }).BalancerTokenAdmin,
-    [BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)')]
-  ),
-  createRoleData(
-    GaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
-    GaugeController.output({ network: 'mainnet' }).GaugeController,
-    [GaugeController.actionId('GaugeController', 'add_gauge(address,int128)')]
-  ),
-  createRoleData(LM_MULTISIG, GaugeAdder.output({ network: 'mainnet' }).GaugeAdder, [
+  createRoleData(BalancerMinter.output().BalancerMinter, BalancerTokenAdmin.output().BalancerTokenAdmin, [
+    BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)'),
+  ]),
+  createRoleData(GaugeAdder.output().GaugeAdder, GaugeController.output().GaugeController, [
+    GaugeController.actionId('GaugeController', 'add_gauge(address,int128)'),
+  ]),
+  createRoleData(LM_MULTISIG, GaugeAdder.output().GaugeAdder, [
     GaugeAdder.actionId('GaugeAdder', 'addEthereumGauge(address)'),
     GaugeAdder.actionId('GaugeAdder', 'addPolygonGauge(address)'),
     GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
@@ -134,11 +115,11 @@ const veBALPermissions: RoleData[] = flatten([
     LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'set_reward_distributor(address,address)'),
   ]),
   createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'killGauge()')]),
-  createRoleData(DAO_MULTISIG, SmartWalletChecker.output({ network: 'mainnet' }).SmartWalletChecker, [
+  createRoleData(DAO_MULTISIG, SmartWalletChecker.output().SmartWalletChecker, [
     SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
     SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
   ]),
-  createRoleData(DAO_MULTISIG, SmartWalletChecker.output({ network: 'mainnet' }).SmartWalletChecker, [
+  createRoleData(DAO_MULTISIG, SmartWalletChecker.output().SmartWalletChecker, [
     SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
     SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
   ]),
@@ -156,7 +137,7 @@ const veBALPermissions: RoleData[] = flatten([
 ]);
 
 const feesAndTargetsPermissions: RoleData[] = flatten([
-  createRoleData(DAO_MULTISIG, ProtocolFeesCollector.output({ network: 'mainnet' }).ProtocolFeesCollector, [
+  createRoleData(DAO_MULTISIG, ProtocolFeesCollector.output().ProtocolFeesCollector, [
     ProtocolFeesCollector.actionId('ProtocolFeesCollector', 'setSwapFeePercentage(uint256)'),
   ]),
   createRoleData(GAUNTLET_FEE_SETTER, EVERYWHERE, [
