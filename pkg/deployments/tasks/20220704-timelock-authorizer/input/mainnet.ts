@@ -12,7 +12,7 @@ const ProtocolFeesWithdrawer = new Task('20220517-protocol-fee-withdrawer', Task
 
 const BalancerTokenAdmin = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, 'mainnet');
 const BalancerMinter = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'mainnet');
-const GaugeAdder = new Task('20220325-gauge-adder', TaskMode.READ_ONLY, 'mainnet');
+const GaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, 'mainnet');
 const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'mainnet');
 const VotingEscrowDelegationProxy = new Task('20220325-ve-delegation', TaskMode.READ_ONLY, 'mainnet');
 const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.READ_ONLY, 'mainnet');
