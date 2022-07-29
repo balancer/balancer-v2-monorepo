@@ -154,6 +154,8 @@ abstract contract StablePoolRates is StablePoolStorage {
         precision = StableMath._AMP_PRECISION;
     }
 
+    // Return the current amp value, which will be an interpolation if there is an ongoing amp update.
+    // Also return a flag indicating whether there is an ongoing update.
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
         (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
 
@@ -179,6 +181,7 @@ abstract contract StablePoolRates is StablePoolStorage {
         }
     }
 
+    // Unpack and return all amplification-related parameters.
     function _getAmplificationData()
         private
         view
@@ -196,7 +199,7 @@ abstract contract StablePoolRates is StablePoolStorage {
     }
 
     /**
-     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
+     * @dev Begin changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
      * `endTime` is reached, when it will be `rawEndValue`.
      *
      * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
