@@ -561,6 +561,9 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
 
+        // Add amountsIn to get post-join balances
+        _mutateAmounts(balancesWithoutBpt, amountsIn, FixedPoint.add);
+
         // Pass in the post-join balances to reset the protocol fee basis.
         _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
     }
@@ -592,9 +595,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
-        // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, scaledAmountsInWithoutBpt, FixedPoint.add);
-
         return (bptAmountOut, scaledAmountsInWithBpt);
     }
 
@@ -625,9 +625,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             virtualSupply,
             getSwapFeePercentage()
         );
-
-        // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
 
         return (bptAmountOut, amountsIn);
     }
@@ -698,6 +695,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
 
+
+        // Subtract amountsOut to get post-exit balances
+        _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
+
         // Pass in the post-exit balances to reset the protocol fee basis.
         _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
     }
@@ -728,9 +729,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
-        // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, scaledAmountsOutWithoutBpt, FixedPoint.sub);
-
         return (bptAmountIn, scaledAmountsOutWithBpt);
     }
 
@@ -760,9 +758,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             virtualSupply,
             getSwapFeePercentage()
         );
-
-        // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
 
         return (bptAmountIn, amountsOut);
     }
