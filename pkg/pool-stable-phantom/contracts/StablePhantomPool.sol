@@ -143,6 +143,13 @@ contract StablePhantomPool is
         }
     }
 
+    /**
+     * @notice Return the minimum BPT balance, required to avoid minimum token balances.
+     * @dev This amount is minted and immediately burned on pool initialization, so that the total supply
+     * (and therefore post-exit token balances), can never be zero. This keeps the math well-behaved when
+     * liquidity is low. (It also provides an easy way to check whether a pool has been initialized, to
+     * ensure this is only done once.)
+     */
     function getMinimumBpt() external pure returns (uint256) {
         return _getMinimumBpt();
     }
@@ -169,14 +176,13 @@ contract StablePhantomPool is
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
-     * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
-     * b) remove BPT from the balances array when processing regular swaps, before calling the StableMath functions.
+     * tokens is the preminted BPT, we need to handle swaps where BPT is involved separately.
      *
      * At this point, the balances are unscaled.
      *
-     * If this is a swap involving BPT, call `_onSwapBpt`, which computes the amountOut using the swapFeePercentage,
-     * in the same manner as single token join/exits, and charges protocol fees on the corresponding bptAmount.
-     * Otherwise, perform the default processing for a regular swap.
+     * If this is a swap involving BPT, call `_swapWithBpt`, which computes the amountOut using the swapFeePercentage
+     * and charges protocol fees, in the same manner as single token join/exits. Otherwise, perform the default
+     * processing for a regular swap.
      */
     function _swapGivenIn(
         SwapRequest memory swapRequest,
@@ -194,14 +200,13 @@ contract StablePhantomPool is
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
-     * tokens is the preminted BPT, we need to a) handle swaps where BPT is involved separately, and
-     * b) remove BPT from the balances array when processing regular swaps, before calling the StableMath functions.
+     * tokens is the preminted BPT, we need to handle swaps where BPT is involved separately.
      *
      * At this point, the balances are unscaled.
      *
-     * If this is a swap involving BPT, call `_onSwapBpt`, which computes the amountIn using the swapFeePercentage,
-     * in the same manner as single token join/exits, and charges protocol fees on the corresponding bptAmount.
-     * Otherwise, perform the default processing for a regular swap.
+     * If this is a swap involving BPT, call `_swapWithBpt`, which computes the amountOut using the swapFeePercentage
+     * and charges protocol fees, in the same manner as single token join/exits. Otherwise, perform the default
+     * processing for a regular swap.
      */
     function _swapGivenOut(
         SwapRequest memory swapRequest,
@@ -242,6 +247,7 @@ contract StablePhantomPool is
         return _onRegularSwap(IVault.SwapKind.GIVEN_OUT, request.amount, balancesIncludingBpt, indexIn, indexOut);
     }
 
+    // Perform a swap between non-BPT tokens
     function _onRegularSwap(
         IVault.SwapKind kind,
         uint256 amountGiven,
@@ -279,6 +285,7 @@ contract StablePhantomPool is
         }
     }
 
+    // Perform a swap involving the BPT token, equivalent to a single-token join or exit.
     function _swapWithBpt(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
@@ -522,6 +529,9 @@ contract StablePhantomPool is
         }
     }
 
+    /**
+     * @dev Multi-token join. Proportional joins will pay no protocol fees.
+     */
     function _joinExactTokensInForBPTOut(
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt,
@@ -557,6 +567,9 @@ contract StablePhantomPool is
         return (bptAmountOut, scaledAmountsInWithBpt);
     }
 
+    /**
+     * @dev Single-token join, equivalent to swapping a pool token for BPT.
+     */
     function _joinTokenInForExactBPTOut(
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt,
@@ -646,6 +659,9 @@ contract StablePhantomPool is
         }
     }
 
+    /**
+     * @dev Multi-token exit. Proportional exits will pay no protocol fees.
+     */
     function _exitBPTInForExactTokensOut(
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt,
@@ -680,6 +696,9 @@ contract StablePhantomPool is
         return (bptAmountIn, scaledAmountsOutWithBpt);
     }
 
+    /**
+     * @dev Single-token exit, equivalent to swapping BPT for a pool token.
+     */
     function _exitExactBPTInForTokenOut(
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt,
@@ -715,7 +734,7 @@ contract StablePhantomPool is
         return (bptAmountIn, amountsOut);
     }
 
-    // We cannot use the default implementation here, since we need to account for the BPT token
+    // We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token
     function _doRecoveryModeExit(
         uint256[] memory balances,
         uint256,
@@ -754,8 +773,7 @@ contract StablePhantomPool is
         (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
 
         // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
-        // one.
-        // This addition cannot overflow due to the Vault's balance limits.
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
         return _getVirtualSupply(cash + managed);
     }
 
@@ -804,7 +822,8 @@ contract StablePhantomPool is
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
-        // and apply the old rate. These functions copy the values in `balances` and so doesn't mutate it.
+        // and apply the old rate. These functions copy `balances` to local storage, so they are not mutated and can
+        // be reused.
 
         // Do not ignore the exempt flags when calculating total growth = swap fees + non-exempt token yield.
         uint256[] memory totalGrowthBalances = _dropBptItem(_getAdjustedBalances(balances, false));
@@ -816,15 +835,13 @@ contract StablePhantomPool is
         // on yield and growth based on swap fees, so we need to compute each type separately.
 
         // To convert each protocol fee to a BPT amount for each type of growth, we compute the relevant invariant
-        // growth, extract the portion due the protocol, and then compute the equivalent amount of BPT that would cause
-        // such an increase.
+        // growth ratio, extract the portion due the protocol, and then compute the equivalent amount of BPT that
+        // would cause such an increase.
         //
-        // Invariant growth is related to new BPT and supply by:
-        // invariant ratio = (bpt amount + supply) / supply
-        // With some manipulation, this becomes:
-        // (invariant ratio - 1) * supply = bpt amount
+        // Invariant growth is related to new BPT and supply by: invariant ratio = (bpt amount + supply) / supply
+        // With some manipulation, this becomes:                 (invariant ratio - 1) * supply = bpt amount
         //
-        // However, a part of the invariant growth was due to non protocol swap fees (i.e. value accrued by the
+        // However, a part of the invariant growth was due to non-protocol swap fees (i.e. value accrued by the
         // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
 
         uint256 postJoinExitAmp = _postJoinExitAmp;
@@ -878,8 +895,9 @@ contract StablePhantomPool is
         _updateOldRates();
     }
 
+    // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
+    // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
     function _updateOldRates() private {
-        // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
         uint256 totalTokens = _getTotalTokens();
 
         if (_hasCacheEntry(0)) _updateOldRate(_getToken0());
@@ -897,7 +915,7 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev Apply the token ratios to a set of balances to adjust for any exempt yield tokens.
+     * @dev Apply the token ratios to a set of balances, optionally adjusting for exempt yield tokens.
      * The `balances` array is assumed to include BPT to ensure that token indices align.
      */
     function _getAdjustedBalances(uint256[] memory balances, bool ignoreExemptFlags)
@@ -938,10 +956,13 @@ contract StablePhantomPool is
         return adjustedBalances;
     }
 
+    // Compute balance * oldRate/currentRate, doing division last to minimize rounding error.
     function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
         return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
     }
 
+    // Return true if the token at this index is a non-BPT token with a rate provider, so that it has
+    // an entry in the token rate cache.
     function _hasCacheEntry(uint256 index) private view returns (bool) {
         uint256 bptIndex = getBptIndex();
 
@@ -956,14 +977,14 @@ contract StablePhantomPool is
     // Token rates
 
     /**
-     * @dev Returns the token rate for token. All token rates are fixed-point values with 18 decimals.
-     * In case there is no rate provider for the provided token it returns FixedPoint.ONE.
+     * @dev Returns the rate for a given token. All token rates are fixed-point values with 18 decimals.
+     * If there is no rate provider for the provided token, it returns FixedPoint.ONE.
      */
     function getTokenRate(IERC20 token) public view virtual returns (uint256) {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since we don't need
-        // the provider at all).
+        // provider). Therefore, we return early if `token` is the BPT, and otherwise optimistically read the cache
+        // expecting that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since
+        // we don't need the provider at all).
 
         if (token == this) {
             return FixedPoint.ONE;
@@ -1077,16 +1098,20 @@ contract StablePhantomPool is
 
     // Scaling Factors
 
+    /**
+     * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
+     */
     function getScalingFactor(IERC20 token) external view returns (uint256) {
         return _scalingFactor(token);
     }
 
+    // Computed the total scaling factor as a product of the token decimal adjustment and token rate.
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         return _tokenScalingFactor(token).mulDown(getTokenRate(token));
     }
 
     /**
-     * @dev Overrides scaling factor getter to introduce the tokens' rates.
+     * @dev Overrides scaling factor getter to compute the tokens' rates.
      */
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
