@@ -695,7 +695,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
 
-
         // Subtract amountsOut to get post-exit balances
         _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
 
