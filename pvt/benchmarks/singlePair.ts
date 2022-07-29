@@ -45,10 +45,10 @@ async function main() {
   await singlePair(() => getStablePool(vault, tokens, 2), false);
   await singlePair(() => getStablePool(vault, tokens, 2), true);
 
-  console.log(`\n# Stable Pools with 4 tokens`);
+  console.log(`\n# Stable Pools with 3 tokens`);
 
-  await singlePair(() => getStablePool(vault, tokens, 4), false);
-  await singlePair(() => getStablePool(vault, tokens, 4), true);
+  await singlePair(() => getStablePool(vault, tokens, 3), false);
+  await singlePair(() => getStablePool(vault, tokens, 3), true);
 }
 
 async function singlePair(getPoolId: () => Promise<string>, useInternalBalance: boolean) {

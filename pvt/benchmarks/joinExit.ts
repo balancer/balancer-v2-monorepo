@@ -17,6 +17,7 @@ const managedPoolMin = 15;
 const managedPoolMax = 35;
 const maxManagedTokens = 38;
 const managedPoolStep = 5;
+const maxStableTokens = 3;
 
 let vault: Vault;
 let tokens: TokenList;
@@ -72,9 +73,8 @@ async function main() {
   );
   console.log('\n');
 
-  // numTokens is the size of the pool: 2,4
-  // Stable have a max of 5
-  for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
+  // numTokens is the size of the pool: 2,3
+  for (let numTokens = 2; numTokens <= maxStableTokens; numTokens += 1) {
     printTokens('Stable pool', numTokens);
     await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), true);
   }
@@ -117,9 +117,8 @@ async function main() {
   );
   console.log('\n');
 
-  // numTokens is the size of the pool: 2,4
-  // Stable have a max of 5
-  for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
+  // numTokens is the size of the pool: 2,3
+  for (let numTokens = 2; numTokens <= maxStableTokens; numTokens += 1) {
     printTokens('Stable pool', numTokens);
     await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), false);
   }
@@ -166,7 +165,7 @@ async function main() {
   );
   console.log('\n');
 
-  for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= maxStableTokens; numTokens += 1) {
     printTokens('Stable pool', numTokens);
     await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), true, numberJoinsExits);
   }
@@ -211,7 +210,7 @@ async function main() {
   );
   console.log('\n');
 
-  for (let numTokens = 2; numTokens <= 4; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= maxStableTokens; numTokens += 1) {
     printTokens('Stable pool', numTokens);
     await joinAndExitStablePool(() => getStablePool(vault, tokens, numTokens), false, numberJoinsExits);
   }

@@ -44,10 +44,10 @@ async function main() {
   await multihop((index: number) => getStablePool(vault, tokens, 2, index), false);
   await multihop((index: number) => getStablePool(vault, tokens, 2, index), true);
 
-  console.log(`\n# Stable Pool with 4 tokens`);
+  console.log(`\n# Stable Pool with 3 tokens`);
 
-  await multihop((index: number) => getStablePool(vault, tokens, 4, index), false);
-  await multihop((index: number) => getStablePool(vault, tokens, 4, index), true);
+  await multihop((index: number) => getStablePool(vault, tokens, 3, index), false);
+  await multihop((index: number) => getStablePool(vault, tokens, 3, index), true);
 }
 
 async function multihop(getPool: (index: number) => Promise<string>, useInternalBalance: boolean) {
