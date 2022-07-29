@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
+import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import {
   advanceTime,
   currentTimestamp,
@@ -20,11 +20,11 @@ import {
 } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
+import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 
-describe('StablePhantomPool', () => {
+describe('ComposableStablePool', () => {
   let lp: SignerWithAddress,
     owner: SignerWithAddress,
     recipient: SignerWithAddress,
@@ -42,30 +42,30 @@ describe('StablePhantomPool', () => {
   context('for a 1 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
-      await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
+      await expect(StablePool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
   context('for a 2 token pool', () => {
-    itBehavesAsStablePhantomPool(2);
+    itBehavesAsComposableStablePool(2);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsStablePhantomPool(3);
+    itBehavesAsComposableStablePool(3);
   });
 
   context('for a 4 token pool', () => {
-    itBehavesAsStablePhantomPool(4);
+    itBehavesAsComposableStablePool(4);
   });
 
   context('for a 5 token pool', () => {
-    itBehavesAsStablePhantomPool(5);
+    itBehavesAsComposableStablePool(5);
   });
 
   context('for a 6 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(6, { sorted: true });
-      await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
+      await expect(StablePool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
@@ -75,7 +75,7 @@ describe('StablePhantomPool', () => {
     const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.34);
 
     let tokens: TokenList;
-    let pool: StablePhantomPool;
+    let pool: StablePool;
     let bptIndex: number;
     let initialBalances: BigNumberish[];
     let scalingFactors: BigNumber[];
@@ -121,7 +121,7 @@ describe('StablePhantomPool', () => {
     }
 
     async function deployPool(
-      params: RawStablePhantomPoolDeployment = {},
+      params: RawStablePoolDeployment = {},
       rates: BigNumberish[] = [],
       protocolSwapFeePercentage: BigNumber
     ): Promise<void> {
@@ -141,7 +141,7 @@ describe('StablePhantomPool', () => {
           : false;
       }
 
-      pool = await StablePhantomPool.create({
+      pool = await StablePool.create({
         tokens,
         rateProviders: rateProviderAddresses,
         tokenRateCacheDurations,
@@ -264,29 +264,29 @@ describe('StablePhantomPool', () => {
        */
       describe('swaps', () => {
         /**
-         * 1) StablePhantomPool.onSwap:
+         * 1) ComposableStablePool.onSwap:
          *    update rates, if necessary (can set the duration to 0 so it will always update them)
          *    This is done to ensure we are *always* using the latest rates for operations (e.g.,
          *    if swaps are infrequent and we didn't do this, the rate could be very stale)
          * 2) BaseGeneralPool.onSwap:
          *    compute scaling factors, which includes both token decimals and rates
          *    determine GivenIn vs. GivenOut
-         *        StablePhantomPool._swapGivenIn:
+         *        ComposableStablePool._swapGivenIn:
          *            Determine it is a regular swap
          *            BaseGeneralPool._swapGivenIn:
          *                Subtract swap fee from amountIn
          *                Apply scaling to balances and amounts
-         *                Call StablePhantomPool._onSwapGivenIn to compute amountOut: see #3
+         *                Call ComposableStablePool._onSwapGivenIn to compute amountOut: see #3
          *                Downscale amountOut and return to Vault
-         *        StablePhantomPool._swapGivenOut:
+         *        ComposableStablePool._swapGivenOut:
          *            Determine it is a regular swap
          *            BaseGeneralPool._swapGivenOut:
          *                Apply scaling to balances and amounts
-         *                Call StablePhantomPool._onSwapGivenOut to compute amountIn: see #3
+         *                Call ComposableStablePool._onSwapGivenOut to compute amountIn: see #3
          *                Add swap fee to amountIn
          *                Downscale amountIn and return to Vault
-         * 3) StablePhantomPool._onSwapGivenIn/Out:
-         *        StablePhantomPool._onRegularSwap:
+         * 3) ComposableStablePool._onSwapGivenIn/Out:
+         *        ComposableStablePool._onRegularSwap:
          *            Call StableMath with scaled balances and current amp to compute amountIn/Out
          */
         context('regular swaps', () => {
@@ -338,38 +338,33 @@ describe('StablePhantomPool', () => {
         });
 
         /**
-         * 1) StablePhantomPool.onSwap:
+         * 1) ComposableStablePool.onSwap:
          *    update rates, if necessary (can set the duration to 0 so it will always update them)
          *    This is done to ensure we are *always* using the latest rates for operations (e.g.,
          *    if swaps are infrequent and we didn't do this, the rate could be very stale)
          * 2) BaseGeneralPool.onSwap:
          *    compute scaling factors, which includes both token decimals and rates
          *    determine GivenIn vs. GivenOut
-         *        StablePhantomPool._swapGivenIn:
-         *            Determine it is a BPT swap
-         *            StablePhantomPool._swapWithBpt:
-         *                Apply scaling factors to balances
-         *                Pay protocol fees (based on invariant growth)
-         *                Call StablePhantomPool._onSwapBptGivenIn to compute amountOut; see #3
-         *                Downscale amountOut and return to Vault
-         *        StablePhantomPool._swapGivenOut:
-         *            Determine it is a BPT swap
-         *            StablePhantomPool._swapWithBpt:
-         *                Apply scaling factors to balances
-         *                Pay protocol fees (based on invariant growth)
-         *                Call StablePhantomPool._onSwapBptGivenOut to compute amountIn; see #3
-         *                Downscale amountIn and return to Vault
-         * 3) StablePhantomPool._onSwapBptGivenIn:
-         *        If tokenIn is BPT: (exitSwap)
-         *            Calculate amountOut with _calcTokenOutGivenExactBptIn; subtract amountOut from balances
-         *        else: (joinSwap)
-         *            Calculate BPTOut with _calcBptOutGivenExactTokensIn; add amountIn to balances
-         *    StablePhantomPool._onSwapBptGivenOut:
-         *        If tokenIn is BPT: (joinSwap)
-         *            Calculate BPTIn with _calcBptInGivenExactTokensOut; subtract amountsOut from balances
-         *       else: (exitSwap)
-         *           Calculate amountIn with _calcTokenInGivenExactBptOut; add amountsIn to balances
-         * 4) StablePhantomPool._updateInvariantAfterJoinExit:
+         *        ComposableStablePool._swapGivenIn/Out:
+         *            Determine it is a BPT swap, call ComposableStablePool._swapWithBpt
+         *            ComposableStablePool._swapWithBpt:
+         * 3) ComposableStablePool._swapWithBpt:
+         *        Upscale balances
+         *        Pay any pending protocol fees
+         *        Determine whether it's a JoinSwap or an ExitSwap
+         *        JoinSwap: (tokenOut is the BPT)
+         *            Call _onSwapBptJoin, indicating whether it's given in or out
+         *            Adjust balances to post-join values
+         *        ExitSwap:
+         *            Call _onSwapBptExit, indicating whether it's given in or out
+         *            Adjust balances to post-exit values
+         *        ComposableStablePool._onSwapBptJoin:
+         *            Call _calcBptOutGivenExactTokensIn if given in; otherwise _calcTokenInGivenExactBptOut.
+         *            Update invariant and amp after join
+         *        ComposableStablePool._onSwapBptExit:
+         *            Call _calcTokenOutGivenExactBptIn if given in; otherwise _calcBptInGivenExactTokensOut.
+         *            Update invariant and amp after exit
+         * 4) ComposableStablePool._updateInvariantAfterJoinExit:
          *        Using the post-swap balances calculated above
          *        _postJoinExitAmp = current amp
          *        _postJoinExitInvariant = calculate invariant using the current amp and post-swap balances
@@ -443,25 +438,25 @@ describe('StablePhantomPool', () => {
        * A join can be single token or "exact tokens in," either of which trigger protocol fee collection and caching.
        * A proportional join should pay no protocol fees.
        *
-       * 1) StablePhantomPool.onJoinPool:
+       * 1) ComposableStablePool.onJoinPool:
        *     update rates, if necessary (can set the duration to 0 so it will always update them)
        *     BasePool.onJoinPool:
        *         compute scaling factors, which includes both token decimals and rates
        *         Apply scaling factors to balances
-       *         Call StablePhantomPool._onJoinPool to compute BPT amountOut and amountsIn; see #2
+       *         Call ComposableStablePool._onJoinPool to compute BPT amountOut and amountsIn; see #2
        *         mint BPTOut to recipient
        *         downscale and return amountsIn to the Vault
-       * 2) StablePhantomPool._onJoinPool:
+       * 2) ComposableStablePool._onJoinPool:
        *        Pay protocol fees (based on invariant growth)
        *        Check for one-token or multi-token:
-       *        If multi-token, StablePhantomPool._joinExactTokensInForBPTOut:
+       *        If multi-token, ComposableStablePool._joinExactTokensInForBPTOut:
        *            Apply scaling factors to amounts in (decimals and rates)
        *            Call _calcBptOutGivenExactTokensIn to compute BPT Out, and check limits passed in from caller
        *            Add amountsIn to compute post-join balances
-       *        If one-token, StablePhantomPool._joinTokenInForExactBPTOut:
+       *        If one-token, ComposableStablePool._joinTokenInForExactBPTOut:
        *            Call _calcTokenInGivenExactBptOut to compute the amountIn
        *            Add amountsIn to compute post-join balances
-       * 3) StablePhantomPool._updateInvariantAfterJoinExit:
+       * 3) ComposableStablePool._updateInvariantAfterJoinExit:
        *        Using the post-join balances calculated above
        *        _postJoinExitAmp = current amp
        *        _postJoinExitInvariant = calculate invariant using the current amp and post-swap balances
@@ -538,26 +533,26 @@ describe('StablePhantomPool', () => {
        * An exit can be single token or "exact tokens out," either of which trigger protocol fee collection and caching.
        * A proportional exit should pay no protocol fees.
        *
-       * 1) StablePhantomPool.onExitPool:
+       * 1) ComposableStablePool.onExitPool:
        *     update rates, if necessary (can set the duration to 0 so it will always update them)
        *     BasePool.onExitPool:
        *         Check for recovery mode exit - if so, do that one instead
        *         compute scaling factors, which includes both token decimals and rates
        *         Apply scaling factors to balances
-       *         Call StablePhantomPool._onExitPool to compute BPT amountIn and amountsOut; see #2
+       *         Call ComposableStablePool._onExitPool to compute BPT amountIn and amountsOut; see #2
        *         burn BPTIn from sender
        *         downscale and return amountsOut to the Vault
-       * 2) StablePhantomPool._onExitPool:
+       * 2) ComposableStablePool._onExitPool:
        *        Pay protocol fees (based on invariant growth)
        *        Check for one-token or multi-token:
-       *        If multi-token, StablePhantomPool._exitBPTInForExactTokensOut:
+       *        If multi-token, ComposableStablePool._exitBPTInForExactTokensOut:
        *            Apply scaling factors to amounts out (decimals and rates)
        *            Call _calcBptInGivenExactTokensOut to compute BPT In, and check limits passed in from caller
        *            Subtract amountsOut to compute post-exit balances
-       *        If one-token, StablePhantomPool._exitExactBPTInForTokenOut:
+       *        If one-token, ComposableStablePool._exitExactBPTInForTokenOut:
        *            Call _calcTokenOutGivenExactBptIn to compute the amountOut
        *            Subtract amountsOut to compute post-exit balances
-       * 3) StablePhantomPool._updateInvariantAfterJoinExit:
+       * 3) ComposableStablePool._updateInvariantAfterJoinExit:
        *        Using the post-join balances calculated above
        *        _postJoinExitAmp = current amp
        *        _postJoinExitInvariant = calculate invariant using the current amp and post-swap balances
@@ -632,8 +627,8 @@ describe('StablePhantomPool', () => {
     });
   });
 
-  function itBehavesAsStablePhantomPool(numberOfTokens: number): void {
-    let pool: StablePhantomPool, tokens: TokenList;
+  function itBehavesAsComposableStablePool(numberOfTokens: number): void {
+    let pool: StablePool, tokens: TokenList;
     let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
 
     const rateProviders: Contract[] = [];
@@ -643,7 +638,7 @@ describe('StablePhantomPool', () => {
     const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
 
     async function deployPool(
-      params: RawStablePhantomPoolDeployment = {},
+      params: RawStablePoolDeployment = {},
       rates: BigNumberish[] = [],
       durations: number[] = []
     ): Promise<void> {
@@ -656,7 +651,7 @@ describe('StablePhantomPool', () => {
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
-      pool = await StablePhantomPool.create({
+      pool = await StablePool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
@@ -1651,7 +1646,7 @@ describe('StablePhantomPool', () => {
           const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
           tokens = await TokenList.create(tokenParams, { sorted: true, varyDecimals: true });
 
-          pool = await StablePhantomPool.create({
+          pool = await StablePool.create({
             tokens,
             rateProviders: new Array(tokens.length).fill(ZERO_ADDRESS),
             tokenRateCacheDurations: new Array(tokens.length).fill(0),
@@ -1701,7 +1696,7 @@ describe('StablePhantomPool', () => {
         tokens = await TokenList.create(tokenParams, { sorted: true, varyDecimals: true });
 
         await expect(
-          StablePhantomPool.create({
+          StablePool.create({
             tokens,
             rateProviders: Array(tokens.length).fill(ZERO_ADDRESS),
             exemptFromYieldProtocolFeeFlags: Array(tokens.length).fill(true),

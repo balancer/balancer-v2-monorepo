@@ -112,7 +112,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
     }
 
     /**
-     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with Phantom BPT
+     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with preminted BPT
      * or other special considerations. Designed to be overridden if a pool needs to do extra processing,
      * such as scaling a stored invariant, or caching the new total supply.
      *

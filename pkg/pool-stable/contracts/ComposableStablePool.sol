@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/StablePhantomPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
@@ -29,8 +29,8 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "./StablePoolAmplification.sol";
-import "./StablePoolStorage.sol";
+import "./ComposableStablePoolAmplification.sol";
+import "./ComposableStablePoolStorage.sol";
 import "./StableMath.sol";
 
 /**
@@ -41,21 +41,20 @@ import "./StableMath.sol";
  * single-token joins or exits (by swapping a token for BPT). We also support regular joins and exits, which can mint
  * and burn BPT.
  *
- * Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
- * the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
- * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
- * actually owned outside the Vault) instead.
+ * Preminted BPT is deposited in the Vault as the initial balance of the Pool, and doesn't belong to any entity until
+ * transferred out of the Pool. The Pool's arithmetic behaves as if it didn't exist, and the BPT total supply is not
+ * a useful value: we rely on the 'virtual supply' (how much BPT is actually owned outside the Vault) instead.
  */
-contract StablePhantomPool is
+contract ComposableStablePool is
     IRateProvider,
     BaseGeneralPool,
-    StablePoolStorage,
-    StablePoolAmplification,
+    ComposableStablePoolStorage,
+    ComposableStablePoolAmplification,
     ProtocolFeeCache
 {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using StablePhantomPoolUserData for bytes;
+    using StablePoolUserData for bytes;
     using BasePoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
@@ -118,12 +117,12 @@ contract StablePhantomPool is
             params.bufferPeriodDuration,
             params.owner
         )
-        StablePoolStorage(
+        ComposableStablePoolStorage(
             _insertSorted(params.tokens, IERC20(this)),
             params.rateProviders,
             params.exemptFromYieldProtocolFeeFlags
         )
-        StablePoolAmplification(params.amplificationParameter)
+        ComposableStablePoolAmplification(params.amplificationParameter)
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         InputHelpers.ensureInputLengthMatch(
@@ -466,8 +465,8 @@ contract StablePhantomPool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
-        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
-        _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
+        StablePoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == StablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
@@ -517,12 +516,12 @@ contract StablePhantomPool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
-        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
+        StablePoolUserData.JoinKind kind = userData.joinKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
                 virtualSupply,
                 currentAmp,
@@ -530,7 +529,7 @@ contract StablePhantomPool is
                 scalingFactors,
                 userData
             );
-        } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(
                 virtualSupply,
                 currentAmp,
@@ -656,12 +655,12 @@ contract StablePhantomPool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
+        StablePoolUserData.ExitKind kind = userData.exitKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        if (kind == StablePoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
                 virtualSupply,
                 currentAmp,
@@ -669,7 +668,7 @@ contract StablePhantomPool is
                 scalingFactors,
                 userData
             );
-        } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(
                 virtualSupply,
                 currentAmp,
@@ -1185,7 +1184,7 @@ contract StablePhantomPool is
             // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
             BasePool,
             BasePoolAuthorization,
-            StablePoolAmplification
+            ComposableStablePoolAmplification
         )
         returns (bool)
     {

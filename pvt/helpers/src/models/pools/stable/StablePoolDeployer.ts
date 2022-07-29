@@ -1,19 +1,19 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from './types';
+import { RawStablePoolDeployment, StablePoolDeployment } from './types';
 
 import Vault from '../../vault/Vault';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
-import StablePhantomPool from './StablePhantomPool';
+import StablePool from './StablePool';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
 
 export default {
-  async deploy(params: RawStablePhantomPoolDeployment): Promise<StablePhantomPool> {
-    const deployment = TypesConverter.toStablePhantomPoolDeployment(params);
+  async deploy(params: RawStablePoolDeployment): Promise<StablePool> {
+    const deployment = TypesConverter.toStablePoolDeployment(params);
     const vaultParams = { ...TypesConverter.toRawVaultDeployment(params), mocked: params.mockedVault ?? false };
     const vault = params?.vault ?? (await VaultDeployer.deploy(vaultParams));
     const pool = await this._deployStandalone(deployment, vault);
@@ -22,7 +22,7 @@ export default {
     const bptIndex = await pool.getBptIndex();
     const { tokens, swapFeePercentage, amplificationParameter, owner } = deployment;
 
-    return new StablePhantomPool(
+    return new StablePool(
       pool,
       poolId,
       vault,
@@ -34,7 +34,7 @@ export default {
     );
   },
 
-  async _deployStandalone(params: StablePhantomPoolDeployment, vault: Vault): Promise<Contract> {
+  async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
     const {
       tokens,
       rateProviders,
@@ -49,7 +49,7 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
-    return deploy('v2-pool-stable-phantom/MockStablePhantomPool', {
+    return deploy('v2-pool-stable/MockComposableStablePool', {
       args: [
         {
           vault: vault.address,

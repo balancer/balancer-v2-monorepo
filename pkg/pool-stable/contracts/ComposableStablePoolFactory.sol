@@ -21,19 +21,19 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePerc
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./StablePhantomPool.sol";
+import "./ComposableStablePool.sol";
 
-contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+contract ComposableStablePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
     IProtocolFeePercentagesProvider private _protocolFeeProvider;
 
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolSplitCodeFactory(vault, type(StablePhantomPool).creationCode)
+        BasePoolSplitCodeFactory(vault, type(ComposableStablePool).creationCode)
     {
         _protocolFeeProvider = protocolFeeProvider;
     }
 
     /**
-     * @dev Deploys a new `StablePhantomPool`.
+     * @dev Deploys a new `ComposableStablePool`.
      */
     function create(
         string memory name,
@@ -45,13 +45,13 @@ contract StablePhantomPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseW
         bool[] memory exemptFromYieldProtocolFeeFlags,
         uint256 swapFeePercentage,
         address owner
-    ) external returns (StablePhantomPool) {
+    ) external returns (ComposableStablePool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
         return
-            StablePhantomPool(
+            ComposableStablePool(
                 _create(
                     abi.encode(
-                        StablePhantomPool.NewPoolParams({
+                        ComposableStablePool.NewPoolParams({
                             vault: getVault(),
                             protocolFeeProvider: _protocolFeeProvider,
                             name: name,

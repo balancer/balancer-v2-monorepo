@@ -12,12 +12,12 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-describe('StablePhantomPoolFactory', function () {
+describe('ComposableStablePoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
   let rateProviders: string[], owner: SignerWithAddress;
 
-  const NAME = 'Balancer Stable Phantom Pool Token';
-  const SYMBOL = 'BSPPT';
+  const NAME = 'Balancer Composable Stable Pool Token';
+  const SYMBOL = 'BCSPT';
   const AMP = 400;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const PRICE_RATE_CACHE_DURATION = MONTH;
@@ -34,7 +34,7 @@ describe('StablePhantomPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('StablePhantomPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy('ComposableStablePoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['baDAI', 'baUSDC', 'baUSDT'], { sorted: true });
@@ -60,7 +60,7 @@ describe('StablePhantomPoolFactory', function () {
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');
-    return deployedAt('StablePhantomPool', event.args.pool);
+    return deployedAt('ComposableStablePool', event.args.pool);
   }
 
   describe('constructor arguments', () => {
@@ -107,11 +107,11 @@ describe('StablePhantomPoolFactory', function () {
     });
 
     it('sets the name', async () => {
-      expect(await pool.name()).to.equal('Balancer Stable Phantom Pool Token');
+      expect(await pool.name()).to.equal('Balancer Composable Stable Pool Token');
     });
 
     it('sets the symbol', async () => {
-      expect(await pool.symbol()).to.equal('BSPPT');
+      expect(await pool.symbol()).to.equal('BCSPT');
     });
 
     it('sets the decimals', async () => {

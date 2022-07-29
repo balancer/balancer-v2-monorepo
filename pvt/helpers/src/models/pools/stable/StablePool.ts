@@ -9,13 +9,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS, MAX_UINT256 } from '../../../constants';
 import { GeneralSwap, ProtocolFee, QueryBatchSwap } from '../../vault/types';
-import { RawStablePhantomPoolDeployment, SwapPhantomPool } from './types';
+import { RawStablePoolDeployment, SwapStablePool } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
-import StablePhantomPoolDeployer from './StablePhantomPoolDeployer';
+import StablePoolDeployer from './StablePoolDeployer';
 import * as expectEvent from '../../../test/expectEvent';
 
 import {
@@ -30,7 +30,7 @@ import {
   ExitResult,
   ExitQueryResult,
   PoolQueryResult,
-} from '../stable-phantom/types';
+} from './types';
 import {
   calcBptInGivenExactTokensOut,
   calcBptOutGivenExactTokensIn,
@@ -39,18 +39,18 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calculateInvariant,
-} from '../stable-phantom/math';
+} from './math';
 import BasePool from '../base/BasePool';
 import { currentTimestamp, DAY } from '../../../time';
 
 const PREMINTED_BPT = MAX_UINT112.div(2);
 
-export default class StablePhantomPool extends BasePool {
+export default class StablePool extends BasePool {
   amplificationParameter: BigNumberish;
   bptIndex: number;
 
-  static async create(params: RawStablePhantomPoolDeployment = {}): Promise<StablePhantomPool> {
-    return StablePhantomPoolDeployer.deploy(params);
+  static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
+    return StablePoolDeployer.deploy(params);
   }
 
   constructor(
@@ -241,12 +241,12 @@ export default class StablePhantomPool extends BasePool {
     );
   }
 
-  async swapGivenIn(params: SwapPhantomPool): Promise<{ amountOut: BigNumber; receipt: ContractReceipt }> {
+  async swapGivenIn(params: SwapStablePool): Promise<{ amountOut: BigNumber; receipt: ContractReceipt }> {
     const { amountOut, receipt } = await this.swap(await this._buildSwapParams(SwapKind.GivenIn, params));
     return { amountOut, receipt };
   }
 
-  async swapGivenOut(params: SwapPhantomPool): Promise<{ amountIn: BigNumber; receipt: ContractReceipt }> {
+  async swapGivenOut(params: SwapStablePool): Promise<{ amountIn: BigNumber; receipt: ContractReceipt }> {
     const { amountIn, receipt } = await this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
     return { amountIn, receipt };
   }
@@ -384,7 +384,7 @@ export default class StablePhantomPool extends BasePool {
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
   }
 
-  private async _buildSwapParams(kind: number, params: SwapPhantomPool): Promise<GeneralSwap> {
+  private async _buildSwapParams(kind: number, params: SwapStablePool): Promise<GeneralSwap> {
     return {
       kind,
       poolAddress: this.address,
@@ -464,7 +464,7 @@ export default class StablePhantomPool extends BasePool {
     };
   }
 
-  private _buildQuerySwapParams(kind: number, allTokens: string[], params: SwapPhantomPool): QueryBatchSwap {
+  private _buildQuerySwapParams(kind: number, allTokens: string[], params: SwapStablePool): QueryBatchSwap {
     const swapStep: BatchSwapStep = {
       poolId: this.poolId,
       assetInIndex: allTokens.indexOf(params.in.address),
@@ -488,21 +488,21 @@ export default class StablePhantomPool extends BasePool {
     };
   }
 
-  async querySwapGivenIn(params: SwapPhantomPool): Promise<BigNumber> {
+  async querySwapGivenIn(params: SwapStablePool): Promise<BigNumber> {
     const { tokens: allTokens } = await this.getTokens();
 
     const amountsOut = await this._querySwapInternal(SwapKind.GivenIn, params, allTokens);
     return amountsOut[allTokens.indexOf(params.out.address)].mul(-1);
   }
 
-  async querySwapGivenOut(params: SwapPhantomPool): Promise<BigNumber> {
+  async querySwapGivenOut(params: SwapStablePool): Promise<BigNumber> {
     const { tokens: allTokens } = await this.getTokens();
 
     const amountsIn = await this._querySwapInternal(SwapKind.GivenOut, params, allTokens);
     return amountsIn[allTokens.indexOf(params.in.address)];
   }
 
-  private async _querySwapInternal(kind: SwapKind, params: SwapPhantomPool, allTokens: string[]): Promise<BigNumber[]> {
+  private async _querySwapInternal(kind: SwapKind, params: SwapStablePool, allTokens: string[]): Promise<BigNumber[]> {
     const queryParams = this._buildQuerySwapParams(kind, allTokens, params);
 
     return await this.vault.queryBatchSwap(queryParams);

@@ -22,7 +22,7 @@ import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "./StableMath.sol";
 
-abstract contract StablePoolStorage is BasePool {
+abstract contract ComposableStablePoolStorage is BasePool {
     using FixedPoint for uint256;
 
     // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
@@ -66,7 +66,7 @@ abstract contract StablePoolStorage is BasePool {
 
     // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
     // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
-    // For example, the BPT of another PhantomStable Pool containing yield tokens.
+    // For example, the BPT of another ComposableStablePool Pool containing yield tokens.
     // The flag will always be false for the BPT token.
     uint256 private immutable _exemptFromYieldProtocolFeeTokens;
 

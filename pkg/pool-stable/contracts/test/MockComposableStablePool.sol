@@ -17,10 +17,10 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 
-import "../StablePhantomPool.sol";
+import "../ComposableStablePool.sol";
 
-contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
-    constructor(NewPoolParams memory params) StablePhantomPool(params) {
+contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
+    constructor(NewPoolParams memory params) ComposableStablePool(params) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -7,7 +7,7 @@ import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-} from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
+} from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { random } from 'lodash';
 
 const MAX_RELATIVE_ERROR = 0.001; //Max relative error
