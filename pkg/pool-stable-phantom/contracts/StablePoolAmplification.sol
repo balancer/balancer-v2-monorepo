@@ -14,12 +14,12 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "./StableMath.sol";
 
-abstract contract StablePoolAmplification is Authentication {
+abstract contract StablePoolAmplification is BasePool {
     using WordCodec for bytes32;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
@@ -183,5 +183,17 @@ abstract contract StablePoolAmplification is Authentication {
             WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
             WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
             WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
+    }
+
+    // Permissioned functions
+
+    /**
+     * @dev Overrides only owner action to allow setting the cache duration for the token rates
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 }

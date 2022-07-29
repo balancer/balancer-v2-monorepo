@@ -1184,14 +1184,11 @@ contract StablePhantomPool is
         override(
             // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
             BasePool,
-            BasePoolAuthorization
+            BasePoolAuthorization,
+            StablePoolAmplification
         )
         returns (bool)
     {
-        return
-            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
-            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
     }
 }
