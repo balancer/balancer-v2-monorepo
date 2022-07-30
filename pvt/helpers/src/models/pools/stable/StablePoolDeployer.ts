@@ -22,16 +22,7 @@ export default {
     const bptIndex = await pool.getBptIndex();
     const { tokens, swapFeePercentage, amplificationParameter, owner } = deployment;
 
-    return new StablePool(
-      pool,
-      poolId,
-      vault,
-      tokens,
-      bptIndex,
-      swapFeePercentage,
-      amplificationParameter,
-      owner
-    );
+    return new StablePool(pool, poolId, vault, tokens, bptIndex, swapFeePercentage, amplificationParameter, owner);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
