@@ -126,10 +126,6 @@ const veBALPermissions: RoleData[] = flatten([
     SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
     SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
   ]),
-  createRoleData(DAO_MULTISIG, SmartWalletChecker.output().SmartWalletChecker, [
-    SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
-    SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
-  ]),
   createRoleData(BLABS_OPS_MULTISIG, EVERYWHERE, [
     // This permission grants powers to call `checkpoint()` on all of SingleRecipientGauges, PolygonRootGauges, ArbitrumRootGauges.
     SingleRecipientGauge.actionId('SingleRecipientGauge', 'checkpoint()'),
