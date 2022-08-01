@@ -712,13 +712,6 @@ describe('StablePhantomPool', () => {
           expect(await pool.totalSupply()).to.be.equal(0);
         });
 
-        it('sets amplification', async () => {
-          const { value, isUpdating, precision } = await pool.getAmplificationParameter();
-
-          expect(value).to.be.equal(AMPLIFICATION_PARAMETER.mul(precision));
-          expect(isUpdating).to.be.false;
-        });
-
         it('sets swap fee', async () => {
           expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
         });
@@ -819,18 +812,6 @@ describe('StablePhantomPool', () => {
           const swapFeePercentage = fp(0.1).add(1);
 
           await expect(deployPool({ swapFeePercentage })).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
-        });
-
-        it('reverts if amplification coefficient is too high', async () => {
-          const amplificationParameter = bn(5001);
-
-          await expect(deployPool({ amplificationParameter })).to.be.revertedWith('MAX_AMP');
-        });
-
-        it('reverts if amplification coefficient is too low', async () => {
-          const amplificationParameter = bn(0);
-
-          await expect(deployPool({ amplificationParameter })).to.be.revertedWith('MIN_AMP');
         });
       });
     });
