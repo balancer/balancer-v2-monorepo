@@ -5,13 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import {
-  advanceTime,
-  advanceToTimestamp,
-  currentTimestamp,
-  DAY,
-  setNextBlockTimestamp,
-} from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, DAY, setNextBlockTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
