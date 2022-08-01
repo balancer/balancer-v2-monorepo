@@ -19,6 +19,8 @@ const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.RE
 const LiquidityGaugeV5 = new Task('20220325-mainnet-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 
 const BalancerRelayer = new Task('20211203-batch-relayer', TaskMode.READ_ONLY, 'mainnet');
+// BalancerRelayerV2 is not used on mainnet
+const BalancerRelayerV3 = new Task('20220720-batch-relayer-v3', TaskMode.READ_ONLY, 'mainnet');
 const LidoRelayer = new Task('20210812-lido-relayer', TaskMode.READ_ONLY, 'mainnet');
 // https://forum.balancer.fi/t/proposal-balancer-v2-authorize-gnosis-protocol-v2-contracts-as-a-vault-relayer/1938
 // https://etherscan.io/address/0xc92e8bdf79f0507f65a392b0ab4667716bfe0110#code
@@ -46,20 +48,25 @@ const GAUNTLET_FEE_SETTER = '0xe4a8ed6c1d8d048bd29a00946bfcf2db10e7923b';
 
 export const root = DAO_MULTISIG;
 
-const batchRelayerPermissions = createRoleData(BalancerRelayer.output().BalancerRelayer, Vault.output().Vault, [
-  Vault.actionId('Vault', 'setRelayerApproval(address,address,bool)'),
-  Vault.actionId(
-    'Vault',
-    'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
-  ),
-  Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-  Vault.actionId(
-    'Vault',
-    'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
-  ),
-  Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
-  Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
-]);
+const batchRelayerPermissions = [
+  BalancerRelayer.output().BalancerRelayer,
+  BalancerRelayerV3.output().BalancerRelayer,
+].flatMap((relayer) =>
+  createRoleData(relayer, Vault.output().Vault, [
+    Vault.actionId('Vault', 'setRelayerApproval(address,address,bool)'),
+    Vault.actionId(
+      'Vault',
+      'batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)'
+    ),
+    Vault.actionId('Vault', 'joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+    Vault.actionId(
+      'Vault',
+      'swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)'
+    ),
+    Vault.actionId('Vault', 'exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))'),
+    Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
+  ])
+);
 
 const lidoRelayerPermissions = createRoleData(LidoRelayer.output().LidoRelayer, Vault.output().Vault, [
   Vault.actionId(
