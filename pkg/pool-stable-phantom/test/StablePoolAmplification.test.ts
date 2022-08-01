@@ -237,7 +237,6 @@ describe('StablePoolAmplification', () => {
 
     context('when the sender is not allowed', () => {
       it('reverts', async () => {
-        await expect(pool.connect(other).stopAmplificationParameterUpdate()).to.be.revertedWith('SENDER_NOT_ALLOWED');
         await expect(
           pool.connect(other).startAmplificationParameterUpdate(AMPLIFICATION_PARAMETER, DAY)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
