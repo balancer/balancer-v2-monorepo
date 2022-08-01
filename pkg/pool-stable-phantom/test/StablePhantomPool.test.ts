@@ -716,15 +716,6 @@ describe('StablePhantomPool', () => {
           expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
         });
 
-        it('sets the rate providers', async () => {
-          const providers = await pool.getRateProviders();
-
-          // BPT does not have a rate provider
-          expect(providers).to.have.lengthOf(numberOfTokens + 1);
-          expect(providers).to.include.members(rateProviders.map((r) => r.address));
-          expect(providers).to.include(ZERO_ADDRESS);
-        });
-
         it('sets the rate cache durations', async () => {
           await tokens.asyncEach(async (token, i) => {
             const { duration, expires, rate } = await pool.getTokenRateCache(token);
@@ -749,63 +740,13 @@ describe('StablePhantomPool', () => {
             'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
           );
         });
-
-        it('sets the scaling factors', async () => {
-          const scalingFactors = (await pool.getScalingFactors()).map((sf) => sf.toString());
-
-          // It also includes the BPT scaling factor
-          expect(scalingFactors).to.have.lengthOf(numberOfTokens + 1);
-          expect(scalingFactors).to.include(fp(1).toString());
-          for (const rate of tokenRates) expect(scalingFactors).to.include(rate.toString());
-        });
-
-        it('sets BPT index correctly', async () => {
-          const bpt = new Token('BPT', 'BPT', 18, pool.instance);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
-          const expectedIndex = allTokens.indexOf(bpt);
-          expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
-        });
-
-        it('sets the fee exemption flags correctly', async () => {
-          for (let i = 0; i < numberOfTokens; i++) {
-            // Initialized to true for even tokens
-            const expectedFlag = i % 2 == 0;
-            const token = tokens.get(i);
-
-            expect(await pool.instance.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
-          }
-        });
       });
 
       context('when the creation fails', () => {
-        it('reverts if there are repeated tokens', async () => {
-          const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
-
-          await expect(deployPool({ tokens: badTokens })).to.be.revertedWith('UNSORTED_ARRAY');
-        });
-
         it('reverts if the cache durations do not match the tokens length', async () => {
           const tokenRateCacheDurations = [1];
 
           await expect(deployPool({ tokenRateCacheDurations })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-
-        it('reverts if the exemption flags do not match the tokens length', async () => {
-          const exemptFromYieldProtocolFeeFlags = [true];
-
-          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-
-        it('reverts if the rate providers do not match the tokens length', async () => {
-          const rateProviders = Array(numberOfTokens + 1).fill(ANY_ADDRESS);
-
-          await expect(deployPool({ rateProviders })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-
-        it('reverts if the protocol fee flags do not match the tokens length', async () => {
-          const exemptFromYieldProtocolFeeFlags = Array(numberOfTokens + 1).fill(false);
-
-          await expect(deployPool({ exemptFromYieldProtocolFeeFlags })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the swap fee is too high', async () => {
