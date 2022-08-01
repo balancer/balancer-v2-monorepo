@@ -17,8 +17,10 @@ describe('StablePoolAmplification', () => {
   let owner: SignerWithAddress, admin: SignerWithAddress, other: SignerWithAddress;
   let vault: Vault;
 
+  const MIN_AMP = bn(1);
+  const MAX_AMP = bn(5000);
   const AMP_PRECISION = 1e3;
-  const AMPLIFICATION_PARAMETER = bn(200);
+  const INITIAL_AMPLIFICATION_PARAMETER = bn(200);
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   sharedBeforeEach('setup signers', async () => {
@@ -29,10 +31,38 @@ describe('StablePoolAmplification', () => {
     vault = await Vault.create({ admin });
   });
 
-  const deployPool = (owner: Account): Promise<Contract> =>
+  const deployPool = (owner: Account, amp = INITIAL_AMPLIFICATION_PARAMETER): Promise<Contract> =>
     deploy('MockStablePoolAmplification', {
-      args: [vault.address, TypesConverter.toAddress(owner), AMPLIFICATION_PARAMETER],
+      args: [vault.address, TypesConverter.toAddress(owner), amp],
     });
+
+  describe('constructor', () => {
+    context('when passing a valid initial amplification parameter value', () => {
+      let pool: Contract;
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool(owner);
+      });
+
+      it('sets the expected amplification parameter', async () => {
+        const { value, isUpdating, precision } = await pool.getAmplificationParameter();
+        expect(value).to.be.equal(INITIAL_AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+        expect(isUpdating).to.be.false;
+        expect(precision).to.be.equal(AMP_PRECISION);
+      });
+    });
+
+    context('when passing an initial amplification parameter less than MIN_AMP', () => {
+      it('reverts', async () => {
+        await expect(deployPool(owner, MIN_AMP.sub(1))).to.be.revertedWith('MIN_AMP');
+      });
+    });
+
+    context('when passing an initial amplification parameter greater than MAX_AMP', () => {
+      it('reverts', async () => {
+        await expect(deployPool(owner, MAX_AMP.add(1))).to.be.revertedWith('MAX_AMP');
+      });
+    });
+  });
 
   describe('startAmplificationParameterUpdate', () => {
     let pool: Contract;
@@ -51,7 +81,7 @@ describe('StablePoolAmplification', () => {
 
         context('when requesting a valid amp', () => {
           const itUpdatesAmpCorrectly = (newAmp: BigNumber) => {
-            const increasing = AMPLIFICATION_PARAMETER.lt(newAmp);
+            const increasing = INITIAL_AMPLIFICATION_PARAMETER.lt(newAmp);
 
             context('when there is no ongoing update', () => {
               it('starts changing the amp', async () => {
@@ -63,15 +93,15 @@ describe('StablePoolAmplification', () => {
                 expect(isUpdating).to.be.true;
 
                 if (increasing) {
-                  const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
+                  const diff = newAmp.sub(INITIAL_AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
                   expect(value).to.be.equalWithError(
-                    AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(3)),
+                    INITIAL_AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(3)),
                     0.00001
                   );
                 } else {
-                  const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
+                  const diff = INITIAL_AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
                   expect(value).to.be.equalWithError(
-                    AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(3)),
+                    INITIAL_AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(3)),
                     0.00001
                   );
                 }
@@ -91,7 +121,7 @@ describe('StablePoolAmplification', () => {
                 const receipt = await pool.connect(caller).startAmplificationParameterUpdate(newAmp, endTime);
 
                 expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStarted', {
-                  startValue: AMPLIFICATION_PARAMETER.mul(AMP_PRECISION),
+                  startValue: INITIAL_AMPLIFICATION_PARAMETER.mul(AMP_PRECISION),
                   endValue: newAmp.mul(AMP_PRECISION),
                   endTime,
                 });
@@ -149,7 +179,7 @@ describe('StablePoolAmplification', () => {
 
           context('when increasing the amp', () => {
             context('when increasing the amp by 2x', () => {
-              const newAmp = AMPLIFICATION_PARAMETER.mul(2);
+              const newAmp = INITIAL_AMPLIFICATION_PARAMETER.mul(2);
 
               itUpdatesAmpCorrectly(newAmp);
             });
@@ -157,7 +187,7 @@ describe('StablePoolAmplification', () => {
 
           context('when decreasing the amp', () => {
             context('when decreasing the amp by 2x', () => {
-              const newAmp = AMPLIFICATION_PARAMETER.div(2);
+              const newAmp = INITIAL_AMPLIFICATION_PARAMETER.div(2);
 
               itUpdatesAmpCorrectly(newAmp);
             });
@@ -188,7 +218,7 @@ describe('StablePoolAmplification', () => {
             });
 
             it('reverts when increasing the amp by more than 2x in a single day', async () => {
-              const newAmp = AMPLIFICATION_PARAMETER.mul(2).add(1);
+              const newAmp = INITIAL_AMPLIFICATION_PARAMETER.mul(2).add(1);
               const endTime = startTime.add(DAY);
 
               await expect(pool.connect(caller).startAmplificationParameterUpdate(newAmp, endTime)).to.be.revertedWith(
@@ -197,7 +227,7 @@ describe('StablePoolAmplification', () => {
             });
 
             it('reverts when increasing the amp by more than 2x daily over multiple days', async () => {
-              const newAmp = AMPLIFICATION_PARAMETER.mul(5).add(1);
+              const newAmp = INITIAL_AMPLIFICATION_PARAMETER.mul(5).add(1);
               const endTime = startTime.add(DAY * 2);
 
               await expect(pool.connect(caller).startAmplificationParameterUpdate(newAmp, endTime)).to.be.revertedWith(
@@ -206,7 +236,7 @@ describe('StablePoolAmplification', () => {
             });
 
             it('reverts when decreasing the amp by more than 2x in a single day', async () => {
-              const newAmp = AMPLIFICATION_PARAMETER.div(2).sub(1);
+              const newAmp = INITIAL_AMPLIFICATION_PARAMETER.div(2).sub(1);
               const endTime = startTime.add(DAY);
 
               await expect(pool.connect(caller).startAmplificationParameterUpdate(newAmp, endTime)).to.be.revertedWith(
@@ -215,7 +245,7 @@ describe('StablePoolAmplification', () => {
             });
 
             it('reverts when decreasing the amp by more than 2x daily over multiple days', async () => {
-              const newAmp = AMPLIFICATION_PARAMETER.div(5).sub(1);
+              const newAmp = INITIAL_AMPLIFICATION_PARAMETER.div(5).sub(1);
               const endTime = startTime.add(DAY * 2);
 
               await expect(pool.connect(caller).startAmplificationParameterUpdate(newAmp, endTime)).to.be.revertedWith(
@@ -232,7 +262,7 @@ describe('StablePoolAmplification', () => {
         it('reverts', async () => {
           endTime = (await currentTimestamp()).add(DAY).sub(1);
           await expect(
-            pool.connect(caller).startAmplificationParameterUpdate(AMPLIFICATION_PARAMETER, endTime)
+            pool.connect(caller).startAmplificationParameterUpdate(INITIAL_AMPLIFICATION_PARAMETER, endTime)
           ).to.be.revertedWith('AMP_END_TIME_TOO_CLOSE');
         });
       });
@@ -241,7 +271,7 @@ describe('StablePoolAmplification', () => {
     function itReverts() {
       it('reverts', async () => {
         await expect(
-          pool.connect(other).startAmplificationParameterUpdate(AMPLIFICATION_PARAMETER, DAY)
+          pool.connect(other).startAmplificationParameterUpdate(INITIAL_AMPLIFICATION_PARAMETER, DAY)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     }
@@ -290,7 +320,7 @@ describe('StablePoolAmplification', () => {
     function itStopsAnAmpUpdateCorrectly() {
       context('when there is an ongoing update', () => {
         sharedBeforeEach('start change', async () => {
-          const newAmp = AMPLIFICATION_PARAMETER.mul(2);
+          const newAmp = INITIAL_AMPLIFICATION_PARAMETER.mul(2);
           const duration = DAY * 2;
 
           const startTime = (await currentTimestamp()).add(100);
