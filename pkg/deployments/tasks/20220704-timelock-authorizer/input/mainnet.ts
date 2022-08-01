@@ -217,6 +217,10 @@ export const grantDelays: DelayData[] = [
     actionId: GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
     newDelay: 7 * DAY,
   },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
+    newDelay: 7 * DAY,
+  },
   // BALTokenHolder.withdrawFunds(address, uint256) (veBAL BALTokenHolder)
   // Note this actionId can't be pulled from the json file as the BALTokenHolder is not listed there.
   { actionId: '0x79922681fd17c90b4f3409d605f5b059ffcbcef7b5440321ae93b87f3b5c1c78', newDelay: 7 * DAY },
