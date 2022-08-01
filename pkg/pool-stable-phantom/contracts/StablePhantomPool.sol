@@ -300,6 +300,8 @@ contract StablePhantomPool is
         uint256 upscaledAmountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
 
         (uint256 amp, ) = _getAmplificationParameter();
+        // bptAmount is the amount swapped in or out
+        uint256 bptAmount = upscaledAmountGiven;
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (swapRequest.tokenOut == IERC20(this)) {
@@ -319,6 +321,7 @@ contract StablePhantomPool is
             // invariant.
             if (isGivenIn) {
                 balancesWithoutBpt[indexInNoBpt] += upscaledAmountGiven;
+                bptAmount = amountCalculated;
                 // Join is "given in" so `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
@@ -347,12 +350,13 @@ contract StablePhantomPool is
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= upscaledAmountGiven;
+                bptAmount = amountCalculated;
                 // Exit is "given out" so `amountCalculated` is an amountIn (BPT to the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
             }
         }
 
-        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt, virtualSupply, bptAmount);
     }
 
     /**
@@ -545,7 +549,7 @@ contract StablePhantomPool is
         _mutateAmounts(balancesWithoutBpt, amountsIn, FixedPoint.add);
 
         // Pass in the post-join balances to reset the protocol fee basis.
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt, virtualSupply, bptAmountOut);
     }
 
     /**
@@ -684,7 +688,7 @@ contract StablePhantomPool is
         _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
 
         // Pass in the post-exit balances to reset the protocol fee basis.
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt, virtualSupply, bptAmountIn);
     }
 
     /**
@@ -906,7 +910,7 @@ contract StablePhantomPool is
 
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
     // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
-    function _updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balancesWithoutBpt) internal {
+    function _updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balancesWithoutBpt, uint256 virtualSupply, uint256 bptAmount) internal {
         _postJoinExitAmp = currentAmp;
         _postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
