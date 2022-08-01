@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "./StableMath.sol";
 
-abstract contract ComposableStablePoolAmplification is BasePoolAuthorization {
+abstract contract StablePoolAmplification is BasePoolAuthorization {
     using WordCodec for bytes32;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur

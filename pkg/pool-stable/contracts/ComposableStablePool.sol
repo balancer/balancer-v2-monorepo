@@ -29,8 +29,8 @@ import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "./ComposableStablePoolAmplification.sol";
 import "./ComposableStablePoolStorage.sol";
+import "./StablePoolAmplification.sol";
 import "./StableMath.sol";
 
 /**
@@ -49,7 +49,7 @@ contract ComposableStablePool is
     IRateProvider,
     BaseGeneralPool,
     ComposableStablePoolStorage,
-    ComposableStablePoolAmplification,
+    StablePoolAmplification,
     ProtocolFeeCache
 {
     using FixedPoint for uint256;
@@ -122,7 +122,7 @@ contract ComposableStablePool is
             params.rateProviders,
             params.exemptFromYieldProtocolFeeFlags
         )
-        ComposableStablePoolAmplification(params.amplificationParameter)
+        StablePoolAmplification(params.amplificationParameter)
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         InputHelpers.ensureInputLengthMatch(
@@ -1184,7 +1184,7 @@ contract ComposableStablePool is
             // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
             BasePool,
             BasePoolAuthorization,
-            ComposableStablePoolAmplification
+            StablePoolAmplification
         )
         returns (bool)
     {
