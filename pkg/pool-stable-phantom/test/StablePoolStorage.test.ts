@@ -90,7 +90,7 @@ describe('StablePoolStorage', () => {
         });
 
         it('sets BPT index correctly', async () => {
-          const bpt = new Token('BPT', 'BPT', 18, pool);
+          const bpt = await Token.deployedAt(pool);
           const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
           const expectedIndex = allTokens.indexOf(bpt);
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
