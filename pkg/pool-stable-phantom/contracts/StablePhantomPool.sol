@@ -116,6 +116,29 @@ contract StablePhantomPool is
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    // Translate parameters to avoid stack-too-deep issues in the constructor
+    function _extractRatesParams(NewPoolParams memory params)
+        private
+        pure
+        returns (StablePoolRates.RatesParams memory)
+    {
+        return StablePoolRates.RatesParams(params.tokens, params.rateProviders, params.tokenRateCacheDurations);
+    }
+
+    // Translate parameters to avoid stack-too-deep issues in the constructor
+    function _extractStorageParams(NewPoolParams memory params)
+        private
+        view
+        returns (StablePoolStorage.StorageParams memory)
+    {
+        return
+            StablePoolStorage.StorageParams(
+                _insertSorted(params.tokens, IERC20(this)),
+                params.rateProviders,
+                params.exemptFromYieldProtocolFeeFlags
+            );
+    }
+
     /**
      * @notice Return the minimum BPT balance, required to avoid minimum token balances.
      * @dev This amount is minted and immediately burned on pool initialization, so that the total supply
@@ -1120,29 +1143,6 @@ contract StablePhantomPool is
         for (uint256 i = 0; i < toMutate.length; ++i) {
             toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
-    }
-
-    // Translate parameters to avoid stack-too-deep issues in the constructor
-    function _extractRatesParams(NewPoolParams memory params)
-        private
-        pure
-        returns (StablePoolRates.RatesParams memory)
-    {
-        return StablePoolRates.RatesParams(params.tokens, params.rateProviders, params.tokenRateCacheDurations);
-    }
-
-    // Translate parameters to avoid stack-too-deep issues in the constructor
-    function _extractStorageParams(NewPoolParams memory params)
-        private
-        view
-        returns (StablePoolStorage.StorageParams memory)
-    {
-        return
-            StablePoolStorage.StorageParams(
-                _insertSorted(params.tokens, IERC20(this)),
-                params.rateProviders,
-                params.exemptFromYieldProtocolFeeFlags
-            );
     }
 
     // Permissioned functions
