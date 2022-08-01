@@ -183,7 +183,7 @@ export const revokers: RoleData[] = [];
 export const executeDelays: DelayData[] = [
   { actionId: Vault.actionId('Vault', 'setAuthorizer(address)'), newDelay: 30 * DAY },
   {
-    actionId: SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
+    actionId: SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
     newDelay: 7 * DAY,
   },
   {
