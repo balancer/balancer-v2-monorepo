@@ -187,10 +187,6 @@ export const executeDelays: DelayData[] = [
     newDelay: 7 * DAY,
   },
   {
-    actionId: SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
     actionId: VotingEscrowDelegationProxy.actionId('VotingEscrowDelegationProxy', 'setDelegation(address)'),
     newDelay: 7 * DAY,
   },
