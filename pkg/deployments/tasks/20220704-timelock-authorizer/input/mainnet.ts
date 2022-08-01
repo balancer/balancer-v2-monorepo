@@ -17,6 +17,8 @@ const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY
 const VotingEscrowDelegationProxy = new Task('20220325-ve-delegation', TaskMode.READ_ONLY, 'mainnet');
 const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.READ_ONLY, 'mainnet');
 const LiquidityGaugeV5 = new Task('20220325-mainnet-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
+const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
+const OptimismRootGaugeFactory = new Task('20220628-optimism-root-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 
 const BalancerRelayer = new Task('20211203-batch-relayer', TaskMode.READ_ONLY, 'mainnet');
 // BalancerRelayerV2 is not used on mainnet
@@ -129,6 +131,12 @@ const veBALPermissions: RoleData[] = flatten([
   createRoleData(BLABS_OPS_MULTISIG, EVERYWHERE, [
     // This permission grants powers to call `checkpoint()` on all of SingleRecipientGauges, PolygonRootGauges, ArbitrumRootGauges.
     SingleRecipientGauge.actionId('SingleRecipientGauge', 'checkpoint()'),
+  ]),
+  createRoleData(BLABS_OPS_MULTISIG, ArbitrumRootGaugeFactory.output().ArbitrumRootGaugeFactory, [
+    ArbitrumRootGaugeFactory.actionId('ArbitrumRootGaugeFactory', 'setArbitrumFees(uint64,uint64,uint64)'),
+  ]),
+  createRoleData(BLABS_OPS_MULTISIG, OptimismRootGaugeFactory.output().OptimismRootGaugeFactory, [
+    OptimismRootGaugeFactory.actionId('OptimismRootGaugeFactory', 'setOptimismGasLimit(uint32)'),
   ]),
   // BALTokenHolder.withdrawFunds(address, uint256) (veBAL BALTokenHolder)
   // Note this actionId can't be pulled from the json file as the BALTokenHolder is not listed there.
