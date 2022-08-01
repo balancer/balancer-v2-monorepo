@@ -246,54 +246,62 @@ describe('StablePoolAmplification', () => {
   });
 
   describe('stopAmplificationParameterUpdate', () => {
-    context('when there is an ongoing update', () => {
-      sharedBeforeEach('start change', async () => {
-        const newAmp = AMPLIFICATION_PARAMETER.mul(2);
-        const duration = DAY * 2;
+    context('when the sender is allowed', () => {
+      context('when there is an ongoing update', () => {
+        sharedBeforeEach('start change', async () => {
+          const newAmp = AMPLIFICATION_PARAMETER.mul(2);
+          const duration = DAY * 2;
 
-        const startTime = (await currentTimestamp()).add(100);
-        await setNextBlockTimestamp(startTime);
-        const endTime = startTime.add(duration);
+          const startTime = (await currentTimestamp()).add(100);
+          await setNextBlockTimestamp(startTime);
+          const endTime = startTime.add(duration);
 
-        await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
+          await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
 
-        await advanceTime(duration / 3);
-        const beforeStop = await pool.getAmplificationParameter();
-        expect(beforeStop.isUpdating).to.be.true;
+          await advanceTime(duration / 3);
+          const beforeStop = await pool.getAmplificationParameter();
+          expect(beforeStop.isUpdating).to.be.true;
+        });
+
+        it('stops the amp factor from updating', async () => {
+          const beforeStop = await pool.getAmplificationParameter();
+
+          await pool.connect(owner).stopAmplificationParameterUpdate();
+
+          const afterStop = await pool.getAmplificationParameter();
+          expect(afterStop.value).to.be.equalWithError(beforeStop.value, 0.001);
+          expect(afterStop.isUpdating).to.be.false;
+
+          await advanceTime(30 * DAY);
+
+          const muchLaterAfterStop = await pool.getAmplificationParameter();
+          expect(muchLaterAfterStop.value).to.be.equal(afterStop.value);
+          expect(muchLaterAfterStop.isUpdating).to.be.false;
+        });
+
+        it('emits an AmpUpdateStopped event', async () => {
+          const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
+          expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStopped');
+        });
+
+        it('does not emit an AmpUpdateStarted event', async () => {
+          const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
+          expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStarted');
+        });
       });
 
-      it('stops the amp factor from updating', async () => {
-        const beforeStop = await pool.getAmplificationParameter();
-
-        await pool.connect(owner).stopAmplificationParameterUpdate();
-
-        const afterStop = await pool.getAmplificationParameter();
-        expect(afterStop.value).to.be.equalWithError(beforeStop.value, 0.001);
-        expect(afterStop.isUpdating).to.be.false;
-
-        await advanceTime(30 * DAY);
-
-        const muchLaterAfterStop = await pool.getAmplificationParameter();
-        expect(muchLaterAfterStop.value).to.be.equal(afterStop.value);
-        expect(muchLaterAfterStop.isUpdating).to.be.false;
-      });
-
-      it('emits an AmpUpdateStopped event', async () => {
-        const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
-        expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStopped');
-      });
-
-      it('does not emit an AmpUpdateStarted event', async () => {
-        const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
-        expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStarted');
+      context('when there is no ongoing update', () => {
+        it('reverts', async () => {
+          await expect(pool.connect(owner).stopAmplificationParameterUpdate()).to.be.revertedWith(
+            'AMP_NO_ONGOING_UPDATE'
+          );
+        });
       });
     });
 
-    context('when there is no ongoing update', () => {
+    context('when the sender is not allowed', () => {
       it('reverts', async () => {
-        await expect(pool.connect(owner).stopAmplificationParameterUpdate()).to.be.revertedWith(
-          'AMP_NO_ONGOING_UPDATE'
-        );
+        await expect(pool.connect(other).stopAmplificationParameterUpdate()).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
   });
