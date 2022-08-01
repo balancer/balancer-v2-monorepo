@@ -143,7 +143,6 @@ describe('StablePoolStorage', () => {
         });
 
         it('reverts if the protocol fee flags do not match the tokens length', async () => {
-          await expect(deployPool(tokens, tokens.length, 1)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           await expect(deployPool(tokens, tokens.length, tokens.length + 1)).to.be.revertedWith(
             'INPUT_LENGTH_MISMATCH'
           );
