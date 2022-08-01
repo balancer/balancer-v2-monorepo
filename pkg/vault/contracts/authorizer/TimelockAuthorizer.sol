@@ -421,7 +421,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
      * @notice Sets the pending root address to `pendingRoot`.
      * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
      * the TimelockExecutor after after calling `scheduleRootChange`.
-     * @dev Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
+     *
+     * Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
     function setPendingRoot(address pendingRoot) external onlyExecutor {
         _setPendingRoot(pendingRoot);

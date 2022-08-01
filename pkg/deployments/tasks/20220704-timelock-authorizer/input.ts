@@ -34,4 +34,12 @@ export default {
     ExecuteDelays: mainnetExecuteDelays,
     GrantDelays: mainnetGrantDelays,
   },
+  goerli: {
+    Root: '0x171C0fF5943CE5f133130436A29bF61E26516003',
+    Roles: [],
+    Granters: [],
+    Revokers: [],
+    ExecuteDelays: [],
+    GrantDelays: [],
+  },
 };
