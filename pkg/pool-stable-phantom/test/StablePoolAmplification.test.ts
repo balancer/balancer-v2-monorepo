@@ -54,7 +54,7 @@ describe('StablePoolAmplification', () => {
               it('starts changing the amp', async () => {
                 await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
 
-                await advanceTime(duration / 2);
+                await advanceTime(duration / 3);
 
                 const { value, isUpdating } = await pool.getAmplificationParameter();
                 expect(isUpdating).to.be.true;
@@ -62,13 +62,13 @@ describe('StablePoolAmplification', () => {
                 if (increasing) {
                   const diff = newAmp.sub(AMPLIFICATION_PARAMETER).mul(AMP_PRECISION);
                   expect(value).to.be.equalWithError(
-                    AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(2)),
+                    AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).add(diff.div(3)),
                     0.00001
                   );
                 } else {
                   const diff = AMPLIFICATION_PARAMETER.sub(newAmp).mul(AMP_PRECISION);
                   expect(value).to.be.equalWithError(
-                    AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(2)),
+                    AMPLIFICATION_PARAMETER.mul(AMP_PRECISION).sub(diff.div(3)),
                     0.00001
                   );
                 }
