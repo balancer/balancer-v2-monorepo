@@ -65,7 +65,7 @@ describeForkTest.only('TimelockAuthorizer', 'mainnet', 15238369, function () {
   });
 
   it('sets up delays properly', async () => {
-    await advanceTime(3 * DAY);
+    await advanceTime(5 * DAY);
     await migrator.executeDelays();
 
     for (const delayData of input.ExecuteDelays) {
@@ -79,7 +79,7 @@ describeForkTest.only('TimelockAuthorizer', 'mainnet', 15238369, function () {
   });
 
   it('starts the root transfer', async () => {
-    await advanceTime(4 * WEEK - 3 * DAY);
+    await advanceTime(4 * WEEK);
     await migrator.startRootTransfer();
   });
 
