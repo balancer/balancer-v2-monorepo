@@ -47,8 +47,8 @@ export default class TimelockAuthorizer {
     return this.instance.SCHEDULE_DELAY_ACTION_ID();
   }
 
-  async permissionId(action: string, account: Account, where: Account): Promise<string> {
-    return this.instance.permissionId(action, this.toAddress(account), this.toAddress(where));
+  async getPermissionId(action: string, account: Account, where: Account): Promise<string> {
+    return this.instance.getPermissionId(action, this.toAddress(account), this.toAddress(where));
   }
 
   async getGrantPermissionActionId(actionId: string): Promise<string> {
