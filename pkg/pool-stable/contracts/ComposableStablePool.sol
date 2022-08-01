@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-stable-composable/ComposableStablePoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
@@ -54,7 +54,7 @@ contract ComposableStablePool is
 {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using ComposableStablePoolUserData for bytes;
+    using StablePoolUserData for bytes;
     using BasePoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
@@ -465,8 +465,8 @@ contract ComposableStablePool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
-        ComposableStablePoolUserData.JoinKind kind = userData.joinKind();
-        _require(kind == ComposableStablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
+        StablePoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == StablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
@@ -516,12 +516,12 @@ contract ComposableStablePool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
-        ComposableStablePoolUserData.JoinKind kind = userData.joinKind();
+        StablePoolUserData.JoinKind kind = userData.joinKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        if (kind == ComposableStablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
                 virtualSupply,
                 currentAmp,
@@ -529,7 +529,7 @@ contract ComposableStablePool is
                 scalingFactors,
                 userData
             );
-        } else if (kind == ComposableStablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(
                 virtualSupply,
                 currentAmp,
@@ -655,12 +655,12 @@ contract ComposableStablePool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        ComposableStablePoolUserData.ExitKind kind = userData.exitKind();
+        StablePoolUserData.ExitKind kind = userData.exitKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        if (kind == ComposableStablePoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        if (kind == StablePoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
                 virtualSupply,
                 currentAmp,
@@ -668,7 +668,7 @@ contract ComposableStablePool is
                 scalingFactors,
                 userData
             );
-        } else if (kind == ComposableStablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(
                 virtualSupply,
                 currentAmp,
