@@ -24,6 +24,7 @@ import "./StablePoolStorage.sol";
 
 abstract contract StablePoolRates is StablePoolStorage {
     using PriceRateCache for bytes32;
+    using FixedPoint for uint256;
 
     struct RatesParams {
         IERC20[] tokens;
@@ -200,5 +201,119 @@ abstract contract StablePoolRates is StablePoolStorage {
                 _updateTokenRateCache(token, _getRateProvider(token), duration);
             }
         }
+    }
+
+    // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
+    // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
+    function _updateOldRates() internal {
+        uint256 totalTokens = _getTotalTokens();
+
+        if (_hasCacheEntry(0)) _updateOldRate(_getToken0());
+        if (_hasCacheEntry(1)) _updateOldRate(_getToken1());
+        if (_hasCacheEntry(2)) _updateOldRate(_getToken2());
+        if (totalTokens > 3 && _hasCacheEntry(3)) _updateOldRate(_getToken3());
+        if (totalTokens > 4 && _hasCacheEntry(4)) _updateOldRate(_getToken4());
+        if (totalTokens > 5 && _hasCacheEntry(5)) _updateOldRate(_getToken5());
+    }
+
+    /**
+     * @dev Apply the token ratios to a set of balances, optionally adjusting for exempt yield tokens.
+     * The `balances` array is assumed to include BPT to ensure that token indices align.
+     */
+    function _getAdjustedBalances(uint256[] memory balances, bool ignoreExemptFlags)
+        internal
+        view
+        returns (uint256[] memory)
+    {
+        uint256 totalTokens = balances.length;
+        uint256[] memory adjustedBalances = new uint256[](totalTokens);
+
+        // The Pool will always have at least 3 tokens so we always adjust these three balances.
+        adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0) || (ignoreExemptFlags && _hasCacheEntry(0))
+            ? _adjustedBalance(balances[0], _tokenRateCaches[_getToken0()])
+            : balances[0];
+        adjustedBalances[1] = _isTokenExemptFromYieldProtocolFee(1) || (ignoreExemptFlags && _hasCacheEntry(1))
+            ? _adjustedBalance(balances[1], _tokenRateCaches[_getToken1()])
+            : balances[1];
+        adjustedBalances[2] = _isTokenExemptFromYieldProtocolFee(2) || (ignoreExemptFlags && _hasCacheEntry(2))
+            ? _adjustedBalance(balances[2], _tokenRateCaches[_getToken2()])
+            : balances[2];
+
+        // Before we adjust the remaining balances we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return adjustedBalances;
+        adjustedBalances[3] = _isTokenExemptFromYieldProtocolFee(3) || (ignoreExemptFlags && _hasCacheEntry(3))
+            ? _adjustedBalance(balances[3], _tokenRateCaches[_getToken3()])
+            : balances[3];
+
+        if (totalTokens == 4) return adjustedBalances;
+        adjustedBalances[4] = _isTokenExemptFromYieldProtocolFee(4) || (ignoreExemptFlags && _hasCacheEntry(4))
+            ? _adjustedBalance(balances[4], _tokenRateCaches[_getToken4()])
+            : balances[4];
+
+        if (totalTokens == 5) return adjustedBalances;
+        adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5) || (ignoreExemptFlags && _hasCacheEntry(5))
+            ? _adjustedBalance(balances[5], _tokenRateCaches[_getToken5()])
+            : balances[5];
+
+        return adjustedBalances;
+    }
+
+    // Compute balance * oldRate/currentRate, doing division last to minimize rounding error.
+    function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
+        return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
+    }
+
+    // Return true if the token at this index is a non-BPT token with a rate provider, so that it has
+    // an entry in the token rate cache.
+    function _hasCacheEntry(uint256 index) private view returns (bool) {
+        uint256 bptIndex = getBptIndex();
+
+        if (index == 0) return _getRateProvider0() != IRateProvider(0) && bptIndex != 0;
+        if (index == 1) return _getRateProvider1() != IRateProvider(0) && bptIndex != 1;
+        if (index == 2) return _getRateProvider2() != IRateProvider(0) && bptIndex != 2;
+        if (index == 3) return _getRateProvider3() != IRateProvider(0) && bptIndex != 3;
+        if (index == 4) return _getRateProvider4() != IRateProvider(0) && bptIndex != 4;
+        if (index == 5) return _getRateProvider5() != IRateProvider(0) && bptIndex != 5;
+    }
+
+    // Scaling Factors
+
+    /**
+     * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
+     */
+    function getScalingFactor(IERC20 token) external view returns (uint256) {
+        return _scalingFactor(token);
+    }
+
+    // Computed the total scaling factor as a product of the token decimal adjustment and token rate.
+    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+        return _tokenScalingFactor(token).mulDown(getTokenRate(token));
+    }
+
+    /**
+     * @dev Overrides scaling factor getter to compute the tokens' rates.
+     */
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+        // There is no need to check the arrays length since both are based on `_getTotalTokens`
+        uint256 totalTokens = _getTotalTokens();
+        uint256[] memory scalingFactors = new uint256[](totalTokens);
+
+        // The Pool will always have at least 3 tokens so we always load these three scaling factors.
+        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
+        scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_getToken0()));
+        scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_getToken1()));
+        scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_getToken2()));
+
+        // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
+        if (totalTokens == 3) return scalingFactors;
+        scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_getToken3()));
+
+        if (totalTokens == 4) return scalingFactors;
+        scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_getToken4()));
+
+        if (totalTokens == 5) return scalingFactors;
+        scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_getToken5()));
+
+        return scalingFactors;
     }
 }
