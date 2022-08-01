@@ -29,7 +29,7 @@ import "./TimelockExecutor.sol";
 /**
  * @title Timelock Authorizer
  * @author Balancer Labs
- * @dev Authorizer with timelocks (delys).
+ * @dev Authorizer with timelocks (delays).
  *
  * Users are allowed to perform actions if they have the permission to do so.
  *
@@ -74,7 +74,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     // solhint-disable-previous-line max-line-length
 
     /**
-     * @notice An sentinel value for `where` that will match any address.
+     * @notice A sentinel value for `where` that will match any address.
      */
     address public constant EVERYWHERE = address(-1);
 
@@ -418,8 +418,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets the pending root address to `pendingRoot`. This function can never be called directly - it is only
-     * ever run after calling `scheduleRootChange`.
+     * @notice Sets the pending root address to `pendingRoot`.
+     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
+     * the TimelockExecutor after after calling `scheduleRootChange`.
      * @dev Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
     function setPendingRoot(address pendingRoot) external onlyExecutor {
@@ -450,8 +451,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Sets a new delay `delay` for action `actionId`. This function can never be called directly - it is only
-     * ever run after calling `scheduleDelayChange`.
+     * @notice Sets a new delay `delay` for action `actionId`.
+     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
+     * the TimelockExecutor after after calling `scheduleDelayChange`.
      */
     function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
         bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
@@ -604,8 +606,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Grants multiple permissions to a single `account`. This function can only be used for actions that have
-     * no grant delay. For those that do, use `scheduleGrantPermission` instead.
+     * @notice Grants multiple permissions to a single `account`.
+     * @dev This function can only be used for actions that have no grant delay. For those that do, use
+     * `scheduleGrantPermission` instead.
      */
     function grantPermissions(
         bytes32[] memory actionIds,
@@ -663,8 +666,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Revokes multiple permissions from a single `account`. This function can only be used for actions that
-     * have no revoke delay. For those that do, use `scheduleRevokePermission` instead.
+     * @notice Revokes multiple permissions from a single `account`.
+     * @dev This function can only be used for actions that have no revoke delay. For those that do, use
+     * `scheduleRevokePermission` instead.
      */
     function revokePermissions(
         bytes32[] memory actionIds,
@@ -697,8 +701,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     }
 
     /**
-     * @notice Revokes multiple permissions from the caller. Note that the caller can always renounce permissions, even
-     * if revoking them would typically be subject to a delay.
+     * @notice Revokes multiple permissions from the caller.
+     * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
+     * subject to a delay.
      */
     function renouncePermissions(bytes32[] memory actionIds, address[] memory where) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
