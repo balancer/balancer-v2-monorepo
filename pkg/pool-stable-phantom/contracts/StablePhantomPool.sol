@@ -24,12 +24,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
+import "./StablePoolAmplification.sol";
 import "./StablePoolStorage.sol";
 import "./StableMath.sol";
 
@@ -46,8 +46,13 @@ import "./StableMath.sol";
  * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
  * actually owned outside the Vault) instead.
  */
-contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage, ProtocolFeeCache {
-    using WordCodec for bytes32;
+contract StablePhantomPool is
+    IRateProvider,
+    BaseGeneralPool,
+    StablePoolStorage,
+    StablePoolAmplification,
+    ProtocolFeeCache
+{
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
     using StablePhantomPoolUserData for bytes;
@@ -60,32 +65,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
-
-    // Amplification factor changes must happen over a minimum period of one day, and can at most divide or multiply the
-    // current value by 2 every day.
-    // WARNING: this only limits *a single* amplification change to have a maximum rate of change of twice the original
-    // value daily. It is possible to perform multiple amplification changes in sequence to increase this value more
-    // rapidly: for example, by doubling the value every day it can increase by a factor of 8 over three days (2^3).
-    uint256 private constant _MIN_UPDATE_TIME = 1 days;
-    uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
-
-    // The amplification data structure is as follows:
-    // [  64 bits |   64 bits  |  64 bits  |   64 bits   ]
-    // [ end time | start time | end value | start value ]
-    // |MSB                                           LSB|
-
-    uint256 private constant _AMP_START_VALUE_OFFSET = 0;
-    uint256 private constant _AMP_END_VALUE_OFFSET = 64;
-    uint256 private constant _AMP_START_TIME_OFFSET = 128;
-    uint256 private constant _AMP_END_TIME_OFFSET = 192;
-
-    uint256 private constant _AMP_VALUE_BIT_LENGTH = 64;
-    uint256 private constant _AMP_TIMESTAMP_BIT_LENGTH = 64;
-
-    bytes32 private _packedAmplificationData;
-
-    event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
-    event AmpUpdateStopped(uint256 currentValue);
 
     // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
     // The "old rate" field is used for precise protocol fee calculation, to ensure that token yield is only
@@ -144,6 +123,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             params.rateProviders,
             params.exemptFromYieldProtocolFeeFlags
         )
+        StablePoolAmplification(params.amplificationParameter)
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         InputHelpers.ensureInputLengthMatch(
@@ -151,12 +131,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             params.rateProviders.length,
             params.tokenRateCacheDurations.length
         );
-
-        _require(params.amplificationParameter >= StableMath._MIN_AMP, Errors.MIN_AMP);
-        _require(params.amplificationParameter <= StableMath._MAX_AMP, Errors.MAX_AMP);
-
-        uint256 initialAmp = Math.mul(params.amplificationParameter, StableMath._AMP_PRECISION);
-        _setAmplificationData(initialAmp);
 
         for (uint256 i = 0; i < params.tokens.length; i++) {
             if (params.rateProviders[i] != IRateProvider(0)) {
@@ -531,6 +505,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Supports single- and multi-token joins, except for explicit proportional joins.
+     * Pays protocol fees before the join, and calls `_updateInvariantAfterJoinExit` afterward.
      */
     function _onJoinPool(
         bytes32,
@@ -541,18 +516,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(virtualSupply, balancesWithoutBpt, scalingFactors, userData);
+            (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                scalingFactors,
+                userData
+            );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(virtualSupply, balancesWithoutBpt, userData);
+            (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                userData
+            );
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
+
+        // Add amountsIn to get post-join balances
+        _mutateAmounts(balancesWithoutBpt, amountsIn, FixedPoint.add);
+
+        // Pass in the post-join balances to reset the protocol fee basis.
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
     }
 
     /**
@@ -560,10 +553,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _joinExactTokensInForBPTOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         // Balances are passed through from the Vault hook, and include BPT
         InputHelpers.ensureInputLengthMatch(balancesWithoutBpt.length, amountsIn.length);
@@ -574,7 +568,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             scalingFactors
         );
 
-        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
             currentAmp,
             balancesWithoutBpt,
@@ -585,11 +578,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
 
-        // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, scaledAmountsInWithoutBpt, FixedPoint.add);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
-
         return (bptAmountOut, scaledAmountsInWithBpt);
     }
 
@@ -598,9 +586,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _joinTokenInForExactBPTOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         // Since this index is sent in from the user, we interpret it as NOT including the BPT token.
         (uint256 bptAmountOut, uint256 tokenIndexWithoutBpt) = userData.tokenInForExactBptOut();
         // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
@@ -610,7 +599,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         // We join with a single token, so initialize amountsIn with zeros.
         uint256[] memory amountsIn = new uint256[](balancesWithoutBpt.length + 1);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // And then assign the result to the selected token.
         // The token index passed to the StableMath function must match the balances array (without BPT),
@@ -623,11 +611,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             virtualSupply,
             getSwapFeePercentage()
         );
-
-        // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountOut, amountsIn);
     }
@@ -660,6 +643,7 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
     /**
      * @dev Support single- and multi-token exits, but not explicit proportional exits.
+     * Pays protocol fees before the exit, and calls `_updateInvariantAfterJoinExit` afterward.
      * Note that recovery mode exits do not call`_onExitPool`.
      */
     function _onExitPool(
@@ -671,18 +655,36 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
 
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(virtualSupply, balancesWithoutBpt, scalingFactors, userData);
+            (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                scalingFactors,
+                userData
+            );
         } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(virtualSupply, balancesWithoutBpt, userData);
+            (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(
+                virtualSupply,
+                currentAmp,
+                balancesWithoutBpt,
+                userData
+            );
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+
+        // Subtract amountsOut to get post-exit balances
+        _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
+
+        // Pass in the post-exit balances to reset the protocol fee basis.
+        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
     }
 
     /**
@@ -690,10 +692,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _exitBPTInForExactTokensOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         // amountsOut are unscaled, and do not include BPT
         InputHelpers.ensureInputLengthMatch(amountsOut.length, balancesWithoutBpt.length);
@@ -704,7 +707,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             scalingFactors
         );
 
-        (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
             balancesWithoutBpt,
@@ -714,11 +716,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
-        // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, scaledAmountsOutWithoutBpt, FixedPoint.sub);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
-
         return (bptAmountIn, scaledAmountsOutWithBpt);
     }
 
@@ -727,9 +724,10 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
      */
     function _exitExactBPTInForTokenOut(
         uint256 virtualSupply,
+        uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         bytes memory userData
-    ) private returns (uint256, uint256[] memory) {
+    ) private view returns (uint256, uint256[] memory) {
         // Since this index is sent in from the user, we interpret it as NOT including the BPT token
         (uint256 bptAmountIn, uint256 tokenIndexWithoutBpt) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
@@ -738,7 +736,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
 
         // We exit in a single token, so initialize amountsOut with zeros
         uint256[] memory amountsOut = new uint256[](balancesWithoutBpt.length + 1);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // And then assign the result to the selected token.
         // The token index passed to the StableMath function must match the balances array (without BPT),
@@ -751,11 +748,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
             virtualSupply,
             getSwapFeePercentage()
         );
-
-        // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
-
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
 
         return (bptAmountIn, amountsOut);
     }
@@ -1163,133 +1155,6 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         return scalingFactors;
     }
 
-    // Amplification
-
-    function getAmplificationParameter()
-        external
-        view
-        returns (
-            uint256 value,
-            bool isUpdating,
-            uint256 precision
-        )
-    {
-        (value, isUpdating) = _getAmplificationParameter();
-        precision = StableMath._AMP_PRECISION;
-    }
-
-    // Return the current amp value, which will be an interpolation if there is an ongoing amp update.
-    // Also return a flag indicating whether there is an ongoing update.
-    function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
-        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
-
-        // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
-
-        if (block.timestamp < endTime) {
-            isUpdating = true;
-
-            // We can skip checked arithmetic as:
-            //  - block.timestamp is always larger or equal to startTime
-            //  - endTime is always larger than startTime
-            //  - the value delta is bounded by the largest amplification parameter, which never causes the
-            //    multiplication to overflow.
-            // This also means that the following computation will never revert nor yield invalid results.
-            if (endValue > startValue) {
-                value = startValue + ((endValue - startValue) * (block.timestamp - startTime)) / (endTime - startTime);
-            } else {
-                value = startValue - ((startValue - endValue) * (block.timestamp - startTime)) / (endTime - startTime);
-            }
-        } else {
-            isUpdating = false;
-            value = endValue;
-        }
-    }
-
-    // Unpack and return all amplification-related parameters.
-    function _getAmplificationData()
-        private
-        view
-        returns (
-            uint256 startValue,
-            uint256 endValue,
-            uint256 startTime,
-            uint256 endTime
-        )
-    {
-        startValue = _packedAmplificationData.decodeUint(_AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
-        endValue = _packedAmplificationData.decodeUint(_AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH);
-        startTime = _packedAmplificationData.decodeUint(_AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-        endTime = _packedAmplificationData.decodeUint(_AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-    }
-
-    /**
-     * @dev Begin changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
-     * `endTime` is reached, when it will be `rawEndValue`.
-     *
-     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
-     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
-     */
-    function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
-        _require(rawEndValue >= StableMath._MIN_AMP, Errors.MIN_AMP);
-        _require(rawEndValue <= StableMath._MAX_AMP, Errors.MAX_AMP);
-
-        uint256 duration = Math.sub(endTime, block.timestamp);
-        _require(duration >= _MIN_UPDATE_TIME, Errors.AMP_END_TIME_TOO_CLOSE);
-
-        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(!isUpdating, Errors.AMP_ONGOING_UPDATE);
-
-        uint256 endValue = Math.mul(rawEndValue, StableMath._AMP_PRECISION);
-
-        // daily rate = (endValue / currentValue) / duration * 1 day
-        // We perform all multiplications first to not reduce precision, and round the division up as we want to avoid
-        // large rates. Note that these are regular integer multiplications and divisions, not fixed point.
-        uint256 dailyRate = endValue > currentValue
-            ? Math.divUp(Math.mul(1 days, endValue), Math.mul(currentValue, duration))
-            : Math.divUp(Math.mul(1 days, currentValue), Math.mul(endValue, duration));
-        _require(dailyRate <= _MAX_AMP_UPDATE_DAILY_RATE, Errors.AMP_RATE_TOO_HIGH);
-
-        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
-    }
-
-    /**
-     * @dev Stops the amplification parameter change process, keeping the current value.
-     */
-    function stopAmplificationParameterUpdate() external authenticate {
-        (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
-        _require(isUpdating, Errors.AMP_NO_ONGOING_UPDATE);
-
-        _setAmplificationData(currentValue);
-    }
-
-    function _setAmplificationData(uint256 value) private {
-        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
-        emit AmpUpdateStopped(value);
-    }
-
-    function _setAmplificationData(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) private {
-        _storeAmplificationData(startValue, endValue, startTime, endTime);
-        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
-    }
-
-    function _storeAmplificationData(
-        uint256 startValue,
-        uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) private {
-        _packedAmplificationData =
-            WordCodec.encodeUint(startValue, _AMP_START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
-            WordCodec.encodeUint(endValue, _AMP_END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH) |
-            WordCodec.encodeUint(startTime, _AMP_START_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH) |
-            WordCodec.encodeUint(endTime, _AMP_END_TIME_OFFSET, _AMP_TIMESTAMP_BIT_LENGTH);
-    }
-
     // Helpers
 
     /**
@@ -1319,14 +1184,11 @@ contract StablePhantomPool is IRateProvider, BaseGeneralPool, StablePoolStorage,
         override(
             // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
             BasePool,
-            BasePoolAuthorization
+            BasePoolAuthorization,
+            StablePoolAmplification
         )
         returns (bool)
     {
-        return
-            (actionId == getActionId(this.setTokenRateCacheDuration.selector)) ||
-            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
     }
 }
