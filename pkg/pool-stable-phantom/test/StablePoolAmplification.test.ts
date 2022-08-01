@@ -11,6 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('StablePoolAmplification', () => {
   let owner: SignerWithAddress, admin: SignerWithAddress, other: SignerWithAddress;
@@ -18,6 +19,7 @@ describe('StablePoolAmplification', () => {
 
   const AMP_PRECISION = 1e3;
   const AMPLIFICATION_PARAMETER = bn(200);
+  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   sharedBeforeEach('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();
@@ -258,6 +260,27 @@ describe('StablePoolAmplification', () => {
         itReverts();
       });
     });
+
+    context('with a delegated owner', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool(DELEGATE_OWNER);
+        caller = other;
+      });
+
+      context('when the sender is allowed', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          const startAmpChangePermission = await actionId(pool, 'startAmplificationParameterUpdate');
+          const stopAmpChangePermission = await actionId(pool, 'stopAmplificationParameterUpdate');
+          await vault.grantPermissionsGlobally([startAmpChangePermission, stopAmpChangePermission], other);
+        });
+
+        itStartsAnAmpUpdateCorrectly();
+      });
+
+      context('when the sender is not allowed', () => {
+        itReverts();
+      });
+    });
   });
 
   describe('stopAmplificationParameterUpdate', () => {
@@ -330,6 +353,27 @@ describe('StablePoolAmplification', () => {
       });
 
       context('when the sender is allowed', () => {
+        itStopsAnAmpUpdateCorrectly();
+      });
+
+      context('when the sender is not allowed', () => {
+        itReverts();
+      });
+    });
+
+    context('with a delegated owner', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool(DELEGATE_OWNER);
+        caller = other;
+      });
+
+      context('when the sender is allowed', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          const startAmpChangePermission = await actionId(pool, 'startAmplificationParameterUpdate');
+          const stopAmpChangePermission = await actionId(pool, 'stopAmplificationParameterUpdate');
+          await vault.grantPermissionsGlobally([startAmpChangePermission, stopAmpChangePermission], other);
+        });
+
         itStopsAnAmpUpdateCorrectly();
       });
 
