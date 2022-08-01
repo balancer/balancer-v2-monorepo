@@ -31,6 +31,7 @@ import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "./StablePoolAmplification.sol";
 import "./StablePoolStorage.sol";
+import "./StablePoolRates.sol";
 import "./StableMath.sol";
 
 /**
@@ -51,6 +52,7 @@ contract StablePhantomPool is
     BaseGeneralPool,
     StablePoolStorage,
     StablePoolAmplification,
+    StablePoolRates,
     ProtocolFeeCache
 {
     using FixedPoint for uint256;
@@ -65,18 +67,6 @@ contract StablePhantomPool is
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
-
-    // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // The "old rate" field is used for precise protocol fee calculation, to ensure that token yield is only
-    // "taxed" once. The data structure is as follows:
-    //
-    // [ expires | duration | old rate | current rate ]
-    // [ uint32  |  uint32  |  uint96  |   uint96     ]
-
-    mapping(IERC20 => bytes32) private _tokenRateCaches;
-
-    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
-    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
     // To track protocol fees, we measure and store the value of the invariant after every join and exit.
     // All invariant growth that happens between join and exit events is due to swap fees and yield.
@@ -118,29 +108,12 @@ contract StablePhantomPool is
             params.bufferPeriodDuration,
             params.owner
         )
-        StablePoolStorage(
-            _insertSorted(params.tokens, IERC20(this)),
-            params.rateProviders,
-            params.exemptFromYieldProtocolFeeFlags
-        )
+        StablePoolStorage(_extractStorageParams(params))
         StablePoolAmplification(params.amplificationParameter)
+        StablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
-        InputHelpers.ensureInputLengthMatch(
-            params.tokens.length,
-            params.rateProviders.length,
-            params.tokenRateCacheDurations.length
-        );
-
-        for (uint256 i = 0; i < params.tokens.length; i++) {
-            if (params.rateProviders[i] != IRateProvider(0)) {
-                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-
-                // Initialize the old rates as well, in case they are referenced before the first join.
-                _updateOldRate(params.tokens[i]);
-            }
-        }
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -926,12 +899,6 @@ contract StablePhantomPool is
         if (totalTokens > 5 && _hasCacheEntry(5)) _updateOldRate(_getToken5());
     }
 
-    // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
-    function _updateOldRate(IERC20 token) private {
-        bytes32 cache = _tokenRateCaches[token];
-        _tokenRateCaches[token] = cache.updateOldRate();
-    }
-
     /**
      * @dev Apply the token ratios to a set of balances, optionally adjusting for exempt yield tokens.
      * The `balances` array is assumed to include BPT to ensure that token indices align.
@@ -1055,23 +1022,6 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev Internal function to update a token rate cache for a known provider and duration.
-     * It trusts the given values, and does not perform any checks.
-     */
-    function _updateTokenRateCache(
-        IERC20 token,
-        IRateProvider provider,
-        uint256 duration
-    ) private {
-        uint256 rate = provider.getRate();
-        bytes32 cache = _tokenRateCaches[token];
-
-        _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
-
-        emit TokenRateCacheUpdated(token, rate);
-    }
-
-    /**
      * @dev Caches the rates of all tokens if necessary
      */
     function _cacheTokenRatesIfNecessary() internal {
@@ -1170,6 +1120,29 @@ contract StablePhantomPool is
         for (uint256 i = 0; i < toMutate.length; ++i) {
             toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
+    }
+
+    // Translate parameters to avoid stack-too-deep issues in the constructor
+    function _extractRatesParams(NewPoolParams memory params)
+        private
+        pure
+        returns (StablePoolRates.RatesParams memory)
+    {
+        return StablePoolRates.RatesParams(params.tokens, params.rateProviders, params.tokenRateCacheDurations);
+    }
+
+    // Translate parameters to avoid stack-too-deep issues in the constructor
+    function _extractStorageParams(NewPoolParams memory params)
+        private
+        view
+        returns (StablePoolStorage.StorageParams memory)
+    {
+        return
+            StablePoolStorage.StorageParams(
+                _insertSorted(params.tokens, IERC20(this)),
+                params.rateProviders,
+                params.exemptFromYieldProtocolFeeFlags
+            );
     }
 
     // Permissioned functions

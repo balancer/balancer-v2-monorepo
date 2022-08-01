@@ -25,6 +25,12 @@ import "./StableMath.sol";
 abstract contract StablePoolStorage is BasePool {
     using FixedPoint for uint256;
 
+    struct StorageParams {
+        IERC20[] registeredTokens;
+        IRateProvider[] tokenRateProviders;
+        bool[] exemptFromYieldProtocolFeeFlags;
+    }
+
     // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
     // is therefore _MIN_TOKENS + 1.
     uint256 private constant _MIN_TOKENS = 2;
@@ -70,38 +76,34 @@ abstract contract StablePoolStorage is BasePool {
     // The flag will always be false for the BPT token.
     uint256 private immutable _exemptFromYieldProtocolFeeTokens;
 
-    constructor(
-        IERC20[] memory registeredTokens,
-        IRateProvider[] memory tokenRateProviders,
-        bool[] memory exemptFromYieldProtocolFeeFlags
-    ) {
+    constructor(StorageParams memory params) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
         // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total
         // tokens for this contract is actually three, including the BPT).
-        uint256 totalTokens = registeredTokens.length;
+        uint256 totalTokens = params.registeredTokens.length;
         _require(totalTokens > _MIN_TOKENS, Errors.MIN_TOKENS);
         InputHelpers.ensureInputLengthMatch(
             totalTokens - 1,
-            tokenRateProviders.length,
-            exemptFromYieldProtocolFeeFlags.length
+            params.tokenRateProviders.length,
+            params.exemptFromYieldProtocolFeeFlags.length
         );
 
         _totalTokens = totalTokens;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = registeredTokens[0];
-        _token1 = registeredTokens[1];
-        _token2 = registeredTokens[2];
-        _token3 = totalTokens > 3 ? registeredTokens[3] : IERC20(0);
-        _token4 = totalTokens > 4 ? registeredTokens[4] : IERC20(0);
-        _token5 = totalTokens > 5 ? registeredTokens[5] : IERC20(0);
+        _token0 = params.registeredTokens[0];
+        _token1 = params.registeredTokens[1];
+        _token2 = params.registeredTokens[2];
+        _token3 = totalTokens > 3 ? params.registeredTokens[3] : IERC20(0);
+        _token4 = totalTokens > 4 ? params.registeredTokens[4] : IERC20(0);
+        _token5 = totalTokens > 5 ? params.registeredTokens[5] : IERC20(0);
 
-        _scalingFactor0 = _computeScalingFactor(registeredTokens[0]);
-        _scalingFactor1 = _computeScalingFactor(registeredTokens[1]);
-        _scalingFactor2 = _computeScalingFactor(registeredTokens[2]);
-        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(registeredTokens[3]) : 0;
-        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(registeredTokens[4]) : 0;
-        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(registeredTokens[5]) : 0;
+        _scalingFactor0 = _computeScalingFactor(params.registeredTokens[0]);
+        _scalingFactor1 = _computeScalingFactor(params.registeredTokens[1]);
+        _scalingFactor2 = _computeScalingFactor(params.registeredTokens[2]);
+        _scalingFactor3 = totalTokens > 3 ? _computeScalingFactor(params.registeredTokens[3]) : 0;
+        _scalingFactor4 = totalTokens > 4 ? _computeScalingFactor(params.registeredTokens[4]) : 0;
+        _scalingFactor5 = totalTokens > 5 ? _computeScalingFactor(params.registeredTokens[5]) : 0;
 
         // The Vault keeps track of all Pool tokens in a specific order: we need to know what the index of BPT is in
         // this ordering to be able to identify it when balances arrays are received. Since the tokens array is sorted,
@@ -109,8 +111,8 @@ abstract contract StablePoolStorage is BasePool {
         // See `IVault.getPoolTokens()` for more information regarding token ordering.
         uint256 bptIndex;
         for (
-            bptIndex = registeredTokens.length - 1;
-            bptIndex > 0 && registeredTokens[bptIndex] > IERC20(this);
+            bptIndex = params.registeredTokens.length - 1;
+            bptIndex > 0 && params.registeredTokens[bptIndex] > IERC20(this);
             bptIndex--
         ) {
             // solhint-disable-previous-line no-empty-blocks
@@ -121,23 +123,23 @@ abstract contract StablePoolStorage is BasePool {
         // reference them by token index in the full base tokens plus BPT set (i.e. the tokens the Pool registers). Due
         // to immutable variables requiring an explicit assignment instead of defaulting to an empty value, it is
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
-        IRateProvider[] memory rateProviders = new IRateProvider[](registeredTokens.length);
+        IRateProvider[] memory rateProviders = new IRateProvider[](params.registeredTokens.length);
 
         // Do the same with exemptFromYieldProtocolFeeFlags
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
         uint256 exemptFlagBitmap;
 
-        for (uint256 i = 0; i < registeredTokens.length; ++i) {
+        for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
             if (i < bptIndex) {
-                rateProviders[i] = tokenRateProviders[i];
-                if (exemptFromYieldProtocolFeeFlags[i]) {
+                rateProviders[i] = params.tokenRateProviders[i];
+                if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
                     exemptFlagBitmap += 1 << i;
                 }
             } else if (i != bptIndex) {
-                rateProviders[i] = tokenRateProviders[i - 1];
-                if (exemptFromYieldProtocolFeeFlags[i - 1]) {
+                rateProviders[i] = params.tokenRateProviders[i - 1];
+                if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
                     exemptFlagBitmap += 1 << i;
                 }
