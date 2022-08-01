@@ -188,7 +188,7 @@ export const executeDelays: DelayData[] = [
   },
   {
     actionId: VotingEscrowDelegationProxy.actionId('VotingEscrowDelegationProxy', 'setDelegation(address)'),
-    newDelay: 7 * DAY,
+    newDelay: 14 * DAY,
   },
 ];
 
