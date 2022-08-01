@@ -5,7 +5,13 @@ import { BigNumber, Contract } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { advanceTime, currentTimestamp, DAY, setNextBlockTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import {
+  advanceTime,
+  advanceToTimestamp,
+  currentTimestamp,
+  DAY,
+  setNextBlockTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -44,7 +50,7 @@ describe('StablePoolAmplification', () => {
           const itUpdatesAmpCorrectly = (newAmp: BigNumber) => {
             const increasing = AMPLIFICATION_PARAMETER.lt(newAmp);
 
-            context('when there was no previous ongoing update', () => {
+            context('when there is no ongoing update', () => {
               it('starts changing the amp', async () => {
                 await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
 
@@ -78,7 +84,7 @@ describe('StablePoolAmplification', () => {
                 expect(isUpdating).to.be.false;
               });
 
-              it('emits an event', async () => {
+              it('emits an AmpUpdateStarted event', async () => {
                 const receipt = await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
 
                 expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStarted', {
@@ -94,7 +100,7 @@ describe('StablePoolAmplification', () => {
               });
             });
 
-            context('when there was a previous ongoing update', () => {
+            context('when there is an ongoing update', () => {
               sharedBeforeEach('start change', async () => {
                 await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
 
@@ -103,50 +109,37 @@ describe('StablePoolAmplification', () => {
                 expect(beforeStop.isUpdating).to.be.true;
               });
 
-              it('starting again reverts', async () => {
+              it('trying to start another update reverts', async () => {
                 await expect(pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime)).to.be.revertedWith(
                   'AMP_ONGOING_UPDATE'
                 );
               });
 
-              it('can stop', async () => {
-                const beforeStop = await pool.getAmplificationParameter();
+              context('after the ongoing update is stopped', () => {
+                let ampValueAfterStop: BigNumber;
 
-                await pool.connect(owner).stopAmplificationParameterUpdate();
-
-                const afterStop = await pool.getAmplificationParameter();
-                expect(afterStop.value).to.be.equalWithError(beforeStop.value, 0.001);
-                expect(afterStop.isUpdating).to.be.false;
-              });
-
-              it('stopping emits an event', async () => {
-                const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
-                expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStopped');
-              });
-
-              it('stopping does not emit an AmpUpdateStarted event', async () => {
-                const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
-                expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStarted');
-              });
-
-              it('can start after stop', async () => {
-                await pool.connect(owner).stopAmplificationParameterUpdate();
-                const afterStop = await pool.getAmplificationParameter();
-
-                const newEndTime = (await currentTimestamp()).add(DAY * 2);
-                const startReceipt = await pool.connect(owner).startAmplificationParameterUpdate(newAmp, newEndTime);
-                const now = await currentTimestamp();
-                expectEvent.inReceipt(await startReceipt.wait(), 'AmpUpdateStarted', {
-                  endValue: newAmp.mul(AMP_PRECISION),
-                  startTime: now,
-                  endTime: newEndTime,
+                sharedBeforeEach('stop change', async () => {
+                  await pool.connect(owner).stopAmplificationParameterUpdate();
+                  const ampState = await pool.getAmplificationParameter();
+                  ampValueAfterStop = ampState.value;
                 });
 
-                await advanceTime(duration / 3);
+                it('the new update can be started', async () => {
+                  const newEndTime = (await currentTimestamp()).add(DAY * 2);
+                  const startReceipt = await pool.connect(owner).startAmplificationParameterUpdate(newAmp, newEndTime);
+                  const now = await currentTimestamp();
+                  expectEvent.inReceipt(await startReceipt.wait(), 'AmpUpdateStarted', {
+                    endValue: newAmp.mul(AMP_PRECISION),
+                    startTime: now,
+                    endTime: newEndTime,
+                  });
 
-                const afterStart = await pool.getAmplificationParameter();
-                expect(afterStart.isUpdating).to.be.true;
-                expect(afterStart.value).to.be[increasing ? 'gt' : 'lt'](afterStop.value);
+                  await advanceTime(duration / 3);
+
+                  const afterStart = await pool.getAmplificationParameter();
+                  expect(afterStart.isUpdating).to.be.true;
+                  expect(afterStart.value).to.be[increasing ? 'gt' : 'lt'](ampValueAfterStop);
+                });
               });
             });
           };
@@ -248,6 +241,59 @@ describe('StablePoolAmplification', () => {
         await expect(
           pool.connect(other).startAmplificationParameterUpdate(AMPLIFICATION_PARAMETER, DAY)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+  });
+
+  describe('stopAmplificationParameterUpdate', () => {
+    context('when there is an ongoing update', () => {
+      sharedBeforeEach('start change', async () => {
+        const newAmp = AMPLIFICATION_PARAMETER.mul(2);
+        const duration = DAY * 2;
+
+        const startTime = (await currentTimestamp()).add(100);
+        await setNextBlockTimestamp(startTime);
+        const endTime = startTime.add(duration);
+
+        await pool.connect(owner).startAmplificationParameterUpdate(newAmp, endTime);
+
+        await advanceTime(duration / 3);
+        const beforeStop = await pool.getAmplificationParameter();
+        expect(beforeStop.isUpdating).to.be.true;
+      });
+
+      it('stops the amp factor from updating', async () => {
+        const beforeStop = await pool.getAmplificationParameter();
+
+        await pool.connect(owner).stopAmplificationParameterUpdate();
+
+        const afterStop = await pool.getAmplificationParameter();
+        expect(afterStop.value).to.be.equalWithError(beforeStop.value, 0.001);
+        expect(afterStop.isUpdating).to.be.false;
+
+        await advanceTime(30 * DAY);
+
+        const muchLaterAfterStop = await pool.getAmplificationParameter();
+        expect(muchLaterAfterStop.value).to.be.equal(afterStop.value);
+        expect(muchLaterAfterStop.isUpdating).to.be.false;
+      });
+
+      it('emits an AmpUpdateStopped event', async () => {
+        const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
+        expectEvent.inReceipt(await receipt.wait(), 'AmpUpdateStopped');
+      });
+
+      it('does not emit an AmpUpdateStarted event', async () => {
+        const receipt = await pool.connect(owner).stopAmplificationParameterUpdate();
+        expectEvent.notEmitted(await receipt.wait(), 'AmpUpdateStarted');
+      });
+    });
+
+    context('when there is no ongoing update', () => {
+      it('reverts', async () => {
+        await expect(pool.connect(owner).stopAmplificationParameterUpdate()).to.be.revertedWith(
+          'AMP_NO_ONGOING_UPDATE'
+        );
       });
     });
   });
