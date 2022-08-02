@@ -51,14 +51,30 @@ function _revert(uint256 errorCode) pure {
         errorCode := div(errorCode, 10)
         let hundreds := add(mod(errorCode, 10), 0x30)
 
+        errorCode := div(errorCode, 10)
+        let thousandsNum := mod(errorCode, 10)
+
         // With the individual characters, we can now construct the full string. The "BAL#" part is a known constant
         // (0x42414c23): we simply shift this by 24 (to provide space for the 3 bytes of the error code), and add the
         // characters to it, each shifted by a multiple of 8.
         // The revert reason is then shifted left by 200 bits (256 minus the length of the string, 7 characters * 8 bits
         // per character = 56) to locate it in the most significant part of the 256 slot (the beginning of a byte
         // array).
+        // If the thousands digit is non-zero, we shift everything by 8 bits to make room for the thousands digit.
 
-        let revertReason := shl(200, add(0x42414c23000000, add(add(units, shl(8, tenths)), shl(16, hundreds))))
+        let revertLength
+        let revertReason
+        switch thousandsNum
+            case 0 {
+                revertLength := 7
+                revertReason := shl(200, add(0x42414c23000000, add(add(units, shl(8, tenths)), shl(16, hundreds))))
+            }
+            default {
+                let thousands := add(thousandsNum, 0x30)
+                revertLength := 8
+                revertReason := shl(192, add(0x42414c2300000000, add(add(add(units, shl(8, tenths)), shl(16, hundreds)), shl(24, thousands))))
+            }
+
 
         // We can now encode the reason in memory, which can be safely overwritten as we're about to revert. The encoded
         // message will have the following layout:
@@ -69,8 +85,8 @@ function _revert(uint256 errorCode) pure {
         mstore(0x0, 0x08c379a000000000000000000000000000000000000000000000000000000000)
         // Next is the offset to the location of the string, which will be placed immediately after (20 bytes away).
         mstore(0x04, 0x0000000000000000000000000000000000000000000000000000000000000020)
-        // The string length is fixed: 7 characters.
-        mstore(0x24, 7)
+        // The string length is either: 7 or 8 characters.
+        mstore(0x24, revertLength)
         // Finally, the string itself is stored.
         mstore(0x44, revertReason)
 
