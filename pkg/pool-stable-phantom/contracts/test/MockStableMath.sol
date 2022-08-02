@@ -66,7 +66,7 @@ contract MockStableMath {
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) external pure returns (uint256, uint256) {
+    ) external pure returns (uint256) {
         return StableMath._calcBptOutGivenExactTokensIn(amp, balances, amountsIn, bptTotalSupply, swapFee);
     }
 
@@ -77,7 +77,7 @@ contract MockStableMath {
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) external pure returns (uint256, uint256) {
+    ) external pure returns (uint256) {
         return
             StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptAmountOut, bptTotalSupply, swapFee);
     }
@@ -89,7 +89,7 @@ contract MockStableMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) external pure returns (uint256, uint256) {
+    ) external pure returns (uint256) {
         return StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptAmountIn, bptTotalSupply, swapFee);
     }
 
@@ -107,7 +107,7 @@ contract MockStableMath {
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 swapFee
-    ) external pure returns (uint256, uint256) {
+    ) external pure returns (uint256) {
         return StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, swapFee);
     }
 }
