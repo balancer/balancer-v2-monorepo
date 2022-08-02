@@ -536,7 +536,8 @@ contract StablePhantomPool is
         }
 
         // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, amountsIn, FixedPoint.add);
+        // amountsIn returned from specific join functions has BPT added back in for the Vault
+        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
 
         // Pass in the post-join balances to reset the protocol fee basis.
         _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
@@ -675,7 +676,8 @@ contract StablePhantomPool is
         }
 
         // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
+        // amountsOut returned from specific exit functions has BPT added back in for the Vault
+        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
 
         // Pass in the post-exit balances to reset the protocol fee basis.
         _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
