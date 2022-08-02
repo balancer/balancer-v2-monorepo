@@ -62,18 +62,20 @@ describe('StablePoolStorage', () => {
       tokens = await TokenList.create(numberOfTokens, { sorted: true, varyDecimals: true });
     });
 
-    const rateProviders: string[] = [];
-    const exemptFromYieldProtocolFeeFlags: boolean[] = [];
+    let rateProviders: string[] = [];
+    let exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(
       tokens: TokenList,
       numRateProviders = tokens.length,
       numExemptFlags = tokens.length
     ): Promise<void> {
+      rateProviders = [];
       for (let i = 0; i < numRateProviders; i++) {
         rateProviders[i] = (await deploy('v2-pool-utils/MockRateProvider')).address;
       }
 
+      exemptFromYieldProtocolFeeFlags = [];
       for (let i = 0; i < numExemptFlags; i++) {
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
