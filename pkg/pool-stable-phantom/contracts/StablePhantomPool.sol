@@ -1169,8 +1169,6 @@ contract StablePhantomPool is
         uint256[] memory arguments,
         function(uint256, uint256) pure returns (uint256) mutation
     ) private pure {
-        InputHelpers.ensureInputLengthMatch(toMutate.length, arguments.length);
-
         for (uint256 i = 0; i < toMutate.length; ++i) {
             toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
