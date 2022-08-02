@@ -962,7 +962,7 @@ contract StablePhantomPool is
         // Note that the pre-join/exit invariant is *not* the invariant from the last join,
         // but computed from the balances before this particular join/exit.
 
-        uint256 protocolSwapFeePercentage = 5e17; // getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
 
         if (protocolSwapFeePercentage > 0) {
             uint256 invariantGrowthRatio = postJoinExitInvariant > preJoinExitInvariant
