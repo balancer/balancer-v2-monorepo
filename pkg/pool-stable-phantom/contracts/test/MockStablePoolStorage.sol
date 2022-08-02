@@ -51,6 +51,18 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _addBptIndex(index);
     }
 
+    function dropBptItem(uint256[] memory amounts) external view returns (uint256[] memory) {
+        return _dropBptItem(amounts);
+    }
+
+    function addBptItem(uint256[] memory amounts, uint256 bptAmount)
+        external
+        view
+        returns (uint256[] memory amountsWithBpt)
+    {
+        return _addBptItem(amounts, bptAmount);
+    }
+
     /**
      * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
      */

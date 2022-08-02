@@ -188,6 +188,22 @@ describe('StablePoolStorage', () => {
       });
     });
 
+    describe('dropBptItem', () => {
+      let bptIndex: number;
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool(tokens);
+        bptIndex = await pool.getBptIndex();
+      });
+
+      it("drops the element at the BPT's index", async () => {
+        const array = Array.from({ length: tokens.length + 1 }).map((_, i) => bn(i));
+
+        const expectedArray = array.slice();
+        expectedArray.splice(bptIndex, 1);
+        expect(await pool.dropBptItem(array)).to.be.deep.eq(expectedArray);
+      });
+    });
+
     describe('addBptIndex', () => {
       let bptIndex: number;
       sharedBeforeEach('deploy pool', async () => {
@@ -221,6 +237,23 @@ describe('StablePoolStorage', () => {
         it('reverts', async () => {
           await expect(pool.addBptIndex(tokens.length)).to.be.revertedWith('OUT_OF_BOUNDS');
         });
+      });
+    });
+
+    describe('addBptItem', () => {
+      let bptIndex: number;
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool(tokens);
+        bptIndex = await pool.getBptIndex();
+      });
+
+      it("inserts expected element at the BPT's index", async () => {
+        const array = Array.from({ length: tokens.length }).map((_, i) => bn(i));
+        const insertedElement = bn(420);
+
+        const expectedArray = array.slice();
+        expectedArray.splice(bptIndex, 0, insertedElement);
+        expect(await pool.addBptItem(array, insertedElement)).to.be.deep.eq(expectedArray);
       });
     });
   }
