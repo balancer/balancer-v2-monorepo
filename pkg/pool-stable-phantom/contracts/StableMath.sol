@@ -400,33 +400,6 @@ library StableMath {
         return nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
     }
 
-    function _calcTokensOutGivenExactBptIn(
-        uint256[] memory balances,
-        uint256 bptAmountIn,
-        uint256 bptTotalSupply
-    ) internal pure returns (uint256[] memory) {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
-        // bpt = bptTotalSupply                                                                      //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-
-        return amountsOut;
-    }
-
     // This function calculates the balance of a given token (tokenIndex)
     // given all the other balances and the invariant
     function _getTokenBalanceGivenInvariantAndAllOtherBalances(
