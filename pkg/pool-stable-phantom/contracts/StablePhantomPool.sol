@@ -157,23 +157,6 @@ contract StablePhantomPool is
     // Swap Hooks
 
     /**
-     * @notice Top-level Vault hook for swaps.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onSwap(
-        SwapRequest memory swapRequest,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) public virtual override returns (uint256) {
-        _cacheTokenRatesIfNecessary();
-
-        return super.onSwap(swapRequest, balances, indexIn, indexOut);
-    }
-
-    /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
      * or a swap involving BPT, which is equivalent to a single token join or exit. Since one of the Pool's
      * tokens is the preminted BPT, we need to handle swaps where BPT is involved separately.
@@ -431,27 +414,6 @@ contract StablePhantomPool is
     // Join Hooks
 
     /**
-     * @notice Top-level Vault hook for joins.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
-        _cacheTokenRatesIfNecessary();
-
-        return
-            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
-
-    /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
      *
      * We take advantage of the fact that StablePools have an initialization step where BPT is minted to the first
@@ -617,30 +579,6 @@ contract StablePhantomPool is
     }
 
     // Exit Hooks
-
-    /**
-     * @notice Top-level Vault hook for exits.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
-        // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
-        if (!userData.isRecoveryModeExitKind()) {
-            _cacheTokenRatesIfNecessary();
-        }
-
-        return
-            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
 
     /**
      * @dev Support single- and multi-token exits, but not explicit proportional exits.
@@ -1071,6 +1009,16 @@ contract StablePhantomPool is
         _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
 
         emit TokenRateCacheUpdated(token, rate);
+    }
+
+    function _beforeSwapJoinExit() internal override {
+        super._beforeSwapJoinExit();
+
+        // Before the scaling factors are read, we must update the cached rates, as those will be used to compute the
+        // scaling factors.
+        // Note that this is not done in a recovery mode exit (since _beforeSwapjoinExit() is not called under those
+        // conditions), but this is fine as recovery mode exits are unaffected by scaling factors anyway.
+        _cacheTokenRatesIfNecessary();
     }
 
     /**
