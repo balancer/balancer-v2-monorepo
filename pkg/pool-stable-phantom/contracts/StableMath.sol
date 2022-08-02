@@ -204,7 +204,7 @@ library StableMath {
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256, uint256) {
+    ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
 
         // First loop calculates the sum of all token balances, which will be used to calculate
@@ -249,9 +249,9 @@ library StableMath {
 
         // If the invariant didn't increase for any reason, we simply don't mint BPT
         if (invariantRatio > FixedPoint.ONE) {
-            return (bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE), currentInvariant);
+            return bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE);
         } else {
-            return (0, currentInvariant);
+            return 0;
         }
     }
 
@@ -262,7 +262,7 @@ library StableMath {
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256, uint256) {
+    ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
         // Get the current invariant
@@ -295,7 +295,7 @@ library StableMath {
         uint256 nonTaxableAmount = amountInWithoutFee.sub(taxableAmount);
 
         // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
-        return (nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage)), currentInvariant);
+        return nonTaxableAmount.add(taxableAmount.divUp(FixedPoint.ONE - swapFeePercentage));
     }
 
     /*
@@ -309,7 +309,7 @@ library StableMath {
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256, uint256) {
+    ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
 
         // First loop calculates the sum of all token balances, which will be used to calculate
@@ -353,7 +353,7 @@ library StableMath {
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
         // return amountBPTIn
-        return (bptTotalSupply.mulUp(invariantRatio.complement()), currentInvariant);
+        return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
     function _calcTokenOutGivenExactBptIn(
@@ -363,7 +363,7 @@ library StableMath {
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
-    ) internal pure returns (uint256, uint256) {
+    ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
         // Get the current and new invariants.
@@ -397,7 +397,7 @@ library StableMath {
         uint256 nonTaxableAmount = amountOutWithoutFee.sub(taxableAmount);
 
         // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
-        return (nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage)), currentInvariant);
+        return nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
     }
 
     function _calcTokensOutGivenExactBptIn(
