@@ -48,9 +48,7 @@ abstract contract StablePoolRates is StablePoolStorage {
     event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
     event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
-    constructor(StablePoolStorage.StorageParams memory storageParams, RatesParams memory rateParams)
-        StablePoolStorage(storageParams)
-    {
+    constructor(RatesParams memory rateParams) {
         InputHelpers.ensureInputLengthMatch(
             rateParams.tokens.length,
             rateParams.rateProviders.length,

@@ -108,7 +108,8 @@ contract StablePhantomPool is
             params.owner
         )
         StablePoolAmplification(params.amplificationParameter)
-        StablePoolRates(_extractStorageParams(params), _extractRatesParams(params))
+        StablePoolStorage(_extractStorageParams(params))
+        StablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         // solhint-disable-previous-line no-empty-blocks
