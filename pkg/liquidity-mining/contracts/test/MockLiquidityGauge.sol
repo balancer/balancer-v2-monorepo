@@ -15,11 +15,36 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-contract MockLiquidityGauge {
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
+
+// solhint-disable func-name-mixedcase
+
+contract MockLiquidityGauge is ILiquidityGauge {
     // solhint-disable-next-line var-name-mixedcase
     address public lp_token;
+    bool private _isKilled;
 
     constructor(address pool) {
         lp_token = pool;
+    }
+
+    function integrate_fraction(address) external view override returns (uint256) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function user_checkpoint(address) external override returns (bool) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function is_killed() external view override returns (bool) {
+        return _isKilled;
+    }
+
+    function killGauge() external override {
+        _isKilled = true;
+    }
+
+    function unkillGauge() external override {
+        _isKilled = false;
     }
 }
