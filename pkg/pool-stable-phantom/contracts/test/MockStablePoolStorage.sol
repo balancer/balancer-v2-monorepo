@@ -43,6 +43,14 @@ contract MockStablePoolStorage is StablePoolStorage {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function skipBptIndex(uint256 index) external view returns (uint256) {
+        return _skipBptIndex(index);
+    }
+
+    function addBptIndex(uint256 index) external view returns (uint256) {
+        return _addBptIndex(index);
+    }
+
     /**
      * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
      */

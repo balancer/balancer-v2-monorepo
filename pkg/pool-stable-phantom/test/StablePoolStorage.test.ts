@@ -149,5 +149,77 @@ describe('StablePoolStorage', () => {
         });
       });
     });
+
+    describe('skipBptIndex', () => {
+      let bptIndex: number;
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool(tokens);
+        bptIndex = await pool.getBptIndex();
+      });
+
+      context('when passing index < bptIndex', () => {
+        it('returns index', async () => {
+          // Note that `bptIndex` could equal 0 which would invalidate this test.
+          // Unfortunately we can't control the position of BPT index however we run the test with a
+          // range of different pools so the probablity of it always sitting in the first position is slim.
+          for (let index = 0; index < bptIndex; index++) {
+            expect(await pool.skipBptIndex(index)).to.be.eq(index);
+          }
+        });
+      });
+
+      context('when passing index == bptIndex', () => {
+        it('reverts', async () => {
+          await expect(pool.skipBptIndex(bptIndex)).to.be.revertedWith('OUT_OF_BOUNDS');
+        });
+      });
+
+      context('when passing index > bptIndex', () => {
+        it('returns index - 1', async () => {
+          // Note that `bptIndex` could equal tokens.length + 1 which would invalidate this test.
+          // Unfortunately we can't control the position of BPT index however we run the test with a
+          // range of different pools so the probablity of it always sitting in the last position is slim.
+          for (let index = bptIndex + 1; index < tokens.length + 1; index++) {
+            expect(await pool.skipBptIndex(index)).to.be.eq(index - 1);
+          }
+        });
+      });
+    });
+
+    describe('addBptIndex', () => {
+      let bptIndex: number;
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool(tokens);
+        bptIndex = (await pool.getBptIndex()).toNumber();
+      });
+
+      context('when passing index < bptIndex', () => {
+        it('returns index', async () => {
+          // Note that `bptIndex` could equal 0 which would invalidate this test.
+          // Unfortunately we can't control the position of BPT index however we run the test with a
+          // range of different pools so the probablity of it always sitting in the first position is slim.
+          for (let index = 0; index < bptIndex; index++) {
+            expect(await pool.addBptIndex(index)).to.be.eq(index);
+          }
+        });
+      });
+
+      context('when passing index >= bptIndex', () => {
+        it('returns index + 1', async () => {
+          // Note that `bptIndex` could equal tokens.length + 1 which would invalidate this test.
+          // Unfortunately we can't control the position of BPT index however we run the test with a
+          // range of different pools so the probablity of it always sitting in the last position is slim.
+          for (let index = bptIndex; index < tokens.length; index++) {
+            expect(await pool.addBptIndex(index)).to.be.eq(index + 1);
+          }
+        });
+      });
+
+      context('when passing index >= tokens.length', () => {
+        it('reverts', async () => {
+          await expect(pool.addBptIndex(tokens.length)).to.be.revertedWith('OUT_OF_BOUNDS');
+        });
+      });
+    });
   }
 });
