@@ -14,44 +14,54 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
 
 /**
  * @title Stakeless Gauge Controller interface
  * @notice Manages checkpoints for registered stakeless gauges, allowing to perform mutiple checkpoints in a
  * single call.
- * @dev Supports Polygon, Arbitrum and Optimism stakeless root gauges. Gauges to be checkpointed need to be
- * registered (added) to the controller beforehand.
+ * @dev Supports Polygon, Arbitrum, Optimism, Gnosis and ZKSync stakeless root gauges. Gauges to be checkpointed need
+ * to be registered (added) to the controller beforehand.
  */
 interface IStakelessGaugeController {
-    enum GaugeType { POLYGON, ARBITRUM, OPTIMISM }
+
+    /**
+    * @dev Emitted when stakeless gauges are added to the controller.
+    */
+    event GaugesAdded(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] gauges);
+
+    /**
+    * @dev Emitted when stakeless gauges are removed from the controller.
+    */
+    event GaugesRemoved(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] gauges);
 
     /**
     * @dev Registers an array of gauges from the given type.
     * @param gaugeType - Type of the gauge.
     * @param gauges - Gauges to register.
     */
-    function addGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
+    function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
     * @dev De-registers an array of gauges from the given type.
     * @param gaugeType - Type of the gauge.
     * @param gauges - Gauges to de-register.
     */
-    function removeGauges(GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
+    function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
     * @dev Returns true if the given gauge was registered for the given type; false otherwise.
     * @param gaugeType - Type of the gauge.
     * @param gauge - Gauge to check.
     */
-    function hasGauge(GaugeType gaugeType, IStakelessGauge gauge) external view returns (bool);
+    function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge) external view returns (bool);
 
     /**
     * @dev Returns the amount of registered gauges for a given type.
     * @param gaugeType - Type of the gauge.
     */
-    function getTotalGauges(GaugeType gaugeType) external view returns (uint256);
+    function getTotalGauges(IGaugeAdder.GaugeType gaugeType) external view returns (uint256);
 
     /**
     * @dev Returns the gauge of a given type at the given index.
@@ -59,7 +69,7 @@ interface IStakelessGaugeController {
     * @param gaugeType - Type of the gauge.
     * @param index - Index of the registered gauge.
     */
-    function getGaugeAt(GaugeType gaugeType, uint256 index) external view returns (address);
+    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (address);
 
     /**
     * @dev Performs a checkpoint for all registered gauges above the given relative weight threshold.
