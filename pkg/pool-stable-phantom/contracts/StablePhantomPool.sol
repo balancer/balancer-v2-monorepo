@@ -314,6 +314,9 @@ contract StablePhantomPool is
                 : _downscaleUp(amountCalculated, scalingFactors[indexIn]);
     }
 
+    /**
+     * @dev This mutates balancesWithoutBpt so that they become the post-joinswap balances.
+     */
     function _doJoinSwap(
         bool isGivenIn,
         uint256 amount,
@@ -376,6 +379,9 @@ contract StablePhantomPool is
         return (amountIn, postJoinExitSupply);
     }
 
+    /**
+     * @dev This mutates balancesWithoutBpt so that they become the post-joinswap balances.
+     */
     function _doExitSwap(
         bool isGivenIn,
         uint256 amount,
@@ -608,7 +614,7 @@ contract StablePhantomPool is
         InputHelpers.ensureInputLengthMatch(balancesWithoutBpt.length, amountsIn.length);
 
         // The user-provided amountsIn is unscaled, so we address that.
-        _upscaleWithoutBpt(amountsIn, scalingFactors);
+        _upscaleArray(amountsIn, _dropBptItem(scalingFactors));
 
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
             currentAmp,
@@ -698,7 +704,7 @@ contract StablePhantomPool is
         InputHelpers.ensureInputLengthMatch(amountsOut.length, balancesWithoutBpt.length);
 
         // The user-provided amountsIn is unscaled, so we address that.
-        _upscaleWithoutBpt(amountsOut, scalingFactors);
+        _upscaleArray(amountsOut, _dropBptItem(scalingFactors));
 
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
