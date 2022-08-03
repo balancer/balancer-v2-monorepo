@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -103,11 +103,21 @@ describe('StablePoolStorage', () => {
           const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
           expectedScalingFactors.splice(bptIndex, 0, fp(1));
 
-          const scalingFactors = await pool.getScalingFactors();
+          const scalingFactors: BigNumber[] = await pool.getScalingFactors();
 
           // It also includes the BPT scaling factor
           expect(scalingFactors).to.have.lengthOf(numberOfTokens + 1);
           expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
+
+          // Also check the individual getters.
+          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
+          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => scalingFactors[i] ?? ZERO_ADDRESS);
+          expect(await pool.getScalingFactor0()).to.be.eq(paddedScalingFactors[0]);
+          expect(await pool.getScalingFactor1()).to.be.eq(paddedScalingFactors[1]);
+          expect(await pool.getScalingFactor2()).to.be.eq(paddedScalingFactors[2]);
+          expect(await pool.getScalingFactor3()).to.be.eq(paddedScalingFactors[3]);
+          expect(await pool.getScalingFactor4()).to.be.eq(paddedScalingFactors[4]);
+          expect(await pool.getScalingFactor5()).to.be.eq(paddedScalingFactors[5]);
         });
 
         it('sets the rate providers', async () => {

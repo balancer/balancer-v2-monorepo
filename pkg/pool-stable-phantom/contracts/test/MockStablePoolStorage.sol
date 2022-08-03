@@ -75,6 +75,30 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _tokenScalingFactor(token);
     }
 
+    function getScalingFactor0() external view returns (uint256) {
+        return _getScalingFactor0();
+    }
+
+    function getScalingFactor1() external view returns (uint256) {
+        return _getScalingFactor1();
+    }
+
+    function getScalingFactor2() external view returns (uint256) {
+        return _getScalingFactor2();
+    }
+
+    function getScalingFactor3() external view returns (uint256) {
+        return _getScalingFactor3();
+    }
+
+    function getScalingFactor4() external view returns (uint256) {
+        return _getScalingFactor4();
+    }
+
+    function getScalingFactor5() external view returns (uint256) {
+        return _getScalingFactor5();
+    }
+
     /**
      * @dev Overrides scaling factor getter to compute the tokens' rates.
      */
