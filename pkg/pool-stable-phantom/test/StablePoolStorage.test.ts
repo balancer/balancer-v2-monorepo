@@ -111,28 +111,6 @@ describe('StablePoolStorage', () => {
           expect(await pool.getToken5()).to.be.eq(expectedTokenAddresses[5]);
         });
 
-        it('sets the scaling factors', async () => {
-          const bptIndex = await pool.getBptIndex();
-          const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
-          expectedScalingFactors.splice(bptIndex, 0, fp(1));
-
-          const scalingFactors: BigNumber[] = await pool.getScalingFactors();
-
-          // It also includes the BPT scaling factor
-          expect(scalingFactors).to.have.lengthOf(numberOfTokens + 1);
-          expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
-
-          // Also check the individual getters.
-          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
-          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => scalingFactors[i] ?? ZERO_ADDRESS);
-          expect(await pool.getScalingFactor0()).to.be.eq(paddedScalingFactors[0]);
-          expect(await pool.getScalingFactor1()).to.be.eq(paddedScalingFactors[1]);
-          expect(await pool.getScalingFactor2()).to.be.eq(paddedScalingFactors[2]);
-          expect(await pool.getScalingFactor3()).to.be.eq(paddedScalingFactors[3]);
-          expect(await pool.getScalingFactor4()).to.be.eq(paddedScalingFactors[4]);
-          expect(await pool.getScalingFactor5()).to.be.eq(paddedScalingFactors[5]);
-        });
-
         it('sets the fee exemption flags correctly', async () => {
           for (let i = 0; i < numberOfTokens; i++) {
             // Initialized to true for even tokens
@@ -265,6 +243,44 @@ describe('StablePoolStorage', () => {
         const expectedArray = array.slice();
         expectedArray.splice(bptIndex, 0, insertedElement);
         expect(await pool.addBptItem(array, insertedElement)).to.be.deep.eq(expectedArray);
+      });
+    });
+
+    describe('scaling factors', () => {
+      let bptIndex: number;
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool(tokens);
+        bptIndex = await pool.getBptIndex();
+      });
+
+      describe('getScalingFactorX', () => {
+        it('returns the correct scaling factor', async () => {
+          const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
+          expectedScalingFactors.splice(bptIndex, 0, fp(1));
+
+          // Also check the individual getters.
+          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
+          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? ZERO_ADDRESS);
+          expect(await pool.getScalingFactor0()).to.be.eq(paddedScalingFactors[0]);
+          expect(await pool.getScalingFactor1()).to.be.eq(paddedScalingFactors[1]);
+          expect(await pool.getScalingFactor2()).to.be.eq(paddedScalingFactors[2]);
+          expect(await pool.getScalingFactor3()).to.be.eq(paddedScalingFactors[3]);
+          expect(await pool.getScalingFactor4()).to.be.eq(paddedScalingFactors[4]);
+          expect(await pool.getScalingFactor5()).to.be.eq(paddedScalingFactors[5]);
+        });
+      });
+
+      describe('getScalingFactors', () => {
+        it('returns the correct scaling factors', async () => {
+          const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
+          expectedScalingFactors.splice(bptIndex, 0, fp(1));
+
+          const scalingFactors: BigNumber[] = await pool.getScalingFactors();
+
+          // It also includes the BPT scaling factor
+          expect(scalingFactors).to.have.lengthOf(numberOfTokens + 1);
+          expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
+        });
       });
     });
 
