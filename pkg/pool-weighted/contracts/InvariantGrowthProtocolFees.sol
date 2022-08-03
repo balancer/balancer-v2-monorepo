@@ -42,18 +42,6 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     IRateProvider internal immutable _rateProvider5;
     IRateProvider internal immutable _rateProvider6;
     IRateProvider internal immutable _rateProvider7;
-    IRateProvider internal immutable _rateProvider8;
-    IRateProvider internal immutable _rateProvider9;
-    IRateProvider internal immutable _rateProvider10;
-    IRateProvider internal immutable _rateProvider11;
-    IRateProvider internal immutable _rateProvider12;
-    IRateProvider internal immutable _rateProvider13;
-    IRateProvider internal immutable _rateProvider14;
-    IRateProvider internal immutable _rateProvider15;
-    IRateProvider internal immutable _rateProvider16;
-    IRateProvider internal immutable _rateProvider17;
-    IRateProvider internal immutable _rateProvider18;
-    IRateProvider internal immutable _rateProvider19;
 
     constructor(IRateProvider[] memory rateProviders, uint256 numTokens) {
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
@@ -66,20 +54,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         _rateProvider5 = numTokens > 5 ? rateProviders[5] : IRateProvider(0);
         _rateProvider6 = numTokens > 6 ? rateProviders[6] : IRateProvider(0);
         _rateProvider7 = numTokens > 7 ? rateProviders[7] : IRateProvider(0);
-        _rateProvider8 = numTokens > 8 ? rateProviders[8] : IRateProvider(0);
-        _rateProvider9 = numTokens > 9 ? rateProviders[9] : IRateProvider(0);
-        _rateProvider10 = numTokens > 10 ? rateProviders[10] : IRateProvider(0);
-        _rateProvider11 = numTokens > 11 ? rateProviders[11] : IRateProvider(0);
-        _rateProvider12 = numTokens > 12 ? rateProviders[12] : IRateProvider(0);
-        _rateProvider13 = numTokens > 13 ? rateProviders[13] : IRateProvider(0);
-        _rateProvider14 = numTokens > 14 ? rateProviders[14] : IRateProvider(0);
-        _rateProvider15 = numTokens > 15 ? rateProviders[15] : IRateProvider(0);
-        _rateProvider16 = numTokens > 16 ? rateProviders[16] : IRateProvider(0);
-        _rateProvider17 = numTokens > 17 ? rateProviders[17] : IRateProvider(0);
-        _rateProvider18 = numTokens > 18 ? rateProviders[18] : IRateProvider(0);
-        _rateProvider19 = numTokens > 19 ? rateProviders[19] : IRateProvider(0);
 
-        // TODO: Initialize this here instead of checking inside each join/exit?
         _athRateProduct = 0;
     }
 
@@ -107,18 +82,6 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
             if (totalTokens > 5) { providers[5] = _rateProvider5; } else { return providers; }
             if (totalTokens > 6) { providers[6] = _rateProvider6; } else { return providers; }
             if (totalTokens > 7) { providers[7] = _rateProvider7; } else { return providers; }
-            if (totalTokens > 8) { providers[8] = _rateProvider8; } else { return providers; }
-            if (totalTokens > 9) { providers[9] = _rateProvider9; } else { return providers; }
-            if (totalTokens > 10) { providers[10] = _rateProvider10; } else { return providers; }
-            if (totalTokens > 11) { providers[11] = _rateProvider11; } else { return providers; }
-            if (totalTokens > 12) { providers[12] = _rateProvider12; } else { return providers; }
-            if (totalTokens > 13) { providers[13] = _rateProvider13; } else { return providers; }
-            if (totalTokens > 14) { providers[14] = _rateProvider14; } else { return providers; }
-            if (totalTokens > 15) { providers[15] = _rateProvider15; } else { return providers; }
-            if (totalTokens > 16) { providers[16] = _rateProvider16; } else { return providers; }
-            if (totalTokens > 17) { providers[17] = _rateProvider17; } else { return providers; }
-            if (totalTokens > 18) { providers[18] = _rateProvider18; } else { return providers; }
-            if (totalTokens > 19) { providers[19] = _rateProvider19; } else { return providers; }
         }
     }
 
@@ -147,18 +110,6 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
             if (totalTokens > 5) { rates[5] = _getRate(_rateProvider5); } else { return rates; }
             if (totalTokens > 6) { rates[6] = _getRate(_rateProvider6); } else { return rates; }
             if (totalTokens > 7) { rates[7] = _getRate(_rateProvider7); } else { return rates; }
-            if (totalTokens > 8) { rates[8] = _getRate(_rateProvider8); } else { return rates; }
-            if (totalTokens > 9) { rates[9] = _getRate(_rateProvider9); } else { return rates; }
-            if (totalTokens > 10) { rates[10] = _getRate(_rateProvider10); } else { return rates; }
-            if (totalTokens > 11) { rates[11] = _getRate(_rateProvider11); } else { return rates; }
-            if (totalTokens > 12) { rates[12] = _getRate(_rateProvider12); } else { return rates; }
-            if (totalTokens > 13) { rates[13] = _getRate(_rateProvider13); } else { return rates; }
-            if (totalTokens > 14) { rates[14] = _getRate(_rateProvider14); } else { return rates; }
-            if (totalTokens > 15) { rates[15] = _getRate(_rateProvider15); } else { return rates; }
-            if (totalTokens > 16) { rates[16] = _getRate(_rateProvider16); } else { return rates; }
-            if (totalTokens > 17) { rates[17] = _getRate(_rateProvider17); } else { return rates; }
-            if (totalTokens > 18) { rates[18] = _getRate(_rateProvider18); } else { return rates; }
-            if (totalTokens > 19) { rates[19] = _getRate(_rateProvider19); } else { return rates; }
         }
     }
 
