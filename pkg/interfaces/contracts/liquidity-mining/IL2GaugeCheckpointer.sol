@@ -18,60 +18,68 @@ import "./IGaugeAdder.sol";
 import "./IStakelessGauge.sol";
 
 /**
- * @title Stakeless Gauge Controller interface
- * @notice Manages checkpoints for registered stakeless gauges, allowing to perform mutiple checkpoints in a
- * single call.
+ * @title L2 Gauge Checkpointer interface
+ * @notice Manages checkpoints for L2 gauges, allowing to perform mutiple checkpoints in a single call.
  * @dev Supports Polygon, Arbitrum, Optimism, Gnosis and ZKSync stakeless root gauges. Gauges to be checkpointed need
- * to be registered (added) to the controller beforehand.
+ * to be added to the controller beforehand.
  */
-interface IStakelessGaugeController {
+interface IL2GaugeCheckpointer {
     /**
-     * @dev Emitted when stakeless gauges are added to the controller.
+     * @dev Emitted when a gauge is added to the checkpointer.
      */
-    event GaugesAdded(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] gauges);
+    event GaugeAdded(IGaugeAdder.GaugeType indexed gaugeType, IStakelessGauge indexed gauge);
 
     /**
-     * @dev Emitted when stakeless gauges are removed from the controller.
+     * @dev Emitted when a gauge is removed from the checkpointer.
      */
-    event GaugesRemoved(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] gauges);
+    event GaugeRemoved(IGaugeAdder.GaugeType indexed gaugeType, IStakelessGauge indexed gauge);
 
     /**
-     * @dev Registers an array of gauges from the given type.
+     * @dev Adds an array of gauges from the given type.
+     * Gauges added will be considered when performing checkpoints.
+     * The gauges to add should meet the following preconditions:
+     * - They must have been created in a valid GaugeFactory, according to GaugeAdder#isGaugeFromValidFactory.
+     * - They must exist in the GaugeController, according to GaugeController#gauge_exists.
+     * - They must not be killed.
+     * - They must not have been previously added to the checkpointer.
      * @param gaugeType - Type of the gauge.
-     * @param gauges - Gauges to register.
+     * @param gauges - Gauges to add.
      */
     function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
-     * @dev De-registers an array of gauges from the given type.
+     * @dev Removes an array of gauges from the given type.
+     * Removed gauges will not be considered when performing checkpoints. To remove gauges:
+     * - They must be killed.
+     * - They must have been previously added to the checkpointer.
      * @param gaugeType - Type of the gauge.
-     * @param gauges - Gauges to de-register.
+     * @param gauges - Gauges to remove.
      */
     function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
-     * @dev Returns true if the given gauge was registered for the given type; false otherwise.
+     * @dev Returns true if the given gauge was added for the given type; false otherwise.
      * @param gaugeType - Type of the gauge.
      * @param gauge - Gauge to check.
      */
     function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge) external view returns (bool);
 
     /**
-     * @dev Returns the amount of registered gauges for a given type.
+     * @dev Returns the amount of added gauges for a given type.
      * @param gaugeType - Type of the gauge.
      */
     function getTotalGauges(IGaugeAdder.GaugeType gaugeType) external view returns (uint256);
 
     /**
      * @dev Returns the gauge of a given type at the given index.
-     * Reverts if the index is greater than or equal to the amount of registered gauges for the given type.
+     * Reverts if the index is greater than or equal to the amount of added gauges for the given type.
      * @param gaugeType - Type of the gauge.
-     * @param index - Index of the registered gauge.
+     * @param index - Index of the added gauge.
      */
-    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (address);
+    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (IStakelessGauge);
 
     /**
-     * @dev Performs a checkpoint for all registered gauges above the given relative weight threshold.
+     * @dev Performs a checkpoint for all added gauges above the given relative weight threshold.
      * Reverts if the ETH sent in the call is not enough to cover bridge costs.
      * @param minRelativeWeight - Threshold to filter out gauges below it.
      */

@@ -17,20 +17,21 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IL2GaugeCheckpointer.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGaugeController.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
+import "../admin/GaugeAdder.sol";
 import "./arbitrum/ArbitrumRootGauge.sol";
 
 /**
- * @title Stakeless Gauge Controller
- * @notice Implements IStakelessGaugeController; refer to it for API documentation.
+ * @title L2 Gauge Checkpointer
+ * @notice Implements IL2GaugeCheckpointer; refer to it for API documentation.
  */
-contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard {
+contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(IGaugeAdder.GaugeType => EnumerableSet.AddressSet) private _gauges;
@@ -38,28 +39,24 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
 
-    constructor(
-        IAuthorizerAdaptor authorizerAdaptor,
-        IGaugeController gaugeController,
-        IGaugeAdder gaugeAdder
-    ) {
-        _authorizerAdaptor = authorizerAdaptor;
-        _gaugeController = gaugeController;
+    constructor(GaugeAdder gaugeAdder) {
         _gaugeAdder = gaugeAdder;
+        _gaugeController = gaugeAdder.getGaugeController();
+        _authorizerAdaptor = gaugeAdder.getAuthorizerAdaptor();
     }
 
-    modifier gaugeTypeChecked(IGaugeAdder.GaugeType gaugeType) {
+    modifier withValidGaugeType(IGaugeAdder.GaugeType gaugeType) {
         require(_isValidGaugeType(gaugeType), "Unsupported gauge type");
         _;
     }
 
     /**
-     * @dev See IStakelessGaugeController#addGauges.
+     * @dev See IL2GaugeCheckpointer#addGauges.
      */
     function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
-        gaugeTypeChecked(gaugeType)
+        withValidGaugeType(gaugeType)
     {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
@@ -72,106 +69,111 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
             require(_gaugeController.gauge_exists(address(gauge)), "Gauge does not exist in controller");
             require(!gauge.is_killed(), "Gauge was killed");
             require(gaugesForType.add(address(gauge)), "Gauge already present");
+
+            emit IL2GaugeCheckpointer.GaugeAdded(gaugeType, gauge);
         }
-        emit IStakelessGaugeController.GaugesAdded(gaugeType, gauges);
     }
 
     /**
-     * @dev See IStakelessGaugeController#removeGauges.
+     * @dev See IL2GaugeCheckpointer#removeGauges.
      */
     function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
-        gaugeTypeChecked(gaugeType)
+        withValidGaugeType(gaugeType)
     {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
+            // Gauges added must come from a valid factory and exist in the controller, and they can't be removed from
+            // them. Therefore, the only required check at this point is whether the gauge was killed.
             IStakelessGauge gauge = gauges[i];
             require(gauge.is_killed(), "Gauge was not killed");
             require(gaugesForType.remove(address(gauge)), "Gauge not present");
+
+            emit IL2GaugeCheckpointer.GaugeRemoved(gaugeType, gauge);
         }
-        emit IStakelessGaugeController.GaugesRemoved(gaugeType, gauges);
     }
 
     /**
-     * @dev See IStakelessGaugeController#hasGauge.
+     * @dev See IL2GaugeCheckpointer#hasGauge.
      */
     function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge)
         external
         view
         override
-        gaugeTypeChecked(gaugeType)
+        withValidGaugeType(gaugeType)
         returns (bool)
     {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
     /**
-     * @dev See IStakelessGaugeController#getTotalGauges.
+     * @dev See IL2GaugeCheckpointer#getTotalGauges.
      */
     function getTotalGauges(IGaugeAdder.GaugeType gaugeType)
         external
         view
         override
-        gaugeTypeChecked(gaugeType)
+        withValidGaugeType(gaugeType)
         returns (uint256)
     {
         return _gauges[gaugeType].length();
     }
 
     /**
-     * @dev See IStakelessGaugeController#getGaugeAt.
+     * @dev See IL2GaugeCheckpointer#getGaugeAt.
      */
     function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index)
         external
         view
         override
-        gaugeTypeChecked(gaugeType)
-        returns (address)
+        withValidGaugeType(gaugeType)
+        returns (IStakelessGauge)
     {
-        return _gauges[gaugeType].at(index);
+        return IStakelessGauge(_gauges[gaugeType].at(index));
     }
 
     /**
-     * @dev See IStakelessGaugeController#checkpointGaugesAboveRelativeWeight.
+     * @dev See IL2GaugeCheckpointer#checkpointGaugesAboveRelativeWeight.
      * Unspent ETH is sent back to sender.
      */
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable override nonReentrant {
-        (uint256 singleArbGaugeBridgeETH, uint256 totalArbBridgeETH) = _getArbitrumBridgeCosts();
-
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
 
-        _checkpointGauges(IGaugeAdder.GaugeType.Polygon, minRelativeWeight, currentPeriod, 0);
-        _checkpointGauges(IGaugeAdder.GaugeType.Arbitrum, minRelativeWeight, currentPeriod, singleArbGaugeBridgeETH);
-        _checkpointGauges(IGaugeAdder.GaugeType.Optimism, minRelativeWeight, currentPeriod, 0);
-        _checkpointGauges(IGaugeAdder.GaugeType.Gnosis, minRelativeWeight, currentPeriod, 0);
-        _checkpointGauges(IGaugeAdder.GaugeType.ZKSync, minRelativeWeight, currentPeriod, 0);
+        _checkpointGauges(IGaugeAdder.GaugeType.Polygon, minRelativeWeight, currentPeriod);
+        _checkpointGauges(IGaugeAdder.GaugeType.Arbitrum, minRelativeWeight, currentPeriod);
+        _checkpointGauges(IGaugeAdder.GaugeType.Optimism, minRelativeWeight, currentPeriod);
+        _checkpointGauges(IGaugeAdder.GaugeType.Gnosis, minRelativeWeight, currentPeriod);
+        _checkpointGauges(IGaugeAdder.GaugeType.ZKSync, minRelativeWeight, currentPeriod);
 
-        // transfer msg.value - total spent ETH back to sender.
-        // _getArbitrumBridgeCosts ensures the difference is always positive.
-        Address.sendValue(msg.sender, msg.value - totalArbBridgeETH);
+        // Send back any leftover ETH to the caller.
+        Address.sendValue(msg.sender, address(this).balance);
     }
 
     /**
-     * @dev Returns a tuple with the ETH cost to checkpoint an individual gauge, and the cost to checkpoint all gauges.
-     * Reverts if the transaction does not have enough ETH to cover the total cost of the operation.
+     * @dev Returns the ETH cost to checkpoint all gauges.
      */
-    function _getArbitrumBridgeCosts() private view returns (uint256, uint256) {
-        uint256 totalGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum].length();
-        if (totalGauges == 0) {
-            return (0, 0);
-        }
+    function getTotalBridgeCosts(uint256 minRelativeWeight) external view returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
+        uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
+        uint256 totalArbitrumGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum].length();
         EnumerableSet.AddressSet storage arbitrumGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum];
+        uint256 totalCost;
 
-        // We can do this cast safely because we check that the gauge was created from the ArbitrumRootGaugeFactory
-        // when we added it to the address set.
-        uint256 singleGaugeBridgeCost = ArbitrumRootGauge(arbitrumGauges.unchecked_at(0)).getTotalBridgeCost();
-        uint256 totalArbETH = singleGaugeBridgeCost * arbitrumGauges.length();
-        require(msg.value >= totalArbETH, "Not enough eth to cover arbitrum checkpoints");
-
-        return (singleGaugeBridgeCost, totalArbETH);
+        for (uint256 i = 0; i < totalArbitrumGauges; ++i) {
+            address gauge = arbitrumGauges.unchecked_at(i);
+            // Skip gauges that are below the threshold.
+            if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
+                continue;
+            } else {
+                // Cost per gauge is always the same, but getting the cost every time makes the code simpler,
+                // and this function is only to be used off-chain.
+                totalCost += ArbitrumRootGauge(gauge).getTotalBridgeCost();
+            }
+        }
+        return totalCost;
     }
 
     /**
@@ -179,19 +181,30 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
      * @param gaugeType - Type of the gauges to checkpoint.
      * @param minRelativeWeight - Threshold to filter out gauges below it.
      * @param currentPeriod - Current block time rounded down to the start of the week.
-     * @param costPerCheckpoint - Value in ETH to be spent for each gauge to checkpoint to cover bridging costs.
      * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
      */
     function _checkpointGauges(
         IGaugeAdder.GaugeType gaugeType,
         uint256 minRelativeWeight,
-        uint256 currentPeriod,
-        uint256 costPerCheckpoint
+        uint256 currentPeriod
     ) private {
-        uint256 totalGauges = _gauges[gaugeType].length();
-        EnumerableSet.AddressSet storage gaugeAddressSet = _gauges[gaugeType];
-        for (uint256 i = 0; i < totalGauges; ++i) {
-            address gauge = gaugeAddressSet.unchecked_at(i);
+        uint256 totalTypeGauges = _gauges[gaugeType].length();
+        if (totalTypeGauges == 0) {
+            // Return early if there's no work to be done.
+            return;
+        }
+
+        EnumerableSet.AddressSet storage typeGauges = _gauges[gaugeType];
+
+        // We can do this cast safely because we check that the gauge was created from the ArbitrumRootGaugeFactory
+        // when we added it to the address set. At this point, we have at least one gauge so unchecked_at(0) is valid.
+        // Moreover, the cost per gauge is always the same, so we don't need to call the getter for the cost every time.
+        uint256 costPerCheckpoint = gaugeType == IGaugeAdder.GaugeType.Arbitrum
+            ? ArbitrumRootGauge(typeGauges.unchecked_at(0)).getTotalBridgeCost()
+            : 0;
+
+        for (uint256 i = 0; i < totalTypeGauges; ++i) {
+            address gauge = typeGauges.unchecked_at(i);
             // Skip gauges that are below the threshold.
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
@@ -217,7 +230,10 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
      */
     function _isValidGaugeType(IGaugeAdder.GaugeType gaugeType) private pure returns (bool) {
         return
-            uint8(gaugeType) >= uint8(IGaugeAdder.GaugeType.Polygon) &&
-            uint8(gaugeType) <= uint8(IGaugeAdder.GaugeType.ZKSync);
+            gaugeType == IGaugeAdder.GaugeType.Polygon ||
+            gaugeType == IGaugeAdder.GaugeType.Arbitrum ||
+            gaugeType == IGaugeAdder.GaugeType.Optimism ||
+            gaugeType == IGaugeAdder.GaugeType.Gnosis ||
+            gaugeType == IGaugeAdder.GaugeType.ZKSync;
     }
 }

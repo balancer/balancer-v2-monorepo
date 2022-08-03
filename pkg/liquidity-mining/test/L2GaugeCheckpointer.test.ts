@@ -12,12 +12,12 @@ import { anyAddressArray } from '@balancer-labs/v2-helpers/src/address';
 
 import { GaugeType } from './GaugeAdder.test';
 
-describe('StakelessGaugeController', () => {
+describe('L2GaugeCheckpointer', () => {
   let vault: Vault;
   let adaptor: Contract;
   let gaugeController: Contract;
   let gaugeAdder: Contract;
-  let stakelessGaugeController: Contract;
+  let L2GaugeCheckpointer: Contract;
 
   const gauges = new Map<number, string[]>();
   let admin: SignerWithAddress;
@@ -47,7 +47,7 @@ describe('StakelessGaugeController', () => {
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
     // Allow all gauge types in the controller.
-    await gaugeController.add_type('0x', Math.max(...GAUGE_TYPES) + 1);
+    await Promise.all(GAUGE_TYPES.concat(UNSUPPORTED_GAUGE_TYPES).map(() => gaugeController.add_type('0x', 0)));
 
     // Gauge factories creation: one per gauge type.
     const gaugeFactories = await Promise.all(
@@ -79,9 +79,9 @@ describe('StakelessGaugeController', () => {
     testGauges = gauges.get(testGaugeType)!;
   });
 
-  sharedBeforeEach('deploy stakeless gauge controller', async () => {
-    stakelessGaugeController = await deploy('StakelessGaugeController', {
-      args: [adaptor.address, gaugeController.address, gaugeAdder.address],
+  sharedBeforeEach('deploy L2 gauge checkpointer', async () => {
+    L2GaugeCheckpointer = await deploy('L2GaugeCheckpointer', {
+      args: [gaugeAdder.address],
     });
   });
 
@@ -89,7 +89,7 @@ describe('StakelessGaugeController', () => {
     context('with invalid gauge type', () => {
       it('reverts', async () => {
         for (const gaugeType of UNSUPPORTED_GAUGE_TYPES) {
-          await expect(stakelessGaugeController.addGauges(gaugeType, testGauges)).to.be.revertedWith(
+          await expect(L2GaugeCheckpointer.addGauges(gaugeType, testGauges)).to.be.revertedWith(
             'Unsupported gauge type'
           );
         }
@@ -99,7 +99,7 @@ describe('StakelessGaugeController', () => {
     context('with incorrect factory and controller setup', () => {
       it('reverts', async () => {
         const otherGaugeType = GaugeType.Optimism;
-        await expect(stakelessGaugeController.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
+        await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
           'Gauge does not come from valid factory'
         );
       });
@@ -107,7 +107,7 @@ describe('StakelessGaugeController', () => {
 
     context('with correct factory and wrong controller setup', () => {
       it('reverts', async () => {
-        await expect(stakelessGaugeController.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
+        await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
           'Gauge does not exist in controller'
         );
       });
@@ -119,8 +119,11 @@ describe('StakelessGaugeController', () => {
       });
 
       it('adds stakeless gauges correctly using only the correct gauge type', async () => {
-        const tx = await stakelessGaugeController.addGauges(testGaugeType, testGauges);
-        expectEvent.inReceipt(await tx.wait(), 'GaugesAdded', { gaugeType: testGaugeType, gauges: testGauges });
+        const tx = await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
+        const receipt = await tx.wait();
+        for (const testGauge of testGauges) {
+          expectEvent.inReceipt(receipt, 'GaugeAdded', { gaugeType: testGaugeType, gauge: testGauge });
+        }
         await expectGaugesAdded(testGaugeType, testGauges);
         // Check that all remaining types are empty.
         await Promise.all(
@@ -137,19 +140,17 @@ describe('StakelessGaugeController', () => {
         });
 
         it('reverts', async () => {
-          await expect(stakelessGaugeController.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
-            'Gauge was killed'
-          );
+          await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith('Gauge was killed');
         });
       });
 
       context('when one of the gauges to add is already present', () => {
         sharedBeforeEach('add gauges beforehand', async () => {
-          await stakelessGaugeController.addGauges(testGaugeType, testGauges);
+          await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
         });
 
         it('reverts', async () => {
-          await expect(stakelessGaugeController.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
+          await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
             'Gauge already present'
           );
         });
@@ -160,12 +161,12 @@ describe('StakelessGaugeController', () => {
   describe('remove gauges', () => {
     sharedBeforeEach('add gauges to regular and stakeless gauge controllers', async () => {
       await addGaugesToController(gaugeController, testGauges);
-      await stakelessGaugeController.addGauges(testGaugeType, testGauges);
+      await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
     });
 
     context('with stakeless gauges that were not killed', () => {
       it('reverts', async () => {
-        await expect(stakelessGaugeController.removeGauges(testGaugeType, testGauges)).to.be.revertedWith(
+        await expect(L2GaugeCheckpointer.removeGauges(testGaugeType, testGauges)).to.be.revertedWith(
           'Gauge was not killed'
         );
       });
@@ -178,15 +179,18 @@ describe('StakelessGaugeController', () => {
       });
 
       it('removes added stakeless gauges correctly ', async () => {
-        expect(await stakelessGaugeController.getTotalGauges(testGaugeType)).to.be.eq(GAUGES_PER_TYPE);
-        const tx = await stakelessGaugeController.removeGauges(testGaugeType, testGauges);
-        expectEvent.inReceipt(await tx.wait(), 'GaugesRemoved', { gaugeType: testGaugeType, gauges: testGauges });
-        expect(await stakelessGaugeController.getTotalGauges(testGaugeType)).to.be.eq(0);
+        expect(await L2GaugeCheckpointer.getTotalGauges(testGaugeType)).to.be.eq(GAUGES_PER_TYPE);
+        const tx = await L2GaugeCheckpointer.removeGauges(testGaugeType, testGauges);
+        const receipt = await tx.wait();
+        for (const testGauge of testGauges) {
+          expectEvent.inReceipt(receipt, 'GaugeRemoved', { gaugeType: testGaugeType, gauge: testGauge });
+        }
+        expect(await L2GaugeCheckpointer.getTotalGauges(testGaugeType)).to.be.eq(0);
       });
 
       it('reverts if gauges were not present', async () => {
         const otherGaugeType = GaugeType.Optimism;
-        await expect(stakelessGaugeController.removeGauges(otherGaugeType, testGauges)).to.be.revertedWith(
+        await expect(L2GaugeCheckpointer.removeGauges(otherGaugeType, testGauges)).to.be.revertedWith(
           'Gauge not present'
         );
       });
@@ -194,9 +198,9 @@ describe('StakelessGaugeController', () => {
   });
 
   async function expectGaugesAdded(gaugeType: GaugeType, gauges: string[]) {
-    expect(await stakelessGaugeController.getTotalGauges(gaugeType)).to.be.eq(gauges.length);
+    expect(await L2GaugeCheckpointer.getTotalGauges(gaugeType)).to.be.eq(gauges.length);
     for (let i = 0; i < gauges.length; i++) {
-      expect(await stakelessGaugeController.getGaugeAt(gaugeType, i)).to.be.eq(gauges[i]);
+      expect(await L2GaugeCheckpointer.getGaugeAt(gaugeType, i)).to.be.eq(gauges[i]);
     }
   }
 
