@@ -14,8 +14,8 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
+import "./IGaugeAdder.sol";
+import "./IStakelessGauge.sol";
 
 /**
  * @title Stakeless Gauge Controller interface
