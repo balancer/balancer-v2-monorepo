@@ -25,56 +25,55 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.
  * to be registered (added) to the controller beforehand.
  */
 interface IStakelessGaugeController {
-
     /**
-    * @dev Emitted when stakeless gauges are added to the controller.
-    */
+     * @dev Emitted when stakeless gauges are added to the controller.
+     */
     event GaugesAdded(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] gauges);
 
     /**
-    * @dev Emitted when stakeless gauges are removed from the controller.
-    */
+     * @dev Emitted when stakeless gauges are removed from the controller.
+     */
     event GaugesRemoved(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] gauges);
 
     /**
-    * @dev Registers an array of gauges from the given type.
-    * @param gaugeType - Type of the gauge.
-    * @param gauges - Gauges to register.
-    */
+     * @dev Registers an array of gauges from the given type.
+     * @param gaugeType - Type of the gauge.
+     * @param gauges - Gauges to register.
+     */
     function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
-    * @dev De-registers an array of gauges from the given type.
-    * @param gaugeType - Type of the gauge.
-    * @param gauges - Gauges to de-register.
-    */
+     * @dev De-registers an array of gauges from the given type.
+     * @param gaugeType - Type of the gauge.
+     * @param gauges - Gauges to de-register.
+     */
     function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges) external;
 
     /**
-    * @dev Returns true if the given gauge was registered for the given type; false otherwise.
-    * @param gaugeType - Type of the gauge.
-    * @param gauge - Gauge to check.
-    */
+     * @dev Returns true if the given gauge was registered for the given type; false otherwise.
+     * @param gaugeType - Type of the gauge.
+     * @param gauge - Gauge to check.
+     */
     function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge) external view returns (bool);
 
     /**
-    * @dev Returns the amount of registered gauges for a given type.
-    * @param gaugeType - Type of the gauge.
-    */
+     * @dev Returns the amount of registered gauges for a given type.
+     * @param gaugeType - Type of the gauge.
+     */
     function getTotalGauges(IGaugeAdder.GaugeType gaugeType) external view returns (uint256);
 
     /**
-    * @dev Returns the gauge of a given type at the given index.
-    * Reverts if the index is greater than or equal to the amount of registered gauges for the given type.
-    * @param gaugeType - Type of the gauge.
-    * @param index - Index of the registered gauge.
-    */
+     * @dev Returns the gauge of a given type at the given index.
+     * Reverts if the index is greater than or equal to the amount of registered gauges for the given type.
+     * @param gaugeType - Type of the gauge.
+     * @param index - Index of the registered gauge.
+     */
     function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index) external view returns (address);
 
     /**
-    * @dev Performs a checkpoint for all registered gauges above the given relative weight threshold.
-    * Reverts if the ETH sent in the call is not enough to cover bridge costs.
-    * @param minRelativeWeight - Threshold to filter out gauges below it.
-    */
+     * @dev Performs a checkpoint for all registered gauges above the given relative weight threshold.
+     * Reverts if the ETH sent in the call is not enough to cover bridge costs.
+     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     */
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
 }
