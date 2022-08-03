@@ -98,6 +98,19 @@ describe('StablePoolStorage', () => {
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
         });
 
+        it('sets the tokens', async () => {
+          const bpt = await Token.deployedAt(pool);
+          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
+
+          const expectedTokenAddresses = Array.from({ length: 6 }, (_, i) => allTokens.addresses[i] ?? ZERO_ADDRESS);
+          expect(await pool.getToken0()).to.be.eq(expectedTokenAddresses[0]);
+          expect(await pool.getToken1()).to.be.eq(expectedTokenAddresses[1]);
+          expect(await pool.getToken2()).to.be.eq(expectedTokenAddresses[2]);
+          expect(await pool.getToken3()).to.be.eq(expectedTokenAddresses[3]);
+          expect(await pool.getToken4()).to.be.eq(expectedTokenAddresses[4]);
+          expect(await pool.getToken5()).to.be.eq(expectedTokenAddresses[5]);
+        });
+
         it('sets the scaling factors', async () => {
           const bptIndex = await pool.getBptIndex();
           const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));

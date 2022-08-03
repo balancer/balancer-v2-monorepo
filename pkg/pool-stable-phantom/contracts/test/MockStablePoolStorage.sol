@@ -75,6 +75,30 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _tokenScalingFactor(token);
     }
 
+    function getToken0() external view returns (IERC20) {
+        return _getToken0();
+    }
+
+    function getToken1() external view returns (IERC20) {
+        return _getToken1();
+    }
+
+    function getToken2() external view returns (IERC20) {
+        return _getToken2();
+    }
+
+    function getToken3() external view returns (IERC20) {
+        return _getToken3();
+    }
+
+    function getToken4() external view returns (IERC20) {
+        return _getToken4();
+    }
+
+    function getToken5() external view returns (IERC20) {
+        return _getToken5();
+    }
+
     function getScalingFactor0() external view returns (uint256) {
         return _getScalingFactor0();
     }
