@@ -99,6 +99,30 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _getToken5();
     }
 
+    function getRateProvider0() external view returns (IRateProvider) {
+        return _getRateProvider0();
+    }
+
+    function getRateProvider1() external view returns (IRateProvider) {
+        return _getRateProvider1();
+    }
+
+    function getRateProvider2() external view returns (IRateProvider) {
+        return _getRateProvider2();
+    }
+
+    function getRateProvider3() external view returns (IRateProvider) {
+        return _getRateProvider3();
+    }
+
+    function getRateProvider4() external view returns (IRateProvider) {
+        return _getRateProvider4();
+    }
+
+    function getRateProvider5() external view returns (IRateProvider) {
+        return _getRateProvider5();
+    }
+
     function getScalingFactor0() external view returns (uint256) {
         return _getScalingFactor0();
     }

@@ -143,6 +143,16 @@ describe('StablePoolStorage', () => {
           // BPT does not have a rate provider
           expect(providers).to.have.lengthOf(numberOfTokens + 1);
           expect(providers).to.be.deep.equal(expectedRateProviders);
+
+          // Also check the individual getters.
+          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
+          const paddedRateProviders = Array.from({ length: 6 }, (_, i) => providers[i] ?? ZERO_ADDRESS);
+          expect(await pool.getRateProvider0()).to.be.eq(paddedRateProviders[0]);
+          expect(await pool.getRateProvider1()).to.be.eq(paddedRateProviders[1]);
+          expect(await pool.getRateProvider2()).to.be.eq(paddedRateProviders[2]);
+          expect(await pool.getRateProvider3()).to.be.eq(paddedRateProviders[3]);
+          expect(await pool.getRateProvider4()).to.be.eq(paddedRateProviders[4]);
+          expect(await pool.getRateProvider5()).to.be.eq(paddedRateProviders[5]);
         });
 
         it('sets the fee exemption flags correctly', async () => {
