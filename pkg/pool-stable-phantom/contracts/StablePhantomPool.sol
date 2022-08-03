@@ -149,6 +149,22 @@ contract StablePhantomPool is
         return _getMinimumBpt();
     }
 
+    // BasePool hook
+
+    /**
+     * @dev Override base pool hook invoked before any swap, join, or exit to ensure rates are updated before
+     * the operation.
+     */
+    function _beforeSwapJoinExit() internal override {
+        super._beforeSwapJoinExit();
+
+        // Before the scaling factors are read, we must update the cached rates, as those will be used to compute the
+        // scaling factors.
+        // Note that this is not done in a recovery mode exit (since _beforeSwapjoinExit() is not called under those
+        // conditions), but this is fine as recovery mode exits are unaffected by scaling factors anyway.
+        _cacheTokenRatesIfNecessary();
+    }
+
     // Swap Hooks
 
     /**
