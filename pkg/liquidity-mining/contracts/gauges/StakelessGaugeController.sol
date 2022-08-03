@@ -56,10 +56,11 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
     /**
      * @dev See IStakelessGaugeController#addGauges.
      */
-    function addGauges(
-        IGaugeAdder.GaugeType gaugeType,
-        IStakelessGauge[] calldata gauges
-    ) external override gaugeTypeChecked(gaugeType) {
+    function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
+        external
+        override
+        gaugeTypeChecked(gaugeType)
+    {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
@@ -78,10 +79,11 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
     /**
      * @dev See IStakelessGaugeController#removeGauges.
      */
-    function removeGauges(
-        IGaugeAdder.GaugeType gaugeType,
-        IStakelessGauge[] calldata gauges
-    ) external override gaugeTypeChecked(gaugeType) {
+    function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
+        external
+        override
+        gaugeTypeChecked(gaugeType)
+    {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
         for (uint256 i = 0; i < gauges.length; i++) {
@@ -95,29 +97,39 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
     /**
      * @dev See IStakelessGaugeController#hasGauge.
      */
-    function hasGauge(
-        IGaugeAdder.GaugeType gaugeType,
-        IStakelessGauge gauge
-    ) external view override gaugeTypeChecked(gaugeType) returns (bool) {
+    function hasGauge(IGaugeAdder.GaugeType gaugeType, IStakelessGauge gauge)
+        external
+        view
+        override
+        gaugeTypeChecked(gaugeType)
+        returns (bool)
+    {
         return _gauges[gaugeType].contains(address(gauge));
     }
 
     /**
      * @dev See IStakelessGaugeController#getTotalGauges.
      */
-    function getTotalGauges(
-        IGaugeAdder.GaugeType gaugeType
-    ) external view override gaugeTypeChecked(gaugeType) returns (uint256) {
+    function getTotalGauges(IGaugeAdder.GaugeType gaugeType)
+        external
+        view
+        override
+        gaugeTypeChecked(gaugeType)
+        returns (uint256)
+    {
         return _gauges[gaugeType].length();
     }
 
     /**
      * @dev See IStakelessGaugeController#getGaugeAt.
      */
-    function getGaugeAt(
-        IGaugeAdder.GaugeType gaugeType,
-        uint256 index
-    ) external view override gaugeTypeChecked(gaugeType) returns (address) {
+    function getGaugeAt(IGaugeAdder.GaugeType gaugeType, uint256 index)
+        external
+        view
+        override
+        gaugeTypeChecked(gaugeType)
+        returns (address)
+    {
         return _gauges[gaugeType].at(index);
     }
 
@@ -163,13 +175,13 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
     }
 
     /**
-    * @dev Performs checkpoints for all gauges of the given type whose relative weight is at least the specified one.
-    * @param gaugeType - Type of the gauges to checkpoint.
-    * @param minRelativeWeight - Threshold to filter out gauges below it.
-    * @param currentPeriod - Current block time rounded down to the start of the week.
-    * @param costPerCheckpoint - Value in ETH to be spent for each gauge to checkpoint to cover bridging costs.
-    * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
-    */
+     * @dev Performs checkpoints for all gauges of the given type whose relative weight is at least the specified one.
+     * @param gaugeType - Type of the gauges to checkpoint.
+     * @param minRelativeWeight - Threshold to filter out gauges below it.
+     * @param currentPeriod - Current block time rounded down to the start of the week.
+     * @param costPerCheckpoint - Value in ETH to be spent for each gauge to checkpoint to cover bridging costs.
+     * This method doesn't check whether the caller transferred enough ETH to cover the whole operation.
+     */
     function _checkpointGauges(
         IGaugeAdder.GaugeType gaugeType,
         uint256 minRelativeWeight,
@@ -204,7 +216,8 @@ contract StakelessGaugeController is IStakelessGaugeController, ReentrancyGuard 
      * @dev Returns true if gauge type is Polygon, Arbitrum, Optimism, Gnosis or ZKSync; false otherwise.
      */
     function _isValidGaugeType(IGaugeAdder.GaugeType gaugeType) private pure returns (bool) {
-        return uint8(gaugeType) >= uint8(IGaugeAdder.GaugeType.Polygon)
-            && uint8(gaugeType) <= uint8(IGaugeAdder.GaugeType.ZKSync);
+        return
+            uint8(gaugeType) >= uint8(IGaugeAdder.GaugeType.Polygon) &&
+            uint8(gaugeType) <= uint8(IGaugeAdder.GaugeType.ZKSync);
     }
 }
