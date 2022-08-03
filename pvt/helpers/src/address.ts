@@ -7,14 +7,14 @@ import { ANY_ADDRESS } from './constants';
  * @param amount Number of addresses to create.
  */
 export const anyAddressArray = (seed: number, amount: number): string[] => {
-  let addresses: string[] = [];
+  const addresses: string[] = [];
   let lastSeed = ethers.utils.hexlify(seed);
 
   for (let i = 0; i < amount; i++) {
-    let address: string = ethers.utils.keccak256(lastSeed).slice(0, ANY_ADDRESS.length);
+    const address: string = ethers.utils.keccak256(lastSeed).slice(0, ANY_ADDRESS.length);
     addresses.push(address);
     lastSeed = address;
   }
 
   return addresses;
-}
+};
