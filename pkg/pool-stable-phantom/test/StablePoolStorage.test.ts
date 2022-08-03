@@ -57,6 +57,7 @@ describe('StablePoolStorage', () => {
 
   function itBehavesAsStablePoolStorage(numberOfTokens: number): void {
     let pool: Contract, tokens: TokenList;
+    let bptIndex: number;
 
     sharedBeforeEach('deploy tokens', async () => {
       tokens = await TokenList.create(numberOfTokens, { sorted: true, varyDecimals: true });
@@ -70,27 +71,30 @@ describe('StablePoolStorage', () => {
       numRateProviders = tokens.length,
       numExemptFlags = tokens.length
     ): Promise<void> {
-      rateProviders = [];
+      const newRateProviders = [];
       for (let i = 0; i < numRateProviders; i++) {
-        rateProviders[i] = (await deploy('v2-pool-utils/MockRateProvider')).address;
+        newRateProviders[i] = (await deploy('v2-pool-utils/MockRateProvider')).address;
       }
 
-      exemptFromYieldProtocolFeeFlags = [];
+      const newExemptFromYieldProtocolFeeFlags = [];
       for (let i = 0; i < numExemptFlags; i++) {
-        exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
+        newExemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
       pool = await deploy('MockStablePoolStorage', {
-        args: [vault.address, tokens.addresses, rateProviders, exemptFromYieldProtocolFeeFlags],
+        args: [vault.address, tokens.addresses, newRateProviders, newExemptFromYieldProtocolFeeFlags],
       });
+      bptIndex = (await pool.getBptIndex()).toNumber();
+      rateProviders = newRateProviders;
+      exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
+
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool(tokens);
+    });
 
     describe('constructor', () => {
       context('when the constructor succeeds', () => {
-        sharedBeforeEach('deploy pool', async () => {
-          await deployPool(tokens);
-        });
-
         it('sets BPT index correctly', async () => {
           const bpt = await Token.deployedAt(pool);
           const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
@@ -143,12 +147,6 @@ describe('StablePoolStorage', () => {
 
     describe('array helpers', () => {
       describe('skipBptIndex', () => {
-        let bptIndex: number;
-        sharedBeforeEach('deploy pool', async () => {
-          await deployPool(tokens);
-          bptIndex = await pool.getBptIndex();
-        });
-
         context('when passing index < bptIndex', () => {
           it('returns index', async () => {
             // Note that `bptIndex` could equal 0 which would invalidate this test.
@@ -179,12 +177,6 @@ describe('StablePoolStorage', () => {
       });
 
       describe('dropBptItem', () => {
-        let bptIndex: number;
-        sharedBeforeEach('deploy pool', async () => {
-          await deployPool(tokens);
-          bptIndex = await pool.getBptIndex();
-        });
-
         it("drops the element at the BPT's index", async () => {
           const array = Array.from({ length: tokens.length + 1 }).map((_, i) => bn(i));
 
@@ -195,12 +187,6 @@ describe('StablePoolStorage', () => {
       });
 
       describe('addBptIndex', () => {
-        let bptIndex: number;
-        sharedBeforeEach('deploy pool', async () => {
-          await deployPool(tokens);
-          bptIndex = (await pool.getBptIndex()).toNumber();
-        });
-
         context('when passing index < bptIndex', () => {
           it('returns index', async () => {
             // Note that `bptIndex` could equal 0 which would invalidate this test.
@@ -231,12 +217,6 @@ describe('StablePoolStorage', () => {
       });
 
       describe('addBptItem', () => {
-        let bptIndex: number;
-        sharedBeforeEach('deploy pool', async () => {
-          await deployPool(tokens);
-          bptIndex = await pool.getBptIndex();
-        });
-
         it("inserts expected element at the BPT's index", async () => {
           const array = Array.from({ length: tokens.length }).map((_, i) => bn(i));
           const insertedElement = bn(420);
@@ -249,12 +229,6 @@ describe('StablePoolStorage', () => {
     });
 
     describe('scaling factors', () => {
-      let bptIndex: number;
-      sharedBeforeEach('deploy pool', async () => {
-        await deployPool(tokens);
-        bptIndex = await pool.getBptIndex();
-      });
-
       describe('getScalingFactorX', () => {
         it('returns the correct scaling factor', async () => {
           const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
@@ -287,12 +261,6 @@ describe('StablePoolStorage', () => {
     });
 
     describe('rate providers', () => {
-      let bptIndex: number;
-      sharedBeforeEach('deploy pool', async () => {
-        await deployPool(tokens);
-        bptIndex = await pool.getBptIndex();
-      });
-
       describe('getRateProviderX', () => {
         it('returns the expected rate provider', async () => {
           const expectedRateProviders = rateProviders.slice();
