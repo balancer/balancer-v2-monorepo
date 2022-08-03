@@ -6,7 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -131,28 +131,6 @@ describe('StablePoolStorage', () => {
           expect(await pool.getScalingFactor3()).to.be.eq(paddedScalingFactors[3]);
           expect(await pool.getScalingFactor4()).to.be.eq(paddedScalingFactors[4]);
           expect(await pool.getScalingFactor5()).to.be.eq(paddedScalingFactors[5]);
-        });
-
-        it('sets the rate providers', async () => {
-          const bptIndex = await pool.getBptIndex();
-          const expectedRateProviders = rateProviders;
-          expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-
-          const providers = await pool.getRateProviders();
-
-          // BPT does not have a rate provider
-          expect(providers).to.have.lengthOf(numberOfTokens + 1);
-          expect(providers).to.be.deep.equal(expectedRateProviders);
-
-          // Also check the individual getters.
-          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
-          const paddedRateProviders = Array.from({ length: 6 }, (_, i) => providers[i] ?? ZERO_ADDRESS);
-          expect(await pool.getRateProvider0()).to.be.eq(paddedRateProviders[0]);
-          expect(await pool.getRateProvider1()).to.be.eq(paddedRateProviders[1]);
-          expect(await pool.getRateProvider2()).to.be.eq(paddedRateProviders[2]);
-          expect(await pool.getRateProvider3()).to.be.eq(paddedRateProviders[3]);
-          expect(await pool.getRateProvider4()).to.be.eq(paddedRateProviders[4]);
-          expect(await pool.getRateProvider5()).to.be.eq(paddedRateProviders[5]);
         });
 
         it('sets the fee exemption flags correctly', async () => {
@@ -287,6 +265,66 @@ describe('StablePoolStorage', () => {
         const expectedArray = array.slice();
         expectedArray.splice(bptIndex, 0, insertedElement);
         expect(await pool.addBptItem(array, insertedElement)).to.be.deep.eq(expectedArray);
+      });
+    });
+
+    describe('rate providers', () => {
+      let bptIndex: number;
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool(tokens);
+        bptIndex = await pool.getBptIndex();
+      });
+
+      describe('getRateProviderX', () => {
+        it('returns the expected rate provider', async () => {
+          const expectedRateProviders = rateProviders.slice();
+          expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
+          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
+          const paddedRateProviders = Array.from({ length: 6 }, (_, i) => expectedRateProviders[i] ?? ZERO_ADDRESS);
+
+          expect(await pool.getRateProvider0()).to.be.eq(paddedRateProviders[0]);
+          expect(await pool.getRateProvider1()).to.be.eq(paddedRateProviders[1]);
+          expect(await pool.getRateProvider2()).to.be.eq(paddedRateProviders[2]);
+          expect(await pool.getRateProvider3()).to.be.eq(paddedRateProviders[3]);
+          expect(await pool.getRateProvider4()).to.be.eq(paddedRateProviders[4]);
+          expect(await pool.getRateProvider5()).to.be.eq(paddedRateProviders[5]);
+        });
+      });
+
+      describe('getRateProvider', () => {
+        context('when called with a registered token', () => {
+          it('returns the rate provider for the provided token', async () => {
+            const bpt = await Token.deployedAt(pool);
+
+            const registeredTokens = new TokenList([...tokens.tokens, bpt]).sort();
+            const expectedRateProviders = rateProviders.slice();
+            expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
+
+            for (const [index, token] of registeredTokens.addresses.entries()) {
+              expect(await pool.getRateProvider(token)).to.be.eq(expectedRateProviders[index]);
+            }
+          });
+        });
+
+        context('when called with a non-registered token', () => {
+          it('reverts', async () => {
+            const nonRegisteredToken = ANY_ADDRESS;
+            await expect(pool.getRateProvider(nonRegisteredToken)).to.be.revertedWith('INVALID_TOKEN');
+          });
+        });
+      });
+
+      describe('getRateProviders', () => {
+        it('returns the expected rate providers', async () => {
+          const expectedRateProviders = rateProviders.slice();
+          // BPT does not have a rate provider
+          expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
+
+          const providers = await pool.getRateProviders();
+
+          expect(providers).to.have.lengthOf(numberOfTokens + 1);
+          expect(providers).to.be.deep.equal(expectedRateProviders);
+        });
       });
     });
   }
