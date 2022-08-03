@@ -26,7 +26,9 @@ contract MockStablePoolStorage is StablePoolStorage {
         IRateProvider[] memory tokenRateProviders,
         bool[] memory exemptFromYieldProtocolFeeFlags
     )
-        StablePoolStorage(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
+        StablePoolStorage(
+            StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
+        )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
