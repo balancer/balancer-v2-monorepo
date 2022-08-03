@@ -80,7 +80,8 @@ describe('StablePoolStorage', () => {
     ): Promise<void> {
       const newRateProviders = [];
       for (let i = 0; i < numRateProviders; i++) {
-        newRateProviders[i] = (await deploy('v2-pool-utils/MockRateProvider')).address;
+        const hasRateProvider = Math.random() < 0.5;
+        newRateProviders[i] = hasRateProvider ? (await deploy('v2-pool-utils/MockRateProvider')).address : ZERO_ADDRESS;
       }
 
       const newExemptFromYieldProtocolFeeFlags = [];
