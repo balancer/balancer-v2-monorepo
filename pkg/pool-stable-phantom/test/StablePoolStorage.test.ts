@@ -116,10 +116,16 @@ describe('StablePoolStorage', () => {
         });
 
         it('sets the fee exemption flags correctly', async () => {
-          for (let i = 0; i < numberOfTokens; i++) {
+          const bpt = await Token.deployedAt(pool);
+          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
+
+          const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
+          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
+
+          for (let i = 0; i < allTokens.length; i++) {
             // Initialized to true for even tokens
-            const expectedFlag = i % 2 == 0;
-            const token = tokens.get(i);
+            const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
+            const token = allTokens.get(i);
 
             expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
           }
