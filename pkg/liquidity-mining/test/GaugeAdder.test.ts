@@ -9,12 +9,15 @@ import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-enum GaugeType {
+export enum GaugeType {
   LiquidityMiningCommittee = 0,
   veBAL,
   Ethereum,
   Polygon,
   Arbitrum,
+  Optimism,
+  Gnosis,
+  ZkSync,
 }
 
 describe('GaugeAdder', () => {
