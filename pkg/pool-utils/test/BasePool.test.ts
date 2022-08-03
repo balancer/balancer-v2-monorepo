@@ -812,6 +812,22 @@ describe('BasePool', function () {
 
           itExitsViaRecoveryModeCorrectly();
         });
+
+        context('when _beforeSwapJoinExit() reverts', () => {
+          sharedBeforeEach(async () => {
+            await pool.setFailBeforeSwapJoinExit(true);
+          });
+
+          it('normal joins revert', async () => {
+            await expect(normalJoin()).to.be.revertedWith('FAIL_BEFORE_SWAP_JOIN_EXIT');
+          });
+
+          it('normal exits revert', async () => {
+            await expect(normalExit()).to.be.revertedWith('FAIL_BEFORE_SWAP_JOIN_EXIT');
+          });
+
+          itExitsViaRecoveryModeCorrectly();
+        });
       });
     });
   });

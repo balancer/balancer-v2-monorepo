@@ -265,13 +265,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory scalingFactors = _scalingFactors();
+    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+        _beforeSwapJoinExit();
 
-        // Joins are unsupported when paused
-        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
-        // initialization in this case.
-        _ensureNotPaused();
+        uint256[] memory scalingFactors = _scalingFactors();
 
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
@@ -330,7 +327,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public virtual override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory amountsOut;
         uint256 bptAmountIn;
 
@@ -344,8 +341,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
-            // Exits are unsupported when paused
-            _ensureNotPaused();
+            // Note that we only call this if we're not in a recovery mode exit.
+            _beforeSwapJoinExit();
 
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
@@ -532,6 +529,23 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
+
+    /**
+     * @dev Called at the very beginning of swaps, joins and exits, even before the scaling factors are read. Derived
+     * contracts can extend this implementation to perform any state-changing operations they might need (including e.g.
+     * updating the scaling factors),
+     *
+     * The only scenario in which this function is not called is during a recovery mode exit. This makes it safe to
+     * perform non-trivial computations or interact with external dependencies here, as recovery mode will not be
+     * affected.
+     *
+     * Since this contract does not implement swaps, derived contracts must also make sure this function is called on
+     * swap handlers.
+     */
+    function _beforeSwapJoinExit() internal virtual {
+        // All joins, exits and swaps are disabled (except recovery mode exits).
+        _ensureNotPaused();
+    }
 
     // Internal functions
 
