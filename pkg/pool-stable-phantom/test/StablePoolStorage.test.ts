@@ -10,7 +10,6 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('StablePoolStorage', () => {
@@ -28,7 +27,11 @@ describe('StablePoolStorage', () => {
   context('for a 1 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
-      await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
+      await expect(
+        deploy('MockStablePoolStorage', {
+          args: [vault.address, tokens.addresses, tokens.map(() => ZERO_ADDRESS), tokens.map(() => false)],
+        })
+      ).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
@@ -51,7 +54,11 @@ describe('StablePoolStorage', () => {
   context('for a 6 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(6, { sorted: true });
-      await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
+      await expect(
+        deploy('MockStablePoolStorage', {
+          args: [vault.address, tokens.addresses, tokens.map(() => ZERO_ADDRESS), tokens.map(() => false)],
+        })
+      ).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
