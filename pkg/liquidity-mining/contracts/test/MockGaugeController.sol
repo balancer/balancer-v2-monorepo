@@ -53,12 +53,8 @@ contract MockGaugeController is IGaugeController {
         emit NewGauge(gauge, gaugeType, 0);
     }
 
-    function add_type(string calldata, uint256 numTypes) external override {
-        if (numTypes > 0) {
-            _numGaugeTypes += int128(numTypes);
-        } else {
-            _numGaugeTypes += 1;
-        }
+    function add_type(string calldata, uint256) external override {
+        _numGaugeTypes += 1;
     }
 
     function token() external pure override returns (IERC20) {
