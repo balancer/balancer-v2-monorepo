@@ -420,5 +420,14 @@
         "multicall(bytes[])": "0xc0821b38b909d4450a0639d4a7e4922284925325006a23c1ae2fa1e729c9b781"
       }
     }
+  },
+  "20220725-protocol-fee-percentages-provider": {
+    "ProtocolFeePercentagesProvider": {
+      "useAdaptor": false,
+      "actionIds": {
+        "registerFeeType(uint256,string,uint256,uint256)": "0x11c8eb4bb882401bba6b09d3f868bcd28cff5a8fb203c2114cbe9a93fb368639",
+        "setFeeTypePercentage(uint256,uint256)": "0x716d6b6afc33d645e9c2c78937fc28afcca38a4ef927fb307679e9709b73214e"
+      }
+    }
   }
 }

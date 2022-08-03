@@ -30,6 +30,7 @@ import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
+import "./ComposableStablePoolRates.sol";
 import "./StablePoolAmplification.sol";
 import "./StableMath.sol";
 
@@ -48,8 +49,8 @@ import "./StableMath.sol";
 contract ComposableStablePool is
     IRateProvider,
     BaseGeneralPool,
-    ComposableStablePoolStorage,
     StablePoolAmplification,
+    ComposableStablePoolRates,
     ProtocolFeeCache
 {
     using FixedPoint for uint256;
@@ -64,18 +65,6 @@ contract ComposableStablePool is
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
     // solhint-disable not-rely-on-time
-
-    // Token rate caches are used to avoid querying the price rate for a token every time we need to work with it.
-    // The "old rate" field is used for precise protocol fee calculation, to ensure that token yield is only
-    // "taxed" once. The data structure is as follows:
-    //
-    // [ expires | duration | old rate | current rate ]
-    // [ uint32  |  uint32  |  uint96  |   uint96     ]
-
-    mapping(IERC20 => bytes32) private _tokenRateCaches;
-
-    event TokenRateCacheUpdated(IERC20 indexed token, uint256 rate);
-    event TokenRateProviderSet(IERC20 indexed token, IRateProvider indexed provider, uint256 cacheDuration);
 
     // To track protocol fees, we measure and store the value of the invariant after every join and exit.
     // All invariant growth that happens between join and exit events is due to swap fees and yield.
@@ -117,29 +106,40 @@ contract ComposableStablePool is
             params.bufferPeriodDuration,
             params.owner
         )
-        ComposableStablePoolStorage(
-            _insertSorted(params.tokens, IERC20(this)),
-            params.rateProviders,
-            params.exemptFromYieldProtocolFeeFlags
-        )
         StablePoolAmplification(params.amplificationParameter)
+        ComposableStablePoolStorage(_extractStorageParams(params))
+        ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
-        InputHelpers.ensureInputLengthMatch(
-            params.tokens.length,
-            params.rateProviders.length,
-            params.tokenRateCacheDurations.length
-        );
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
-        for (uint256 i = 0; i < params.tokens.length; i++) {
-            if (params.rateProviders[i] != IRateProvider(0)) {
-                _updateTokenRateCache(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
-                emit TokenRateProviderSet(params.tokens[i], params.rateProviders[i], params.tokenRateCacheDurations[i]);
+    // Translate parameters to avoid stack-too-deep issues in the constructor
+    function _extractRatesParams(NewPoolParams memory params)
+        private
+        pure
+        returns (ComposableStablePoolRates.RatesParams memory)
+    {
+        return
+            ComposableStablePoolRates.RatesParams({
+                tokens: params.tokens,
+                rateProviders: params.rateProviders,
+                tokenRateCacheDurations: params.tokenRateCacheDurations
+            });
+    }
 
-                // Initialize the old rates as well, in case they are referenced before the first join.
-                _updateOldRate(params.tokens[i]);
-            }
-        }
+    // Translate parameters to avoid stack-too-deep issues in the constructor
+    function _extractStorageParams(NewPoolParams memory params)
+        private
+        view
+        returns (ComposableStablePoolStorage.StorageParams memory)
+    {
+        return
+            ComposableStablePoolStorage.StorageParams({
+                registeredTokens: _insertSorted(params.tokens, IERC20(this)),
+                tokenRateProviders: params.rateProviders,
+                exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
+            });
     }
 
     /**
@@ -153,24 +153,23 @@ contract ComposableStablePool is
         return _getMinimumBpt();
     }
 
-    // Swap Hooks
+    // BasePool hook
 
     /**
-     * @notice Top-level Vault hook for swaps.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
+     * @dev Override base pool hook invoked before any swap, join, or exit to ensure rates are updated before
+     * the operation.
      */
-    function onSwap(
-        SwapRequest memory swapRequest,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) public virtual override returns (uint256) {
-        _cacheTokenRatesIfNecessary();
+    function _beforeSwapJoinExit() internal override {
+        super._beforeSwapJoinExit();
 
-        return super.onSwap(swapRequest, balances, indexIn, indexOut);
+        // Before the scaling factors are read, we must update the cached rates, as those will be used to compute the
+        // scaling factors.
+        // Note that this is not done in a recovery mode exit (since _beforeSwapjoinExit() is not called under those
+        // conditions), but this is fine as recovery mode exits are unaffected by scaling factors anyway.
+        _cacheTokenRatesIfNecessary();
     }
+
+    // Swap Hooks
 
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
@@ -295,10 +294,14 @@ contract ComposableStablePool is
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
         _upscaleArray(balances, scalingFactors);
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 preJoinExitSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        // Initialize, then add or subtract to reflect BPT transferred in or out
+        uint256 postJoinExitSupply = preJoinExitSupply;
+
         uint256 upscaledAmountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
 
         (uint256 amp, ) = _getAmplificationParameter();
+        uint256 preJoinExitInvariant = StableMath._calculateInvariant(amp, balancesWithoutBpt);
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (swapRequest.tokenOut == IERC20(this)) {
@@ -310,20 +313,28 @@ contract ComposableStablePool is
                 indexInNoBpt,
                 isGivenIn,
                 amp,
-                virtualSupply,
+                preJoinExitSupply,
                 balancesWithoutBpt
             );
 
             // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
             // invariant.
+
+            // This is a single-token join; we are transferring preminted BPT out of the Vault,
+            // increasing the virtual supply
             if (isGivenIn) {
                 balancesWithoutBpt[indexInNoBpt] += upscaledAmountGiven;
+                postJoinExitSupply += amountCalculated;
                 // Join is "given in" so `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexInNoBpt] += amountCalculated;
                 // Join is "given out" so `amountCalculated` is an amountIn (tokens to the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
+                // This is a single-token join; we are transferring BPT back into the Vault,
+                // decreasing the virtual supply.
+                // Use upscaledAmountGiven for clarity, even though BPT tokens are always 18 decimals.
+                postJoinExitSupply += upscaledAmountGiven;
             }
         } else {
             // Exit Swap
@@ -334,24 +345,34 @@ contract ComposableStablePool is
                 indexOutNoBpt,
                 isGivenIn,
                 amp,
-                virtualSupply,
+                preJoinExitSupply,
                 balancesWithoutBpt
             );
 
             // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
             // invariant.
+
+            // This is a single-token exit; we are transferring BPT back into the Vault, decreasing the virtual supply
             if (isGivenIn) {
                 balancesWithoutBpt[indexOutNoBpt] -= amountCalculated;
                 // Exit is "given in" so `amountCalculated` is an amountOut (tokens from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
+                postJoinExitSupply -= upscaledAmountGiven;
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= upscaledAmountGiven;
                 // Exit is "given out" so `amountCalculated` is an amountIn (BPT to the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
+                postJoinExitSupply -= amountCalculated;
             }
         }
 
-        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(
+            amp,
+            balancesWithoutBpt,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
     }
 
     /**
@@ -402,7 +423,7 @@ contract ComposableStablePool is
         uint256 amp,
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt
-    ) private view returns (uint256 amountIn) {
+    ) private view returns (uint256) {
         if (givenIn) {
             return
                 StableMath._calcTokenOutGivenExactBptIn(
@@ -428,27 +449,6 @@ contract ComposableStablePool is
     }
 
     // Join Hooks
-
-    /**
-     * @notice Top-level Vault hook for joins.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
-        _cacheTokenRatesIfNecessary();
-
-        return
-            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
 
     /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
@@ -518,12 +518,13 @@ contract ComposableStablePool is
     ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         StablePoolUserData.JoinKind kind = userData.joinKind();
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 preJoinExitSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
         if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 scalingFactors,
@@ -531,7 +532,7 @@ contract ComposableStablePool is
             );
         } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 userData
@@ -541,10 +542,18 @@ contract ComposableStablePool is
         }
 
         // Add amountsIn to get post-join balances
-        _mutateAmounts(balancesWithoutBpt, amountsIn, FixedPoint.add);
+        // amountsIn returned from specific join functions has BPT added back in for the Vault
+        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
 
         // Pass in the post-join balances to reset the protocol fee basis.
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
+        // We are minting bptAmountOut, increasing the total (and virtual) supply post-join
+        _updateInvariantAfterJoinExit(
+            currentAmp,
+            balancesWithoutBpt,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            preJoinExitSupply + bptAmountOut
+        );
     }
 
     /**
@@ -617,30 +626,6 @@ contract ComposableStablePool is
     // Exit Hooks
 
     /**
-     * @notice Top-level Vault hook for exits.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
-        // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
-        if (!userData.isRecoveryModeExitKind()) {
-            _cacheTokenRatesIfNecessary();
-        }
-
-        return
-            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
-
-    /**
      * @dev Support single- and multi-token exits, but not explicit proportional exits.
      * Pays protocol fees before the exit, and calls `_updateInvariantAfterJoinExit` afterward.
      * Note that recovery mode exits do not call`_onExitPool`.
@@ -657,12 +642,13 @@ contract ComposableStablePool is
     ) internal override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         StablePoolUserData.ExitKind kind = userData.exitKind();
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 preJoinExitSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
         if (kind == StablePoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 scalingFactors,
@@ -670,7 +656,7 @@ contract ComposableStablePool is
             );
         } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 userData
@@ -680,10 +666,18 @@ contract ComposableStablePool is
         }
 
         // Subtract amountsOut to get post-exit balances
-        _mutateAmounts(balancesWithoutBpt, amountsOut, FixedPoint.sub);
+        // amountsOut returned from specific exit functions has BPT added back in for the Vault
+        _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
 
         // Pass in the post-exit balances to reset the protocol fee basis.
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
+        // We are burning bptAmountIn BPT, decreasing the total (and virtual) supply post-exit
+        _updateInvariantAfterJoinExit(
+            currentAmp,
+            balancesWithoutBpt,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            preJoinExitSupply - bptAmountIn
+        );
     }
 
     /**
@@ -905,253 +899,59 @@ contract ComposableStablePool is
 
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
     // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
-    function _updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balancesWithoutBpt) internal {
-        _postJoinExitAmp = currentAmp;
-        _postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
+    function _updateInvariantAfterJoinExit(
+        uint256 currentAmp,
+        uint256[] memory balancesWithoutBpt,
+        uint256 preJoinExitInvariant,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) internal {
+        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
-        _updateOldRates();
-    }
+        // Compute the growth ratio between the pre- and post-join/exit balances.
+        // Note that the pre-join/exit invariant is *not* the invariant from the last join,
+        // but computed from the balances before this particular join/exit.
 
-    // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
-    // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
-    function _updateOldRates() private {
-        uint256 totalTokens = _getTotalTokens();
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
 
-        if (_hasCacheEntry(0)) _updateOldRate(_getToken0());
-        if (_hasCacheEntry(1)) _updateOldRate(_getToken1());
-        if (_hasCacheEntry(2)) _updateOldRate(_getToken2());
-        if (totalTokens > 3 && _hasCacheEntry(3)) _updateOldRate(_getToken3());
-        if (totalTokens > 4 && _hasCacheEntry(4)) _updateOldRate(_getToken4());
-        if (totalTokens > 5 && _hasCacheEntry(5)) _updateOldRate(_getToken5());
-    }
+        if (protocolSwapFeePercentage > 0) {
+            uint256 invariantGrowthRatio = (
+                postJoinExitInvariant > preJoinExitInvariant
+                    ? postJoinExitInvariant.sub(preJoinExitInvariant)
+                    : preJoinExitInvariant.sub(postJoinExitInvariant)
+            )
+                .divDown(preJoinExitInvariant);
 
-    // This assumes the token has been validated elsewhere, and is a valid non-BPT token.
-    function _updateOldRate(IERC20 token) private {
-        bytes32 cache = _tokenRateCaches[token];
-        _tokenRateCaches[token] = cache.updateOldRate();
-    }
+            // Compute the bpt ratio
+            uint256 bptGrowthRatio = (
+                postJoinExitSupply > preJoinExitInvariant
+                    ? postJoinExitSupply.sub(preJoinExitSupply)
+                    : preJoinExitSupply.sub(postJoinExitSupply)
+            )
+                .divDown(preJoinExitSupply);
 
-    /**
-     * @dev Apply the token ratios to a set of balances, optionally adjusting for exempt yield tokens.
-     * The `balances` array is assumed to include BPT to ensure that token indices align.
-     */
-    function _getAdjustedBalances(uint256[] memory balances, bool ignoreExemptFlags)
-        internal
-        view
-        returns (uint256[] memory)
-    {
-        uint256 totalTokens = balances.length;
-        uint256[] memory adjustedBalances = new uint256[](totalTokens);
+            // The difference between the invariant growth and bpt increase rates must be due to the
+            // balance change from this join/exit.
+            // Protocol fees due = (invariant growth / bpt increase - 1) * virtual supply * protocol fee %
+            // For instance, if the invariant growth is 1.05, and the bpt increase is 1.0475, with 1000 supply,
+            // and a protocol fee of 50%, we would mint (1.05/1.0475 - 1) * 1000 * 0.5 = 1.193 BPT.
 
-        // The Pool will always have at least 3 tokens so we always adjust these three balances.
-        adjustedBalances[0] = _isTokenExemptFromYieldProtocolFee(0) || (ignoreExemptFlags && _hasCacheEntry(0))
-            ? _adjustedBalance(balances[0], _tokenRateCaches[_getToken0()])
-            : balances[0];
-        adjustedBalances[1] = _isTokenExemptFromYieldProtocolFee(1) || (ignoreExemptFlags && _hasCacheEntry(1))
-            ? _adjustedBalance(balances[1], _tokenRateCaches[_getToken1()])
-            : balances[1];
-        adjustedBalances[2] = _isTokenExemptFromYieldProtocolFee(2) || (ignoreExemptFlags && _hasCacheEntry(2))
-            ? _adjustedBalance(balances[2], _tokenRateCaches[_getToken2()])
-            : balances[2];
+            if (invariantGrowthRatio > bptGrowthRatio) {
+                uint256 protocolFeeAmount = invariantGrowthRatio
+                    .divDown(bptGrowthRatio)
+                    .sub(FixedPoint.ONE)
+                    .mulDown(preJoinExitSupply)
+                    .mulDown(protocolSwapFeePercentage);
 
-        // Before we adjust the remaining balances we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return adjustedBalances;
-        adjustedBalances[3] = _isTokenExemptFromYieldProtocolFee(3) || (ignoreExemptFlags && _hasCacheEntry(3))
-            ? _adjustedBalance(balances[3], _tokenRateCaches[_getToken3()])
-            : balances[3];
-
-        if (totalTokens == 4) return adjustedBalances;
-        adjustedBalances[4] = _isTokenExemptFromYieldProtocolFee(4) || (ignoreExemptFlags && _hasCacheEntry(4))
-            ? _adjustedBalance(balances[4], _tokenRateCaches[_getToken4()])
-            : balances[4];
-
-        if (totalTokens == 5) return adjustedBalances;
-        adjustedBalances[5] = _isTokenExemptFromYieldProtocolFee(5) || (ignoreExemptFlags && _hasCacheEntry(5))
-            ? _adjustedBalance(balances[5], _tokenRateCaches[_getToken5()])
-            : balances[5];
-
-        return adjustedBalances;
-    }
-
-    // Compute balance * oldRate/currentRate, doing division last to minimize rounding error.
-    function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
-        return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
-    }
-
-    // Return true if the token at this index is a non-BPT token with a rate provider, so that it has
-    // an entry in the token rate cache.
-    function _hasCacheEntry(uint256 index) private view returns (bool) {
-        uint256 bptIndex = getBptIndex();
-
-        if (index == 0) return _getRateProvider0() != IRateProvider(0) && bptIndex != 0;
-        if (index == 1) return _getRateProvider1() != IRateProvider(0) && bptIndex != 1;
-        if (index == 2) return _getRateProvider2() != IRateProvider(0) && bptIndex != 2;
-        if (index == 3) return _getRateProvider3() != IRateProvider(0) && bptIndex != 3;
-        if (index == 4) return _getRateProvider4() != IRateProvider(0) && bptIndex != 4;
-        if (index == 5) return _getRateProvider5() != IRateProvider(0) && bptIndex != 5;
-    }
-
-    // Token rates
-
-    /**
-     * @dev Returns the rate for a given token. All token rates are fixed-point values with 18 decimals.
-     * If there is no rate provider for the provided token, it returns FixedPoint.ONE.
-     */
-    function getTokenRate(IERC20 token) public view virtual returns (uint256) {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if `token` is the BPT, and otherwise optimistically read the cache
-        // expecting that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since
-        // we don't need the provider at all).
-
-        if (token == this) {
-            return FixedPoint.ONE;
-        }
-
-        bytes32 tokenRateCache = _tokenRateCaches[token];
-        return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
-    }
-
-    /**
-     * @dev Returns the cached value for token's rate. Reverts if the token doesn't belong to the pool or has no rate
-     * provider.
-     */
-    function getTokenRateCache(IERC20 token)
-        external
-        view
-        returns (
-            uint256 rate,
-            uint256 duration,
-            uint256 expires
-        )
-    {
-        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-
-        rate = _tokenRateCaches[token].getCurrentRate();
-        (duration, expires) = _tokenRateCaches[token].getTimestamps();
-    }
-
-    /**
-     * @dev Sets a new duration for a token rate cache. It reverts if there was no rate provider set initially.
-     * Note this function also updates the current cached value.
-     * @param duration Number of seconds until the current token rate is fetched again.
-     */
-    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        _updateTokenRateCache(token, provider, duration);
-        emit TokenRateProviderSet(token, provider, duration);
-    }
-
-    /**
-     * @dev Forces a rate cache hit for a token.
-     * It will revert if the requested token does not have an associated rate provider.
-     */
-    function updateTokenRateCache(IERC20 token) public virtual {
-        IRateProvider provider = _getRateProvider(token);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        uint256 duration = _tokenRateCaches[token].getDuration();
-        _updateTokenRateCache(token, provider, duration);
-    }
-
-    /**
-     * @dev Internal function to update a token rate cache for a known provider and duration.
-     * It trusts the given values, and does not perform any checks.
-     */
-    function _updateTokenRateCache(
-        IERC20 token,
-        IRateProvider provider,
-        uint256 duration
-    ) private {
-        uint256 rate = provider.getRate();
-        bytes32 cache = _tokenRateCaches[token];
-
-        _tokenRateCaches[token] = cache.updateRateAndDuration(rate, duration);
-
-        emit TokenRateCacheUpdated(token, rate);
-    }
-
-    /**
-     * @dev Caches the rates of all tokens if necessary
-     */
-    function _cacheTokenRatesIfNecessary() internal {
-        uint256 totalTokens = _getTotalTokens();
-
-        // The Pool will always have at least 3 tokens so we always try to update these three caches.
-        _cacheTokenRateIfNecessary(_getToken0());
-        _cacheTokenRateIfNecessary(_getToken1());
-        _cacheTokenRateIfNecessary(_getToken2());
-
-        // Before we update the remaining caches we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return;
-        _cacheTokenRateIfNecessary(_getToken3());
-
-        if (totalTokens == 4) return;
-        _cacheTokenRateIfNecessary(_getToken4());
-
-        if (totalTokens == 5) return;
-        _cacheTokenRateIfNecessary(_getToken5());
-    }
-
-    /**
-     * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
-     */
-    function _cacheTokenRateIfNecessary(IERC20 token) internal virtual {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
-        // we might not need the provider if the cache is still valid).
-
-        if (token == this) return;
-
-        bytes32 cache = _tokenRateCaches[token];
-        if (cache != bytes32(0)) {
-            (uint256 duration, uint256 expires) = _tokenRateCaches[token].getTimestamps();
-            if (block.timestamp > expires) {
-                // solhint-disable-previous-line not-rely-on-time
-                _updateTokenRateCache(token, _getRateProvider(token), duration);
+                _payProtocolFees(protocolFeeAmount);
             }
         }
-    }
 
-    // Scaling Factors
+        // Update the stored invariant and amp values, and copy the rates
+        _postJoinExitAmp = currentAmp;
+        _postJoinExitInvariant = postJoinExitInvariant;
 
-    /**
-     * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
-     */
-    function getScalingFactor(IERC20 token) external view returns (uint256) {
-        return _scalingFactor(token);
-    }
-
-    // Computed the total scaling factor as a product of the token decimal adjustment and token rate.
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _tokenScalingFactor(token).mulDown(getTokenRate(token));
-    }
-
-    /**
-     * @dev Overrides scaling factor getter to compute the tokens' rates.
-     */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        // There is no need to check the arrays length since both are based on `_getTotalTokens`
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
-
-        // The Pool will always have at least 3 tokens so we always load these three scaling factors.
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        scalingFactors[0] = _getScalingFactor0().mulDown(getTokenRate(_getToken0()));
-        scalingFactors[1] = _getScalingFactor1().mulDown(getTokenRate(_getToken1()));
-        scalingFactors[2] = _getScalingFactor2().mulDown(getTokenRate(_getToken2()));
-
-        // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return scalingFactors;
-        scalingFactors[3] = _getScalingFactor3().mulDown(getTokenRate(_getToken3()));
-
-        if (totalTokens == 4) return scalingFactors;
-        scalingFactors[4] = _getScalingFactor4().mulDown(getTokenRate(_getToken4()));
-
-        if (totalTokens == 5) return scalingFactors;
-        scalingFactors[5] = _getScalingFactor5().mulDown(getTokenRate(_getToken5()));
-
-        return scalingFactors;
+        _updateOldRates();
     }
 
     // Helpers

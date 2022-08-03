@@ -24,6 +24,8 @@ contract MockBasePool is BasePool {
 
     uint256 private immutable _totalTokens;
 
+    bool private _failBeforeSwapJoinExit;
+
     event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
     event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
 
@@ -52,6 +54,7 @@ contract MockBasePool is BasePool {
             owner
         )
     {
+        _failBeforeSwapJoinExit = false;
         _totalTokens = tokens.length;
     }
 
@@ -108,6 +111,15 @@ contract MockBasePool is BasePool {
         emit InnerOnExitPoolCalled(protocolSwapFeePercentage);
 
         return (0, new uint256[](balances.length));
+    }
+
+    function setFailBeforeSwapJoinExit(bool fail) external {
+        _failBeforeSwapJoinExit = fail;
+    }
+
+    function _beforeSwapJoinExit() internal override {
+        require(!_failBeforeSwapJoinExit, "FAIL_BEFORE_SWAP_JOIN_EXIT");
+        super._beforeSwapJoinExit();
     }
 
     function payProtocolFees(uint256 bptAmount) public {
