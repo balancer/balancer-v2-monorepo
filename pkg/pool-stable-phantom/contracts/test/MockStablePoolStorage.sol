@@ -149,6 +149,10 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _getScalingFactor5();
     }
 
+    function getTokenScalingFactor(IERC20 token) external view returns (uint256) {
+        return _tokenScalingFactor(token);
+    }
+
     function getRateProvider(IERC20 token) external view returns (IRateProvider) {
         return _getRateProvider(token);
     }
