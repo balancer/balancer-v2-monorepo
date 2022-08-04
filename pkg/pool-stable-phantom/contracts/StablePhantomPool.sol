@@ -216,8 +216,9 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev Since we have overridden `onSwap` here to filter swaps involving BPT, this BaseGeneralPool hook will only
-     * be called for regular swaps.
+     * @dev This is called from the base class `_swapGivenIn`, so at this point the amount has been adjusted
+     * for swap fees, and balances have had scaling applied. This will only be called for regular (non-BPT) swaps,
+     * so forward to `onRegularSwap`.
      */
     function _onSwapGivenIn(
         SwapRequest memory request,
@@ -229,8 +230,9 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev Since we have overridden `onSwap` here to filter swaps involving BPT, this BaseGeneralPool hook will only
-     * be called for regular swaps.
+     * @dev This is called from the base class `_swapGivenOut`, so at this point the amount has been adjusted
+     * for swap fees, and balances have had scaling applied. This will only be called for regular (non-BPT) swaps,
+     * so forward to `onRegularSwap`.
      */
     function _onSwapGivenOut(
         SwapRequest memory request,
@@ -241,7 +243,10 @@ contract StablePhantomPool is
         return _onRegularSwap(IVault.SwapKind.GIVEN_OUT, request.amount, balancesIncludingBpt, indexIn, indexOut);
     }
 
-    // Perform a swap between non-BPT tokens
+    /**
+     * @dev Perform a swap between non-BPT tokens. Scaling and fee adjustments have been performed upstream, so
+     * all we need to do here is calculate the price quote, depending on the direction of the swap.
+     */
     function _onRegularSwap(
         IVault.SwapKind kind,
         uint256 amountGiven,
@@ -264,7 +269,15 @@ contract StablePhantomPool is
         }
     }
 
-    // Perform a swap involving the BPT token, equivalent to a single-token join or exit.
+    /**
+     * @dev Perform a swap involving the BPT token, equivalent to a single-token join or exit. As with the standard
+     * joins and swaps, we first pay any protocol fees pending from swaps that occurred since the previous join or
+     * exit, then perform the operation (joinSwap or exitSwap), and finally store the "post operation" invariant and
+     * amp, which establishes the new basis for protocol fees.
+     *
+     * At this point, the scaling factors (including rates) have been computed by the base class, but not yet applied
+     * to the balances.
+     */
     function _swapWithBpt(
         SwapRequest memory swapRequest,
         uint256[] memory balances,
@@ -315,7 +328,8 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev This mutates balancesWithoutBpt so that they become the post-joinswap balances.
+     * @dev This mutates balancesWithoutBpt so that they become the post-joinswap balances. The StableMath interfaces
+     * are different depending on the swap direction, so we forward to the appropriate low-level join function.
      */
     function _doJoinSwap(
         bool isGivenIn,
@@ -331,6 +345,11 @@ contract StablePhantomPool is
                 : _joinSwapExactBptOutForTokenIn(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply);
     }
 
+    /**
+     * @dev Since this is a join, we know the tokenOut is BPT. Since it is GivenIn, we know the tokenIn amount,
+     * and must calculate the BPT amount out.
+     * We are moving preminted BPT out of the Vault, which increases the virtual supply.
+     */
     function _joinSwapExactTokenInForBptOut(
         uint256 amountIn,
         uint256[] memory balancesWithoutBpt,
@@ -357,6 +376,11 @@ contract StablePhantomPool is
         return (bptOut, postJoinExitSupply);
     }
 
+    /**
+     * @dev Since this is a join, we know the tokenOut is BPT. Since it is GivenOut, we know the BPT amount,
+     * and must calculate the token amount in.
+     * We are moving preminted BPT out of the Vault, which increases the virtual supply.
+     */
     function _joinSwapExactBptOutForTokenIn(
         uint256 bptOut,
         uint256[] memory balancesWithoutBpt,
@@ -380,7 +404,8 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev This mutates balancesWithoutBpt so that they become the post-exitswap balances.
+     * @dev This mutates balancesWithoutBpt so that they become the post-exitswap balances. The StableMath interfaces
+     * are different depending on the swap direction, so we forward to the appropriate low-level exit function.
      */
     function _doExitSwap(
         bool isGivenIn,
@@ -396,6 +421,11 @@ contract StablePhantomPool is
                 : _exitSwapExactTokenOutForBptIn(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply);
     }
 
+    /**
+     * @dev Since this is an exit, we know the tokenIn is BPT. Since it is GivenIn, we know the BPT amount,
+     * and must calculate the token amount out.
+     * We are moving BPT out of circulation and into the Vault, which decreases the virtual supply.
+     */
     function _exitSwapExactBptInForTokenOut(
         uint256 bptAmount,
         uint256[] memory balancesWithoutBpt,
@@ -418,6 +448,11 @@ contract StablePhantomPool is
         return (amountOut, postJoinExitSupply);
     }
 
+    /**
+     * @dev Since this is an exit, we know the tokenIn is BPT. Since it is GivenOut, we know the token amount out,
+     * and must calculate the BPT amount in.
+     * We are moving BPT out of circulation and into the Vault, which decreases the virtual supply.
+     */
     function _exitSwapExactTokenOutForBptIn(
         uint256 amountOut,
         uint256[] memory balancesWithoutBpt,
@@ -492,15 +527,14 @@ contract StablePhantomPool is
         _postJoinExitInvariant = invariantAfterJoin;
         _postJoinExitAmp = amp;
 
-        // Initialize the OldRates for exempt tokens
+        // Initialize the OldRates
         _updateOldRates();
 
         return (bptAmountOut, amountsInIncludingBpt);
     }
 
     /**
-     * @dev Supports single- and multi-token joins, except for explicit proportional joins.
-     * Pays protocol fees before the join, and calls `_updateInvariantAfterJoinExit` afterward.
+     * @dev Base pool hook called from `onJoinPool`. Forward to `onJoinExitPool` with `isJoin` set to true.
      */
     function _onJoinPool(
         bytes32,
@@ -516,8 +550,7 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev Support single- and multi-token exits, but not explicit proportional exits.
-     * Pays protocol fees before the exit, and calls `_updateInvariantAfterJoinExit` afterward.
+     * @dev Base pool hook called from `onExitPool`. Forward to `onJoinExitPool` with `isJoin` set to false.
      * Note that recovery mode exits do not call `_onExitPool`.
      */
     function _onExitPool(
@@ -533,6 +566,10 @@ contract StablePhantomPool is
         return _onJoinExitPool(false, balances, scalingFactors, userData);
     }
 
+    /**
+     * @dev Pay protocol fees before the operation, and call `_updateInvariantAfterJoinExit` afterward, to establish
+     * the new basis for protocol fees.
+     */
     function _onJoinExitPool(
         bool isJoin,
         uint256[] memory balances,
@@ -574,9 +611,14 @@ contract StablePhantomPool is
             postJoinExitSupply
         );
 
+        // For clarity and simplicity, arrays used and computed in lower level functions do not include BPT.
+        // But the amountsIn array passed back to the Vault must include BPT, so we add it back in here.
         return (bptAmount, _addBptItem(amountsDelta, 0));
     }
 
+    /**
+     * @dev Support single- and multi-token joins, but not explicit proportional joins.
+     */
     function _doJoin(
         uint256[] memory balancesWithoutBpt,
         uint256 currentAmp,
@@ -602,7 +644,7 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev Multi-token join. Proportional joins will pay no protocol fees.
+     * @dev Multi-token join. Joins with proportional amounts will pay no protocol fees.
      */
     function _joinExactTokensInForBPTOut(
         uint256 virtualSupply,
@@ -650,8 +692,6 @@ contract StablePhantomPool is
         uint256[] memory amountsIn = new uint256[](balancesWithoutBpt.length);
 
         // And then assign the result to the selected token.
-        // The token index passed to the StableMath function must match the balances array (without BPT),
-        // But the amountsIn array passed back to the Vault must include BPT.
         amountsIn[tokenIndexWithoutBpt] = StableMath._calcTokenInGivenExactBptOut(
             currentAmp,
             balancesWithoutBpt,
@@ -666,6 +706,10 @@ contract StablePhantomPool is
 
     // Exit Hooks
 
+    /**
+     * @dev Support single- and multi-token exits, but not explicit proportional exits, which are
+     * supported through Recovery Mode.
+     */
     function _doExit(
         uint256[] memory balancesWithoutBpt,
         uint256 currentAmp,
@@ -749,7 +793,9 @@ contract StablePhantomPool is
         return (bptAmountIn, amountsOut);
     }
 
-    // We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token
+    /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
+     */
     function _doRecoveryModeExit(
         uint256[] memory balances,
         uint256,
@@ -765,6 +811,7 @@ contract StablePhantomPool is
             userData
         );
 
+        // The vault requires an array including BPT, so add it back in here.
         return (bptAmountIn, _addBptItem(amountsOut, 0));
     }
 
@@ -901,8 +948,10 @@ contract StablePhantomPool is
         return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
     }
 
-    // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
-    // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
+    /**
+     * @dev Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
+     * Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
+     */
     function _updateInvariantAfterJoinExit(
         uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
@@ -951,10 +1000,11 @@ contract StablePhantomPool is
             }
         }
 
-        // Update the stored invariant and amp values, and copy the rates
+        // Update the stored invariant and amp values.
         _postJoinExitAmp = currentAmp;
         _postJoinExitInvariant = postJoinExitInvariant;
 
+        // Copy the current rates to the old rates.
         _updateOldRates();
     }
 
@@ -977,6 +1027,10 @@ contract StablePhantomPool is
 
     // Permissioned functions
 
+    /**
+     * @dev Inheritance rules still require us to override this in the most derived contract, even though
+     * it only calls super.
+     */
     function _isOwnerOnlyAction(bytes32 actionId)
         internal
         view
