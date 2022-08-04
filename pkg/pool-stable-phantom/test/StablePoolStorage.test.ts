@@ -241,19 +241,6 @@ describe('StablePoolStorage', () => {
         });
       });
 
-      describe('getScalingFactors', () => {
-        it('returns the correct scaling factors', async () => {
-          const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
-          expectedScalingFactors.splice(bptIndex, 0, fp(1));
-
-          const scalingFactors: BigNumber[] = await pool.getScalingFactors();
-
-          // It also includes the BPT scaling factor
-          expect(scalingFactors).to.have.lengthOf(numberOfTokens + 1);
-          expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
-        });
-      });
-
       describe('getTokenScalingFactor', () => {
         it('returns the correct scaling factor', async () => {
           const bpt = await Token.deployedAt(pool);

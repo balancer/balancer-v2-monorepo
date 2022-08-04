@@ -157,37 +157,14 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _getRateProvider(token);
     }
 
-    /**
-     * @dev Overrides scaling factor getter to compute the tokens' rates.
-     */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
-        // There is no need to check the arrays length since both are based on `_getTotalTokens`
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
-
-        // The Pool will always have at least 3 tokens so we always load these three scaling factors.
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        scalingFactors[0] = _getScalingFactor0();
-        scalingFactors[1] = _getScalingFactor1();
-        scalingFactors[2] = _getScalingFactor2();
-
-        // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return scalingFactors;
-        scalingFactors[3] = _getScalingFactor3();
-
-        if (totalTokens == 4) return scalingFactors;
-        scalingFactors[4] = _getScalingFactor4();
-
-        if (totalTokens == 5) return scalingFactors;
-        scalingFactors[5] = _getScalingFactor5();
-
-        return scalingFactors;
-    }
-
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
     function isTokenExemptFromYieldProtocolFeeByIndex(uint256 tokenIndex) external view returns (bool) {
         return _isTokenExemptFromYieldProtocolFee(tokenIndex);
     }
+
+    // Stubbed functions
+
+    function _scalingFactors() internal view virtual override returns (uint256[] memory) {}
 
     function _onInitializePool(
         bytes32,
