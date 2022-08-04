@@ -594,6 +594,58 @@ describe.only('StablePoolRates', () => {
       });
     });
 
+    describe('updateOldRates', () => {
+      let allTokens: TokenList;
+      let allRateProviders: string[];
+
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPoolSimple(owner, tokens);
+        allTokens = await tokensWithBpt();
+        allRateProviders = await rateProvidersWithBpt();
+      });
+
+      sharedBeforeEach('mock rates', async () => {
+        await allTokens.asyncEach(async (token, i) => {
+          if (allRateProviders[i] === ZERO_ADDRESS) return;
+          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+          await rateProvider.mockRate(fp(Math.random()));
+          await pool.updateTokenRateCache(token.address);
+
+          // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
+          // This ensures that the pool is using its cache properly.
+          await rateProvider.mockRate(fp(0));
+        });
+      });
+
+      it('writes the current cached rate into the old cached rate', async () => {
+        const previousCaches = await allTokens.asyncMap(async (token, i) => {
+          if (allRateProviders[i] === ZERO_ADDRESS) return null;
+          return await pool.getTokenRateCache(token.address);
+        });
+
+        for (const cache of previousCaches) {
+          if (cache !== null) {
+            expect(cache.rate).to.be.not.eq(cache.oldRate);
+          }
+        }
+
+        await pool.updateOldRates();
+
+        const newCaches = await allTokens.asyncMap(async (token, i) => {
+          if (allRateProviders[i] === ZERO_ADDRESS) return null;
+          return await pool.getTokenRateCache(token.address);
+        });
+
+        // Expect current rate to be unchanged but stored old rate to match current rate.
+        for (const [index, cache] of newCaches.entries()) {
+          if (cache !== null) {
+            expect(cache.rate).to.be.eq(previousCaches[index].rate);
+            expect(cache.rate).to.be.eq(cache.oldRate);
+          }
+        }
+      });
+    });
+
     describe('getAdjustedBalances', () => {
       let allTokens: TokenList;
       let allRateProviders: string[];
