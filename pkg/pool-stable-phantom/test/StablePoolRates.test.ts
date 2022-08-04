@@ -353,7 +353,7 @@ describe.only('StablePoolRates', () => {
             });
           });
 
-          it('emits an event', async () => {
+          it('emits a TokenRateProviderSet event', async () => {
             const allTokens = await tokensWithBpt();
             const allRateProviders = await rateProvidersWithBpt();
             await allTokens.asyncEach(async (token, i) => {
@@ -366,6 +366,26 @@ describe.only('StablePoolRates', () => {
                 token: token.address,
                 provider: allRateProviders[i],
                 cacheDuration: newDuration,
+              });
+            });
+          });
+
+          it('emits a TokenRateCacheUpdated event', async () => {
+            const allTokens = await tokensWithBpt();
+            const allRateProviders = await rateProvidersWithBpt();
+            await allTokens.asyncEach(async (token, i) => {
+              // Ignore tokens without rate providers
+              if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+              const newRate = fp(Math.floor(Math.random() * 10));
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              await rateProvider.mockRate(newRate);
+
+              const tx = await pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration);
+
+              expectEvent.inReceipt(await tx.wait(), 'TokenRateCacheUpdated', {
+                token: token.address,
+                rate: newRate,
               });
             });
           });
