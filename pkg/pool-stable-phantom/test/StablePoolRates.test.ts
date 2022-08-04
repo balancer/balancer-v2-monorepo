@@ -92,6 +92,22 @@ describe.only('StablePoolRates', () => {
     });
   });
 
+  const getExpectedScalingFactors = (tokenList: TokenList, tokenRates: BigNumber[]): BigNumber[] => {
+    return tokenList.map((token, index) => tokenRates[index].mul(bn(10).pow(18 - token.decimals)));
+  };
+
+  const getRates = async (rateProviderAddresses: string[]): Promise<BigNumber[]> => {
+    return Promise.all(
+      rateProviderAddresses.map(async (rateProviderAddress) => {
+        // Tokens without a rate provider have rate 1.
+        if (rateProviderAddress === ZERO_ADDRESS) return fp(1);
+
+        const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviderAddress);
+        return await rateProvider.getRate();
+      })
+    );
+  };
+
   function itBehavesAsStablePoolRates(numberOfTokens: number): void {
     let pool: Contract, tokens: TokenList;
     let bptIndex: number;
@@ -166,6 +182,12 @@ describe.only('StablePoolRates', () => {
       const allRateProviders = rateProviders.slice();
       allRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
       return allRateProviders;
+    }
+
+    async function exemptFlagsWithBpt(): Promise<boolean[]> {
+      const allExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
+      allExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
+      return allExemptFromYieldProtocolFeeFlags;
     }
 
     describe('constructor', () => {
@@ -475,7 +497,7 @@ describe.only('StablePoolRates', () => {
       });
     });
 
-    describe.only('scaling factors', () => {
+    describe('scaling factors', () => {
       let allTokens: TokenList;
       let allRateProviders: string[];
       let expectedScalingFactors: BigNumber[];
@@ -485,22 +507,6 @@ describe.only('StablePoolRates', () => {
         allTokens = await tokensWithBpt();
         allRateProviders = await rateProvidersWithBpt();
       });
-
-      const getExpectedScalingFactors = (tokenList: TokenList, tokenRates: BigNumber[]): BigNumber[] => {
-        return tokenList.map((token, index) => tokenRates[index].mul(bn(10).pow(18 - token.decimals)));
-      };
-
-      const getRates = async (rateProviderAddresses: string[]): Promise<BigNumber[]> => {
-        return Promise.all(
-          rateProviderAddresses.map(async (rateProviderAddress) => {
-            // Tokens without a rate provider have rate 1.
-            if (rateProviderAddress === ZERO_ADDRESS) return fp(1);
-
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviderAddress);
-            return await rateProvider.getRate();
-          })
-        );
-      };
 
       const itAdaptsTheScalingFactorsCorrectly = () => {
         it('adapts the scaling factors with the price rate', async () => {
@@ -585,6 +591,63 @@ describe.only('StablePoolRates', () => {
         });
 
         itAdaptsTheScalingFactorsCorrectly();
+      });
+    });
+
+    describe('getAdjustedBalances', () => {
+      let allTokens: TokenList;
+      let allRateProviders: string[];
+      let allExemptFlags: boolean[];
+      let rates: BigNumber[];
+
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPoolSimple(owner, tokens);
+        allTokens = await tokensWithBpt();
+        allRateProviders = await rateProvidersWithBpt();
+        allExemptFlags = await exemptFlagsWithBpt();
+      });
+
+      sharedBeforeEach('mock rates', async () => {
+        await allTokens.asyncEach(async (token, i) => {
+          if (allRateProviders[i] === ZERO_ADDRESS) return;
+          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+          await rateProvider.mockRate(fp(1 + i / 10));
+          await pool.updateTokenRateCache(token.address);
+        });
+        rates = await getRates(allRateProviders);
+
+        // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
+        // This ensures that the pool is using its cache properly.
+        await allTokens.asyncEach(async (_, i) => {
+          if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+          await rateProvider.mockRate(fp(0));
+        });
+      });
+
+      context('when ignoring exempt flags', () => {
+        it('returns the array  with elements scaled by the cached token rate', async () => {
+          for (let i = 0; i < 5; i++) {
+            const inputArray = allTokens.map(() => fp(Math.random()));
+            const expectedOutputArray = inputArray.map((input, i) => input.mul(fp(1)).div(rates[i]));
+
+            expect(await pool.getAdjustedBalances(inputArray, true)).to.be.deep.eq(expectedOutputArray);
+          }
+        });
+      });
+
+      context('when not ignoring exempt flags', () => {
+        it('returns the array with elements scaled by the cached token rate if exempt', async () => {
+          for (let i = 0; i < 5; i++) {
+            const inputArray = allTokens.map(() => fp(Math.random()));
+            const expectedOutputArray = inputArray.map((input, i) =>
+              allExemptFlags[i] ? input.mul(fp(1)).div(rates[i]) : input
+            );
+
+            expect(await pool.getAdjustedBalances(inputArray, false)).to.be.deep.eq(expectedOutputArray);
+          }
+        });
       });
     });
   }
