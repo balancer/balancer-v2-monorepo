@@ -114,12 +114,11 @@ describe('StablePoolStorage', () => {
           const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
 
           const expectedTokenAddresses = Array.from({ length: 6 }, (_, i) => allTokens.addresses[i] ?? ZERO_ADDRESS);
-          expect(await pool.getToken0()).to.be.eq(expectedTokenAddresses[0]);
-          expect(await pool.getToken1()).to.be.eq(expectedTokenAddresses[1]);
-          expect(await pool.getToken2()).to.be.eq(expectedTokenAddresses[2]);
-          expect(await pool.getToken3()).to.be.eq(expectedTokenAddresses[3]);
-          expect(await pool.getToken4()).to.be.eq(expectedTokenAddresses[4]);
-          expect(await pool.getToken5()).to.be.eq(expectedTokenAddresses[5]);
+          await Promise.all(
+            expectedTokenAddresses.map(async (expectedTokenAddress, i) => {
+              expect(await pool[`getToken${i}`]()).to.be.eq(expectedTokenAddress);
+            })
+          );
         });
       });
 
@@ -231,15 +230,13 @@ describe('StablePoolStorage', () => {
           const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
           expectedScalingFactors.splice(bptIndex, 0, fp(1));
 
-          // Also check the individual getters.
           // There's always 6 getters however not all of them may be used. Unused getters return zero.
           const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? bn(0));
-          expect(await pool.getScalingFactor0()).to.be.eq(paddedScalingFactors[0]);
-          expect(await pool.getScalingFactor1()).to.be.eq(paddedScalingFactors[1]);
-          expect(await pool.getScalingFactor2()).to.be.eq(paddedScalingFactors[2]);
-          expect(await pool.getScalingFactor3()).to.be.eq(paddedScalingFactors[3]);
-          expect(await pool.getScalingFactor4()).to.be.eq(paddedScalingFactors[4]);
-          expect(await pool.getScalingFactor5()).to.be.eq(paddedScalingFactors[5]);
+          await Promise.all(
+            paddedScalingFactors.map(async (expectedScalingFactor, i) => {
+              expect(await pool[`getScalingFactor${i}`]()).to.be.eq(expectedScalingFactor);
+            })
+          );
         });
       });
 
@@ -279,12 +276,11 @@ describe('StablePoolStorage', () => {
           // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
           const paddedRateProviders = Array.from({ length: 6 }, (_, i) => expectedRateProviders[i] ?? ZERO_ADDRESS);
 
-          expect(await pool.getRateProvider0()).to.be.eq(paddedRateProviders[0]);
-          expect(await pool.getRateProvider1()).to.be.eq(paddedRateProviders[1]);
-          expect(await pool.getRateProvider2()).to.be.eq(paddedRateProviders[2]);
-          expect(await pool.getRateProvider3()).to.be.eq(paddedRateProviders[3]);
-          expect(await pool.getRateProvider4()).to.be.eq(paddedRateProviders[4]);
-          expect(await pool.getRateProvider5()).to.be.eq(paddedRateProviders[5]);
+          await Promise.all(
+            paddedRateProviders.map(async (expectedRateProvider, i) => {
+              expect(await pool[`getRateProvider${i}`]()).to.be.eq(expectedRateProvider);
+            })
+          );
         });
       });
 
