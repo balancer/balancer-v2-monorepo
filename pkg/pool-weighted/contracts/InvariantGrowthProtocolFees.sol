@@ -152,7 +152,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
             // Only collect protocol fees when yield growth exceeds previous all-time high.
             if (rateProduct > athRateProduct) {
                 yieldFees = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-                    supply.add(swapFees),
+                    supply,
                     athRateProduct,
                     rateProduct,
                     // TODO: This fee pct should come from a different source.
