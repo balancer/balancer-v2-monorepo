@@ -149,24 +149,23 @@ contract StablePhantomPool is
         return _getMinimumBpt();
     }
 
-    // Swap Hooks
+    // BasePool hook
 
     /**
-     * @notice Top-level Vault hook for swaps.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
+     * @dev Override base pool hook invoked before any swap, join, or exit to ensure rates are updated before
+     * the operation.
      */
-    function onSwap(
-        SwapRequest memory swapRequest,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) public virtual override returns (uint256) {
-        _cacheTokenRatesIfNecessary();
+    function _beforeSwapJoinExit() internal override {
+        super._beforeSwapJoinExit();
 
-        return super.onSwap(swapRequest, balances, indexIn, indexOut);
+        // Before the scaling factors are read, we must update the cached rates, as those will be used to compute the
+        // scaling factors.
+        // Note that this is not done in a recovery mode exit (since _beforeSwapjoinExit() is not called under those
+        // conditions), but this is fine as recovery mode exits are unaffected by scaling factors anyway.
+        _cacheTokenRatesIfNecessary();
     }
+
+    // Swap Hooks
 
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
@@ -291,10 +290,14 @@ contract StablePhantomPool is
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
         _upscaleArray(balances, scalingFactors);
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 preJoinExitSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        // Initialize, then add or subtract to reflect BPT transferred in or out
+        uint256 postJoinExitSupply = preJoinExitSupply;
+
         uint256 upscaledAmountGiven = _upscale(swapRequest.amount, scalingFactors[isGivenIn ? indexIn : indexOut]);
 
         (uint256 amp, ) = _getAmplificationParameter();
+        uint256 preJoinExitInvariant = StableMath._calculateInvariant(amp, balancesWithoutBpt);
 
         // The lower level function return values are still upscaled, so we need to downscale the final return value
         if (swapRequest.tokenOut == IERC20(this)) {
@@ -306,20 +309,28 @@ contract StablePhantomPool is
                 indexInNoBpt,
                 isGivenIn,
                 amp,
-                virtualSupply,
+                preJoinExitSupply,
                 balancesWithoutBpt
             );
 
             // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
             // invariant.
+
+            // This is a single-token join; we are transferring preminted BPT out of the Vault,
+            // increasing the virtual supply
             if (isGivenIn) {
                 balancesWithoutBpt[indexInNoBpt] += upscaledAmountGiven;
+                postJoinExitSupply += amountCalculated;
                 // Join is "given in" so `amountCalculated` is an amountOut (BPT from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
             } else {
                 balancesWithoutBpt[indexInNoBpt] += amountCalculated;
                 // Join is "given out" so `amountCalculated` is an amountIn (tokens to the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
+                // This is a single-token join; we are transferring BPT back into the Vault,
+                // decreasing the virtual supply.
+                // Use upscaledAmountGiven for clarity, even though BPT tokens are always 18 decimals.
+                postJoinExitSupply += upscaledAmountGiven;
             }
         } else {
             // Exit Swap
@@ -330,24 +341,34 @@ contract StablePhantomPool is
                 indexOutNoBpt,
                 isGivenIn,
                 amp,
-                virtualSupply,
+                preJoinExitSupply,
                 balancesWithoutBpt
             );
 
             // We mutate `balancesWithoutBpt` to get the Pool's balances *after* the swap so we can calculate the new
             // invariant.
+
+            // This is a single-token exit; we are transferring BPT back into the Vault, decreasing the virtual supply
             if (isGivenIn) {
                 balancesWithoutBpt[indexOutNoBpt] -= amountCalculated;
                 // Exit is "given in" so `amountCalculated` is an amountOut (tokens from the Vault), so we round down.
                 downscaledAmountCalculated = _downscaleDown(amountCalculated, scalingFactors[indexOut]);
+                postJoinExitSupply -= upscaledAmountGiven;
             } else {
                 balancesWithoutBpt[indexOutNoBpt] -= upscaledAmountGiven;
                 // Exit is "given out" so `amountCalculated` is an amountIn (BPT to the Vault), so we round up.
                 downscaledAmountCalculated = _downscaleUp(amountCalculated, scalingFactors[indexIn]);
+                postJoinExitSupply -= amountCalculated;
             }
         }
 
-        _updateInvariantAfterJoinExit(amp, balancesWithoutBpt);
+        _updateInvariantAfterJoinExit(
+            amp,
+            balancesWithoutBpt,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
     }
 
     /**
@@ -398,7 +419,7 @@ contract StablePhantomPool is
         uint256 amp,
         uint256 virtualSupply,
         uint256[] memory balancesWithoutBpt
-    ) private view returns (uint256 amountIn) {
+    ) private view returns (uint256) {
         if (givenIn) {
             return
                 StableMath._calcTokenOutGivenExactBptIn(
@@ -424,27 +445,6 @@ contract StablePhantomPool is
     }
 
     // Join Hooks
-
-    /**
-     * @notice Top-level Vault hook for joins.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
-        _cacheTokenRatesIfNecessary();
-
-        return
-            super.onJoinPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
 
     /**
      * Since this Pool has preminted BPT which is stored in the Vault, it cannot simply be minted at construction.
@@ -514,12 +514,13 @@ contract StablePhantomPool is
     ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 preJoinExitSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
         if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 scalingFactors,
@@ -527,7 +528,7 @@ contract StablePhantomPool is
             );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 userData
@@ -541,7 +542,14 @@ contract StablePhantomPool is
         _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsIn), FixedPoint.add);
 
         // Pass in the post-join balances to reset the protocol fee basis.
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
+        // We are minting bptAmountOut, increasing the total (and virtual) supply post-join
+        _updateInvariantAfterJoinExit(
+            currentAmp,
+            balancesWithoutBpt,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            preJoinExitSupply + bptAmountOut
+        );
     }
 
     /**
@@ -614,30 +622,6 @@ contract StablePhantomPool is
     // Exit Hooks
 
     /**
-     * @notice Top-level Vault hook for exits.
-     * @dev Overriden here to ensure the token rate cache is updated *before* calling `_scalingFactors`, which happens
-     * in the base contract during upscaling of balances. Otherwise, the first transaction after the cache period
-     * expired would still use the old rates.
-     */
-    function onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
-        bytes memory userData
-    ) public virtual override(IBasePool, BasePool) returns (uint256[] memory, uint256[] memory) {
-        // If this is a recovery mode exit, do not update the token rate cache: external calls might fail
-        if (!userData.isRecoveryModeExitKind()) {
-            _cacheTokenRatesIfNecessary();
-        }
-
-        return
-            super.onExitPool(poolId, sender, recipient, balances, lastChangeBlock, protocolSwapFeePercentage, userData);
-    }
-
-    /**
      * @dev Support single- and multi-token exits, but not explicit proportional exits.
      * Pays protocol fees before the exit, and calls `_updateInvariantAfterJoinExit` afterward.
      * Note that recovery mode exits do not call`_onExitPool`.
@@ -654,12 +638,13 @@ contract StablePhantomPool is
     ) internal override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
 
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
+        (uint256 preJoinExitSupply, uint256[] memory balancesWithoutBpt) = _payProtocolFeesBeforeJoinExit(balances);
         (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
         if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 scalingFactors,
@@ -667,7 +652,7 @@ contract StablePhantomPool is
             );
         } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(
-                virtualSupply,
+                preJoinExitSupply,
                 currentAmp,
                 balancesWithoutBpt,
                 userData
@@ -681,7 +666,14 @@ contract StablePhantomPool is
         _mutateAmounts(balancesWithoutBpt, _dropBptItem(amountsOut), FixedPoint.sub);
 
         // Pass in the post-exit balances to reset the protocol fee basis.
-        _updateInvariantAfterJoinExit(currentAmp, balancesWithoutBpt);
+        // We are burning bptAmountIn BPT, decreasing the total (and virtual) supply post-exit
+        _updateInvariantAfterJoinExit(
+            currentAmp,
+            balancesWithoutBpt,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            preJoinExitSupply - bptAmountIn
+        );
     }
 
     /**
@@ -903,9 +895,57 @@ contract StablePhantomPool is
 
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
     // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
-    function _updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balancesWithoutBpt) internal {
+    function _updateInvariantAfterJoinExit(
+        uint256 currentAmp,
+        uint256[] memory balancesWithoutBpt,
+        uint256 preJoinExitInvariant,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) internal {
+        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
+
+        // Compute the growth ratio between the pre- and post-join/exit balances.
+        // Note that the pre-join/exit invariant is *not* the invariant from the last join,
+        // but computed from the balances before this particular join/exit.
+
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+
+        if (protocolSwapFeePercentage > 0) {
+            uint256 invariantGrowthRatio = (
+                postJoinExitInvariant > preJoinExitInvariant
+                    ? postJoinExitInvariant.sub(preJoinExitInvariant)
+                    : preJoinExitInvariant.sub(postJoinExitInvariant)
+            )
+                .divDown(preJoinExitInvariant);
+
+            // Compute the bpt ratio
+            uint256 bptGrowthRatio = (
+                postJoinExitSupply > preJoinExitInvariant
+                    ? postJoinExitSupply.sub(preJoinExitSupply)
+                    : preJoinExitSupply.sub(postJoinExitSupply)
+            )
+                .divDown(preJoinExitSupply);
+
+            // The difference between the invariant growth and bpt increase rates must be due to the
+            // balance change from this join/exit.
+            // Protocol fees due = (invariant growth / bpt increase - 1) * virtual supply * protocol fee %
+            // For instance, if the invariant growth is 1.05, and the bpt increase is 1.0475, with 1000 supply,
+            // and a protocol fee of 50%, we would mint (1.05/1.0475 - 1) * 1000 * 0.5 = 1.193 BPT.
+
+            if (invariantGrowthRatio > bptGrowthRatio) {
+                uint256 protocolFeeAmount = invariantGrowthRatio
+                    .divDown(bptGrowthRatio)
+                    .sub(FixedPoint.ONE)
+                    .mulDown(preJoinExitSupply)
+                    .mulDown(protocolSwapFeePercentage);
+
+                _payProtocolFees(protocolFeeAmount);
+            }
+        }
+
+        // Update the stored invariant and amp values, and copy the rates
         _postJoinExitAmp = currentAmp;
-        _postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
+        _postJoinExitInvariant = postJoinExitInvariant;
 
         _updateOldRates();
     }
@@ -929,21 +969,20 @@ contract StablePhantomPool is
 
     // Permissioned functions
 
-    /**
-     * @dev Overrides only owner action to allow setting the cache duration for the token rates
-     */
     function _isOwnerOnlyAction(bytes32 actionId)
         internal
         view
         virtual
         override(
-            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            // Our inheritance pattern creates a small diamond that requires explicitly listing the parents here.
+            // Each parent calls the `super` version, so linearization ensures all implementations are called.
             BasePool,
             BasePoolAuthorization,
-            StablePoolAmplification
+            StablePoolAmplification,
+            StablePoolRates
         )
         returns (bool)
     {
-        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
+        return super._isOwnerOnlyAction(actionId);
     }
 }
