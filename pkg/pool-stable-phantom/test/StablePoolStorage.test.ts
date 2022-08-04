@@ -85,7 +85,8 @@ describe('StablePoolStorage', () => {
 
       const newExemptFromYieldProtocolFeeFlags = [];
       for (let i = 0; i < numExemptFlags; i++) {
-        newExemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
+        const isExempt = Math.random() < 0.5;
+        newExemptFromYieldProtocolFeeFlags[i] = newRateProviders[i] !== ZERO_ADDRESS && isExempt;
       }
 
       pool = await deploy('MockStablePoolStorage', {
