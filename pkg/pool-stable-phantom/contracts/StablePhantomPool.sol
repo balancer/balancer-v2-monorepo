@@ -559,7 +559,8 @@ contract StablePhantomPool is
             userData
         );
 
-        // Unlike joinswaps, explicit joins do not mutate balancesWithoutBpt into the post join balances so we must perform this mutation here.
+        // Unlike joinswaps, explicit joins do not mutate balancesWithoutBpt into the post join balances so we must
+        // perform this mutation here.
         _mutateAmounts(balancesWithoutBpt, amountsDelta, isJoin ? FixedPoint.add : FixedPoint.sub);
         uint256 postJoinExitSupply = isJoin ? preJoinExitSupply + bptAmount : preJoinExitSupply - bptAmount;
 
