@@ -314,4 +314,11 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
 
         return scalingFactors;
     }
+
+    /**
+     * @dev Overrides only owner action to allow setting the cache duration for the token rates
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
+    }
 }
