@@ -610,7 +610,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
-        // Targets are stored downscaled by _TARGET_SCALING to make them fit in _TARGET_BITS, at the cost of some
+        // Targets are stored downscaled by _TARGET_SCALING to make them fit in _TARGET_BITS at the cost of some
         // resolution. We check that said resolution is not being used before downscaling.
 
         _require(upperTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
