@@ -1595,14 +1595,6 @@ describe('StablePhantomPool', () => {
           });
         });
 
-        it('updating the cache duration reverts', async () => {
-          await tokens.asyncEach(async (token) => {
-            await expect(pool.setTokenRateCacheDuration(token, bn(0), { from: owner })).to.be.revertedWith(
-              'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
-            );
-          });
-        });
-
         it('querying the cache reverts', async () => {
           await tokens.asyncEach(async (token) => {
             await expect(pool.getTokenRateCache(token)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
