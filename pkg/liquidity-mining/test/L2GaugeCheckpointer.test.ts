@@ -7,7 +7,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expect } from 'chai';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { anyAddressArray } from '@balancer-labs/v2-helpers/src/address';
 
 import { GaugeType } from './GaugeAdder.test';
@@ -80,10 +80,40 @@ describe('L2GaugeCheckpointer', () => {
   });
 
   GAUGE_TYPES.forEach((gaugeType) => {
-    describeAddAndRemoveGaugesForType(gaugeType);
+    itAddsAndRemovesGaugesForType(gaugeType);
   });
 
-  function describeAddAndRemoveGaugesForType(gaugeType: GaugeType) {
+  UNSUPPORTED_GAUGE_TYPES.forEach((gaugeType) => {
+    itTestsUnsupportedGaugeType(gaugeType);
+  });
+
+  function itTestsUnsupportedGaugeType(gaugeType: GaugeType) {
+    const REVERT_MSG = 'Unsupported gauge type';
+
+    describe(`test unsupported gauge type: ${GaugeType[gaugeType]}`, () => {
+      it('reverts adding gauge', async () => {
+        await expect(L2GaugeCheckpointer.addGauges(gaugeType, [ANY_ADDRESS])).to.be.revertedWith(REVERT_MSG);
+      });
+
+      it('reverts removing gauge', async () => {
+        await expect(L2GaugeCheckpointer.removeGauges(gaugeType, [ANY_ADDRESS])).to.be.revertedWith(REVERT_MSG);
+      });
+
+      it('reverts checking if it has gauge', async () => {
+        await expect(L2GaugeCheckpointer.hasGauge(gaugeType, ANY_ADDRESS)).to.be.revertedWith(REVERT_MSG);
+      });
+
+      it('reverts getting total gauge gauges', async () => {
+        await expect(L2GaugeCheckpointer.getTotalGauges(gaugeType)).to.be.revertedWith(REVERT_MSG);
+      });
+
+      it('reverts getting gauge at index', async () => {
+        await expect(L2GaugeCheckpointer.getGaugeAt(gaugeType, 0)).to.be.revertedWith(REVERT_MSG);
+      });
+    });
+  }
+
+  function itAddsAndRemovesGaugesForType(gaugeType: GaugeType) {
     sharedBeforeEach(`setup test gauges for ${GaugeType[gaugeType]}`, async () => {
       testGaugeType = gaugeType;
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -94,16 +124,6 @@ describe('L2GaugeCheckpointer', () => {
     });
 
     describe(`add gauges for ${GaugeType[gaugeType]}`, () => {
-      context('with unsupported gauge type', () => {
-        it('reverts', async () => {
-          for (const gaugeType of UNSUPPORTED_GAUGE_TYPES) {
-            await expect(L2GaugeCheckpointer.addGauges(gaugeType, testGauges)).to.be.revertedWith(
-              'Unsupported gauge type'
-            );
-          }
-        });
-      });
-
       context('with incorrect factory and controller setup', () => {
         it('reverts', async () => {
           const otherGaugeType = GaugeType.Optimism;
