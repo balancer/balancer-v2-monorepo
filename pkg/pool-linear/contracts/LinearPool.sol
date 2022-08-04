@@ -86,18 +86,26 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     uint256 private immutable _scalingFactorWrappedToken;
 
     // The lower and upper target are in BasePool's misc data field, which has 192 bits available (as it shares the same
-    // storage slot as the swap fee percentage, which is 64 bits). These are already scaled by the main token's scaling
-    // factor, which means that the maximum upper target is ~80 billion in the main token units if the token were to
-    // have 18 decimals (2^(192/2) / 10^18), which is more than enough.
-    // [        64 bits       |    96 bits   |    96 bits    ]
-    // [       reserved       | upper target |  lower target ]
-    // [  base pool swap fee  |         misc data            ]
-    // [ MSB                                             LSB ]
+    // storage slot as the swap fee percentage, which takes up 64 bits). We use 64 of these 192 for the targets (32 for
+    // each).
+    // The targets are already scaled by the main token's scaling factor (which makes the token behave as if it had 18
+    // decimals), but we only store the integer part: the targets must be multiplied by 1e18 before being used.
+    // This means the targets' resolution does not include decimal places in the main token (so e.g. a target of 500.1
+    // DAI is impossible). Since targets are expected to be relatively large, this is a non-issue. With 32 bits per
+    // target, we can represent values as high as ~4 billion (2^32).
+    // [        64 bits       |    32 bits   |    32 bits    | 128 bits ]
+    // [       reserved       | upper target |  lower target | reserved ]
+    // [  base pool swap fee  |                  misc data              ]
+    // [ MSB                                                        LSB ]
 
-    uint256 private constant _LOWER_TARGET_OFFSET = 0;
-    uint256 private constant _UPPER_TARGET_OFFSET = 96;
+    uint256 private constant _TARGET_SCALING = 1e18;
 
-    uint256 private constant _MAX_UPPER_TARGET = 2**(96) - 1;
+    uint256 private constant _TARGET_BITS = 32;
+
+    uint256 private constant _LOWER_TARGET_OFFSET = 32;
+    uint256 private constant _UPPER_TARGET_OFFSET = 64;
+
+    uint256 private constant _MAX_UPPER_TARGET = (2**(32) - 1) * _TARGET_SCALING;
 
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
 
@@ -587,8 +595,10 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
 
     function getTargets() public view override returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
-        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, 96);
-        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, 96);
+
+        // Since targets are stored downscaled by _TARGET_SCALING, we undo that when reading them.
+        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
+        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
     }
 
     function _setTargets(
@@ -599,11 +609,15 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
         _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
-        // Pack targets as two uint96 values into a single storage slot. This results in targets being capped to 96
-        // bits, but that should be more than enough. Values are already checked for validity above.
+        // Targets are stored downscaled by _TARGET_SCALING to make them fit in _TARGET_BITS at the cost of some
+        // resolution. We check that said resolution is not being used before downscaling.
+
+        _require(upperTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
+        _require(lowerTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
+
         _setMiscData(
-            WordCodec.encodeUint(lowerTarget, _LOWER_TARGET_OFFSET, 96) |
-                WordCodec.encodeUint(upperTarget, _UPPER_TARGET_OFFSET, 96)
+            WordCodec.encodeUint(lowerTarget / _TARGET_SCALING, _LOWER_TARGET_OFFSET, _TARGET_BITS) |
+                WordCodec.encodeUint(upperTarget / _TARGET_SCALING, _UPPER_TARGET_OFFSET, _TARGET_BITS)
         );
 
         emit TargetsSet(mainToken, lowerTarget, upperTarget);

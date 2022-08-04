@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT112, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
@@ -29,6 +29,8 @@ describe('LinearPool', function () {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
+
+  const MAX_UPPER_TARGET = MAX_UINT32.mul(bn(1e18));
 
   const ASSET_MANAGERS = [ethers.Wallet.createRandom().address, ethers.Wallet.createRandom().address];
 
@@ -113,10 +115,16 @@ describe('LinearPool', function () {
         await expect(deployPool({ mainToken, wrappedToken: mainToken }, false)).to.be.revertedWith('UNSORTED_ARRAY');
       });
 
-      it('reverts if upperTarget is greater than the maximum', async () => {
-        await expect(deployPool({ mainToken, wrappedToken, upperTarget: MAX_UINT96.add(1) }, false)).to.be.revertedWith(
-          'UPPER_TARGET_TOO_HIGH'
+      it('reverts if upperTarget is fractional', async () => {
+        await expect(deployPool({ mainToken, wrappedToken, upperTarget: fp(1.1) }, false)).to.be.revertedWith(
+          'FRACTIONAL_TARGET'
         );
+      });
+
+      it('reverts if upperTarget is greater than the maximum', async () => {
+        await expect(
+          deployPool({ mainToken, wrappedToken, upperTarget: MAX_UPPER_TARGET.add(1) }, false)
+        ).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
       });
     });
   });
@@ -157,7 +165,7 @@ describe('LinearPool', function () {
 
   describe('set targets', () => {
     const originalLowerTarget = fp(1000);
-    const originalUpperTarget = fp(2000);
+    const originalUpperTarget = fp(5000);
 
     sharedBeforeEach('deploy pool and set initial targets', async () => {
       await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
@@ -234,7 +242,7 @@ describe('LinearPool', function () {
 
         it('can set an extreme upper target', async () => {
           const newLowerTarget = originalLowerTarget.div(2);
-          const newUpperTarget = MAX_UINT96;
+          const newUpperTarget = MAX_UPPER_TARGET;
 
           await pool.setTargets(newLowerTarget, newUpperTarget);
 
@@ -254,7 +262,7 @@ describe('LinearPool', function () {
         });
 
         it('can increase the lower target', async () => {
-          const newLowerTarget = originalLowerTarget.mul(4).div(3);
+          const newLowerTarget = originalLowerTarget.mul(2);
           const newUpperTarget = originalUpperTarget;
 
           await pool.setTargets(newLowerTarget, newUpperTarget);
@@ -284,6 +292,27 @@ describe('LinearPool', function () {
             lowerTarget: newLowerTarget,
             upperTarget: newUpperTarget,
           });
+        });
+
+        it('reverts if the lower target is fractional', async () => {
+          const newLowerTarget = originalLowerTarget.add(1);
+          const newUpperTarget = originalUpperTarget;
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('FRACTIONAL_TARGET');
+        });
+
+        it('reverts if the upper target is fractional', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = originalUpperTarget.add(1);
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('FRACTIONAL_TARGET');
+        });
+
+        it('reverts if the upper target is too high', async () => {
+          const newLowerTarget = originalLowerTarget;
+          const newUpperTarget = MAX_UPPER_TARGET.add(1);
+
+          await expect(pool.setTargets(newLowerTarget, newUpperTarget)).to.be.revertedWith('UPPER_TARGET_TOO_HIGH');
         });
 
         it('reverts if the sender is not the owner', async () => {
