@@ -516,7 +516,6 @@ describe.only('StablePoolRates', () => {
         });
       };
 
-      // Note: this doesn't test to make sure that we're using the cached rates rather than live.
       context('with price rates above 1', () => {
         sharedBeforeEach('mock rates', async () => {
           await allTokens.asyncEach(async (token, i) => {
@@ -526,6 +525,15 @@ describe.only('StablePoolRates', () => {
             await pool.updateTokenRateCache(token.address);
           });
           expectedScalingFactors = getExpectedScalingFactors(allTokens, await getRates(allRateProviders));
+
+          // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
+          // This ensures that the pool is using it's cache properly.
+          await allTokens.asyncEach(async (_, i) => {
+            if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            await rateProvider.mockRate(fp(0));
+          });
         });
 
         itAdaptsTheScalingFactorsCorrectly();
@@ -541,6 +549,15 @@ describe.only('StablePoolRates', () => {
             await pool.updateTokenRateCache(token.address);
           });
           expectedScalingFactors = await getExpectedScalingFactors(allTokens, await getRates(allRateProviders));
+
+          // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
+          // This ensures that the pool is using it's cache properly.
+          await allTokens.asyncEach(async (_, i) => {
+            if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            await rateProvider.mockRate(fp(0));
+          });
         });
 
         itAdaptsTheScalingFactorsCorrectly();
@@ -556,6 +573,15 @@ describe.only('StablePoolRates', () => {
             await pool.updateTokenRateCache(token.address);
           });
           expectedScalingFactors = await getExpectedScalingFactors(allTokens, await getRates(allRateProviders));
+
+          // Set rate to zero. If the pool is reading from the rate provider directly then this will cause reverts.
+          // This ensures that the pool is using it's cache properly.
+          await allTokens.asyncEach(async (_, i) => {
+            if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            await rateProvider.mockRate(fp(0));
+          });
         });
 
         itAdaptsTheScalingFactorsCorrectly();
