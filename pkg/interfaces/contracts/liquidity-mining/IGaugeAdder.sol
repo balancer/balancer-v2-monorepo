@@ -26,6 +26,11 @@ interface IGaugeAdder is IAuthentication {
     event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
     /**
+     * @notice Returns the address of the Authorizer adaptor contract.
+     */
+    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor);
+
+    /**
      * @notice Returns the address of the Gauge Controller
      */
     function getGaugeController() external view returns (IGaugeController);

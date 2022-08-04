@@ -100,7 +100,7 @@ describe('L2GaugeCheckpointer', () => {
       it('reverts', async () => {
         const otherGaugeType = GaugeType.Optimism;
         await expect(L2GaugeCheckpointer.addGauges(otherGaugeType, testGauges)).to.be.revertedWith(
-          'Gauge does not come from valid factory'
+          'Gauge does not come from a valid factory'
         );
       });
     });
@@ -108,7 +108,7 @@ describe('L2GaugeCheckpointer', () => {
     context('with correct factory and wrong controller setup', () => {
       it('reverts', async () => {
         await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
-          'Gauge does not exist in controller'
+          'Gauge was not added to the GaugeController'
         );
       });
     });
@@ -144,14 +144,14 @@ describe('L2GaugeCheckpointer', () => {
         });
       });
 
-      context('when one of the gauges to add is already present', () => {
+      context('when one of the gauges to add was already added to the checkpointer', () => {
         sharedBeforeEach('add gauges beforehand', async () => {
           await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
         });
 
         it('reverts', async () => {
           await expect(L2GaugeCheckpointer.addGauges(testGaugeType, testGauges)).to.be.revertedWith(
-            'Gauge already present'
+            'Gauge already added to the checkpointer'
           );
         });
       });
@@ -159,7 +159,7 @@ describe('L2GaugeCheckpointer', () => {
   });
 
   describe('remove gauges', () => {
-    sharedBeforeEach('add gauges to regular and stakeless gauge controllers', async () => {
+    sharedBeforeEach('add gauges to the gauge controller and the checkpointer', async () => {
       await addGaugesToController(gaugeController, testGauges);
       await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
     });
@@ -188,10 +188,10 @@ describe('L2GaugeCheckpointer', () => {
         expect(await L2GaugeCheckpointer.getTotalGauges(testGaugeType)).to.be.eq(0);
       });
 
-      it('reverts if gauges were not present', async () => {
+      it('reverts if at least one gauge was not added to the checkpointer', async () => {
         const otherGaugeType = GaugeType.Optimism;
         await expect(L2GaugeCheckpointer.removeGauges(otherGaugeType, testGauges)).to.be.revertedWith(
-          'Gauge not present'
+          'Gauge was not added to the checkpointer'
         );
       });
     });

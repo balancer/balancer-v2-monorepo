@@ -84,4 +84,16 @@ interface IL2GaugeCheckpointer {
      * @param minRelativeWeight - Threshold to filter out gauges below it.
      */
     function checkpointGaugesAboveRelativeWeight(uint256 minRelativeWeight) external payable;
+
+    /**
+     * @dev Returns the ETH cost to checkpoint all gauges for a given minimum relative weight.
+     * A lower minimum relative weight might return higher costs, since more gauges could potentially be included
+     * in the checkpoint.
+     */
+    function getTotalBridgeCosts(uint256 minRelativeWeight) external view returns (uint256);
+
+    /**
+     * @dev Returns true if gauge type is Polygon, Arbitrum, Optimism, Gnosis or ZKSync; false otherwise.
+     */
+    function isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) external pure returns (bool);
 }

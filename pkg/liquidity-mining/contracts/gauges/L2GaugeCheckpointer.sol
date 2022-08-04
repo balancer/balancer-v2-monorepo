@@ -39,14 +39,14 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
 
-    constructor(GaugeAdder gaugeAdder) {
+    constructor(IGaugeAdder gaugeAdder) {
         _gaugeAdder = gaugeAdder;
         _gaugeController = gaugeAdder.getGaugeController();
         _authorizerAdaptor = gaugeAdder.getAuthorizerAdaptor();
     }
 
-    modifier withValidGaugeType(IGaugeAdder.GaugeType gaugeType) {
-        require(_isValidGaugeType(gaugeType), "Unsupported gauge type");
+    modifier withSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) {
+        require(_isSupportedGaugeType(gaugeType), "Unsupported gauge type");
         _;
     }
 
@@ -56,7 +56,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     function addGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
-        withValidGaugeType(gaugeType)
+        withSupportedGaugeType(gaugeType)
     {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
@@ -64,11 +64,11 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             IStakelessGauge gauge = gauges[i];
             require(
                 _gaugeAdder.isGaugeFromValidFactory(address(gauge), gaugeType),
-                "Gauge does not come from valid factory"
+                "Gauge does not come from a valid factory"
             );
-            require(_gaugeController.gauge_exists(address(gauge)), "Gauge does not exist in controller");
+            require(_gaugeController.gauge_exists(address(gauge)), "Gauge was not added to the GaugeController");
             require(!gauge.is_killed(), "Gauge was killed");
-            require(gaugesForType.add(address(gauge)), "Gauge already present");
+            require(gaugesForType.add(address(gauge)), "Gauge already added to the checkpointer");
 
             emit IL2GaugeCheckpointer.GaugeAdded(gaugeType, gauge);
         }
@@ -80,7 +80,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     function removeGauges(IGaugeAdder.GaugeType gaugeType, IStakelessGauge[] calldata gauges)
         external
         override
-        withValidGaugeType(gaugeType)
+        withSupportedGaugeType(gaugeType)
     {
         EnumerableSet.AddressSet storage gaugesForType = _gauges[gaugeType];
 
@@ -89,7 +89,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             // them. Therefore, the only required check at this point is whether the gauge was killed.
             IStakelessGauge gauge = gauges[i];
             require(gauge.is_killed(), "Gauge was not killed");
-            require(gaugesForType.remove(address(gauge)), "Gauge not present");
+            require(gaugesForType.remove(address(gauge)), "Gauge was not added to the checkpointer");
 
             emit IL2GaugeCheckpointer.GaugeRemoved(gaugeType, gauge);
         }
@@ -102,7 +102,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         external
         view
         override
-        withValidGaugeType(gaugeType)
+        withSupportedGaugeType(gaugeType)
         returns (bool)
     {
         return _gauges[gaugeType].contains(address(gauge));
@@ -115,7 +115,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         external
         view
         override
-        withValidGaugeType(gaugeType)
+        withSupportedGaugeType(gaugeType)
         returns (uint256)
     {
         return _gauges[gaugeType].length();
@@ -128,7 +128,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         external
         view
         override
-        withValidGaugeType(gaugeType)
+        withSupportedGaugeType(gaugeType)
         returns (IStakelessGauge)
     {
         return IStakelessGauge(_gauges[gaugeType].at(index));
@@ -153,9 +153,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the ETH cost to checkpoint all gauges.
+     * @dev See IL2GaugeCheckpointer#getTotalBridgeCosts.
      */
-    function getTotalBridgeCosts(uint256 minRelativeWeight) external view returns (uint256) {
+    function getTotalBridgeCosts(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
         uint256 totalArbitrumGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum].length();
@@ -167,13 +167,20 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
             // Skip gauges that are below the threshold.
             if (_gaugeController.gauge_relative_weight(gauge, currentPeriod) < minRelativeWeight) {
                 continue;
-            } else {
-                // Cost per gauge is always the same, but getting the cost every time makes the code simpler,
-                // and this function is only to be used off-chain.
-                totalCost += ArbitrumRootGauge(gauge).getTotalBridgeCost();
             }
+
+            // Cost per gauge is always the same, but getting the cost every time makes the code simpler,
+            // and this function is only to be used off-chain.
+            totalCost += ArbitrumRootGauge(gauge).getTotalBridgeCost();
         }
         return totalCost;
+    }
+
+    /**
+     * @dev See IL2GaugeCheckpointer#isSupportedGaugeType.
+     */
+    function isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) external pure override returns (bool) {
+        return _isSupportedGaugeType(gaugeType);
     }
 
     /**
@@ -225,10 +232,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
         return (timestamp / 1 weeks) * 1 weeks;
     }
 
-    /**
-     * @dev Returns true if gauge type is Polygon, Arbitrum, Optimism, Gnosis or ZKSync; false otherwise.
-     */
-    function _isValidGaugeType(IGaugeAdder.GaugeType gaugeType) private pure returns (bool) {
+    function _isSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) private pure returns (bool) {
         return
             gaugeType == IGaugeAdder.GaugeType.Polygon ||
             gaugeType == IGaugeAdder.GaugeType.Arbitrum ||
