@@ -1618,57 +1618,6 @@ describe('StablePhantomPool', () => {
           await deployPool({ tokens }, tokenRates);
         });
 
-        describe('scaling factors', () => {
-          const itAdaptsTheScalingFactorsCorrectly = () => {
-            it('adapt the scaling factors with the price rate', async () => {
-              const scalingFactors = await pool.getScalingFactors();
-
-              await tokens.asyncEach(async (token) => {
-                const expectedScalingFactor = await getExpectedScalingFactor(token);
-                const tokenIndex = await pool.getTokenIndex(token);
-                expect(scalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
-                expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
-              });
-
-              expect(scalingFactors[pool.bptIndex]).to.be.equal(fp(1));
-              expect(await pool.getScalingFactor(pool.bpt)).to.be.equal(fp(1));
-            });
-          };
-
-          context('with a price rate above 1', () => {
-            sharedBeforeEach('mock rates', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                await rateProviders[i].mockRate(fp(1 + i / 10));
-                await pool.updateTokenRateCache(token);
-              });
-            });
-
-            itAdaptsTheScalingFactorsCorrectly();
-          });
-
-          context('with a price rate equal to 1', () => {
-            sharedBeforeEach('mock rates', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                await rateProviders[i].mockRate(fp(1));
-                await pool.updateTokenRateCache(token);
-              });
-            });
-
-            itAdaptsTheScalingFactorsCorrectly();
-          });
-
-          context('with a price rate below 1', () => {
-            sharedBeforeEach('mock rate', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                await rateProviders[i].mockRate(fp(1 - i / 10));
-                await pool.updateTokenRateCache(token);
-              });
-            });
-
-            itAdaptsTheScalingFactorsCorrectly();
-          });
-        });
-
         describe('update', () => {
           const itUpdatesTheRateCache = (action: (token: Token) => Promise<ContractTransaction>) => {
             const newRate = fp(4.5);
