@@ -969,9 +969,6 @@ contract StablePhantomPool is
 
     // Permissioned functions
 
-    /**
-     * @dev Overrides only owner action to allow setting the cache duration for the token rates
-     */
     function _isOwnerOnlyAction(bytes32 actionId)
         internal
         view
@@ -980,10 +977,11 @@ contract StablePhantomPool is
             // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
             BasePool,
             BasePoolAuthorization,
-            StablePoolAmplification
+            StablePoolAmplification,
+            StablePoolRates
         )
         returns (bool)
     {
-        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
+        return super._isOwnerOnlyAction(actionId);
     }
 }
