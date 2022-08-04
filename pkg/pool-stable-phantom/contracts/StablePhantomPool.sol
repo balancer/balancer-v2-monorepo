@@ -380,7 +380,7 @@ contract StablePhantomPool is
     }
 
     /**
-     * @dev This mutates balancesWithoutBpt so that they become the post-joinswap balances.
+     * @dev This mutates balancesWithoutBpt so that they become the post-exitswap balances.
      */
     function _doExitSwap(
         bool isGivenIn,
@@ -518,7 +518,7 @@ contract StablePhantomPool is
     /**
      * @dev Support single- and multi-token exits, but not explicit proportional exits.
      * Pays protocol fees before the exit, and calls `_updateInvariantAfterJoinExit` afterward.
-     * Note that recovery mode exits do not call`_onExitPool`.
+     * Note that recovery mode exits do not call `_onExitPool`.
      */
     function _onExitPool(
         bytes32,
@@ -559,6 +559,7 @@ contract StablePhantomPool is
             userData
         );
 
+        // Unlike joinswaps, explicit joins do not mutate balancesWithoutBpt into the post join balances so we must perform this mutation here.
         _mutateAmounts(balancesWithoutBpt, amountsDelta, isJoin ? FixedPoint.add : FixedPoint.sub);
         uint256 postJoinExitSupply = isJoin ? preJoinExitSupply + bptAmount : preJoinExitSupply - bptAmount;
 
@@ -610,7 +611,6 @@ contract StablePhantomPool is
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        // Balances are passed through from the Vault hook, and include BPT
         InputHelpers.ensureInputLengthMatch(balancesWithoutBpt.length, amountsIn.length);
 
         // The user-provided amountsIn is unscaled, so we address that.
@@ -700,7 +700,6 @@ contract StablePhantomPool is
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        // amountsOut are unscaled, and do not include BPT
         InputHelpers.ensureInputLengthMatch(amountsOut.length, balancesWithoutBpt.length);
 
         // The user-provided amountsIn is unscaled, so we address that.
@@ -737,8 +736,6 @@ contract StablePhantomPool is
         uint256[] memory amountsOut = new uint256[](balancesWithoutBpt.length);
 
         // And then assign the result to the selected token.
-        // The token index passed to the StableMath function must match the balances array (without BPT),
-        // But the amountsOut array passed back to the Vault must include BPT.
         amountsOut[tokenIndexWithoutBpt] = StableMath._calcTokenOutGivenExactBptIn(
             currentAmp,
             balancesWithoutBpt,
