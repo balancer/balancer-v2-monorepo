@@ -168,6 +168,7 @@ library Errors {
     uint256 internal constant MAX_WEIGHT = 350;
     uint256 internal constant UNAUTHORIZED_JOIN = 351;
     uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
+    uint256 internal constant FRACTIONAL_TARGET = 353;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
