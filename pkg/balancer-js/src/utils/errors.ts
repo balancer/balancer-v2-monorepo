@@ -79,6 +79,7 @@ const balancerErrorCodes: Record<string, string> = {
   '350': 'MAX_WEIGHT',
   '351': 'UNAUTHORIZED_JOIN',
   '352': 'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE',
+  '353': 'FRACTIONAL_TARGET',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',

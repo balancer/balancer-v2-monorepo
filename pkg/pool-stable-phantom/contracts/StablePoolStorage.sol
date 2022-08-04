@@ -265,6 +265,7 @@ abstract contract StablePoolStorage is BasePool {
         // This can be called from an index passed in from user input.
         indexWithBpt = index < getBptIndex() ? index : index.add(1);
 
+        // TODO: `indexWithBpt != getBptIndex()` follows from above line and so can be removed.
         _require(indexWithBpt < _totalTokens && indexWithBpt != getBptIndex(), Errors.OUT_OF_BOUNDS);
     }
 
