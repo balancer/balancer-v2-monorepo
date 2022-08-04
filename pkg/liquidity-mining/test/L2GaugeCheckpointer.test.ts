@@ -80,16 +80,17 @@ describe('L2GaugeCheckpointer', () => {
   });
 
   GAUGE_TYPES.forEach((gaugeType) => {
-    describeAddGaugesForType(gaugeType);
+    describeAddAndRemoveGaugesForType(gaugeType);
   });
 
-  GAUGE_TYPES.forEach((gaugeType) => {
-    describeRemoveGaugesForType(gaugeType);
-  });
-
-  function describeAddGaugesForType(gaugeType: GaugeType) {
+  function describeAddAndRemoveGaugesForType(gaugeType: GaugeType) {
     sharedBeforeEach(`setup test gauges for ${GaugeType[gaugeType]}`, async () => {
-      setTestGauges(gaugeType);
+      testGaugeType = gaugeType;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      testGauges = gauges.get(testGaugeType)!;
+      otherGaugeType = getNextTestGaugeType(testGaugeType);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      otherTypeGauges = gauges.get(otherGaugeType)!;
     });
 
     describe(`add gauges for ${GaugeType[gaugeType]}`, () => {
@@ -175,14 +176,8 @@ describe('L2GaugeCheckpointer', () => {
         });
       });
     });
-  }
 
-  function describeRemoveGaugesForType(gaugeType: GaugeType) {
     describe(`remove gauges for ${GaugeType[gaugeType]}`, () => {
-      sharedBeforeEach(`setup test gauges for ${GaugeType[gaugeType]}`, async () => {
-        setTestGauges(gaugeType);
-      });
-
       sharedBeforeEach('add gauges to the gauge controller and the checkpointer', async () => {
         await addGaugesToController(gaugeController, testGauges);
         await L2GaugeCheckpointer.addGauges(testGaugeType, testGauges);
@@ -288,20 +283,6 @@ describe('L2GaugeCheckpointer', () => {
     const txArray = await Promise.all(anyAddressArray(seed, amount).map((address) => factory.create(address)));
     const receipts = await Promise.all(txArray.map((tx) => tx.wait()));
     return receipts.map((receipt) => expectEvent.inReceipt(receipt, 'GaugeCreated').args.gauge);
-  }
-
-  /**
-   * Sets internal variables to test for a given gauge type.
-   * @param gaugeType Gauge type under test.
-   */
-  function setTestGauges(gaugeType: GaugeType) {
-    testGaugeType = gaugeType;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    testGauges = gauges.get(testGaugeType)!;
-
-    otherGaugeType = getNextTestGaugeType(testGaugeType);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    otherTypeGauges = gauges.get(otherGaugeType)!;
   }
 
   /**
