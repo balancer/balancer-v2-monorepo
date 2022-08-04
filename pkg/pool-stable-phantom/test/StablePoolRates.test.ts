@@ -12,7 +12,15 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { advanceTime, currentTimestamp, DAY, HOUR, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import {
+  advanceTime,
+  currentTimestamp,
+  DAY,
+  HOUR,
+  MINUTE,
+  MONTH,
+  receiptTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -97,39 +105,56 @@ describe.only('StablePoolRates', () => {
     let exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(
-      poolOwner: Account,
-      tokens: TokenList,
-      numRateProviders = tokens.length,
-      numTokenCacheDurations = tokens.length,
-      numExemptFlags = tokens.length
+      tokenList: TokenList,
+      newRateProviders: string[],
+      newTokenRateCacheDurations: BigNumber[],
+      newExemptFromYieldProtocolFeeFlags: boolean[],
+      poolOwner: Account
     ): Promise<void> {
-      const newRateProviders = [];
-      for (let i = 0; i < numRateProviders; i++) {
-        const hasRateProvider = Math.random() < 0.5;
-        newRateProviders[i] = hasRateProvider ? (await deploy('v2-pool-utils/MockRateProvider')).address : ZERO_ADDRESS;
-      }
-
-      const newExemptFromYieldProtocolFeeFlags = [];
-      for (let i = 0; i < numExemptFlags; i++) {
-        const isExempt = Math.random() < 0.5;
-        newExemptFromYieldProtocolFeeFlags[i] = newRateProviders[i] !== ZERO_ADDRESS && isExempt;
-      }
-
-      tokenRateCacheDurations = Array.from({ length: numTokenCacheDurations }, () => INITIAL_CACHE_DURATION);
-
       pool = await deploy('MockStablePoolRates', {
         args: [
           vault.address,
-          tokens.addresses,
+          tokenList.addresses,
           newRateProviders,
-          tokenRateCacheDurations,
+          newTokenRateCacheDurations,
           newExemptFromYieldProtocolFeeFlags,
           TypesConverter.toAddress(poolOwner),
         ],
       });
       bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
+      tokenRateCacheDurations = newTokenRateCacheDurations;
       exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
+    }
+
+    async function deployPoolSimple(
+      poolOwner: Account,
+      tokenList: TokenList,
+      numRateProviders = tokenList.length,
+      numTokenCacheDurations = tokenList.length,
+      numExemptFlags = tokenList.length
+    ): Promise<void> {
+      const newRateProviders = await Promise.all(
+        Array.from({ length: numRateProviders }, async () => {
+          const hasRateProvider = Math.random() < 0.5;
+          return hasRateProvider ? (await deploy('v2-pool-utils/MockRateProvider')).address : ZERO_ADDRESS;
+        })
+      );
+
+      const newExemptFromYieldProtocolFeeFlags = Array.from({ length: numExemptFlags }, (_, i) => {
+        const isExempt = Math.random() < 0.5;
+        return newRateProviders[i] !== ZERO_ADDRESS && isExempt;
+      });
+
+      const newTokenRateCacheDurations = Array.from({ length: numTokenCacheDurations }, () => INITIAL_CACHE_DURATION);
+
+      await deployPool(
+        tokenList,
+        newRateProviders,
+        newTokenRateCacheDurations,
+        newExemptFromYieldProtocolFeeFlags,
+        poolOwner
+      );
     }
 
     async function tokensWithBpt(): Promise<TokenList> {
@@ -146,7 +171,7 @@ describe.only('StablePoolRates', () => {
     describe('constructor', () => {
       context('when the constructor succeeds', () => {
         sharedBeforeEach('deploy pool', async () => {
-          await deployPool(owner, tokens);
+          await deployPoolSimple(owner, tokens);
         });
 
         it('emits TokenRateCacheUpdated events for each token with a rate provider', async () => {
@@ -177,13 +202,108 @@ describe.only('StablePoolRates', () => {
 
       context('when the constructor fails', () => {
         it('reverts if the rate providers do not match the tokens length', async () => {
-          await expect(deployPool(owner, tokens, tokens.length + 1)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          await expect(deployPoolSimple(owner, tokens, tokens.length + 1)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
         });
 
         it('reverts if the cache durations do not match the tokens length', async () => {
-          await expect(deployPool(owner, tokens, tokens.length, tokens.length + 1)).to.be.revertedWith(
+          await expect(deployPoolSimple(owner, tokens, tokens.length, tokens.length + 1)).to.be.revertedWith(
             'INPUT_LENGTH_MISMATCH'
           );
+        });
+      });
+    });
+
+    describe('getTokenRate', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPoolSimple(owner, tokens);
+      });
+
+      context("when the token doesn't have a rate provider", () => {
+        it('returns ONE', async () => {
+          const allTokens = await tokensWithBpt();
+          const allRateProviders = await rateProvidersWithBpt();
+          await allTokens.asyncEach(async (token, i) => {
+            // Ignore tokens with rate providers
+            if (allRateProviders[i] !== ZERO_ADDRESS) return;
+
+            expect(await pool.getTokenRate(token.address)).to.be.eq(fp(1));
+          });
+        });
+      });
+
+      context('when the token has a rate provider', () => {
+        it('returns the cached value of the current rate', async () => {
+          const allTokens = await tokensWithBpt();
+          const allRateProviders = await rateProvidersWithBpt();
+          await allTokens.asyncEach(async (token, i) => {
+            // Ignore tokens without rate providers
+            if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+            const initialRate = fp(1);
+            expect(await pool.getTokenRate(token.address)).to.be.eq(initialRate);
+
+            // We update the rate reported by the rate provider but do not trigger a cache update.
+            // We should see the same rate reported by the pool.
+            const newRate = fp(4.5);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            await rateProvider.mockRate(newRate);
+
+            expect(await pool.getTokenRate(token.address)).to.be.eq(initialRate);
+
+            // We now force an update so that we expect the pool to report the new rate.
+            await pool.updateTokenRateCache(token.address);
+
+            expect(await pool.getTokenRate(token.address)).to.be.eq(newRate);
+          });
+        });
+      });
+    });
+
+    describe('getTokenRateCache', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPoolSimple(owner, tokens);
+      });
+
+      context("when the token doesn't have a rate provider", () => {
+        it('reverts', async () => {
+          const allTokens = await tokensWithBpt();
+          const allRateProviders = await rateProvidersWithBpt();
+          await allTokens.asyncEach(async (token, i) => {
+            // Ignore tokens with rate providers
+            if (allRateProviders[i] !== ZERO_ADDRESS) return;
+
+            await expect(pool.getTokenRateCache(token.address)).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+          });
+        });
+      });
+
+      context('when the token has a rate provider', () => {
+        it('returns the contents of the rate cache', async () => {
+          const allTokens = await tokensWithBpt();
+          const allRateProviders = await rateProvidersWithBpt();
+          await allTokens.asyncEach(async (token, i) => {
+            // Ignore tokens without rate providers
+            if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+            const previousCache = await pool.getTokenRateCache(token.address);
+
+            // We update the rate reported by the rate provider but do not trigger a cache update.
+            const newRate = fp(4.5);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            await rateProvider.mockRate(newRate);
+
+            // We don't expect the cache to be updated yet.
+            expect(await pool.getTokenRateCache(token.address)).to.be.deep.eq(previousCache);
+
+            // We now force an update so that we expect the pool to be updated.
+            const tx = await pool.updateTokenRateCache(token.address);
+            const txTimestamp = await receiptTimestamp(tx.wait());
+
+            const newCache = await pool.getTokenRateCache(token.address);
+            expect(newCache.rate).to.be.eq(newRate);
+            expect(newCache.duration).to.be.eq(previousCache.duration);
+            expect(newCache.expires).to.be.eq(bn(txTimestamp).add(previousCache.duration));
+          });
         });
       });
     });
@@ -262,7 +382,7 @@ describe.only('StablePoolRates', () => {
 
       context('with an owner', () => {
         sharedBeforeEach('deploy pool', async () => {
-          await deployPool(owner, tokens);
+          await deployPoolSimple(owner, tokens);
         });
 
         context('when the sender is allowed', () => {
@@ -298,7 +418,7 @@ describe.only('StablePoolRates', () => {
 
       context('with a delegated owner', () => {
         sharedBeforeEach('deploy pool', async () => {
-          await deployPool(DELEGATE_OWNER, tokens);
+          await deployPoolSimple(DELEGATE_OWNER, tokens);
           caller = other;
         });
 
@@ -333,7 +453,7 @@ describe.only('StablePoolRates', () => {
 
     describe('scaling factors', () => {
       sharedBeforeEach('deploy pool', async () => {
-        await deployPool(owner, tokens);
+        await deployPoolSimple(owner, tokens);
       });
 
       describe('getScalingFactors', () => {
