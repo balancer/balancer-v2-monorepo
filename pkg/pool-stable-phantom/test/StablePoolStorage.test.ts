@@ -232,8 +232,8 @@ describe('StablePoolStorage', () => {
           expectedScalingFactors.splice(bptIndex, 0, fp(1));
 
           // Also check the individual getters.
-          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
-          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? ZERO_ADDRESS);
+          // There's always 6 getters however not all of them may be used. Unused getters return zero.
+          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? bn(0));
           expect(await pool.getScalingFactor0()).to.be.eq(paddedScalingFactors[0]);
           expect(await pool.getScalingFactor1()).to.be.eq(paddedScalingFactors[1]);
           expect(await pool.getScalingFactor2()).to.be.eq(paddedScalingFactors[2]);
