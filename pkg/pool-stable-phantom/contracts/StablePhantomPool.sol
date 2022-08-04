@@ -974,7 +974,8 @@ contract StablePhantomPool is
         view
         virtual
         override(
-            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            // Our inheritance pattern creates a small diamond that requires explicitly listing the parents here. Each parent
+            // calls the `super` version, so linearization takes care of making sure all implementations are called.
             BasePool,
             BasePoolAuthorization,
             StablePoolAmplification,
