@@ -17,10 +17,7 @@ pragma solidity ^0.7.0;
 import "../StableMath.sol";
 
 contract MockStableMath {
-    function invariant(
-        uint256 amp,
-        uint256[] memory balances
-    ) external pure returns (uint256) {
+    function invariant(uint256 amp, uint256[] memory balances) external pure returns (uint256) {
         return StableMath._calculateInvariant(amp, balances);
     }
 
@@ -93,14 +90,6 @@ contract MockStableMath {
         return StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptAmountIn, bptTotalSupply, swapFee);
     }
 
-    function exactBPTInForTokensOut(
-        uint256[] memory balances,
-        uint256 bptAmountIn,
-        uint256 bptTotalSupply
-    ) external pure returns (uint256[] memory) {
-        return StableMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, bptTotalSupply);
-    }
-
     function bptInForExactTokensOut(
         uint256 amp,
         uint256[] memory balances,
@@ -109,22 +98,5 @@ contract MockStableMath {
         uint256 swapFee
     ) external pure returns (uint256) {
         return StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, swapFee);
-    }
-
-    function calculateDueTokenProtocolSwapFeeAmount(
-        uint256 amp,
-        uint256[] memory balances,
-        uint256 lastInvariant,
-        uint256 tokenIndex,
-        uint256 protocolSwapFeePercentage
-    ) external pure returns (uint256) {
-        return
-            StableMath._calcDueTokenProtocolSwapFeeAmount(
-                amp,
-                balances,
-                lastInvariant,
-                tokenIndex,
-                protocolSwapFeePercentage
-            );
     }
 }

@@ -168,6 +168,7 @@ library Errors {
     uint256 internal constant MAX_WEIGHT = 350;
     uint256 internal constant UNAUTHORIZED_JOIN = 351;
     uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
+    uint256 internal constant FRACTIONAL_TARGET = 353;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -212,6 +213,8 @@ library Errors {
     uint256 internal constant INDUCED_FAILURE = 439;
     uint256 internal constant EXPIRED_SIGNATURE = 440;
     uint256 internal constant MALFORMED_SIGNATURE = 441;
+    uint256 internal constant SAFE_CAST_VALUE_CANT_FIT_UINT64 = 442;
+    uint256 internal constant UNHANDLED_FEE_TYPE = 443;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

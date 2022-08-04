@@ -60,6 +60,9 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         // solhint-disable-next-line not-rely-on-time
         _require(deadline >= block.timestamp, Errors.EXPIRED_SIGNATURE);
 
+        // We only advance the nonce after validating the signature. This is irrelevant for this module, but it can be
+        // important in derived contracts that override _isValidSignature (e.g. SignaturesValidator), as we want for
+        // the observable state to still have the current nonce as the next valid one.
         _nextNonce[account] += 1;
     }
 

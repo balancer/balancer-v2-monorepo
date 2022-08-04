@@ -6,6 +6,7 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { getSigner, impersonate } from '../../../../src/signers';
@@ -16,16 +17,17 @@ function encodeElement(address: string, balance: BigNumber): string {
   return ethers.utils.solidityKeccak256(['address', 'uint'], [address, balance]);
 }
 
-describe('MerkleRedeem', function () {
+describeForkTest('MerkleRedeem', 'mainnet', 14850000, function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = new Task('20210811-ldo-merkle', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const LDO_TOKEN_ADDRESS = '0x5a98fcbea516cf06857215779fd812ca3bef1b32'; // LDO
   const LDO_WHALE_ADDRESS = '0x3e40d73eb977dc6a537af587d48316fee66e9c8c';
 
   before('run task', async () => {
+    task = new Task('20210811-ldo-merkle', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     distributor = await task.instanceAt('MerkleRedeem', task.output().MerkleRedeem);
   });
@@ -33,7 +35,7 @@ describe('MerkleRedeem', function () {
   before('load signers and transfer ownership', async () => {
     lp = await getSigner(2);
     other = await getSigner(3);
-    whale = await impersonate(LDO_WHALE_ADDRESS);
+    whale = await impersonate(LDO_WHALE_ADDRESS, fp(100));
     token = await task.instanceAt('IERC20', LDO_TOKEN_ADDRESS);
 
     await distributor.transferOwnership(whale.address);

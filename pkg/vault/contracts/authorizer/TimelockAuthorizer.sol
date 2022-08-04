@@ -23,22 +23,23 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "./TimelockExecutor.sol";
 
 /**
  * @title Timelock Authorizer
  * @author Balancer Labs
- * @dev Basic Authorizer implementation using timelocks.
+ * @dev Authorizer with timelocks (delays).
  *
  * Users are allowed to perform actions if they have the permission to do so.
  *
  * This Authorizer implementation allows defining a delay per action identifier. If a delay is set for an action, users
- * are now allowed to schedule an execution that will be triggered in the future by the Authorizer instead of executing
- * it directly themselves.
+ * are instead allowed to schedule an execution that will be run in the future by the Authorizer instead of executing it
+ * directly themselves.
  *
  * Glossary:
- * - Action: Op that can be performed to a target contract. These are identified by a unique bytes32 `actionId` defined
- *   by each target contract following `IAuthentication#getActionId`.
+ * - Action: Operation that can be performed to a target contract. These are identified by a unique bytes32 `actionId`
+ *   defined by each target contract following `IAuthentication.getActionId`.
  * - Scheduled execution: The Authorizer can define different delays per `actionId` in order to determine that a
  *   specific time window must pass before these can be executed. When a delay is set for an `actionId`, executions
  *   must be scheduled. These executions are identified with an unsigned integer called `scheduledExecutionId`.
@@ -55,8 +56,14 @@ import "./TimelockExecutor.sol";
  *   action ID for scheduling a delay change, and the "specifier" is the action ID for which the delay will be changed.
  *   The "baseActionId" and "specifier" of a permission are combined into a single "extended" `actionId`
  *   by calling `getExtendedActionId(baseActionId, specifier)`.
+ *
+ * Note that the TimelockAuthorizer doesn't make use of reentrancy guards on the majority of external functions.
+ * The only function which makes an external non-view call (and so could initate a reentrancy attack) is `execute`
+ * which executes a scheduled execution and so this is the only protected function.
+ * In fact a number of the TimelockAuthorizer's functions may only be called through a scheduled execution so reentrancy
+ * is necessary in order to be able to call these.
  */
-contract TimelockAuthorizer is IAuthorizer, IAuthentication {
+contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     using Address for address;
 
     /**
@@ -66,13 +73,16 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         public constant GENERAL_PERMISSION_SPECIFIER = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     // solhint-disable-previous-line max-line-length
 
+    /**
+     * @notice A sentinel value for `where` that will match any address.
+     */
     address public constant EVERYWHERE = address(-1);
 
     // We institute a maximum delay to ensure that actions cannot be accidentally/maliciously disabled through setting
     // an arbitrarily long delay.
     uint256 public constant MAX_DELAY = 2 * (365 days);
     // We need a minimum delay period to ensure that scheduled actions may be properly scrutinised.
-    uint256 public constant MIN_DELAY = 3 days;
+    uint256 public constant MIN_DELAY = 5 days;
 
     struct ScheduledExecution {
         address where;
@@ -164,6 +174,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes32 generalGrantActionId = getExtendedActionId(grantActionId, GENERAL_PERMISSION_SPECIFIER);
         bytes32 generalRevokeActionId = getExtendedActionId(revokeActionId, GENERAL_PERMISSION_SPECIFIER);
 
+        // These don't technically need to be granted as `admin` will be the new root, and can grant these permissions
+        // directly to themselves. By granting here improves ergonomics, especially in testing, as the admin is now
+        // ready to grant any permission.
         _grantPermission(generalGrantActionId, admin, EVERYWHERE);
         _grantPermission(generalRevokeActionId, admin, EVERYWHERE);
 
@@ -276,7 +289,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @notice Returns the permission ID for action `actionId`, account `account` and target `where`.
      */
-    function permissionId(
+    function getPermissionId(
         bytes32 actionId,
         address account,
         address where
@@ -286,8 +299,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Returns true if `account` has the permission defined by action `actionId` and target `where`.
-     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`, `account` may
-     * also hold the global permission for the action `actionId` allowing them to perform the action on `where`.
+     * @dev This function is specific for the strict permission defined by the tuple `(actionId, where)`: `account` may
+     * instead hold the global permission for the action `actionId`, also granting them permission on `where`, but this
+     * function would return false regardless.
      *
      * For this reason, it's recommended to use `hasPermission` if checking whether `account` is allowed to perform
      * a given action.
@@ -297,11 +311,11 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) external view returns (bool) {
-        return _isPermissionGranted[permissionId(actionId, account, where)];
+        return _isPermissionGranted[getPermissionId(actionId, account, where)];
     }
 
     /**
-     * @notice Returns true if `account` is allowed to perform action `actionId` in target `where`.
+     * @notice Returns true if `account` has permission over the action `actionId` in target `where`.
      */
     function hasPermission(
         bytes32 actionId,
@@ -309,8 +323,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address where
     ) public view returns (bool) {
         return
-            _isPermissionGranted[permissionId(actionId, account, where)] ||
-            _isPermissionGranted[permissionId(actionId, account, EVERYWHERE)];
+            _isPermissionGranted[getPermissionId(actionId, account, where)] ||
+            _isPermissionGranted[getPermissionId(actionId, account, EVERYWHERE)];
     }
 
     /**
@@ -405,7 +419,10 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Sets the pending root address to `pendingRoot`.
-     * @dev Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
+     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
+     * the TimelockExecutor after after calling `scheduleRootChange`.
+     *
+     * Once set as the pending root, `pendingRoot` may then call `claimRoot` to become the new root.
      */
     function setPendingRoot(address pendingRoot) external onlyExecutor {
         _setPendingRoot(pendingRoot);
@@ -436,6 +453,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Sets a new delay `delay` for action `actionId`.
+     * @dev This function can never be called directly - it is only ever called as part of a scheduled execution by
+     * the TimelockExecutor after after calling `scheduleDelayChange`.
      */
     function setDelay(bytes32 actionId, uint256 delay) external onlyExecutor {
         bytes32 setAuthorizerActionId = _vault.getActionId(IVault.setAuthorizer.selector);
@@ -468,7 +487,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // perform an action sooner by increasing its delay. Requiring a potentially long delay before increasing the
         // delay just adds unnecessary friction to increasing security for sensitive actions.
         //
-        // In practice, we enforce a minimum delay period to allow proper scrutiny of the change of the action's delay.
+        // We also enforce a minimum delay period to allow proper scrutiny of the change of the action's delay.
 
         uint256 actionDelay = _delaysPerActionId[actionId];
         uint256 executionDelay = newDelay < actionDelay ? Math.max(actionDelay - newDelay, MIN_DELAY) : MIN_DELAY;
@@ -486,7 +505,26 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         bytes memory data,
         address[] memory executors
     ) external returns (uint256 scheduledExecutionId) {
+        // Allowing scheduling arbitrary calls into the TimelockAuthorizer is dangerous.
+        //
+        // It is expected that only the `root` account can initiate a root transfer as this condition is enforced
+        // by the `scheduleRootChange` function which is the expected method of scheduling a call to `setPendingRoot`.
+        // If a call to `setPendingRoot` could be scheduled using this function as well as `scheduleRootChange` then
+        // accounts other than `root` could initiate a root transfer (provided they had the necessary permission).
+        // Similarly, `setDelay` can only be called if scheduled via `scheduleDelayChange`.
+        //
+        // For this reason we disallow this function from scheduling calls to functions on the Authorizer to ensure that
+        // these actions can only be scheduled through specialised functions.
         require(where != address(this), "CANNOT_SCHEDULE_AUTHORIZER_ACTIONS");
+
+        // We also disallow the TimelockExecutor from attempting to call into itself. Otherwise the above protection
+        // could be bypassed by wrapping a call to `setPendingRoot` inside of a call causing the TimelockExecutor to
+        // reenter itself, essentially hiding the fact that `where == address(this)` inside `data`.
+        //
+        // Note: The TimelockExecutor only accepts calls from the TimelockAuthorizer (i.e. not from itself) so this
+        // scenario should be impossible but this check is cheap so we enforce it here as well anyway.
+        require(where != address(_executor), "ATTEMPTING_EXECUTOR_REENTRANCY");
+
         bytes32 actionId = IAuthentication(where).getActionId(_decodeSelector(data));
         _require(hasPermission(actionId, msg.sender, where), Errors.SENDER_NOT_ALLOWED);
         return _schedule(actionId, where, data, executors);
@@ -495,7 +533,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     /**
      * @notice Executes a scheduled action `scheduledExecutionId`.
      */
-    function execute(uint256 scheduledExecutionId) external returns (bytes memory result) {
+    function execute(uint256 scheduledExecutionId) external nonReentrant returns (bytes memory result) {
         require(scheduledExecutionId < _scheduledExecutions.length, "ACTION_DOES_NOT_EXIST");
         ScheduledExecution storage scheduledExecution = _scheduledExecutions[scheduledExecutionId];
         require(!scheduledExecution.executed, "ACTION_ALREADY_EXECUTED");
@@ -510,6 +548,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         }
 
         scheduledExecution.executed = true;
+        // Note that this is the only place in the entire contract we perform a non-view call to an external contract.
         result = _executor.execute(scheduledExecution.where, scheduledExecution.data);
         emit ExecutionExecuted(scheduledExecutionId);
     }
@@ -569,6 +608,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Grants multiple permissions to a single `account`.
+     * @dev This function can only be used for actions that have no grant delay. For those that do, use
+     * `scheduleGrantPermission` instead.
      */
     function grantPermissions(
         bytes32[] memory actionIds,
@@ -577,6 +618,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
+            // For permissions that have a delay when granting, `canGrant` will return false. `scheduleGrantPermission`
+            // will succeed as it checks `isGranter` instead.
+            // Note that `canGrant` will return true for the executor if the permission has a delay.
             _require(canGrant(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _grantPermission(actionIds[i], account, where[i]);
         }
@@ -624,6 +668,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Revokes multiple permissions from a single `account`.
+     * @dev This function can only be used for actions that have no revoke delay. For those that do, use
+     * `scheduleRevokePermission` instead.
      */
     function revokePermissions(
         bytes32[] memory actionIds,
@@ -632,6 +678,9 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
     ) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
         for (uint256 i = 0; i < actionIds.length; i++) {
+            // For permissions that have a delay when granting, `canRevoke` will return false.
+            // `scheduleRevokePermission` will succeed as it checks `isRevoker` instead.
+            // Note that `canRevoke` will return true for the executor if the permission has a delay.
             _require(canRevoke(actionIds[i], msg.sender, where[i]), Errors.SENDER_NOT_ALLOWED);
             _revokePermission(actionIds[i], account, where[i]);
         }
@@ -654,6 +703,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
 
     /**
      * @notice Revokes multiple permissions from the caller.
+     * @dev Note that the caller can always renounce permissions, even if revoking them would typically be
+     * subject to a delay.
      */
     function renouncePermissions(bytes32[] memory actionIds, address[] memory where) external {
         InputHelpers.ensureInputLengthMatch(actionIds.length, where.length);
@@ -667,7 +718,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) private {
-        bytes32 permission = permissionId(actionId, account, where);
+        bytes32 permission = getPermissionId(actionId, account, where);
         if (!_isPermissionGranted[permission]) {
             _isPermissionGranted[permission] = true;
             emit PermissionGranted(actionId, account, where);
@@ -679,7 +730,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         address account,
         address where
     ) private {
-        bytes32 permission = permissionId(actionId, account, where);
+        bytes32 permission = getPermissionId(actionId, account, where);
         if (_isPermissionGranted[permission]) {
             _isPermissionGranted[permission] = false;
             emit PermissionRevoked(actionId, account, where);
@@ -710,7 +761,17 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication {
         // solhint-disable-next-line not-rely-on-time
         uint256 executableAt = block.timestamp + delay;
         bool protected = executors.length > 0;
-        _scheduledExecutions.push(ScheduledExecution(where, data, false, false, protected, executableAt));
+
+        _scheduledExecutions.push(
+            ScheduledExecution({
+                where: where,
+                data: data,
+                executed: false,
+                cancelled: false,
+                protected: protected,
+                executableAt: executableAt
+            })
+        );
 
         bytes32 executeActionId = getExecuteExecutionActionId(scheduledExecutionId);
         for (uint256 i = 0; i < executors.length; i++) {
