@@ -140,6 +140,18 @@ describe('StablePoolStorage', () => {
             'INPUT_LENGTH_MISMATCH'
           );
         });
+
+        it('reverts when setting an exempt flag with no rate provider', async () => {
+          const tokenAddresses = tokens.addresses.slice(0, 2);
+          const rateProviderAddresses = [ZERO_ADDRESS, ZERO_ADDRESS];
+          const exemptionFlags = [true, true];
+
+          await expect(
+            deploy('MockStablePoolStorage', {
+              args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags],
+            })
+          ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
+        });
       });
     });
 
