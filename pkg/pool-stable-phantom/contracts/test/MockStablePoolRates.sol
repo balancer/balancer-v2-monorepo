@@ -24,7 +24,8 @@ contract MockStablePoolRates is StablePoolRates {
         IERC20[] memory tokens,
         IRateProvider[] memory tokenRateProviders,
         uint256[] memory tokenRateCacheDurations,
-        bool[] memory exemptFromYieldProtocolFeeFlags
+        bool[] memory exemptFromYieldProtocolFeeFlags,
+        address owner
     )
         StablePoolRates(RatesParams(tokens, tokenRateProviders, tokenRateCacheDurations))
         StablePoolStorage(
@@ -40,7 +41,7 @@ contract MockStablePoolRates is StablePoolRates {
             1e12, // BasePool._MIN_SWAP_FEE_PERCENTAGE
             0,
             0,
-            address(0)
+            owner
         )
     {
         // solhint-disable-previous-line no-empty-blocks
