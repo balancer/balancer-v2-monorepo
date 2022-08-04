@@ -983,7 +983,7 @@ contract ComposableStablePool is
             BasePool,
             BasePoolAuthorization,
             StablePoolAmplification,
-            StablePoolRates
+            ComposableStablePoolRates
         )
         returns (bool)
     {
