@@ -180,6 +180,11 @@ contract MockStablePoolStorage is StablePoolStorage {
         return scalingFactors;
     }
 
+    // This assumes the tokenIndex is valid. If it's not, it will just return false.
+    function isTokenExemptFromYieldProtocolFeeByIndex(uint256 tokenIndex) external view returns (bool) {
+        return _isTokenExemptFromYieldProtocolFee(tokenIndex);
+    }
+
     function _onInitializePool(
         bytes32,
         address,

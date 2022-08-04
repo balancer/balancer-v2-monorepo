@@ -121,22 +121,6 @@ describe('StablePoolStorage', () => {
           expect(await pool.getToken4()).to.be.eq(expectedTokenAddresses[4]);
           expect(await pool.getToken5()).to.be.eq(expectedTokenAddresses[5]);
         });
-
-        it('sets the fee exemption flags correctly', async () => {
-          const bpt = await Token.deployedAt(pool);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
-
-          const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
-
-          for (let i = 0; i < allTokens.length; i++) {
-            // Initialized to true for even tokens
-            const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
-            const token = allTokens.get(i);
-
-            expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
-          }
-        });
       });
 
       context('when the constructor fails', () => {
@@ -323,6 +307,38 @@ describe('StablePoolStorage', () => {
 
           expect(providers).to.have.lengthOf(numberOfTokens + 1);
           expect(providers).to.be.deep.equal(expectedRateProviders);
+        });
+      });
+    });
+
+    describe('yield protocol fee exemption', () => {
+      describe('isTokenExemptFromYieldProtocolFee(uint256)', () => {
+        it('returns whether the token at a particular index is exempt', async () => {
+          const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
+          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
+
+          for (let i = 0; i < expectedExemptFromYieldProtocolFeeFlags.length; i++) {
+            const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
+            expect(await pool.isTokenExemptFromYieldProtocolFeeByIndex(i)).to.equal(expectedFlag);
+          }
+        });
+      });
+
+      describe('isTokenExemptFromYieldProtocolFee(address)', () => {
+        it('returns whether the token is exempt', async () => {
+          const bpt = await Token.deployedAt(pool);
+          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
+
+          const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
+          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
+
+          for (let i = 0; i < allTokens.length; i++) {
+            // Initialized to true for even tokens
+            const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
+            const token = allTokens.get(i);
+
+            expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
+          }
         });
       });
     });
