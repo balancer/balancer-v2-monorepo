@@ -82,7 +82,7 @@ abstract contract StablePoolStorage is BasePool {
     // [ 244 bits |        6 bits       |     6 bits      ]
     bytes32 private immutable _rateProviderInfoBitmap;
 
-    uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 7;
+    uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
     constructor(StorageParams memory params) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
