@@ -243,7 +243,6 @@ library StableMath {
             newBalances[i] = balances[i].add(amountInWithoutFee);
         }
 
-        // Get current and new invariants, taking swap fees into account
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
@@ -266,7 +265,6 @@ library StableMath {
     ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
-        // Calculate new invariant
         uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount in without fee.
@@ -346,7 +344,6 @@ library StableMath {
             newBalances[i] = balances[i].sub(amountOutWithFee);
         }
 
-        // Get current and new invariants, taking into account swap fees
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
@@ -365,7 +362,6 @@ library StableMath {
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
-        // Get the current and new invariants.
         uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee
