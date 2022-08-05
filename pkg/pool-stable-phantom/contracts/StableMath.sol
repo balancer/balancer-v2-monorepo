@@ -203,6 +203,7 @@ library StableMath {
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
@@ -243,7 +244,6 @@ library StableMath {
         }
 
         // Get current and new invariants, taking swap fees into account
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
@@ -261,12 +261,10 @@ library StableMath {
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Token in, so we round up overall.
-
-        // Get the current invariant
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
 
         // Calculate new invariant
         uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
@@ -308,6 +306,7 @@ library StableMath {
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
@@ -348,7 +347,6 @@ library StableMath {
         }
 
         // Get current and new invariants, taking into account swap fees
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
@@ -362,12 +360,12 @@ library StableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
         // Get the current and new invariants.
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee

@@ -302,7 +302,8 @@ contract StablePhantomPool is
                 balancesWithoutBpt,
                 _skipBptIndex(indexIn),
                 currentAmp,
-                preJoinExitSupply
+                preJoinExitSupply,
+                preJoinExitInvariant
             )
             : _doExitSwap(
                 isGivenIn,
@@ -310,7 +311,8 @@ contract StablePhantomPool is
                 balancesWithoutBpt,
                 _skipBptIndex(indexOut),
                 currentAmp,
-                preJoinExitSupply
+                preJoinExitSupply,
+                preJoinExitInvariant
             );
 
         _updateInvariantAfterJoinExit(
@@ -337,12 +339,13 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 indexIn,
         uint256 currentAmp,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         return
             isGivenIn
-                ? _joinSwapExactTokenInForBptOut(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply)
-                : _joinSwapExactBptOutForTokenIn(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply);
+                ? _joinSwapExactTokenInForBptOut(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply, preJoinExitInvariant)
+                : _joinSwapExactBptOutForTokenIn(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply, preJoinExitInvariant);
     }
 
     /**
@@ -355,7 +358,8 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 indexIn,
         uint256 currentAmp,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         // The StableMath function was created with joins in mind, so it expects a full amounts array. We create an
         // empty one and only set the amount for the token involved.
@@ -367,6 +371,7 @@ contract StablePhantomPool is
             balancesWithoutBpt,
             amountsIn,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
@@ -386,7 +391,8 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 indexIn,
         uint256 currentAmp,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         uint256 amountIn = StableMath._calcTokenInGivenExactBptOut(
             currentAmp,
@@ -394,6 +400,7 @@ contract StablePhantomPool is
             indexIn,
             bptOut,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
@@ -413,12 +420,13 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 indexOut,
         uint256 currentAmp,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         return
             isGivenIn
-                ? _exitSwapExactBptInForTokenOut(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply)
-                : _exitSwapExactTokenOutForBptIn(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply);
+                ? _exitSwapExactBptInForTokenOut(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply, preJoinExitInvariant)
+                : _exitSwapExactTokenOutForBptIn(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply, preJoinExitInvariant);
     }
 
     /**
@@ -431,7 +439,8 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 indexOut,
         uint256 currentAmp,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
             currentAmp,
@@ -439,6 +448,7 @@ contract StablePhantomPool is
             indexOut,
             bptAmount,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
@@ -458,7 +468,8 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 indexOut,
         uint256 currentAmp,
-        uint256 virtualSupply
+        uint256 virtualSupply,
+        uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         // The StableMath function was created with exits in mind, so it expects a full amounts array. We create an
         // empty one and only set the amount for the token involved.
@@ -470,6 +481,7 @@ contract StablePhantomPool is
             balancesWithoutBpt,
             amountsOut,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
@@ -582,7 +594,7 @@ contract StablePhantomPool is
         uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
 
 
-            function(uint256[] memory, uint256, uint256, uint256[] memory, bytes memory)
+            function(uint256[] memory, uint256, uint256, uint256, uint256[] memory, bytes memory)
                 internal
                 view
                 returns (uint256, uint256[] memory) _doJoinOrExit
@@ -592,6 +604,7 @@ contract StablePhantomPool is
             balancesWithoutBpt,
             currentAmp,
             preJoinExitSupply,
+            preJoinExitInvariant,
             scalingFactors,
             userData
         );
@@ -623,6 +636,7 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 currentAmp,
         uint256 preJoinExitSupply,
+        uint256 preJoinExitInvariant,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
@@ -631,13 +645,14 @@ contract StablePhantomPool is
             return
                 _joinExactTokensInForBPTOut(
                     preJoinExitSupply,
+                    preJoinExitInvariant,
                     currentAmp,
                     balancesWithoutBpt,
                     scalingFactors,
                     userData
                 );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(preJoinExitSupply, currentAmp, balancesWithoutBpt, userData);
+            return _joinTokenInForExactBPTOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balancesWithoutBpt, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -648,6 +663,7 @@ contract StablePhantomPool is
      */
     function _joinExactTokensInForBPTOut(
         uint256 virtualSupply,
+        uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         uint256[] memory scalingFactors,
@@ -664,6 +680,7 @@ contract StablePhantomPool is
             balancesWithoutBpt,
             amountsIn,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
@@ -677,6 +694,7 @@ contract StablePhantomPool is
      */
     function _joinTokenInForExactBPTOut(
         uint256 virtualSupply,
+        uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         bytes memory userData
@@ -698,6 +716,7 @@ contract StablePhantomPool is
             tokenIndexWithoutBpt,
             bptAmountOut,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
@@ -714,6 +733,7 @@ contract StablePhantomPool is
         uint256[] memory balancesWithoutBpt,
         uint256 currentAmp,
         uint256 preJoinExitSupply,
+        uint256 preJoinExitInvariant,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
@@ -722,13 +742,14 @@ contract StablePhantomPool is
             return
                 _exitBPTInForExactTokensOut(
                     preJoinExitSupply,
+                    preJoinExitInvariant,
                     currentAmp,
                     balancesWithoutBpt,
                     scalingFactors,
                     userData
                 );
         } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(preJoinExitSupply, currentAmp, balancesWithoutBpt, userData);
+            return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balancesWithoutBpt, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
@@ -739,6 +760,7 @@ contract StablePhantomPool is
      */
     function _exitBPTInForExactTokensOut(
         uint256 virtualSupply,
+        uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         uint256[] memory scalingFactors,
@@ -755,6 +777,7 @@ contract StablePhantomPool is
             balancesWithoutBpt,
             amountsOut,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
@@ -767,6 +790,7 @@ contract StablePhantomPool is
      */
     function _exitExactBPTInForTokenOut(
         uint256 virtualSupply,
+        uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balancesWithoutBpt,
         bytes memory userData
@@ -787,6 +811,7 @@ contract StablePhantomPool is
             tokenIndexWithoutBpt,
             bptAmountIn,
             virtualSupply,
+            preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
