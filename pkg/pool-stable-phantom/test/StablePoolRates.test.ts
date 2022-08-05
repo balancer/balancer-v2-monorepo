@@ -117,7 +117,6 @@ describe('StablePoolRates', () => {
     });
 
     let rateProviders: string[] = [];
-    let tokenRateCacheDurations: BigNumber[] = [];
     let exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(
@@ -139,7 +138,6 @@ describe('StablePoolRates', () => {
       });
       bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
-      tokenRateCacheDurations = newTokenRateCacheDurations;
       exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
 
