@@ -74,7 +74,7 @@ abstract contract StablePoolStorage is BasePool {
     // This is a bitmap which allows querying whether a token at a particular index:
     // - has a rate provider associated with it.
     // - is exempt from yield protocol fees.
-    // This is required as the data stored in this bitmap is computed from value in immutable storage,
+    // This is required as the data stored in this bitmap is computed from values in immutable storage,
     // without this bitmap we would have to manually search through token by token to reach these values.
     // The data structure is as follows:
     //
