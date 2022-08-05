@@ -822,7 +822,7 @@ describe('StablePoolRates', () => {
       });
 
       context('when ignoring exempt flags', () => {
-        it('returns the array  with elements scaled by the cached token rate', async () => {
+        it('returns the array with elements scaled by the ratio of current and old cached token rates', async () => {
           for (let i = 0; i < 5; i++) {
             const inputArray = allTokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) => input.mul(fp(1)).div(rates[i]));
@@ -833,7 +833,7 @@ describe('StablePoolRates', () => {
       });
 
       context('when not ignoring exempt flags', () => {
-        it('returns the array with elements scaled by the cached token rate if exempt', async () => {
+        it('returns the array with elements scaled by the ratio of current and old cached token rates if exempt', async () => {
           for (let i = 0; i < 5; i++) {
             const inputArray = allTokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) =>
