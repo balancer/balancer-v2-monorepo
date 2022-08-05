@@ -221,8 +221,8 @@ abstract contract StablePoolStorage is BasePool {
     }
 
     function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
-        // We never need a single token's scaling factor: we aways process the entire array at once. Therefore, we don't
-        // bother providing an implementation for this.
+        // We never use a single token's scaling factor by itself, we always process the entire array at once.
+        // Therefore we don't bother providing an implementation for this.
         _revert(Errors.UNIMPLEMENTED);
     }
 
