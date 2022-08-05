@@ -263,7 +263,7 @@ abstract contract StablePoolRates is StablePoolStorage {
         return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
     }
 
-    // Return true if the token at this index is a non-BPT token with a rate provider, so that it has
+    // Return true if the token at this index has a rate provider, so that it has
     // an entry in the token rate cache.
     function _hasCacheEntry(uint256 index) private view returns (bool) {
         if (index == 0) return _getRateProvider0() != IRateProvider(0);
