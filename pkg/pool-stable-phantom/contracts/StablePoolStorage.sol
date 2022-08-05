@@ -82,7 +82,7 @@ abstract contract StablePoolStorage is BasePool {
     // [ 244 bits |        6 bits       |     6 bits      ]
     bytes32 private immutable _rateProviderInfoBitmap;
 
-    uint256 private constant RATE_PROVIDER_FLAGS_OFFSET = 7;
+    uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 7;
 
     constructor(StorageParams memory params) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
@@ -143,7 +143,7 @@ abstract contract StablePoolStorage is BasePool {
                 // Store whether token has rate provider
                 rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
                     rateProviders[i] != IRateProvider(0),
-                    RATE_PROVIDER_FLAGS_OFFSET + i
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
                 );
                 // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
@@ -155,7 +155,7 @@ abstract contract StablePoolStorage is BasePool {
                 // Store whether token has rate provider
                 rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
                     rateProviders[i] != IRateProvider(0),
-                    RATE_PROVIDER_FLAGS_OFFSET + i
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
                 );
                 // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
@@ -368,7 +368,7 @@ abstract contract StablePoolStorage is BasePool {
      * @notice Return true if the token at this index has a rate provider
      */
     function _hasRateProvider(uint256 tokenIndex) internal view returns (bool) {
-        return _rateProviderInfoBitmap.decodeBool(RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
+        return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
     }
 
     // Exempt flags
