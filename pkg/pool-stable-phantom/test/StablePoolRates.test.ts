@@ -343,7 +343,7 @@ describe('StablePoolRates', () => {
         const itUpdatesTheRateCache = (action: (token: Token) => Promise<ContractTransaction>) => {
           const newRate = fp(4.5);
 
-          it('updates the cache', async () => {
+          it('updates the cached rate', async () => {
             const allTokens = await tokensWithBpt();
             const allRateProviders = await rateProvidersWithBpt();
             await allTokens.asyncEach(async (token, i) => {
@@ -354,18 +354,52 @@ describe('StablePoolRates', () => {
 
               const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
               await rateProvider.mockRate(newRate);
-              const updatedAt = await currentTimestamp();
 
               await action(token);
 
               const currentCache = await pool.getTokenRateCache(token.address);
               expect(currentCache.rate).to.be.equal(newRate);
               expect(previousCache.rate).not.to.be.equal(newRate);
+            });
+          });
 
-              expect(currentCache.oldRate).to.be.equal(previousCache.oldRate);
+          it('extends the cache expiry', async () => {
+            const allTokens = await tokensWithBpt();
+            const allRateProviders = await rateProvidersWithBpt();
+            await allTokens.asyncEach(async (token, i) => {
+              // Ignore tokens without rate providers
+              if (allRateProviders[i] === ZERO_ADDRESS) return;
 
+              const previousCache = await pool.getTokenRateCache(token.address);
+
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              await rateProvider.mockRate(newRate);
+
+              const tx = await action(token);
+              const updatedAt = bn(await receiptTimestamp(tx.wait()));
+
+              const currentCache = await pool.getTokenRateCache(token.address);
               expect(currentCache.duration).to.be.equal(previousCache.duration);
-              expect(currentCache.expires).to.be.at.least(updatedAt.add(previousCache.duration));
+              expect(currentCache.expires).to.be.eq(updatedAt.add(previousCache.duration));
+            });
+          });
+
+          it("doesn't affect the cached old rate", async () => {
+            const allTokens = await tokensWithBpt();
+            const allRateProviders = await rateProvidersWithBpt();
+            await allTokens.asyncEach(async (token, i) => {
+              // Ignore tokens without rate providers
+              if (allRateProviders[i] === ZERO_ADDRESS) return;
+
+              const previousCache = await pool.getTokenRateCache(token.address);
+
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              await rateProvider.mockRate(newRate);
+
+              await action(token);
+
+              const currentCache = await pool.getTokenRateCache(token.address);
+              expect(currentCache.oldRate).to.be.equal(previousCache.oldRate);
             });
           });
 
@@ -408,6 +442,7 @@ describe('StablePoolRates', () => {
 
                 const currentCache = await pool.getTokenRateCache(token.address);
                 expect(currentCache.rate).to.be.equal(previousCache.rate);
+                expect(currentCache.oldRate).to.be.equal(previousCache.oldRate);
                 expect(currentCache.expires).to.be.equal(previousCache.expires);
                 expect(currentCache.duration).to.be.equal(previousCache.duration);
               });
@@ -532,6 +567,7 @@ describe('StablePoolRates', () => {
                 const currentCache = await pool.getTokenRateCache(token.address);
                 expect(currentCache.rate).to.be.equal(newRate);
                 expect(previousCache.rate).not.to.be.equal(newRate);
+                expect(currentCache.oldRate).to.be.equal(previousCache.oldRate);
                 expect(currentCache.duration).to.be.equal(newDuration);
                 expect(currentCache.expires).to.be.at.least(forceUpdateAt.add(newDuration));
               });
