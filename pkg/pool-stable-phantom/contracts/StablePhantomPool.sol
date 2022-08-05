@@ -344,8 +344,22 @@ contract StablePhantomPool is
     ) internal view returns (uint256, uint256) {
         return
             isGivenIn
-                ? _joinSwapExactTokenInForBptOut(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply, preJoinExitInvariant)
-                : _joinSwapExactBptOutForTokenIn(amount, balancesWithoutBpt, indexIn, currentAmp, virtualSupply, preJoinExitInvariant);
+                ? _joinSwapExactTokenInForBptOut(
+                    amount,
+                    balancesWithoutBpt,
+                    indexIn,
+                    currentAmp,
+                    virtualSupply,
+                    preJoinExitInvariant
+                )
+                : _joinSwapExactBptOutForTokenIn(
+                    amount,
+                    balancesWithoutBpt,
+                    indexIn,
+                    currentAmp,
+                    virtualSupply,
+                    preJoinExitInvariant
+                );
     }
 
     /**
@@ -425,8 +439,22 @@ contract StablePhantomPool is
     ) internal view returns (uint256, uint256) {
         return
             isGivenIn
-                ? _exitSwapExactBptInForTokenOut(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply, preJoinExitInvariant)
-                : _exitSwapExactTokenOutForBptIn(amount, balancesWithoutBpt, indexOut, currentAmp, virtualSupply, preJoinExitInvariant);
+                ? _exitSwapExactBptInForTokenOut(
+                    amount,
+                    balancesWithoutBpt,
+                    indexOut,
+                    currentAmp,
+                    virtualSupply,
+                    preJoinExitInvariant
+                )
+                : _exitSwapExactTokenOutForBptIn(
+                    amount,
+                    balancesWithoutBpt,
+                    indexOut,
+                    currentAmp,
+                    virtualSupply,
+                    preJoinExitInvariant
+                );
     }
 
     /**
@@ -652,7 +680,14 @@ contract StablePhantomPool is
                     userData
                 );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balancesWithoutBpt, userData);
+            return
+                _joinTokenInForExactBPTOut(
+                    preJoinExitSupply,
+                    preJoinExitInvariant,
+                    currentAmp,
+                    balancesWithoutBpt,
+                    userData
+                );
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -749,7 +784,14 @@ contract StablePhantomPool is
                     userData
                 );
         } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balancesWithoutBpt, userData);
+            return
+                _exitExactBPTInForTokenOut(
+                    preJoinExitSupply,
+                    preJoinExitInvariant,
+                    currentAmp,
+                    balancesWithoutBpt,
+                    userData
+                );
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
