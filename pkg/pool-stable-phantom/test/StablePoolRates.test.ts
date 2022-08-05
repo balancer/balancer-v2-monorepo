@@ -362,6 +362,8 @@ describe('StablePoolRates', () => {
               expect(currentCache.rate).to.be.equal(newRate);
               expect(previousCache.rate).not.to.be.equal(newRate);
 
+              expect(currentCache.oldRate).to.be.equal(previousCache.oldRate);
+
               expect(currentCache.duration).to.be.equal(previousCache.duration);
               expect(currentCache.expires).to.be.at.least(updatedAt.add(previousCache.duration));
             });
