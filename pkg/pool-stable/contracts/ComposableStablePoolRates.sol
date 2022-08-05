@@ -108,14 +108,19 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         view
         returns (
             uint256 rate,
+            uint256 oldRate,
             uint256 duration,
             uint256 expires
         )
     {
-        _require(_getRateProvider(token) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        bytes32 cache = _tokenRateCaches[token];
 
-        rate = _tokenRateCaches[token].getCurrentRate();
-        (duration, expires) = _tokenRateCaches[token].getTimestamps();
+        // A zero cache indicates that the token doesn't have a rate provider associated with it.
+        _require(cache != bytes32(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
+        rate = cache.getCurrentRate();
+        oldRate = cache.getOldRate();
+        (duration, expires) = cache.getTimestamps();
     }
 
     /**
