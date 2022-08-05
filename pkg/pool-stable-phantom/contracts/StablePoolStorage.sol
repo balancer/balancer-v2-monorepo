@@ -141,9 +141,10 @@ abstract contract StablePoolStorage is BasePool {
             if (i < bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i];
                 // Store whether token has rate provider
-                if (rateProviders[i] != IRateProvider(0)) {
-                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, RATE_PROVIDER_FLAGS_OFFSET + i);
-                }
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    RATE_PROVIDER_FLAGS_OFFSET + i
+                );
                 // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -152,9 +153,10 @@ abstract contract StablePoolStorage is BasePool {
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
                 // Store whether token has rate provider
-                if (rateProviders[i] != IRateProvider(0)) {
-                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, RATE_PROVIDER_FLAGS_OFFSET + i);
-                }
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    RATE_PROVIDER_FLAGS_OFFSET + i
+                );
                 // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
