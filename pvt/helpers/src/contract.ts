@@ -34,7 +34,7 @@ export async function deploy(
   const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, from);
   const instance = await factory.deploy(...args);
 
-  return deployedAt(contract, instance.address);
+  return instance.deployed();
 }
 
 // Creates a contract object for a contract deployed at a known address. The `contract` argument follows the same rules
