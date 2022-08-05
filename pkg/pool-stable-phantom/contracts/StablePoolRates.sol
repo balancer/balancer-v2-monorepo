@@ -154,7 +154,7 @@ abstract contract StablePoolRates is StablePoolStorage {
         IERC20 token,
         IRateProvider provider,
         uint256 duration
-    ) internal {
+    ) internal virtual {
         uint256 rate = provider.getRate();
         bytes32 cache = _tokenRateCaches[token];
 
