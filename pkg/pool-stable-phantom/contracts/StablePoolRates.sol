@@ -266,14 +266,12 @@ abstract contract StablePoolRates is StablePoolStorage {
     // Return true if the token at this index is a non-BPT token with a rate provider, so that it has
     // an entry in the token rate cache.
     function _hasCacheEntry(uint256 index) private view returns (bool) {
-        uint256 bptIndex = getBptIndex();
-
-        if (index == 0) return _getRateProvider0() != IRateProvider(0) && bptIndex != 0;
-        if (index == 1) return _getRateProvider1() != IRateProvider(0) && bptIndex != 1;
-        if (index == 2) return _getRateProvider2() != IRateProvider(0) && bptIndex != 2;
-        if (index == 3) return _getRateProvider3() != IRateProvider(0) && bptIndex != 3;
-        if (index == 4) return _getRateProvider4() != IRateProvider(0) && bptIndex != 4;
-        if (index == 5) return _getRateProvider5() != IRateProvider(0) && bptIndex != 5;
+        if (index == 0) return _getRateProvider0() != IRateProvider(0);
+        if (index == 1) return _getRateProvider1() != IRateProvider(0);
+        if (index == 2) return _getRateProvider2() != IRateProvider(0);
+        if (index == 3) return _getRateProvider3() != IRateProvider(0);
+        if (index == 4) return _getRateProvider4() != IRateProvider(0);
+        if (index == 5) return _getRateProvider5() != IRateProvider(0);
     }
 
     // Scaling Factors
