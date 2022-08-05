@@ -241,20 +241,6 @@ describe('StablePoolStorage', () => {
           );
         });
       });
-
-      describe('getTokenScalingFactor', () => {
-        it('returns the correct scaling factor', async () => {
-          const bpt = await Token.deployedAt(pool);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
-
-          const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
-          expectedScalingFactors.splice(bptIndex, 0, fp(1));
-
-          for (const [index, token] of allTokens.tokens.entries()) {
-            expect(await pool.getTokenScalingFactor(token.address)).to.be.eq(expectedScalingFactors[index]);
-          }
-        });
-      });
     });
 
     describe('rate providers', () => {

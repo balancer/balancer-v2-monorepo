@@ -54,12 +54,12 @@ abstract contract StablePoolStorage is BasePool {
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
 
-    uint256 private immutable _scalingFactor0;
-    uint256 private immutable _scalingFactor1;
-    uint256 private immutable _scalingFactor2;
-    uint256 private immutable _scalingFactor3;
-    uint256 private immutable _scalingFactor4;
-    uint256 private immutable _scalingFactor5;
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
+    uint256 internal immutable _scalingFactor5;
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
@@ -207,17 +207,10 @@ abstract contract StablePoolStorage is BasePool {
         return _scalingFactor5;
     }
 
-    function _tokenScalingFactor(IERC20 token) internal view returns (uint256) {
-        uint256 index = _getTokenIndex(token);
-
-        if (index == 0) return _getScalingFactor0();
-        if (index == 1) return _getScalingFactor1();
-        if (index == 2) return _getScalingFactor2();
-        if (index == 3) return _getScalingFactor3();
-        if (index == 4) return _getScalingFactor4();
-        if (index == 5) return _getScalingFactor5();
-
-        _revert(Errors.INVALID_TOKEN); // This should never happen as `_getTokenIndex` guarantees valid indices
+    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
+        // We never use a single token's scaling factor by itself, we always process the entire array at once.
+        // Therefore we don't bother providing an implementation for this.
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     // Index helpers

@@ -279,18 +279,6 @@ abstract contract StablePoolRates is StablePoolStorage {
     // Scaling Factors
 
     /**
-     * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
-     */
-    function getScalingFactor(IERC20 token) external view returns (uint256) {
-        return _scalingFactor(token);
-    }
-
-    // Computed the total scaling factor as a product of the token decimal adjustment and token rate.
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _tokenScalingFactor(token).mulDown(getTokenRate(token));
-    }
-
-    /**
      * @dev Overrides scaling factor getter to compute the tokens' rates.
      */
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {

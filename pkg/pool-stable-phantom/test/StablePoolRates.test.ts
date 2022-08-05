@@ -217,7 +217,7 @@ describe('StablePoolRates', () => {
               expectEvent.inIndirectReceipt(deploymentTx, pool.interface, 'TokenRateProviderSet', {
                 tokenIndex: index,
                 provider: rateProvider,
-                cacheDuration: tokenRateCacheDurations[index],
+                cacheDuration: INITIAL_CACHE_DURATION,
               });
             }
           }
@@ -709,13 +709,7 @@ describe('StablePoolRates', () => {
         it('adapts the scaling factors with the price rate', async () => {
           const scalingFactors = await pool.getScalingFactors();
           expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
-
-          await allTokens.asyncEach(async (token, index) => {
-            expect(await pool.getScalingFactor(token.address)).to.be.equal(expectedScalingFactors[index]);
-          });
-
           expect(scalingFactors[bptIndex]).to.be.equal(fp(1));
-          expect(await pool.getScalingFactor(pool.address)).to.be.equal(fp(1));
         });
       };
 
