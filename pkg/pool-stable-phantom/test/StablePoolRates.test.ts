@@ -25,7 +25,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
-describe.only('StablePoolRates', () => {
+describe('StablePoolRates', () => {
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let vault: Vault;
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
