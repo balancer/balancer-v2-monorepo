@@ -80,7 +80,8 @@ describe('StablePoolStorage', () => {
     ): Promise<void> {
       const newRateProviders = [];
       for (let i = 0; i < numRateProviders; i++) {
-        newRateProviders[i] = (await deploy('v2-pool-utils/MockRateProvider')).address;
+        const hasRateProvider = Math.random() < 0.5;
+        newRateProviders[i] = hasRateProvider ? (await deploy('v2-pool-utils/MockRateProvider')).address : ZERO_ADDRESS;
       }
 
       const newExemptFromYieldProtocolFeeFlags = [];
@@ -138,6 +139,18 @@ describe('StablePoolStorage', () => {
           await expect(deployPool(tokens, tokens.length, tokens.length + 1)).to.be.revertedWith(
             'INPUT_LENGTH_MISMATCH'
           );
+        });
+
+        it('reverts when setting an exempt flag with no rate provider', async () => {
+          const tokenAddresses = tokens.addresses.slice(0, 2);
+          const rateProviderAddresses = [ZERO_ADDRESS, ZERO_ADDRESS];
+          const exemptionFlags = [true, true];
+
+          await expect(
+            deploy('MockStablePoolStorage', {
+              args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags],
+            })
+          ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
         });
       });
     });
