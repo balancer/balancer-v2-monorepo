@@ -19,7 +19,7 @@ import "../fee-distribution/FeeDistributor.sol";
 
 contract TestFeeDistributor is FeeDistributor {
     constructor(IVotingEscrow votingEscrow, uint256 startTime) FeeDistributor(votingEscrow, startTime) {
-        // solhint-disable-prev-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function getUserLastEpochCheckpointed(address user) external view returns (uint256) {
