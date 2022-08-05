@@ -7,7 +7,7 @@ import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import WeightedPoolDeployer from './WeightedPoolDeployer';
-import { MinimalSwap } from '../../vault/types';
+import { MinimalSwap, ProtocolFee } from '../../vault/types';
 import {
   JoinExitWeightedPool,
   InitWeightedPool,
@@ -63,6 +63,7 @@ export default class WeightedPool extends BasePool {
   aumProtocolFeesCollector: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
+    console.log("creating...");
     return WeightedPoolDeployer.deploy(params);
   }
 
@@ -150,6 +151,19 @@ export default class WeightedPool extends BasePool {
   async getNormalizedWeights(): Promise<BigNumber[]> {
     return this.instance.getNormalizedWeights();
   }
+
+  async getProtocolSwapFeePercentageCache(): Promise<BigNumber> {
+    return this.instance.getProtocolFeePercentageCache(ProtocolFee.SWAP);
+  }
+
+  async getProtocolYieldFeePercentageCache(): Promise<BigNumber> {
+    return this.instance.getProtocolFeePercentageCache(ProtocolFee.YIELD);
+  }
+
+  async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {
+    return this.instance.updateProtocolFeePercentageCache();
+  }
+
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();

@@ -133,17 +133,20 @@ export default {
       default: {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            TypesConverter.toAddresses(rateProviders),
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner,
+            {
+              vault: vault.address,
+              protocolFeeProvider: vault.getFeesProvider().address,
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              rateProviders: TypesConverter.toAddresses(rateProviders),
+              assetManagers: assetManagers,
+              swapFeePercentage: swapFeePercentage,
+              pauseWindowDuration: pauseWindowDuration,
+              bufferPeriodDuration: bufferPeriodDuration,
+              owner: owner,
+            },
           ],
           from,
         });
@@ -241,7 +244,7 @@ export default {
         break;
       }
       default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address, vault.getFeesProvider().address], from });
         const tx = await factory.create(
           NAME,
           SYMBOL,

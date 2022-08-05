@@ -16,10 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
+
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "./BaseWeightedPool.sol";
 
-abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
+abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     using FixedPoint for uint256;
 
     // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
@@ -43,7 +46,11 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     IRateProvider internal immutable _rateProvider6;
     IRateProvider internal immutable _rateProvider7;
 
-    constructor(IRateProvider[] memory rateProviders, uint256 numTokens) {
+    constructor(
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        IRateProvider[] memory rateProviders,
+        uint256 numTokens
+    ) ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL) {
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         _rateProvider0 = rateProviders[0];
@@ -113,11 +120,11 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         }
     }
 
-    function _beforeJoinExit(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolSwapFeePercentage
-    ) internal virtual override {
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+        internal
+        virtual
+        override
+    {
         // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
         // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dilutes all
         // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
@@ -125,6 +132,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
 
         // We return immediately if the fee percentage is zero (to avoid unnecessary computation), or when the pool is
         // paused (to avoid complex computation during emergency withdrawals).
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
         if ((protocolSwapFeePercentage == 0) || !_isNotPaused()) {
             return;
         }
@@ -155,8 +163,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
                     supply,
                     athRateProduct,
                     rateProduct,
-                    // TODO: This fee pct should come from a different source.
-                    protocolSwapFeePercentage
+                    getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                 );
 
                 _athRateProduct = rateProduct;

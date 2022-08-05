@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
@@ -23,8 +24,12 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./WeightedPool.sol";
 
 contract WeightedPoolNoAMFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(WeightedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+    IProtocolFeePercentagesProvider private _protocolFeeProvider;
+
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolSplitCodeFactory(vault, type(WeightedPool).creationCode)
+    {
+        _protocolFeeProvider = protocolFeeProvider;
     }
 
     /**
@@ -34,7 +39,7 @@ contract WeightedPoolNoAMFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256[] memory weights,
+        uint256[] memory normalizedWeights,
         IRateProvider[] memory rateProviders,
         uint256 swapFeePercentage,
         address owner
@@ -44,17 +49,20 @@ contract WeightedPoolNoAMFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
         return
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    rateProviders,
-                    new address[](tokens.length), // Don't allow asset managers
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner
+                    WeightedPool.NewPoolParams({
+                        vault: getVault(),
+                        protocolFeeProvider: _protocolFeeProvider,
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: normalizedWeights,
+                        rateProviders: rateProviders,
+                        assetManagers: new address[](tokens.length), // Don't allow asset managers
+                        swapFeePercentage: swapFeePercentage,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner
+                    })
                 )
             );
     }

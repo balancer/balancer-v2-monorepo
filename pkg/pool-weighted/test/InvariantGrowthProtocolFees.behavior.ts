@@ -14,6 +14,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
   const MAX_TOKENS = 8;
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.3);
 
   const numTokens = MAX_TOKENS;
 
@@ -38,10 +39,12 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       });
 
+      await pool.vault.setSwapFeePercentage(PROTOCOL_SWAP_FEE_PERCENTAGE);
+      await pool.updateProtocolFeePercentageCache();
+
       ({ address: protocolFeesCollector } = await pool.vault.getFeesCollector());
     });
 
-    const protocolFeePercentage = fp(0.3); // 30 %
     const initialBalances = range(1, numTokens + 1).map(fp);
     const initialBalanceGrowth = bn(3);
 
@@ -109,6 +112,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
       async function protocolFeesPaid(): Promise<BigNumber> {
         const previousProtocolFeeCollectorBalance = await pool.balanceOf(protocolFeesCollector);
 
+        const protocolFeePercentage = await pool.getProtocolSwapFeePercentageCache();
         // We trigger protocol fee payment by executing a proportional exit (which works even while paused) for 0 BPT
         await pool.exit({
           data: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(0)),
@@ -135,6 +139,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
           it('pays protocol fees', async () => {
             const fees = await protocolFeesPaid();
             const totalBPT = await pool.totalSupply();
+            const protocolFeePercentage = await pool.getProtocolSwapFeePercentageCache();
 
             // Balances increased by initialBalanceGrowth, and protocol was due protocolFeePercentage of that. It should
             // therefore have been paid (initialBalanceGrowth - 1) * protocolFeePercentage / initialBalanceGrowth of the
