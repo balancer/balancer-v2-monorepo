@@ -96,7 +96,7 @@ abstract contract StablePoolRates is StablePoolStorage {
      * @dev Returns the rate for a given token. All token rates are fixed-point values with 18 decimals.
      * If there is no rate provider for the provided token, it returns FixedPoint.ONE.
      */
-    function getTokenRate(IERC20 token) public view virtual returns (uint256) {
+    function getTokenRate(IERC20 token) external view returns (uint256) {
         return _getTokenRate(_getTokenIndex(token));
     }
 
