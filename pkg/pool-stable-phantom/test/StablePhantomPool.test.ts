@@ -2450,9 +2450,8 @@ describe('StablePhantomPool', () => {
               await pool.setRateFailure(true);
             });
 
-            it('verify invariant-dependent and external rate calls fail', async () => {
-              await expect(pool.getRate()).to.be.revertedWith('INDUCED_FAILURE');
-              await expect(pool.instance.getTokenRate(tokens.first.address)).to.be.revertedWith('INDUCED_FAILURE');
+            it('verify external rate calls fail', async () => {
+              await expect(pool.updateTokenRateCache(tokens.first)).to.be.revertedWith('INDUCED_FAILURE');
             });
 
             itAllowsBothLpsToExit();
