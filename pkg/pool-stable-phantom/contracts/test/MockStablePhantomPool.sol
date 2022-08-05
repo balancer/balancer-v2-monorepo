@@ -24,17 +24,17 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function mockCacheTokenRateIfNecessary(IERC20 token) external {
-        _cacheTokenRateIfNecessary(token);
+    function mockCacheTokenRateIfNecessary(uint256 index) external {
+        _cacheTokenRateIfNecessary(index);
     }
 
-    function _cacheTokenRateIfNecessary(IERC20 token)
+    function _cacheTokenRateIfNecessary(uint256 index)
         internal
         virtual
         override
         whenNotInFailureMode(FailureMode.PRICE_RATE)
     {
-        return super._cacheTokenRateIfNecessary(token);
+        return super._cacheTokenRateIfNecessary(index);
     }
 
     function getTokenRate(IERC20 token)
@@ -43,28 +43,16 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         virtual
         override
         whenNotInFailureMode(FailureMode.PRICE_RATE)
-            returns (uint256)
+        returns (uint256)
     {
         return super.getTokenRate(token);
     }
 
-    function updateTokenRateCache(IERC20 token)
-        public
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
-    {   
+    function updateTokenRateCache(IERC20 token) public virtual override whenNotInFailureMode(FailureMode.PRICE_RATE) {
         return super.updateTokenRateCache(token);
     }
 
-    function getRate()
-        public
-        view
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.INVARIANT)
-            returns (uint256)
-    {
+    function getRate() public view virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
         return super.getRate();
     }
 
@@ -74,7 +62,7 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         virtual
         override
         whenNotInFailureMode(FailureMode.PRICE_RATE)
-            returns (uint256[] memory scalingFactors)
+        returns (uint256[] memory scalingFactors)
     {
         return super._scalingFactors();
     }
@@ -84,12 +72,7 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    )
-        internal
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.INVARIANT)
-            returns (uint256 amountOut) {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256 amountOut) {
         return super._onSwapGivenIn(request, balancesIncludingBpt, indexIn, indexOut);
     }
 
@@ -98,13 +81,7 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         uint256[] memory balancesIncludingBpt,
         uint256 indexIn,
         uint256 indexOut
-    )
-        internal
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.INVARIANT)
-            returns (uint256 amountIn)
-    {
+    ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256 amountIn) {
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
 }
