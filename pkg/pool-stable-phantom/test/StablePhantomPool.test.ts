@@ -1580,11 +1580,12 @@ describe('StablePhantomPool', () => {
 
         it('scaling factors equal the decimals difference', async () => {
           const { tokens } = await pool.vault.getPoolTokens(pool.poolId);
+          const factors = await pool.instance.getScalingFactors();
 
           await Promise.all(
-            tokens.map(async (token) => {
+            tokens.map(async (token, i) => {
               const decimals = await (await deployedAt('v2-solidity-utils/ERC20', token)).decimals();
-              expect(await pool.instance.getScalingFactor(token)).to.equal(fp(bn(10).pow(18 - decimals)));
+              expect(factors[i]).to.equal(fp(bn(10).pow(18 - decimals)));
             })
           );
         });
@@ -1650,11 +1651,9 @@ describe('StablePhantomPool', () => {
                 const expectedScalingFactor = await getExpectedScalingFactor(token);
                 const tokenIndex = await pool.getTokenIndex(token);
                 expect(scalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
-                expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
               });
 
               expect(scalingFactors[pool.bptIndex]).to.be.equal(fp(1));
-              expect(await pool.getScalingFactor(pool.bpt)).to.be.equal(fp(1));
             });
           };
 
@@ -1897,7 +1896,9 @@ describe('StablePhantomPool', () => {
               const expectedScalingFactor = await getExpectedScalingFactor(token);
               const tokenIndex = await pool.getTokenIndex(token);
               expect(newScalingFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
-              expect(await pool.getScalingFactor(token)).to.be.equal(expectedScalingFactor);
+
+              const actualFactors = await pool.getScalingFactors();
+              expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
             expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));

@@ -72,11 +72,6 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _scalingFactor(token);
     }
 
-    // Computed the total scaling factor as a product of the token decimal adjustment and token rate.
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _tokenScalingFactor(token);
-    }
-
     function getToken0() external view returns (IERC20) {
         return _getToken0();
     }
@@ -147,10 +142,6 @@ contract MockStablePoolStorage is StablePoolStorage {
 
     function getScalingFactor5() external view returns (uint256) {
         return _getScalingFactor5();
-    }
-
-    function getTokenScalingFactor(IERC20 token) external view returns (uint256) {
-        return _tokenScalingFactor(token);
     }
 
     function getRateProvider(IERC20 token) external view returns (IRateProvider) {
