@@ -182,12 +182,6 @@ describe('StablePoolRates', () => {
       return allRateProviders;
     }
 
-    async function exemptFlagsWithBpt(): Promise<boolean[]> {
-      const allExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-      allExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
-      return allExemptFromYieldProtocolFeeFlags;
-    }
-
     describe('constructor', () => {
       context('when the constructor succeeds', () => {
         sharedBeforeEach('deploy pool', async () => {
