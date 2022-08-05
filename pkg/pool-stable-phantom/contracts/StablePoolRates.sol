@@ -227,14 +227,13 @@ abstract contract StablePoolRates is StablePoolStorage {
     // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
     // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
     function _updateOldRates() internal {
-        uint256 totalTokens = _getTotalTokens();
-
+        // _hasRateProvider returns false for unused indices so we don't need to check for token existence.
         if (_hasRateProvider(0)) _updateOldRate(0);
         if (_hasRateProvider(1)) _updateOldRate(1);
         if (_hasRateProvider(2)) _updateOldRate(2);
-        if (totalTokens > 3 && _hasRateProvider(3)) _updateOldRate(3);
-        if (totalTokens > 4 && _hasRateProvider(4)) _updateOldRate(4);
-        if (totalTokens > 5 && _hasRateProvider(5)) _updateOldRate(5);
+        if (_hasRateProvider(3)) _updateOldRate(3);
+        if (_hasRateProvider(4)) _updateOldRate(4);
+        if (_hasRateProvider(5)) _updateOldRate(5);
     }
 
     /**
