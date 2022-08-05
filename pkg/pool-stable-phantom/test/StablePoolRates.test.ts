@@ -784,33 +784,27 @@ describe('StablePoolRates', () => {
     });
 
     describe('getAdjustedBalances', () => {
-      let allTokens: TokenList;
-      let allRateProviders: string[];
-      let allExemptFlags: boolean[];
       let rates: BigNumber[];
 
       sharedBeforeEach('deploy pool', async () => {
         await deployPoolSimple(owner, tokens);
-        allTokens = await tokensWithBpt();
-        allRateProviders = await rateProvidersWithBpt();
-        allExemptFlags = await exemptFlagsWithBpt();
       });
 
       sharedBeforeEach('mock rates', async () => {
-        await allTokens.asyncEach(async (token, i) => {
-          if (allRateProviders[i] === ZERO_ADDRESS) return;
-          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+        await tokens.asyncEach(async (token, i) => {
+          if (rateProviders[i] === ZERO_ADDRESS) return;
+          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
           await rateProvider.mockRate(fp(1 + i / 10));
           await pool.updateTokenRateCache(token.address);
         });
-        rates = await getRates(allRateProviders);
+        rates = await getRates(rateProviders);
 
         // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
         // This ensures that the pool is using its cache properly.
-        await allTokens.asyncEach(async (_, i) => {
-          if (allRateProviders[i] === ZERO_ADDRESS) return;
+        await tokens.asyncEach(async (_, i) => {
+          if (rateProviders[i] === ZERO_ADDRESS) return;
 
-          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+          const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
           await rateProvider.mockRate(fp(0));
         });
       });
@@ -818,7 +812,7 @@ describe('StablePoolRates', () => {
       context('when ignoring exempt flags', () => {
         it('returns the array with elements scaled by the ratio of current and old cached token rates', async () => {
           for (let i = 0; i < 5; i++) {
-            const inputArray = allTokens.map(() => fp(Math.random()));
+            const inputArray = tokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) => input.mul(fp(1)).div(rates[i]));
 
             expect(await pool.getAdjustedBalances(inputArray, true)).to.be.deep.eq(expectedOutputArray);
@@ -829,9 +823,9 @@ describe('StablePoolRates', () => {
       context('when not ignoring exempt flags', () => {
         it('returns the array with elements scaled by the ratio of current and old cached token rates if exempt', async () => {
           for (let i = 0; i < 5; i++) {
-            const inputArray = allTokens.map(() => fp(Math.random()));
+            const inputArray = tokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) =>
-              allExemptFlags[i] ? input.mul(fp(1)).div(rates[i]) : input
+              exemptFromYieldProtocolFeeFlags[i] ? input.mul(fp(1)).div(rates[i]) : input
             );
 
             expect(await pool.getAdjustedBalances(inputArray, false)).to.be.deep.eq(expectedOutputArray);
