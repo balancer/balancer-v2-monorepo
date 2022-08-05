@@ -230,10 +230,9 @@ describe('StablePoolStorage', () => {
       describe('getScalingFactorX', () => {
         it('returns the correct scaling factor', async () => {
           const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
-          expectedScalingFactors.splice(bptIndex, 0, fp(1));
 
-          // There's always 6 getters however not all of them may be used. Unused getters return zero.
-          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? bn(0));
+          // There's always 5 getters however not all of them may be used. Unused getters return zero.
+          const paddedScalingFactors = Array.from({ length: 5 }, (_, i) => expectedScalingFactors[i] ?? bn(0));
           await Promise.all(
             paddedScalingFactors.map(async (expectedScalingFactor, i) => {
               expect(await pool[`getScalingFactor${i}`]()).to.be.eq(expectedScalingFactor);
@@ -246,10 +245,8 @@ describe('StablePoolStorage', () => {
     describe('rate providers', () => {
       describe('getRateProviderX', () => {
         it('returns the expected rate provider', async () => {
-          const expectedRateProviders = rateProviders.slice();
-          expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
-          const paddedRateProviders = Array.from({ length: 6 }, (_, i) => expectedRateProviders[i] ?? ZERO_ADDRESS);
+          // There's always 5 getters however not all of them may be used. Unused getters return the zero address.
+          const paddedRateProviders = Array.from({ length: 5 }, (_, i) => rateProviders[i] ?? ZERO_ADDRESS);
 
           await Promise.all(
             paddedRateProviders.map(async (expectedRateProvider, i) => {
@@ -262,14 +259,8 @@ describe('StablePoolStorage', () => {
       describe('getRateProvider', () => {
         context('when called with a valid index', () => {
           it('returns the rate provider for the token at the provided index', async () => {
-            const bpt = await Token.deployedAt(pool);
-
-            const registeredTokens = new TokenList([...tokens.tokens, bpt]).sort();
-            const expectedRateProviders = rateProviders.slice();
-            expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-
-            for (let index = 0; index < registeredTokens.length; index++) {
-              expect(await pool.getRateProvider(index)).to.be.eq(expectedRateProviders[index]);
+            for (let index = 0; index < tokens.length; index++) {
+              expect(await pool.getRateProvider(index)).to.be.eq(rateProviders[index]);
             }
           });
         });
@@ -300,7 +291,6 @@ describe('StablePoolStorage', () => {
       describe('isTokenExemptFromYieldProtocolFee(uint256)', () => {
         it('returns whether the token at a particular index is exempt', async () => {
           const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
 
           for (let i = 0; i < expectedExemptFromYieldProtocolFeeFlags.length; i++) {
             const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];

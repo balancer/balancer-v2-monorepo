@@ -830,10 +830,12 @@ contract StablePhantomPool is
         // and apply the old rate. These functions copy `balances` to local storage, so they are not mutated and can
         // be reused.
 
+        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+
         // Do not ignore the exempt flags when calculating total growth = swap fees + non-exempt token yield.
-        uint256[] memory totalGrowthBalances = _dropBptItem(_getAdjustedBalances(balances, false));
+        uint256[] memory totalGrowthBalances = _getAdjustedBalances(balancesWithoutBpt, false);
         // Ignore the exempt flags to use the oldRate for all tokens, corresponding to the growth from swap fees alone.
-        uint256[] memory swapGrowthBalances = _dropBptItem(_getAdjustedBalances(balances, true));
+        uint256[] memory swapGrowthBalances = _getAdjustedBalances(balancesWithoutBpt, true);
 
         // Charge the protocol fee in BPT, using the growth in invariant between _postJoinExitInvariant
         // and adjusted versions of the current invariant. We have separate protocol fee percentages for growth based
@@ -869,8 +871,6 @@ contract StablePhantomPool is
         uint256 swapGrowthRatio = swapGrowthInvariant > postJoinExitInvariant
             ? swapGrowthInvariant.divDown(postJoinExitInvariant)
             : FixedPoint.ONE;
-
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
         // Apply separate protocol fee rates on yield and swap fee growth.
         // Total protocol fee rate = (FeeOnYield * (yieldGrowthRatio - 1) + FeeOnSwap * (swapGrowthRatio - 1))

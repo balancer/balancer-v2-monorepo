@@ -52,7 +52,7 @@ contract MockStablePoolRates is StablePoolRates {
     }
 
     function cacheTokenRateIfNecessary(IERC20 token) external {
-        _cacheTokenRateIfNecessary(_getTokenIndex(token));
+        _cacheTokenRateIfNecessary(_skipBptIndex(_getTokenIndex(token)));
     }
 
     function updateOldRates() external {
