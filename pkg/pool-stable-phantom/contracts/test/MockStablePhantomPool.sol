@@ -28,43 +28,12 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         _cacheTokenRateIfNecessary(index);
     }
 
-    function _cacheTokenRateIfNecessary(uint256 index)
-        internal
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
-    {
-        return super._cacheTokenRateIfNecessary(index);
-    }
-
-    function getTokenRate(IERC20 token)
-        public
-        view
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
-        returns (uint256)
-    {
-        return super.getTokenRate(token);
-    }
-
-    function updateTokenRateCache(IERC20 token) public virtual override whenNotInFailureMode(FailureMode.PRICE_RATE) {
-        return super.updateTokenRateCache(token);
-    }
-
-    function getRate() public view virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256) {
-        return super.getRate();
-    }
-
-    function _scalingFactors()
-        internal
-        view
-        virtual
-        override
-        whenNotInFailureMode(FailureMode.PRICE_RATE)
-        returns (uint256[] memory scalingFactors)
-    {
-        return super._scalingFactors();
+    function _updateTokenRateCache(
+        uint256 index,
+        IRateProvider provider,
+        uint256 duration
+    ) internal override whenNotInFailureMode(FailureMode.PRICE_RATE) {
+        return super._updateTokenRateCache(index, provider, duration);
     }
 
     function _onSwapGivenIn(

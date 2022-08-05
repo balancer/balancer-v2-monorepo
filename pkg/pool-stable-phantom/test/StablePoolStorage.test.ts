@@ -80,7 +80,8 @@ describe('StablePoolStorage', () => {
     ): Promise<void> {
       const newRateProviders = [];
       for (let i = 0; i < numRateProviders; i++) {
-        newRateProviders[i] = (await deploy('v2-pool-utils/MockRateProvider')).address;
+        const hasRateProvider = Math.random() < 0.5;
+        newRateProviders[i] = hasRateProvider ? (await deploy('v2-pool-utils/MockRateProvider')).address : ZERO_ADDRESS;
       }
 
       const newExemptFromYieldProtocolFeeFlags = [];
@@ -109,18 +110,6 @@ describe('StablePoolStorage', () => {
           const expectedIndex = allTokens.indexOf(bpt);
           expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
         });
-
-        it('sets the tokens', async () => {
-          const bpt = await Token.deployedAt(pool);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
-
-          const expectedTokenAddresses = Array.from({ length: 6 }, (_, i) => allTokens.addresses[i] ?? ZERO_ADDRESS);
-          await Promise.all(
-            expectedTokenAddresses.map(async (expectedTokenAddress, i) => {
-              expect(await pool[`getToken${i}`]()).to.be.eq(expectedTokenAddress);
-            })
-          );
-        });
       });
 
       context('when the constructor fails', () => {
@@ -138,6 +127,18 @@ describe('StablePoolStorage', () => {
           await expect(deployPool(tokens, tokens.length, tokens.length + 1)).to.be.revertedWith(
             'INPUT_LENGTH_MISMATCH'
           );
+        });
+
+        it('reverts when setting an exempt flag with no rate provider', async () => {
+          const tokenAddresses = tokens.addresses.slice(0, 2);
+          const rateProviderAddresses = [ZERO_ADDRESS, ZERO_ADDRESS];
+          const exemptionFlags = [true, true];
+
+          await expect(
+            deploy('MockStablePoolStorage', {
+              args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags],
+            })
+          ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
         });
       });
     });
@@ -273,21 +274,21 @@ describe('StablePoolStorage', () => {
       });
 
       describe('getRateProvider', () => {
-        context('when called with a registered token', () => {
-          it('returns the rate provider for the provided token', async () => {
+        context('when called with a valid index', () => {
+          it('returns the rate provider for the token at the provided index', async () => {
             const bpt = await Token.deployedAt(pool);
 
             const registeredTokens = new TokenList([...tokens.tokens, bpt]).sort();
             const expectedRateProviders = rateProviders.slice();
             expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
 
-            for (const [index, token] of registeredTokens.addresses.entries()) {
-              expect(await pool.getRateProvider(token)).to.be.eq(expectedRateProviders[index]);
+            for (let index = 0; index < registeredTokens.length; index++) {
+              expect(await pool.getRateProvider(index)).to.be.eq(expectedRateProviders[index]);
             }
           });
         });
 
-        context('when called with a non-registered token', () => {
+        context('when called with an invalid index', () => {
           it('reverts', async () => {
             const nonRegisteredToken = ANY_ADDRESS;
             await expect(pool.getRateProvider(nonRegisteredToken)).to.be.revertedWith('INVALID_TOKEN');

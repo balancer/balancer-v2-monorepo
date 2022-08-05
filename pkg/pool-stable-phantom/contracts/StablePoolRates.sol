@@ -123,16 +123,19 @@ abstract contract StablePoolRates is StablePoolStorage {
         view
         returns (
             uint256 rate,
+            uint256 oldRate,
             uint256 duration,
             uint256 expires
         )
     {
-        uint256 index = _getTokenIndex(token);
+        bytes32 cache = _tokenRateCaches[_getTokenIndex(token)];
 
-        _require(_getRateProvider(index) != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        // A zero cache indicates that the token doesn't have a rate provider associated with it.
+        _require(cache != bytes32(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
 
-        rate = _tokenRateCaches[index].getCurrentRate();
-        (duration, expires) = _tokenRateCaches[index].getTimestamps();
+        rate = cache.getCurrentRate();
+        oldRate = cache.getOldRate();
+        (duration, expires) = cache.getTimestamps();
     }
 
     /**
@@ -140,7 +143,8 @@ abstract contract StablePoolRates is StablePoolStorage {
      * Note this function also updates the current cached value.
      * @param duration Number of seconds until the current token rate is fetched again.
      */
-    function setTokenRateCacheDuration(uint256 index, uint256 duration) external authenticate {
+    function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
+        uint256 index = _getTokenIndex(token);
         IRateProvider provider = _getRateProvider(index);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
         _updateTokenRateCache(index, provider, duration);
@@ -168,7 +172,7 @@ abstract contract StablePoolRates is StablePoolStorage {
         uint256 index,
         IRateProvider provider,
         uint256 duration
-    ) internal {
+    ) internal virtual {
         uint256 rate = provider.getRate();
         bytes32 cache = _tokenRateCaches[index];
 
@@ -311,5 +315,12 @@ abstract contract StablePoolRates is StablePoolStorage {
         scalingFactors[5] = _getScalingFactor5().mulDown(_getTokenRate(5));
 
         return scalingFactors;
+    }
+
+    /**
+     * @dev Overrides only owner action to allow setting the cache duration for the token rates
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
     }
 }
