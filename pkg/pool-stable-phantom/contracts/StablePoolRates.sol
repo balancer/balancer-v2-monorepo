@@ -155,7 +155,7 @@ abstract contract StablePoolRates is StablePoolStorage {
      * @dev Forces a rate cache hit for a token.
      * It will revert if the requested token does not have an associated rate provider.
      */
-    function updateTokenRateCache(IERC20 token) public virtual {
+    function updateTokenRateCache(IERC20 token) external {
         uint256 index = _getTokenIndex(token);
 
         IRateProvider provider = _getRateProvider(index);
@@ -206,7 +206,7 @@ abstract contract StablePoolRates is StablePoolStorage {
     /**
      * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
-    function _cacheTokenRateIfNecessary(uint256 index) internal virtual {
+    function _cacheTokenRateIfNecessary(uint256 index) internal {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
         // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
         // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
