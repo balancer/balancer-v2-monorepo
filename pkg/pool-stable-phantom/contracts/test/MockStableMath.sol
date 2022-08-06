@@ -99,4 +99,27 @@ contract MockStableMath {
     ) external pure returns (uint256) {
         return StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, swapFee);
     }
+
+    function getTokenBalanceGivenInvariantAndAllOtherBalances(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 currentInvariant,
+        uint256 tokenIndex
+    ) external pure returns (uint256) {
+        return
+            StableMath._getTokenBalanceGivenInvariantAndAllOtherBalances(
+                amplificationParameter,
+                balances,
+                currentInvariant,
+                tokenIndex
+            );
+    }
+
+    function getRate(
+        uint256[] memory balances,
+        uint256 amp,
+        uint256 supply
+    ) external pure returns (uint256) {
+        return StableMath._getRate(balances, amp, supply);
+    }
 }
