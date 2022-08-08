@@ -62,9 +62,10 @@ contract MockStableMath {
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return StableMath._calcBptOutGivenExactTokensIn(amp, balances, amountsIn, bptTotalSupply, swapFee);
+        return StableMath._calcBptOutGivenExactTokensIn(amp, balances, amountsIn, bptTotalSupply, currentInvariant, swapFee);
     }
 
     function tokenInForExactBPTOut(
@@ -73,10 +74,11 @@ contract MockStableMath {
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
         return
-            StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptAmountOut, bptTotalSupply, swapFee);
+            StableMath._calcTokenInGivenExactBptOut(amp, balances, tokenIndex, bptAmountOut, bptTotalSupply, currentInvariant, swapFee);
     }
 
     function exactBPTInForTokenOut(
@@ -85,9 +87,10 @@ contract MockStableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptAmountIn, bptTotalSupply, swapFee);
+        return StableMath._calcTokenOutGivenExactBptIn(amp, balances, tokenIndex, bptAmountIn, bptTotalSupply, currentInvariant, swapFee);
     }
 
     function bptInForExactTokensOut(
@@ -95,9 +98,10 @@ contract MockStableMath {
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFee
     ) external pure returns (uint256) {
-        return StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, swapFee);
+        return StableMath._calcBptInGivenExactTokensOut(amp, balances, amountsOut, bptTotalSupply, currentInvariant, swapFee);
     }
 
     function getTokenBalanceGivenInvariantAndAllOtherBalances(
