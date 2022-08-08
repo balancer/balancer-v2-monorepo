@@ -16,7 +16,7 @@ import {
 import { random } from 'lodash';
 import { expect } from 'chai';
 
-const MAX_RELATIVE_ERROR = 0.001; //Max relative error
+const MAX_RELATIVE_ERROR = 0.002; // Max relative error
 
 // TODO: Test this math by checking extremes values for the amplification field (0 and infinite)
 // to verify that it equals constant sum and constant product (weighted) invariants.
@@ -42,10 +42,7 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens)
-          .fill(300)
-          .map((b) => (random(100) > 50 ? b + random(50) : b - random(50)))
-          .map(fp);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
 
         it(`computes the invariant for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
@@ -105,10 +102,7 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens)
-          .fill(300)
-          .map((b) => (random(100) > 50 ? b + random(50) : b - random(50)))
-          .map(fp);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
 
         it(`computes the token balance for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
@@ -131,7 +125,7 @@ describe('StableMath', function () {
     context('two tokens', () => {
       it('returns in given out', async () => {
         const amp = bn(100);
-        const balances = [fp(10), fp(12)];
+        const balances = Array.from({ length: 2 }, () => random(8, 12)).map(fp);
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountOut = fp(1);
@@ -145,7 +139,7 @@ describe('StableMath', function () {
     context('three tokens', () => {
       it('returns in given out', async () => {
         const amp = bn(100);
-        const balances = [fp(10), fp(12), fp(14)];
+        const balances = Array.from({ length: 3 }, () => random(10, 14)).map(fp);
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountOut = fp(1);
@@ -162,7 +156,7 @@ describe('StableMath', function () {
     context('two tokens', () => {
       it('returns out given in', async () => {
         const amp = bn(10);
-        const balances = [fp(10), fp(11)];
+        const balances = Array.from({ length: 2 }, () => random(10, 12)).map(fp);
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountIn = fp(1);
@@ -176,7 +170,7 @@ describe('StableMath', function () {
     context('three tokens', () => {
       it('returns out given in', async () => {
         const amp = bn(10);
-        const balances = [fp(10), fp(11), fp(12)];
+        const balances = Array.from({ length: 3 }, () => random(10, 14)).map(fp);
         const tokenIndexIn = 0;
         const tokenIndexOut = 1;
         const amountIn = fp(1);
@@ -200,12 +194,14 @@ describe('StableMath', function () {
       swapFee: BigNumber
     ): Promise<void> {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
+      const currentInvariant = calculateInvariant(balances, amp);
 
       const actualBptOut = await mock.exactTokensInForBPTOut(
         ampParameter,
         balances,
         amountsIn,
         bptTotalSupply,
+        currentInvariant,
         swapFee
       );
 
@@ -216,12 +212,11 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens).fill(300).map(fp);
-        const totalSupply = fp(300).mul(numTokens);
-        const amountsIn = Array(numTokens)
-          .fill(0)
-          .map((b) => b + random(50))
-          .map(fp);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
+        const totalSupply = balances.reduce((sum, current) => {
+          return (sum = sum.add(current));
+        });
+        const amountsIn = Array.from({ length: numTokens }, () => random(0, 50)).map(fp);
 
         it(`computes the bptOut for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
@@ -241,6 +236,7 @@ describe('StableMath', function () {
       tokenIndex: number,
       bptAmountOut: BigNumber,
       bptTotalSupply: BigNumber,
+      currentInvariant: BigNumber,
       swapFee: BigNumber
     ): Promise<void> {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
@@ -251,6 +247,7 @@ describe('StableMath', function () {
         tokenIndex,
         bptAmountOut,
         bptTotalSupply,
+        currentInvariant,
         swapFee
       );
 
@@ -271,13 +268,25 @@ describe('StableMath', function () {
       const bptAmountOut = fp(1);
 
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens).fill(300).map(fp);
-        const totalSupply = fp(300).mul(numTokens);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
+        const totalSupply = balances.reduce((sum, current) => {
+          return (sum = sum.add(current));
+        });
 
         it(`computes the token in for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
+            const currentInvariant = calculateInvariant(balances, amp);
+
             for (let tokenIndex = 0; tokenIndex < numTokens; tokenIndex++) {
-              await checkTokenInGivenBptOut(amp, balances, tokenIndex, bptAmountOut, totalSupply, SWAP_FEE);
+              await checkTokenInGivenBptOut(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountOut,
+                totalSupply,
+                currentInvariant,
+                SWAP_FEE
+              );
             }
           }
         });
@@ -293,6 +302,7 @@ describe('StableMath', function () {
       balances: BigNumber[],
       amountsOut: BigNumber[],
       bptTotalSupply: BigNumber,
+      currentInvariant: BigNumber,
       swapFee: BigNumber
     ): Promise<void> {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
@@ -302,6 +312,7 @@ describe('StableMath', function () {
         balances,
         amountsOut,
         bptTotalSupply,
+        currentInvariant,
         swapFee
       );
 
@@ -312,16 +323,17 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens).fill(300).map(fp);
-        const totalSupply = fp(300).mul(numTokens);
-        const amountsOut = Array(numTokens)
-          .fill(0)
-          .map((b) => b + random(50))
-          .map(fp);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
+        const totalSupply = balances.reduce((sum, current) => {
+          return (sum = sum.add(current));
+        });
+        const amountsOut = Array.from({ length: numTokens }, () => random(0, 50)).map(fp);
 
         it(`computes the bptOut for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
-            await checkBptInGivenTokensOut(amp, balances, amountsOut, totalSupply, SWAP_FEE);
+            const currentInvariant = calculateInvariant(balances, amp);
+
+            await checkBptInGivenTokensOut(amp, balances, amountsOut, totalSupply, currentInvariant, SWAP_FEE);
           }
         });
       }
@@ -337,6 +349,7 @@ describe('StableMath', function () {
       tokenIndex: number,
       bptAmountIn: BigNumber,
       bptTotalSupply: BigNumber,
+      currentInvariant: BigNumber,
       swapFee: BigNumber
     ): Promise<void> {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
@@ -347,6 +360,7 @@ describe('StableMath', function () {
         tokenIndex,
         bptAmountIn,
         bptTotalSupply,
+        currentInvariant,
         swapFee
       );
 
@@ -367,13 +381,25 @@ describe('StableMath', function () {
       const bptAmountIn = fp(1);
 
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens).fill(300).map(fp);
-        const totalSupply = fp(300).mul(numTokens);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
+        const totalSupply = balances.reduce((sum, current) => {
+          return (sum = sum.add(current));
+        });
 
         it(`computes the token out for ${numTokens} tokens`, async () => {
           for (let amp = 100; amp <= 5000; amp += 100) {
+            const currentInvariant = calculateInvariant(balances, amp);
+
             for (let tokenIndex = 0; tokenIndex < numTokens; tokenIndex++) {
-              await checkTokenOutGivenBptIn(amp, balances, tokenIndex, bptAmountIn, totalSupply, SWAP_FEE);
+              await checkTokenOutGivenBptIn(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountIn,
+                totalSupply,
+                currentInvariant,
+                SWAP_FEE
+              );
             }
           }
         });
@@ -393,10 +419,7 @@ describe('StableMath', function () {
 
     context('check over a range of inputs', () => {
       for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array(numTokens)
-          .fill(300)
-          .map((b) => (random(100) > 50 ? b + random(50) : b - random(50)))
-          .map(fp);
+        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
 
         // Supply if all balances were maxed; rate should be ~ 0.7 - 1.0
         const supply = fp(350).mul(numTokens);
