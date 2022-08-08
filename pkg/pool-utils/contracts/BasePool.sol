@@ -634,9 +634,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * the `amounts` array.
      */
     function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        InputHelpers.ensureInputLengthMatch(amounts.length, scalingFactors.length);
-
         uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
         for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }
@@ -655,9 +655,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * *mutates* the `amounts` array.
      */
     function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        InputHelpers.ensureInputLengthMatch(amounts.length, scalingFactors.length);
-
         uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
         for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
         }
@@ -676,9 +676,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * *mutates* the `amounts` array.
      */
     function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        InputHelpers.ensureInputLengthMatch(amounts.length, scalingFactors.length);
-
         uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
         for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
         }
