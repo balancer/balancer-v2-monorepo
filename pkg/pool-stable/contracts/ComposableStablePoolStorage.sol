@@ -54,12 +54,12 @@ abstract contract ComposableStablePoolStorage is BasePool {
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
 
-    uint256 private immutable _scalingFactor0;
-    uint256 private immutable _scalingFactor1;
-    uint256 private immutable _scalingFactor2;
-    uint256 private immutable _scalingFactor3;
-    uint256 private immutable _scalingFactor4;
-    uint256 private immutable _scalingFactor5;
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
+    uint256 internal immutable _scalingFactor5;
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
@@ -172,28 +172,15 @@ abstract contract ComposableStablePoolStorage is BasePool {
         return _bptIndex;
     }
 
-    function _getToken0() internal view returns (IERC20) {
-        return _token0;
-    }
+    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+        if (token == _token0) return 0;
+        if (token == _token1) return 1;
+        if (token == _token2) return 2;
+        if (token == _token3) return 3;
+        if (token == _token4) return 4;
+        if (token == _token5) return 5;
 
-    function _getToken1() internal view returns (IERC20) {
-        return _token1;
-    }
-
-    function _getToken2() internal view returns (IERC20) {
-        return _token2;
-    }
-
-    function _getToken3() internal view returns (IERC20) {
-        return _token3;
-    }
-
-    function _getToken4() internal view returns (IERC20) {
-        return _token4;
-    }
-
-    function _getToken5() internal view returns (IERC20) {
-        return _token5;
+        _revert(Errors.INVALID_TOKEN);
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
@@ -220,16 +207,10 @@ abstract contract ComposableStablePoolStorage is BasePool {
         return _scalingFactor5;
     }
 
-    function _tokenScalingFactor(IERC20 token) internal view returns (uint256) {
-        if (token == _getToken0()) return _getScalingFactor0();
-        if (token == _getToken1()) return _getScalingFactor1();
-        if (token == _getToken2()) return _getScalingFactor2();
-        if (token == _getToken3()) return _getScalingFactor3();
-        if (token == _getToken4()) return _getScalingFactor4();
-        if (token == _getToken5()) return _getScalingFactor5();
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
+    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
+        // We never use a single token's scaling factor by itself, we always process the entire array at once.
+        // Therefore we don't bother providing an implementation for this.
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     // Index helpers
@@ -287,22 +268,6 @@ abstract contract ComposableStablePoolStorage is BasePool {
         }
     }
 
-    /**
-     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
-     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
-     */
-    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
-        internal
-        view
-        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
-    {
-        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
-        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
-        _upscaleArray(scaledWithBpt, scalingFactors);
-
-        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
-    }
-
     // Rate Providers
 
     function _getRateProvider0() internal view returns (IRateProvider) {
@@ -352,13 +317,13 @@ abstract contract ComposableStablePoolStorage is BasePool {
         providers[5] = _getRateProvider5();
     }
 
-    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        if (token == _getToken0()) return _getRateProvider0();
-        if (token == _getToken1()) return _getRateProvider1();
-        if (token == _getToken2()) return _getRateProvider2();
-        if (token == _getToken3()) return _getRateProvider3();
-        if (token == _getToken4()) return _getRateProvider4();
-        if (token == _getToken5()) return _getRateProvider5();
+    function _getRateProvider(uint256 index) internal view returns (IRateProvider) {
+        if (index == 0) return _getRateProvider0();
+        if (index == 1) return _getRateProvider1();
+        if (index == 2) return _getRateProvider2();
+        if (index == 3) return _getRateProvider3();
+        if (index == 4) return _getRateProvider4();
+        if (index == 5) return _getRateProvider5();
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -370,19 +335,9 @@ abstract contract ComposableStablePoolStorage is BasePool {
      * @dev Returns whether the token is exempt from protocol fees on the yield.
      * If the BPT token is passed in (which doesn't make much sense, but shouldn't fail,
      * since it is a valid pool token), the corresponding flag will be false.
-     *
-     * These immutables are only accessed once, so we don't need individual getters.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
-        if (token == _getToken0()) return _isTokenExemptFromYieldProtocolFee(0);
-        if (token == _getToken1()) return _isTokenExemptFromYieldProtocolFee(1);
-        if (token == _getToken2()) return _isTokenExemptFromYieldProtocolFee(2);
-        if (token == _getToken3()) return _isTokenExemptFromYieldProtocolFee(3);
-        if (token == _getToken4()) return _isTokenExemptFromYieldProtocolFee(4);
-        if (token == _getToken5()) return _isTokenExemptFromYieldProtocolFee(5);
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
+        return _isTokenExemptFromYieldProtocolFee(_getTokenIndex(token));
     }
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
