@@ -24,16 +24,16 @@ contract MockStablePhantomPool is StablePhantomPool, MockFailureModes {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function mockCacheTokenRateIfNecessary(IERC20 token) external {
-        _cacheTokenRateIfNecessary(token);
+    function mockCacheTokenRateIfNecessary(uint256 index) external {
+        _cacheTokenRateIfNecessary(index);
     }
 
     function _updateTokenRateCache(
-        IERC20 token,
+        uint256 index,
         IRateProvider provider,
         uint256 duration
     ) internal override whenNotInFailureMode(FailureMode.PRICE_RATE) {
-        return super._updateTokenRateCache(token, provider, duration);
+        return super._updateTokenRateCache(index, provider, duration);
     }
 
     function _onSwapGivenIn(

@@ -117,7 +117,6 @@ describe('StablePoolRates', () => {
     });
 
     let rateProviders: string[] = [];
-    let tokenRateCacheDurations: BigNumber[] = [];
     let exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     async function deployPool(
@@ -139,7 +138,6 @@ describe('StablePoolRates', () => {
       });
       bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
-      tokenRateCacheDurations = newTokenRateCacheDurations;
       exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
 
@@ -198,10 +196,11 @@ describe('StablePoolRates', () => {
 
         it('emits TokenRateCacheUpdated events for each token with a rate provider', async () => {
           const deploymentTx = await pool.deployTransaction.wait();
-          for (const [index, token] of tokens.tokens.entries()) {
-            if (rateProviders[index] !== ZERO_ADDRESS) {
+          const allRateProviders = await rateProvidersWithBpt();
+          for (const [index, rateProvider] of allRateProviders.entries()) {
+            if (rateProvider !== ZERO_ADDRESS) {
               expectEvent.inIndirectReceipt(deploymentTx, pool.interface, 'TokenRateCacheUpdated', {
-                token: token.address,
+                tokenIndex: index,
                 rate: fp(1),
               });
             }
@@ -210,12 +209,13 @@ describe('StablePoolRates', () => {
 
         it('emits TokenRateProviderSet events for each token with a rate provider', async () => {
           const deploymentTx = await pool.deployTransaction.wait();
-          for (const [index, token] of tokens.tokens.entries()) {
-            if (rateProviders[index] !== ZERO_ADDRESS) {
+          const allRateProviders = await rateProvidersWithBpt();
+          for (const [index, rateProvider] of allRateProviders.entries()) {
+            if (rateProvider !== ZERO_ADDRESS) {
               expectEvent.inIndirectReceipt(deploymentTx, pool.interface, 'TokenRateProviderSet', {
-                token: token.address,
-                provider: rateProviders[index],
-                cacheDuration: tokenRateCacheDurations[index],
+                tokenIndex: index,
+                provider: rateProvider,
+                cacheDuration: INITIAL_CACHE_DURATION,
               });
             }
           }
@@ -351,6 +351,7 @@ describe('StablePoolRates', () => {
               if (allRateProviders[i] === ZERO_ADDRESS) return;
 
               const previousCache = await pool.getTokenRateCache(token.address);
+              expect(previousCache.rate).not.to.be.equal(newRate);
 
               const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
               await rateProvider.mockRate(newRate);
@@ -359,7 +360,6 @@ describe('StablePoolRates', () => {
 
               const currentCache = await pool.getTokenRateCache(token.address);
               expect(currentCache.rate).to.be.equal(newRate);
-              expect(previousCache.rate).not.to.be.equal(newRate);
             });
           });
 
@@ -414,8 +414,8 @@ describe('StablePoolRates', () => {
               const receipt = await action(token);
 
               expectEvent.inReceipt(await receipt.wait(), 'TokenRateCacheUpdated', {
+                tokenIndex: i,
                 rate: newRate,
-                token: token.address,
               });
             });
           });
@@ -583,7 +583,7 @@ describe('StablePoolRates', () => {
                 const tx = await pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration);
 
                 expectEvent.inReceipt(await tx.wait(), 'TokenRateProviderSet', {
-                  token: token.address,
+                  tokenIndex: i,
                   provider: allRateProviders[i],
                   cacheDuration: newDuration,
                 });
@@ -604,7 +604,7 @@ describe('StablePoolRates', () => {
                 const tx = await pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration);
 
                 expectEvent.inReceipt(await tx.wait(), 'TokenRateCacheUpdated', {
-                  token: token.address,
+                  tokenIndex: i,
                   rate: newRate,
                 });
               });
