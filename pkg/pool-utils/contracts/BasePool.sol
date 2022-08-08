@@ -633,8 +633,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
      * the `amounts` array.
      */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = Math.max(amounts.length, scalingFactors.length);
+        for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }
     }
@@ -651,8 +652,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = Math.max(amounts.length, scalingFactors.length);
+        for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
         }
     }
@@ -669,8 +671,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = Math.max(amounts.length, scalingFactors.length);
+        for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
         }
     }
