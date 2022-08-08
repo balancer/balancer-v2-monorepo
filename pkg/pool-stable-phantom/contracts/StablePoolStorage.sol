@@ -24,6 +24,7 @@ import "./StableMath.sol";
 
 abstract contract StablePoolStorage is BasePool {
     using FixedPoint for uint256;
+    using WordCodec for bytes32;
 
     struct StorageParams {
         IERC20[] registeredTokens;
@@ -70,11 +71,18 @@ abstract contract StablePoolStorage is BasePool {
     IRateProvider private immutable _rateProvider4;
     IRateProvider private immutable _rateProvider5;
 
-    // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
-    // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
-    // For example, the BPT of another PhantomStable Pool containing yield tokens.
-    // The flag will always be false for the BPT token.
-    uint256 private immutable _exemptFromYieldProtocolFeeTokens;
+    // This is a bitmap which allows querying whether a token at a particular index:
+    // - has a rate provider associated with it.
+    // - is exempt from yield protocol fees.
+    // This is required as the data stored in this bitmap is computed from values in immutable storage,
+    // without this bitmap we would have to manually search through token by token to reach these values.
+    // The data structure is as follows:
+    //
+    // [  unused  | rate provider flags | exemption flags ]
+    // [ 244 bits |        6 bits       |     6 bits      ]
+    bytes32 private immutable _rateProviderInfoBitmap;
+
+    uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
     constructor(StorageParams memory params) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
@@ -125,23 +133,34 @@ abstract contract StablePoolStorage is BasePool {
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory rateProviders = new IRateProvider[](params.registeredTokens.length);
 
-        // Do the same with exemptFromYieldProtocolFeeFlags
+        bytes32 rateProviderInfoBitmap;
+
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
-        uint256 exemptFlagBitmap;
-
         for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i];
+                // Store whether token has rate provider
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
+                );
+                // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << i;
+                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
                 }
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
+                // Store whether token has rate provider
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
+                );
+                // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << i;
+                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
                 }
             }
         }
@@ -154,7 +173,7 @@ abstract contract StablePoolStorage is BasePool {
         _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
         _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
 
-        _exemptFromYieldProtocolFeeTokens = exemptFlagBitmap;
+        _rateProviderInfoBitmap = rateProviderInfoBitmap;
     }
 
     // Tokens
@@ -329,6 +348,13 @@ abstract contract StablePoolStorage is BasePool {
         }
     }
 
+    /**
+     * @notice Return true if the token at this index has a rate provider
+     */
+    function _hasRateProvider(uint256 tokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
+    }
+
     // Exempt flags
 
     /**
@@ -342,6 +368,6 @@ abstract contract StablePoolStorage is BasePool {
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
     function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
-        return _exemptFromYieldProtocolFeeTokens & (1 << tokenIndex) > 0;
+        return _rateProviderInfoBitmap.decodeBool(tokenIndex);
     }
 }
