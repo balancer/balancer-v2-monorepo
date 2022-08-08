@@ -251,7 +251,7 @@ abstract contract StablePoolRates is StablePoolStorage {
         for (uint256 i = 0; i < totalTokensWithoutBpt; ++i) {
             uint256 skipBptIndex = i >= getBptIndex() ? i + 1 : i;
             adjustedBalances[i] = _isTokenExemptFromYieldProtocolFee(skipBptIndex) ||
-                (ignoreExemptFlags && _hasCacheEntry(skipBptIndex))
+                (ignoreExemptFlags && _hasRateProvider(skipBptIndex))
                 ? _adjustedBalance(balances[i], _tokenRateCaches[skipBptIndex])
                 : balances[i];
         }
@@ -262,17 +262,6 @@ abstract contract StablePoolRates is StablePoolStorage {
     // Compute balance * oldRate/currentRate, doing division last to minimize rounding error.
     function _adjustedBalance(uint256 balance, bytes32 cache) private pure returns (uint256) {
         return Math.divDown(Math.mul(balance, cache.getOldRate()), cache.getCurrentRate());
-    }
-
-    // Return true if the token at this index has a rate provider, so that it has
-    // an entry in the token rate cache.
-    function _hasCacheEntry(uint256 index) private view returns (bool) {
-        if (index == 0) return _getRateProvider0() != IRateProvider(0);
-        if (index == 1) return _getRateProvider1() != IRateProvider(0);
-        if (index == 2) return _getRateProvider2() != IRateProvider(0);
-        if (index == 3) return _getRateProvider3() != IRateProvider(0);
-        if (index == 4) return _getRateProvider4() != IRateProvider(0);
-        if (index == 5) return _getRateProvider5() != IRateProvider(0);
     }
 
     // Scaling Factors
