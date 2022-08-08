@@ -238,19 +238,21 @@ abstract contract StablePoolRates is StablePoolStorage {
 
     /**
      * @dev Apply the token ratios to a set of balances, optionally adjusting for exempt yield tokens.
-     * The `balances` array is assumed to include BPT to ensure that token indices align.
+     * The `balances` array is assumed to not include BPT to ensure that token indices align.
      */
     function _getAdjustedBalances(uint256[] memory balances, bool ignoreExemptFlags)
         internal
         view
         returns (uint256[] memory)
     {
-        uint256 totalTokens = balances.length;
-        uint256[] memory adjustedBalances = new uint256[](totalTokens);
+        uint256 totalTokensWithoutBpt = balances.length;
+        uint256[] memory adjustedBalances = new uint256[](totalTokensWithoutBpt);
 
-        for (uint256 i = 0; i < totalTokens; ++i) {
-            adjustedBalances[i] = _isTokenExemptFromYieldProtocolFee(i) || (ignoreExemptFlags && _hasRateProvider(i))
-                ? _adjustedBalance(balances[i], _tokenRateCaches[i])
+        for (uint256 i = 0; i < totalTokensWithoutBpt; ++i) {
+            uint256 skipBptIndex = i >= getBptIndex() ? i + 1 : i;
+            adjustedBalances[i] = _isTokenExemptFromYieldProtocolFee(skipBptIndex) ||
+                (ignoreExemptFlags && _hasRateProvider(skipBptIndex))
+                ? _adjustedBalance(balances[i], _tokenRateCaches[skipBptIndex])
                 : balances[i];
         }
 
