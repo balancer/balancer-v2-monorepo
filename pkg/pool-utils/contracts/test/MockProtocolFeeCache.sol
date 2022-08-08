@@ -24,7 +24,7 @@ contract MockProtocolFeeCache is ProtocolFeeCache {
         BasePoolAuthorization(msg.sender)
         ProtocolFeeCache(protocolFeeProvider, protocolSwapFeePercentage)
     {
-        // solhint-disable-prev-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function _isOwnerOnlyAction(bytes32) internal pure override returns (bool) {
