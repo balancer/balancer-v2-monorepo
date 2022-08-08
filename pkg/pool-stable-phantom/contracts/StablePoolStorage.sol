@@ -172,28 +172,15 @@ abstract contract StablePoolStorage is BasePool {
         return _bptIndex;
     }
 
-    function _getToken0() internal view returns (IERC20) {
-        return _token0;
-    }
+    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+        if (token == _token0) return 0;
+        if (token == _token1) return 1;
+        if (token == _token2) return 2;
+        if (token == _token3) return 3;
+        if (token == _token4) return 4;
+        if (token == _token5) return 5;
 
-    function _getToken1() internal view returns (IERC20) {
-        return _token1;
-    }
-
-    function _getToken2() internal view returns (IERC20) {
-        return _token2;
-    }
-
-    function _getToken3() internal view returns (IERC20) {
-        return _token3;
-    }
-
-    function _getToken4() internal view returns (IERC20) {
-        return _token4;
-    }
-
-    function _getToken5() internal view returns (IERC20) {
-        return _token5;
+        _revert(Errors.INVALID_TOKEN);
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
@@ -330,13 +317,13 @@ abstract contract StablePoolStorage is BasePool {
         providers[5] = _getRateProvider5();
     }
 
-    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        if (token == _getToken0()) return _getRateProvider0();
-        if (token == _getToken1()) return _getRateProvider1();
-        if (token == _getToken2()) return _getRateProvider2();
-        if (token == _getToken3()) return _getRateProvider3();
-        if (token == _getToken4()) return _getRateProvider4();
-        if (token == _getToken5()) return _getRateProvider5();
+    function _getRateProvider(uint256 index) internal view returns (IRateProvider) {
+        if (index == 0) return _getRateProvider0();
+        if (index == 1) return _getRateProvider1();
+        if (index == 2) return _getRateProvider2();
+        if (index == 3) return _getRateProvider3();
+        if (index == 4) return _getRateProvider4();
+        if (index == 5) return _getRateProvider5();
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -348,19 +335,9 @@ abstract contract StablePoolStorage is BasePool {
      * @dev Returns whether the token is exempt from protocol fees on the yield.
      * If the BPT token is passed in (which doesn't make much sense, but shouldn't fail,
      * since it is a valid pool token), the corresponding flag will be false.
-     *
-     * These immutables are only accessed once, so we don't need individual getters.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
-        if (token == _getToken0()) return _isTokenExemptFromYieldProtocolFee(0);
-        if (token == _getToken1()) return _isTokenExemptFromYieldProtocolFee(1);
-        if (token == _getToken2()) return _isTokenExemptFromYieldProtocolFee(2);
-        if (token == _getToken3()) return _isTokenExemptFromYieldProtocolFee(3);
-        if (token == _getToken4()) return _isTokenExemptFromYieldProtocolFee(4);
-        if (token == _getToken5()) return _isTokenExemptFromYieldProtocolFee(5);
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
+        return _isTokenExemptFromYieldProtocolFee(_getTokenIndex(token));
     }
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
