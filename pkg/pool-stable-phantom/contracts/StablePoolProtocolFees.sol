@@ -50,9 +50,10 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
 
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how much
         // BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value of each
-        // BPT is going to be reduced as all LPs get dilluted. The percentage of the Pool the protocol will own after
-        // minting equals `protocol percentage = to mint / (current supply + to mint)`. By solving for `to mint`, we
-        // arrive at `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
+        // BPT is going to be reduced as all LPs get diluted. The percentage of the Pool the protocol will own after
+        // minting is given by `protocol percentage = to mint / (current supply + to mint)`.
+        // Solving for `to mint`, we arrive at:
+        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
 
         uint256 protocolFeeAmount = virtualSupply.mulDown(expectedProtocolOwnershipPercentage).divDown(
             FixedPoint.ONE.sub(expectedProtocolOwnershipPercentage)
@@ -75,8 +76,8 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         view
         returns (uint256)
     {
-        // First, we adjust the current balances of tokens that have rate providers by deappliying the current rate and
-        // applying instead the old rate.
+        // First, we adjust the current balances of tokens that have rate providers by undoing the current rate
+        // adjustment, then applying the old rate. This is equivalent to multiplying by the ratio: old rate / current rate.
         // This is done twice: first to *all* tokens that have a rate provider, and second only to tokens that are
         // exempt from yield fees.
         // By computing the balances with the old rates, we get a (very good) approximation of what the Pool state would
