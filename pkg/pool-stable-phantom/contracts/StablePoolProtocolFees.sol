@@ -56,7 +56,7 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
 
         uint256 protocolFeeAmount = virtualSupply.mulDown(expectedProtocolOwnershipPercentage).divDown(
-            FixedPoint.ONE.sub(expectedProtocolOwnershipPercentage)
+            expectedProtocolOwnershipPercentage.complement()
         );
 
         if (protocolFeeAmount > 0) {
