@@ -153,9 +153,9 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     }
 
     /**
-     * @dev See IL2GaugeCheckpointer#getTotalBridgeCosts.
+     * @dev See IL2GaugeCheckpointer#getTotalBridgeCost.
      */
-    function getTotalBridgeCosts(uint256 minRelativeWeight) external view override returns (uint256) {
+    function getTotalBridgeCost(uint256 minRelativeWeight) external view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
         uint256 currentPeriod = _roundDownTimestamp(block.timestamp);
         uint256 totalArbitrumGauges = _gauges[IGaugeAdder.GaugeType.Arbitrum].length();

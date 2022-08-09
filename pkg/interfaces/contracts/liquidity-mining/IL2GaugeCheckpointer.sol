@@ -90,7 +90,7 @@ interface IL2GaugeCheckpointer {
      * A lower minimum relative weight might return higher costs, since more gauges could potentially be included
      * in the checkpoint.
      */
-    function getTotalBridgeCosts(uint256 minRelativeWeight) external view returns (uint256);
+    function getTotalBridgeCost(uint256 minRelativeWeight) external view returns (uint256);
 
     /**
      * @dev Returns true if gauge type is Polygon, Arbitrum, Optimism, Gnosis or ZKSync; false otherwise.
