@@ -689,7 +689,7 @@ contract StablePhantomPool is
                     preJoinExitInvariant,
                     currentAmp,
                     balances,
-                    _dropBptItem(scalingFactors), // drop BPT to match balances
+                    scalingFactors,
                     userData
                 );
         } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
@@ -707,14 +707,14 @@ contract StablePhantomPool is
         uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balances,
-        uint256[] memory scalingFactorsWithoutBpt,
+        uint256[] memory scalingFactors,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
         InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
 
         // The user-provided amountsIn is unscaled, so we address that.
-        _upscaleArray(amountsIn, scalingFactorsWithoutBpt);
+        _upscaleArray(amountsIn, _dropBptItem(scalingFactors));
 
         uint256 bptAmountOut = StableMath._calcBptOutGivenExactTokensIn(
             currentAmp,
@@ -786,7 +786,7 @@ contract StablePhantomPool is
                     preJoinExitInvariant,
                     currentAmp,
                     balances,
-                    _dropBptItem(scalingFactors), // drop BPT to match balances
+                    scalingFactors,
                     userData
                 );
         } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
@@ -804,14 +804,14 @@ contract StablePhantomPool is
         uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balances,
-        uint256[] memory scalingFactorsWithoutBpt,
+        uint256[] memory scalingFactors,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
 
         // The user-provided amountsIn is unscaled, so we address that.
-        _upscaleArray(amountsOut, scalingFactorsWithoutBpt);
+        _upscaleArray(amountsOut, _dropBptItem(scalingFactors));
 
         uint256 bptAmountIn = StableMath._calcBptInGivenExactTokensOut(
             currentAmp,
