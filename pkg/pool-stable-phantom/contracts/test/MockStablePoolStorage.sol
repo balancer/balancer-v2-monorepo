@@ -65,42 +65,6 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _addBptItem(amounts, bptAmount);
     }
 
-    /**
-     * @notice Return the scaling factor for a token. This includes both the token decimals and the rate.
-     */
-    function getScalingFactor(IERC20 token) external view returns (uint256) {
-        return _scalingFactor(token);
-    }
-
-    // Computed the total scaling factor as a product of the token decimal adjustment and token rate.
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _tokenScalingFactor(token);
-    }
-
-    function getToken0() external view returns (IERC20) {
-        return _getToken0();
-    }
-
-    function getToken1() external view returns (IERC20) {
-        return _getToken1();
-    }
-
-    function getToken2() external view returns (IERC20) {
-        return _getToken2();
-    }
-
-    function getToken3() external view returns (IERC20) {
-        return _getToken3();
-    }
-
-    function getToken4() external view returns (IERC20) {
-        return _getToken4();
-    }
-
-    function getToken5() external view returns (IERC20) {
-        return _getToken5();
-    }
-
     function getRateProvider0() external view returns (IRateProvider) {
         return _getRateProvider0();
     }
@@ -149,12 +113,8 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _getScalingFactor5();
     }
 
-    function getTokenScalingFactor(IERC20 token) external view returns (uint256) {
-        return _tokenScalingFactor(token);
-    }
-
-    function getRateProvider(IERC20 token) external view returns (IRateProvider) {
-        return _getRateProvider(token);
+    function getRateProvider(uint256 index) external view returns (IRateProvider) {
+        return _getRateProvider(index);
     }
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.

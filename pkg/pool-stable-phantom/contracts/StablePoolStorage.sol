@@ -24,6 +24,7 @@ import "./StableMath.sol";
 
 abstract contract StablePoolStorage is BasePool {
     using FixedPoint for uint256;
+    using WordCodec for bytes32;
 
     struct StorageParams {
         IERC20[] registeredTokens;
@@ -54,12 +55,12 @@ abstract contract StablePoolStorage is BasePool {
     // not change throughout its lifetime, and store the corresponding scaling factor for each at construction time.
     // These factors are always greater than or equal to one: tokens with more than 18 decimals are not supported.
 
-    uint256 private immutable _scalingFactor0;
-    uint256 private immutable _scalingFactor1;
-    uint256 private immutable _scalingFactor2;
-    uint256 private immutable _scalingFactor3;
-    uint256 private immutable _scalingFactor4;
-    uint256 private immutable _scalingFactor5;
+    uint256 internal immutable _scalingFactor0;
+    uint256 internal immutable _scalingFactor1;
+    uint256 internal immutable _scalingFactor2;
+    uint256 internal immutable _scalingFactor3;
+    uint256 internal immutable _scalingFactor4;
+    uint256 internal immutable _scalingFactor5;
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
@@ -70,11 +71,18 @@ abstract contract StablePoolStorage is BasePool {
     IRateProvider private immutable _rateProvider4;
     IRateProvider private immutable _rateProvider5;
 
-    // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
-    // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
-    // For example, the BPT of another PhantomStable Pool containing yield tokens.
-    // The flag will always be false for the BPT token.
-    uint256 private immutable _exemptFromYieldProtocolFeeTokens;
+    // This is a bitmap which allows querying whether a token at a particular index:
+    // - has a rate provider associated with it.
+    // - is exempt from yield protocol fees.
+    // This is required as the data stored in this bitmap is computed from values in immutable storage,
+    // without this bitmap we would have to manually search through token by token to reach these values.
+    // The data structure is as follows:
+    //
+    // [  unused  | rate provider flags | exemption flags ]
+    // [ 244 bits |        6 bits       |     6 bits      ]
+    bytes32 private immutable _rateProviderInfoBitmap;
+
+    uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
     constructor(StorageParams memory params) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
@@ -125,23 +133,34 @@ abstract contract StablePoolStorage is BasePool {
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory rateProviders = new IRateProvider[](params.registeredTokens.length);
 
-        // Do the same with exemptFromYieldProtocolFeeFlags
+        bytes32 rateProviderInfoBitmap;
+
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
-        uint256 exemptFlagBitmap;
-
         for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i];
+                // Store whether token has rate provider
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
+                );
+                // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << i;
+                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
                 }
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
+                // Store whether token has rate provider
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
+                );
+                // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << i;
+                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
                 }
             }
         }
@@ -154,7 +173,7 @@ abstract contract StablePoolStorage is BasePool {
         _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
         _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
 
-        _exemptFromYieldProtocolFeeTokens = exemptFlagBitmap;
+        _rateProviderInfoBitmap = rateProviderInfoBitmap;
     }
 
     // Tokens
@@ -172,28 +191,15 @@ abstract contract StablePoolStorage is BasePool {
         return _bptIndex;
     }
 
-    function _getToken0() internal view returns (IERC20) {
-        return _token0;
-    }
+    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+        if (token == _token0) return 0;
+        if (token == _token1) return 1;
+        if (token == _token2) return 2;
+        if (token == _token3) return 3;
+        if (token == _token4) return 4;
+        if (token == _token5) return 5;
 
-    function _getToken1() internal view returns (IERC20) {
-        return _token1;
-    }
-
-    function _getToken2() internal view returns (IERC20) {
-        return _token2;
-    }
-
-    function _getToken3() internal view returns (IERC20) {
-        return _token3;
-    }
-
-    function _getToken4() internal view returns (IERC20) {
-        return _token4;
-    }
-
-    function _getToken5() internal view returns (IERC20) {
-        return _token5;
+        _revert(Errors.INVALID_TOKEN);
     }
 
     function _getScalingFactor0() internal view returns (uint256) {
@@ -220,16 +226,10 @@ abstract contract StablePoolStorage is BasePool {
         return _scalingFactor5;
     }
 
-    function _tokenScalingFactor(IERC20 token) internal view returns (uint256) {
-        if (token == _getToken0()) return _getScalingFactor0();
-        if (token == _getToken1()) return _getScalingFactor1();
-        if (token == _getToken2()) return _getScalingFactor2();
-        if (token == _getToken3()) return _getScalingFactor3();
-        if (token == _getToken4()) return _getScalingFactor4();
-        if (token == _getToken5()) return _getScalingFactor5();
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
+    function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
+        // We never use a single token's scaling factor by itself, we always process the entire array at once.
+        // Therefore we don't bother providing an implementation for this.
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     // Index helpers
@@ -287,22 +287,6 @@ abstract contract StablePoolStorage is BasePool {
         }
     }
 
-    /**
-     * @dev Upscales an amounts array that does not include BPT (e.g. an `amountsIn` array for a join). Returns two
-     * scaled arrays, one with BPT (with a BPT amount of 0), and one without BPT).
-     */
-    function _upscaleWithoutBpt(uint256[] memory unscaledWithoutBpt, uint256[] memory scalingFactors)
-        internal
-        view
-        returns (uint256[] memory scaledWithBpt, uint256[] memory scaledWithoutBpt)
-    {
-        // The scaling factors include BPT, so in order to apply them we must first insert BPT at the correct position.
-        scaledWithBpt = _addBptItem(unscaledWithoutBpt, 0);
-        _upscaleArray(scaledWithBpt, scalingFactors);
-
-        scaledWithoutBpt = _dropBptItem(scaledWithBpt);
-    }
-
     // Rate Providers
 
     function _getRateProvider0() internal view returns (IRateProvider) {
@@ -352,16 +336,23 @@ abstract contract StablePoolStorage is BasePool {
         providers[5] = _getRateProvider5();
     }
 
-    function _getRateProvider(IERC20 token) internal view returns (IRateProvider) {
-        if (token == _getToken0()) return _getRateProvider0();
-        if (token == _getToken1()) return _getRateProvider1();
-        if (token == _getToken2()) return _getRateProvider2();
-        if (token == _getToken3()) return _getRateProvider3();
-        if (token == _getToken4()) return _getRateProvider4();
-        if (token == _getToken5()) return _getRateProvider5();
+    function _getRateProvider(uint256 index) internal view returns (IRateProvider) {
+        if (index == 0) return _getRateProvider0();
+        if (index == 1) return _getRateProvider1();
+        if (index == 2) return _getRateProvider2();
+        if (index == 3) return _getRateProvider3();
+        if (index == 4) return _getRateProvider4();
+        if (index == 5) return _getRateProvider5();
         else {
             _revert(Errors.INVALID_TOKEN);
         }
+    }
+
+    /**
+     * @notice Return true if the token at this index has a rate provider
+     */
+    function _hasRateProvider(uint256 tokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
     }
 
     // Exempt flags
@@ -370,23 +361,13 @@ abstract contract StablePoolStorage is BasePool {
      * @dev Returns whether the token is exempt from protocol fees on the yield.
      * If the BPT token is passed in (which doesn't make much sense, but shouldn't fail,
      * since it is a valid pool token), the corresponding flag will be false.
-     *
-     * These immutables are only accessed once, so we don't need individual getters.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
-        if (token == _getToken0()) return _isTokenExemptFromYieldProtocolFee(0);
-        if (token == _getToken1()) return _isTokenExemptFromYieldProtocolFee(1);
-        if (token == _getToken2()) return _isTokenExemptFromYieldProtocolFee(2);
-        if (token == _getToken3()) return _isTokenExemptFromYieldProtocolFee(3);
-        if (token == _getToken4()) return _isTokenExemptFromYieldProtocolFee(4);
-        if (token == _getToken5()) return _isTokenExemptFromYieldProtocolFee(5);
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
+        return _isTokenExemptFromYieldProtocolFee(_getTokenIndex(token));
     }
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
     function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
-        return _exemptFromYieldProtocolFeeTokens & (1 << tokenIndex) > 0;
+        return _rateProviderInfoBitmap.decodeBool(tokenIndex);
     }
 }

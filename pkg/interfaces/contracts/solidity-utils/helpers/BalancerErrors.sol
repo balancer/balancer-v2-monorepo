@@ -254,5 +254,6 @@ library Errors {
     uint256 internal constant AUM_FEE_PERCENTAGE_TOO_HIGH = 603;
 
     // Misc
+    uint256 internal constant UNIMPLEMENTED = 998;
     uint256 internal constant SHOULD_NOT_HAPPEN = 999;
 }
