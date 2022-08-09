@@ -28,12 +28,12 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
     // To track protocol fees, we measure and store the value of the invariant after every join and exit.
     // All invariant growth that happens between join and exit events is due to swap fees and yield.
     // For selected tokens, we exclude the yield portion from the computation.
-    uint256 private _postJoinExitInvariant;
+    uint256 private _lastPostJoinExitInvariant;
 
     // Because the invariant depends on the amplification parameter, and this value may change over time, we should only
-    // compare invariants that were computed using the same value. We therefore store `_postJoinExitAmp` whenever we
-    // store `_postJoinExitInvariant`.
-    uint256 private _postJoinExitAmp;
+    // compare invariants that were computed using the same value. We therefore store `_lastPostJoinExitAmp` whenever we
+    // store `_lastPostJoinExitInvariant`.
+    uint256 private _lastPostJoinExitAmp;
 
     /**
      * @dev Before joins or exits, calculate the invariant using the old rates for exempt tokens (i.e., the rates
@@ -42,60 +42,21 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
      * percentage to each type.
      */
     function _payProtocolFeesBeforeJoinExit(uint256[] memory balances) internal returns (uint256, uint256[] memory) {
-        // Apply the rate adjustment to exempt tokens: multiply by oldRate / currentRate to "undo" the current scaling,
-        // and apply the old rate. These functions copy `balances` to local storage, so they are not mutated and can
-        // be reused.
-
         (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
 
-        // Do not ignore the exempt flags when calculating total growth = swap fees + non-exempt token yield.
-        uint256[] memory totalGrowthBalances = _getAdjustedBalances(balancesWithoutBpt, false);
-        // Ignore the exempt flags to use the oldRate for all tokens, corresponding to the growth from swap fees alone.
-        uint256[] memory swapGrowthBalances = _getAdjustedBalances(balancesWithoutBpt, true);
+        // First, we'll compute what percentage of the Pool the protocol should own due to charging protocol fees on
+        // swap fees and yield.
+        uint256 expectedProtocolOwnershipPercentage = _getExpectedProtocolPoolOwnershipPercentage(balancesWithoutBpt);
 
-        // Charge the protocol fee in BPT, using the growth in invariant between _postJoinExitInvariant
-        // and adjusted versions of the current invariant. We have separate protocol fee percentages for growth based
-        // on yield and growth based on swap fees, so we need to compute each type separately.
+        // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how much
+        // BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value of each
+        // BPT is going to be reduced as all LPs get dilluted. The percentage of the Pool the protocol will own after
+        // minting equals `protocol percentage = to mint / (current supply + to mint)`. By solving for `to mint`, we
+        // arrive at `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
 
-        // To convert each protocol fee to a BPT amount for each type of growth, we compute the relevant invariant
-        // growth ratio, extract the portion due the protocol, and then compute the equivalent amount of BPT that
-        // would cause such an increase.
-        //
-        // Invariant growth is related to new BPT and supply by: invariant ratio = (bpt amount + supply) / supply
-        // With some manipulation, this becomes:                 (invariant ratio - 1) * supply = bpt amount
-        //
-        // However, a part of the invariant growth was due to non-protocol swap fees (i.e. value accrued by the
-        // LPs), so we only mint a percentage of this BPT amount: that which corresponds to protocol fees.
-
-        uint256 postJoinExitAmp = _postJoinExitAmp;
-
-        uint256 totalGrowthInvariant = StableMath._calculateInvariant(postJoinExitAmp, totalGrowthBalances);
-        uint256 swapGrowthInvariant = StableMath._calculateInvariant(postJoinExitAmp, swapGrowthBalances);
-
-        // Total Growth = Invariant with old rates for exempt tokens / last invariant: swap fees + token yields
-        // Swap Fee Growth = Invariant with old rates for all tokens / last invariant: swap fees alone
-        // Growth due to yield = Total Growth / Swap Fee Growth
-        //                     = Invariant with masked rates / Invariant with old rates.
-
-        // If the "growth" is negative, set the ratio to ONE: multiplying by (ratio - 1) will then result in zero fees.
-        uint256 yieldGrowthRatio = totalGrowthInvariant > swapGrowthInvariant
-            ? totalGrowthInvariant.divDown(swapGrowthInvariant)
-            : FixedPoint.ONE;
-
-        uint256 postJoinExitInvariant = _postJoinExitInvariant;
-
-        uint256 swapGrowthRatio = swapGrowthInvariant > postJoinExitInvariant
-            ? swapGrowthInvariant.divDown(postJoinExitInvariant)
-            : FixedPoint.ONE;
-
-        // Apply separate protocol fee rates on yield and swap fee growth.
-        // Total protocol fee rate = (FeeOnYield * (yieldGrowthRatio - 1) + FeeOnSwap * (swapGrowthRatio - 1))
-
-        // We round down, favoring LP fees.
-        uint256 protocolFeeAmount = getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
-            .mulDown(yieldGrowthRatio.sub(FixedPoint.ONE))
-            .add(getProtocolFeePercentageCache(ProtocolFeeType.SWAP).mulDown(swapGrowthRatio.sub(FixedPoint.ONE)))
-            .mulDown(virtualSupply);
+        uint256 protocolFeeAmount = virtualSupply.mulDown(expectedProtocolOwnershipPercentage).divDown(
+            FixedPoint.ONE.sub(expectedProtocolOwnershipPercentage)
+        );
 
         if (protocolFeeAmount > 0) {
             _payProtocolFees(protocolFeeAmount);
@@ -107,6 +68,91 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         //
         // For this addition to overflow, the actual total supply would have already overflowed.
         return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
+    }
+
+    function _getExpectedProtocolPoolOwnershipPercentage(uint256[] memory balancesWithoutBpt)
+        internal
+        view
+        returns (uint256)
+    {
+        // First, we adjust the current balances of tokens that have rate providers by deappliying the current rate and
+        // applying instead the old rate.
+        // This is done twice: first to *all* tokens that have a rate provider, and second only to tokens that are
+        // exempt from yield fees.
+        // By computing the balances with the old rates, we get a (very good) approximation of what the Pool state would
+        // be if the token rates had not increased. We can then use this to compute the invariant growth relative to the
+        // last post join-exit invariant, which will be exclusively due to swap fees. We call this the 'swap fee
+        // growth'.
+        // The second set of balances (using old rates only for tokens exempt from yield fees) can be used to compute
+        // another invariant growth, which this time will include a combination of swap fees and yield (since the rate
+        // of some non-exempt tokens will have increased). We call this the 'non exempt total growth'.
+        // We also calculate the 'total growth', using the current balances (i.e. with all current rates). A part of
+        // this growth will be exempt from protocol fees (that which corresponds to yield of exempt tokens), but we
+        // still need this value in order to assess the total fees to charge.
+
+        // In all cases we compute invariants with the last post join-exit amplification factor, so that changes to the
+        // amplification are not translated into changes to the invariant. Since amplification factor changes are both
+        // infrequent and slow, they should have little effect in the pool balances, making this a very good
+        // approximation.
+        uint256 lastPostJoinExitAmp = _lastPostJoinExitAmp;
+
+        uint256 swapFeeGrowthInvariant = StableMath._calculateInvariant(
+            lastPostJoinExitAmp,
+            _getAdjustedBalances(balancesWithoutBpt, true) // Adjust all balances
+        );
+
+        uint256 totalNonExemptGrowthInvariant = StableMath._calculateInvariant(
+            lastPostJoinExitAmp,
+            _getAdjustedBalances(balancesWithoutBpt, false) // Only adjust non-exempt balances
+        );
+
+        uint256 totalGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balancesWithoutBpt);
+
+        // All growth ratios should be greater or equal to one (since swap fees are positive and token rates are
+        // expected to only increase) - in case any rounding error results in growth smaller than one (i.e. in the
+        // invariant decreasing) we manually adjust the ratio to equal one.
+
+        // The swap fee growth is easy to compute: we simply compare the swap fee growth invariant with the last post
+        // join-exit invariant.
+
+        uint256 lastPostJoinExitInvariant = _lastPostJoinExitInvariant;
+
+        uint256 swapFeeGrowthRatio = Math.max(
+            swapFeeGrowthInvariant.divDown(lastPostJoinExitInvariant),
+            FixedPoint.ONE
+        );
+
+        // The yield growth is not trivial to compute directly, but we can simply derive it from the swap and non exempt
+        // total growths. Since the invariant only grows due to swap fees and yield, any growth not due to swap fees
+        // must be caused by yield.
+        uint256 totalNonExemptGrowth = Math.max(
+            totalNonExemptGrowthInvariant.divDown(lastPostJoinExitInvariant),
+            FixedPoint.ONE
+        );
+        uint256 yieldGrowthRatio = Math.max(totalNonExemptGrowth.divDown(swapFeeGrowthRatio), FixedPoint.ONE);
+
+        // The total growth ratio simply uses the total growth invariant.
+        uint256 totalGrowthRatio = Math.max(totalGrowthInvariant.divDown(lastPostJoinExitInvariant), FixedPoint.ONE);
+
+        // With all three growths, we can now compute the total protocol fees.
+        // For each growth type (swap fees and yield), the percentage that the growth represents of the current value
+        // equals `(growth - 1) / total growth`. For example, if the total growth is 1.5 and swap fee growth is 1.3,
+        // then the swap fee tokens (worth 30% of the Pool value at the last join-exit), now compose 20% of the Pool's
+        // total value.
+
+        uint256 poolSwapFeePercentage = (swapFeeGrowthRatio - FixedPoint.ONE).divDown(totalGrowthRatio);
+        uint256 poolYieldPercentage = (yieldGrowthRatio - FixedPoint.ONE).divDown(totalGrowthRatio);
+
+        // The protocol should own a percentage of the current Pool value due to each growth, according to the protocol
+        // fee percentages. For example, if the swap fee growth corresponds to 20% of the current Pool's value, and the
+        // protocol swap fee is 25%, then the protocol should own 5% of the current Pool's value. These percentages can
+        // be added: the protocol should own some percentage of the Pool due to swap fees, plus some other percentage
+        // due to yield fees.
+
+        return
+            poolSwapFeePercentage.mulDown(getProtocolFeePercentageCache(ProtocolFeeType.SWAP)).add(
+                poolYieldPercentage.mulDown(getProtocolFeePercentageCache(ProtocolFeeType.YIELD))
+            );
     }
 
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
@@ -164,8 +210,8 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
 
     function _updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) internal {
         // Update the stored invariant and amp values, and copy the rates
-        _postJoinExitAmp = currentAmp;
-        _postJoinExitInvariant = postJoinExitInvariant;
+        _lastPostJoinExitAmp = currentAmp;
+        _lastPostJoinExitInvariant = postJoinExitInvariant;
 
         _updateOldRates();
     }
