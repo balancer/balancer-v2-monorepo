@@ -24,6 +24,7 @@ import "./StableMath.sol";
 
 abstract contract StablePoolStorage is BasePool {
     using FixedPoint for uint256;
+    using WordCodec for bytes32;
 
     struct StorageParams {
         IERC20[] registeredTokens;
@@ -70,11 +71,18 @@ abstract contract StablePoolStorage is BasePool {
     IRateProvider private immutable _rateProvider4;
     IRateProvider private immutable _rateProvider5;
 
-    // This is a bitmap, where the LSB corresponds to _token0, bit 1 to _token1, etc.
-    // Set each bit true if the corresponding token should have its yield exempted from protocol fees.
-    // For example, the BPT of another PhantomStable Pool containing yield tokens.
-    // The flag will always be false for the BPT token.
-    uint256 private immutable _exemptFromYieldProtocolFeeTokens;
+    // This is a bitmap which allows querying whether a token at a particular index:
+    // - has a rate provider associated with it.
+    // - is exempt from yield protocol fees.
+    // This is required as the data stored in this bitmap is computed from values in immutable storage,
+    // without this bitmap we would have to manually search through token by token to reach these values.
+    // The data structure is as follows:
+    //
+    // [  unused  | rate provider flags | exemption flags ]
+    // [ 244 bits |        6 bits       |     6 bits      ]
+    bytes32 private immutable _rateProviderInfoBitmap;
+
+    uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
     constructor(StorageParams memory params) {
         // BasePool checks that the Pool has at least two tokens, but since one of them is the BPT (this contract), we
@@ -125,23 +133,34 @@ abstract contract StablePoolStorage is BasePool {
         // simpler to create a new memory array with the values we want to assign to the immutable state variables.
         IRateProvider[] memory rateProviders = new IRateProvider[](params.registeredTokens.length);
 
-        // Do the same with exemptFromYieldProtocolFeeFlags
+        bytes32 rateProviderInfoBitmap;
+
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
-        uint256 exemptFlagBitmap;
-
         for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
             if (i < bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i];
+                // Store whether token has rate provider
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
+                );
+                // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << i;
+                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
                 }
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
+                // Store whether token has rate provider
+                rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(
+                    rateProviders[i] != IRateProvider(0),
+                    _RATE_PROVIDER_FLAGS_OFFSET + i
+                );
+                // Store whether token is exempt from yield fees.
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-                    exemptFlagBitmap += 1 << i;
+                    rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
                 }
             }
         }
@@ -154,7 +173,7 @@ abstract contract StablePoolStorage is BasePool {
         _rateProvider4 = (rateProviders.length > 4) ? rateProviders[4] : IRateProvider(0);
         _rateProvider5 = (rateProviders.length > 5) ? rateProviders[5] : IRateProvider(0);
 
-        _exemptFromYieldProtocolFeeTokens = exemptFlagBitmap;
+        _rateProviderInfoBitmap = rateProviderInfoBitmap;
     }
 
     // Tokens
@@ -236,6 +255,14 @@ abstract contract StablePoolStorage is BasePool {
         }
 
         return amountsWithoutBpt;
+    }
+
+    /**
+     * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
+     * current Pool balances (including BPT).
+     */
+    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
+        return (_getVirtualSupply(balances[getBptIndex()]), _dropBptItem(balances));
     }
 
     // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
@@ -329,6 +356,13 @@ abstract contract StablePoolStorage is BasePool {
         }
     }
 
+    /**
+     * @notice Return true if the token at this index has a rate provider
+     */
+    function _hasRateProvider(uint256 tokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
+    }
+
     // Exempt flags
 
     /**
@@ -342,6 +376,37 @@ abstract contract StablePoolStorage is BasePool {
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
     function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
-        return _exemptFromYieldProtocolFeeTokens & (1 << tokenIndex) > 0;
+        return _rateProviderInfoBitmap.decodeBool(tokenIndex);
+    }
+
+    // Virtual Supply
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
+     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
+     */
+    function getVirtualSupply() external view returns (uint256) {
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
+        // remains constant.
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
+    }
+
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply().sub(bptBalance);
     }
 }
