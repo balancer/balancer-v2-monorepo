@@ -171,7 +171,7 @@ contract StablePhantomPool is
         uint256 registeredIndexIn,
         uint256 registeredIndexOut,
         uint256[] memory scalingFactors
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _swapWithBpt(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut, scalingFactors)
@@ -202,7 +202,7 @@ contract StablePhantomPool is
         uint256 registeredIndexIn,
         uint256 registeredIndexOut,
         uint256[] memory scalingFactors
-    ) internal virtual override whenNotPaused returns (uint256) {
+    ) internal virtual override returns (uint256) {
         return
             (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
                 ? _swapWithBpt(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut, scalingFactors)
@@ -225,10 +225,10 @@ contract StablePhantomPool is
         uint256[] memory registeredBalances,
         uint256 registeredIndexIn,
         uint256 registeredIndexOut
-    ) internal virtual override returns (uint256 amountOut) {
+    ) internal virtual override returns (uint256) {
         return
             _onRegularSwap(
-                IVault.SwapKind.GIVEN_IN,
+                true, // given in
                 request.amount,
                 registeredBalances,
                 registeredIndexIn,
@@ -246,10 +246,10 @@ contract StablePhantomPool is
         uint256[] memory registeredBalances,
         uint256 registeredIndexIn,
         uint256 registeredIndexOut
-    ) internal virtual override returns (uint256 amountIn) {
+    ) internal virtual override returns (uint256) {
         return
             _onRegularSwap(
-                IVault.SwapKind.GIVEN_OUT,
+                false, // given out
                 request.amount,
                 registeredBalances,
                 registeredIndexIn,
@@ -262,21 +262,21 @@ contract StablePhantomPool is
      * all we need to do here is calculate the price quote, depending on the direction of the swap.
      */
     function _onRegularSwap(
-        IVault.SwapKind kind,
+        bool isGivenIn,
         uint256 amountGiven,
         uint256[] memory registeredBalances,
         uint256 registeredIndexIn,
         uint256 registeredIndexOut
     ) private view returns (uint256) {
+        // Adjust indices and balances for BPT token
         uint256[] memory balances = _dropBptItem(registeredBalances);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
-
-        // Adjust indices for BPT token
         uint256 indexIn = _skipBptIndex(registeredIndexIn);
         uint256 indexOut = _skipBptIndex(registeredIndexOut);
 
-        if (kind == IVault.SwapKind.GIVEN_IN) {
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
+
+        if (isGivenIn) {
             return StableMath._calcOutGivenIn(currentAmp, balances, indexIn, indexOut, amountGiven, invariant);
         } else {
             return StableMath._calcInGivenOut(currentAmp, balances, indexIn, indexOut, amountGiven, invariant);
@@ -312,6 +312,7 @@ contract StablePhantomPool is
 
         uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
+        // These calls mutate `balances` so that it holds the post join-exit balances.
         (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut == getBptIndex()
             ? _doJoinSwap(
                 isGivenIn,
@@ -342,8 +343,8 @@ contract StablePhantomPool is
 
         return
             isGivenIn
-                ? _downscaleDown(amountCalculated, scalingFactors[registeredIndexOut])
-                : _downscaleUp(amountCalculated, scalingFactors[registeredIndexIn]);
+                ? _downscaleDown(amountCalculated, scalingFactors[registeredIndexOut]) // Amount out, round down
+                : _downscaleUp(amountCalculated, scalingFactors[registeredIndexIn]); // Amount in, round up
     }
 
     /**
@@ -406,8 +407,8 @@ contract StablePhantomPool is
             getSwapFeePercentage()
         );
 
-        balances[indexIn] += amountIn;
-        uint256 postJoinExitSupply = virtualSupply + bptOut;
+        balances[indexIn] = balances[indexIn].add(amountIn);
+        uint256 postJoinExitSupply = virtualSupply.add(bptOut);
 
         return (bptOut, postJoinExitSupply);
     }
@@ -435,15 +436,15 @@ contract StablePhantomPool is
             getSwapFeePercentage()
         );
 
-        balances[indexIn] += amountIn;
-        uint256 postJoinExitSupply = virtualSupply + bptOut;
+        balances[indexIn] = balances[indexIn].add(amountIn);
+        uint256 postJoinExitSupply = virtualSupply.add(bptOut);
 
         return (amountIn, postJoinExitSupply);
     }
 
     /**
-     * @dev This mutates balancesWithoutBpt so that they become the post-exitswap balances. The StableMath interfaces
-     * are different depending on the swap direction, so we forward to the appropriate low-level exit function.
+     * @dev This mutates balances so that they become the post-exitswap balances. The StableMath interfaces are
+     * different depending on the swap direction, so we forward to the appropriate low-level exit function.
      */
     function _doExitSwap(
         bool isGivenIn,
@@ -497,8 +498,8 @@ contract StablePhantomPool is
             getSwapFeePercentage()
         );
 
-        balances[indexOut] -= amountOut;
-        uint256 postJoinExitSupply = virtualSupply - bptAmount;
+        balances[indexOut] = balances[indexOut].sub(amountOut);
+        uint256 postJoinExitSupply = virtualSupply.sub(bptAmount);
 
         return (amountOut, postJoinExitSupply);
     }
@@ -530,8 +531,8 @@ contract StablePhantomPool is
             getSwapFeePercentage()
         );
 
-        balances[indexOut] -= amountOut;
-        uint256 postJoinExitSupply = virtualSupply - bptAmount;
+        balances[indexOut] = balances[indexOut].sub(amountOut);
+        uint256 postJoinExitSupply = virtualSupply.sub(bptAmount);
 
         return (bptAmount, postJoinExitSupply);
     }
@@ -650,10 +651,11 @@ contract StablePhantomPool is
             userData
         );
 
-        // Unlike joinswaps, explicit joins do not mutate balancesWithoutBpt into the post join balances so we must
-        // perform this mutation here.
-        _mutateAmounts(balances, amountsDelta, isJoin ? FixedPoint.add : FixedPoint.sub);
-        uint256 postJoinExitSupply = isJoin ? preJoinExitSupply + bptAmount : preJoinExitSupply - bptAmount;
+        // Unlike joinswaps, explicit joins do not mutate balances into the post join-exit balances so we must perform
+        // this mutation here.
+        function(uint256, uint256) internal pure returns (uint256) _addOrSub = isJoin ? FixedPoint.add : FixedPoint.sub;
+        _mutateAmounts(balances, amountsDelta, _addOrSub);
+        uint256 postJoinExitSupply = _addOrSub(preJoinExitSupply, bptAmount);
 
         // Pass in the post-join balances to reset the protocol fee basis.
         // We are minting bptAmount, increasing the total (and virtual) supply post-join
@@ -911,6 +913,9 @@ contract StablePhantomPool is
         uint256[] memory arguments,
         function(uint256, uint256) pure returns (uint256) mutation
     ) private pure {
+        uint256 length = toMutate.length;
+        InputHelpers.ensureInputLengthMatch(length, arguments.length);
+
         for (uint256 i = 0; i < toMutate.length; ++i) {
             toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
