@@ -207,7 +207,14 @@ export default class StablePhantomPool extends BasePool {
     const amountsIn = Array.from({ length: currentBalances.length }, (_, i) => (i == tokenIndex ? amountIn : 0));
     const currentInvariant = calculateInvariant(currentBalances, this.amplificationParameter);
 
-    return calcBptOutGivenExactTokensIn(currentBalances, this.amplificationParameter, amountsIn, virtualSupply, currentInvariant, 0);
+    return calcBptOutGivenExactTokensIn(
+      currentBalances,
+      this.amplificationParameter,
+      amountsIn,
+      virtualSupply,
+      currentInvariant,
+      0
+    );
   }
 
   async estimateBptInGivenTokenOut(token: Token, amountOut: BigNumberish): Promise<BigNumberish> {
@@ -217,7 +224,14 @@ export default class StablePhantomPool extends BasePool {
     const amountsOut = Array.from({ length: currentBalances.length }, (_, i) => (i == tokenIndex ? amountOut : 0));
     const currentInvariant = calculateInvariant(currentBalances, this.amplificationParameter);
 
-    return calcBptInGivenExactTokensOut(currentBalances, this.amplificationParameter, amountsOut, virtualSupply, currentInvariant, 0);
+    return calcBptInGivenExactTokensOut(
+      currentBalances,
+      this.amplificationParameter,
+      amountsOut,
+      virtualSupply,
+      currentInvariant,
+      0
+    );
   }
 
   async estimateBptOut(
@@ -229,7 +243,7 @@ export default class StablePhantomPool extends BasePool {
     if (!currentBalances) currentBalances = await this._dropBptItem(await this.getBalances());
     const swapFeePercentage = await this.getSwapFeePercentage();
     const tokenCountWithBpt = (await this.getBalances()).length;
-    
+
     if (currentBalances.length == tokenCountWithBpt) {
       currentBalances = await this._dropBptItem(currentBalances);
     }
