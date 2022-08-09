@@ -251,6 +251,10 @@ library Errors {
     uint256 internal constant INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT = 602;
     uint256 internal constant AUM_FEE_PERCENTAGE_TOO_HIGH = 603;
 
+    // FeeSplitter
+    uint256 internal constant SPLITTER_FEE_PERCENTAGE_TOO_HIGH = 700;
+    uint256 internal constant NO_BPT_FEES_COLLECTED = 701;
+
     // Misc
     uint256 internal constant SHOULD_NOT_HAPPEN = 999;
 }
