@@ -38,7 +38,7 @@ function _require(bool condition, uint256 errorCode, bytes3 prefix) pure {
  * Uses the default 'BAL' prefix for the error code
  */
 function _revert(uint256 errorCode) pure {
-    _revert(errorCode, 0x42414c);
+    _revert(errorCode, 0x42414c); // This is the raw byte representation of "BAL"
 }
 
 /**
