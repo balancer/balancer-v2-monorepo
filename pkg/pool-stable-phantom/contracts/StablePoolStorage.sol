@@ -257,6 +257,14 @@ abstract contract StablePoolStorage is BasePool {
         return amountsWithoutBpt;
     }
 
+    /**
+     * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
+     * current Pool balances (including BPT).
+     */
+    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
+        return (_getVirtualSupply(balances[getBptIndex()]), _dropBptItem(balances));
+    }
+
     // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
     // to an index into an array excluding BPT (the Vault's registered token list).
     // `index` must not be the BPT token index itself, if it is the last element, and the result must be
@@ -369,5 +377,36 @@ abstract contract StablePoolStorage is BasePool {
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
     function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
         return _rateProviderInfoBitmap.decodeBool(tokenIndex);
+    }
+
+    // Virtual Supply
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
+     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
+     */
+    function getVirtualSupply() external view returns (uint256) {
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
+        // remains constant.
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
+    }
+
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply().sub(bptBalance);
     }
 }
