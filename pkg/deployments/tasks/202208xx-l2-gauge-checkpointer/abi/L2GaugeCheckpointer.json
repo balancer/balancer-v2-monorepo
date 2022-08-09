@@ -1,0 +1,205 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract IGaugeAdder",
+        "name": "gaugeAdder",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract IStakelessGauge",
+        "name": "gauge",
+        "type": "address"
+      }
+    ],
+    "name": "GaugeAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract IStakelessGauge",
+        "name": "gauge",
+        "type": "address"
+      }
+    ],
+    "name": "GaugeRemoved",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "contract IStakelessGauge[]",
+        "name": "gauges",
+        "type": "address[]"
+      }
+    ],
+    "name": "addGauges",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "minRelativeWeight",
+        "type": "uint256"
+      }
+    ],
+    "name": "checkpointGaugesAboveRelativeWeight",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getGaugeAt",
+    "outputs": [
+      {
+        "internalType": "contract IStakelessGauge",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "minRelativeWeight",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTotalBridgeCost",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      }
+    ],
+    "name": "getTotalGauges",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "contract IStakelessGauge",
+        "name": "gauge",
+        "type": "address"
+      }
+    ],
+    "name": "hasGauge",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      }
+    ],
+    "name": "isSupportedGaugeType",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum IGaugeAdder.GaugeType",
+        "name": "gaugeType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "contract IStakelessGauge[]",
+        "name": "gauges",
+        "type": "address[]"
+      }
+    ],
+    "name": "removeGauges",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

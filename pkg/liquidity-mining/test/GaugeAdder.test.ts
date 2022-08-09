@@ -8,17 +8,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-
-export enum GaugeType {
-  LiquidityMiningCommittee = 0,
-  veBAL,
-  Ethereum,
-  Polygon,
-  Arbitrum,
-  Optimism,
-  Gnosis,
-  ZkSync,
-}
+import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 
 describe('GaugeAdder', () => {
   let vault: Vault;

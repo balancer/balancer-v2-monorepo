@@ -9,8 +9,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expect } from 'chai';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { anyAddressArray } from '@balancer-labs/v2-helpers/src/address';
-
-import { GaugeType } from './GaugeAdder.test';
+import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 
 describe('L2GaugeCheckpointer', () => {
   let vault: Vault;
