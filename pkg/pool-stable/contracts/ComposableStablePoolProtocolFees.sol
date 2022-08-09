@@ -183,14 +183,16 @@ abstract contract ComposableStablePoolProtocolFees is
                 postJoinExitInvariant > preJoinExitInvariant
                     ? postJoinExitInvariant.sub(preJoinExitInvariant)
                     : preJoinExitInvariant.sub(postJoinExitInvariant)
-            ).divDown(preJoinExitInvariant);
+            )
+                .divDown(preJoinExitInvariant);
 
             // Compute the bpt ratio
             uint256 bptGrowthRatio = (
                 postJoinExitSupply > preJoinExitInvariant
                     ? postJoinExitSupply.sub(preJoinExitSupply)
                     : preJoinExitSupply.sub(postJoinExitSupply)
-            ).divDown(preJoinExitSupply);
+            )
+                .divDown(preJoinExitSupply);
 
             // The difference between the invariant growth and bpt increase rates must be due to the
             // balance change from this join/exit.

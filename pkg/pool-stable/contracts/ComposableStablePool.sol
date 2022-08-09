@@ -640,10 +640,12 @@ contract ComposableStablePool is
 
         uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        function(uint256[] memory, uint256, uint256, uint256, uint256[] memory, bytes memory)
-            internal
-            view
-            returns (uint256, uint256[] memory) _doJoinOrExit = (isJoin ? _doJoin : _doExit);
+
+            function(uint256[] memory, uint256, uint256, uint256, uint256[] memory, bytes memory)
+                internal
+                view
+                returns (uint256, uint256[] memory) _doJoinOrExit
+         = (isJoin ? _doJoin : _doExit);
 
         (uint256 bptAmount, uint256[] memory amountsDelta) = _doJoinOrExit(
             balances,
