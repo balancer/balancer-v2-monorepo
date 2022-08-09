@@ -77,7 +77,8 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         returns (uint256)
     {
         // First, we adjust the current balances of tokens that have rate providers by undoing the current rate
-        // adjustment, then applying the old rate. This is equivalent to multiplying by the ratio: old rate / current rate.
+        // adjustment, then applying the old rate. This is equivalent to multiplying by the ratio:
+        // old rate / current rate.
         // This is done twice: first to *all* tokens that have a rate provider, and second only to tokens that are
         // exempt from yield fees.
         // By computing the balances with the old rates, we get a (very good) approximation of what the Pool state would
