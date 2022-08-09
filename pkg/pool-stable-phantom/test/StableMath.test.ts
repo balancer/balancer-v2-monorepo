@@ -16,7 +16,7 @@ import {
 import { random } from 'lodash';
 import { expect } from 'chai';
 
-const MAX_RELATIVE_ERROR = 0.002; // Max relative error
+const MAX_RELATIVE_ERROR = 0.0001; // Max relative error
 
 // TODO: Test this math by checking extremes values for the amplification field (0 and infinite)
 // to verify that it equals constant sum and constant product (weighted) invariants.
@@ -35,7 +35,7 @@ describe('StableMath', function () {
       const ampParameter = bn(amp).mul(AMP_PRECISION);
 
       const actualInvariant = await mock.invariant(ampParameter, balances);
-      const expectedInvariant = calculateInvariant(balances, ampParameter);
+      const expectedInvariant = calculateInvariant(balances, amp);
 
       expectEqualWithError(actualInvariant, expectedInvariant, MAX_RELATIVE_ERROR);
     }
@@ -90,8 +90,10 @@ describe('StableMath', function () {
         invariant,
         tokenIndex
       );
+
+      // Note this function takes the decimal amp (unadjusted)
       const expectedTokenBalance = getTokenBalanceGivenInvariantAndAllOtherBalances(
-        ampParameter,
+        amp,
         balances,
         invariant,
         tokenIndex
@@ -205,7 +207,15 @@ describe('StableMath', function () {
         swapFee
       );
 
-      const expectedBptOut = calcBptOutGivenExactTokensIn(balances, ampParameter, amountsIn, bptTotalSupply, swapFee);
+      const expectedBptOut = calcBptOutGivenExactTokensIn(
+        balances,
+        amp,
+        amountsIn,
+        bptTotalSupply,
+        currentInvariant,
+        swapFee
+      );
+
       expect(actualBptOut).gt(0);
       expectEqualWithError(actualBptOut, expectedBptOut, MAX_RELATIVE_ERROR);
     }
@@ -254,9 +264,10 @@ describe('StableMath', function () {
       const expectedTokenIn = calcTokenInGivenExactBptOut(
         tokenIndex,
         balances,
-        ampParameter,
+        amp,
         bptAmountOut,
         bptTotalSupply,
+        currentInvariant,
         swapFee
       );
 
@@ -316,7 +327,15 @@ describe('StableMath', function () {
         swapFee
       );
 
-      const expectedBptIn = calcBptInGivenExactTokensOut(balances, ampParameter, amountsOut, bptTotalSupply, swapFee);
+      const expectedBptIn = calcBptInGivenExactTokensOut(
+        balances,
+        amp,
+        amountsOut,
+        bptTotalSupply,
+        currentInvariant,
+        swapFee
+      );
+
       expect(actualBptIn).gt(0);
       expectEqualWithError(actualBptIn, expectedBptIn, MAX_RELATIVE_ERROR);
     }
@@ -367,9 +386,10 @@ describe('StableMath', function () {
       const expectedTokenOut = calcTokenOutGivenExactBptIn(
         tokenIndex,
         balances,
-        ampParameter,
+        amp,
         bptAmountIn,
         bptTotalSupply,
+        currentInvariant,
         swapFee
       );
 
