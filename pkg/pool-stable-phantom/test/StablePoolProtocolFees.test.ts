@@ -138,7 +138,7 @@ describe('StablePoolProtocolFees', () => {
             })
           );
 
-          const expectedSwapFeeGrowhtInvariant = calculateInvariant(
+          const expectedSwapFeeGrowthInvariant = calculateInvariant(
             oldRateBalances,
             AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION)
           );
