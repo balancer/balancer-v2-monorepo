@@ -17,13 +17,15 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
-import "../ComposableStablePoolStorage.sol";
+import "../ComposableStablePoolProtocolFees.sol";
 
-contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
+contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFees {
     constructor(
         IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         IERC20[] memory tokens,
         IRateProvider[] memory tokenRateProviders,
+        uint256[] memory tokenRateCacheDurations,
         bool[] memory exemptFromYieldProtocolFeeFlags
     )
         ComposableStablePoolStorage(
@@ -33,10 +35,18 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
                 exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags
             })
         )
+        ComposableStablePoolRates(
+            RatesParams({
+                tokens: tokens,
+                rateProviders: tokenRateProviders,
+                tokenRateCacheDurations: tokenRateCacheDurations
+            })
+        )
+        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
-            "MockComposableStablePoolStorage",
+            "MockStablePoolStorage",
             "MOCK_BPT",
             _insertSorted(tokens, IERC20(this)),
             new address[](tokens.length + 1),
@@ -49,89 +59,48 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function skipBptIndex(uint256 index) external view returns (uint256) {
-        return _skipBptIndex(index);
+    function payProtocolFeesBeforeJoinExit(uint256[] memory balancesWithBpt)
+        external
+        returns (uint256 virtualSupply, uint256[] memory balances)
+    {
+        return _payProtocolFeesBeforeJoinExit(balancesWithBpt);
     }
 
-    function addBptIndex(uint256 index) external view returns (uint256) {
-        return _addBptIndex(index);
+    function updateInvariantAfterJoinExit(
+        uint256 currentAmp,
+        uint256[] memory balancesWithoutBpt,
+        uint256 preJoinExitInvariant,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) external {
+        return
+            _updateInvariantAfterJoinExit(
+                currentAmp,
+                balancesWithoutBpt,
+                preJoinExitInvariant,
+                preJoinExitSupply,
+                postJoinExitSupply
+            );
     }
 
-    function dropBptItem(uint256[] memory amounts) external view returns (uint256[] memory) {
-        return _dropBptItem(amounts);
+    function updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) external {
+        _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }
 
-    function addBptItem(uint256[] memory amounts, uint256 bptAmount)
+    function setTotalSupply(uint256 newSupply) external {
+        _setTotalSupply(newSupply);
+    }
+
+    function getGrowthInvariants(uint256[] memory balances, uint256 lastPostJoinExitAmp)
         external
         view
-        returns (uint256[] memory amountsWithBpt)
+        returns (
+            uint256 swapFeeGrowthInvariant,
+            uint256 totalNonExemptGrowthInvariant,
+            uint256 totalGrowthInvariant
+        )
     {
-        return _addBptItem(amounts, bptAmount);
-    }
-
-    function getRateProvider0() external view returns (IRateProvider) {
-        return _getRateProvider0();
-    }
-
-    function getRateProvider1() external view returns (IRateProvider) {
-        return _getRateProvider1();
-    }
-
-    function getRateProvider2() external view returns (IRateProvider) {
-        return _getRateProvider2();
-    }
-
-    function getRateProvider3() external view returns (IRateProvider) {
-        return _getRateProvider3();
-    }
-
-    function getRateProvider4() external view returns (IRateProvider) {
-        return _getRateProvider4();
-    }
-
-    function getRateProvider5() external view returns (IRateProvider) {
-        return _getRateProvider5();
-    }
-
-    function getScalingFactor0() external view returns (uint256) {
-        return _getScalingFactor0();
-    }
-
-    function getScalingFactor1() external view returns (uint256) {
-        return _getScalingFactor1();
-    }
-
-    function getScalingFactor2() external view returns (uint256) {
-        return _getScalingFactor2();
-    }
-
-    function getScalingFactor3() external view returns (uint256) {
-        return _getScalingFactor3();
-    }
-
-    function getScalingFactor4() external view returns (uint256) {
-        return _getScalingFactor4();
-    }
-
-    function getScalingFactor5() external view returns (uint256) {
-        return _getScalingFactor5();
-    }
-
-    function getRateProvider(uint256 index) external view returns (IRateProvider) {
-        return _getRateProvider(index);
-    }
-
-    // This assumes the tokenIndex is valid. If it's not, it will just return false.
-    function isTokenExemptFromYieldProtocolFeeByIndex(uint256 tokenIndex) external view returns (bool) {
-        return _isTokenExemptFromYieldProtocolFee(tokenIndex);
-    }
-
-    function areAllTokensExempt() external view returns (bool) {
-        return _areAllTokensExempt();
-    }
-
-    function areNoTokensExempt() external view returns (bool) {
-        return _areNoTokensExempt();
+        return _getGrowthInvariants(balances, lastPostJoinExitAmp);
     }
 
     // Stubbed functions

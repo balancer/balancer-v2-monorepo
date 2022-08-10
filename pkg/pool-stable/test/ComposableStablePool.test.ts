@@ -803,6 +803,12 @@ describe('ComposableStablePool', () => {
                 : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
             }
           });
+
+          it('reverts with invalid initial balances', async () => {
+            await expect(pool.init({ recipient, initialBalances: [fp(1)] })).to.be.revertedWith(
+              'INPUT_LENGTH_MISMATCH'
+            );
+          });
         });
 
         context('when paused', () => {
@@ -1159,6 +1165,10 @@ describe('ComposableStablePool', () => {
     });
 
     describe('onJoinPool', () => {
+      let tokenIndexWithBpt: number;
+      let tokenIndexWithoutBpt: number;
+      let token: Token;
+
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ admin });
       });
@@ -1166,6 +1176,13 @@ describe('ComposableStablePool', () => {
       sharedBeforeEach('allow vault', async () => {
         await tokens.mint({ to: recipient, amount: fp(100) });
         await tokens.approve({ from: recipient, to: pool.vault });
+      });
+
+      sharedBeforeEach('get token to join with', async () => {
+        // tokens are sorted, and do not include BPT, so get the last one
+        tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
+        token = tokens.get(tokenIndexWithoutBpt);
+        tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
       });
 
       it('fails if caller is not the vault', async () => {
@@ -1246,11 +1263,33 @@ describe('ComposableStablePool', () => {
               expect(result.amountsIn).to.deep.equal(queryResult.amountsIn);
             });
 
+            it('join and joinSwap give the same result', async () => {
+              // To test the swap, need to have only a single non-zero amountIn
+              const swapAmountsIn = Array(initialBalances.length).fill(0);
+              swapAmountsIn[tokenIndexWithBpt] = amountsIn[tokenIndexWithBpt];
+
+              const queryResult = await pool.queryJoinGivenIn({ amountsIn: swapAmountsIn, recipient });
+
+              const amountOut = await pool.querySwapGivenIn({
+                from: recipient,
+                in: token,
+                out: pool.bpt,
+                amount: swapAmountsIn[tokenIndexWithBpt],
+                recipient: recipient,
+              });
+
+              expect(amountOut).to.be.equal(queryResult.bptOut);
+            });
+
             it('fails if not enough BPT', async () => {
               // This call should fail because we are requesting minimum 1% more
               const minimumBptOut = pct(expectedBptOut, 1.01);
 
               await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
+            });
+
+            it('reverts if amountsIn is the wrong length', async () => {
+              await expect(pool.joinGivenIn({ amountsIn: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
             });
 
             it('reverts if paused', async () => {
@@ -1263,16 +1302,6 @@ describe('ComposableStablePool', () => {
       });
 
       describe('join token in for exact BPT out', () => {
-        let tokenIndexWithBpt: number;
-        let token: Token;
-
-        sharedBeforeEach('get token to join with', async () => {
-          // tokens are sorted, and do not include BPT, so get the last one
-          const tokenIndexWithoutBpt = numberOfTokens - 1;
-          token = tokens.get(tokenIndexWithoutBpt);
-          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
-        });
-
         context('not in recovery mode', () => {
           itJoinsExactBPTOutCorrectly();
         });
@@ -1366,6 +1395,9 @@ describe('ComposableStablePool', () => {
 
     describe('onExitPool', () => {
       let previousBptBalance: BigNumber;
+      let tokenIndexWithoutBpt: number;
+      let tokenIndexWithBpt: number;
+      let token: Token;
 
       sharedBeforeEach('deploy and initialize pool', async () => {
         await deployPool({ admin });
@@ -1376,6 +1408,13 @@ describe('ComposableStablePool', () => {
       sharedBeforeEach('allow vault', async () => {
         await tokens.mint({ to: lp, amount: fp(100) });
         await tokens.approve({ from: lp, to: pool.vault });
+      });
+
+      sharedBeforeEach('get token to exit with', async () => {
+        // tokens are sorted, and do not include BPT, so get the last one
+        tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
+        token = tokens.get(tokenIndexWithoutBpt);
+        tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
       });
 
       it('fails if caller is not the vault', async () => {
@@ -1395,17 +1434,6 @@ describe('ComposableStablePool', () => {
       });
 
       describe('exit BPT in for one token out', () => {
-        let tokenIndexWithoutBpt: number;
-        let tokenIndexWithBpt: number;
-        let token: Token;
-
-        sharedBeforeEach('get token to exit with', async () => {
-          // tokens are sorted, and do not include BPT, so get the last one
-          tokenIndexWithoutBpt = numberOfTokens - 1;
-          token = tokens.get(tokenIndexWithoutBpt);
-          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
-        });
-
         context('not in recovery mode', () => {
           itExitsExactBptInForOneTokenOutProperly();
         });
@@ -1534,6 +1562,26 @@ describe('ComposableStablePool', () => {
             // Query and exit should match exactly
             const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
             expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
+          });
+
+          it('exit and exitSwap give the same result', async () => {
+            // To test the swap, need to have only a single non-zero amountIn
+            const amountsOut = initialBalances.map((balance, i) => (i == tokenIndexWithBpt ? bn(balance).div(2) : 0));
+            const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn: previousBptBalance });
+
+            const bptIn = await pool.querySwapGivenOut({
+              from: lp,
+              in: pool.bpt,
+              out: token,
+              amount: amountsOut[tokenIndexWithBpt],
+              recipient: lp,
+            });
+
+            expect(bptIn).to.be.equal(queryResult.bptIn);
+          });
+
+          it('reverts if amountsOut is the wrong length', async () => {
+            await expect(pool.exitGivenOut({ amountsOut: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
           it('reverts if paused', async () => {
@@ -1682,8 +1730,9 @@ describe('ComposableStablePool', () => {
             actual: () => Promise<BigNumberish>
           ) {
             // Perform a query with the current rate values
-            const queryAmount = await query();
+            const firstQueryAmount = await query();
 
+            // The cache should be updated on the next action
             await updateExternalRates();
 
             // Verify the new rates are not yet loaded
@@ -1694,14 +1743,21 @@ describe('ComposableStablePool', () => {
               }
             }
 
-            // Now we perform the actual operation - the result should be different. This must not be a query as we want
-            // to check the updated state after the transaction.
+            // Query again, after the rates have been updated (should use the new values in the cache)
+            const secondQueryAmount = await query();
+
+            // Now we perform the actual operation - the result should be different from the first query,
+            // but equal to the second. This will also cause the scaling factors to be updated.
+            // This must not be a query as we want to check the updated state after the transaction.
             const actualAmount = await actual();
 
             // Verify the new rates are reflected in the scaling factors
             await verifyScalingFactors(await pool.getScalingFactors());
 
-            expect(actualAmount).to.not.equal(queryAmount);
+            // The query first and second query results should be different, since the cache was updated in between
+            expect(secondQueryAmount).to.not.equal(firstQueryAmount);
+            // The actual results should match the second query (after the rate update)
+            expect(secondQueryAmount).to.equal(actualAmount);
           }
 
           it('swaps use the new rates', async () => {

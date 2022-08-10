@@ -34,7 +34,7 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(swapRequest.poolId) returns (uint256) {
+    ) external override onlyVault(swapRequest.poolId) returns (uint256) {
         _beforeSwapJoinExit();
 
         _validateIndexes(indexIn, indexOut, _getTotalTokens());

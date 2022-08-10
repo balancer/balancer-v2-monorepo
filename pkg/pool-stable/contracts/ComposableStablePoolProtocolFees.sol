@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
@@ -28,6 +29,24 @@ abstract contract ComposableStablePoolProtocolFees is
     ProtocolFeeCache
 {
     using FixedPoint for uint256;
+    using WordCodec for bytes32;
+
+    // We store the invariant after the last join-exit, along with the amplification factor used to compute it. The
+    // amplification factor is bound by _MAX_AMP * _AMP_PRECISION, or 5e6, which fits in 23 bits. We use all remaining
+    // bits for the invariant: this is more than enough, as the invariant is proportional to the total supply, which is
+    // capped at 112 bits.
+    // The data structure is as follows:
+    //
+    // [ last join-exit amplification  | last post join-exit invariant ]
+    // [           23 bits             |            233 bits           ]
+    bytes32 private _lastJoinExitData;
+
+    uint256 private constant _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET = 0;
+    uint256 private constant _LAST_POST_JOIN_EXIT_INVARIANT_SIZE = 233;
+    uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET = _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET +
+        _LAST_POST_JOIN_EXIT_INVARIANT_SIZE;
+
+    uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_SIZE = 23;
 
     // To track protocol fees, we measure and store the value of the invariant after every join and exit.
     // All invariant growth that happens between join and exit events is due to swap fees and yield.
@@ -45,12 +64,15 @@ abstract contract ComposableStablePoolProtocolFees is
      * Calculate the (non-exempt) yield and swap fee growth separately, and apply the corresponding protocol fee
      * percentage to each type.
      */
-    function _payProtocolFeesBeforeJoinExit(uint256[] memory balances) internal returns (uint256, uint256[] memory) {
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+    function _payProtocolFeesBeforeJoinExit(uint256[] memory registeredBalances)
+        internal
+        returns (uint256, uint256[] memory)
+    {
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
         // First, we'll compute what percentage of the Pool the protocol should own due to charging protocol fees on
         // swap fees and yield.
-        uint256 expectedProtocolOwnershipPercentage = _getExpectedProtocolPoolOwnershipPercentage(balancesWithoutBpt);
+        uint256 expectedProtocolOwnershipPercentage = _getExpectedProtocolPoolOwnershipPercentage(balances);
 
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how much
         // BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value of each
@@ -72,14 +94,10 @@ abstract contract ComposableStablePoolProtocolFees is
         // supply by minting the protocol fee tokens, so those are included in the return value.
         //
         // For this addition to overflow, the actual total supply would have already overflowed.
-        return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
+        return (virtualSupply + protocolFeeAmount, balances);
     }
 
-    function _getExpectedProtocolPoolOwnershipPercentage(uint256[] memory balancesWithoutBpt)
-        internal
-        view
-        returns (uint256)
-    {
+    function _getExpectedProtocolPoolOwnershipPercentage(uint256[] memory balances) internal view returns (uint256) {
         // First, we adjust the current balances of tokens that have rate providers by undoing the current rate
         // adjustment, then applying the old rate. This is equivalent to multiplying by the ratio:
         // old rate / current rate.
@@ -100,19 +118,14 @@ abstract contract ComposableStablePoolProtocolFees is
         // amplification are not translated into changes to the invariant. Since amplification factor changes are both
         // infrequent and slow, they should have little effect in the pool balances, making this a very good
         // approximation.
-        uint256 lastPostJoinExitAmp = _lastPostJoinExitAmp;
 
-        uint256 swapFeeGrowthInvariant = StableMath._calculateInvariant(
-            lastPostJoinExitAmp,
-            _getAdjustedBalances(balancesWithoutBpt, true) // Adjust all balances
-        );
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
 
-        uint256 totalNonExemptGrowthInvariant = StableMath._calculateInvariant(
-            lastPostJoinExitAmp,
-            _getAdjustedBalances(balancesWithoutBpt, false) // Only adjust non-exempt balances
-        );
-
-        uint256 totalGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balancesWithoutBpt);
+        (
+            uint256 swapFeeGrowthInvariant,
+            uint256 totalNonExemptGrowthInvariant,
+            uint256 totalGrowthInvariant
+        ) = _getGrowthInvariants(balances, lastJoinExitAmp);
 
         // All growth ratios should be greater or equal to one (since swap fees are positive and token rates are
         // expected to only increase) - in case any rounding error results in growth smaller than one (i.e. in the
@@ -120,8 +133,6 @@ abstract contract ComposableStablePoolProtocolFees is
 
         // The swap fee growth is easy to compute: we simply compare the swap fee growth invariant with the last post
         // join-exit invariant.
-
-        uint256 lastPostJoinExitInvariant = _lastPostJoinExitInvariant;
 
         uint256 swapFeeGrowthRatio = Math.max(
             swapFeeGrowthInvariant.divDown(lastPostJoinExitInvariant),
@@ -161,16 +172,62 @@ abstract contract ComposableStablePoolProtocolFees is
             );
     }
 
+    function _getGrowthInvariants(uint256[] memory balances, uint256 lastPostJoinExitAmp)
+        internal
+        view
+        returns (
+            uint256 swapFeeGrowthInvariant,
+            uint256 totalNonExemptGrowthInvariant,
+            uint256 totalGrowthInvariant
+        )
+    {
+        // We always calculate the swap fee growth invariant, since we cannot easily know whether swap fees have
+        // accumulated or not.
+
+        swapFeeGrowthInvariant = StableMath._calculateInvariant(
+            lastPostJoinExitAmp,
+            _getAdjustedBalances(balances, true) // Adjust all balances
+        );
+
+        // For the other invariants, we can potentially skip some work. In the edge cases where none or all of the
+        // tokens are exempt from yield, there's one fewer invariant to compute.
+
+        if (_areNoTokensExempt()) {
+            // If there are no tokens with fee-exempt yield, then the total non-exempt growth will equal the total
+            // growth: all yield growth is non-exempt. There's also no point in adjusting balances, since we
+            // already know none are exempt.
+
+            totalNonExemptGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balances);
+            totalGrowthInvariant = totalNonExemptGrowthInvariant;
+        } else if (_areAllTokensExempt()) {
+            // If no tokens are charged fees on yield, then the non-exempt growth is equal to the swap fee growth - no
+            // yield fees will be collected.
+
+            totalNonExemptGrowthInvariant = swapFeeGrowthInvariant;
+            totalGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balances);
+        } else {
+            // In the general case, we need to calculate two invariants: one with some adjusted balances, and one with
+            // the current balances.
+
+            totalNonExemptGrowthInvariant = StableMath._calculateInvariant(
+                lastPostJoinExitAmp,
+                _getAdjustedBalances(balances, false) // Only adjust non-exempt balances
+            );
+
+            totalGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balances);
+        }
+    }
+
     // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
     // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
     function _updateInvariantAfterJoinExit(
         uint256 currentAmp,
-        uint256[] memory balancesWithoutBpt,
+        uint256[] memory balances,
         uint256 preJoinExitInvariant,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal {
-        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
+        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
         // Compute the growth ratio between the pre- and post-join/exit balances.
         // Note that the pre-join/exit invariant is *not* the invariant from the last join,
@@ -215,11 +272,31 @@ abstract contract ComposableStablePoolProtocolFees is
     }
 
     function _updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) internal {
-        // Update the stored invariant and amp values, and copy the rates
-        _lastPostJoinExitAmp = currentAmp;
-        _lastPostJoinExitInvariant = postJoinExitInvariant;
+        _lastJoinExitData =
+            WordCodec.encodeUint(currentAmp, _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET, _LAST_JOIN_EXIT_AMPLIFICATION_SIZE) |
+            WordCodec.encodeUint(
+                postJoinExitInvariant,
+                _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET,
+                _LAST_POST_JOIN_EXIT_INVARIANT_SIZE
+            );
 
         _updateOldRates();
+    }
+
+    function getLastJoinExitData() public view returns (uint256, uint256) {
+        bytes32 rawData = _lastJoinExitData;
+
+        uint256 lastJoinExitAmplification = rawData.decodeUint(
+            _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET,
+            _LAST_JOIN_EXIT_AMPLIFICATION_SIZE
+        );
+
+        uint256 lastPostJoinExitInvariant = rawData.decodeUint(
+            _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET,
+            _LAST_POST_JOIN_EXIT_INVARIANT_SIZE
+        );
+
+        return (lastJoinExitAmplification, lastPostJoinExitInvariant);
     }
 
     /**
