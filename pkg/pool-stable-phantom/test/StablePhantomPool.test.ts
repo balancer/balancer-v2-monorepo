@@ -808,6 +808,12 @@ describe('StablePhantomPool', () => {
                 : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
             }
           });
+
+          it('reverts with invalid initial balances', async () => {
+            await expect(pool.init({ recipient, initialBalances: [fp(1)] })).to.be.revertedWith(
+              'INPUT_LENGTH_MISMATCH'
+            );
+          });
         });
 
         context('when paused', () => {
@@ -1258,6 +1264,10 @@ describe('StablePhantomPool', () => {
               await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
             });
 
+            it('reverts if amountsIn is the wrong length', async () => {
+              await expect(pool.joinGivenIn({ amountsIn: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+            });
+
             it('reverts if paused', async () => {
               await pool.pause();
 
@@ -1541,6 +1551,10 @@ describe('StablePhantomPool', () => {
             expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
           });
 
+          it('reverts if amountsOut is the wrong length', async () => {
+            await expect(pool.exitGivenOut({ amountsOut: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
           it('reverts if paused', async () => {
             await pool.pause();
 
@@ -1687,8 +1701,9 @@ describe('StablePhantomPool', () => {
             actual: () => Promise<BigNumberish>
           ) {
             // Perform a query with the current rate values
-            const queryAmount = await query();
+            const firstQueryAmount = await query();
 
+            // The cache should be updated on the next action
             await updateExternalRates();
 
             // Verify the new rates are not yet loaded
@@ -1699,14 +1714,21 @@ describe('StablePhantomPool', () => {
               }
             }
 
-            // Now we perform the actual operation - the result should be different. This must not be a query as we want
-            // to check the updated state after the transaction.
+            // Query again, after the rates have been updated (should use the new values in the cache)
+            const secondQueryAmount = await query();
+
+            // Now we perform the actual operation - the result should be different from the first query,
+            // but equal to the second. This will also cause the scaling factors to be updated.
+            // This must not be a query as we want to check the updated state after the transaction.
             const actualAmount = await actual();
 
             // Verify the new rates are reflected in the scaling factors
             await verifyScalingFactors(await pool.getScalingFactors());
 
-            expect(actualAmount).to.not.equal(queryAmount);
+            // The query first and second query results should be different, since the cache was updated in between
+            expect(secondQueryAmount).to.not.equal(firstQueryAmount);
+            // The actual results should match the second query (after the rate update)
+            expect(secondQueryAmount).to.equal(actualAmount);
           }
 
           it('swaps use the new rates', async () => {
