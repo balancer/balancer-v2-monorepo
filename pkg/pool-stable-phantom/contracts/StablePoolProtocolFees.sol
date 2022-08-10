@@ -117,7 +117,7 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
 
         (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
 
-(
+        (
             uint256 swapFeeGrowthInvariant,
             uint256 totalNonExemptGrowthInvariant,
             uint256 totalGrowthInvariant

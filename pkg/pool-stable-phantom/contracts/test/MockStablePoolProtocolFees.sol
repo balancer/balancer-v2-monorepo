@@ -29,7 +29,11 @@ contract MockStablePoolProtocolFees is StablePoolProtocolFees {
         bool[] memory exemptFromYieldProtocolFeeFlags
     )
         StablePoolStorage(
-            StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
+            StorageParams({
+                registeredTokens: _insertSorted(tokens, IERC20(this)),
+                tokenRateProviders: tokenRateProviders,
+                exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags
+            })
         )
         StablePoolRates(
             RatesParams({
