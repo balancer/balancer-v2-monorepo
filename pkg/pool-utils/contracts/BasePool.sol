@@ -298,7 +298,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         _beforeSwapJoinExit();
 
         uint256[] memory scalingFactors = _scalingFactors();
@@ -360,7 +360,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory amountsOut;
         uint256 bptAmountIn;
 
@@ -372,6 +372,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             // This exit kind is only available in Recovery Mode.
             _ensureInRecoveryMode();
 
+            // Note that we don't upscale balances nor downscale amountsOut - we don't care about scaling factors during
+            // a recovery mode exit.
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
             // Note that we only call this if we're not in a recovery mode exit.
