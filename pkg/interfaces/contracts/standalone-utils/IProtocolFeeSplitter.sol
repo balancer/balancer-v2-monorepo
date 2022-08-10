@@ -16,23 +16,31 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 /**
-  * @title ProtocolFeeSplitter
-  * @notice Distributes collected protocol fees between Balancer's treasury and a pool owner
+ * @title ProtocolFeeSplitter
+ * @notice Distributes collected protocol fees between Balancer's treasury and a pool owner
  */
 interface IProtocolFeeSplitter {
-    event PoolRevenueShareChanged(bytes32 poolId, uint256 revenueSharePercentage);
+    event FeesCollected(
+        bytes32 indexed poolId,
+        address indexed owner,
+        uint256 ownerEarned,
+        address indexed treasury,
+        uint256 treasuryEarned
+    );
+
+    event PoolRevenueShareChanged(bytes32 indexed poolId, uint256 revenueSharePercentage);
 
     /**
      * @notice Allows a authorized user to change revenueShare for a `poolId`
      * @param poolId - the poolId of the pool where we want to change fee percentage
-     * @param newSwapFeePercentage - new swap fee percentage 
-    */
+     * @param newSwapFeePercentage - new swap fee percentage
+     */
     function setRevenueSharingFeePercentage(bytes32 poolId, uint256 newSwapFeePercentage) external;
 
     /**
      * @notice Collects and distributes fees for a `poolId`
      * @dev Use multicall contract for batchCollectFees
      * @param poolId - the poolId of the pool for which we collect fees
-    */ 
+     */
     function collectFees(bytes32 poolId) external;
 }

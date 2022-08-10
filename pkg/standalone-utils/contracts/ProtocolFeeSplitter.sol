@@ -33,22 +33,14 @@ interface Pool {
 contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     using Math for uint256;
 
-    event FeesCollected(
-        bytes32 indexed poolId,
-        address indexed owner,
-        uint256 ownerEarned,
-        address indexed treasury,
-        uint256 treasuryEarned
-    );
+    // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
+    uint256 private constant _MAX_REVENUE_SHARING_FEE_PERCENTAGE = 50e16; // 50%
+    uint256 private constant _DEFAULT_REVENUE_SHARE = 10e16; // 10%
 
     IProtocolFeesCollector public immutable protocolFeesCollector;
 
     // TODO: pull form somewhere else? constant? immutable?
     address public treasury;
-
-    // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
-    uint256 private constant _MAX_REVENUE_SHARING_FEE_PERCENTAGE = 50e16; // 50%
-    uint256 private constant _DEFAULT_REVENUE_SHARE = 10e16; // 10%
 
     // Allows for a pool revenue override
     mapping(bytes32 => uint256) public revenueSharePerPool;

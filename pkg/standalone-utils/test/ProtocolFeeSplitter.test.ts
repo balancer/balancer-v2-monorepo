@@ -12,20 +12,23 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '../../../pvt/helpers/src/numbers';
 import { JoinPoolRequest, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { random } from 'lodash';
+import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+
+const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
-describe.only('ProtocolFeeSplitter', function () {
+describe('ProtocolFeeSplitter', function () {
   let vault: Vault;
   let factory: Contract;
   let protocolFeesCollector: Contract;
   let protocolFeeSplitter: Contract;
   let pool: Contract;
-
+  let poolNoOwner: Contract;
+  let poolDelegatedOwner: Contract;
   let admin: SignerWithAddress,
     poolOwner: SignerWithAddress,
     treasury: SignerWithAddress,
@@ -33,25 +36,34 @@ describe.only('ProtocolFeeSplitter', function () {
   let assetManagers: string[];
   let tokens: TokenList;
   let poolId: string;
+  let poolNoOwnerId: string;
+  let poolDelegatedOwnerId: string;
 
   before(async () => {
     [, admin, poolOwner, liquidityProvider, treasury] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('deploy vault & protocol fees collector', async () => {
+  sharedBeforeEach('deploy vault, protocol fees collector & tokens', async () => {
     vault = await Vault.create({ admin });
     protocolFeesCollector = await vault.getFeesCollector();
+    tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
+
+    await tokens.mint({ to: liquidityProvider, amount: fp(100000) });
+    await tokens.approve({ from: liquidityProvider, to: vault });
   });
 
   sharedBeforeEach('deploy tokens, pool & gives initial liquditiy', async () => {
-    tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
     factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address] });
     assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    pool = await createPool();
+    pool = await createPool(poolOwner.address);
+    poolNoOwner = await createPool(ZERO_ADDRESS);
+
+    poolDelegatedOwner = await createPool(DELEGATE_OWNER);
     poolId = await pool.getPoolId();
+    poolNoOwnerId = await poolNoOwner.getPoolId();
+    poolDelegatedOwnerId = await poolDelegatedOwner.getPoolId();
 
     const initialBalances = Array(tokens.length).fill(fp(1000));
-    poolId = await pool.getPoolId();
 
     const request: JoinPoolRequest = {
       assets: tokens.addresses,
@@ -60,12 +72,17 @@ describe.only('ProtocolFeeSplitter', function () {
       fromInternalBalance: false,
     };
 
-    await tokens.mint({ to: liquidityProvider, amount: fp(10000 + random(1000)) });
-    await tokens.approve({ from: liquidityProvider, to: vault });
-
     await vault.instance
       .connect(liquidityProvider)
       .joinPool(poolId, liquidityProvider.address, liquidityProvider.address, request);
+
+    await vault.instance
+      .connect(liquidityProvider)
+      .joinPool(poolNoOwnerId, liquidityProvider.address, liquidityProvider.address, request);
+
+    await vault.instance
+      .connect(liquidityProvider)
+      .joinPool(poolDelegatedOwnerId, liquidityProvider.address, liquidityProvider.address, request);
   });
 
   sharedBeforeEach('deploy ProtocolFeeSplitter & grant permissions', async () => {
@@ -80,7 +97,7 @@ describe.only('ProtocolFeeSplitter', function () {
     await vault.grantPermissionsGlobally([withdrawCollectedFeesRole], protocolFeeSplitter);
   });
 
-  async function createPool(): Promise<Contract> {
+  async function createPool(poolOwnerAddress: string): Promise<Contract> {
     const receipt = await (
       await factory.create(
         NAME,
@@ -89,7 +106,7 @@ describe.only('ProtocolFeeSplitter', function () {
         WEIGHTS,
         assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
-        poolOwner.address
+        poolOwnerAddress
       )
     ).wait();
 
@@ -116,7 +133,7 @@ describe.only('ProtocolFeeSplitter', function () {
     });
 
     it('reverts with invalid input', async () => {
-      const newFee = bn(100e16); // 100% 
+      const newFee = bn(100e16); // 100%
       await expect(
         protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, newFee)
       ).to.be.revertedWith('BAL#700');
@@ -136,10 +153,44 @@ describe.only('ProtocolFeeSplitter', function () {
 
       await protocolFeeSplitter.collectFees(poolId);
 
-      // TODO: do the math right
-      expect(await pool.balanceOf(protocolFeesCollector.address)).to.equal(0);
-      expect(await pool.balanceOf(poolOwner.address)).to.not.equal(0);
-      expect(await pool.balanceOf(treasury.address)).to.not.equal(0);
+      // 10% of bptBalanceOfLiquidityProvider should go to owner (default value)
+      const poolOwnerExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(10e16)).div(bn(1e18));
+      // 90% goes to treasury
+      const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(90e16)).div(bn(1e18));
+
+      const poolOwnerBalance = await pool.balanceOf(poolOwner.address);
+      const treasuryBalance = await pool.balanceOf(treasury.address);
+
+      expectEqualWithError(poolOwnerBalance, poolOwnerExpectedBalance);
+      expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
+    });
+
+    it('distributes collected BPT fees to treasury (pool has no owner)', async () => {
+      // We transfer LP's BPT token to collector
+      // treasury should get everything because pool has no owner
+      const bptBalanceOfLiquidityProvider = await poolNoOwner.balanceOf(liquidityProvider.address);
+      await poolNoOwner
+        .connect(liquidityProvider)
+        .transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
+
+      await protocolFeeSplitter.collectFees(poolNoOwnerId);
+
+      const treasuryBalance = await poolNoOwner.balanceOf(treasury.address);
+      expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+    });
+
+    it('distributes collected BPT fees to treasury (delegated owner)', async () => {
+      // We transfer LP's BPT token to collector
+      // treasury should get everything because pool has no owner
+      const bptBalanceOfLiquidityProvider = await poolNoOwner.balanceOf(liquidityProvider.address);
+      await poolNoOwner
+        .connect(liquidityProvider)
+        .transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
+
+      await protocolFeeSplitter.collectFees(poolNoOwnerId);
+
+      const treasuryBalance = await poolNoOwner.balanceOf(treasury.address);
+      expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
     });
   });
 });
