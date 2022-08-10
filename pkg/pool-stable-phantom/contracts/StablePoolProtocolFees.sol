@@ -189,9 +189,9 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         // tokens are exempt from yield, there's one fewer invariant to compute.
 
         if (_areNoTokensExempt()) {
-            // If there are no tokens exempt of yield fee, then the total non exempt growth will equal the total growth
-            // (because all yield growth is non exempt). There's also no point in adjusting balances to get the
-            // non-exempt ones, as none are exempt and as such this equals the current balances.
+            // If there are no tokens with fee-exempt yield, then the total non-exempt growth will equal the total
+            // growth: all yield growth is non-exempt. There's also no point in adjusting balances, since we
+            // already know none are exempt.
 
             totalNonExemptGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balances);
             totalGrowthInvariant = totalNonExemptGrowthInvariant;
