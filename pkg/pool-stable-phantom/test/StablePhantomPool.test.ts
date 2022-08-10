@@ -808,6 +808,10 @@ describe('StablePhantomPool', () => {
                 : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
             }
           });
+
+          it('reverts with invalid initial balances', async () => {
+            await expect(pool.init({ recipient, initialBalances: [fp(1)]})).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
         });
 
         context('when paused', () => {
@@ -1258,6 +1262,10 @@ describe('StablePhantomPool', () => {
               await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
             });
 
+            it('reverts if amountsIn is the wrong length', async () => {
+              await expect(pool.joinGivenIn({ amountsIn: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+            });
+
             it('reverts if paused', async () => {
               await pool.pause();
 
@@ -1539,6 +1547,10 @@ describe('StablePhantomPool', () => {
             // Query and exit should match exactly
             const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
             expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
+          });
+
+          it('reverts if amountsOut is the wrong length', async () => {
+            await expect(pool.exitGivenOut({ amountsOut: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
           it('reverts if paused', async () => {
