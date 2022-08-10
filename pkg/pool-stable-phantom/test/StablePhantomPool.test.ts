@@ -1185,7 +1185,7 @@ describe('StablePhantomPool', () => {
 
       sharedBeforeEach('get token to join with', async () => {
         // tokens are sorted, and do not include BPT, so get the last one
-        tokenIndexWithoutBpt = numberOfTokens - 1;
+        tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
         token = tokens.get(tokenIndexWithoutBpt);
         tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
       });
@@ -1417,7 +1417,7 @@ describe('StablePhantomPool', () => {
 
       sharedBeforeEach('get token to exit with', async () => {
         // tokens are sorted, and do not include BPT, so get the last one
-        tokenIndexWithoutBpt = numberOfTokens - 1;
+        tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
         token = tokens.get(tokenIndexWithoutBpt);
         tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
       });
