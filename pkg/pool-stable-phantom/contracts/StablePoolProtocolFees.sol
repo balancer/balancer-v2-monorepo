@@ -196,7 +196,7 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
             totalNonExemptGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balances);
             totalGrowthInvariant = totalNonExemptGrowthInvariant;
         } else if (_areAllTokensExempt()) {
-            // If all tokens are exempt of yield fee, then the non exempt growth is equal to the swap fee growth - no
+            // If no tokens are charged fees on yield, then the non-exempt growth is equal to the swap fee growth - no
             // yield fees will be collected.
 
             totalNonExemptGrowthInvariant = swapFeeGrowthInvariant;
