@@ -775,6 +775,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                     }
             }
         } else {
+            // This imitates the relevant parts of the bodies of onJoin and onExit. Since they're not virtual, we know
+            // that their implementations will match this regardless of what derived contracts might do.
+
+            _beforeSwapJoinExit();
+
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
 
