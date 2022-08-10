@@ -916,7 +916,7 @@ contract StablePhantomPool is
         uint256 length = toMutate.length;
         InputHelpers.ensureInputLengthMatch(length, arguments.length);
 
-        for (uint256 i = 0; i < toMutate.length; ++i) {
+        for (uint256 i = 0; i < length; ++i) {
             toMutate[i] = mutation(toMutate[i], arguments[i]);
         }
     }
