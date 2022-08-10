@@ -261,20 +261,24 @@ abstract contract StablePoolStorage is BasePool {
      * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
      * current Pool balances (including BPT).
      */
-    function _dropBptItemFromBalances(uint256[] memory balances) internal view returns (uint256, uint256[] memory) {
-        return (_getVirtualSupply(balances[getBptIndex()]), _dropBptItem(balances));
+    function _dropBptItemFromBalances(uint256[] memory registeredBalances)
+        internal
+        view
+        returns (uint256, uint256[] memory)
+    {
+        return (_getVirtualSupply(registeredBalances[getBptIndex()]), _dropBptItem(registeredBalances));
     }
 
     // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
-    // to an index into an array excluding BPT (the Vault's registered token list).
+    // to an index into an array including BPT (the Vault's registered token list).
     // `index` must not be the BPT token index itself, if it is the last element, and the result must be
     // in the range of registered tokens.
-    function _addBptIndex(uint256 index) internal view returns (uint256 indexWithBpt) {
+    function _addBptIndex(uint256 index) internal view returns (uint256 registeredIndex) {
         // This can be called from an index passed in from user input.
-        indexWithBpt = index < getBptIndex() ? index : index.add(1);
+        registeredIndex = index < getBptIndex() ? index : index.add(1);
 
         // TODO: `indexWithBpt != getBptIndex()` follows from above line and so can be removed.
-        _require(indexWithBpt < _totalTokens && indexWithBpt != getBptIndex(), Errors.OUT_OF_BOUNDS);
+        _require(registeredIndex < _totalTokens && registeredIndex != getBptIndex(), Errors.OUT_OF_BOUNDS);
     }
 
     /**
@@ -287,11 +291,11 @@ abstract contract StablePoolStorage is BasePool {
     function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
         internal
         view
-        returns (uint256[] memory amountsWithBpt)
+        returns (uint256[] memory registeredTokenAmounts)
     {
-        amountsWithBpt = new uint256[](amounts.length + 1);
-        for (uint256 i = 0; i < amountsWithBpt.length; i++) {
-            amountsWithBpt[i] = i == getBptIndex() ? bptAmount : amounts[i < getBptIndex() ? i : i - 1];
+        registeredTokenAmounts = new uint256[](amounts.length + 1);
+        for (uint256 i = 0; i < registeredTokenAmounts.length; i++) {
+            registeredTokenAmounts[i] = i == getBptIndex() ? bptAmount : amounts[i < getBptIndex() ? i : i - 1];
         }
     }
 
@@ -375,8 +379,8 @@ abstract contract StablePoolStorage is BasePool {
     }
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
-    function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
-        return _rateProviderInfoBitmap.decodeBool(tokenIndex);
+    function _isTokenExemptFromYieldProtocolFee(uint256 registeredTokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(registeredTokenIndex);
     }
 
     // Virtual Supply

@@ -41,12 +41,15 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
      * Calculate the (non-exempt) yield and swap fee growth separately, and apply the corresponding protocol fee
      * percentage to each type.
      */
-    function _payProtocolFeesBeforeJoinExit(uint256[] memory balances) internal returns (uint256, uint256[] memory) {
-        (uint256 virtualSupply, uint256[] memory balancesWithoutBpt) = _dropBptItemFromBalances(balances);
+    function _payProtocolFeesBeforeJoinExit(uint256[] memory registeredBalances)
+        internal
+        returns (uint256, uint256[] memory)
+    {
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
         // First, we'll compute what percentage of the Pool the protocol should own due to charging protocol fees on
         // swap fees and yield.
-        uint256 expectedProtocolOwnershipPercentage = _getExpectedProtocolPoolOwnershipPercentage(balancesWithoutBpt);
+        uint256 expectedProtocolOwnershipPercentage = _getExpectedProtocolPoolOwnershipPercentage(balances);
 
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how much
         // BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value of each
@@ -68,14 +71,10 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         // supply by minting the protocol fee tokens, so those are included in the return value.
         //
         // For this addition to overflow, the actual total supply would have already overflowed.
-        return (virtualSupply + protocolFeeAmount, balancesWithoutBpt);
+        return (virtualSupply + protocolFeeAmount, balances);
     }
 
-    function _getExpectedProtocolPoolOwnershipPercentage(uint256[] memory balancesWithoutBpt)
-        internal
-        view
-        returns (uint256)
-    {
+    function _getExpectedProtocolPoolOwnershipPercentage(uint256[] memory balances) internal view returns (uint256) {
         // First, we adjust the current balances of tokens that have rate providers by undoing the current rate
         // adjustment, then applying the old rate. This is equivalent to multiplying by the ratio:
         // old rate / current rate.
@@ -100,15 +99,15 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
 
         uint256 swapFeeGrowthInvariant = StableMath._calculateInvariant(
             lastPostJoinExitAmp,
-            _getAdjustedBalances(balancesWithoutBpt, true) // Adjust all balances
+            _getAdjustedBalances(balances, true) // Adjust all balances
         );
 
         uint256 totalNonExemptGrowthInvariant = StableMath._calculateInvariant(
             lastPostJoinExitAmp,
-            _getAdjustedBalances(balancesWithoutBpt, false) // Only adjust non-exempt balances
+            _getAdjustedBalances(balances, false) // Only adjust non-exempt balances
         );
 
-        uint256 totalGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balancesWithoutBpt);
+        uint256 totalGrowthInvariant = StableMath._calculateInvariant(lastPostJoinExitAmp, balances);
 
         // All growth ratios should be greater or equal to one (since swap fees are positive and token rates are
         // expected to only increase) - in case any rounding error results in growth smaller than one (i.e. in the
@@ -161,12 +160,12 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
     // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
     function _updateInvariantAfterJoinExit(
         uint256 currentAmp,
-        uint256[] memory balancesWithoutBpt,
+        uint256[] memory balances,
         uint256 preJoinExitInvariant,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal {
-        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balancesWithoutBpt);
+        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
         // Compute the growth ratio between the pre- and post-join/exit balances.
         // Note that the pre-join/exit invariant is *not* the invariant from the last join,
