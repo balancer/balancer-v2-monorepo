@@ -11,7 +11,7 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { range } from 'lodash';
+import { every, range } from 'lodash';
 
 describe('StablePoolStorage', () => {
   let admin: SignerWithAddress;
@@ -350,9 +350,13 @@ describe('StablePoolStorage', () => {
             } else if (exemption == Exemption.ALL) {
               exemptionFlags = Array(numberOfTokens).fill(true);
             } else {
-              exemptionFlags = Array(numberOfTokens - 1)
-                .fill(false)
-                .concat(true);
+              exemptionFlags = range(numberOfTokens).map(() => Math.random() < 0.5);
+
+              if (every(exemptionFlags, (flag) => flag == false)) {
+                exemptionFlags[0] = true;
+              } else if (every(exemptionFlags, (flag) => flag == true)) {
+                exemptionFlags[0] = false;
+              }
             }
 
             exemptionPool = await deploy('MockStablePoolStorage', {
