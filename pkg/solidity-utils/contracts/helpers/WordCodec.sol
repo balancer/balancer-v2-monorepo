@@ -84,7 +84,7 @@ library WordCodec {
      * @dev Encodes an unsigned integer shifted by an offset. Ensures value fits within
      * `bitLength` bits.
      *
-     * The return value can be logically ORed with other encoded values to form a 256 bit word.
+     * The return value can be ORed bitwise with other encoded values to form a 256 bit word.
      */
     function encodeUint(
         uint256 value,
@@ -99,7 +99,7 @@ library WordCodec {
     /**
      * @dev Encodes a signed integer shifted by an offset.
      *
-     * The return value can be logically ORed with other encoded values to form a 256 bit word.
+     * The return value can be ORed bitwise with other encoded values to form a 256 bit word.
      */
     function encodeInt(
         int256 value,

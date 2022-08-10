@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "./StablePoolStorage.sol";
@@ -24,6 +25,24 @@ import "./StableMath.sol";
 
 abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, ProtocolFeeCache {
     using FixedPoint for uint256;
+    using WordCodec for bytes32;
+
+    // We store the invariant after the last join-exit, along with the amplification factor used to compute it. The
+    // amplification factor is bound by _MAX_AMP * _AMP_PRECISION, or 5e6, which fits in 23 bits. We use all remaining
+    // bits for the invariant: this is more than enough, as the invariant is proportional to the total supply, which is
+    // capped at 112 bits.
+    // The data structure is as follows:
+    //
+    // [ last join-exit amplification  | last post join-exit invariant ]
+    // [           23 bits             |            233 bits           ]
+    bytes32 private _lastJoinExitData;
+
+    uint256 private constant _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET = 0;
+    uint256 private constant _LAST_POST_JOIN_EXIT_INVARIANT_SIZE = 233;
+    uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET = _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET +
+        _LAST_POST_JOIN_EXIT_INVARIANT_SIZE;
+
+    uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_SIZE = 23;
 
     // To track protocol fees, we measure and store the value of the invariant after every join and exit.
     // All invariant growth that happens between join and exit events is due to swap fees and yield.
@@ -95,13 +114,14 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         // amplification are not translated into changes to the invariant. Since amplification factor changes are both
         // infrequent and slow, they should have little effect in the pool balances, making this a very good
         // approximation.
-        uint256 lastPostJoinExitAmp = _lastPostJoinExitAmp;
 
-        (
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+
+(
             uint256 swapFeeGrowthInvariant,
             uint256 totalNonExemptGrowthInvariant,
             uint256 totalGrowthInvariant
-        ) = _getGrowthInvariants(balances, lastPostJoinExitAmp);
+        ) = _getGrowthInvariants(balances, lastJoinExitAmp);
 
         // All growth ratios should be greater or equal to one (since swap fees are positive and token rates are
         // expected to only increase) - in case any rounding error results in growth smaller than one (i.e. in the
@@ -109,8 +129,6 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
 
         // The swap fee growth is easy to compute: we simply compare the swap fee growth invariant with the last post
         // join-exit invariant.
-
-        uint256 lastPostJoinExitInvariant = _lastPostJoinExitInvariant;
 
         uint256 swapFeeGrowthRatio = Math.max(
             swapFeeGrowthInvariant.divDown(lastPostJoinExitInvariant),
@@ -250,11 +268,31 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
     }
 
     function _updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) internal {
-        // Update the stored invariant and amp values, and copy the rates
-        _lastPostJoinExitAmp = currentAmp;
-        _lastPostJoinExitInvariant = postJoinExitInvariant;
+        _lastJoinExitData =
+            WordCodec.encodeUint(currentAmp, _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET, _LAST_JOIN_EXIT_AMPLIFICATION_SIZE) |
+            WordCodec.encodeUint(
+                postJoinExitInvariant,
+                _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET,
+                _LAST_POST_JOIN_EXIT_INVARIANT_SIZE
+            );
 
         _updateOldRates();
+    }
+
+    function getLastJoinExitData() public view returns (uint256, uint256) {
+        bytes32 rawData = _lastJoinExitData;
+
+        uint256 lastJoinExitAmplification = rawData.decodeUint(
+            _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET,
+            _LAST_JOIN_EXIT_AMPLIFICATION_SIZE
+        );
+
+        uint256 lastPostJoinExitInvariant = rawData.decodeUint(
+            _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET,
+            _LAST_POST_JOIN_EXIT_INVARIANT_SIZE
+        );
+
+        return (lastJoinExitAmplification, lastPostJoinExitInvariant);
     }
 
     /**
