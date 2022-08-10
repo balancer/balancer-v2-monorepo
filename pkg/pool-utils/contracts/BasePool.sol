@@ -69,6 +69,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     // The most signficant bit is reserved for the recovery mode flag, and the swap fee percentage is stored in
     // the next most significant 63 bits, leaving the remaining 192 bits free to store any other information derived
     // pools might need.
+    //
+    // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
+    // and therefore warm.
 
     // [ recovery | swap  fee | available ]
     // [   1 bit  |  63 bits  |  192 bits ]
@@ -78,6 +81,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
     uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 255;
 
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits, so 63 is more than enough.
     uint256 private constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
 
     bytes32 private immutable _poolId;
@@ -209,9 +213,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @dev Sets the recoveryMode state, and emits the corresponding event.
-     *
-     * No complex code or external calls that could fail should be placed here, which could jeopardize
-     * the ability to enable and disable Recovery Mode.
      */
     function _setRecoveryMode(bool enabled) internal virtual override {
         _miscData = _miscData.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);

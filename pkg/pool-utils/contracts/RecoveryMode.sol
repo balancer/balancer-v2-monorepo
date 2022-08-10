@@ -84,6 +84,9 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
 
     /**
      * @dev Override to update storage and emit the event
+     *
+     * No complex code or external calls that could fail should be placed in the implementations,
+     * which could jeopardize the ability to enable and disable Recovery Mode.
      */
     function _setRecoveryMode(bool enabled) internal virtual;
 
