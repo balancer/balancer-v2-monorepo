@@ -144,7 +144,7 @@ describe('StablePoolProtocolFees', () => {
           );
 
           const { swapFeeGrowthInvariant } = await pool.getGrowthInvariants(balances, AMPLIFICATION_FACTOR);
-          expect(swapFeeGrowthInvariant).to.almostEqual(expectedSwapFeeGrowhtInvariant, 1e-10);
+          expect(swapFeeGrowthInvariant).to.almostEqual(expectedSwapFeeGrowthInvariant, 1e-10);
         });
 
         it('computes the total non exempt growth invariant correctly', async () => {
