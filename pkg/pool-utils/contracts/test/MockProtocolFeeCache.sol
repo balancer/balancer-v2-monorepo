@@ -15,8 +15,9 @@
 pragma solidity ^0.7.0;
 
 import "../ProtocolFeeCache.sol";
+import "./MockRecoveryModeStorage.sol";
 
-contract MockProtocolFeeCache is ProtocolFeeCache {
+contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     // We make the caller the owner and make all functions owner only, letting the deployer perform all permissioned
     // actions.
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage)
