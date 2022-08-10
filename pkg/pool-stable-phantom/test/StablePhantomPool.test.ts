@@ -810,7 +810,9 @@ describe('StablePhantomPool', () => {
           });
 
           it('reverts with invalid initial balances', async () => {
-            await expect(pool.init({ recipient, initialBalances: [fp(1)]})).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+            await expect(pool.init({ recipient, initialBalances: [fp(1)] })).to.be.revertedWith(
+              'INPUT_LENGTH_MISMATCH'
+            );
           });
         });
 
