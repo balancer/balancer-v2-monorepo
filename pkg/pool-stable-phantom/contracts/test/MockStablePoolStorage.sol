@@ -122,6 +122,14 @@ contract MockStablePoolStorage is StablePoolStorage {
         return _isTokenExemptFromYieldProtocolFee(tokenIndex);
     }
 
+    function areAllTokensExempt() external view returns (bool) {
+        return _areAllTokensExempt();
+    }
+
+    function areNoTokensExempt() external view returns (bool) {
+        return _areNoTokensExempt();
+    }
+
     // Stubbed functions
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {}

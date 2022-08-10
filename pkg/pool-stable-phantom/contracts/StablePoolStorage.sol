@@ -82,6 +82,11 @@ abstract contract StablePoolStorage is BasePool {
     // [ 244 bits |        6 bits       |     6 bits      ]
     bytes32 private immutable _rateProviderInfoBitmap;
 
+    // We also keep two dedicated flags that indicate the special cases where none or all tokens are exempt, which allow
+    // for some gas optimizations in these special scenarios.
+    bool private immutable _noTokensExempt;
+    bool private immutable _allTokensExempt;
+
     uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
     constructor(StorageParams memory params) {
@@ -135,6 +140,9 @@ abstract contract StablePoolStorage is BasePool {
 
         bytes32 rateProviderInfoBitmap;
 
+        bool anyExempt = false;
+        bool anyNonExempt = false;
+
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
         for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
@@ -149,6 +157,10 @@ abstract contract StablePoolStorage is BasePool {
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
                     rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
+
+                    anyExempt = true;
+                } else {
+                    anyNonExempt = true;
                 }
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
@@ -161,9 +173,16 @@ abstract contract StablePoolStorage is BasePool {
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
                     rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
+
+                    anyExempt = true;
+                } else {
+                    anyNonExempt = true;
                 }
             }
         }
+
+        _noTokensExempt = !anyExempt;
+        _allTokensExempt = !anyNonExempt;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _rateProvider0 = rateProviders[0];
@@ -365,6 +384,20 @@ abstract contract StablePoolStorage is BasePool {
      */
     function _hasRateProvider(uint256 tokenIndex) internal view returns (bool) {
         return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
+    }
+
+    /**
+     * @notice Return true if all tokens are exempt from yield fees.
+     */
+    function _areAllTokensExempt() internal view returns (bool) {
+        return _allTokensExempt;
+    }
+
+    /**
+     * @notice Return true if no tokens are exempt from yield fees.
+     */
+    function _areNoTokensExempt() internal view returns (bool) {
+        return _noTokensExempt;
     }
 
     // Exempt flags
