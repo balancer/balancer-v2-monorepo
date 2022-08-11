@@ -49,18 +49,7 @@ export function inIndirectReceipt(
   eventArgs = {},
   address?: string
 ): any {
-  const decodedEvents = receipt.logs
-    .filter((log) => (address ? log.address.toLowerCase() === address.toLowerCase() : true))
-    .map((log) => {
-      try {
-        return emitter.parseLog(log);
-      } catch {
-        return undefined;
-      }
-    })
-    .filter((e): e is LogDescription => e !== undefined);
-
-  const expectedEvents = decodedEvents.filter((event) => event.name === eventName);
+  const expectedEvents = arrayFromIndirectReceipt(receipt, emitter, eventName, address);
   expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`);
 
   const exceptions: Array<string> = [];
@@ -89,11 +78,41 @@ export function inIndirectReceipt(
   return event;
 }
 
+export function amountFromIndirectReceipt(
+  receipt: ContractReceipt,
+  emitter: Interface,
+  eventName: string,
+  eventAmount: number
+): void {
+  const expectedEvents = arrayFromIndirectReceipt(receipt, emitter, eventName);
+  expect(expectedEvents.length).to.equal(eventAmount);
+}
+
 export function notEmitted(receipt: ContractReceipt, eventName: string): void {
   if (receipt.events != undefined) {
     const events = receipt.events.filter((e) => e.event === eventName);
     expect(events.length > 0).to.equal(false, `'${eventName}' event found`);
   }
+}
+
+function arrayFromIndirectReceipt(
+  receipt: ContractReceipt,
+  emitter: Interface,
+  eventName: string,
+  address?: string
+): any[] {
+  const decodedEvents = receipt.logs
+    .filter((log) => (address ? log.address.toLowerCase() === address.toLowerCase() : true))
+    .map((log) => {
+      try {
+        return emitter.parseLog(log);
+      } catch {
+        return undefined;
+      }
+    })
+    .filter((e): e is LogDescription => e !== undefined);
+
+  return decodedEvents.filter((event) => event.name === eventName);
 }
 
 function contains(args: { [key: string]: any | undefined }, key: string, value: any) {
