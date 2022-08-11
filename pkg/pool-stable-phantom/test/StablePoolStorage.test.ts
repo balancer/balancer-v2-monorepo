@@ -11,6 +11,7 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { every, range } from 'lodash';
 
 describe('StablePoolStorage', () => {
   let admin: SignerWithAddress;
@@ -324,6 +325,80 @@ describe('StablePoolStorage', () => {
 
             expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
           }
+        });
+      });
+
+      describe('global exemption flags', () => {
+        // These tests use a different Pool from the rest since they deploy it with non-random and controlled arguments.
+        let exemptionPool: Contract;
+
+        enum Exemption {
+          NONE,
+          SOME,
+          ALL,
+        }
+
+        function deployExemptionPool(exemption: Exemption) {
+          sharedBeforeEach(async () => {
+            const rateProviders = await Promise.all(
+              range(numberOfTokens).map(async () => (await deploy('v2-pool-utils/MockRateProvider')).address)
+            );
+
+            let exemptionFlags;
+            if (exemption == Exemption.NONE) {
+              exemptionFlags = Array(numberOfTokens).fill(false);
+            } else if (exemption == Exemption.ALL) {
+              exemptionFlags = Array(numberOfTokens).fill(true);
+            } else {
+              exemptionFlags = range(numberOfTokens).map(() => Math.random() < 0.5);
+
+              if (every(exemptionFlags, (flag) => flag == false)) {
+                exemptionFlags[0] = true;
+              } else if (every(exemptionFlags, (flag) => flag == true)) {
+                exemptionFlags[0] = false;
+              }
+            }
+
+            exemptionPool = await deploy('MockStablePoolStorage', {
+              args: [vault.address, tokens.addresses, rateProviders, exemptionFlags],
+            });
+          });
+        }
+
+        context('when no token is exempt', () => {
+          deployExemptionPool(Exemption.NONE);
+
+          it('areAllTokensExempt returns false', async () => {
+            expect(await exemptionPool.areAllTokensExempt()).to.equal(false);
+          });
+
+          it('areNoTokensExempt returns true', async () => {
+            expect(await exemptionPool.areNoTokensExempt()).to.equal(true);
+          });
+        });
+
+        context('when all tokens are exempt', () => {
+          deployExemptionPool(Exemption.ALL);
+
+          it('areAllTokensExempt returns true', async () => {
+            expect(await exemptionPool.areAllTokensExempt()).to.equal(true);
+          });
+
+          it('areNoTokensExempt returns false', async () => {
+            expect(await exemptionPool.areNoTokensExempt()).to.equal(false);
+          });
+        });
+
+        context('when some (but not all) tokens are exempt', () => {
+          deployExemptionPool(Exemption.SOME);
+
+          it('areAllTokensExempt returns false', async () => {
+            expect(await exemptionPool.areAllTokensExempt()).to.equal(false);
+          });
+
+          it('areNoTokensExempt returns false', async () => {
+            expect(await exemptionPool.areNoTokensExempt()).to.equal(false);
+          });
         });
       });
     });
