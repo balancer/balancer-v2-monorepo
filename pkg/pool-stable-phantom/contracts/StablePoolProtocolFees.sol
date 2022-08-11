@@ -92,14 +92,14 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         //
         // In all cases we compute invariants with the last join-exit amplification factor, so that changes to the
         // amplification are not translated into changes to the invariant. Since amplification factor changes are both
-        // infrequent and slow, they should have little effect in the pool balances, making this a very good
+        // infrequent and slow, they should have little effect on the pool balances, making this a very good
         // approximation.
         //
         // With this technique we obtain an invariant that does not include yield at all, meaning any growth will be due
         // exclusively to swap fees. We call this the 'swap fee growth invariant'.
         // A second invariant will exclude the yield of exempt tokens, and therefore include both swap fees and
         // non-exempt yield. This is called the 'non exempt growth invariant'.
-        // Finally, a third invariant includes the yield of all tokens by only using the current rates. We call this the
+        // Finally, a third invariant includes the yield of all tokens by using only the current rates. We call this the
         // 'total growth invariant', since it includes both swap fee growth, non-exempt yield growth and exempt yield
         // growth. If the last join-exit amplification equals the current one, this invariant equals the current
         // invariant.
@@ -112,11 +112,18 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
             uint256 totalGrowthInvariant
         ) = _getGrowthInvariants(balances, lastJoinExitAmp);
 
-        // By comparing invariant growth to its total value, we can calculate how much of the current Pool value
-        // originates in the sources of this invariant growth (e.g. swap fees).
-        // We have two sources of growth: swap fees and non-exempt yield. We can subtract the last post join-exit
-        // invariant to measure the growth due to swap fees, and the swap fee growth invariant from the non-exempt
-        // growth invariant to measure the growth due to non-exept yield.
+        // By comparing the invariant increase attributable to each source of growth to the total growth invariant,
+        // we can calculate how much of the current Pool value originates from that source, and then apply the
+        // corresponding protocol fee percentage to that amount.
+
+        // We have two sources of growth: swap fees, and non-exempt yield. As we illustrate graphically below:
+        //
+        // growth due to swap fees        = (swap fee growth invariant - last post join-exit invariant)
+        // growth due to non-exempt yield = (non-exempt growth invariant - swap fee growth invariant)
+        // 
+        // These can be converted to additive percentages by normalizing against the total growth invariant value:
+        // growth due to swap fees / total growth invariant = % pool ownership due from swap fees
+        // growth due to non-exempt yield / total growth invariant = % pool ownership due from non-exempt yield
         //
         //   ┌───────────────────────┐ ──┐
         //   │  exempt yield         │   │  total growth invariant
