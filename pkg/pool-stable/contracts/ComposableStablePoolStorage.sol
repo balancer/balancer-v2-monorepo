@@ -22,7 +22,7 @@ import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "./StableMath.sol";
 
-abstract contract StablePoolStorage is BasePool {
+abstract contract ComposableStablePoolStorage is BasePool {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 

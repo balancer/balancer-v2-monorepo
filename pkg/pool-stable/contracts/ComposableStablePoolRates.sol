@@ -21,9 +21,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
-import "./StablePoolStorage.sol";
+import "./ComposableStablePoolStorage.sol";
 
-abstract contract StablePoolRates is StablePoolStorage {
+abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     using PriceRateCache for bytes32;
     using FixedPoint for uint256;
 

@@ -25,7 +25,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 
-describe('StablePoolRates', () => {
+describe('ComposableStablePoolRates', () => {
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let vault: Vault;
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
@@ -44,7 +44,7 @@ describe('StablePoolRates', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
       await expect(
-        deploy('MockStablePoolRates', {
+        deploy('MockComposableStablePoolRates', {
           args: [
             vault.address,
             tokens.addresses,
@@ -78,7 +78,7 @@ describe('StablePoolRates', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(6, { sorted: true });
       await expect(
-        deploy('MockStablePoolRates', {
+        deploy('MockComposableStablePoolRates', {
           args: [
             vault.address,
             tokens.addresses,
@@ -126,7 +126,7 @@ describe('StablePoolRates', () => {
       newExemptFromYieldProtocolFeeFlags: boolean[],
       poolOwner: Account
     ): Promise<void> {
-      pool = await deploy('MockStablePoolRates', {
+      pool = await deploy('MockComposableStablePoolRates', {
         args: [
           vault.address,
           tokenList.addresses,

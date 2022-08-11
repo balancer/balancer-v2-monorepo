@@ -8,9 +8,10 @@ import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
 
 export type SwapStablePool = {
-  in: number | Token;
-  out: number | Token;
+  in: Token;
+  out: Token;
   amount: BigNumberish;
+  balances?: BigNumberish[];
   recipient?: Account;
   from?: SignerWithAddress;
   lastChangeBlock?: BigNumberish;
@@ -104,7 +105,7 @@ export type ExitQueryResult = {
 
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
-export type RawStablePhantomPoolDeployment = {
+export type RawStablePoolDeployment = {
   tokens?: TokenList;
   swapFeePercentage?: BigNumberish;
   amplificationParameter?: BigNumberish;
@@ -120,7 +121,7 @@ export type RawStablePhantomPoolDeployment = {
   mockedVault?: boolean;
 };
 
-export type StablePhantomPoolDeployment = {
+export type StablePoolDeployment = {
   tokens: TokenList;
   swapFeePercentage: BigNumberish;
   amplificationParameter: BigNumberish;
@@ -132,15 +133,4 @@ export type StablePhantomPoolDeployment = {
   owner?: SignerWithAddress;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
-};
-
-export type SwapPhantomPool = {
-  in: Token;
-  out: Token;
-  amount: BigNumberish;
-  balances?: BigNumberish[];
-  recipient?: Account;
-  from?: SignerWithAddress;
-  lastChangeBlock?: BigNumberish;
-  data?: string;
 };

@@ -22,11 +22,11 @@ import { DAY } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { every, random, range } from 'lodash';
-import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describe('StablePoolProtocolFees', () => {
+describe('ComposableStablePoolProtocolFees', () => {
   let admin: SignerWithAddress;
   let vault: Vault, feesCollector: Contract, feesProvider: Contract;
   let math: Contract;
@@ -124,7 +124,7 @@ describe('StablePoolProtocolFees', () => {
           // The rate durations are actually irrelevant since we're forcing cache updates
           const rateCacheDurations = Array(numberOfTokens).fill(DAY);
 
-          pool = await deploy('MockStablePoolProtocolFees', {
+          pool = await deploy('MockComposableStablePoolProtocolFees', {
             args: [
               vault.address,
               feesProvider.address,
@@ -314,7 +314,7 @@ describe('StablePoolProtocolFees', () => {
         // The rate durations are actually irrelevant as we forcefully update the cache ourselves.
         const rateCacheDurations = Array(numberOfTokens).fill(DAY);
 
-        pool = await deploy('MockStablePoolProtocolFees', {
+        pool = await deploy('MockComposableStablePoolProtocolFees', {
           args: [
             vault.address,
             feesProvider.address,

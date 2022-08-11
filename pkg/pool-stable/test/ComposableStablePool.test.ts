@@ -8,13 +8,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { RawStablePhantomPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/types';
+import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
+import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
-describe('StablePhantomPool', () => {
+describe('ComposableStablePool', () => {
   let lp: SignerWithAddress,
     owner: SignerWithAddress,
     recipient: SignerWithAddress,
@@ -31,35 +31,35 @@ describe('StablePhantomPool', () => {
   context('for a 1 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
-      await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
+      await expect(StablePool.create({ tokens })).to.be.revertedWith('MIN_TOKENS');
     });
   });
 
   context('for a 2 token pool', () => {
-    itBehavesAsStablePhantomPool(2);
+    itBehavesAsComposableStablePool(2);
   });
 
   context('for a 3 token pool', () => {
-    itBehavesAsStablePhantomPool(3);
+    itBehavesAsComposableStablePool(3);
   });
 
   context('for a 4 token pool', () => {
-    itBehavesAsStablePhantomPool(4);
+    itBehavesAsComposableStablePool(4);
   });
 
   context('for a 5 token pool', () => {
-    itBehavesAsStablePhantomPool(5);
+    itBehavesAsComposableStablePool(5);
   });
 
   context('for a 6 token pool', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(6, { sorted: true });
-      await expect(StablePhantomPool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
+      await expect(StablePool.create({ tokens })).to.be.revertedWith('MAX_TOKENS');
     });
   });
 
-  function itBehavesAsStablePhantomPool(numberOfTokens: number): void {
-    let pool: StablePhantomPool, tokens: TokenList;
+  function itBehavesAsComposableStablePool(numberOfTokens: number): void {
+    let pool: StablePool, tokens: TokenList;
     let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
 
     const rateProviders: Contract[] = [];
@@ -69,7 +69,7 @@ describe('StablePhantomPool', () => {
     const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
 
     async function deployPool(
-      params: RawStablePhantomPoolDeployment = {},
+      params: RawStablePoolDeployment = {},
       rates: BigNumberish[] = [],
       durations: number[] = []
     ): Promise<void> {
@@ -82,7 +82,7 @@ describe('StablePhantomPool', () => {
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
-      pool = await StablePhantomPool.create({
+      pool = await StablePool.create({
         tokens,
         rateProviders,
         tokenRateCacheDurations: durations.length > 0 ? durations : tokenRateCacheDurations,
@@ -1041,7 +1041,7 @@ describe('StablePhantomPool', () => {
           const tokenParams = Array.from({ length: numberOfTokens }, (_, i) => ({ decimals: 18 - i }));
           tokens = await TokenList.create(tokenParams, { sorted: true, varyDecimals: true });
 
-          pool = await StablePhantomPool.create({
+          pool = await StablePool.create({
             tokens,
             rateProviders: new Array(tokens.length).fill(ZERO_ADDRESS),
             tokenRateCacheDurations: new Array(tokens.length).fill(0),

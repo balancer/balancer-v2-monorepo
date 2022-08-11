@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-stable-phantom/StablePhantomPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
@@ -28,10 +28,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
+import "./ComposableStablePoolStorage.sol";
+import "./ComposableStablePoolRates.sol";
+import "./ComposableStablePoolStorage.sol";
+import "./ComposableStablePoolRates.sol";
+import "./ComposableStablePoolProtocolFees.sol";
 import "./StablePoolAmplification.sol";
-import "./StablePoolStorage.sol";
-import "./StablePoolRates.sol";
-import "./StablePoolProtocolFees.sol";
 import "./StableMath.sol";
 
 /**
@@ -42,21 +44,20 @@ import "./StableMath.sol";
  * single-token joins or exits (by swapping a token for BPT). We also support regular joins and exits, which can mint
  * and burn BPT.
  *
- * Preminted BPT is sometimes called Phantom BPT, as the preminted BPT (which is deposited in the Vault as balance of
- * the Pool) doesn't belong to any entity until transferred out of the Pool. The Pool's arithmetic behaves as if it
- * didn't exist, and the BPT total supply is not a useful value: we rely on the 'virtual supply' (how much BPT is
- * actually owned outside the Vault) instead.
+ * Preminted BPT is deposited in the Vault as the initial balance of the Pool, and doesn't belong to any entity until
+ * transferred out of the Pool. The Pool's arithmetic behaves as if it didn't exist, and the BPT total supply is not
+ * a useful value: we rely on the 'virtual supply' (how much BPT is actually owned outside the Vault) instead.
  */
-contract StablePhantomPool is
+contract ComposableStablePool is
     IRateProvider,
     BaseGeneralPool,
     StablePoolAmplification,
-    StablePoolRates,
-    StablePoolProtocolFees
+    ComposableStablePoolRates,
+    ComposableStablePoolProtocolFees
 {
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using StablePhantomPoolUserData for bytes;
+    using StablePoolUserData for bytes;
     using BasePoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
@@ -94,8 +95,8 @@ contract StablePhantomPool is
             params.owner
         )
         StablePoolAmplification(params.amplificationParameter)
-        StablePoolStorage(_extractStorageParams(params))
-        StablePoolRates(_extractRatesParams(params))
+        ComposableStablePoolStorage(_extractStorageParams(params))
+        ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -105,23 +106,28 @@ contract StablePhantomPool is
     function _extractRatesParams(NewPoolParams memory params)
         private
         pure
-        returns (StablePoolRates.RatesParams memory)
+        returns (ComposableStablePoolRates.RatesParams memory)
     {
-        return StablePoolRates.RatesParams(params.tokens, params.rateProviders, params.tokenRateCacheDurations);
+        return
+            ComposableStablePoolRates.RatesParams({
+                tokens: params.tokens,
+                rateProviders: params.rateProviders,
+                tokenRateCacheDurations: params.tokenRateCacheDurations
+            });
     }
 
     // Translate parameters to avoid stack-too-deep issues in the constructor
     function _extractStorageParams(NewPoolParams memory params)
         private
         view
-        returns (StablePoolStorage.StorageParams memory)
+        returns (ComposableStablePoolStorage.StorageParams memory)
     {
         return
-            StablePoolStorage.StorageParams(
-                _insertSorted(params.tokens, IERC20(this)),
-                params.rateProviders,
-                params.exemptFromYieldProtocolFeeFlags
-            );
+            ComposableStablePoolStorage.StorageParams({
+                registeredTokens: _insertSorted(params.tokens, IERC20(this)),
+                tokenRateProviders: params.rateProviders,
+                exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
+            });
     }
 
     /**
@@ -554,8 +560,8 @@ contract StablePhantomPool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
-        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
-        _require(kind == StablePhantomPoolUserData.JoinKindPhantom.INIT, Errors.UNINITIALIZED);
+        StablePoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == StablePoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
@@ -683,8 +689,8 @@ contract StablePhantomPool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
-        StablePhantomPoolUserData.JoinKindPhantom kind = userData.joinKind();
-        if (kind == StablePhantomPoolUserData.JoinKindPhantom.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+        StablePoolUserData.JoinKind kind = userData.joinKind();
+        if (kind == StablePoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return
                 _joinExactTokensInForBPTOut(
                     preJoinExitSupply,
@@ -694,7 +700,7 @@ contract StablePhantomPool is
                     scalingFactors,
                     userData
                 );
-        } else if (kind == StablePhantomPoolUserData.JoinKindPhantom.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+        } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
@@ -780,8 +786,8 @@ contract StablePhantomPool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
-        StablePhantomPoolUserData.ExitKindPhantom kind = userData.exitKind();
-        if (kind == StablePhantomPoolUserData.ExitKindPhantom.BPT_IN_FOR_EXACT_TOKENS_OUT) {
+        StablePoolUserData.ExitKind kind = userData.exitKind();
+        if (kind == StablePoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return
                 _exitBPTInForExactTokensOut(
                     preJoinExitSupply,
@@ -791,7 +797,7 @@ contract StablePhantomPool is
                     scalingFactors,
                     userData
                 );
-        } else if (kind == StablePhantomPoolUserData.ExitKindPhantom.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
@@ -935,9 +941,9 @@ contract StablePhantomPool is
             // Our inheritance pattern creates a small diamond that requires explicitly listing the parents here.
             // Each parent calls the `super` version, so linearization ensures all implementations are called.
             BasePool,
-            StablePoolProtocolFees,
+            ComposableStablePoolProtocolFees,
             StablePoolAmplification,
-            StablePoolRates
+            ComposableStablePoolRates
         )
         returns (bool)
     {

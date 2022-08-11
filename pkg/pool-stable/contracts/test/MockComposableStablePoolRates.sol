@@ -16,9 +16,9 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
-import "../StablePoolRates.sol";
+import "../ComposableStablePoolRates.sol";
 
-contract MockStablePoolRates is StablePoolRates {
+contract MockComposableStablePoolRates is ComposableStablePoolRates {
     constructor(
         IVault vault,
         IERC20[] memory tokens,
@@ -27,8 +27,8 @@ contract MockStablePoolRates is StablePoolRates {
         bool[] memory exemptFromYieldProtocolFeeFlags,
         address owner
     )
-        StablePoolRates(RatesParams(tokens, tokenRateProviders, tokenRateCacheDurations))
-        StablePoolStorage(
+        ComposableStablePoolRates(RatesParams(tokens, tokenRateProviders, tokenRateCacheDurations))
+        ComposableStablePoolStorage(
             StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
         )
         BasePool(
