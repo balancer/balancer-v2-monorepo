@@ -120,7 +120,7 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
         //
         // growth due to swap fees        = (swap fee growth invariant - last post join-exit invariant)
         // growth due to non-exempt yield = (non-exempt growth invariant - swap fee growth invariant)
-        // 
+        //
         // These can be converted to additive percentages by normalizing against the total growth invariant value:
         // growth due to swap fees / total growth invariant = % pool ownership due from swap fees
         // growth due to non-exempt yield / total growth invariant = % pool ownership due from non-exempt yield

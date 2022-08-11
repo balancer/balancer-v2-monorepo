@@ -337,7 +337,7 @@ describe('StablePoolProtocolFees', () => {
       sharedBeforeEach('setup previous pool state', async () => {
         // Since we're passing the balances directly to the contract, we don't need to worry about scaling factors, and
         // can work with 18 decimal balances directly.
-        preBalances = tokens.map((_) => fp(random(MIN_POOL_TOKEN_BALANCE, MAX_POOL_TOKEN_BALANCE)));
+        preBalances = tokens.map(() => fp(random(MIN_POOL_TOKEN_BALANCE, MAX_POOL_TOKEN_BALANCE)));
 
         // The rate providers start with a value of 1, so we don't need to account for them here. We need to use the
         // actual Solidity math since even small errors will disrupt tests that check for perfect invariant equality
