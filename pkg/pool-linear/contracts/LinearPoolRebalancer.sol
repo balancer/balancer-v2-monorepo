@@ -68,7 +68,7 @@ abstract contract LinearPoolRebalancer {
      * guarantee a successful execution.
      */
     function rebalance(address recipient) external returns (uint256) {
-        return _rebalance(recipient, 0);
+        return _rebalance(recipient);
     }
 
     /**
@@ -79,10 +79,18 @@ abstract contract LinearPoolRebalancer {
      * the recipient as usual.
      */
     function rebalanceWithExtraMain(address recipient, uint256 extraMain) external returns (uint256) {
-        return _rebalance(recipient, extraMain);
+        // The Pool rounds rates in its favor, which means that the fees it has collected are actually not quite enough
+        // to cover for the cost of wrapping/unwrapping. However, this error is so small that it is typically a
+        // non-issue, and simply results in slightly reduced returns for the recipient.
+        // However, while the Pool is in the no-fee zone, the lack of fees to cover for this rate discrepancy is a
+        // problem. We therefore require a minute amount of extra main token so that we'll be able to account for this
+        // rounding error. Values in the order of a few wei are typically sufficient.
+
+        _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
+        return _rebalance(recipient);
     }
 
-    function _rebalance(address recipient, uint256 extraMain) private returns (uint256) {
+    function _rebalance(address recipient) private returns (uint256) {
         // The first thing we need to test is whether the Pool is below or above the target level, which will
         // determine whether we need to deposit or withdraw main tokens.
         uint256 desiredMainTokenBalance = _getDesiredMainTokenBalance();
@@ -95,51 +103,9 @@ abstract contract LinearPoolRebalancer {
         (uint256 mainTokenBalance, , , ) = _vault.getPoolTokenInfo(_poolId, _mainToken);
 
         if (mainTokenBalance < desiredMainTokenBalance) {
-            if (extraMain > 0) {
-                _receiveExtraMainDuringLackOfMain(mainTokenBalance, extraMain);
-            }
-
             return _rebalanceLackOfMainToken(desiredMainTokenBalance - mainTokenBalance, recipient);
         } else if (mainTokenBalance > desiredMainTokenBalance) {
-            if (extraMain > 0) {
-                _receiveExtraMainDuringExcessOfMain(mainTokenBalance, extraMain);
-            }
-
             return _rebalanceExcessOfMainToken(mainTokenBalance - desiredMainTokenBalance, recipient);
-        }
-    }
-
-    function _receiveExtraMainDuringLackOfMain(uint256 mainTokenBalance, uint256 extraMain) private {
-        // The Pool lacks main tokens, but if the main balance is above the lower target (i.e. it is still in the no-fee
-        // zone), then there's no accumulated fees. It is therefore possible that the amount of wrapped tokens the Pool
-        // will give us in exchange for main cannot be unwrapped into the amount of main tokens desired by the Pool, due
-        // to the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
-        //
-        // This is typically a non-issue as the Linear Pool's accumulated fees more than cover for said rounding error,
-        // but in scenarios with no fees we require some extra main tokens to be able to make the Pool whole. Any excess
-        // will be sent to the recipient at the end of the transaction.
-
-        (uint256 lowerTarget, ) = _pool.getTargets();
-        // The lower target is upscaled, so we undo that
-        if (mainTokenBalance >= FixedPoint.divDown(lowerTarget, _mainTokenScalingFactor)) {
-            _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
-        }
-    }
-
-    function _receiveExtraMainDuringExcessOfMain(uint256 mainTokenBalance, uint256 extraMain) private {
-        // The Pool has excess of main tokens, but if the main balance is below the upper target (i.e. it is still in
-        // the no-fee zone), then there's no accumulated fees. It is therefore possible that the amount of main tokens
-        // the Pool will give us in exchange for wrapped cannot be wrapped into the amount of wrapped tokens desired by
-        // the Pool, due to the Pool choosing to round in its favor (resulting in an unrealistic wrap/unwrap rate).
-        //
-        // This is typically a non-issue as the Linear Pool's accumulated fees more than cover for said rounding error,
-        // but in scenarios with no fees we require some extra main tokens to be able to make the Pool whole. Any excess
-        // will be sent  to the recipient at the end of the transaction.
-
-        (, uint256 upperTarget) = _pool.getTargets();
-        // The upper target is upscaled, so we undo that
-        if (mainTokenBalance <= FixedPoint.divDown(upperTarget, _mainTokenScalingFactor)) {
-            _mainToken.safeTransferFrom(msg.sender, address(this), extraMain);
         }
     }
 
