@@ -311,7 +311,7 @@ describe('StablePoolProtocolFees', () => {
         if (every(exemptFromYieldProtocolFeeFlags, (flag) => flag == true))
           exemptFromYieldProtocolFeeFlags[Math.floor(random(numberOfTokens - 1))] = false;
 
-        // The rate durations are actually irrelevant as forcefully update the cache ourselves.
+        // The rate durations are actually irrelevant as we forcefully update the cache ourselves.
         const rateCacheDurations = Array(numberOfTokens).fill(DAY);
 
         pool = await deploy('MockStablePoolProtocolFees', {
@@ -335,12 +335,12 @@ describe('StablePoolProtocolFees', () => {
       let preVirtualSupply: BigNumber;
 
       sharedBeforeEach('setup previous pool state', async () => {
-        // Since we're passing the balances directly to the contract, we don't need to worry about scaling factors and
-        // work with 18 decimal balances directly.
+        // Since we're passing the balances directly to the contract, we don't need to worry about scaling factors, and
+        // can work with 18 decimal balances directly.
         preBalances = tokens.map((_) => fp(random(MIN_POOL_TOKEN_BALANCE, MAX_POOL_TOKEN_BALANCE)));
 
         // The rate providers start with a value of 1, so we don't need to account for them here. We need to use the
-        // actual Solidity math since even small error will disrupt tests that check for perfect invariant equality
+        // actual Solidity math since even small errors will disrupt tests that check for perfect invariant equality
         // (which result in no fees being paid).
         preInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
 
@@ -353,7 +353,7 @@ describe('StablePoolProtocolFees', () => {
       });
 
       describe('payProtocolFeesBeforeJoinExit', () => {
-        context('when the protocol swap and yield fee percentage is zero', () => {
+        context('when both the protocol swap and yield fee percentages are zero', () => {
           itPaysProtocolFeesGivenGlobalPercentages(bn(0), bn(0));
         });
 
@@ -384,13 +384,13 @@ describe('StablePoolProtocolFees', () => {
           let currentBalances: BigNumber[];
           let expectedProtocolOwnershipPercentage: BigNumberish;
 
-          context('when there are no due swap nor yield fees', () => {
-            prepareNoSwapNorYieldFees();
+          context('when neither swap nor yield fees are due', () => {
+            prepareNoSwapOrYieldFees();
 
             itDoesNotPayAnyProtocolFees();
           });
 
-          context('when there are due swap fees', () => {
+          context('when swap fees are due', () => {
             prepareSwapFees();
 
             if (swapFee.eq(0)) {
@@ -400,7 +400,7 @@ describe('StablePoolProtocolFees', () => {
             }
           });
 
-          context('when there are due yield fees', () => {
+          context('when yield fees are due', () => {
             prepareYieldFees();
 
             if (yieldFee.eq(0)) {
@@ -410,7 +410,7 @@ describe('StablePoolProtocolFees', () => {
             }
           });
 
-          context('when there are both due swap and yield fees', () => {
+          context('when both swap and yield fees are due', () => {
             prepareSwapAndYieldFees();
 
             if (swapFee.eq(0) && yieldFee.eq(0)) {
@@ -420,7 +420,7 @@ describe('StablePoolProtocolFees', () => {
             }
           });
 
-          function prepareNoSwapNorYieldFees() {
+          function prepareNoSwapOrYieldFees() {
             sharedBeforeEach(async () => {
               currentBalances = preBalances;
               expectedProtocolOwnershipPercentage = 0;
@@ -525,7 +525,7 @@ describe('StablePoolProtocolFees', () => {
               currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
             });
 
-            it('returns a zero protocol ownership percentage', async () => {
+            it('returns zero protocol ownership percentage', async () => {
               expect(await pool.getProtocolPoolOwnershipPercentage(currentBalances)).to.equal(0);
             });
 
@@ -556,7 +556,7 @@ describe('StablePoolProtocolFees', () => {
               currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
 
               // protocol ownership = to mint / (supply + to mint)
-              // to mint = suppply * protocol ownership / (1 - protocol ownership)
+              // to mint = supply * protocol ownership / (1 - protocol ownership)
               expectedBptAmount = preVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
                 .div(fp(1).sub(expectedProtocolOwnershipPercentage));
@@ -572,7 +572,7 @@ describe('StablePoolProtocolFees', () => {
               );
             });
 
-            it('mints BPT for the protocol fee collector', async () => {
+            it('mints BPT to the protocol fee collector', async () => {
               const tx = await pool.payProtocolFeesBeforeJoinExit(currentBalancesWithBpt);
               const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
                 from: ZERO_ADDRESS,
