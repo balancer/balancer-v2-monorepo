@@ -47,8 +47,6 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
-    bool private _recoveryMode;
-
     /**
      * @dev Reverts if the contract is in Recovery Mode.
      */
@@ -77,38 +75,33 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
         _setRecoveryMode(false);
     }
 
-    /**
-     * @notice Returns whether the pool is in Recovery Mode.
-     */
-    function inRecoveryMode() public view override returns (bool) {
-        return _recoveryMode;
-    }
+    // Defer implementation for functions that require storage
 
     /**
-     * @dev Sets the recoveryMode state, and emits the corresponding event. Can be overridden
-     * if a pool needs to detect when the Recovery Mode state changes.
+     * @notice Override to check storage and return whether the pool is in Recovery Mode
+     */
+    function inRecoveryMode() public view virtual override returns (bool);
+
+    /**
+     * @dev Override to update storage and emit the event
      *
-     * No complex code or external calls that could fail should be placed here, which could jeopardize
-     * the ability to enable and disable Recovery Mode.
+     * No complex code or external calls that could fail should be placed in the implementations,
+     * which could jeopardize the ability to enable and disable Recovery Mode.
      */
-    function _setRecoveryMode(bool enabled) internal virtual {
-        _recoveryMode = enabled;
-
-        emit RecoveryModeStateChanged(enabled);
-    }
+    function _setRecoveryMode(bool enabled) internal virtual;
 
     /**
      * @dev Reverts if the contract is not in Recovery Mode.
      */
     function _ensureInRecoveryMode() internal view {
-        _require(_recoveryMode, Errors.NOT_IN_RECOVERY_MODE);
+        _require(inRecoveryMode(), Errors.NOT_IN_RECOVERY_MODE);
     }
 
     /**
      * @dev Reverts if the contract is in Recovery Mode.
      */
     function _ensureNotInRecoveryMode() internal view {
-        _require(!_recoveryMode, Errors.IN_RECOVERY_MODE);
+        _require(!inRecoveryMode(), Errors.IN_RECOVERY_MODE);
     }
 
     /**

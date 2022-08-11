@@ -82,6 +82,11 @@ abstract contract StablePoolStorage is BasePool {
     // [ 244 bits |        6 bits       |     6 bits      ]
     bytes32 private immutable _rateProviderInfoBitmap;
 
+    // We also keep two dedicated flags that indicate the special cases where none or all tokens are exempt, which allow
+    // for some gas optimizations in these special scenarios.
+    bool private immutable _noTokensExempt;
+    bool private immutable _allTokensExempt;
+
     uint256 private constant _RATE_PROVIDER_FLAGS_OFFSET = 6;
 
     constructor(StorageParams memory params) {
@@ -135,6 +140,9 @@ abstract contract StablePoolStorage is BasePool {
 
         bytes32 rateProviderInfoBitmap;
 
+        bool anyExempt = false;
+        bool anyNonExempt = false;
+
         // The exemptFromYieldFlag should never be set on a token without a rate provider.
         // This would cause division by zero errors downstream.
         for (uint256 i = 0; i < params.registeredTokens.length; ++i) {
@@ -149,6 +157,10 @@ abstract contract StablePoolStorage is BasePool {
                 if (params.exemptFromYieldProtocolFeeFlags[i]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
                     rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
+
+                    anyExempt = true;
+                } else {
+                    anyNonExempt = true;
                 }
             } else if (i != bptIndex) {
                 rateProviders[i] = params.tokenRateProviders[i - 1];
@@ -161,9 +173,16 @@ abstract contract StablePoolStorage is BasePool {
                 if (params.exemptFromYieldProtocolFeeFlags[i - 1]) {
                     _require(rateProviders[i] != IRateProvider(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
                     rateProviderInfoBitmap = rateProviderInfoBitmap.insertBool(true, i);
+
+                    anyExempt = true;
+                } else {
+                    anyNonExempt = true;
                 }
             }
         }
+
+        _noTokensExempt = !anyExempt;
+        _allTokensExempt = !anyNonExempt;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _rateProvider0 = rateProviders[0];
@@ -257,16 +276,28 @@ abstract contract StablePoolStorage is BasePool {
         return amountsWithoutBpt;
     }
 
+    /**
+     * @dev Same as `_dropBptItem`, except the virtual supply is also returned, and `balances` is assumed to be the
+     * current Pool balances (including BPT).
+     */
+    function _dropBptItemFromBalances(uint256[] memory registeredBalances)
+        internal
+        view
+        returns (uint256, uint256[] memory)
+    {
+        return (_getVirtualSupply(registeredBalances[getBptIndex()]), _dropBptItem(registeredBalances));
+    }
+
     // Convert from an index into an array excluding BPT (usually from user input, such as amountsIn/Out),
-    // to an index into an array excluding BPT (the Vault's registered token list).
+    // to an index into an array including BPT (the Vault's registered token list).
     // `index` must not be the BPT token index itself, if it is the last element, and the result must be
     // in the range of registered tokens.
-    function _addBptIndex(uint256 index) internal view returns (uint256 indexWithBpt) {
+    function _addBptIndex(uint256 index) internal view returns (uint256 registeredIndex) {
         // This can be called from an index passed in from user input.
-        indexWithBpt = index < getBptIndex() ? index : index.add(1);
+        registeredIndex = index < getBptIndex() ? index : index.add(1);
 
         // TODO: `indexWithBpt != getBptIndex()` follows from above line and so can be removed.
-        _require(indexWithBpt < _totalTokens && indexWithBpt != getBptIndex(), Errors.OUT_OF_BOUNDS);
+        _require(registeredIndex < _totalTokens && registeredIndex != getBptIndex(), Errors.OUT_OF_BOUNDS);
     }
 
     /**
@@ -279,11 +310,11 @@ abstract contract StablePoolStorage is BasePool {
     function _addBptItem(uint256[] memory amounts, uint256 bptAmount)
         internal
         view
-        returns (uint256[] memory amountsWithBpt)
+        returns (uint256[] memory registeredTokenAmounts)
     {
-        amountsWithBpt = new uint256[](amounts.length + 1);
-        for (uint256 i = 0; i < amountsWithBpt.length; i++) {
-            amountsWithBpt[i] = i == getBptIndex() ? bptAmount : amounts[i < getBptIndex() ? i : i - 1];
+        registeredTokenAmounts = new uint256[](amounts.length + 1);
+        for (uint256 i = 0; i < registeredTokenAmounts.length; i++) {
+            registeredTokenAmounts[i] = i == getBptIndex() ? bptAmount : amounts[i < getBptIndex() ? i : i - 1];
         }
     }
 
@@ -355,6 +386,20 @@ abstract contract StablePoolStorage is BasePool {
         return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + tokenIndex);
     }
 
+    /**
+     * @notice Return true if all tokens are exempt from yield fees.
+     */
+    function _areAllTokensExempt() internal view returns (bool) {
+        return _allTokensExempt;
+    }
+
+    /**
+     * @notice Return true if no tokens are exempt from yield fees.
+     */
+    function _areNoTokensExempt() internal view returns (bool) {
+        return _noTokensExempt;
+    }
+
     // Exempt flags
 
     /**
@@ -367,7 +412,38 @@ abstract contract StablePoolStorage is BasePool {
     }
 
     // This assumes the tokenIndex is valid. If it's not, it will just return false.
-    function _isTokenExemptFromYieldProtocolFee(uint256 tokenIndex) internal view returns (bool) {
-        return _rateProviderInfoBitmap.decodeBool(tokenIndex);
+    function _isTokenExemptFromYieldProtocolFee(uint256 registeredTokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(registeredTokenIndex);
+    }
+
+    // Virtual Supply
+
+    /**
+     * @dev Returns the number of tokens in circulation.
+     *
+     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
+     * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
+     */
+    function getVirtualSupply() external view returns (uint256) {
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
+        // remains constant.
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
+    }
+
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
+    function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        return totalSupply().sub(bptBalance);
     }
 }
