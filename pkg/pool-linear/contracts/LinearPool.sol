@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/LinearPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
@@ -54,7 +54,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
-    using LinearPoolUserData for bytes;
+    using BasePoolUserData for bytes;
 
     uint256 private constant _TOTAL_TOKENS = 3; // Main token, wrapped token, BPT
 
@@ -192,7 +192,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         return _wrappedToken;
     }
 
-    function getBptIndex() external view override returns (uint256) {
+    function getBptIndex() public view override returns (uint256) {
         return _bptIndex;
     }
 
@@ -316,7 +316,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _getApproximateVirtualSupply(balances[_bptIndex]),
+                _getVirtualSupply(balances[_bptIndex]),
                 params
             );
     }
@@ -333,7 +333,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getApproximateVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : LinearMath._calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params);
@@ -351,7 +351,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getApproximateVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : LinearMath._calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
@@ -384,7 +384,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _getApproximateVirtualSupply(balances[_bptIndex]),
+                _getVirtualSupply(balances[_bptIndex]),
                 params
             );
     }
@@ -401,7 +401,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getApproximateVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : LinearMath._calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params);
@@ -419,7 +419,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getApproximateVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_bptIndex]),
                     params
                 )
                 : LinearMath._calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
@@ -463,56 +463,55 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         bytes32,
         address,
         address,
-        uint256[] memory balances,
+        uint256[] memory,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory userData
-    ) internal view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        // Exits typically revert, except for the proportional exit when the emergency pause mechanism has been
-        // triggered. This allows for a simple and safe way to exit the Pool.
-
-        // Note that the rate cache will not be automatically updated in such a scenario (though this can be still done
-        // manually). This however should not lead to any issues as the rate is not important during the emergency exit.
-        // On the contrary, decoupling the rate provider from the emergency exit might be useful under these
-        // circumstances.
-
-        LinearPoolUserData.ExitKind kind = userData.exitKind();
-        if (kind != LinearPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
-        } else {
-            _ensurePaused();
-            // Note that this will cause the user's BPT to be burned, which is not something that happens during
-            // regular operation of this Pool, and may lead to accounting errors. Because of this, it is highly
-            // advisable to stop using a Pool after it is paused and the pause window expires.
-
-            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-        }
+        bytes memory
+    ) internal pure override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
-    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        returns (uint256, uint256[] memory)
-    {
-        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
-        // retrieve their tokens in case of an emergency.
-        //
-        // This particular exit function is the only one available because it is the simplest, and therefore least
-        // likely to be incorrect, or revert and lock funds.
+    /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory registeredBalances,
+        uint256,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
+        // adjust the balances array by removing BPT from it.
 
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
+        // The user is passing in an array of 2 tokens; the balances we pass in need to match that cardinality
+        // Wherever the BPT token is, we can fill in balances based on the order in the full array
+        uint256[] memory balances = new uint256[](2);
+        if (_mainIndex < _wrappedIndex) {
+            balances[0] = registeredBalances[_mainIndex];
+            balances[1] = registeredBalances[_wrappedIndex];
+        } else {
+            balances[0] = registeredBalances[_wrappedIndex];
+            balances[1] = registeredBalances[_mainIndex];
+        }
 
-        // This process burns BPT, rendering `_getApproximateVirtualSupply` inaccurate, so we use the real method here
-        uint256[] memory amountsOut = LinearMath._calcTokensOutGivenExactBptIn(
+        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
             balances,
-            bptAmountIn,
-            _getVirtualSupply(balances[_bptIndex]),
-            _bptIndex
+            _getVirtualSupply(registeredBalances[getBptIndex()]),
+            userData
         );
 
-        return (bptAmountIn, amountsOut);
+        // The vault requires an array including BPT, so add it back in here, using the same logic.
+        uint256[] memory registeredAmountsOut = new uint256[](3);
+
+        if (_mainIndex < _wrappedIndex) {
+            registeredAmountsOut[_mainIndex] = amountsOut[0];
+            registeredAmountsOut[_wrappedIndex] = amountsOut[1];
+        } else {
+            registeredAmountsOut[_mainIndex] = amountsOut[1];
+            registeredAmountsOut[_wrappedIndex] = amountsOut[0];
+        }
+
+        return (bptAmountIn, registeredAmountsOut);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
@@ -581,7 +580,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the
         // only way for that to happen would be for all LPs to exit the Pool, and nothing prevents new LPs from
         // joining it later on.
-        return totalBalance.divUp(_getApproximateVirtualSupply(balances[_bptIndex]));
+        return totalBalance.divUp(_getVirtualSupply(balances[_bptIndex]));
     }
 
     function getWrappedTokenRate() external view returns (uint256) {
@@ -685,15 +684,5 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
 
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
-    }
-
-    /**
-     * @dev Computes an approximation of virtual supply, which costs less gas than `_getVirtualSupply` and returns the
-     * same value in all cases except when the emergency pause has been enabled and BPT burned as part of the emergency
-     * exit process.
-     */
-    function _getApproximateVirtualSupply(uint256 bptBalance) internal pure returns (uint256) {
-        // No need for checked arithmetic as _INITIAL_BPT_SUPPLY is always greater than any valid Vault BPT balance.
-        return _INITIAL_BPT_SUPPLY - bptBalance;
     }
 }
