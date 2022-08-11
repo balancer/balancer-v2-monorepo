@@ -480,38 +480,15 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
-        // adjust the balances array by removing BPT from it.
-
-        // The user is passing in an array of 2 tokens; the balances we pass in need to match that cardinality
-        // Wherever the BPT token is, we can fill in balances based on the order in the full array
-        uint256[] memory balances = new uint256[](2);
-        if (_mainIndex < _wrappedIndex) {
-            balances[0] = registeredBalances[_mainIndex];
-            balances[1] = registeredBalances[_wrappedIndex];
-        } else {
-            balances[0] = registeredBalances[_wrappedIndex];
-            balances[1] = registeredBalances[_mainIndex];
-        }
-
         (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            balances,
+            registeredBalances,
             _getVirtualSupply(registeredBalances[getBptIndex()]),
             userData
         );
 
-        // The vault requires an array including BPT, so add it back in here, using the same logic.
-        uint256[] memory registeredAmountsOut = new uint256[](3);
+        amountsOut[getBptIndex()] = 0;
 
-        if (_mainIndex < _wrappedIndex) {
-            registeredAmountsOut[_mainIndex] = amountsOut[0];
-            registeredAmountsOut[_wrappedIndex] = amountsOut[1];
-        } else {
-            registeredAmountsOut[_mainIndex] = amountsOut[1];
-            registeredAmountsOut[_wrappedIndex] = amountsOut[0];
-        }
-
-        return (bptAmountIn, registeredAmountsOut);
+        return (bptAmountIn, amountsOut);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
