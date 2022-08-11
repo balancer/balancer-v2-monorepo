@@ -24,6 +24,8 @@ contract MockBasePool is BasePool {
 
     uint256 private immutable _totalTokens;
 
+    bool private _failBeforeSwapJoinExit;
+
     event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
     event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
 
@@ -52,6 +54,7 @@ contract MockBasePool is BasePool {
             owner
         )
     {
+        _failBeforeSwapJoinExit = false;
         _totalTokens = tokens.length;
     }
 
@@ -110,6 +113,15 @@ contract MockBasePool is BasePool {
         return (0, new uint256[](balances.length));
     }
 
+    function setFailBeforeSwapJoinExit(bool fail) external {
+        _failBeforeSwapJoinExit = fail;
+    }
+
+    function _beforeSwapJoinExit() internal override {
+        require(!_failBeforeSwapJoinExit, "FAIL_BEFORE_SWAP_JOIN_EXIT");
+        super._beforeSwapJoinExit();
+    }
+
     function payProtocolFees(uint256 bptAmount) public {
         _payProtocolFees(bptAmount);
     }
@@ -133,6 +145,45 @@ contract MockBasePool is BasePool {
         for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors[i] = FixedPoint.ONE;
         }
+    }
+
+    function upscale(uint256 amount, uint256 scalingFactor) external pure returns (uint256) {
+        return _upscale(amount, scalingFactor);
+    }
+
+    function upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors)
+        external
+        pure
+        returns (uint256[] memory)
+    {
+        _upscaleArray(amounts, scalingFactors);
+        return amounts;
+    }
+
+    function downscaleDown(uint256 amount, uint256 scalingFactor) external pure returns (uint256) {
+        return _downscaleDown(amount, scalingFactor);
+    }
+
+    function downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors)
+        external
+        pure
+        returns (uint256[] memory)
+    {
+        _downscaleDownArray(amounts, scalingFactors);
+        return amounts;
+    }
+
+    function downscaleUp(uint256 amount, uint256 scalingFactor) external pure returns (uint256) {
+        return _downscaleUp(amount, scalingFactor);
+    }
+
+    function downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors)
+        external
+        pure
+        returns (uint256[] memory)
+    {
+        _downscaleUpArray(amounts, scalingFactors);
+        return amounts;
     }
 
     function doNotCallInRecovery() external view whenNotInRecoveryMode {

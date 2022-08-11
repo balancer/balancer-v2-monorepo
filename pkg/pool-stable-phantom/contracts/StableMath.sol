@@ -203,6 +203,7 @@ library StableMath {
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // BPT out, so we round down overall.
@@ -242,8 +243,6 @@ library StableMath {
             newBalances[i] = balances[i].add(amountInWithoutFee);
         }
 
-        // Get current and new invariants, taking swap fees into account
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
@@ -261,14 +260,11 @@ library StableMath {
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Token in, so we round up overall.
 
-        // Get the current invariant
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
-
-        // Calculate new invariant
         uint256 newInvariant = bptTotalSupply.add(bptAmountOut).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount in without fee.
@@ -308,6 +304,7 @@ library StableMath {
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // BPT in, so we round up overall.
@@ -347,8 +344,6 @@ library StableMath {
             newBalances[i] = balances[i].sub(amountOutWithFee);
         }
 
-        // Get current and new invariants, taking into account swap fees
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = _calculateInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.divDown(currentInvariant);
 
@@ -362,12 +357,11 @@ library StableMath {
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
+        uint256 currentInvariant,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
         // Token out, so we round down overall.
 
-        // Get the current and new invariants.
-        uint256 currentInvariant = _calculateInvariant(amp, balances);
         uint256 newInvariant = bptTotalSupply.sub(bptAmountIn).divUp(bptTotalSupply).mulUp(currentInvariant);
 
         // Calculate amount out without fee
@@ -398,33 +392,6 @@ library StableMath {
 
         // No need to use checked arithmetic for the swap fee, it is guaranteed to be lower than 50%
         return nonTaxableAmount.add(taxableAmount.mulDown(FixedPoint.ONE - swapFeePercentage));
-    }
-
-    function _calcTokensOutGivenExactBptIn(
-        uint256[] memory balances,
-        uint256 bptAmountIn,
-        uint256 bptTotalSupply
-    ) internal pure returns (uint256[] memory) {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
-        // bpt = bptTotalSupply                                                                      //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-
-        return amountsOut;
     }
 
     // This function calculates the balance of a given token (tokenIndex)

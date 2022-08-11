@@ -19,15 +19,33 @@ pragma solidity ^0.7.0;
 /**
  * @dev Reverts if `condition` is false, with a revert reason containing `errorCode`. Only codes up to 999 are
  * supported.
+ * Uses the default 'BAL' prefix for the error code
  */
 function _require(bool condition, uint256 errorCode) pure {
     if (!condition) _revert(errorCode);
 }
 
 /**
+ * @dev Reverts if `condition` is false, with a revert reason containing `errorCode`. Only codes up to 999 are
+ * supported.
+ */
+function _require(bool condition, uint256 errorCode, bytes3 prefix) pure {
+    if (!condition) _revert(errorCode, prefix);
+}
+
+/**
  * @dev Reverts with a revert reason containing `errorCode`. Only codes up to 999 are supported.
+ * Uses the default 'BAL' prefix for the error code
  */
 function _revert(uint256 errorCode) pure {
+    _revert(errorCode, 0x42414c); // This is the raw byte representation of "BAL"
+}
+
+/**
+ * @dev Reverts with a revert reason containing `errorCode`. Only codes up to 999 are supported.
+ */
+function _revert(uint256 errorCode, bytes3 prefix) pure {
+    uint256 prefixUint = uint256(uint24(prefix));
     // We're going to dynamically create a revert string based on the error code, with the following format:
     // 'BAL#{errorCode}'
     // where the code is left-padded with zeroes to three digits (so they range from 000 to 999).
@@ -51,14 +69,16 @@ function _revert(uint256 errorCode) pure {
         errorCode := div(errorCode, 10)
         let hundreds := add(mod(errorCode, 10), 0x30)
 
-        // With the individual characters, we can now construct the full string. The "BAL#" part is a known constant
-        // (0x42414c23): we simply shift this by 24 (to provide space for the 3 bytes of the error code), and add the
+        // With the individual characters, we can now construct the full string.
+        // We first append the '#' character (0x23) to the prefix. In the case of 'BAL', it results in 0x42414c23 ('BAL#')
+        // Then, we shift this by 24 (to provide space for the 3 bytes of the error code), and add the
         // characters to it, each shifted by a multiple of 8.
         // The revert reason is then shifted left by 200 bits (256 minus the length of the string, 7 characters * 8 bits
         // per character = 56) to locate it in the most significant part of the 256 slot (the beginning of a byte
         // array).
+        let formattedPrefix := shl(24, add(0x23, shl(8, prefixUint)))
 
-        let revertReason := shl(200, add(0x42414c23000000, add(add(units, shl(8, tenths)), shl(16, hundreds))))
+        let revertReason := shl(200, add(formattedPrefix, add(add(units, shl(8, tenths)), shl(16, hundreds))))
 
         // We can now encode the reason in memory, which can be safely overwritten as we're about to revert. The encoded
         // message will have the following layout:
@@ -168,6 +188,7 @@ library Errors {
     uint256 internal constant MAX_WEIGHT = 350;
     uint256 internal constant UNAUTHORIZED_JOIN = 351;
     uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
+    uint256 internal constant FRACTIONAL_TARGET = 353;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -213,6 +234,7 @@ library Errors {
     uint256 internal constant EXPIRED_SIGNATURE = 440;
     uint256 internal constant MALFORMED_SIGNATURE = 441;
     uint256 internal constant SAFE_CAST_VALUE_CANT_FIT_UINT64 = 442;
+    uint256 internal constant UNHANDLED_FEE_TYPE = 443;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
@@ -252,5 +274,6 @@ library Errors {
     uint256 internal constant AUM_FEE_PERCENTAGE_TOO_HIGH = 603;
 
     // Misc
+    uint256 internal constant UNIMPLEMENTED = 998;
     uint256 internal constant SHOULD_NOT_HAPPEN = 999;
 }
