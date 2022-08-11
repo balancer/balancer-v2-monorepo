@@ -92,6 +92,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Batch Relayer V3                                     | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
 | Swap, join and exit simulations (queries)            | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
 | Protocol fee percentages provider                    | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
+| Composable Stable Pools                              | [`20220812-composable-stable-pool`](./tasks/20220812-composable-stable-pool)                         |
 
 ## Scripts
 
