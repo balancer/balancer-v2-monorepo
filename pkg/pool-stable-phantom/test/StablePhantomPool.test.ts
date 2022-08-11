@@ -2043,32 +2043,6 @@ describe('StablePhantomPool', () => {
           expect(virtualSupply).to.be.equalWithError(senderBptBalance, 0.0001);
         });
       });
-
-      context.skip('with protocol fees', () => {
-        const amount = fp(50);
-
-        sharedBeforeEach('swap bpt in', async () => {
-          const tokenIn = pool.bpt;
-          const tokenOut = tokens.second;
-
-          await tokens.mint({ to: lp, amount });
-          await tokens.approve({ from: lp, to: pool.vault });
-
-          await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
-        });
-
-        it('reports correctly', async () => {
-          const amountWithFee = amount.mul(fp(1)).div(fp(1).sub(swapFeePercentage));
-          const fee = amountWithFee.mul(swapFeePercentage).div(fp(1));
-          const protocolFee = fee.mul(protocolFeePercentage).div(fp(1));
-
-          const senderBptBalance = await pool.balanceOf(lp);
-
-          const virtualSupply = await pool.getVirtualSupply();
-
-          expect(virtualSupply).to.be.equalWithError(senderBptBalance.add(protocolFee), 0.0001);
-        });
-      });
     });
 
     describe('getRate', () => {
