@@ -9,7 +9,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapLinearPool, RawLinearPoolDeployment, MultiExitGivenInLinearPool, ExitResult } from './types';
+import { SwapLinearPool, RawLinearPoolDeployment } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
