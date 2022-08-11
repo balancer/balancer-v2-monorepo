@@ -103,6 +103,10 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         return _getGrowthInvariants(balances, lastPostJoinExitAmp);
     }
 
+    function getProtocolPoolOwnershipPercentage(uint256[] memory balances) external view returns (uint256) {
+        return _getProtocolPoolOwnershipPercentage(balances);
+    }
+
     // Stubbed functions
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory) {}
