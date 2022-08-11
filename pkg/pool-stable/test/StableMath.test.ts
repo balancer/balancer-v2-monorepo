@@ -12,7 +12,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcBptInGivenExactTokensOut,
   calcTokenOutGivenExactBptIn,
-} from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/math';
+} from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { random } from 'lodash';
 import { expect } from 'chai';
 

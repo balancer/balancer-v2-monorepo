@@ -17,9 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
-import "../StablePoolProtocolFees.sol";
+import "../ComposableStablePoolProtocolFees.sol";
 
-contract MockStablePoolProtocolFees is StablePoolProtocolFees {
+contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFees {
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
@@ -28,14 +28,14 @@ contract MockStablePoolProtocolFees is StablePoolProtocolFees {
         uint256[] memory tokenRateCacheDurations,
         bool[] memory exemptFromYieldProtocolFeeFlags
     )
-        StablePoolStorage(
+        ComposableStablePoolStorage(
             StorageParams({
                 registeredTokens: _insertSorted(tokens, IERC20(this)),
                 tokenRateProviders: tokenRateProviders,
                 exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags
             })
         )
-        StablePoolRates(
+        ComposableStablePoolRates(
             RatesParams({
                 tokens: tokens,
                 rateProviders: tokenRateProviders,

@@ -19,11 +19,15 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
-import "./StablePoolStorage.sol";
-import "./StablePoolRates.sol";
+import "./ComposableStablePoolStorage.sol";
+import "./ComposableStablePoolRates.sol";
 import "./StableMath.sol";
 
-abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, ProtocolFeeCache {
+abstract contract ComposableStablePoolProtocolFees is
+    ComposableStablePoolStorage,
+    ComposableStablePoolRates,
+    ProtocolFeeCache
+{
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 
@@ -301,7 +305,7 @@ abstract contract StablePoolProtocolFees is StablePoolStorage, StablePoolRates, 
             // Each parent calls the `super` version, so linearization ensures all implementations are called.
             BasePool,
             BasePoolAuthorization,
-            StablePoolRates
+            ComposableStablePoolRates
         )
         returns (bool)
     {

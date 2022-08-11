@@ -13,7 +13,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { every, range } from 'lodash';
 
-describe('StablePoolStorage', () => {
+describe('ComposableStablePoolStorage', () => {
   let admin: SignerWithAddress;
   let vault: Vault;
 
@@ -29,7 +29,7 @@ describe('StablePoolStorage', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(1);
       await expect(
-        deploy('MockStablePoolStorage', {
+        deploy('MockComposableStablePoolStorage', {
           args: [vault.address, tokens.addresses, tokens.map(() => ZERO_ADDRESS), tokens.map(() => false)],
         })
       ).to.be.revertedWith('MIN_TOKENS');
@@ -56,7 +56,7 @@ describe('StablePoolStorage', () => {
     it('reverts', async () => {
       const tokens = await TokenList.create(6, { sorted: true });
       await expect(
-        deploy('MockStablePoolStorage', {
+        deploy('MockComposableStablePoolStorage', {
           args: [vault.address, tokens.addresses, tokens.map(() => ZERO_ADDRESS), tokens.map(() => false)],
         })
       ).to.be.revertedWith('MAX_TOKENS');
@@ -91,7 +91,7 @@ describe('StablePoolStorage', () => {
         newExemptFromYieldProtocolFeeFlags[i] = newRateProviders[i] !== ZERO_ADDRESS && isExempt;
       }
 
-      pool = await deploy('MockStablePoolStorage', {
+      pool = await deploy('MockComposableStablePoolStorage', {
         args: [vault.address, tokens.addresses, newRateProviders, newExemptFromYieldProtocolFeeFlags],
       });
       bptIndex = (await pool.getBptIndex()).toNumber();
@@ -136,7 +136,7 @@ describe('StablePoolStorage', () => {
           const exemptionFlags = [true, true];
 
           await expect(
-            deploy('MockStablePoolStorage', {
+            deploy('MockComposableStablePoolStorage', {
               args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags],
             })
           ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
@@ -359,7 +359,7 @@ describe('StablePoolStorage', () => {
               }
             }
 
-            exemptionPool = await deploy('MockStablePoolStorage', {
+            exemptionPool = await deploy('MockComposableStablePoolStorage', {
               args: [vault.address, tokens.addresses, rateProviders, exemptionFlags],
             });
           });

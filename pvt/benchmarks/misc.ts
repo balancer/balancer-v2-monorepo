@@ -124,7 +124,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     });
 
     joinUserData = WeightedPoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
-  } else if (poolName == 'StablePhantomPool') {
+  } else if (poolName == 'ComposableStablePool') {
     const amplificationParameter = bn(50);
 
     const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
@@ -171,7 +171,7 @@ export async function getWeightedPool(vault: Vault, tokens: TokenList, size: num
 }
 
 export async function getStablePool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
-  return deployPool(vault, tokens.subset(size, offset), 'StablePhantomPool');
+  return deployPool(vault, tokens.subset(size, offset), 'ComposableStablePool');
 }
 
 export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
@@ -189,14 +189,14 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader, others };
 }
 
-type PoolName = 'WeightedPool' | 'StablePhantomPool' | 'ManagedPool';
+type PoolName = 'WeightedPool' | 'ComposableStablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Vault,
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const fullName = `${poolName == 'StablePhantomPool' ? 'v2-pool-stable-phantom' : 'v2-pool-weighted'}/${poolName}`;
+  const fullName = `${poolName == 'ComposableStablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
   const protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
     args: [vault.address, fp(1), fp(1)],
@@ -207,7 +207,7 @@ async function deployPoolFromFactory(
       args: [vault.address, protocolFeesProvider.address],
     });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
-  } else if (poolName == 'StablePhantomPool') {
+  } else if (poolName == 'ComposableStablePool') {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address, protocolFeesProvider.address] });
   } else {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address] });

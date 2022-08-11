@@ -17,22 +17,26 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
-import "../StablePoolStorage.sol";
+import "../ComposableStablePoolStorage.sol";
 
-contract MockStablePoolStorage is StablePoolStorage {
+contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
     constructor(
         IVault vault,
         IERC20[] memory tokens,
         IRateProvider[] memory tokenRateProviders,
         bool[] memory exemptFromYieldProtocolFeeFlags
     )
-        StablePoolStorage(
-            StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
+        ComposableStablePoolStorage(
+            StorageParams({
+                registeredTokens: _insertSorted(tokens, IERC20(this)),
+                tokenRateProviders: tokenRateProviders,
+                exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags
+            })
         )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
-            "MockStablePoolStorage",
+            "MockComposableStablePoolStorage",
             "MOCK_BPT",
             _insertSorted(tokens, IERC20(this)),
             new address[](tokens.length + 1),

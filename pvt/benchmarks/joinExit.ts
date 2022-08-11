@@ -250,7 +250,7 @@ async function joinAndExitStablePool(getPoolId: () => Promise<string>, transferT
   const poolId: string = await getPoolId();
 
   const { address: poolAddress } = await vault.getPool(poolId);
-  const pool: Contract = await deployedAt('v2-pool-stable-phantom/StablePhantomPool', poolAddress);
+  const pool: Contract = await deployedAt('v2-pool-stable/ComposableStablePool', poolAddress);
 
   const { tokens: allTokens } = await vault.getPoolTokens(poolId);
 
