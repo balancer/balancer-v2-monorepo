@@ -9,7 +9,7 @@ import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
-import { currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { currentTimestamp, advanceTime, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
@@ -23,6 +23,7 @@ describe('ComposableStablePool', () => {
 
   const AMPLIFICATION_PARAMETER = bn(200);
   const PREMINTED_BPT = MAX_UINT112.div(2);
+  const AMP_PRECISION = 1e3;
 
   sharedBeforeEach('setup signers', async () => {
     [, lp, owner, recipient, admin, other] = await ethers.getSigners();
@@ -95,6 +96,15 @@ describe('ComposableStablePool', () => {
       bptIndex = await pool.getBptIndex();
       deployTimestamp = await currentTimestamp();
       initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
+    }
+
+    async function changeAmplification(): Promise<void> {
+      const endAmp = AMPLIFICATION_PARAMETER.mul(2);
+      await pool.startAmpChange(endAmp);
+      await advanceTime(DAY * 2);
+
+      const { value: ampAfter } = await pool.getAmplificationParameter();
+      expect(ampAfter).to.equal(endAmp.mul(AMP_PRECISION));
     }
 
     describe('creation', () => {
@@ -686,9 +696,24 @@ describe('ComposableStablePool', () => {
               // Amounts in should be the same as initial ones
               expect(result.amountsIn).to.deep.equal(amountsIn);
 
-              // Make sure received BPT is closed to what we expect
+              // Make sure received BPT is close to what we expect
               const currentBptBalance = await pool.balanceOf(recipient);
               expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
+            });
+
+            it('updates the invariant afterward', async () => {
+              const minimumBptOut = pct(expectedBptOut, 0.99);
+
+              const preJoinInvariant = await pool.estimateInvariant();
+              await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+              const expectedLastInvariant = await pool.estimateInvariant();
+              expect(expectedLastInvariant).gt(preJoinInvariant);
+
+              await changeAmplification();
+
+              const result = await pool.getLastJoinExitData();
+              expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+              expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
             });
 
             it('can tell how much BPT it will give in return', async () => {
@@ -789,6 +814,22 @@ describe('ComposableStablePool', () => {
               // Make sure received BPT is close to what we expect
               const currentBptBalance = await pool.balanceOf(recipient);
               expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+            });
+
+            it('updates the invariant afterward', async () => {
+              const previousBptBalance = await pool.balanceOf(recipient);
+              const bptOut = pct(previousBptBalance, 0.2);
+
+              const preJoinInvariant = await pool.estimateInvariant();
+              await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+              const expectedLastInvariant = await pool.estimateInvariant();
+              expect(expectedLastInvariant).gt(preJoinInvariant);
+
+              await changeAmplification();
+
+              const result = await pool.getLastJoinExitData();
+              expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+              expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
             });
 
             it('can tell how many tokens it will receive', async () => {
@@ -913,6 +954,22 @@ describe('ComposableStablePool', () => {
             expect(previousBptBalance.sub(bptIn)).to.equal(bptAfter);
           });
 
+          it('updates the invariant afterward', async () => {
+            const previousBptBalance = await pool.balanceOf(lp);
+            const bptIn = pct(previousBptBalance, 0.2);
+
+            const preJoinInvariant = await pool.estimateInvariant();
+            await pool.singleExitGivenIn({ from: lp, bptIn, token });
+            const expectedLastInvariant = await pool.estimateInvariant();
+            expect(expectedLastInvariant).lt(preJoinInvariant);
+
+            await changeAmplification();
+
+            const result = await pool.getLastJoinExitData();
+            expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+            expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
+          });
+
           it('can tell how many tokens it will give in return', async () => {
             const bptIn = pct(await pool.balanceOf(lp), 0.2);
             const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
@@ -988,6 +1045,23 @@ describe('ComposableStablePool', () => {
             await expect(pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn })).to.be.revertedWith(
               'BPT_IN_MAX_AMOUNT'
             );
+          });
+
+          it('updates the invariant afterward', async () => {
+            const amountsOut = initialBalances.map((balance) => bn(balance).div(3));
+            const expectedBptIn = previousBptBalance.div(3);
+            const maximumBptIn = pct(expectedBptIn, 1.01);
+
+            const preJoinInvariant = await pool.estimateInvariant();
+            await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
+            const expectedLastInvariant = await pool.estimateInvariant();
+            expect(expectedLastInvariant).lt(preJoinInvariant);
+
+            await changeAmplification();
+
+            const result = await pool.getLastJoinExitData();
+            expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+            expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
           });
 
           it('can tell how much BPT it will have to receive', async () => {
