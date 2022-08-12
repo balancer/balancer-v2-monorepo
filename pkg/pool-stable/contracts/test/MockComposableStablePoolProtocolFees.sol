@@ -59,28 +59,15 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function payProtocolFeesBeforeJoinExit(uint256[] memory balancesWithBpt)
+    function payProtocolFeesBeforeJoinExit(uint256[] memory registeredBalances)
         external
         returns (uint256 virtualSupply, uint256[] memory balances)
     {
-        return _payProtocolFeesBeforeJoinExit(balancesWithBpt);
+        return _payProtocolFeesBeforeJoinExit(registeredBalances);
     }
 
-    function updateInvariantAfterJoinExit(
-        uint256 currentAmp,
-        uint256[] memory balancesWithoutBpt,
-        uint256 preJoinExitInvariant,
-        uint256 preJoinExitSupply,
-        uint256 postJoinExitSupply
-    ) external {
-        return
-            _updateInvariantAfterJoinExit(
-                currentAmp,
-                balancesWithoutBpt,
-                preJoinExitInvariant,
-                preJoinExitSupply,
-                postJoinExitSupply
-            );
+    function updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balances) external {
+        return _updateInvariantAfterJoinExit(currentAmp, balances);
     }
 
     function updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) external {
