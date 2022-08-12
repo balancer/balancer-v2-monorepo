@@ -288,6 +288,14 @@ describe('ComposableStablePool', () => {
           await pool.init({ initialBalances });
         });
 
+        it('sets the last invariant', async () => {
+          const initialInvariant = await pool.estimateInvariant();
+          const result = await pool.getLastJoinExitData();
+
+          expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+          expect(result.lastPostJoinExitInvariant).to.equalWithError(initialInvariant, 0.000001);
+        });
+
         it('reverts', async () => {
           await expect(pool.init({ initialBalances })).to.be.revertedWith('UNHANDLED_JOIN_KIND');
         });
