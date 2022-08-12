@@ -92,6 +92,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Swap, join and exit simulations (queries)               | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
 | Protocol fee percentages provider                       | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220729-aave-rebalanced-linear-pool`](./tasks/20220729-aave-rebalanced-linear-pool)               |
+| Child Chain Gauge Reward Helper                         | [`20220812-child-chain-reward-helper`](./tasks/20220812-child-chain-reward-helper)                   |
 
 ## Scripts
 
