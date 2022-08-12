@@ -103,6 +103,11 @@ export type ExitQueryResult = {
   amountsOut: BigNumber[];
 };
 
+export type LastJoinExitData = {
+  lastJoinExitAmplification: BigNumber;
+  lastPostJoinExitInvariant: BigNumber;
+};
+
 export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
 
 export type RawStablePoolDeployment = {
