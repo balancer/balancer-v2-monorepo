@@ -713,7 +713,7 @@ describe('ComposableStablePool', () => {
 
               const result = await pool.getLastJoinExitData();
               expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-              expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
+              expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
             });
 
             it('can tell how much BPT it will give in return', async () => {
@@ -829,7 +829,7 @@ describe('ComposableStablePool', () => {
 
               const result = await pool.getLastJoinExitData();
               expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-              expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
+              expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
             });
 
             it('can tell how many tokens it will receive', async () => {
@@ -967,7 +967,7 @@ describe('ComposableStablePool', () => {
 
             const result = await pool.getLastJoinExitData();
             expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-            expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
+            expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
           });
 
           it('can tell how many tokens it will give in return', async () => {
@@ -1061,7 +1061,7 @@ describe('ComposableStablePool', () => {
 
             const result = await pool.getLastJoinExitData();
             expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-            expect(result.lastPostJoinExitInvariant).to.equal(expectedLastInvariant);
+            expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
           });
 
           it('can tell how much BPT it will have to receive', async () => {
