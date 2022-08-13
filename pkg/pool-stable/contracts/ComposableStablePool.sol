@@ -319,7 +319,7 @@ contract ComposableStablePool is
         uint256 preJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
         // These calls mutate `balances` so that it holds the post join-exit balances.
-        uint256 amountCalculated = registeredIndexOut == getBptIndex()
+        (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut == getBptIndex()
             ? _doJoinSwap(
                 isGivenIn,
                 swapRequest.amount,
@@ -339,7 +339,13 @@ contract ComposableStablePool is
                 preJoinExitInvariant
             );
 
-        _updateInvariantAfterJoinExit(currentAmp, balances);
+        _updateInvariantAfterJoinExit(
+            currentAmp,
+            balances,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
 
         return
             isGivenIn
@@ -359,7 +365,7 @@ contract ComposableStablePool is
         uint256 currentAmp,
         uint256 virtualSupply,
         uint256 preJoinExitInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         return
             isGivenIn
                 ? _joinSwapExactTokenInForBptOut(
@@ -392,7 +398,7 @@ contract ComposableStablePool is
         uint256 currentAmp,
         uint256 virtualSupply,
         uint256 preJoinExitInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         // The StableMath function was created with joins in mind, so it expects a full amounts array. We create an
         // empty one and only set the amount for the token involved.
         uint256[] memory amountsIn = new uint256[](balances.length);
@@ -408,8 +414,9 @@ contract ComposableStablePool is
         );
 
         balances[indexIn] = balances[indexIn].add(amountIn);
+        uint256 postJoinExitSupply = virtualSupply.add(bptOut);
 
-        return bptOut;
+        return (bptOut, postJoinExitSupply);
     }
 
     /**
@@ -424,7 +431,7 @@ contract ComposableStablePool is
         uint256 currentAmp,
         uint256 virtualSupply,
         uint256 preJoinExitInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         uint256 amountIn = StableMath._calcTokenInGivenExactBptOut(
             currentAmp,
             balances,
@@ -436,8 +443,9 @@ contract ComposableStablePool is
         );
 
         balances[indexIn] = balances[indexIn].add(amountIn);
+        uint256 postJoinExitSupply = virtualSupply.add(bptOut);
 
-        return amountIn;
+        return (amountIn, postJoinExitSupply);
     }
 
     /**
@@ -452,7 +460,7 @@ contract ComposableStablePool is
         uint256 currentAmp,
         uint256 virtualSupply,
         uint256 preJoinExitInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         return
             isGivenIn
                 ? _exitSwapExactBptInForTokenOut(
@@ -485,7 +493,7 @@ contract ComposableStablePool is
         uint256 currentAmp,
         uint256 virtualSupply,
         uint256 preJoinExitInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
             currentAmp,
             balances,
@@ -497,8 +505,9 @@ contract ComposableStablePool is
         );
 
         balances[indexOut] = balances[indexOut].sub(amountOut);
+        uint256 postJoinExitSupply = virtualSupply.sub(bptAmount);
 
-        return amountOut;
+        return (amountOut, postJoinExitSupply);
     }
 
     /**
@@ -513,7 +522,7 @@ contract ComposableStablePool is
         uint256 currentAmp,
         uint256 virtualSupply,
         uint256 preJoinExitInvariant
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         // The StableMath function was created with exits in mind, so it expects a full amounts array. We create an
         // empty one and only set the amount for the token involved.
         uint256[] memory amountsOut = new uint256[](balances.length);
@@ -529,8 +538,9 @@ contract ComposableStablePool is
         );
 
         balances[indexOut] = balances[indexOut].sub(amountOut);
+        uint256 postJoinExitSupply = virtualSupply.sub(bptAmount);
 
-        return bptAmount;
+        return (bptAmount, postJoinExitSupply);
     }
 
     // Join Hooks
@@ -649,11 +659,19 @@ contract ComposableStablePool is
 
         // Unlike joinswaps, explicit joins do not mutate balances into the post join-exit balances so we must perform
         // this mutation here.
-        _mutateAmounts(balances, amountsDelta, isJoin ? FixedPoint.add : FixedPoint.sub);
+        function(uint256, uint256) internal pure returns (uint256) _addOrSub = isJoin ? FixedPoint.add : FixedPoint.sub;
+        _mutateAmounts(balances, amountsDelta, _addOrSub);
+        uint256 postJoinExitSupply = _addOrSub(preJoinExitSupply, bptAmount);
 
         // Pass in the post-join balances to reset the protocol fee basis.
         // We are minting bptAmount, increasing the total (and virtual) supply post-join
-        _updateInvariantAfterJoinExit(currentAmp, balances);
+        _updateInvariantAfterJoinExit(
+            currentAmp,
+            balances,
+            preJoinExitInvariant,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
 
         // For clarity and simplicity, arrays used and computed in lower level functions do not include BPT.
         // But the amountsIn array passed back to the Vault must include BPT, so we add it back in here.

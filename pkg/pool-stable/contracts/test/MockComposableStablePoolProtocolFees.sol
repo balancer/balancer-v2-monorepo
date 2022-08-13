@@ -66,8 +66,21 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         return _payProtocolFeesBeforeJoinExit(registeredBalances);
     }
 
-    function updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balances) external {
-        return _updateInvariantAfterJoinExit(currentAmp, balances);
+    function updateInvariantAfterJoinExit(
+        uint256 currentAmp,
+        uint256[] memory balances,
+        uint256 preJoinExitInvariant,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) external {
+        return
+            _updateInvariantAfterJoinExit(
+                currentAmp,
+                balances,
+                preJoinExitInvariant,
+                preJoinExitSupply,
+                postJoinExitSupply
+            );
     }
 
     function updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) external {

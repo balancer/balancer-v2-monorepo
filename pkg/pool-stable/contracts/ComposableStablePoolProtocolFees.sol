@@ -216,8 +216,53 @@ abstract contract ComposableStablePoolProtocolFees is
      * @dev Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
      * Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
      */
-    function _updateInvariantAfterJoinExit(uint256 currentAmp, uint256[] memory balances) internal {
+    function _updateInvariantAfterJoinExit(
+        uint256 currentAmp,
+        uint256[] memory balances,
+        uint256 preJoinExitInvariant,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) internal {
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
+
+        // Compute the growth ratio between the pre- and post-join/exit balances.
+        // Note that the pre-join/exit invariant is *not* the invariant from the last join,
+        // but computed from the balances before this particular join/exit.
+
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+
+        if (protocolSwapFeePercentage > 0) {
+            uint256 invariantGrowthRatio = (
+                postJoinExitInvariant > preJoinExitInvariant
+                    ? postJoinExitInvariant.sub(preJoinExitInvariant)
+                    : preJoinExitInvariant.sub(postJoinExitInvariant)
+            )
+                .divDown(preJoinExitInvariant);
+
+            // Compute the bpt ratio
+            uint256 bptGrowthRatio = (
+                postJoinExitSupply > preJoinExitInvariant
+                    ? postJoinExitSupply.sub(preJoinExitSupply)
+                    : preJoinExitSupply.sub(postJoinExitSupply)
+            )
+                .divDown(preJoinExitSupply);
+
+            // The difference between the invariant growth and bpt increase rates must be due to the
+            // balance change from this join/exit.
+            // Protocol fees due = (invariant growth / bpt increase - 1) * virtual supply * protocol fee %
+            // For instance, if the invariant growth is 1.05, and the bpt increase is 1.0475, with 1000 supply,
+            // and a protocol fee of 50%, we would mint (1.05/1.0475 - 1) * 1000 * 0.5 = 1.193 BPT.
+
+            if (invariantGrowthRatio > bptGrowthRatio) {
+                uint256 protocolFeeAmount = invariantGrowthRatio
+                    .divDown(bptGrowthRatio)
+                    .sub(FixedPoint.ONE)
+                    .mulDown(preJoinExitSupply)
+                    .mulDown(protocolSwapFeePercentage);
+
+                _payProtocolFees(protocolFeeAmount);
+            }
+        }
 
         _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }
