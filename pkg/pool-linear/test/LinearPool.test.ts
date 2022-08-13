@@ -17,7 +17,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 import * as math from './math';
 import Decimal from 'decimal.js';
 
-describe.only('LinearPool', function () {
+describe('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let trader: SignerWithAddress,
     lp: SignerWithAddress,
