@@ -902,6 +902,7 @@ describe('LinearPool', function () {
         it('can partially exit', async () => {
           const amountIn = fp(100);
 
+          // Join from main
           await pool.swapGivenIn({
             in: pool.mainIndex,
             out: pool.bptIndex,
@@ -911,6 +912,7 @@ describe('LinearPool', function () {
             recipient: lp,
           });
 
+          // Join again from wrapped
           await pool.swapGivenIn({
             in: pool.wrappedIndex,
             out: pool.bptIndex,
@@ -924,8 +926,8 @@ describe('LinearPool', function () {
           const previousVirtualSupply = await pool.getVirtualSupply();
           const previousBptBalance = await pool.balanceOf(lp);
 
-          //Exit with 1/4 of BPT balance
-          const bptIn = (await pool.balanceOf(lp)).div(4);
+          // Exit with 1/4 of BPT balance. This should result in a withdrawal of 1/4 of non-BPT balances.
+          const bptIn = previousBptBalance.div(4);
 
           const result = await pool.recoveryModeExit({
             from: lp,
@@ -935,14 +937,13 @@ describe('LinearPool', function () {
           });
 
           const expectedAmountsOut = currentBalances.map((b, i) => (i == pool.bptIndex ? bn(0) : b.div(4)));
-          expect(result.amountsOut).to.deep.equal(expectedAmountsOut);
+          expect(result.amountsOut).to.almostEqual(expectedAmountsOut);
 
           const currentBptBalance = await pool.balanceOf(lp);
-          expect(previousBptBalance.sub(currentBptBalance)).to.be.equalWithError(bptIn, 0.0001);
+          expect(previousBptBalance.sub(currentBptBalance)).to.be.equal(bptIn);
 
-          // Current virtual supply
           const currentVirtualSupply = await pool.getVirtualSupply();
-          expect(currentVirtualSupply).to.be.equalWithError(previousVirtualSupply.sub(bptIn), 0.0001);
+          expect(currentVirtualSupply).to.be.equal(previousVirtualSupply.sub(bptIn));
         });
       });
     });
