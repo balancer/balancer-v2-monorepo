@@ -17,7 +17,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 import * as math from './math';
 import Decimal from 'decimal.js';
 
-describe('LinearPool', function () {
+describe.only('LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let trader: SignerWithAddress,
     lp: SignerWithAddress,
@@ -677,6 +677,8 @@ describe('LinearPool', function () {
       lowerTarget = fp(0);
       upperTarget = fp(2000);
       await deployPool({ mainToken, wrappedToken, upperTarget }, true);
+      await pool.instance.setTotalSupply(MAX_UINT112);
+
       currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
       params = {
@@ -695,7 +697,7 @@ describe('LinearPool', function () {
         bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
       });
 
-      it.skip('calculate bpt out', async () => {
+      it('calculate bpt out', async () => {
         const result = await pool.swapGivenIn({
           in: pool.mainIndex,
           out: pool.bptIndex,
@@ -742,7 +744,7 @@ describe('LinearPool', function () {
         amount = fp(50);
       });
 
-      it.skip('calculate wrapped in', async () => {
+      it('calculate wrapped in', async () => {
         const result = await pool.swapGivenOut({
           in: pool.wrappedIndex,
           out: pool.mainIndex,
@@ -785,7 +787,7 @@ describe('LinearPool', function () {
         bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
       });
 
-      it.skip('calculate wrapped out', async () => {
+      it('calculate wrapped out', async () => {
         const result = await pool.swapGivenIn({
           in: pool.bptIndex,
           out: pool.wrappedIndex,
