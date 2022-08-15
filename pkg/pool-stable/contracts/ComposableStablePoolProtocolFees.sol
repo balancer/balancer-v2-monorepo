@@ -232,15 +232,21 @@ abstract contract ComposableStablePoolProtocolFees is
         // but computed from the balances before this particular join/exit.
 
         // `_payProtocolFeesBeforeJoinExit` paid protocol fees accumulated between the previous and current
-        // join or exit. This code pays any protocol fees due on a `current` joinSwap or exitSwap.
+        // join or exit, while this code pays any protocol fees due on the current join or exit.
         // The amp and rates are constant during a single transaction, so it doesn't matter if there
         // is an ongoing amp change, and we can ignore yield.
 
         // This represents the total value exchanged in this particular join-exit, including swap fees.
+        //
+        // Note that the "growth" is actually negative in the case of exits: both the supply and invariant
+        // decrease. Since swap fees are symmetrical, it is numerically equivalent (and conceptually simpler)
+        // to just invert the sign in the exit case, and use the same "growth" terminology and calculations
+        // for both.
+        //
         uint256 invariantGrowth = (
             postJoinExitInvariant > preJoinExitInvariant
-                ? postJoinExitInvariant.sub(preJoinExitInvariant)
-                : preJoinExitInvariant.sub(postJoinExitInvariant)
+                ? postJoinExitInvariant - preJoinExitInvariant
+                : preJoinExitInvariant - postJoinExitInvariant
         )
             .divDown(preJoinExitInvariant);
 
@@ -251,10 +257,13 @@ abstract contract ComposableStablePoolProtocolFees is
         // In a proportional join or exit, the taxable amount will be 0, so the BPT growth would
         // equal the total growth. Otherwise, the BPT would be minted based on fewer tokens, and
         // the BPT growth will be less than the total.
+        //
+        // As we do above with the invariant, since joins and exits are symmetrical, "growth" means the
+        // amount of increase (joins) or decrease (exits).
         uint256 bptGrowth = (
             postJoinExitSupply > preJoinExitSupply
-                ? postJoinExitSupply.sub(preJoinExitSupply)
-                : preJoinExitSupply.sub(postJoinExitSupply)
+                ? postJoinExitSupply - preJoinExitSupply
+                : preJoinExitSupply - postJoinExitSupply
         )
             .divDown(preJoinExitSupply);
 
@@ -264,7 +273,7 @@ abstract contract ComposableStablePoolProtocolFees is
         if (invariantGrowth > bptGrowth) {
             // Since the growth values are already normalized, multiply by the protocol swap fee to convert
             // to a percentage owned to the protocol.
-            uint256 protocolSwapFeePercentage = invariantGrowth.sub(bptGrowth).mulDown(
+            uint256 protocolSwapFeePercentage = (invariantGrowth - bptGrowth).mulDown(
                 getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
             );
 
