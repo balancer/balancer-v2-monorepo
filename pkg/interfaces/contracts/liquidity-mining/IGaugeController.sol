@@ -26,7 +26,7 @@ import "./IVotingEscrow.sol";
 interface IGaugeController {
     function checkpoint_gauge(address gauge) external;
 
-    function gauge_relative_weight(address gauge, uint256 time) external returns (uint256);
+    function gauge_relative_weight(address gauge, uint256 time) external view returns (uint256);
 
     function voting_escrow() external view returns (IVotingEscrow);
 

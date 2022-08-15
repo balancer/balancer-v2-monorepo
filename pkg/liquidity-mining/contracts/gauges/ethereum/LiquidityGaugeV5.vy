@@ -97,6 +97,7 @@ MINTER: immutable(address)
 VOTING_ESCROW: immutable(address)
 VEBOOST_PROXY: immutable(address)
 
+ABSOLUTE_MAX_RELATIVE_WEIGHT: constant(uint256) = 10 ** 18
 
 # ERC20
 balanceOf: public(HashMap[address, uint256])
@@ -153,6 +154,7 @@ period_timestamp: public(uint256[100000000000000000000000000000])
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
 integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump epoch when rate() changes
 
+max_relative_weight: public(uint256)
 
 @external
 def __init__(minter: address, veBoostProxy: address, authorizerAdaptor: address):
@@ -171,6 +173,7 @@ def __init__(minter: address, veBoostProxy: address, authorizerAdaptor: address)
     VEBOOST_PROXY = veBoostProxy
     # prevent initialization of implementation
     self.lp_token = 0x000000000000000000000000000000000000dEaD
+    self.max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT
 
 
 # Internal Functions
@@ -186,6 +189,14 @@ def _get_allowance(owner: address, spender: address) -> uint256:
     if (spender == BAL_VAULT):
         return MAX_UINT256
     return self._allowance[owner][spender]
+
+@internal
+@view
+def _get_capped_relative_weight(period: uint256) -> uint256:
+    """
+    @dev Returns the gauge's relative weight, capped to its max_relative_weight attribute.
+    """
+    return min(Controller(GAUGE_CONTROLLER).gauge_relative_weight(self, period), self.max_relative_weight)
 
 @internal
 def _checkpoint(addr: address):
@@ -221,7 +232,7 @@ def _checkpoint(addr: address):
 
         for i in range(500):
             dt: uint256 = week_time - prev_week_time
-            w: uint256 = Controller(GAUGE_CONTROLLER).gauge_relative_weight(self, prev_week_time / WEEK * WEEK)
+            w: uint256 = self._get_capped_relative_weight(prev_week_time / WEEK * WEEK)
 
             if _working_supply > 0:
                 if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time:
@@ -853,3 +864,46 @@ def initialize(_lp_token: address):
 
     self.period_timestamp[0] = block.timestamp
     self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + TokenAdmin(BAL_TOKEN_ADMIN).rate()
+
+@internal
+@view
+def _get_current_period() -> uint256:
+    """
+    @dev Returns current time rounded down to the week's start.
+    """
+    return (block.timestamp / WEEK) - 1
+
+@external
+def set_max_relative_weight(max_relative_weight: uint256):
+    """
+    @notice Sets a new maximum relative weight for the gauge.
+            The value shall be normalized to 1e18, and not greater than ABSOLUTE_MAX_RELATIVE_WEIGHT.
+    @param max_relative_weight New maximum relative weight.
+    """
+    assert max_relative_weight <= ABSOLUTE_MAX_RELATIVE_WEIGHT
+    self.max_relative_weight = max_relative_weight
+
+@external
+@view
+def get_capped_relative_weight(time: uint256) -> uint256:
+    """
+    @notice Returns the gauge's relative weight for a given time, capped to its max_relative_weight attribute.
+    @param time Timestamp in the past or present.
+    """
+    return self._get_capped_relative_weight(time)
+
+@external
+@view
+def get_current_capped_relative_weight() -> uint256:
+    """
+    @notice Returns the gauge's relative weight for the current week, capped to its max_relative_weight attribute.
+    """
+    return self._get_capped_relative_weight(self._get_current_period())
+
+@external
+@pure
+def get_absolute_max_relative_weight() -> uint256:
+    """
+    @notice Returns the absolute maximum value that can be set to max_relative_weight attribute.
+    """
+    return ABSOLUTE_MAX_RELATIVE_WEIGHT

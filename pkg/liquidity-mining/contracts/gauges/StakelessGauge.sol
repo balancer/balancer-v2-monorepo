@@ -23,6 +23,8 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
+    uint256 public constant ABSOLUTE_MAX_RELATIVE_WEIGHT = 1e18;
+
     IERC20 internal immutable _balToken;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
@@ -32,6 +34,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
     event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions);
 
     // solhint-disable var-name-mixedcase
+    uint256 public max_relative_weight;
     uint256 private immutable _RATE_REDUCTION_TIME;
     uint256 private immutable _RATE_REDUCTION_COEFFICIENT;
     uint256 private immutable _RATE_DENOMINATOR;
@@ -62,6 +65,8 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         // Prevent initialisation of implementation contract
         // Choice of `type(uint256).max` prevents implementation from being checkpointed
         _period = type(uint256).max;
+
+        max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -95,7 +100,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
 
                 uint256 periodTime = i * 1 weeks;
                 uint256 periodEmission = 0;
-                uint256 gaugeWeight = _gaugeController.gauge_relative_weight(address(this), periodTime);
+                uint256 gaugeWeight = _get_capped_relative_weight(periodTime);
 
                 if (nextEpochTime >= periodTime && nextEpochTime < periodTime + 1 weeks) {
                     // If the period crosses an epoch, we calculate a reduction in the rate
@@ -172,5 +177,51 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
     function unkillGauge() external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _isKilled = false;
+    }
+
+    // TODO: this should be a permissioned call.
+    /**
+     * @notice Sets a new maximum relative weight for the gauge.
+     * The value shall be normalized to 1e18, and not greater than ABSOLUTE_MAX_RELATIVE_WEIGHT.
+     * @param maxRelativeWeight New maximum relative weight.
+     */
+    function set_max_relative_weight(uint256 maxRelativeWeight) external override {
+        require(
+            maxRelativeWeight <= ABSOLUTE_MAX_RELATIVE_WEIGHT,
+            "The new max relative weight exceeds ABSOLUTE_MAX_RELATIVE_WEIGHT"
+        );
+        max_relative_weight = maxRelativeWeight;
+    }
+
+    /**
+     * @notice Returns the gauge's relative weight for a given time, capped to its max_relative_weight attribute.
+     * @param time Timestamp in the past or present.
+     */
+    function get_capped_relative_weight(uint256 time) external view override returns (uint256) {
+        return _get_capped_relative_weight(time);
+    }
+
+    function _get_capped_relative_weight(uint256 time) internal view returns (uint256) {
+        return _min(_gaugeController.gauge_relative_weight(address(this), time), max_relative_weight);
+    }
+
+    /**
+     * @notice Returns the gauge's relative weight for the current week, capped to its max_relative_weight attribute.
+     */
+    function get_current_capped_relative_weight() external view override returns (uint256) {
+        return _get_capped_relative_weight(_currentPeriod());
+    }
+
+    /**
+     * @notice Returns the absolute maximum value that can be set to max_relative_weight attribute.
+     * Calling this method is equivalent to reading the public constant; the method is present just to be consistent
+     * with the Vyper gauge counterpart.
+     */
+    function get_absolute_max_relative_weight() external pure override returns (uint256) {
+        return ABSOLUTE_MAX_RELATIVE_WEIGHT;
+    }
+
+    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a <= b ? a : b;
     }
 }

@@ -28,4 +28,12 @@ interface ILiquidityGauge {
     function killGauge() external;
 
     function unkillGauge() external;
+
+    function set_max_relative_weight(uint256 maxRelativeWeight) external;
+
+    function get_capped_relative_weight(uint256 time) external view returns (uint256);
+
+    function get_current_capped_relative_weight() external view returns (uint256);
+
+    function get_absolute_max_relative_weight() external pure returns (uint256);
 }
