@@ -12,6 +12,7 @@ import {
   BigNumberish,
   bn,
   bnSum,
+  fromFp,
   fp,
   FP_SCALING_FACTOR,
 } from '@balancer-labs/v2-helpers/src/numbers';
@@ -22,7 +23,11 @@ import { DAY } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { every, random, range } from 'lodash';
-import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import {
+  calcBptInGivenExactTokensOut,
+  calcBptOutGivenExactTokensIn,
+  calculateInvariant,
+} from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -267,8 +272,9 @@ describe('ComposableStablePoolProtocolFees', () => {
       });
     });
 
-    describe('protocol fees before join/exit', () => {
+    describe('protocol fees on join/exit', () => {
       // We want relatively large values to make the fees much larger than rounding error
+      const SWAP_FEE_PERCENTAGE = fp(0.1);
       const SWAP_PROTOCOL_FEE_PERCENTAGE = fp(0.5);
       const YIELD_PROTOCOL_FEE_PERCENTAGE = fp(0.3);
 
@@ -594,6 +600,228 @@ describe('ComposableStablePoolProtocolFees', () => {
             it('returns the balances sans BPT', async () => {
               const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(currentBalancesWithBpt);
               expect(balances).to.deep.equal(currentBalances);
+            });
+          }
+        }
+      });
+
+      describe('payProtocolFeesAfterJoinExit', () => {
+        enum Operation {
+          JOIN,
+          EXIT,
+        }
+
+        const baseAmount = 10000;
+
+        context('when the protocol swap fee percentage is zero', () => {
+          itPaysProtocolFeesOnJoinExitSwaps(bn(0));
+        });
+
+        context('when the protocol swap fee percentage is non-zero', () => {
+          itPaysProtocolFeesOnJoinExitSwaps(SWAP_PROTOCOL_FEE_PERCENTAGE);
+        });
+
+        function itPaysProtocolFeesOnJoinExitSwaps(swapFee: BigNumber) {
+          function setProtocolFee(swapFee: BigNumberish) {
+            sharedBeforeEach('set protocol fees', async () => {
+              await feesProvider.connect(admin).setFeeTypePercentage(ProtocolFee.SWAP, swapFee);
+
+              await pool.updateProtocolFeePercentageCache();
+            });
+          }
+
+          setProtocolFee(swapFee);
+
+          let currentBalances: BigNumber[];
+          let preJoinExitInvariant: BigNumber;
+          let preJoinExitSupply: BigNumber;
+          let postJoinExitSupply: BigNumber;
+          let sumNonProportional = 0;
+          let totalAmounts = 0;
+
+          context('on proportional join', () => {
+            prepareProportionalJoinOrExit(Operation.JOIN);
+
+            itDoesNotPayAnyProtocolFees();
+          });
+
+          context('on proportional exit', () => {
+            prepareProportionalJoinOrExit(Operation.EXIT);
+
+            itDoesNotPayAnyProtocolFees();
+          });
+
+          context('on non-proportional join', () => {
+            prepareNonProportionalJoinOrExit(Operation.JOIN);
+
+            if (swapFee.eq(0)) {
+              itDoesNotPayAnyProtocolFees();
+            } else {
+              itPaysTheExpectedProtocolFees();
+            }
+          });
+
+          context('on non-proportional exit', () => {
+            prepareNonProportionalJoinOrExit(Operation.EXIT);
+
+            if (swapFee.eq(0)) {
+              itDoesNotPayAnyProtocolFees();
+            } else {
+              itPaysTheExpectedProtocolFees();
+            }
+          });
+
+          function prepareProportionalJoinOrExit(op: Operation) {
+            sharedBeforeEach(async () => {
+              const sum = fromFp(preBalances.reduce((a, b) => a.add(b), bn(0)));
+              const weights = preBalances.map((b) => fromFp(b).div(sum));
+
+              // Generate amounts for a proportional join/exit
+              const amounts = weights.map((w) => fp(baseAmount * Number(w)));
+
+              currentBalances = preBalances.map((b, i) =>
+                op == Operation.JOIN ? b.add(amounts[i]) : b.sub(amounts[i])
+              );
+
+              preJoinExitInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
+              preJoinExitSupply = PREMINTED_BPT;
+
+              if (op == Operation.JOIN) {
+                const bptOut = calcBptOutGivenExactTokensIn(
+                  preBalances,
+                  AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION),
+                  amounts,
+                  preJoinExitSupply,
+                  preJoinExitInvariant,
+                  SWAP_FEE_PERCENTAGE
+                );
+                postJoinExitSupply = preJoinExitSupply.add(bptOut);
+              } else {
+                const bptIn = calcBptInGivenExactTokensOut(
+                  preBalances,
+                  AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION),
+                  amounts,
+                  preJoinExitSupply,
+                  preJoinExitInvariant,
+                  SWAP_FEE_PERCENTAGE
+                );
+                postJoinExitSupply = preJoinExitSupply.sub(bptIn);
+              }
+            });
+          }
+
+          function prepareNonProportionalJoinOrExit(op: Operation) {
+            sharedBeforeEach(async () => {
+              const sum = fromFp(preBalances.reduce((a, b) => a.add(b), bn(0)));
+              const weights = preBalances.map((b) => fromFp(b).div(sum));
+
+              // Generate random amounts
+
+              const amounts: number[] = [];
+
+              for (let i = 0; i < preBalances.length; i++) {
+                amounts[i] = baseAmount * Math.random();
+                const proportionalAmount = baseAmount * Number(weights[i]);
+                sumNonProportional += Math.abs(proportionalAmount - amounts[i]);
+                totalAmounts += amounts[i];
+              }
+
+              currentBalances = preBalances.map((b, i) =>
+                op == Operation.JOIN ? b.add(fp(amounts[i])) : b.sub(fp(amounts[i]))
+              );
+
+              preJoinExitInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
+              preJoinExitSupply = PREMINTED_BPT;
+
+              if (op == Operation.JOIN) {
+                const bptOut = calcBptOutGivenExactTokensIn(
+                  preBalances,
+                  AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION),
+                  amounts.map((a) => fp(a)),
+                  preJoinExitSupply,
+                  preJoinExitInvariant,
+                  SWAP_FEE_PERCENTAGE
+                );
+                postJoinExitSupply = preJoinExitSupply.add(bptOut);
+              } else {
+                const bptIn = calcBptInGivenExactTokensOut(
+                  preBalances,
+                  AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION),
+                  amounts.map((a) => fp(a)),
+                  preJoinExitSupply,
+                  preJoinExitInvariant,
+                  SWAP_FEE_PERCENTAGE
+                );
+                postJoinExitSupply = preJoinExitSupply.sub(bptIn);
+              }
+            });
+          }
+
+          function itDoesNotPayAnyProtocolFees() {
+            it('mints no (or negligible) BPT', async () => {
+              const virtualSupplyBefore = await pool.getVirtualSupply();
+
+              await pool.updateInvariantAfterJoinExit(
+                AMPLIFICATION_FACTOR,
+                currentBalances,
+                preJoinExitInvariant,
+                preJoinExitSupply,
+                postJoinExitSupply
+              );
+
+              const virtualSupplyAfter = await pool.getVirtualSupply();
+
+              expect(virtualSupplyAfter).to.be.almostEqual(virtualSupplyBefore, FEE_RELATIVE_ERROR);
+            });
+          }
+
+          function itPaysTheExpectedProtocolFees() {
+            let expectedBptAmount: BigNumber;
+
+            sharedBeforeEach(async () => {
+              const expectedProtocolShare = bn(sumNonProportional)
+                .mul(SWAP_FEE_PERCENTAGE)
+                .mul(swapFee)
+                .div(fp(1))
+                .div(bn(totalAmounts));
+
+              // protocol ownership = to mint / (supply + to mint)
+              // to mint = supply * protocol ownership / (1 - protocol ownership)
+              expectedBptAmount = preVirtualSupply.mul(expectedProtocolShare).div(fp(1).sub(expectedProtocolShare));
+            });
+
+            it.skip('mints BPT to the protocol fee collector', async () => {
+              const tx = await pool.updateInvariantAfterJoinExit(
+                AMPLIFICATION_FACTOR,
+                currentBalances,
+                preJoinExitInvariant,
+                preJoinExitSupply,
+                postJoinExitSupply
+              );
+              const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
+                from: ZERO_ADDRESS,
+                to: feesCollector.address,
+              });
+              expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
+            });
+
+            it.skip('mints the expected amount of BPT', async () => {
+              const virtualSupplyBefore = await pool.getVirtualSupply();
+
+              await pool.updateInvariantAfterJoinExit(
+                AMPLIFICATION_FACTOR,
+                currentBalances,
+                preJoinExitInvariant,
+                preJoinExitSupply,
+                postJoinExitSupply
+              );
+
+              const virtualSupplyAfter = await pool.getVirtualSupply();
+
+              expect(virtualSupplyAfter).to.be.almostEqual(
+                virtualSupplyBefore.add(expectedBptAmount),
+                FEE_RELATIVE_ERROR
+              );
             });
           }
         }
