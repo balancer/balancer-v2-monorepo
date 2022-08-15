@@ -215,6 +215,8 @@ abstract contract ComposableStablePoolProtocolFees is
     /**
      * @dev Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
      * Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
+     *
+     * Pay protocol fees due on any current join or exit swap.
      */
     function _updateInvariantAfterJoinExit(
         uint256 currentAmp,
@@ -229,44 +231,59 @@ abstract contract ComposableStablePoolProtocolFees is
         // Note that the pre-join/exit invariant is *not* the invariant from the last join,
         // but computed from the balances before this particular join/exit.
 
-        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+        // `_payProtocolFeesBeforeJoinExit` paid protocol fees accumulated between the previous and current
+        // join or exit. This code pays any protocol fees due on a `current` joinSwap or exitSwap.
+        // The amp and rates are constant during a single transaction, so it doesn't matter if there
+        // is an ongoing amp change, and we can ignore yield.
 
-        if (protocolSwapFeePercentage > 0) {
-            uint256 invariantGrowthRatio = (
-                postJoinExitInvariant > preJoinExitInvariant
-                    ? postJoinExitInvariant.sub(preJoinExitInvariant)
-                    : preJoinExitInvariant.sub(postJoinExitInvariant)
-            )
-                .divDown(preJoinExitInvariant);
+        // This represents the total value exchanged in this particular join-exit, including swap fees.
+        uint256 invariantGrowth = (
+            postJoinExitInvariant > preJoinExitInvariant
+                ? postJoinExitInvariant.sub(preJoinExitInvariant)
+                : preJoinExitInvariant.sub(postJoinExitInvariant)
+        )
+            .divDown(preJoinExitInvariant);
 
-            // Compute the bpt ratio
-            uint256 bptGrowthRatio = (
-                postJoinExitSupply > preJoinExitInvariant
-                    ? postJoinExitSupply.sub(preJoinExitSupply)
-                    : preJoinExitSupply.sub(postJoinExitSupply)
-            )
-                .divDown(preJoinExitSupply);
+        // The BPT increase represents the value exchanged for the user's tokens in the join or exit.
+        // The more unbalanced the join or exit, the greater the "taxable" amount subject to swap fees,
+        // and the lower the BPT amount in or out.
+        //
+        // In a proportional join or exit, the taxable amount will be 0, so the BPT growth would
+        // equal the total growth. Otherwise, the BPT would be minted based on fewer tokens, and
+        // the BPT growth will be less than the total.
+        uint256 bptGrowth = (
+            postJoinExitSupply > preJoinExitSupply
+                ? postJoinExitSupply.sub(preJoinExitSupply)
+                : preJoinExitSupply.sub(postJoinExitSupply)
+        )
+            .divDown(preJoinExitSupply);
 
-            // The difference between the invariant growth and bpt increase rates must be due to the
-            // balance change from this join/exit.
-            // Protocol fees due = (invariant growth / bpt increase - 1) * virtual supply * protocol fee %
-            // For instance, if the invariant growth is 1.05, and the bpt increase is 1.0475, with 1000 supply,
-            // and a protocol fee of 50%, we would mint (1.05/1.0475 - 1) * 1000 * 0.5 = 1.193 BPT.
+        // Therefore, the difference between the invariant growth and bpt increase rates represents the amount
+        // that was charged swap fees, on which protocol fees are also due.
 
-            if (invariantGrowthRatio > bptGrowthRatio) {
-                uint256 protocolFeeAmount = invariantGrowthRatio
-                    .divDown(bptGrowthRatio)
-                    .sub(FixedPoint.ONE)
-                    .mulDown(preJoinExitSupply)
-                    .mulDown(protocolSwapFeePercentage);
+        if (invariantGrowth > bptGrowth) {
+            // Since the growth values are already normalized, multiply by the protocol swap fee to convert
+            // to a percentage owned to the protocol.
+            uint256 protocolSwapFeePercentage = invariantGrowth.sub(bptGrowth).mulDown(
+                getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+            );
 
-                _payProtocolFees(protocolFeeAmount);
-            }
+            // Since this will be minted as BPT, which increases the total supply, we need to mint
+            // slightly more so that it reflects this percentage of the total supply after minting.
+            uint256 protocolFeeAmount = preJoinExitSupply.mulDown(protocolSwapFeePercentage).divDown(
+                protocolSwapFeePercentage.complement()
+            );
+
+            _payProtocolFees(protocolFeeAmount);
         }
 
         _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }
 
+    /**
+     * @dev Update the stored values of the amp and final post-join/exit invariant, to reset the basis for protocol
+     * swap fees. Also copy the current rates to the old rates, to establish the new protocol yield fee basis.
+     */
     function _updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) internal {
         _lastJoinExitData =
             WordCodec.encodeUint(currentAmp, _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET, _LAST_JOIN_EXIT_AMPLIFICATION_SIZE) |
@@ -279,6 +296,9 @@ abstract contract ComposableStablePoolProtocolFees is
         _updateOldRates();
     }
 
+    /**
+     * @notice Return the amplification factor and invariant as of the most recent join or exit (including BPT swaps)
+     */
     function getLastJoinExitData()
         public
         view
