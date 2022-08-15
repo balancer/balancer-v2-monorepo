@@ -26,6 +26,7 @@ import { every, random, range } from 'lodash';
 import {
   calcBptInGivenExactTokensOut,
   calcBptOutGivenExactTokensIn,
+  calcTaxableAmount,
   calculateInvariant,
 } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
@@ -636,8 +637,7 @@ describe('ComposableStablePoolProtocolFees', () => {
           let preJoinExitInvariant: BigNumber;
           let preJoinExitSupply: BigNumber;
           let postJoinExitSupply: BigNumber;
-          let sumNonProportional = 0;
-          let totalAmounts = 0;
+          let sumNonProportional: BigNumber = bn(0);
 
           context('on proportional join', () => {
             prepareProportionalJoinOrExit(Operation.JOIN);
@@ -712,18 +712,10 @@ describe('ComposableStablePoolProtocolFees', () => {
 
           function prepareNonProportionalJoinOrExit(op: Operation) {
             sharedBeforeEach(async () => {
-              const sum = fromFp(preBalances.reduce((a, b) => a.add(b), bn(0)));
-              const weights = preBalances.map((b) => fromFp(b).div(sum));
-
               // Generate random amounts
-
               const amounts: number[] = [];
-
               for (let i = 0; i < preBalances.length; i++) {
                 amounts[i] = baseAmount * Math.random();
-                const proportionalAmount = baseAmount * Number(weights[i]);
-                sumNonProportional += Math.abs(proportionalAmount - amounts[i]);
-                totalAmounts += amounts[i];
               }
 
               currentBalances = preBalances.map((b, i) =>
@@ -733,11 +725,14 @@ describe('ComposableStablePoolProtocolFees', () => {
               preJoinExitInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
               preJoinExitSupply = PREMINTED_BPT;
 
+              const fpAmounts: BigNumber[] = amounts.map((a) => fp(a));
+              sumNonProportional = calcTaxableAmount(preBalances, fpAmounts);
+
               if (op == Operation.JOIN) {
                 const bptOut = calcBptOutGivenExactTokensIn(
                   preBalances,
                   AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION),
-                  amounts.map((a) => fp(a)),
+                  fpAmounts,
                   preJoinExitSupply,
                   preJoinExitInvariant,
                   SWAP_FEE_PERCENTAGE
@@ -747,7 +742,7 @@ describe('ComposableStablePoolProtocolFees', () => {
                 const bptIn = calcBptInGivenExactTokensOut(
                   preBalances,
                   AMPLIFICATION_FACTOR.div(AMPLIFICATION_PRECISION),
-                  amounts.map((a) => fp(a)),
+                  fpAmounts,
                   preJoinExitSupply,
                   preJoinExitInvariant,
                   SWAP_FEE_PERCENTAGE
@@ -779,15 +774,7 @@ describe('ComposableStablePoolProtocolFees', () => {
             let expectedBptAmount: BigNumber;
 
             sharedBeforeEach(async () => {
-              const expectedProtocolShare = bn(sumNonProportional)
-                .mul(SWAP_FEE_PERCENTAGE)
-                .mul(swapFee)
-                .div(fp(1))
-                .div(bn(totalAmounts));
-
-              // protocol ownership = to mint / (supply + to mint)
-              // to mint = supply * protocol ownership / (1 - protocol ownership)
-              expectedBptAmount = preVirtualSupply.mul(expectedProtocolShare).div(fp(1).sub(expectedProtocolShare));
+              expectedBptAmount = sumNonProportional.div(fp(1)).mul(SWAP_FEE_PERCENTAGE).mul(swapFee).div(fp(1));
             });
 
             it.skip('mints BPT to the protocol fee collector', async () => {
@@ -805,7 +792,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
             });
 
-            it.skip('mints the expected amount of BPT', async () => {
+            it('mints the expected amount of BPT', async () => {
               const virtualSupplyBefore = await pool.getVirtualSupply();
 
               await pool.updateInvariantAfterJoinExit(
