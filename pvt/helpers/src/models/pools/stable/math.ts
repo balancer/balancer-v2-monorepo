@@ -127,10 +127,7 @@ export function calcInGivenOut(
   return toFp(finalBalanceIn.sub(balances[tokenIndexIn]));
 }
 
-export function calcTaxableAmount(
-  fpBalances: BigNumberish[],
-  fpAmountsIn: BigNumberish[],
-): BigNumber {
+export function calcTaxableAmount(fpBalances: BigNumberish[], fpAmountsIn: BigNumberish[]): BigNumber {
   const balances = fpBalances.map(fromFp);
   const amountsIn = fpAmountsIn.map(fromFp);
 
