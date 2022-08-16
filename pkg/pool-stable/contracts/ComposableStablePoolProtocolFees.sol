@@ -307,7 +307,6 @@ abstract contract ComposableStablePoolProtocolFees is
         _updateOldRates();
     }
 
-
     /**
      * @dev Adjust a protocol fee percentage calculated before minting, to the equivalent value after minting.
      */
