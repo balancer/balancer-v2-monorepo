@@ -486,6 +486,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
             userData
         );
 
+        // By default the pool will pay out an amount of BPT equivalent to that which the user burns.
+        // We zero this amount out as otherwise a single user could drain the pool.
         amountsOut[getBptIndex()] = 0;
 
         return (bptAmountIn, amountsOut);
