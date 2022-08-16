@@ -645,10 +645,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     /**
-     * @dev Returns the number of tokens in circulation.
+     * @notice Returns the number of tokens in circulation.
      *
-     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
-     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     * @dev In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
+     * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
+     * mode exit function, the totalSupply can change as BPT are burned.
      */
     function getVirtualSupply() external view returns (uint256) {
         // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
