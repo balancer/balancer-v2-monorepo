@@ -241,18 +241,49 @@ abstract contract ComposableStablePoolProtocolFees is
         // Guard against rounding errors by ensuring the deltas are always >= 0.
         bool isJoin = postJoinExitSupply > preJoinExitSupply;
 
-        uint256 invariantDelta = (
+        uint256 invariantGrowthRatio = (
             isJoin
                 ? (postJoinExitInvariant > preJoinExitInvariant ? postJoinExitInvariant - preJoinExitInvariant : 0)
                 : (preJoinExitInvariant > postJoinExitInvariant ? preJoinExitInvariant - postJoinExitInvariant : 0)
-        );
+        )
+            .divDown(preJoinExitInvariant);
 
-        uint256 bptDelta = isJoin ? (postJoinExitSupply - preJoinExitSupply) : (preJoinExitSupply - postJoinExitSupply);
-        uint256 supplyGrowthRatio = bptDelta.divDown(preJoinExitSupply);
+        uint256 supplyGrowthRatio = (
+            isJoin ? (postJoinExitSupply - preJoinExitSupply) : (preJoinExitSupply - postJoinExitSupply)
+        )
+            .divDown(preJoinExitSupply);
 
-        if (supplyGrowthRatio != 0 && invariantDelta != 0) {
+        // |-------------------------|-- postJoinExitInvariant
+        // | increase from fees      |
+        // |-------------------------|-- original invariant * supply growth ratio (fee-less invariant)
+        // |                         |
+        // | increase from balances  |
+        // |-------------------------|-- preJoinExitInvariant
+        // |                         |
+        // |                         |  |------------------|-- postJoinExitSupply
+        // |                         |  |    BPT minted    |
+        // |                         |  |------------------|-- preJoinExitSupply
+        // |    original invariant   |  |  original supply |
+        // |_________________________|  |__________________|
+
+        // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
+        // both increase.
+        //
+        // If the join is proportional, the invariant and supply will likewise increase proportionally,
+        // so the growth ratios (delta / original) will be equal. In this case, we do not charge any protocol fees.
+        //
+        // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
+        // since the BPT minted will be based on fewer tokens (reduced by the swap fees). So the supply growth
+        // is due entirely to the balance changes, while the invariant growth also includes swap fees.
+        //
+        // To isolate the amount of increase by fees then, we multiply the original invariant by the supply growth
+        // ratio to get the "feeless invariant". The difference between the final invariant and this value is then
+        // the portion of the invariant due to fees, which we convert to a percentage by normalizing against the
+        // final invariant.
+        //
+        if (invariantGrowthRatio > supplyGrowthRatio) {
             // Compute the portion of the invariant increase due to fees
-            uint256 invariantDeltaFromFees = invariantDelta.mulDown(supplyGrowthRatio);
+            uint256 invariantDeltaFromFees = postJoinExitInvariant.sub(preJoinExitInvariant.mulDown(supplyGrowthRatio));
 
             // To convert to a percentage of pool ownership, multiply by the rate,
             // then normalize against the final invariant

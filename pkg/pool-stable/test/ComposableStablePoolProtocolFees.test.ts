@@ -606,7 +606,7 @@ describe('ComposableStablePoolProtocolFees', () => {
         }
       });
 
-      describe('payProtocolFeesAfterJoinExit', () => {
+      describe.skip('payProtocolFeesAfterJoinExit', () => {
         enum Operation {
           JOIN,
           EXIT,
@@ -777,7 +777,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               expectedBptAmount = sumNonProportional.div(fp(1)).mul(SWAP_FEE_PERCENTAGE).mul(swapFee).div(fp(1));
             });
 
-            it.skip('mints BPT to the protocol fee collector', async () => {
+            it('mints BPT to the protocol fee collector', async () => {
               const tx = await pool.updateInvariantAfterJoinExit(
                 AMPLIFICATION_FACTOR,
                 currentBalances,
