@@ -633,9 +633,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     function _isMainBalanceWithinTargets(uint256 lowerTarget, uint256 upperTarget) private view returns (bool) {
-        bytes32 poolId = getPoolId();
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
-        uint256 mainTokenBalance = _upscale(balances[_mainIndex], _scalingFactor(_mainToken));
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), _mainToken);
+
+        uint256 mainTokenBalance = _upscale(cash + managed, _scalingFactor(_mainToken));
 
         return mainTokenBalance >= lowerTarget && mainTokenBalance <= upperTarget;
     }
