@@ -62,11 +62,11 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     // and equal to _INITIAL_BPT_SUPPLY, but most of it remains in the Pool, waiting to be exchanged for tokens. The
     // actual amount of BPT in circulation is the total supply minus the amount held by the Pool, and is known as the
     // 'virtual supply'.
-    // The total supply can only change if the emergency pause is activated by governance, enabling an
-    // alternative proportional exit that burns BPT. As this is not expected to happen, we optimize for
-    // success by using _INITIAL_BPT_SUPPLY instead of totalSupply(), saving a storage read. This optimization is only
-    // valid if the Pool is never paused: in case of an emergency that leads to burned tokens, the Pool should not
-    // be used after the buffer period expires and it automatically 'unpauses'.
+    // The total supply can only change if recovery mode is enabled and recovery mode exits are processed, resulting in
+    // BPT being burnt. This BPT can never be minted again, so it is technically possible for the preminted supply to
+    // run out, but a) this process is controlled by Governance via enabling and disabling recovery mode, and b) the
+    // initial supply is so large that it'd take a huge number of interactions to acquire sufficient tokens to join the
+    // Pool and then burn the acquired BPT, resulting in large gas costs.
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     IERC20 private immutable _mainToken;
@@ -245,7 +245,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
+    ) external override onlyVault(request.poolId) returns (uint256) {
         _beforeSwapJoinExit();
 
         // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
