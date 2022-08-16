@@ -231,9 +231,8 @@ abstract contract ComposableStablePoolProtocolFees is
         // The amp and rates are constant during a single transaction, so it doesn't matter if there
         // is an ongoing amp change, and we can ignore yield.
 
-        // This represents the total value exchanged in this particular join-exit, including swap fees.
-        // Guard against rounding errors by ensuring the deltas are always >= 0.
-        uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
+        // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
+        // both increase.
 
         // |-------------------------|-- postJoinExitInvariant
         // | increase from fees      |
@@ -247,12 +246,10 @@ abstract contract ComposableStablePoolProtocolFees is
         // |                         |  |------------------|-- preJoinExitSupply
         // |    original invariant   |  |  original supply |
         // |_________________________|  |__________________|
-
-        // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
-        // both increase.
         //
         // If the join is proportional, the invariant and supply will likewise increase proportionally,
-        // so the growth ratios (current / original) will be equal. In this case, we do not charge any protocol fees.
+        // so the growth ratios (postJoinExit / preJoinExit) will be equal. In this case, we do not charge
+        // any protocol fees.
         //
         // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
         // since the BPT minted will be based on fewer tokens (because swap fees are not included). So the supply growth
@@ -261,9 +258,10 @@ abstract contract ComposableStablePoolProtocolFees is
         // To isolate the amount of increase by fees then, we multiply the original invariant by the supply growth
         // ratio to get the "feeless invariant". The difference between the final invariant and this value is then
         // the amount of the invariant due to fees, which we convert to a percentage by normalizing against the
-        // final invariant.
+        // final (postJoinExit) invariant.
         //
         // Compute the portion of the invariant increase due to fees
+        uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
         uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
 
         if (postJoinExitInvariant > feelessInvariant) {
