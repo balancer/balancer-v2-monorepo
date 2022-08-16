@@ -247,10 +247,7 @@ abstract contract ComposableStablePoolProtocolFees is
                 : (preJoinExitInvariant > postJoinExitInvariant ? preJoinExitInvariant - postJoinExitInvariant : 0)
         );
 
-        uint256 bptDelta = isJoin
-            ? (postJoinExitSupply > preJoinExitSupply ? postJoinExitSupply - preJoinExitSupply : 0)
-            : (preJoinExitSupply > postJoinExitSupply ? preJoinExitSupply - postJoinExitSupply : 0);
-
+        uint256 bptDelta = isJoin ? (postJoinExitSupply - preJoinExitSupply) : (preJoinExitSupply - postJoinExitSupply);
         uint256 supplyGrowthRatio = bptDelta.divDown(preJoinExitSupply);
 
         if (supplyGrowthRatio != 0 && invariantDelta != 0) {
