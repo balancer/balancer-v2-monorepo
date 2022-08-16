@@ -265,7 +265,7 @@ abstract contract ComposableStablePoolProtocolFees is
 
             // Since this will be minted as BPT, which increases the total supply, we need to mint
             // slightly more so that it reflects this percentage of the total supply after minting.
-            uint256 protocolFeeAmount = preJoinExitSupply.mulDown(protocolOwnershipPercentage).divDown(
+            uint256 protocolFeeAmount = postJoinExitSupply.mulDown(protocolOwnershipPercentage).divDown(
                 protocolOwnershipPercentage.complement()
             );
 
