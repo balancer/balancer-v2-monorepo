@@ -52,12 +52,11 @@ describe('ProtocolFeeSplitter', function () {
     await tokens.approve({ from: liquidityProvider, to: vault });
   });
 
-  sharedBeforeEach('deploy tokens, pool & gives initial liquditiy', async () => {
+  sharedBeforeEach('deploy tokens, pools & gives initial liquditiy', async () => {
     factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address] });
     assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     pool = await createPool(poolOwner.address);
     poolNoOwner = await createPool(ZERO_ADDRESS);
-
     poolDelegatedOwner = await createPool(DELEGATE_OWNER);
     poolId = await pool.getPoolId();
     poolNoOwnerId = await poolNoOwner.getPoolId();
@@ -146,14 +145,31 @@ describe('ProtocolFeeSplitter', function () {
       await expect(protocolFeeSplitter.collectFees(poolId)).to.be.revertedWith('BAL#701');
     });
 
-    it('distributes collected BPT fees to owner and treasury', async () => {
+    it('distributes collected BPT fees to owner and treasury (fee percentage not defined)', async () => {
       // transfer BPT tokens to feesCollector
       const bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
       await pool.connect(liquidityProvider).transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
 
       await protocolFeeSplitter.collectFees(poolId);
 
-      // 10% of bptBalanceOfLiquidityProvider should go to owner (default value)
+      const poolOwnerBalance = await pool.balanceOf(poolOwner.address);
+      const treasuryBalance = await pool.balanceOf(treasury.address);
+
+      // pool owner should get 0, and treasurye everything if fee is not defined
+      expectEqualWithError(poolOwnerBalance, 0);
+      expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+    });
+
+    it('distributes collected BPT fees to owner and treasury with (fee percentage defined)', async () => {
+      // set fee for a pool
+      await protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, bn(10e16)); // 10%
+      // transfer BPT tokens to feesCollector
+      const bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
+      await pool.connect(liquidityProvider).transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
+
+      await protocolFeeSplitter.collectFees(poolId);
+
+      // 10% of bptBalanceOfLiquidityProvider should go to owner
       const poolOwnerExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(10e16)).div(bn(1e18));
       // 90% goes to treasury
       const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(90e16)).div(bn(1e18));

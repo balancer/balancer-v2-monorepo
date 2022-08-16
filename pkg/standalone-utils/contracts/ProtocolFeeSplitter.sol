@@ -22,25 +22,27 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IProtocolFeesCollector.sol";
 
-// TODO: this interface is stupid
 interface Pool {
     function getOwner() external returns (address);
 }
 
 /**
- * @dev TODO: this
+ * @dev This contract is responsible for splitting the BPT profits collected
+ * by ProtocolFeeCollector between the pool's owner and Balancers DAO treasury
+ * Nothing happens for non-BPT tokens (WETH, WBTC, etc...)
  */
 contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     using Math for uint256;
 
+    // All fee percentages are 18-decimal fixed point numbers.
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
     uint256 private constant _MAX_REVENUE_SHARING_FEE_PERCENTAGE = 50e16; // 50%
-    uint256 private constant _DEFAULT_REVENUE_SHARE = 10e16; // 10%
+    address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
 
     IProtocolFeesCollector public immutable protocolFeesCollector;
 
-    // TODO: pull form somewhere else? constant? immutable?
-    address public treasury;
+    // Balancer DAO Multisig
+    address public immutable treasury;
 
     // Allows for a pool revenue override
     mapping(bytes32 => uint256) public revenueSharePerPool;
@@ -74,41 +76,32 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
             _revert(Errors.NO_BPT_FEES_COLLECTED);
         }
 
-        // withdrawCollectedFees requires array of tokens, and we are only transfering one token
+        // withdrawCollectedFees requires array of tokens, and we are only transfering BPT token
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = bpt;
 
-        address treasuryMemory = treasury;
         address poolOwner = Pool(pool).getOwner();
 
-        // If the pool has no owner/delegated owner transfer everything to tresury
-        if (poolOwner == address(0) || poolOwner == 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B) {
+        if (poolOwner == address(0) || poolOwner == _DELEGATE_OWNER) {
             uint256[] memory amounts = new uint256[](1);
             amounts[0] = feeCollectorBptBalance;
-            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasuryMemory);
-            emit FeesCollected(poolId, poolOwner, 0, treasuryMemory, feeCollectorBptBalance);
+            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasury);
+            emit FeesCollected(poolId, poolOwner, 0, treasury, feeCollectorBptBalance);
         } else {
-            // TODO: check what is cheaper gas-wise
-            // transfer to this contract with protocolFeesCollector.withdrawCollectedFees
-            // and then transfer to owner , treasury
-            // or call 2x protocolFeesCollector.withdrawCollectedFees (current version)
-
-            // TODO: what if the owner is a smart contract and can't handle erc20 tokens
-            // withdrawCollectedFees reverts?
-            // funds remain in feeCollector and manual work is required to transfer them to treasury?
-
+            uint256[] memory amounts = new uint256[](1);
             (uint256 ownerAmount, uint256 treasuryAmount) = _calculateAmounts(poolId, feeCollectorBptBalance);
 
-            uint256[] memory amounts = new uint256[](1);
-            amounts[0] = ownerAmount;
+            // owner doesn't get the tokens always
+            if (ownerAmount > 0) {
+                // mutate array, and set the owner amount for owner withdrawal
+                amounts[0] = ownerAmount;
+                protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, poolOwner);
+            }
 
-            // withdraw to owner
-            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, poolOwner);
-            // update amount to treasuryAmount
+            // mutate array, and set the treasury amount for treasury withdrawal
             amounts[0] = treasuryAmount;
-            // withdraw to treasury
-            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasuryMemory);
-            emit FeesCollected(poolId, poolOwner, ownerAmount, treasuryMemory, treasuryAmount);
+            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasury);
+            emit FeesCollected(poolId, poolOwner, ownerAmount, treasury, treasuryAmount);
         }
     }
 
@@ -119,9 +112,12 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     {
         // Check if that pool has an override
         uint256 revenueShareOverride = revenueSharePerPool[poolId];
-        uint256 swapFeePercentage = revenueShareOverride > 0 ? revenueShareOverride : _DEFAULT_REVENUE_SHARE;
-        ownerAmount = Math.divDown(Math.mul(feeCollectorBptBalance, swapFeePercentage), 1e18);
-        treasuryAmount = feeCollectorBptBalance.sub(ownerAmount);
+        if (revenueShareOverride > 0) {
+            ownerAmount = Math.divDown(Math.mul(feeCollectorBptBalance, revenueShareOverride), 1e18);
+            treasuryAmount = feeCollectorBptBalance.sub(ownerAmount);
+        } else {
+            treasuryAmount = feeCollectorBptBalance;
+        }
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
