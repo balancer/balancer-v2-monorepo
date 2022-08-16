@@ -233,12 +233,7 @@ abstract contract ComposableStablePoolProtocolFees is
 
         // This represents the total value exchanged in this particular join-exit, including swap fees.
         // Guard against rounding errors by ensuring the deltas are always >= 0.
-        bool isJoin = postJoinExitSupply > preJoinExitSupply;
-
-        uint256 supplyGrowthRatio = (
-            isJoin ? (postJoinExitSupply - preJoinExitSupply) : (preJoinExitSupply - postJoinExitSupply)
-        )
-            .divDown(preJoinExitSupply);
+        uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
 
         // |-------------------------|-- postJoinExitInvariant
         // | increase from fees      |
