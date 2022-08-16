@@ -163,7 +163,8 @@ abstract contract ComposableStablePoolProtocolFees is
         );
 
         // These percentages can then be simply added to compute the total protocol Pool ownership percentage.
-        return protocolSwapFeePercentage.add(protocolYieldPercentage);
+        // This is naturally bounded above by FixedPoint.ONE so this addition cannot overflow.
+        return protocolSwapFeePercentage + protocolYieldPercentage;
     }
 
     function _getGrowthInvariants(uint256[] memory balances, uint256 lastJoinExitAmp)
