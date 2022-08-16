@@ -272,7 +272,7 @@ abstract contract ComposableStablePoolProtocolFees is
         uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
 
         if (postJoinExitInvariant > feelessInvariant) {
-            uint256 invariantDeltaFromFees = postJoinExitInvariant.sub(feelessInvariant);
+            uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
 
             // To convert to a percentage of pool ownership, multiply by the rate,
             // then normalize against the final invariant
@@ -307,20 +307,23 @@ abstract contract ComposableStablePoolProtocolFees is
         _updateOldRates();
     }
 
+
     /**
-     * @dev Since this fee amount will be minted as BPT, which increases the total supply, we need to mint
-     * slightly more so that it reflects this percentage of the total supply after minting.
-     *
-     * The percentage of the Pool the protocol will own after minting is given by:
-     * `protocol percentage = to mint / (current supply + to mint)`.
-     * Solving for `to mint`, we arrive at:
-     * `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
+     * @dev Adjust a protocol fee percentage calculated before minting, to the equivalent value after minting.
      */
     function _calculateAdjustedProtocolFeeAmount(uint256 supply, uint256 basePercentage)
         internal
         pure
         returns (uint256)
     {
+        // Since this fee amount will be minted as BPT, which increases the total supply, we need to mint
+        // slightly more so that it reflects this percentage of the total supply after minting.
+        //
+        // The percentage of the Pool the protocol will own after minting is given by:
+        // `protocol percentage = to mint / (current supply + to mint)`.
+        // Solving for `to mint`, we arrive at:
+        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
+        //
         return supply.mulDown(basePercentage).divDown(basePercentage.complement());
     }
 
