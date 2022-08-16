@@ -63,7 +63,12 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         external
         returns (uint256 virtualSupply, uint256[] memory balances)
     {
-        return _payProtocolFeesBeforeJoinExit(balancesWithBpt);
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+        (virtualSupply, balances, ) = _payProtocolFeesBeforeJoinExit(
+            balancesWithBpt,
+            lastJoinExitAmp,
+            lastPostJoinExitInvariant
+        );
     }
 
     function updateInvariantAfterJoinExit(
@@ -104,7 +109,13 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
     }
 
     function getProtocolPoolOwnershipPercentage(uint256[] memory balances) external view returns (uint256) {
-        return _getProtocolPoolOwnershipPercentage(balances);
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+        (uint256 percentage, ) = _getProtocolPoolOwnershipPercentage(
+            balances,
+            lastJoinExitAmp,
+            lastPostJoinExitInvariant
+        );
+        return percentage;
     }
 
     // Stubbed functions
