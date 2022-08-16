@@ -305,6 +305,13 @@ contract ComposableStablePool is
         uint256 registeredIndexOut,
         uint256[] memory scalingFactors
     ) private returns (uint256) {
+        (
+            uint256 preJoinExitSupply,
+            uint256[] memory balances,
+            uint256 currentAmp,
+            uint256 preJoinExitInvariant
+        ) = _beforeJoinExit(registeredBalances);
+
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
         _upscaleArray(registeredBalances, scalingFactors);
@@ -312,29 +319,6 @@ contract ComposableStablePool is
             swapRequest.amount,
             scalingFactors[isGivenIn ? registeredIndexIn : registeredIndexOut]
         );
-
-        uint256[] memory balances;
-        uint256 currentAmp;
-        uint256 preJoinExitSupply;
-        uint256 preJoinExitInvariant;
-        {
-            // New scope to avoid stack-too-deep errors.
-            uint256 oldAmpInvariant;
-
-            (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
-            (preJoinExitSupply, balances, oldAmpInvariant) = _payProtocolFeesBeforeJoinExit(
-                registeredBalances,
-                lastJoinExitAmp,
-                lastPostJoinExitInvariant
-            );
-            (currentAmp, ) = _getAmplificationParameter();
-
-            // If the amplification factor is the same as it was during the last join/exit then we can reuse the
-            // value calculated using the "old" amplification factor. If not, then we have to calculate this now.
-            preJoinExitInvariant = currentAmp != lastJoinExitAmp
-                ? StableMath._calculateInvariant(currentAmp, balances)
-                : oldAmpInvariant;
-        }
 
         // These calls mutate `balances` so that it holds the post join-exit balances.
         (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut == getBptIndex()
@@ -654,30 +638,12 @@ contract ComposableStablePool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal returns (uint256, uint256[] memory) {
-        uint256[] memory balances;
-        uint256 currentAmp;
-        uint256 preJoinExitSupply;
-        uint256 preJoinExitInvariant;
-        {
-            // New scope to avoid stack-too-deep errors.
-            uint256 oldAmpInvariant;
-
-            (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
-            (preJoinExitSupply, balances, oldAmpInvariant) = _payProtocolFeesBeforeJoinExit(
-                registeredBalances,
-                lastJoinExitAmp,
-                lastPostJoinExitInvariant
-            );
-            (currentAmp, ) = _getAmplificationParameter();
-
-            // If the amplification factor is undergoing an update then we need to calculate the invariant using the
-            // current amplification factor. However if it's not updating then we can reuse the invariant calculated
-            // using the "old"
-            // If the amplification factor isn't updating then we can reuse the value calculated previously.
-            preJoinExitInvariant = currentAmp != lastJoinExitAmp
-                ? StableMath._calculateInvariant(currentAmp, balances)
-                : oldAmpInvariant;
-        }
+        (
+            uint256 preJoinExitSupply,
+            uint256[] memory balances,
+            uint256 currentAmp,
+            uint256 preJoinExitInvariant
+        ) = _beforeJoinExit(registeredBalances);
 
 
             function(uint256[] memory, uint256, uint256, uint256, uint256[] memory, bytes memory)
@@ -714,6 +680,35 @@ contract ComposableStablePool is
         // For clarity and simplicity, arrays used and computed in lower level functions do not include BPT.
         // But the amountsIn array passed back to the Vault must include BPT, so we add it back in here.
         return (bptAmount, _addBptItem(amountsDelta, 0));
+    }
+
+    /**
+     * @dev Pay any due protocol fees and calculate values necessary for performing the join/exit.
+     */
+    function _beforeJoinExit(uint256[] memory registeredBalances)
+        private
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256,
+            uint256
+        )
+    {
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+        (
+            uint256 preJoinExitSupply,
+            uint256[] memory balances,
+            uint256 oldAmpInvariant
+        ) = _payProtocolFeesBeforeJoinExit(registeredBalances, lastJoinExitAmp, lastPostJoinExitInvariant);
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        // If the amplification factor is the same as it was during the last join/exit then we can reuse the
+        // value calculated using the "old" amplification factor. If not, then we have to calculate this now.
+        uint256 preJoinExitInvariant = currentAmp != lastJoinExitAmp
+            ? StableMath._calculateInvariant(currentAmp, balances)
+            : oldAmpInvariant;
+
+        return (preJoinExitSupply, balances, currentAmp, preJoinExitInvariant);
     }
 
     /**
