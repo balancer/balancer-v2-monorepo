@@ -226,6 +226,7 @@ abstract contract ComposableStablePoolProtocolFees is
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal {
+        bool isJoin = postJoinExitSupply > preJoinExitSupply;
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
         // Compute the growth ratio between the pre- and post-join/exit balances.
@@ -245,9 +246,9 @@ abstract contract ComposableStablePoolProtocolFees is
         // for both.
         //
         uint256 invariantGrowth = (
-            postJoinExitInvariant > preJoinExitInvariant
-                ? postJoinExitInvariant - preJoinExitInvariant
-                : preJoinExitInvariant - postJoinExitInvariant
+            isJoin
+                ? (postJoinExitInvariant > preJoinExitInvariant ? postJoinExitInvariant - preJoinExitInvariant : 0)
+                : (preJoinExitInvariant > postJoinExitInvariant ? preJoinExitInvariant - postJoinExitInvariant : 0)
         )
             .divDown(preJoinExitInvariant);
 
@@ -262,9 +263,9 @@ abstract contract ComposableStablePoolProtocolFees is
         // As we do above with the invariant, since joins and exits are symmetrical, "growth" means the
         // amount of increase (joins) or decrease (exits).
         uint256 bptGrowth = (
-            postJoinExitSupply > preJoinExitSupply
-                ? postJoinExitSupply - preJoinExitSupply
-                : preJoinExitSupply - postJoinExitSupply
+            isJoin
+                ? (postJoinExitSupply > preJoinExitSupply ? postJoinExitSupply - preJoinExitSupply : 0)
+                : (preJoinExitSupply > postJoinExitSupply ? preJoinExitSupply - postJoinExitSupply : 0)
         )
             .divDown(preJoinExitSupply);
 
