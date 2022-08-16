@@ -651,14 +651,19 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
      * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
      */
     function getVirtualSupply() external view returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        // We technically don't need to upscale the BPT balance as its scaling factor is equal to one (since BPT has
-        // 18 decimals), but we do it for completeness.
-        uint256 bptBalance = _upscale(balances[_bptIndex], _scalingFactor(this));
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
 
-        return _getVirtualSupply(bptBalance);
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
     }
 
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
     }
