@@ -262,11 +262,7 @@ abstract contract ComposableStablePoolProtocolFees is
         //
         // As we do above with the invariant, since joins and exits are symmetrical, "growth" means the
         // amount of increase (joins) or decrease (exits).
-        uint256 bptGrowth = (
-            isJoin
-                ? (postJoinExitSupply > preJoinExitSupply ? postJoinExitSupply - preJoinExitSupply : 0)
-                : (preJoinExitSupply > postJoinExitSupply ? preJoinExitSupply - postJoinExitSupply : 0)
-        )
+        uint256 bptGrowth = (isJoin ? postJoinExitSupply - preJoinExitSupply : preJoinExitSupply - postJoinExitSupply)
             .divDown(preJoinExitSupply);
 
         // Therefore, the difference between the invariant growth and bpt increase rates represents the amount
