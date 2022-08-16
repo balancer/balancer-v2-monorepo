@@ -226,7 +226,6 @@ abstract contract ComposableStablePoolProtocolFees is
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal {
-        bool isJoin = postJoinExitSupply > preJoinExitSupply;
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
         // Compute the growth ratio between the pre- and post-join/exit balances.
@@ -239,46 +238,35 @@ abstract contract ComposableStablePoolProtocolFees is
         // is an ongoing amp change, and we can ignore yield.
 
         // This represents the total value exchanged in this particular join-exit, including swap fees.
-        //
-        // Note that the "growth" is actually negative in the case of exits: both the supply and invariant
-        // decrease. Since swap fees are symmetrical, it is numerically equivalent (and conceptually simpler)
-        // to just invert the sign in the exit case, and use the same "growth" terminology and calculations
-        // for both.
-        //
-        uint256 invariantGrowth = (
+        // Guard against rounding errors by ensuring the deltas are always >= 0.
+        bool isJoin = postJoinExitSupply > preJoinExitSupply;
+
+        uint256 invariantDelta = (
             isJoin
                 ? (postJoinExitInvariant > preJoinExitInvariant ? postJoinExitInvariant - preJoinExitInvariant : 0)
                 : (preJoinExitInvariant > postJoinExitInvariant ? preJoinExitInvariant - postJoinExitInvariant : 0)
-        )
-            .divDown(preJoinExitInvariant);
+        );
 
-        // The BPT increase represents the value exchanged for the user's tokens in the join or exit.
-        // The more unbalanced the join or exit, the greater the "taxable" amount subject to swap fees,
-        // and the lower the BPT amount in or out.
-        //
-        // In a proportional join or exit, the taxable amount will be 0, so the BPT growth would
-        // equal the total growth. Otherwise, the BPT would be minted based on fewer tokens, and
-        // the BPT growth will be less than the total.
-        //
-        // As we do above with the invariant, since joins and exits are symmetrical, "growth" means the
-        // amount of increase (joins) or decrease (exits).
-        uint256 bptGrowth = (isJoin ? postJoinExitSupply - preJoinExitSupply : preJoinExitSupply - postJoinExitSupply)
-            .divDown(preJoinExitSupply);
+        uint256 bptDelta = isJoin
+            ? (postJoinExitSupply > preJoinExitSupply ? postJoinExitSupply - preJoinExitSupply : 0)
+            : (preJoinExitSupply > postJoinExitSupply ? preJoinExitSupply - postJoinExitSupply : 0);
 
-        // Therefore, the difference between the invariant growth and bpt increase rates represents the amount
-        // that was charged swap fees, on which protocol fees are also due.
+        uint256 supplyGrowthRatio = bptDelta.divDown(preJoinExitSupply);
 
-        if (invariantGrowth > bptGrowth) {
-            // Since the growth values are already normalized, multiply by the protocol swap fee to convert
-            // to a percentage owned to the protocol.
-            uint256 protocolSwapFeePercentage = (invariantGrowth - bptGrowth).mulDown(
-                getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
-            );
+        if (supplyGrowthRatio != 0 && invariantDelta != 0) {
+            // Compute the portion of the invariant increase due to fees
+            uint256 invariantDeltaFromFees = invariantDelta.mulDown(supplyGrowthRatio);
+
+            // To convert to a percentage of pool ownership, multiply by the rate,
+            // then normalize against the final invariant
+            uint256 protocolOwnershipPercentage = invariantDeltaFromFees
+                .mulDown(getProtocolFeePercentageCache(ProtocolFeeType.SWAP))
+                .divDown(postJoinExitInvariant);
 
             // Since this will be minted as BPT, which increases the total supply, we need to mint
             // slightly more so that it reflects this percentage of the total supply after minting.
-            uint256 protocolFeeAmount = preJoinExitSupply.mulDown(protocolSwapFeePercentage).divDown(
-                protocolSwapFeePercentage.complement()
+            uint256 protocolFeeAmount = preJoinExitSupply.mulDown(protocolOwnershipPercentage).divDown(
+                protocolOwnershipPercentage.complement()
             );
 
             _payProtocolFees(protocolFeeAmount);
