@@ -305,13 +305,6 @@ contract ComposableStablePool is
         uint256 registeredIndexOut,
         uint256[] memory scalingFactors
     ) private returns (uint256) {
-        (
-            uint256 preJoinExitSupply,
-            uint256[] memory balances,
-            uint256 currentAmp,
-            uint256 preJoinExitInvariant
-        ) = _beforeJoinExit(registeredBalances);
-
         bool isGivenIn = swapRequest.kind == IVault.SwapKind.GIVEN_IN;
 
         _upscaleArray(registeredBalances, scalingFactors);
@@ -319,6 +312,13 @@ contract ComposableStablePool is
             swapRequest.amount,
             scalingFactors[isGivenIn ? registeredIndexIn : registeredIndexOut]
         );
+
+        (
+            uint256 preJoinExitSupply,
+            uint256[] memory balances,
+            uint256 currentAmp,
+            uint256 preJoinExitInvariant
+        ) = _beforeJoinExit(registeredBalances);
 
         // These calls mutate `balances` so that it holds the post join-exit balances.
         (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut == getBptIndex()
