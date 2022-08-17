@@ -15,17 +15,22 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "../solidity-utils/helpers/IAuthentication.sol";
 
-import "../factories/BasePoolSplitCodeFactory.sol";
-import "./MockFactoryCreatedPool.sol";
+interface IBasePoolFactory is IAuthentication {
+    /**
+     * @dev Returns true if `pool` was created by this factory.
+     */
+    function isPoolFromFactory(address pool) external view returns (bool);
 
-contract MockPoolSplitCodeFactory is BasePoolSplitCodeFactory {
-    constructor(IVault _vault) BasePoolSplitCodeFactory(_vault, type(MockFactoryCreatedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
+    /**
+     * @dev Check whether the derived factory has been disabled.
+     */
+    function isDisabled() external view returns (bool);
 
-    function create() external returns (address) {
-        return _create("");
-    }
+    /**
+     * @dev Disable the factory, preventing the creation of more pools. Already existing pools are unaffected.
+     * Once a factory is disabled, it cannot be re-enabled.
+     */
+    function disable() external;
 }
