@@ -41,9 +41,11 @@ contract AaveLinearPoolFactory is
 
     address private _lastCreatedPool;
 
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, IBalancerQueries queries)
-        BasePoolSplitCodeFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        IBalancerQueries queries
+    ) BasePoolSplitCodeFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) {
         _queries = queries;
     }
 

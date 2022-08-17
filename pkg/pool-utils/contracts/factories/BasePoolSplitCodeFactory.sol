@@ -38,17 +38,18 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  */
 abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSplitCodeFactory, SingletonAuthentication {
     IProtocolFeePercentagesProvider private _protocolFeeProvider;
-    
+
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
     event PoolCreated(address indexed pool);
     event FactoryDisabled();
 
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, bytes memory creationCode)
-        BaseSplitCodeFactory(creationCode)
-        SingletonAuthentication(vault)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        bytes memory creationCode
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) {
         _protocolFeeProvider = protocolFeeProvider;
     }
 
