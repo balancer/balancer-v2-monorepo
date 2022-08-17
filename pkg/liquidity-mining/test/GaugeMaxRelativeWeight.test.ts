@@ -203,5 +203,11 @@ describe('GaugeMaxRelativeWeight', () => {
         });
       });
     });
+
+    describe('get_absolute_max_relative_weight', () => {
+      it('returns 1 normalized to 18 decimals', async () => {
+        expect(await gauge.get_absolute_max_relative_weight()).to.be.eq(fp(1));
+      });
+    });
   }
 });
