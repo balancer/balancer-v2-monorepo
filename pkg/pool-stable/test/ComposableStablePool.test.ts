@@ -711,7 +711,7 @@ describe('ComposableStablePool', () => {
       context('when the amplification factor has changed from the last join/exit', () => {
         context('when the amplification factor update is ongoing', () => {
           sharedBeforeEach('perform an amp update', async () => {
-            await pool.startAmpChange(AMPLIFICATION_PARAMETER.mul(2));
+            await pool.startAmpChange(AMPLIFICATION_PARAMETER.mul(2), (await currentTimestamp()).add(2 * DAY));
             await advanceTime(DAY);
           });
 
@@ -720,7 +720,7 @@ describe('ComposableStablePool', () => {
 
         context('when the amplification factor update has finished', () => {
           sharedBeforeEach('perform an amp update', async () => {
-            await pool.startAmpChange(AMPLIFICATION_PARAMETER.mul(2));
+            await pool.startAmpChange(AMPLIFICATION_PARAMETER.mul(2), (await currentTimestamp()).add(2 * DAY));
             await advanceTime(3 * DAY);
           });
 
