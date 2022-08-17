@@ -250,7 +250,7 @@ abstract contract ComposableStablePoolProtocolFees is
         // both increase.
 
         // |-------------------------|-- postJoinExitInvariant
-        // | increase from fees      |
+        // |   increase from fees    |
         // |-------------------------|-- original invariant * supply growth ratio (fee-less invariant)
         // |                         |
         // | increase from balances  |
@@ -259,7 +259,7 @@ abstract contract ComposableStablePoolProtocolFees is
         // |                         |  |------------------|-- postJoinExitSupply
         // |                         |  |    BPT minted    |
         // |                         |  |------------------|-- preJoinExitSupply
-        // |    original invariant   |  |  original supply |
+        // |   original invariant    |  |  original supply |
         // |_________________________|  |__________________|
         //
         // If the join is proportional, the invariant and supply will likewise increase proportionally,
@@ -301,7 +301,8 @@ abstract contract ComposableStablePoolProtocolFees is
 
     /**
      * @dev Update the stored values of the amp and final post-join/exit invariant, to reset the basis for protocol
-     * swap fees. Also copy the current rates to the old rates, to establish the new protocol yield fee basis.
+     * swap fees. Also copy the current rates to the old rates, to establish the new protocol yield basis for protocol
+     * yield fees.
      */
     function _updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) internal {
         _lastJoinExitData =

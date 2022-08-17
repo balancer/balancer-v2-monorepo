@@ -835,6 +835,11 @@ describe('ComposableStablePoolProtocolFees', () => {
             });
 
             it('updates the old rates', async () => {
+              await tokens.asyncEach(async (token) => {
+                const { rate, oldRate } = await pool.getTokenRateCache(token.address);
+                expect(oldRate).to.not.equal(rate);
+              });
+
               await pool.updateInvariantAfterJoinExit(
                 AMPLIFICATION_FACTOR,
                 currentBalances,
