@@ -39,7 +39,8 @@ import "./LinearMath.sol";
  * so that BPT can be exchanged (effectively joining and exiting) via swaps.
  *
  * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins and
- * exits, as the entire BPT supply is 'preminted' during initialization.
+ * exits, as the initial BPT supply is 'preminted' during initialization. No further BPT can be minted, and BPT can
+ * only be burned if governance enables Recovery Mode and LPs use it to exit proportionally.
  *
  * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
  * the wrapped, yield-bearing asset. However, the 'swap fee percentage' value is still used, albeit with a different
@@ -48,7 +49,7 @@ import "./LinearMath.sol";
  * traders whose swaps return the balance to the desired region.
  *
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
- * Accordingly, this Pool also does not pay any protocol fees.
+ * Accordingly, this Pool does not pay any protocol fees.
  */
 abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePool {
     using WordCodec for bytes32;
@@ -63,10 +64,10 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     // actual amount of BPT in circulation is the total supply minus the amount held by the Pool, and is known as the
     // 'virtual supply'.
     // The total supply can only change if recovery mode is enabled and recovery mode exits are processed, resulting in
-    // BPT being burnt. This BPT can never be minted again, so it is technically possible for the preminted supply to
+    // BPT being burned. This BPT can never be minted again, so it is technically possible for the preminted supply to
     // run out, but a) this process is controlled by Governance via enabling and disabling recovery mode, and b) the
-    // initial supply is so large that it'd take a huge number of interactions to acquire sufficient tokens to join the
-    // Pool and then burn the acquired BPT, resulting in large gas costs.
+    // initial supply is so large that it would take a huge number of interactions to acquire sufficient tokens to join
+    // the Pool, and then burn the acquired BPT, resulting in prohibitively large gas costs.
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     IERC20 private immutable _mainToken;
@@ -85,9 +86,10 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    // The lower and upper target are in BasePool's misc data field, which has 192 bits available (as it shares the same
-    // storage slot as the swap fee percentage, which takes up 64 bits). We use 64 of these 192 for the targets (32 for
-    // each).
+    // The lower and upper targets are in BasePool's misc data field, which has 192 bits available (as it shares the
+    // same storage slot as the swap fee percentage and recovery mode flag, which together take up 64 bits).
+    // We use 64 of these 192 for the targets (32 for each).
+    //
     // The targets are already scaled by the main token's scaling factor (which makes the token behave as if it had 18
     // decimals), but we only store the integer part: the targets must be multiplied by 1e18 before being used.
     // This means the targets' resolution does not include decimal places in the main token (so e.g. a target of 500.1
@@ -153,8 +155,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _scalingFactorMainToken = _computeScalingFactor(mainToken);
         _scalingFactorWrappedToken = _computeScalingFactor(wrappedToken);
 
-        // Set initial targets. Lower target must be set to zero because initially there are no fees accumulated.
-        // Otherwise the pool will owe fees at start which results in a manipulable rate.
+        // Set initial targets. The lower target must be set to zero because initially there are no accumulated fees.
+        // Otherwise the pool would owe fees from the start, which would make the rate manipulable.
         uint256 lowerTarget = 0;
         _setTargets(mainToken, lowerTarget, upperTarget);
     }
@@ -184,22 +186,40 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         return extendedAssetManagers;
     }
 
+    /**
+     * @notice Return the main token address as an IERC20.
+     */
     function getMainToken() public view override returns (IERC20) {
         return _mainToken;
     }
 
+    /**
+     * @notice Return the wrapped token address as an IERC20.
+     */
     function getWrappedToken() public view override returns (IERC20) {
         return _wrappedToken;
     }
 
+    /**
+     * @notice Return the index of the BPT token.
+     * @dev Note that this is an index into the registered token list (with 3 tokens).
+     */
     function getBptIndex() public view override returns (uint256) {
         return _bptIndex;
     }
 
+    /**
+     * @notice Return the index of the main token.
+     * @dev Note that this is an index into the registered token list, which includes the BPT token.
+     */
     function getMainIndex() external view override returns (uint256) {
         return _mainIndex;
     }
 
+    /**
+     * @notice Return the index of the wrapped token.
+     * @dev Note that this is an index into the registered token list, which includes the BPT token.
+     */
     function getWrappedIndex() external view override returns (uint256) {
         return _wrappedIndex;
     }
@@ -487,7 +507,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         );
 
         // By default the pool will pay out an amount of BPT equivalent to that which the user burns.
-        // We zero this amount out as otherwise a single user could drain the pool.
+        // We zero this amount out, as otherwise a single user could drain the pool.
         amountsOut[getBptIndex()] = 0;
 
         return (bptAmountIn, amountsOut);
@@ -562,15 +582,24 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         return totalBalance.divUp(_getVirtualSupply(balances[_bptIndex]));
     }
 
+    /**
+     * @notice Return the conversion rate between the wrapped and main tokens.
+     * @dev This is an 18-decimal fixed point value.
+     */
     function getWrappedTokenRate() external view returns (uint256) {
         return _getWrappedTokenRate();
     }
 
     /**
-     * @dev Should be 1e18 for the subsequent calculation of the wrapper token scaling factor.
+     * @dev Should be an 18-decimal fixed point value that represents the value of the wrapped token in terms of the
+     * main token. The final wrapped token scaling factor is this value multiplied by the wrapped token's decimal
+     * scaling factor.
      */
     function _getWrappedTokenRate() internal view virtual returns (uint256);
 
+    /**
+     * @notice Return the lower and upper bounds of the zero-fee trading range for the main token balance.
+     */
     function getTargets() public view override returns (uint256 lowerTarget, uint256 upperTarget) {
         bytes32 miscData = _getMiscData();
 
@@ -601,15 +630,16 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 
+    /**
+     * @notice Set the lower and upper bounds of the zero-fee trading range for the main token balance.
+     * @dev For a new target range to be valid:
+     *      - the current balance must be between the current targets (meaning no fees are currently pending)
+     *      - the current balance must be between the new targets (meaning setting them does not create pending fees)
+     *
+     * The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
+     * but being stricter makes analysis easier at little expense.
+     */
     function setTargets(uint256 newLowerTarget, uint256 newUpperTarget) external authenticate {
-        // For a new target range to be valid:
-        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
-        //  - the pool must currently be between the new targets (meaning setting them does not cause for fees to be
-        //    pending)
-        //
-        // The first requirement could be relaxed, as the LPs actually benefit from the pending fees not being paid out,
-        // but being stricter makes analysis easier at little expense.
-
         (uint256 currentLowerTarget, uint256 currentUpperTarget) = getTargets();
         _require(_isMainBalanceWithinTargets(currentLowerTarget, currentUpperTarget), Errors.OUT_OF_TARGET_RANGE);
         _require(_isMainBalanceWithinTargets(newLowerTarget, newUpperTarget), Errors.OUT_OF_NEW_TARGET_RANGE);
@@ -617,9 +647,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _setTargets(_mainToken, newLowerTarget, newUpperTarget);
     }
 
-    // Note that we override the public version of setSwapFeePercentage instead of the internal one
-    // (_setSwapFeePercentage) as the internal one is called during construction, and therefore cannot access immutable
-    // state variables, which we use below.
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused.
+     * Note that we override the public version of setSwapFeePercentage instead of the internal one
+     * (_setSwapFeePercentage) as the internal one is called during construction, and therefore cannot access immutable
+     * state variables, which we use below.
+     */
     function setSwapFeePercentage(uint256 swapFeePercentage) public override {
         // For the swap fee percentage to be changeable:
         //  - the pool must currently be between the current targets (meaning no fees are currently pending)
