@@ -686,7 +686,7 @@ contract ComposableStablePool is
      * @dev Pay any due protocol fees and calculate values necessary for performing the join/exit.
      */
     function _beforeJoinExit(uint256[] memory registeredBalances)
-        private
+        internal
         returns (
             uint256,
             uint256[] memory,
