@@ -64,12 +64,25 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
 
-    // Storage slot that can be used to store unrelated pieces of information. In particular, by default is used
-    // to store only the swap fee percentage of a pool. But it can be extended to store some more pieces of information.
-    // The swap fee percentage is stored in the most-significant 64 bits, therefore the remaining 192 bits can be
-    // used to store any other piece of information.
+    // `_miscData` is a storage slot that can be used to store unrelated pieces of information. All pools store the
+    // recovery mode flag and swap fee percentage, but `miscData` can be extended to store more pieces of information.
+    // The most signficant bit is reserved for the recovery mode flag, and the swap fee percentage is stored in
+    // the next most significant 63 bits, leaving the remaining 192 bits free to store any other information derived
+    // pools might need.
+    //
+    // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
+    // and therefore warm.
+
+    // [ recovery | swap  fee | available ]
+    // [   1 bit  |  63 bits  |  192 bits ]
+    // [ MSB                          LSB ]
     bytes32 private _miscData;
+
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
+    uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 255;
+
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits, so 63 is more than enough.
+    uint256 private constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
 
     bytes32 private immutable _poolId;
 
@@ -147,10 +160,10 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     /**
      * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in the MSB 64 bits of the `_miscData`.
+     * @dev This is stored in `_miscData`.
      */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
-        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
+        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
 
     /**
@@ -174,7 +187,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
-        _miscData = _miscData.insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, 64);
+        _miscData = _miscData.insertUint(
+            swapFeePercentage,
+            _SWAP_FEE_PERCENTAGE_OFFSET,
+            _SWAP_FEE_PERCENTAGE_BIT_LENGTH
+        );
+
         emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
@@ -184,6 +202,22 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
 
     function _getMaxSwapFeePercentage() internal pure virtual returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
+    }
+
+    /**
+     * @notice Returns whether the pool is in Recovery Mode.
+     */
+    function inRecoveryMode() public view override returns (bool) {
+        return _miscData.decodeBool(_RECOVERY_MODE_BIT_OFFSET);
+    }
+
+    /**
+     * @dev Sets the recoveryMode state, and emits the corresponding event.
+     */
+    function _setRecoveryMode(bool enabled) internal virtual override {
+        _miscData = _miscData.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
+
+        emit RecoveryModeStateChanged(enabled);
     }
 
     /**
@@ -265,7 +299,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         _beforeSwapJoinExit();
 
         uint256[] memory scalingFactors = _scalingFactors();
@@ -327,7 +361,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) public override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory amountsOut;
         uint256 bptAmountIn;
 
@@ -339,6 +373,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             // This exit kind is only available in Recovery Mode.
             _ensureInRecoveryMode();
 
+            // Note that we don't upscale balances nor downscale amountsOut - we don't care about scaling factors during
+            // a recovery mode exit.
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
             // Note that we only call this if we're not in a recovery mode exit.
@@ -633,8 +669,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
      * the `amounts` array.
      */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
+        for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }
     }
@@ -651,8 +690,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
+        for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
         }
     }
@@ -669,8 +711,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
      * *mutates* the `amounts` array.
      */
-    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal view {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
+        uint256 length = amounts.length;
+        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
+
+        for (uint256 i = 0; i < length; ++i) {
             amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
         }
     }
@@ -764,6 +809,11 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                     }
             }
         } else {
+            // This imitates the relevant parts of the bodies of onJoin and onExit. Since they're not virtual, we know
+            // that their implementations will match this regardless of what derived contracts might do.
+
+            _beforeSwapJoinExit();
+
             uint256[] memory scalingFactors = _scalingFactors();
             _upscaleArray(balances, scalingFactors);
 

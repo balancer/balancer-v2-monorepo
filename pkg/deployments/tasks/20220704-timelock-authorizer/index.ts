@@ -17,8 +17,11 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   ];
   const migrator = await task.deployAndVerify('TimelockAuthorizerMigrator', args, from, force);
 
-  const timelockAuthorizer = await migrator.newAuthorizer();
-  const timelockAuthorizerArgs = [migrator.address, input.Vault, await migrator.CHANGE_ROOT_DELAY()];
-  await task.verify('TimelockAuthorizer', timelockAuthorizer, timelockAuthorizerArgs);
-  await task.save({ TimelockAuthorizer: timelockAuthorizer });
+  const authorizer = await task.instanceAt('TimelockAuthorizer', await migrator.newAuthorizer());
+  const authorizerArgs = [migrator.address, input.Vault, await migrator.CHANGE_ROOT_DELAY()];
+  await task.verify('TimelockAuthorizer', authorizer.address, authorizerArgs);
+  await task.save({ TimelockAuthorizer: authorizer });
+
+  const executor = await task.instanceAt('TimelockExecutor', await authorizer.getExecutor());
+  await task.verify('TimelockExecutor', executor.address, []);
 };

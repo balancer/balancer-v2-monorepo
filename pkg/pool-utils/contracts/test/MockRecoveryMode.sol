@@ -15,10 +15,11 @@
 pragma solidity ^0.7.0;
 
 import "../RecoveryMode.sol";
+import "./MockRecoveryModeStorage.sol";
 
-contract MockRecoveryMode is RecoveryMode {
+contract MockRecoveryMode is MockRecoveryModeStorage {
     constructor(address owner) BasePoolAuthorization(owner) Authentication(bytes32(uint256(address(this)))) {
-      // solhint-disable-previous-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -29,14 +30,14 @@ contract MockRecoveryMode is RecoveryMode {
         uint256 totalSupply,
         uint256 bptAmountIn
     ) external pure returns (uint256[] memory amountsOut) {
-      return super._computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
+        return super._computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
     }
 
     function _getAuthorizer() internal pure override returns (IAuthorizer) {
-      return IAuthorizer(address(0));
+        return IAuthorizer(address(0));
     }
 
     function _isOwnerOnlyAction(bytes32) internal pure override returns (bool) {
-      return false;
+        return false;
     }
 }
