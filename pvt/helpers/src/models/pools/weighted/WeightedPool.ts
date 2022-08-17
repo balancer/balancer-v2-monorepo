@@ -63,7 +63,7 @@ export default class WeightedPool extends BasePool {
   aumProtocolFeesCollector: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
-    console.log("creating...");
+    console.log('creating...');
     return WeightedPoolDeployer.deploy(params);
   }
 
@@ -163,7 +163,6 @@ export default class WeightedPool extends BasePool {
   async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {
     return this.instance.updateProtocolFeePercentageCache();
   }
-
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
