@@ -698,7 +698,7 @@ contract ComposableStablePool is
         (
             uint256 preJoinExitSupply,
             uint256[] memory balances,
-            uint256 oldAmpInvariant
+            uint256 oldAmpPreJoinExitInvariant
         ) = _payProtocolFeesBeforeJoinExit(registeredBalances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
         // If the amplification factor is the same as it was during the last join/exit then we can reuse the
@@ -706,7 +706,7 @@ contract ComposableStablePool is
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 preJoinExitInvariant = currentAmp != lastJoinExitAmp
             ? StableMath._calculateInvariant(currentAmp, balances)
-            : oldAmpInvariant;
+            : oldAmpPreJoinExitInvariant;
 
         return (preJoinExitSupply, balances, currentAmp, preJoinExitInvariant);
     }
