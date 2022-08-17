@@ -346,6 +346,10 @@ describe('ComposableStablePoolProtocolFees', () => {
 
         // The virtual supply is some factor of the invariant
         preVirtualSupply = preInvariant.mul(fp(random(1.5, 10))).div(FP_SCALING_FACTOR);
+
+        // We don't use the stored amplification factor and invariant as the lastJoinExit values in tests as we pass
+        // them in. However this function also sets the old token rates which we *do* use.
+        await pool.updatePostJoinExit(AMPLIFICATION_FACTOR, preInvariant);
       });
 
       describe('payProtocolFeesBeforeJoinExit', () => {
