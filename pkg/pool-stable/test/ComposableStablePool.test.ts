@@ -10,10 +10,11 @@ import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR, arrayAdd, bnSum } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
-import { currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 
 describe('ComposableStablePool', () => {
   let lp: SignerWithAddress,
@@ -615,77 +616,112 @@ describe('ComposableStablePool', () => {
         registeredBalances = await pool.getBalances();
       });
 
-      context('preJoinExitSupply', () => {
-        context('when protocol fees are due', () => {
-          // This is tested more comprehensively in ComposableStablePoolProtocolFees.
-          // Here we just need to check that _beforeJoinExit calls into _payProtocolFeesBeforeJoinExit.
-          let registeredBalancesWithFees: BigNumber[];
-          let expectedBptAmount: BigNumber;
+      function itPaysProtocolFeesAndReturnsNecessaryData() {
+        context('preJoinExitSupply', () => {
+          context('when protocol fees are due', () => {
+            // This is tested more comprehensively in ComposableStablePoolProtocolFees.
+            // Here we just need to check that _beforeJoinExit calls into _payProtocolFeesBeforeJoinExit.
+            let registeredBalancesWithFees: BigNumber[];
+            let expectedBptAmount: BigNumber;
 
-          const FEE_RELATIVE_ERROR = 1e-3;
-          sharedBeforeEach(async () => {
-            const MIN_SWAP_BALANCE_DELTA = 1.5e3;
-            const MAX_SWAP_BALANCE_DELTA = 20e3;
-            const deltas = range(numberOfTokens + 1).map((_, i) =>
-              i !== bptIndex ? fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA)) : 0
-            );
+            const FEE_RELATIVE_ERROR = 1e-3;
+            sharedBeforeEach(async () => {
+              const MIN_SWAP_BALANCE_DELTA = 1.5e3;
+              const MAX_SWAP_BALANCE_DELTA = 20e3;
+              const deltas = range(numberOfTokens + 1).map((_, i) =>
+                i !== bptIndex ? fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA)) : 0
+              );
 
-            registeredBalancesWithFees = arrayAdd(registeredBalances, deltas);
+              registeredBalancesWithFees = arrayAdd(registeredBalances, deltas);
 
-            // We assume all tokens have similar value, and simply add all of the amounts together to represent how
-            // much value is being added to the Pool. This is equivalent to assuming the invariant is the sum of the
-            // tokens (which is a close approximation while the Pool is balanced).
+              // We assume all tokens have similar value, and simply add all of the amounts together to represent how
+              // much value is being added to the Pool. This is equivalent to assuming the invariant is the sum of the
+              // tokens (which is a close approximation while the Pool is balanced).
 
-            const deltaSum = bnSum(deltas);
-            const currSum = bnSum(registeredBalancesWithFees);
-            const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const deltaSum = bnSum(deltas);
+              const currSum = bnSum(registeredBalancesWithFees);
+              const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
 
-            const protocolSwapFeesPercentage = fp(0.5);
-            const expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas
-              .mul(protocolSwapFeesPercentage)
-              .div(FP_SCALING_FACTOR);
+              const protocolSwapFeesPercentage = fp(0.5);
+              const expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas
+                .mul(protocolSwapFeesPercentage)
+                .div(FP_SCALING_FACTOR);
 
-            // protocol ownership = to mint / (supply + to mint)
-            // to mint = supply * protocol ownership / (1 - protocol ownership)
-            const preVirtualSupply = await pool.getVirtualSupply();
-            expectedBptAmount = preVirtualSupply
-              .mul(expectedProtocolOwnershipPercentage)
-              .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+              // protocol ownership = to mint / (supply + to mint)
+              // to mint = supply * protocol ownership / (1 - protocol ownership)
+              const preVirtualSupply = await pool.getVirtualSupply();
+              expectedBptAmount = preVirtualSupply
+                .mul(expectedProtocolOwnershipPercentage)
+                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+            });
+
+            it('returns the total supply after protocol fees are paid', async () => {
+              const virtualSupply = await pool.getVirtualSupply();
+              const expectedVirtualSupplyAfterProtocolFees = virtualSupply.add(expectedBptAmount);
+              const { preJoinExitSupply } = await pool.instance.callStatic.beforeJoinExit(registeredBalancesWithFees);
+              expect(preJoinExitSupply).to.be.almostEqual(expectedVirtualSupplyAfterProtocolFees, FEE_RELATIVE_ERROR);
+            });
           });
 
-          it('returns the total supply after protocol fees are paid', async () => {
-            const virtualSupply = await pool.getVirtualSupply();
-            const expectedVirtualSupplyAfterProtocolFees = virtualSupply.add(expectedBptAmount);
-            const { preJoinExitSupply } = await pool.instance.callStatic.beforeJoinExit(registeredBalancesWithFees);
-            expect(preJoinExitSupply).to.be.almostEqual(expectedVirtualSupplyAfterProtocolFees, FEE_RELATIVE_ERROR);
+          context('when no protocol fees are due', () => {
+            it('returns the total supply', async () => {
+              const virtualSupply = await pool.getVirtualSupply();
+              const { preJoinExitSupply } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
+              expect(preJoinExitSupply).to.be.eq(virtualSupply);
+            });
           });
         });
 
-        context('when no protocol fees are due', () => {
-          it('returns the total supply', async () => {
-            const virtualSupply = await pool.getVirtualSupply();
-            const { preJoinExitSupply } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
-            expect(preJoinExitSupply).to.be.eq(virtualSupply);
-          });
+        it('returns the balances array having dropped the BPT balance', async () => {
+          const expectedBalances = registeredBalances.filter((_, i) => i !== bptIndex);
+          const { balances } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
+          expect(balances).to.be.deep.eq(expectedBalances);
         });
+
+        it('returns the current amp factor', async () => {
+          const { value: expectedAmp } = await pool.getAmplificationParameter();
+          const { currentAmp } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
+          expect(currentAmp).to.be.deep.eq(expectedAmp);
+        });
+
+        it('returns the pre-join invariant', async () => {
+          const { value, precision } = await pool.getAmplificationParameter();
+          const expectedInvariant = calculateInvariant(
+            registeredBalances.filter((_, i) => i !== bptIndex),
+            value.div(precision)
+          );
+
+          const { preJoinExitInvariant } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
+
+          // We allow the invariant to experience a rounding error during calculation, however we want to make sure that
+          // we don't accept the invariant calculated using the old amplification factor so we use this strict check.
+          const error = preJoinExitInvariant.sub(expectedInvariant).abs();
+          expect(error).to.be.lte(1);
+        });
+      }
+
+      context('when the amplification factor is unchanged from the last join/exit', () => {
+        itPaysProtocolFeesAndReturnsNecessaryData();
       });
 
-      it('returns the balances array having dropped the BPT balance', async () => {
-        const expectedBalances = registeredBalances.filter((_, i) => i !== bptIndex);
-        const { balances } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
-        expect(balances).to.be.deep.eq(expectedBalances);
-      });
+      context('when the amplification factor has changed from the last join/exit', () => {
+        context('when the amplification factor update is ongoing', () => {
+          sharedBeforeEach('perform an amp update', async () => {
+            await pool.startAmpChange(AMPLIFICATION_PARAMETER.mul(2));
+            await advanceTime(DAY);
+          });
 
-      it('returns the current amp factor', async () => {
-        const { value: expectedAmp } = await pool.getAmplificationParameter();
-        const { currentAmp } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
-        expect(currentAmp).to.be.deep.eq(expectedAmp);
-      });
+          itPaysProtocolFeesAndReturnsNecessaryData();
+        });
 
-      it('returns the pre-join invariant', async () => {
-        const invariant = await pool.estimateInvariant(registeredBalances);
-        const { preJoinExitInvariant } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
-        expect(preJoinExitInvariant).to.be.deep.eq(invariant);
+        context('when the amplification factor update has finished', () => {
+          sharedBeforeEach('perform an amp update', async () => {
+            await pool.startAmpChange(AMPLIFICATION_PARAMETER.mul(2));
+            await advanceTime(3 * DAY);
+          });
+
+          itPaysProtocolFeesAndReturnsNecessaryData();
+        });
       });
     });
 
