@@ -37,7 +37,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * prevent the creation of any future pools from the factory.
  */
 abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSplitCodeFactory, SingletonAuthentication {
-    IProtocolFeePercentagesProvider private _protocolFeeProvider;
+    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;

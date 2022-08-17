@@ -15,7 +15,6 @@ import { setupWrappedTokens } from './UnbuttonAaveLinearPool.test';
 
 describe('UnbuttonAaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
-  let protocolFeesProvider: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
   let mainToken: Token, wrappedToken: Token;
 
@@ -32,10 +31,7 @@ describe('UnbuttonAaveLinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
-      args: [vault.address, fp(1), fp(1)],
-    });
-    factory = await deploy('UnbuttonAaveLinearPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
+    factory = await deploy('UnbuttonAaveLinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     creationTime = await currentTimestamp();
 
     // rates are arbitrary, AMPL has 9 decimals

@@ -198,19 +198,16 @@ async function deployPoolFromFactory(
 ): Promise<Contract> {
   const fullName = `${poolName == 'ComposableStablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
-  const protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
-    args: [vault.address, fp(1), fp(1)],
-  });
 
   if (poolName == 'ManagedPool') {
     const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-      args: [vault.address, protocolFeesProvider.address],
+      args: [vault.address, vault.getFeesProvider().address],
     });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, protocolFeesProvider.address] });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, protocolFeesProvider.address] });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   }
 
   // We could reuse this factory if we saved it across pool deployments
