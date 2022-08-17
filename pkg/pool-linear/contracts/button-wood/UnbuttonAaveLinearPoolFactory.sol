@@ -17,14 +17,14 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./UnbuttonAaveLinearPool.sol";
 
-contract UnbuttonAaveLinearPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+contract UnbuttonAaveLinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolSplitCodeFactory(vault, protocolFeeProvider, type(UnbuttonAaveLinearPool).creationCode)
+        BasePoolFactory(vault, protocolFeeProvider, type(UnbuttonAaveLinearPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }

@@ -10,7 +10,7 @@ import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-describe('BasePoolSplitCodeFactory', function () {
+describe('BasePoolFactory', function () {
   let vault: Contract;
   let factory: Contract;
   let authorizer: Contract;
@@ -31,7 +31,7 @@ describe('BasePoolSplitCodeFactory', function () {
       args: [vault.address, fp(1), fp(1)],
     });
 
-    factory = await deploy('MockPoolSplitCodeFactory', { args: [vault.address, protocolFeesProvider.address] });
+    factory = await deploy('MockPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
 
     const action = await actionId(factory, 'disable');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
