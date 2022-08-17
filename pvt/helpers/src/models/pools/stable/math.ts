@@ -127,38 +127,6 @@ export function calcInGivenOut(
   return toFp(finalBalanceIn.sub(balances[tokenIndexIn]));
 }
 
-export function calcTaxableAmount(fpBalances: BigNumberish[], fpAmountsIn: BigNumberish[]): BigNumber {
-  const balances = fpBalances.map(fromFp);
-  const amountsIn = fpAmountsIn.map(fromFp);
-
-  // First calculate the sum of all token balances which will be used to calculate
-  // the current weights of each token relative to the sum of all balances
-  const sumBalances = balances.reduce((a: Decimal, b: Decimal) => a.add(b), decimal(0));
-
-  // Calculate the weighted balance ratio without considering fees
-  const balanceRatiosWithFee = [];
-  // The weighted sum of token balance rations sans fee
-  let invariantRatioWithFees = decimal(0);
-  let totalTaxableAmount = decimal(0);
-
-  for (let i = 0; i < balances.length; i++) {
-    const currentWeight = balances[i].div(sumBalances);
-    balanceRatiosWithFee[i] = balances[i].add(amountsIn[i]).div(balances[i]);
-    invariantRatioWithFees = invariantRatioWithFees.add(balanceRatiosWithFee[i].mul(currentWeight));
-  }
-
-  // Second loop to calculate new amounts in taking into account the fee on the % excess
-  for (let i = 0; i < balances.length; i++) {
-    // Check if the balance ratio is greater than the ideal ratio to charge fees or not
-    if (balanceRatiosWithFee[i].gt(invariantRatioWithFees)) {
-      const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
-      totalTaxableAmount = totalTaxableAmount.add(amountsIn[i].sub(nonTaxableAmount));
-    }
-  }
-
-  return fp(totalTaxableAmount);
-}
-
 export function calcBptOutGivenExactTokensIn(
   fpBalances: BigNumberish[],
   amplificationParameter: BigNumberish,

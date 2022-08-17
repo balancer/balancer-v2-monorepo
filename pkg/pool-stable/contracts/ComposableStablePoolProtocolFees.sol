@@ -264,15 +264,15 @@ abstract contract ComposableStablePoolProtocolFees is
         uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
         uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
 
-        if (postJoinExitInvariant > feelessInvariant) {
-            uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
+        uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
 
-            // To convert to a percentage of pool ownership, multiply by the rate,
-            // then normalize against the final invariant
-            uint256 protocolOwnershipPercentage = invariantDeltaFromFees.divDown(postJoinExitInvariant).mulDown(
-                getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
-            );
+        // To convert to a percentage of pool ownership, multiply by the rate,
+        // then normalize against the final invariant
+        uint256 protocolOwnershipPercentage = invariantDeltaFromFees.divDown(postJoinExitInvariant).mulDown(
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+        );
 
+        if (protocolOwnershipPercentage > 0) {
             uint256 protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(
                 postJoinExitSupply,
                 protocolOwnershipPercentage
