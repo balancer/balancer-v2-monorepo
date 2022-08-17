@@ -591,5 +591,14 @@
         "disable()": "0x9f637c196de3124bc0febbb78f206994fdb68c3f8fe8070b42230a76e14ece0b"
       }
     }
+  },
+  "20220817-composable-stable-pool": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0x445c20c48f9b96ca55740724ef99344b69c84b8d615915685a34682e9e8eee41",
+        "disable()": "0xf91036389e643b1137d335ee059c1ac3dd461f61383eeb0af59026c759910958"
+      }
+    }
   }
 }
