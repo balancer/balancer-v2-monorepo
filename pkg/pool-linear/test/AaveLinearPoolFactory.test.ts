@@ -34,7 +34,9 @@ describe('AaveLinearPoolFactory', function () {
     protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
       args: [vault.address, fp(1), fp(1)],
     });
-    factory = await deploy('AaveLinearPoolFactory', { args: [vault.address, protocolFeesProvider.address, queries.address] });
+    factory = await deploy('AaveLinearPoolFactory', {
+      args: [vault.address, protocolFeesProvider.address, queries.address],
+    });
     creationTime = await currentTimestamp();
 
     const mainToken = await Token.create('DAI');

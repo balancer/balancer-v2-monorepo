@@ -33,7 +33,7 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
         BasePoolSplitCodeFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
     {
-        // solhint-disable-previous no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
