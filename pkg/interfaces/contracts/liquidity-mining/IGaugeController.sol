@@ -36,11 +36,7 @@ interface IGaugeController {
 
     function change_type_weight(int128 typeId, uint256 weight) external;
 
-    function add_gauge(
-        address gauge,
-        int128 gaugeType,
-        uint256 weight
-    ) external;
+    function add_gauge(address gauge, int128 gaugeType) external;
 
     function n_gauge_types() external view returns (int128);
 

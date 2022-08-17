@@ -47,18 +47,8 @@ contract MockGaugeController is IGaugeController {
         return _gaugeType[gauge];
     }
 
-    function add_gauge(
-        address gauge,
-        int128 gaugeType,
-        uint256 weight
-    ) external override {
-        require(!_validGauge[gauge], "Gauge already exists on controller");
-        require(gaugeType >= 0 && gaugeType < _numGaugeTypes, "Invalid gauge type");
-        _validGauge[gauge] = true;
-        if (weight > 0) {
-            _weights[gauge] = weight;
-        }
-        emit NewGauge(gauge, gaugeType, weight);
+    function add_gauge(address gauge, int128 gaugeType) external override {
+        _add_gauge(gauge, gaugeType, 0);
     }
 
     function add_type(string calldata, uint256) external override {
@@ -79,5 +69,27 @@ contract MockGaugeController is IGaugeController {
 
     function change_type_weight(int128, uint256) external override {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function add_gauge_with_weight(
+        address gauge,
+        int128 gaugeType,
+        uint256 weight
+    ) external {
+        _add_gauge(gauge, gaugeType, weight);
+    }
+
+    function _add_gauge(
+        address gauge,
+        int128 gaugeType,
+        uint256 weight
+    ) internal {
+        require(!_validGauge[gauge], "Gauge already exists on controller");
+        require(gaugeType >= 0 && gaugeType < _numGaugeTypes, "Invalid gauge type");
+        _validGauge[gauge] = true;
+        if (weight > 0) {
+            _weights[gauge] = weight;
+        }
+        emit NewGauge(gauge, gaugeType, weight);
     }
 }

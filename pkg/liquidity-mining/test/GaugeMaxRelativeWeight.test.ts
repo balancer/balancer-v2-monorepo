@@ -154,7 +154,7 @@ describe('GaugeMaxRelativeWeight', () => {
 
       context('when the gauge is added to the gauge controller', () => {
         sharedBeforeEach('add gauge to GaugeController', async () => {
-          await gaugeController.add_gauge(gauge.address, 0, gaugeControllerWeight);
+          await gaugeController.add_gauge_with_weight(gauge.address, 0, gaugeControllerWeight);
         });
 
         const itChecksMaxRelativeWeightHasNoEffect = (maxRelativeWeightUnderTest: BigNumber, condition: string) => {
