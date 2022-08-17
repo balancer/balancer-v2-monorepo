@@ -57,13 +57,17 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
 
 task('extract-artifacts', `Extract contract artifacts from their build-info`)
   .addOptionalParam('id', 'Specific task ID')
-  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+  .addOptionalParam('contract', 'Contract name (defaults to build info name)')
+  .setAction(async (args: { id?: string; contract?: string; verbose?: boolean }) => {
     Logger.setDefaults(false, args.verbose || false);
 
     if (args.id) {
       const task = new Task(args.id, TaskMode.READ_ONLY);
-      extractArtifact(task);
+      extractArtifact(task, args.contract);
     } else {
+      if (args.contract !== undefined)
+        throw new Error('Provided a contract name to extract artifacts for, but did not provide a task id.');
+
       for (const taskID of Task.getAllTaskIds()) {
         const task = new Task(taskID, TaskMode.READ_ONLY);
         extractArtifact(task);

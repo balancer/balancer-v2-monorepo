@@ -8,12 +8,15 @@ import Task from './task';
 /**
  * Reads each of the task's build-info files and extract the ABI and bytecode for the matching contract.
  */
-export function extractArtifact(task: Task): void {
+export function extractArtifact(task: Task, contractName?: string): void {
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
-      const contractName = path.parse(buildInfoFileName).name;
-      const artifact = extractContractArtifact(task, contractName);
+      if (contractName == undefined) {
+        contractName = path.parse(buildInfoFileName).name;
+      }
+
+      const artifact = extractContractArtifact(task, contractName, buildInfoFileName);
       writeContractArtifact(task, contractName, artifact);
     }
   }
@@ -29,7 +32,7 @@ export function checkArtifact(task: Task): void {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
       const contractName = path.parse(buildInfoFileName).name;
 
-      const expectedArtifact = extractContractArtifact(task, contractName);
+      const expectedArtifact = extractContractArtifact(task, contractName, buildInfoFileName);
       const { abi, bytecode } = readContractABIAndBytecode(task, contractName);
 
       const bytecodeMatch = bytecode === expectedArtifact.evm.bytecode.object;
@@ -48,8 +51,8 @@ export function checkArtifact(task: Task): void {
 /**
  * Read the build-info file for the contract `contractName` and extract the ABI and bytecode.
  */
-function extractContractArtifact(task: Task, contractName: string): CompilerOutputContract {
-  const buildInfo = task.buildInfo(contractName);
+function extractContractArtifact(task: Task, contractName: string, buildInfoFileName: string): CompilerOutputContract {
+  const buildInfo = task.buildInfo(buildInfoFileName);
 
   // Read ABI and bytecode from build-info file.
   const contractSourceName = findContractSourceName(buildInfo, contractName);
