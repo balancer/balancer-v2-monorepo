@@ -357,8 +357,8 @@ describe('ComposableStablePoolProtocolFees', () => {
         // The virtual supply is some factor of the invariant
         preVirtualSupply = preInvariant.mul(fp(random(1.5, 10))).div(FP_SCALING_FACTOR);
 
-        // This will store the amplification factor and invariant as the lastJoinExit values, as well as setup the
-        // old rates.
+        // We don't use the stored amplification factor and invariant as the lastJoinExit values in tests as we pass
+        // them in. However this function also sets the old token rates which we *do* use.
         await pool.updatePostJoinExit(AMPLIFICATION_FACTOR, preInvariant);
       });
 
@@ -527,23 +527,35 @@ describe('ComposableStablePoolProtocolFees', () => {
             });
 
             it('returns zero protocol ownership percentage', async () => {
-              expect(await pool.getProtocolPoolOwnershipPercentage(currentBalances)).to.equal(0);
+              expect(
+                await pool.getProtocolPoolOwnershipPercentage(currentBalances, AMPLIFICATION_FACTOR, preInvariant)
+              ).to.equal(0);
             });
 
             it('mints no BPT', async () => {
-              const tx = await pool.payProtocolFeesBeforeJoinExit(currentBalancesWithBpt);
+              const tx = await pool.payProtocolFeesBeforeJoinExit(
+                currentBalancesWithBpt,
+                AMPLIFICATION_FACTOR,
+                preInvariant
+              );
               expectEvent.notEmitted(await tx.wait(), 'Transfer');
             });
 
             it('returns the original virtual supply', async () => {
               const { virtualSupply: updatedVirtualSupply } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt
+                currentBalancesWithBpt,
+                AMPLIFICATION_FACTOR,
+                preInvariant
               );
               expect(updatedVirtualSupply).to.be.equal(preVirtualSupply);
             });
 
             it('returns the balances sans BPT', async () => {
-              const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(currentBalancesWithBpt);
+              const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
+                currentBalancesWithBpt,
+                AMPLIFICATION_FACTOR,
+                preInvariant
+              );
               expect(balances).to.deep.equal(currentBalances);
             });
           }
@@ -564,7 +576,11 @@ describe('ComposableStablePoolProtocolFees', () => {
             });
 
             it('returns a non-zero protocol ownership percentage', async () => {
-              const protocolPoolOwnershipPercentage = await pool.getProtocolPoolOwnershipPercentage(currentBalances);
+              const protocolPoolOwnershipPercentage = await pool.getProtocolPoolOwnershipPercentage(
+                currentBalances,
+                AMPLIFICATION_FACTOR,
+                preInvariant
+              );
 
               expect(protocolPoolOwnershipPercentage).to.be.gt(0);
               expect(protocolPoolOwnershipPercentage).to.be.almostEqual(
@@ -574,7 +590,11 @@ describe('ComposableStablePoolProtocolFees', () => {
             });
 
             it('mints BPT to the protocol fee collector', async () => {
-              const tx = await pool.payProtocolFeesBeforeJoinExit(currentBalancesWithBpt);
+              const tx = await pool.payProtocolFeesBeforeJoinExit(
+                currentBalancesWithBpt,
+                AMPLIFICATION_FACTOR,
+                preInvariant
+              );
               const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
                 from: ZERO_ADDRESS,
                 to: feesCollector.address,
@@ -584,7 +604,9 @@ describe('ComposableStablePoolProtocolFees', () => {
 
             it('returns the updated virtual supply', async () => {
               const { virtualSupply: updatedVirtualSupply } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
-                currentBalancesWithBpt
+                currentBalancesWithBpt,
+                AMPLIFICATION_FACTOR,
+                preInvariant
               );
               expect(updatedVirtualSupply).to.be.almostEqual(
                 preVirtualSupply.add(expectedBptAmount),
@@ -593,7 +615,11 @@ describe('ComposableStablePoolProtocolFees', () => {
             });
 
             it('returns the balances sans BPT', async () => {
-              const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(currentBalancesWithBpt);
+              const { balances } = await pool.callStatic.payProtocolFeesBeforeJoinExit(
+                currentBalancesWithBpt,
+                AMPLIFICATION_FACTOR,
+                preInvariant
+              );
               expect(balances).to.deep.equal(currentBalances);
             });
           }

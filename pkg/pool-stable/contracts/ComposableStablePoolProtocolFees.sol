@@ -57,23 +57,36 @@ abstract contract ComposableStablePoolProtocolFees is
      * @dev Calculates due protocol fees originating from accumulated swap fees and yield of non-exempt tokens, pays
      * them by minting BPT, and returns the updated virtual supply and current balances.
      */
-    function _payProtocolFeesBeforeJoinExit(uint256[] memory registeredBalances)
+    function _payProtocolFeesBeforeJoinExit(
+        uint256[] memory registeredBalances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    )
         internal
-        returns (uint256, uint256[] memory)
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256
+        )
     {
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
         // First, we'll compute what percentage of the Pool the protocol should own due to charging protocol fees on
         // swap fees and yield.
-        uint256 expectedProtocolOwnershipPercentage = _getProtocolPoolOwnershipPercentage(balances);
-        uint256 protocolFeeAmount;
+        (
+            uint256 expectedProtocolOwnershipPercentage,
+            uint256 totalGrowthInvariant
+        ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
-        if (expectedProtocolOwnershipPercentage > 0) {
-            // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
-            // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
-            // of each BPT is going to be reduced as all LPs get diluted.
-            protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(virtualSupply, expectedProtocolOwnershipPercentage);
+        // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
+        // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
+        // of each BPT is going to be reduced as all LPs get diluted.
+        uint256 protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(
+            virtualSupply,
+            expectedProtocolOwnershipPercentage
+        );
 
+        if (protocolFeeAmount > 0) {
             _payProtocolFees(protocolFeeAmount);
         }
 
@@ -82,10 +95,14 @@ abstract contract ComposableStablePoolProtocolFees is
         // supply by minting the protocol fee tokens, so those are included in the return value.
         //
         // For this addition to overflow, the actual total supply would have already overflowed.
-        return (virtualSupply + protocolFeeAmount, balances);
+        return (virtualSupply + protocolFeeAmount, balances, totalGrowthInvariant);
     }
 
-    function _getProtocolPoolOwnershipPercentage(uint256[] memory balances) internal view returns (uint256) {
+    function _getProtocolPoolOwnershipPercentage(
+        uint256[] memory balances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    ) internal view returns (uint256, uint256) {
         // We compute three invariants, adjusting the balances of tokens that have rate providers by undoing the current
         // rate adjustment and then applying the old rate. This is equivalent to multiplying by old rate / current rate.
         //
@@ -102,8 +119,6 @@ abstract contract ComposableStablePoolProtocolFees is
         // 'total growth invariant', since it includes both swap fee growth, non-exempt yield growth and exempt yield
         // growth. If the last join-exit amplification equals the current one, this invariant equals the current
         // invariant.
-
-        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
 
         (
             uint256 swapFeeGrowthInvariant,
@@ -158,7 +173,7 @@ abstract contract ComposableStablePoolProtocolFees is
 
         // These percentages can then be simply added to compute the total protocol Pool ownership percentage.
         // This is naturally bounded above by FixedPoint.ONE so this addition cannot overflow.
-        return protocolSwapFeePercentage + protocolYieldPercentage;
+        return (protocolSwapFeePercentage + protocolYieldPercentage, totalGrowthInvariant);
     }
 
     function _getGrowthInvariants(uint256[] memory balances, uint256 lastJoinExitAmp)
