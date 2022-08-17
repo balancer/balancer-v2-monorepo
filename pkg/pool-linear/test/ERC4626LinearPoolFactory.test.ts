@@ -15,6 +15,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 describe('ERC4626LinearPoolFactory', function () {
   let mainToken: Token, wrappedToken: Token;
   let vault: Vault, tokens: TokenList, factory: Contract;
+  let protocolFeesProvider: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
 
   const NAME = 'Balancer Linear Pool Token';
@@ -30,7 +31,10 @@ describe('ERC4626LinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('ERC4626LinearPoolFactory', { args: [vault.address] });
+    protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
+      args: [vault.address, fp(1), fp(1)],
+    });
+    factory = await deploy('ERC4626LinearPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
     creationTime = await currentTimestamp();
 
     mainToken = await Token.create({ symbol: 'USD+', decimals: 6 });

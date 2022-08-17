@@ -21,7 +21,9 @@ import "../factories/BasePoolSplitCodeFactory.sol";
 import "./MockFactoryCreatedPool.sol";
 
 contract MockPoolSplitCodeFactory is BasePoolSplitCodeFactory {
-    constructor(IVault _vault) BasePoolSplitCodeFactory(_vault, type(MockFactoryCreatedPool).creationCode) {
+    constructor(IVault _vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolSplitCodeFactory(_vault, protocolFeeProvider, type(MockFactoryCreatedPool).creationCode)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
