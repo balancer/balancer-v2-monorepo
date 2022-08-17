@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../solidity-utils/helpers/IAuthentication.sol";
 
-interface IBasePoolSplitCodeFactory is IAuthentication {
+interface IBasePoolFactory is IAuthentication {
     /**
      * @dev Returns true if `pool` was created by this factory.
      */

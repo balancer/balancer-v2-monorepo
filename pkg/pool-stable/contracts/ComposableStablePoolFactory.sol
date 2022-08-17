@@ -18,16 +18,16 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./ComposableStablePool.sol";
 
-contract ComposableStablePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+contract ComposableStablePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     IProtocolFeePercentagesProvider private _protocolFeeProvider;
 
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolSplitCodeFactory(vault, type(ComposableStablePool).creationCode)
+        BasePoolFactory(vault, type(ComposableStablePool).creationCode)
     {
         _protocolFeeProvider = protocolFeeProvider;
     }

@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 
-describe('BasePoolSplitCodeFactory', function () {
+describe('BasePoolFactory', function () {
   let vault: Contract;
   let factory: Contract;
   let authorizer: Contract;
@@ -26,7 +26,7 @@ describe('BasePoolSplitCodeFactory', function () {
     authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
 
-    factory = await deploy('MockPoolSplitCodeFactory', { args: [vault.address] });
+    factory = await deploy('MockPoolFactory', { args: [vault.address] });
 
     const action = await actionId(factory, 'disable');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
