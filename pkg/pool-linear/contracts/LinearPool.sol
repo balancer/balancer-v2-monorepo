@@ -62,11 +62,11 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     // and equal to _INITIAL_BPT_SUPPLY, but most of it remains in the Pool, waiting to be exchanged for tokens. The
     // actual amount of BPT in circulation is the total supply minus the amount held by the Pool, and is known as the
     // 'virtual supply'.
-    // The total supply can only change if the emergency pause is activated by governance, enabling an
-    // alternative proportional exit that burns BPT. As this is not expected to happen, we optimize for
-    // success by using _INITIAL_BPT_SUPPLY instead of totalSupply(), saving a storage read. This optimization is only
-    // valid if the Pool is never paused: in case of an emergency that leads to burned tokens, the Pool should not
-    // be used after the buffer period expires and it automatically 'unpauses'.
+    // The total supply can only change if recovery mode is enabled and recovery mode exits are processed, resulting in
+    // BPT being burnt. This BPT can never be minted again, so it is technically possible for the preminted supply to
+    // run out, but a) this process is controlled by Governance via enabling and disabling recovery mode, and b) the
+    // initial supply is so large that it'd take a huge number of interactions to acquire sufficient tokens to join the
+    // Pool and then burn the acquired BPT, resulting in large gas costs.
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     IERC20 private immutable _mainToken;
@@ -245,7 +245,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
+    ) external override onlyVault(request.poolId) returns (uint256) {
         _beforeSwapJoinExit();
 
         // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
@@ -486,6 +486,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
             userData
         );
 
+        // By default the pool will pay out an amount of BPT equivalent to that which the user burns.
+        // We zero this amount out as otherwise a single user could drain the pool.
         amountsOut[getBptIndex()] = 0;
 
         return (bptAmountIn, amountsOut);
@@ -633,9 +635,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     function _isMainBalanceWithinTargets(uint256 lowerTarget, uint256 upperTarget) private view returns (bool) {
-        bytes32 poolId = getPoolId();
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
-        uint256 mainTokenBalance = _upscale(balances[_mainIndex], _scalingFactor(_mainToken));
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), _mainToken);
+
+        uint256 mainTokenBalance = _upscale(cash + managed, _scalingFactor(_mainToken));
 
         return mainTokenBalance >= lowerTarget && mainTokenBalance <= upperTarget;
     }
@@ -645,20 +647,28 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     /**
-     * @dev Returns the number of tokens in circulation.
+     * @notice Returns the number of tokens in circulation.
      *
-     * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints all BPT, `totalSupply`
-     * remains constant, whereas `virtualSupply` increases as users join the pool and decreases as they exit it.
+     * @dev In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in
+     * the Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
+     * mode exit function, the totalSupply can change as BPT are burned.
      */
     function getVirtualSupply() external view returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        // We technically don't need to upscale the BPT balance as its scaling factor is equal to one (since BPT has
-        // 18 decimals), but we do it for completeness.
-        uint256 bptBalance = _upscale(balances[_bptIndex], _scalingFactor(this));
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
 
-        return _getVirtualSupply(bptBalance);
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
     }
 
+    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
+    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
+    // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
     }
