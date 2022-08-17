@@ -9,7 +9,7 @@ import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
-import { currentTimestamp, advanceTime, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { currentTimestamp, advanceTime, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
@@ -96,15 +96,6 @@ describe('ComposableStablePool', () => {
       bptIndex = await pool.getBptIndex();
       deployTimestamp = await currentTimestamp();
       initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
-    }
-
-    async function changeAmplification(): Promise<void> {
-      const endAmp = AMPLIFICATION_PARAMETER.mul(2);
-      await pool.startAmpChange(endAmp);
-      await advanceTime(DAY * 2);
-
-      const { value: ampAfter } = await pool.getAmplificationParameter();
-      expect(ampAfter).to.equal(endAmp.mul(AMP_PRECISION));
     }
 
     describe('creation', () => {
@@ -302,846 +293,863 @@ describe('ComposableStablePool', () => {
       });
     });
 
-    describe('swap', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        await deployPool();
-      });
+    describe('vault interactions', () => {
+      function itStoresThePostInvariantAndAmp(action: () => Promise<void>) {
+        describe('getLastJoinExitData', () => {
+          sharedBeforeEach(async () => {
+            await action();
+          });
 
-      context('when the pool was not initialized', () => {
-        it('reverts', async () => {
-          const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(0), recipient });
-          await expect(tx).to.be.reverted;
-        });
-      });
+          function itReturnsTheLastJoinExitData() {
+            it('returns the amplification factor at the last join/exit operation', async () => {
+              const { lastJoinExitAmplification } = await pool.getLastJoinExitData();
+              expect(lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
+            });
 
-      context('when the pool was initialized', () => {
-        sharedBeforeEach('initialize pool', async () => {
-          bptIndex = await pool.getBptIndex();
-          const sender = (await ethers.getSigners())[0];
-          await pool.init({ initialBalances, recipient: sender });
-        });
+            it('returns the invariant after the last join/exit operation', async () => {
+              const expectedLastInvariant = await pool.estimateInvariant();
 
-        sharedBeforeEach('allow vault', async () => {
-          const sender = (await ethers.getSigners())[0];
-          await tokens.mint({ to: sender, amount: fp(100) });
-          await tokens.approve({ from: sender, to: pool.vault });
-        });
-
-        it('fails on a regular swap if caller is not the vault', async () => {
-          const swapRequest = {
-            kind: SwapKind.GivenIn,
-            tokenIn: tokens.first.address,
-            tokenOut: tokens.get(1).address,
-            amount: fp(1),
-            poolId: pool.poolId,
-            lastChangeBlock: 0,
-            from: lp.address,
-            to: lp.address,
-            userData: '0x',
-          };
-
-          await expect(pool.instance.connect(lp).onSwap(swapRequest, initialBalances, 0, 1)).to.be.revertedWith(
-            'CALLER_NOT_VAULT'
-          );
-        });
-
-        it('fails on a BPT swap if caller is not the vault', async () => {
-          const swapRequest = {
-            kind: SwapKind.GivenIn,
-            tokenIn: tokens.first.address,
-            tokenOut: pool.bpt.address,
-            amount: fp(1),
-            poolId: pool.poolId,
-            lastChangeBlock: 0,
-            from: lp.address,
-            to: lp.address,
-            userData: '0x',
-          };
-
-          await expect(pool.instance.connect(lp).onSwap(swapRequest, initialBalances, 0, 1)).to.be.revertedWith(
-            'CALLER_NOT_VAULT'
-          );
-        });
-
-        context('token out given token in', () => {
-          const amountIn = fp(0.1);
-
-          async function itSwapsTokensGivenIn(): Promise<void> {
-            it('swaps tokens', async () => {
-              const tokenIn = tokens.first;
-              const tokenOut = tokens.second;
-
-              const previousBalance = await tokenOut.balanceOf(recipient);
-              const expectedAmountOut = await pool.estimateTokenOutGivenTokenIn(tokenIn, tokenOut, amountIn);
-
-              const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount: amountIn, recipient });
-              expect(amountOut).to.be.equalWithError(expectedAmountOut, 0.00001);
-
-              const currentBalance = await tokenOut.balanceOf(recipient);
-              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedAmountOut, 0.00001);
+              const { lastPostJoinExitInvariant } = await pool.getLastJoinExitData();
+              expect(lastPostJoinExitInvariant).to.almostEqual(expectedLastInvariant, 0.000001);
             });
           }
 
-          itSwapsTokensGivenIn();
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              await pool.pause();
-            });
-
-            it('reverts', async () => {
-              await expect(
-                pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: amountIn, recipient })
-              ).to.be.revertedWith('PAUSED');
-            });
+          context('when the amplification factor remains constant', () => {
+            itReturnsTheLastJoinExitData();
           });
 
-          context('when in recovery mode', () => {
-            sharedBeforeEach('enable recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
+          context('when the amplification changes', () => {
+            sharedBeforeEach(async () => {
+              const endValue = AMPLIFICATION_PARAMETER.mul(2);
+              const duration = WEEK;
+              await pool.startAmpChange(endValue, (await currentTimestamp()).add(duration));
+              await advanceTime(duration * 1.5);
+
+              const { value: ampAfter } = await pool.getAmplificationParameter();
+              expect(ampAfter).to.equal(endValue.mul(AMP_PRECISION));
             });
 
-            itSwapsTokensGivenIn();
+            // Even if the amplification factor changes, the value stored should remain the same
+            itReturnsTheLastJoinExitData();
+          });
+        });
+      }
+
+      describe('onSwap', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          await deployPool();
+        });
+
+        context('when the pool was not initialized', () => {
+          it('reverts', async () => {
+            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(0), recipient });
+            await expect(tx).to.be.reverted;
           });
         });
 
-        context('token in given token out', () => {
-          const amountOut = fp(0.1);
-
-          async function itSwapsTokensGivenOut(): Promise<void> {
-            it('swaps tokens', async () => {
-              const tokenIn = tokens.first;
-              const tokenOut = tokens.second;
-
-              const previousBalance = await tokenOut.balanceOf(recipient);
-              const expectedAmountIn = await pool.estimateTokenInGivenTokenOut(tokenIn, tokenOut, amountOut);
-
-              const { amountIn } = await pool.swapGivenOut({
-                in: tokenIn,
-                out: tokenOut,
-                amount: amountOut,
-                recipient,
-              });
-              expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
-
-              const currentBalance = await tokenOut.balanceOf(recipient);
-              expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
-            });
-          }
-
-          itSwapsTokensGivenOut();
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              await pool.pause();
-            });
-
-            it('reverts', async () => {
-              await expect(
-                pool.swapGivenOut({ in: tokens.first, out: tokens.second, amount: amountOut, recipient })
-              ).to.be.revertedWith('PAUSED');
-            });
+        context('when the pool was initialized', () => {
+          sharedBeforeEach('initialize pool', async () => {
+            bptIndex = await pool.getBptIndex();
+            const sender = (await ethers.getSigners())[0];
+            await pool.init({ initialBalances, recipient: sender });
           });
 
-          context('when in recovery mode', async () => {
-            sharedBeforeEach('enable recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
-            });
-
-            itSwapsTokensGivenOut();
-          });
-        });
-
-        context('token out given BPT in', () => {
-          const bptIn = fp(1);
-
-          async function itSwapsTokenOutGivenBptIn(): Promise<void> {
-            it('swaps exact BPT for token', async () => {
-              const tokenOut = tokens.first;
-
-              const previousBalance = await tokenOut.balanceOf(recipient);
-              const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(tokenOut, bptIn);
-
-              const { amountOut } = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
-              expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
-
-              const currentBalance = await tokenOut.balanceOf(recipient);
-              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedTokenOut, 0.00001);
-            });
-          }
-
-          itSwapsTokenOutGivenBptIn();
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              await pool.pause();
-            });
-
-            it('reverts', async () => {
-              await expect(
-                pool.swapGivenIn({ in: pool.bpt, out: tokens.first, amount: bptIn, recipient })
-              ).to.be.revertedWith('PAUSED');
-            });
+          sharedBeforeEach('allow vault', async () => {
+            const sender = (await ethers.getSigners())[0];
+            await tokens.mint({ to: sender, amount: fp(100) });
+            await tokens.approve({ from: sender, to: pool.vault });
           });
 
-          context('when in recovery mode', async () => {
-            sharedBeforeEach('enable recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
-            });
+          it('fails on a regular swap if caller is not the vault', async () => {
+            const swapRequest = {
+              kind: SwapKind.GivenIn,
+              tokenIn: tokens.first.address,
+              tokenOut: tokens.get(1).address,
+              amount: fp(1),
+              poolId: pool.poolId,
+              lastChangeBlock: 0,
+              from: lp.address,
+              to: lp.address,
+              userData: '0x',
+            };
 
-            itSwapsTokenOutGivenBptIn();
-          });
-        });
-
-        context('token in given BPT out', () => {
-          const bptOut = fp(1);
-
-          async function itSwapsTokenForExactBpt(): Promise<void> {
-            it('swaps token for exact BPT', async () => {
-              const tokenIn = tokens.first;
-
-              const previousBalance = await pool.balanceOf(recipient);
-              const expectedTokenIn = await pool.estimateTokenInGivenBptOut(tokenIn, bptOut);
-
-              const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
-              expect(amountIn).to.be.equalWithError(expectedTokenIn, 0.00001);
-
-              const currentBalance = await pool.balanceOf(recipient);
-              expect(currentBalance.sub(previousBalance)).to.be.equal(bptOut);
-            });
-          }
-
-          itSwapsTokenForExactBpt();
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              await pool.pause();
-            });
-
-            it('reverts', async () => {
-              await expect(
-                pool.swapGivenOut({ in: tokens.first, out: pool.bpt, amount: bptOut, recipient })
-              ).to.be.revertedWith('PAUSED');
-            });
-          });
-
-          context('when in recovery mode', async () => {
-            sharedBeforeEach('enable recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
-            });
-
-            itSwapsTokenForExactBpt();
-          });
-        });
-
-        context('BPT out given token in', () => {
-          const amountIn = fp(1);
-
-          async function itSwapsExactTokenForBpt(): Promise<void> {
-            it('swaps exact token for BPT', async () => {
-              const tokenIn = tokens.first;
-
-              const previousBalance = await pool.balanceOf(recipient);
-              const expectedBptOut = await pool.estimateBptOutGivenTokenIn(tokenIn, amountIn);
-
-              const { amountOut } = await pool.swapGivenIn({ in: tokenIn, out: pool.bpt, amount: amountIn, recipient });
-              expect(amountOut).to.be.equalWithError(expectedBptOut, 0.00001);
-
-              const currentBalance = await pool.balanceOf(recipient);
-              expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedBptOut, 0.00001);
-            });
-          }
-
-          itSwapsExactTokenForBpt();
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              await pool.pause();
-            });
-
-            it('reverts', async () => {
-              await expect(
-                pool.swapGivenIn({ in: tokens.first, out: pool.bpt, amount: amountIn, recipient })
-              ).to.be.revertedWith('PAUSED');
-            });
-          });
-
-          context('when in recovery mode', async () => {
-            sharedBeforeEach('enable recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
-            });
-
-            itSwapsExactTokenForBpt();
-          });
-        });
-
-        context('BPT in given token out', () => {
-          const amountOut = fp(0.1);
-
-          async function itSwapsBptForExactTokens(): Promise<void> {
-            it('swaps BPT for exact tokens', async () => {
-              const tokenOut = tokens.first;
-
-              const previousBalance = await tokenOut.balanceOf(recipient);
-              const expectedBptIn = await pool.estimateBptInGivenTokenOut(tokenOut, amountOut);
-
-              const { amountIn } = await pool.swapGivenOut({
-                in: pool.bpt,
-                out: tokenOut,
-                amount: amountOut,
-                recipient,
-              });
-              expect(amountIn).to.be.equalWithError(expectedBptIn, 0.00001);
-
-              const currentBalance = await tokenOut.balanceOf(recipient);
-              expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
-            });
-          }
-
-          itSwapsBptForExactTokens();
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              await pool.pause();
-            });
-
-            it('reverts', async () => {
-              await expect(
-                pool.swapGivenOut({ in: pool.bpt, out: tokens.first, amount: amountOut, recipient })
-              ).to.be.revertedWith('PAUSED');
-            });
-          });
-
-          context('when in recovery mode', async () => {
-            sharedBeforeEach('enable recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
-            });
-
-            itSwapsBptForExactTokens();
-          });
-        });
-      });
-    });
-
-    describe('onJoinPool', () => {
-      let tokenIndexWithBpt: number;
-      let tokenIndexWithoutBpt: number;
-      let token: Token;
-
-      sharedBeforeEach('deploy pool', async () => {
-        await deployPool({ admin });
-      });
-
-      sharedBeforeEach('allow vault', async () => {
-        await tokens.mint({ to: recipient, amount: fp(100) });
-        await tokens.approve({ from: recipient, to: pool.vault });
-      });
-
-      sharedBeforeEach('get token to join with', async () => {
-        // tokens are sorted, and do not include BPT, so get the last one
-        tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
-        token = tokens.get(tokenIndexWithoutBpt);
-        tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
-      });
-
-      it('fails if caller is not the vault', async () => {
-        await expect(
-          pool.instance.connect(lp).onJoinPool(pool.poolId, lp.address, other.address, [0], 0, 0, '0x')
-        ).to.be.revertedWith('CALLER_NOT_VAULT');
-      });
-
-      it('fails if no user data', async () => {
-        await expect(pool.join({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
-      });
-
-      it('fails if wrong user data', async () => {
-        const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
-
-        await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
-      });
-
-      describe('join exact tokens in for BPT out', () => {
-        context('not in recovery mode', () => {
-          itJoinsGivenExactTokensInCorrectly();
-        });
-
-        context('in recovery mode', () => {
-          sharedBeforeEach('enable recovery mode', async () => {
-            await pool.enableRecoveryMode(admin);
-          });
-
-          itJoinsGivenExactTokensInCorrectly();
-        });
-
-        function itJoinsGivenExactTokensInCorrectly() {
-          it('fails if not initialized', async () => {
-            await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances })).to.be.revertedWith(
-              'UNINITIALIZED'
+            await expect(pool.instance.connect(lp).onSwap(swapRequest, initialBalances, 0, 1)).to.be.revertedWith(
+              'CALLER_NOT_VAULT'
             );
           });
 
-          context('once initialized', () => {
-            let expectedBptOut: BigNumberish;
-            let amountsIn: BigNumberish[];
+          it('fails on a BPT swap if caller is not the vault', async () => {
+            const swapRequest = {
+              kind: SwapKind.GivenIn,
+              tokenIn: tokens.first.address,
+              tokenOut: pool.bpt.address,
+              amount: fp(1),
+              poolId: pool.poolId,
+              lastChangeBlock: 0,
+              from: lp.address,
+              to: lp.address,
+              userData: '0x',
+            };
 
-            function itUpdatesTheInvariantAfterward(updateAmp: boolean) {
-              it(`updates the invariant afterward (${updateAmp ? 'changing' : 'constant'} amp)`, async () => {
-                const minimumBptOut = pct(expectedBptOut, 0.99);
+            await expect(pool.instance.connect(lp).onSwap(swapRequest, initialBalances, 0, 1)).to.be.revertedWith(
+              'CALLER_NOT_VAULT'
+            );
+          });
 
-                const preJoinInvariant = await pool.estimateInvariant();
-                await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
-                const expectedLastInvariant = await pool.estimateInvariant();
-                expect(expectedLastInvariant).gt(preJoinInvariant);
+          context('token out given token in', () => {
+            const amountIn = fp(0.1);
 
-                if (updateAmp) {
-                  await changeAmplification();
-                }
+            async function itSwapsTokensGivenIn(): Promise<void> {
+              it('swaps tokens', async () => {
+                const tokenIn = tokens.first;
+                const tokenOut = tokens.second;
 
-                const result = await pool.getLastJoinExitData();
-                expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-                expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
+                const previousBalance = await tokenOut.balanceOf(recipient);
+                const expectedAmountOut = await pool.estimateTokenOutGivenTokenIn(tokenIn, tokenOut, amountIn);
+
+                const { amountOut } = await pool.swapGivenIn({
+                  in: tokenIn,
+                  out: tokenOut,
+                  amount: amountIn,
+                  recipient,
+                });
+                expect(amountOut).to.be.equalWithError(expectedAmountOut, 0.00001);
+
+                const currentBalance = await tokenOut.balanceOf(recipient);
+                expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedAmountOut, 0.00001);
               });
             }
 
-            sharedBeforeEach('initialize pool', async () => {
-              await pool.init({ recipient, initialBalances });
-              bptIndex = await pool.getBptIndex();
-              amountsIn = ZEROS.map((n, i) => (i != bptIndex ? fp(0.1) : n));
+            itSwapsTokensGivenIn();
 
-              expectedBptOut = await pool.estimateBptOut(
-                await pool.upscale(amountsIn),
-                await pool.upscale(initialBalances)
+            context('when paused', () => {
+              sharedBeforeEach('pause pool', async () => {
+                await pool.pause();
+              });
+
+              it('reverts', async () => {
+                await expect(
+                  pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: amountIn, recipient })
+                ).to.be.revertedWith('PAUSED');
+              });
+            });
+
+            context('when in recovery mode', () => {
+              sharedBeforeEach('enable recovery mode', async () => {
+                await pool.enableRecoveryMode(admin);
+              });
+
+              itSwapsTokensGivenIn();
+            });
+          });
+
+          context('token in given token out', () => {
+            const amountOut = fp(0.1);
+
+            async function itSwapsTokensGivenOut(): Promise<void> {
+              it('swaps tokens', async () => {
+                const tokenIn = tokens.first;
+                const tokenOut = tokens.second;
+
+                const previousBalance = await tokenOut.balanceOf(recipient);
+                const expectedAmountIn = await pool.estimateTokenInGivenTokenOut(tokenIn, tokenOut, amountOut);
+
+                const { amountIn } = await pool.swapGivenOut({
+                  in: tokenIn,
+                  out: tokenOut,
+                  amount: amountOut,
+                  recipient,
+                });
+                expect(amountIn).to.be.equalWithError(expectedAmountIn, 0.00001);
+
+                const currentBalance = await tokenOut.balanceOf(recipient);
+                expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
+              });
+            }
+
+            itSwapsTokensGivenOut();
+
+            context('when paused', () => {
+              sharedBeforeEach('pause pool', async () => {
+                await pool.pause();
+              });
+
+              it('reverts', async () => {
+                await expect(
+                  pool.swapGivenOut({ in: tokens.first, out: tokens.second, amount: amountOut, recipient })
+                ).to.be.revertedWith('PAUSED');
+              });
+            });
+
+            context('when in recovery mode', async () => {
+              sharedBeforeEach('enable recovery mode', async () => {
+                await pool.enableRecoveryMode(admin);
+              });
+
+              itSwapsTokensGivenOut();
+            });
+          });
+
+          context('token out given BPT in', () => {
+            const bptIn = fp(1);
+
+            async function itSwapsTokenOutGivenBptIn(): Promise<void> {
+              it('swaps exact BPT for token', async () => {
+                const tokenOut = tokens.first;
+
+                const previousBalance = await tokenOut.balanceOf(recipient);
+                const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(tokenOut, bptIn);
+
+                const { amountOut } = await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
+                expect(amountOut).to.be.equalWithError(expectedTokenOut, 0.00001);
+
+                const currentBalance = await tokenOut.balanceOf(recipient);
+                expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedTokenOut, 0.00001);
+              });
+
+              itStoresThePostInvariantAndAmp(async () => {
+                const tokenOut = tokens.first;
+                await pool.swapGivenIn({ in: pool.bpt, out: tokenOut, amount: bptIn, recipient });
+              });
+            }
+
+            itSwapsTokenOutGivenBptIn();
+
+            context('when paused', () => {
+              sharedBeforeEach('pause pool', async () => {
+                await pool.pause();
+              });
+
+              it('reverts', async () => {
+                await expect(
+                  pool.swapGivenIn({ in: pool.bpt, out: tokens.first, amount: bptIn, recipient })
+                ).to.be.revertedWith('PAUSED');
+              });
+            });
+
+            context('when in recovery mode', async () => {
+              sharedBeforeEach('enable recovery mode', async () => {
+                await pool.enableRecoveryMode(admin);
+              });
+
+              itSwapsTokenOutGivenBptIn();
+            });
+          });
+
+          context('token in given BPT out', () => {
+            const bptOut = fp(1);
+
+            async function itSwapsTokenForExactBpt(): Promise<void> {
+              it('swaps token for exact BPT', async () => {
+                const tokenIn = tokens.first;
+
+                const previousBalance = await pool.balanceOf(recipient);
+                const expectedTokenIn = await pool.estimateTokenInGivenBptOut(tokenIn, bptOut);
+
+                const { amountIn } = await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
+                expect(amountIn).to.be.equalWithError(expectedTokenIn, 0.00001);
+
+                const currentBalance = await pool.balanceOf(recipient);
+                expect(currentBalance.sub(previousBalance)).to.be.equal(bptOut);
+              });
+
+              itStoresThePostInvariantAndAmp(async () => {
+                const tokenIn = tokens.first;
+                await pool.swapGivenOut({ in: tokenIn, out: pool.bpt, amount: bptOut, recipient });
+              });
+            }
+
+            itSwapsTokenForExactBpt();
+
+            context('when paused', () => {
+              sharedBeforeEach('pause pool', async () => {
+                await pool.pause();
+              });
+
+              it('reverts', async () => {
+                await expect(
+                  pool.swapGivenOut({ in: tokens.first, out: pool.bpt, amount: bptOut, recipient })
+                ).to.be.revertedWith('PAUSED');
+              });
+            });
+
+            context('when in recovery mode', async () => {
+              sharedBeforeEach('enable recovery mode', async () => {
+                await pool.enableRecoveryMode(admin);
+              });
+
+              itSwapsTokenForExactBpt();
+            });
+          });
+
+          context('BPT out given token in', () => {
+            const amountIn = fp(1);
+
+            async function itSwapsExactTokenForBpt(): Promise<void> {
+              it('swaps exact token for BPT', async () => {
+                const tokenIn = tokens.first;
+
+                const previousBalance = await pool.balanceOf(recipient);
+                const expectedBptOut = await pool.estimateBptOutGivenTokenIn(tokenIn, amountIn);
+
+                const { amountOut } = await pool.swapGivenIn({
+                  in: tokenIn,
+                  out: pool.bpt,
+                  amount: amountIn,
+                  recipient,
+                });
+                expect(amountOut).to.be.equalWithError(expectedBptOut, 0.00001);
+
+                const currentBalance = await pool.balanceOf(recipient);
+                expect(currentBalance.sub(previousBalance)).to.be.equalWithError(expectedBptOut, 0.00001);
+              });
+
+              itStoresThePostInvariantAndAmp(async () => {
+                const tokenIn = tokens.first;
+                await pool.swapGivenIn({
+                  in: tokenIn,
+                  out: pool.bpt,
+                  amount: amountIn,
+                  recipient,
+                });
+              });
+            }
+
+            itSwapsExactTokenForBpt();
+
+            context('when paused', () => {
+              sharedBeforeEach('pause pool', async () => {
+                await pool.pause();
+              });
+
+              it('reverts', async () => {
+                await expect(
+                  pool.swapGivenIn({ in: tokens.first, out: pool.bpt, amount: amountIn, recipient })
+                ).to.be.revertedWith('PAUSED');
+              });
+            });
+
+            context('when in recovery mode', async () => {
+              sharedBeforeEach('enable recovery mode', async () => {
+                await pool.enableRecoveryMode(admin);
+              });
+
+              itSwapsExactTokenForBpt();
+            });
+          });
+
+          context('BPT in given token out', () => {
+            const amountOut = fp(0.1);
+
+            async function itSwapsBptForExactTokens(): Promise<void> {
+              it('swaps BPT for exact tokens', async () => {
+                const tokenOut = tokens.first;
+
+                const previousBalance = await tokenOut.balanceOf(recipient);
+                const expectedBptIn = await pool.estimateBptInGivenTokenOut(tokenOut, amountOut);
+
+                const { amountIn } = await pool.swapGivenOut({
+                  in: pool.bpt,
+                  out: tokenOut,
+                  amount: amountOut,
+                  recipient,
+                });
+                expect(amountIn).to.be.equalWithError(expectedBptIn, 0.00001);
+
+                const currentBalance = await tokenOut.balanceOf(recipient);
+                expect(currentBalance.sub(previousBalance)).to.be.equal(amountOut);
+              });
+
+              itStoresThePostInvariantAndAmp(async () => {
+                const tokenOut = tokens.first;
+                await pool.swapGivenOut({
+                  in: pool.bpt,
+                  out: tokenOut,
+                  amount: amountOut,
+                  recipient,
+                });
+              });
+            }
+
+            itSwapsBptForExactTokens();
+
+            context('when paused', () => {
+              sharedBeforeEach('pause pool', async () => {
+                await pool.pause();
+              });
+
+              it('reverts', async () => {
+                await expect(
+                  pool.swapGivenOut({ in: pool.bpt, out: tokens.first, amount: amountOut, recipient })
+                ).to.be.revertedWith('PAUSED');
+              });
+            });
+
+            context('when in recovery mode', async () => {
+              sharedBeforeEach('enable recovery mode', async () => {
+                await pool.enableRecoveryMode(admin);
+              });
+
+              itSwapsBptForExactTokens();
+            });
+          });
+        });
+      });
+
+      describe('onJoinPool', () => {
+        let tokenIndexWithBpt: number;
+        let tokenIndexWithoutBpt: number;
+        let token: Token;
+
+        sharedBeforeEach('deploy pool', async () => {
+          await deployPool({ admin });
+        });
+
+        sharedBeforeEach('allow vault', async () => {
+          await tokens.mint({ to: recipient, amount: fp(100) });
+          await tokens.approve({ from: recipient, to: pool.vault });
+        });
+
+        sharedBeforeEach('get token to join with', async () => {
+          // tokens are sorted, and do not include BPT, so get the last one
+          tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
+          token = tokens.get(tokenIndexWithoutBpt);
+          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
+        });
+
+        it('fails if caller is not the vault', async () => {
+          await expect(
+            pool.instance.connect(lp).onJoinPool(pool.poolId, lp.address, other.address, [0], 0, 0, '0x')
+          ).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
+
+        it('fails if no user data', async () => {
+          await expect(pool.join({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
+        });
+
+        it('fails if wrong user data', async () => {
+          const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
+
+          await expect(pool.join({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
+        });
+
+        describe('join exact tokens in for BPT out', () => {
+          context('not in recovery mode', () => {
+            itJoinsGivenExactTokensInCorrectly();
+          });
+
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+            });
+
+            itJoinsGivenExactTokensInCorrectly();
+          });
+
+          function itJoinsGivenExactTokensInCorrectly() {
+            it('fails if not initialized', async () => {
+              await expect(pool.joinGivenIn({ recipient, amountsIn: initialBalances })).to.be.revertedWith(
+                'UNINITIALIZED'
               );
             });
 
-            it('grants BPT for exact tokens', async () => {
-              const previousBptBalance = await pool.balanceOf(recipient);
-              const minimumBptOut = pct(expectedBptOut, 0.99);
+            context('once initialized', () => {
+              let expectedBptOut: BigNumberish;
+              let amountsIn: BigNumberish[];
 
-              const result = await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+              sharedBeforeEach('initialize pool', async () => {
+                await pool.init({ recipient, initialBalances });
+                bptIndex = await pool.getBptIndex();
+                amountsIn = ZEROS.map((n, i) => (i != bptIndex ? fp(0.1) : n));
 
-              // Amounts in should be the same as initial ones
-              expect(result.amountsIn).to.deep.equal(amountsIn);
-
-              // Make sure received BPT is close to what we expect
-              const currentBptBalance = await pool.balanceOf(recipient);
-              expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
-            });
-
-            it('can tell how much BPT it will give in return', async () => {
-              const minimumBptOut = pct(expectedBptOut, 0.99);
-
-              const queryResult = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
-
-              expect(queryResult.amountsIn).to.deep.equal(amountsIn);
-              expect(queryResult.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
-
-              // Query and join should match exactly
-              const result = await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
-              expect(result.amountsIn).to.deep.equal(queryResult.amountsIn);
-            });
-
-            it('join and joinSwap give the same result', async () => {
-              // To test the swap, need to have only a single non-zero amountIn
-              const swapAmountsIn = Array(initialBalances.length).fill(0);
-              swapAmountsIn[tokenIndexWithBpt] = amountsIn[tokenIndexWithBpt];
-
-              const queryResult = await pool.queryJoinGivenIn({ amountsIn: swapAmountsIn, recipient });
-
-              const amountOut = await pool.querySwapGivenIn({
-                from: recipient,
-                in: token,
-                out: pool.bpt,
-                amount: swapAmountsIn[tokenIndexWithBpt],
-                recipient: recipient,
+                expectedBptOut = await pool.estimateBptOut(
+                  await pool.upscale(amountsIn),
+                  await pool.upscale(initialBalances)
+                );
               });
 
-              expect(amountOut).to.be.equal(queryResult.bptOut);
+              it('grants BPT for exact tokens', async () => {
+                const previousBptBalance = await pool.balanceOf(recipient);
+                const minimumBptOut = pct(expectedBptOut, 0.99);
+
+                const result = await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+
+                // Amounts in should be the same as initial ones
+                expect(result.amountsIn).to.deep.equal(amountsIn);
+
+                // Make sure received BPT is close to what we expect
+                const currentBptBalance = await pool.balanceOf(recipient);
+                expect(currentBptBalance.sub(previousBptBalance)).to.be.equalWithError(expectedBptOut, 0.0001);
+              });
+
+              it('can tell how much BPT it will give in return', async () => {
+                const minimumBptOut = pct(expectedBptOut, 0.99);
+
+                const queryResult = await pool.queryJoinGivenIn({ amountsIn, minimumBptOut });
+
+                expect(queryResult.amountsIn).to.deep.equal(amountsIn);
+                expect(queryResult.bptOut).to.be.equalWithError(expectedBptOut, 0.0001);
+
+                // Query and join should match exactly
+                const result = await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+                expect(result.amountsIn).to.deep.equal(queryResult.amountsIn);
+              });
+
+              it('join and joinSwap give the same result', async () => {
+                // To test the swap, need to have only a single non-zero amountIn
+                const swapAmountsIn = Array(initialBalances.length).fill(0);
+                swapAmountsIn[tokenIndexWithBpt] = amountsIn[tokenIndexWithBpt];
+
+                const queryResult = await pool.queryJoinGivenIn({ amountsIn: swapAmountsIn, recipient });
+
+                const amountOut = await pool.querySwapGivenIn({
+                  from: recipient,
+                  in: token,
+                  out: pool.bpt,
+                  amount: swapAmountsIn[tokenIndexWithBpt],
+                  recipient: recipient,
+                });
+
+                expect(amountOut).to.be.equal(queryResult.bptOut);
+              });
+
+              itStoresThePostInvariantAndAmp(async () => {
+                const minimumBptOut = pct(expectedBptOut, 0.99);
+                await pool.joinGivenIn({ amountsIn, minimumBptOut, recipient, from: recipient });
+              });
+
+              it('fails if not enough BPT', async () => {
+                // This call should fail because we are requesting minimum 1% more
+                const minimumBptOut = pct(expectedBptOut, 1.01);
+
+                await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
+              });
+
+              it('reverts if amountsIn is the wrong length', async () => {
+                await expect(pool.joinGivenIn({ amountsIn: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+              });
+
+              it('reverts if paused', async () => {
+                await pool.pause();
+
+                await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
+              });
             });
-
-            it('fails if not enough BPT', async () => {
-              // This call should fail because we are requesting minimum 1% more
-              const minimumBptOut = pct(expectedBptOut, 1.01);
-
-              await expect(pool.joinGivenIn({ amountsIn, minimumBptOut })).to.be.revertedWith('BPT_OUT_MIN_AMOUNT');
-            });
-
-            it('reverts if amountsIn is the wrong length', async () => {
-              await expect(pool.joinGivenIn({ amountsIn: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-            });
-
-            itUpdatesTheInvariantAfterward(true); // change the amp
-            itUpdatesTheInvariantAfterward(false);
-
-            it('reverts if paused', async () => {
-              await pool.pause();
-
-              await expect(pool.joinGivenIn({ amountsIn })).to.be.revertedWith('PAUSED');
-            });
-          });
-        }
-      });
-
-      describe('join token in for exact BPT out', () => {
-        context('not in recovery mode', () => {
-          itJoinsExactBPTOutCorrectly();
+          }
         });
 
-        context('in recovery mode', () => {
-          sharedBeforeEach('enable recovery mode', async () => {
-            await pool.enableRecoveryMode(admin);
+        describe('join token in for exact BPT out', () => {
+          context('not in recovery mode', () => {
+            itJoinsExactBPTOutCorrectly();
           });
 
-          itJoinsExactBPTOutCorrectly();
-        });
-
-        function itJoinsExactBPTOutCorrectly() {
-          it('fails if not initialized', async () => {
-            await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
-          });
-
-          context('once initialized', () => {
-            sharedBeforeEach('initialize pool', async () => {
-              await pool.init({ recipient, initialBalances });
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
             });
 
-            function itUpdatesTheInvariantAfterward(updateAmp: boolean) {
-              it(`updates the invariant afterward (${updateAmp ? 'changing' : 'constant'} amp)`, async () => {
+            itJoinsExactBPTOutCorrectly();
+          });
+
+          function itJoinsExactBPTOutCorrectly() {
+            it('fails if not initialized', async () => {
+              await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
+            });
+
+            context('once initialized', () => {
+              sharedBeforeEach('initialize pool', async () => {
+                await pool.init({ recipient, initialBalances });
+              });
+
+              it('reverts if the tokenIndex passed in is invalid', async () => {
                 const previousBptBalance = await pool.balanceOf(recipient);
                 const bptOut = pct(previousBptBalance, 0.2);
 
-                const preJoinInvariant = await pool.estimateInvariant();
-                await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
-                const expectedLastInvariant = await pool.estimateInvariant();
-                expect(expectedLastInvariant).gt(preJoinInvariant);
-
-                if (updateAmp) {
-                  await changeAmplification();
-                }
-
-                const result = await pool.getLastJoinExitData();
-                expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-                expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
+                await expect(pool.joinGivenOut({ from: recipient, recipient, bptOut, token: 100 })).to.be.revertedWith(
+                  'OUT_OF_BOUNDS'
+                );
               });
-            }
 
+              it('grants exact BPT for token in', async () => {
+                const previousBptBalance = await pool.balanceOf(recipient);
+                // 20% of previous balance
+                const bptOut = pct(previousBptBalance, 0.2);
+                const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
+
+                const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+
+                // Only token in should be the one transferred
+                expect(result.amountsIn[tokenIndexWithBpt]).to.be.equalWithError(expectedAmountIn, 0.001);
+                expect(result.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
+
+                // Make sure received BPT is close to what we expect
+                const currentBptBalance = await pool.balanceOf(recipient);
+                expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+              });
+
+              it('can tell how many tokens it will receive', async () => {
+                const previousBptBalance = await pool.balanceOf(recipient);
+                // 20% of previous balance
+                const bptOut = pct(previousBptBalance, 0.2);
+
+                const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+
+                expect(queryResult.bptOut).to.be.equal(bptOut);
+                expect(queryResult.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
+
+                const result = await pool.joinGivenOut({ from: recipient, bptOut, token });
+                // Query and join should match exactly
+                expect(result.amountsIn[tokenIndexWithBpt]).to.equal(queryResult.amountsIn[tokenIndexWithBpt]);
+              });
+
+              it('join and joinSwap give the same result', async () => {
+                const previousBptBalance = await pool.balanceOf(recipient);
+                // 32.5% of previous balance
+                const bptOut = pct(previousBptBalance, 0.325);
+
+                const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+
+                const amountIn = await pool.querySwapGivenOut({
+                  from: recipient,
+                  in: token,
+                  out: pool.bpt,
+                  amount: bptOut,
+                  recipient: lp,
+                });
+
+                expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndexWithBpt]);
+              });
+
+              itStoresThePostInvariantAndAmp(async () => {
+                const previousBptBalance = await pool.balanceOf(recipient);
+                const bptOut = pct(previousBptBalance, 0.2);
+                await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+              });
+
+              it('reverts if paused', async () => {
+                await pool.pause();
+
+                await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
+              });
+            });
+          }
+        });
+      });
+
+      describe('onExitPool', () => {
+        let previousBptBalance: BigNumber;
+        let tokenIndexWithoutBpt: number;
+        let tokenIndexWithBpt: number;
+        let token: Token;
+
+        sharedBeforeEach('deploy and initialize pool', async () => {
+          await deployPool({ admin });
+          await pool.init({ initialBalances, recipient: lp });
+          previousBptBalance = await pool.balanceOf(lp);
+        });
+
+        sharedBeforeEach('allow vault', async () => {
+          await tokens.mint({ to: lp, amount: fp(100) });
+          await tokens.approve({ from: lp, to: pool.vault });
+        });
+
+        sharedBeforeEach('get token to exit with', async () => {
+          // tokens are sorted, and do not include BPT, so get the last one
+          tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
+          token = tokens.get(tokenIndexWithoutBpt);
+          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
+        });
+
+        it('fails if caller is not the vault', async () => {
+          await expect(
+            pool.instance.connect(lp).onExitPool(pool.poolId, recipient.address, other.address, [0], 0, 0, '0x')
+          ).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
+
+        it('fails if no user data', async () => {
+          await expect(pool.exit({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
+        });
+
+        it('fails if wrong user data', async () => {
+          const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
+
+          await expect(pool.exit({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
+        });
+
+        describe('exit BPT in for one token out', () => {
+          context('not in recovery mode', () => {
+            itExitsExactBptInForOneTokenOutProperly();
+          });
+
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+            });
+
+            itExitsExactBptInForOneTokenOutProperly();
+          });
+
+          function itExitsExactBptInForOneTokenOutProperly() {
             it('reverts if the tokenIndex passed in is invalid', async () => {
-              const previousBptBalance = await pool.balanceOf(recipient);
-              const bptOut = pct(previousBptBalance, 0.2);
+              const previousBptBalance = await pool.balanceOf(lp);
+              const bptIn = pct(previousBptBalance, 0.2);
 
-              await expect(pool.joinGivenOut({ from: recipient, recipient, bptOut, token: 100 })).to.be.revertedWith(
-                'OUT_OF_BOUNDS'
-              );
+              await expect(pool.singleExitGivenIn({ from: lp, bptIn, token: 100 })).to.be.revertedWith('OUT_OF_BOUNDS');
             });
 
-            it('grants exact BPT for token in', async () => {
-              const previousBptBalance = await pool.balanceOf(recipient);
+            it('grants one token for exact bpt', async () => {
               // 20% of previous balance
-              const bptOut = pct(previousBptBalance, 0.2);
-              const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
+              const previousBptBalance = await pool.balanceOf(lp);
+              const bptIn = pct(previousBptBalance, 0.2);
+              const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(token, bptIn);
 
-              const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+              const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
 
-              // Only token in should be the one transferred
-              expect(result.amountsIn[tokenIndexWithBpt]).to.be.equalWithError(expectedAmountIn, 0.001);
-              expect(result.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
+              // Only token out should be the one transferred
+              expect(result.amountsOut[tokenIndexWithBpt]).to.be.equalWithError(expectedTokenOut, 0.0001);
+              expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
-              // Make sure received BPT is close to what we expect
-              const currentBptBalance = await pool.balanceOf(recipient);
-              expect(currentBptBalance.sub(previousBptBalance)).to.be.equal(bptOut);
+              const bptAfter = await pool.balanceOf(lp);
+
+              // Current BPT balance should decrease
+              expect(previousBptBalance.sub(bptIn)).to.equal(bptAfter);
             });
 
-            it('can tell how many tokens it will receive', async () => {
-              const previousBptBalance = await pool.balanceOf(recipient);
-              // 20% of previous balance
-              const bptOut = pct(previousBptBalance, 0.2);
+            it('can tell how many tokens it will give in return', async () => {
+              const bptIn = pct(await pool.balanceOf(lp), 0.2);
+              const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
 
-              const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+              expect(queryResult.bptIn).to.equal(bptIn);
+              expect(queryResult.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
-              expect(queryResult.bptOut).to.be.equal(bptOut);
-              expect(queryResult.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
+              const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
+              expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
-              const result = await pool.joinGivenOut({ from: recipient, bptOut, token });
-              // Query and join should match exactly
-              expect(result.amountsIn[tokenIndexWithBpt]).to.equal(queryResult.amountsIn[tokenIndexWithBpt]);
+              // Query and exit should match exactly
+              expect(result.amountsOut[tokenIndexWithBpt]).to.equal(queryResult.amountsOut[tokenIndexWithBpt]);
             });
 
-            it('join and joinSwap give the same result', async () => {
-              const previousBptBalance = await pool.balanceOf(recipient);
-              // 32.5% of previous balance
-              const bptOut = pct(previousBptBalance, 0.325);
+            it('exit and exitSwap give the same result', async () => {
+              const bptIn = pct(await pool.balanceOf(lp), 0.2);
+              const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
 
-              const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
-
-              const amountIn = await pool.querySwapGivenOut({
-                from: recipient,
-                in: token,
-                out: pool.bpt,
-                amount: bptOut,
+              const amountOut = await pool.querySwapGivenIn({
+                from: lp,
+                in: pool.bpt,
+                out: token,
+                amount: bptIn,
                 recipient: lp,
               });
-
-              expect(amountIn).to.be.equal(queryResult.amountsIn[tokenIndexWithBpt]);
+              expect(queryResult.amountsOut[tokenIndexWithBpt]).to.equal(amountOut);
             });
 
-            itUpdatesTheInvariantAfterward(true); // updateAmp
-            itUpdatesTheInvariantAfterward(false);
+            itStoresThePostInvariantAndAmp(async () => {
+              const previousBptBalance = await pool.balanceOf(lp);
+              const bptIn = pct(previousBptBalance, 0.2);
+
+              await pool.singleExitGivenIn({ from: lp, bptIn, token });
+            });
 
             it('reverts if paused', async () => {
               await pool.pause();
 
-              await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
-            });
-          });
-        }
-      });
-    });
-
-    describe('onExitPool', () => {
-      let previousBptBalance: BigNumber;
-      let tokenIndexWithoutBpt: number;
-      let tokenIndexWithBpt: number;
-      let token: Token;
-
-      sharedBeforeEach('deploy and initialize pool', async () => {
-        await deployPool({ admin });
-        await pool.init({ initialBalances, recipient: lp });
-        previousBptBalance = await pool.balanceOf(lp);
-      });
-
-      sharedBeforeEach('allow vault', async () => {
-        await tokens.mint({ to: lp, amount: fp(100) });
-        await tokens.approve({ from: lp, to: pool.vault });
-      });
-
-      sharedBeforeEach('get token to exit with', async () => {
-        // tokens are sorted, and do not include BPT, so get the last one
-        tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
-        token = tokens.get(tokenIndexWithoutBpt);
-        tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
-      });
-
-      it('fails if caller is not the vault', async () => {
-        await expect(
-          pool.instance.connect(lp).onExitPool(pool.poolId, recipient.address, other.address, [0], 0, 0, '0x')
-        ).to.be.revertedWith('CALLER_NOT_VAULT');
-      });
-
-      it('fails if no user data', async () => {
-        await expect(pool.exit({ data: '0x' })).to.be.revertedWith('Transaction reverted without a reason');
-      });
-
-      it('fails if wrong user data', async () => {
-        const wrongUserData = ethers.utils.defaultAbiCoder.encode(['address'], [lp.address]);
-
-        await expect(pool.exit({ data: wrongUserData })).to.be.revertedWith('Transaction reverted without a reason');
-      });
-
-      describe('exit BPT in for one token out', () => {
-        context('not in recovery mode', () => {
-          itExitsExactBptInForOneTokenOutProperly();
-        });
-
-        context('in recovery mode', () => {
-          sharedBeforeEach('enable recovery mode', async () => {
-            await pool.enableRecoveryMode(admin);
-          });
-
-          itExitsExactBptInForOneTokenOutProperly();
-        });
-
-        function itExitsExactBptInForOneTokenOutProperly() {
-          function itUpdatesTheInvariantAfterward(updateAmp: boolean) {
-            it(`updates the invariant afterward (${updateAmp ? 'changing' : 'constant'} amp)`, async () => {
-              const previousBptBalance = await pool.balanceOf(lp);
-              const bptIn = pct(previousBptBalance, 0.2);
-
-              const preJoinInvariant = await pool.estimateInvariant();
-              await pool.singleExitGivenIn({ from: lp, bptIn, token });
-              const expectedLastInvariant = await pool.estimateInvariant();
-              expect(expectedLastInvariant).lt(preJoinInvariant);
-
-              if (updateAmp) {
-                await changeAmplification();
-              }
-
-              const result = await pool.getLastJoinExitData();
-              expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-              expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
+              await expect(pool.singleExitGivenIn({ from: lp, bptIn: fp(1), token })).to.be.revertedWith('PAUSED');
             });
           }
+        });
 
-          it('reverts if the tokenIndex passed in is invalid', async () => {
-            const previousBptBalance = await pool.balanceOf(lp);
-            const bptIn = pct(previousBptBalance, 0.2);
-
-            await expect(pool.singleExitGivenIn({ from: lp, bptIn, token: 100 })).to.be.revertedWith('OUT_OF_BOUNDS');
+        describe('exit BPT in for exact tokens out', () => {
+          context('not in recovery mode', () => {
+            itExitsBptInForExactTokensOutProperly();
           });
 
-          it('grants one token for exact bpt', async () => {
-            // 20% of previous balance
-            const previousBptBalance = await pool.balanceOf(lp);
-            const bptIn = pct(previousBptBalance, 0.2);
-            const expectedTokenOut = await pool.estimateTokenOutGivenBptIn(token, bptIn);
-
-            const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
-
-            // Only token out should be the one transferred
-            expect(result.amountsOut[tokenIndexWithBpt]).to.be.equalWithError(expectedTokenOut, 0.0001);
-            expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
-
-            const bptAfter = await pool.balanceOf(lp);
-
-            // Current BPT balance should decrease
-            expect(previousBptBalance.sub(bptIn)).to.equal(bptAfter);
-          });
-
-          it('can tell how many tokens it will give in return', async () => {
-            const bptIn = pct(await pool.balanceOf(lp), 0.2);
-            const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
-
-            expect(queryResult.bptIn).to.equal(bptIn);
-            expect(queryResult.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
-
-            const result = await pool.singleExitGivenIn({ from: lp, bptIn, token });
-            expect(result.amountsOut.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
-
-            // Query and exit should match exactly
-            expect(result.amountsOut[tokenIndexWithBpt]).to.equal(queryResult.amountsOut[tokenIndexWithBpt]);
-          });
-
-          it('exit and exitSwap give the same result', async () => {
-            const bptIn = pct(await pool.balanceOf(lp), 0.2);
-            const queryResult = await pool.querySingleExitGivenIn({ bptIn, token });
-
-            const amountOut = await pool.querySwapGivenIn({
-              from: lp,
-              in: pool.bpt,
-              out: token,
-              amount: bptIn,
-              recipient: lp,
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
             });
-            expect(queryResult.amountsOut[tokenIndexWithBpt]).to.equal(amountOut);
+
+            itExitsBptInForExactTokensOutProperly();
           });
 
-          itUpdatesTheInvariantAfterward(true); // updateAmp
-          itUpdatesTheInvariantAfterward(false);
+          function itExitsBptInForExactTokensOutProperly() {
+            it('grants exact tokens for bpt', async () => {
+              // Request a third of the token balances
+              const amountsOut = initialBalances.map((balance) => bn(balance).div(3));
 
-          it('reverts if paused', async () => {
-            await pool.pause();
+              // Exit with a third of the BPT balance
+              const expectedBptIn = previousBptBalance.div(3);
+              const maximumBptIn = pct(expectedBptIn, 1.01);
 
-            await expect(pool.singleExitGivenIn({ from: lp, bptIn: fp(1), token })).to.be.revertedWith('PAUSED');
-          });
-        }
-      });
+              const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
 
-      describe('exit BPT in for exact tokens out', () => {
-        context('not in recovery mode', () => {
-          itExitsBptInForExactTokensOutProperly();
-        });
+              // Token balances should been reduced as requested
+              expect(result.amountsOut).to.deep.equal(amountsOut);
 
-        context('in recovery mode', () => {
-          sharedBeforeEach('enable recovery mode', async () => {
-            await pool.enableRecoveryMode(admin);
-          });
+              // BPT balance should have been reduced to 2/3 because we are returning 1/3 of the tokens
+              expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(expectedBptIn), 0.001);
+            });
 
-          itExitsBptInForExactTokensOutProperly();
-        });
+            it('fails if more BPT needed', async () => {
+              // Call should fail because we are requesting a max amount lower than the actual needed
+              const amountsOut = initialBalances;
+              const maximumBptIn = previousBptBalance.div(2);
 
-        function itExitsBptInForExactTokensOutProperly() {
-          function itUpdatesTheInvariantAfterward(updateAmp: boolean) {
-            it(`updates the invariant afterward (${updateAmp ? 'changing' : 'constant'} amp)`, async () => {
+              await expect(pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn })).to.be.revertedWith(
+                'BPT_IN_MAX_AMOUNT'
+              );
+            });
+
+            it('can tell how much BPT it will have to receive', async () => {
+              const amountsOut = initialBalances.map((balance) => bn(balance).div(2));
+              const expectedBptIn = previousBptBalance.div(2);
+              const maximumBptIn = pct(expectedBptIn, 1.01);
+
+              const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
+
+              expect(queryResult.amountsOut).to.deep.equal(amountsOut);
+              expect(queryResult.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
+
+              // Query and exit should match exactly
+              const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
+              expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
+            });
+
+            it('exit and exitSwap give the same result', async () => {
+              // To test the swap, need to have only a single non-zero amountIn
+              const amountsOut = initialBalances.map((balance, i) => (i == tokenIndexWithBpt ? bn(balance).div(2) : 0));
+              const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn: previousBptBalance });
+
+              const bptIn = await pool.querySwapGivenOut({
+                from: lp,
+                in: pool.bpt,
+                out: token,
+                amount: amountsOut[tokenIndexWithBpt],
+                recipient: lp,
+              });
+
+              expect(bptIn).to.be.equal(queryResult.bptIn);
+            });
+
+            it('reverts if amountsOut is the wrong length', async () => {
+              await expect(pool.exitGivenOut({ amountsOut: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+            });
+
+            itStoresThePostInvariantAndAmp(async () => {
               const amountsOut = initialBalances.map((balance) => bn(balance).div(3));
               const expectedBptIn = previousBptBalance.div(3);
               const maximumBptIn = pct(expectedBptIn, 1.01);
 
-              const preJoinInvariant = await pool.estimateInvariant();
               await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
-              const expectedLastInvariant = await pool.estimateInvariant();
-              expect(expectedLastInvariant).lt(preJoinInvariant);
+            });
 
-              if (updateAmp) {
-                await changeAmplification();
-              }
+            it('reverts if paused', async () => {
+              await pool.pause();
 
-              const result = await pool.getLastJoinExitData();
-              expect(result.lastJoinExitAmplification).to.equal(AMPLIFICATION_PARAMETER.mul(AMP_PRECISION));
-              expect(result.lastPostJoinExitInvariant).to.equalWithError(expectedLastInvariant, 0.000001);
+              const amountsOut = initialBalances;
+              await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
             });
           }
-
-          it('grants exact tokens for bpt', async () => {
-            // Request a third of the token balances
-            const amountsOut = initialBalances.map((balance) => bn(balance).div(3));
-
-            // Exit with a third of the BPT balance
-            const expectedBptIn = previousBptBalance.div(3);
-            const maximumBptIn = pct(expectedBptIn, 1.01);
-
-            const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
-
-            // Token balances should been reduced as requested
-            expect(result.amountsOut).to.deep.equal(amountsOut);
-
-            // BPT balance should have been reduced to 2/3 because we are returning 1/3 of the tokens
-            expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(expectedBptIn), 0.001);
-          });
-
-          it('fails if more BPT needed', async () => {
-            // Call should fail because we are requesting a max amount lower than the actual needed
-            const amountsOut = initialBalances;
-            const maximumBptIn = previousBptBalance.div(2);
-
-            await expect(pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn })).to.be.revertedWith(
-              'BPT_IN_MAX_AMOUNT'
-            );
-          });
-
-          it('can tell how much BPT it will have to receive', async () => {
-            const amountsOut = initialBalances.map((balance) => bn(balance).div(2));
-            const expectedBptIn = previousBptBalance.div(2);
-            const maximumBptIn = pct(expectedBptIn, 1.01);
-
-            const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn });
-
-            expect(queryResult.amountsOut).to.deep.equal(amountsOut);
-            expect(queryResult.bptIn).to.be.equalWithError(previousBptBalance.div(2), 0.001);
-
-            // Query and exit should match exactly
-            const result = await pool.exitGivenOut({ from: lp, amountsOut, maximumBptIn });
-            expect(result.amountsOut).to.deep.equal(queryResult.amountsOut);
-          });
-
-          it('exit and exitSwap give the same result', async () => {
-            // To test the swap, need to have only a single non-zero amountIn
-            const amountsOut = initialBalances.map((balance, i) => (i == tokenIndexWithBpt ? bn(balance).div(2) : 0));
-            const queryResult = await pool.queryExitGivenOut({ amountsOut, maximumBptIn: previousBptBalance });
-
-            const bptIn = await pool.querySwapGivenOut({
-              from: lp,
-              in: pool.bpt,
-              out: token,
-              amount: amountsOut[tokenIndexWithBpt],
-              recipient: lp,
-            });
-
-            expect(bptIn).to.be.equal(queryResult.bptIn);
-          });
-
-          it('reverts if amountsOut is the wrong length', async () => {
-            await expect(pool.exitGivenOut({ amountsOut: [fp(1)] })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-          });
-
-          itUpdatesTheInvariantAfterward(true); // updateAmp
-          itUpdatesTheInvariantAfterward(false);
-
-          it('reverts if paused', async () => {
-            await pool.pause();
-
-            const amountsOut = initialBalances;
-            await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
-          });
-        }
+        });
       });
     });
 
