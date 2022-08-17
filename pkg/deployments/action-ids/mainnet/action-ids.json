@@ -719,5 +719,23 @@
         "setFeeTypePercentage(uint256,uint256)": "0x4907aec017cb19a28528e722251b40fd7c5eadd4f4a0f0c6a9bca9888f8a0b7f"
       }
     }
+  },
+  "20220817-aave-rebalanced-linear-pool": {
+    "AaveLinearPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address,address,uint256,uint256,address)": "0x51edc015a97c77d2c943f6978e18733b906a87e178cc693613bd3171069d69d6",
+        "disable()": "0x3e267929c3c1127f9bceabc2030c138022fba40f8c0a47c9407fe74e2d026aaa"
+      }
+    }
+  },
+  "20220817-composable-stable-pool": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0xd5fcf8943a4033f6893b2911d83bcf865758b9ec4ebb7966116456d5c2179b42",
+        "disable()": "0x24d396cb6e7a6f86b5b5b995895e806b1cbe69b00a7bf060870f217b39a20524"
+      }
+    }
   }
 }
