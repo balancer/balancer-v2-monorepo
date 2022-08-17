@@ -38,7 +38,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   let poolId: string;
 
   before('run task', async () => {
-    task = new Task('20220729-aave-rebalanced-linear-pool', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20220817-aave-rebalanced-linear-pool', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('AaveLinearPoolFactory');
   });

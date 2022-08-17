@@ -1,4 +1,4 @@
-# 2022-07-27 - Aave Rebalanced Linear Pool
+# 2022-08-17 - Aave Rebalanced Linear Pool
 
 Deployment of the `AaveLinearPoolFactory`, for Linear Pools with a wrapped aToken. This new deployment includes a permissionless rebalancing contract that has Asset Manager privileges.
 
