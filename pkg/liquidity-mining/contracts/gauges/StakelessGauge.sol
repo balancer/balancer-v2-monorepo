@@ -65,8 +65,6 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         // Prevent initialisation of implementation contract
         // Choice of `type(uint256).max` prevents implementation from being checkpointed
         _period = type(uint256).max;
-
-        max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT;
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -81,6 +79,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         _rate = rate;
         _period = _currentPeriod();
         _startEpochTime = _tokenAdmin.startEpochTimeWrite();
+        max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT;
     }
 
     function checkpoint() external payable override nonReentrant returns (bool) {
@@ -179,18 +178,19 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         _isKilled = false;
     }
 
-    // TODO: this should be a permissioned call.
     /**
      * @notice Sets a new maximum relative weight for the gauge.
      * The value shall be normalized to 1e18, and not greater than ABSOLUTE_MAX_RELATIVE_WEIGHT.
      * @param maxRelativeWeight New maximum relative weight.
      */
     function set_max_relative_weight(uint256 maxRelativeWeight) external override {
+        require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         require(
             maxRelativeWeight <= ABSOLUTE_MAX_RELATIVE_WEIGHT,
-            "The new max relative weight exceeds ABSOLUTE_MAX_RELATIVE_WEIGHT"
+            "Max relative weight exceeds allowed absolute maximum"
         );
         max_relative_weight = maxRelativeWeight;
+        emit ILiquidityGauge.MaxRelativeWeightChanged(maxRelativeWeight);
     }
 
     /**

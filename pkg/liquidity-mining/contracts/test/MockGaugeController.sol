@@ -24,6 +24,7 @@ contract MockGaugeController is IGaugeController {
     int128 private _numGaugeTypes;
     mapping(address => bool) private _validGauge;
     mapping(address => int128) private _gaugeType;
+    mapping(address => uint256) private _weights;
 
     IAuthorizerAdaptor public override admin;
     // solhint-disable-next-line var-name-mixedcase
@@ -46,11 +47,18 @@ contract MockGaugeController is IGaugeController {
         return _gaugeType[gauge];
     }
 
-    function add_gauge(address gauge, int128 gaugeType) external override {
+    function add_gauge(
+        address gauge,
+        int128 gaugeType,
+        uint256 weight
+    ) external override {
         require(!_validGauge[gauge], "Gauge already exists on controller");
         require(gaugeType >= 0 && gaugeType < _numGaugeTypes, "Invalid gauge type");
         _validGauge[gauge] = true;
-        emit NewGauge(gauge, gaugeType, 0);
+        if (weight > 0) {
+            _weights[gauge] = weight;
+        }
+        emit NewGauge(gauge, gaugeType, weight);
     }
 
     function add_type(string calldata, uint256) external override {
@@ -65,8 +73,8 @@ contract MockGaugeController is IGaugeController {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function gauge_relative_weight(address, uint256) external view override returns (uint256) {
-        // solhint-disable-previous-line no-empty-blocks
+    function gauge_relative_weight(address gauge, uint256) external view override returns (uint256) {
+        return _weights[gauge];
     }
 
     function change_type_weight(int128, uint256) external override {

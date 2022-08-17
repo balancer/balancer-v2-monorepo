@@ -36,8 +36,11 @@ interface IGaugeController {
 
     function change_type_weight(int128 typeId, uint256 weight) external;
 
-    // Gauges are to be added with zero initial weight so the full signature is not required
-    function add_gauge(address gauge, int128 gaugeType) external;
+    function add_gauge(
+        address gauge,
+        int128 gaugeType,
+        uint256 weight
+    ) external;
 
     function n_gauge_types() external view returns (int128);
 

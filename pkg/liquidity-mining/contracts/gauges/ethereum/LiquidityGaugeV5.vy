@@ -68,6 +68,9 @@ event RewardDistributorUpdated:
     reward_token: indexed(address)
     distributor: address
 
+event MaxRelativeWeightChanged:
+    new_max_relative_weight: indexed(uint256)
+
 struct Reward:
     token: address
     distributor: address
@@ -173,7 +176,6 @@ def __init__(minter: address, veBoostProxy: address, authorizerAdaptor: address)
     VEBOOST_PROXY = veBoostProxy
     # prevent initialization of implementation
     self.lp_token = 0x000000000000000000000000000000000000dEaD
-    self.max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT
 
 
 # Internal Functions
@@ -864,6 +866,7 @@ def initialize(_lp_token: address):
 
     self.period_timestamp[0] = block.timestamp
     self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + TokenAdmin(BAL_TOKEN_ADMIN).rate()
+    self.max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT
 
 @internal
 @view
@@ -880,8 +883,10 @@ def set_max_relative_weight(max_relative_weight: uint256):
             The value shall be normalized to 1e18, and not greater than ABSOLUTE_MAX_RELATIVE_WEIGHT.
     @param max_relative_weight New maximum relative weight.
     """
-    assert max_relative_weight <= ABSOLUTE_MAX_RELATIVE_WEIGHT
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+    assert max_relative_weight <= ABSOLUTE_MAX_RELATIVE_WEIGHT, "Max relative weight exceeds allowed absolute maximum"
     self.max_relative_weight = max_relative_weight
+    log MaxRelativeWeightChanged(max_relative_weight)
 
 @external
 @view
