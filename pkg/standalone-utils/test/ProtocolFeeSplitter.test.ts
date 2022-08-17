@@ -71,17 +71,13 @@ describe('ProtocolFeeSplitter', function () {
       fromInternalBalance: false,
     };
 
-    await vault.instance
-      .connect(liquidityProvider)
-      .joinPool(poolId, liquidityProvider.address, liquidityProvider.address, request);
-
-    await vault.instance
-      .connect(liquidityProvider)
-      .joinPool(poolNoOwnerId, liquidityProvider.address, liquidityProvider.address, request);
-
-    await vault.instance
-      .connect(liquidityProvider)
-      .joinPool(poolDelegatedOwnerId, liquidityProvider.address, liquidityProvider.address, request);
+    await Promise.all(
+      [poolId, poolNoOwnerId, poolDelegatedOwnerId].map((pid) => {
+        return vault.instance
+          .connect(liquidityProvider)
+          .joinPool(pid, liquidityProvider.address, liquidityProvider.address, request);
+      })
+    );
   });
 
   sharedBeforeEach('deploy ProtocolFeeSplitter & grant permissions', async () => {
@@ -135,14 +131,14 @@ describe('ProtocolFeeSplitter', function () {
       const newFee = bn(100e16); // 100%
       await expect(
         protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, newFee)
-      ).to.be.revertedWith('BAL#700');
+      ).to.be.revertedWith('SPLITTER_FEE_PERCENTAGE_TOO_HIGH');
     });
   });
 
   describe('collect fees', async () => {
     it('reverts if no BPT collected', async () => {
       expect(await pool.balanceOf(protocolFeesCollector.address)).to.equal(0);
-      await expect(protocolFeeSplitter.collectFees(poolId)).to.be.revertedWith('BAL#701');
+      await expect(protocolFeeSplitter.collectFees(poolId)).to.be.revertedWith('NO_BPT_FEES_COLLECTED');
     });
 
     it('distributes collected BPT fees to owner and treasury (fee percentage not defined)', async () => {
