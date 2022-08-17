@@ -625,11 +625,16 @@ describe('ComposableStablePool', () => {
             let expectedBptAmount: BigNumber;
 
             const FEE_RELATIVE_ERROR = 1e-3;
+            const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.5);
+
             sharedBeforeEach(async () => {
-              const MIN_SWAP_BALANCE_DELTA = 1.5e3;
-              const MAX_SWAP_BALANCE_DELTA = 20e3;
+              await pool.vault.setSwapFeePercentage(PROTOCOL_SWAP_FEE_PERCENTAGE);
+              await pool.updateProtocolFeePercentageCache();
+            });
+
+            sharedBeforeEach(async () => {
               const deltas = range(numberOfTokens + 1).map((_, i) =>
-                i !== bptIndex ? fp(random(MIN_SWAP_BALANCE_DELTA, MAX_SWAP_BALANCE_DELTA)) : 0
+                i !== bptIndex ? registeredBalances[i].mul(random(1, 10)).div(1000) : 0
               );
 
               registeredBalancesWithFees = arrayAdd(registeredBalances, deltas);
@@ -639,12 +644,11 @@ describe('ComposableStablePool', () => {
               // tokens (which is a close approximation while the Pool is balanced).
 
               const deltaSum = bnSum(deltas);
-              const currSum = bnSum(registeredBalancesWithFees);
+              const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != bptIndex));
               const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
 
-              const protocolSwapFeesPercentage = fp(0.5);
               const expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas
-                .mul(protocolSwapFeesPercentage)
+                .mul(PROTOCOL_SWAP_FEE_PERCENTAGE)
                 .div(FP_SCALING_FACTOR);
 
               // protocol ownership = to mint / (supply + to mint)
