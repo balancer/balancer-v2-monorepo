@@ -4,14 +4,12 @@ import { simulateExactTokensOutExit, simulateSingleTokenExit } from '../weighted
 import WeightedPool from '../weighted-pools/model';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
-async function main() {
+function main() {
   const SWAP_AMOUNT = 100;
   const WITHDRAWAL_PCT = 0.01;
   const DEPOSIT_PCT = 0.01;
   const TOTAL_LIQUIDITY = 100000;
   const SWAP_FEE = 0.005;
-
-  let i;
 
   // Create a pool with the specified tokens and weights
   const pool = new WeightedPool(['BAL', 'WETH'], [0.8, 0.2], SWAP_FEE);
@@ -61,7 +59,7 @@ async function main() {
   const amounts: number[] = [];
   const prices = pool.getPrices();
 
-  for (i = 0; i < pool.getNumTokens(); i++) {
+  for (let i = 0; i < pool.getNumTokens(); i++) {
     amounts[i] = totalValuePerToken / prices[i];
   }
 
@@ -70,7 +68,7 @@ async function main() {
 
   const tokens = pool.getTokens();
 
-  for (i = 0; i < pool.getNumTokens(); i++) {
+  for (let i = 0; i < pool.getNumTokens(); i++) {
     simulateSingleTokenJoin(
       pool,
       'Swap Fee,Amount In,BPT Value Out,Token Value In,Loss %\n',
@@ -91,9 +89,4 @@ async function main() {
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main();
