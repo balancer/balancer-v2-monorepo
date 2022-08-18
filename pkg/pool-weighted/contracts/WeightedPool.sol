@@ -61,6 +61,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
 
     constructor(
         IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
@@ -83,6 +84,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             owner,
             false
         )
+        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
