@@ -137,6 +137,7 @@ export default {
             weights,
             assetManagers,
             swapFeePercentage,
+            vault.protocolFeesProvider.address,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,
