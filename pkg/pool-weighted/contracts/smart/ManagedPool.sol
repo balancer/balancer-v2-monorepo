@@ -845,7 +845,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * joins and exits.
      * @return The amount of BPT minted to the manager.
      */
-    function collectAumManagementFees() external returns (uint256) {
+    function collectAumManagementFees() external whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
