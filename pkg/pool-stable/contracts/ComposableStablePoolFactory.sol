@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
@@ -24,12 +23,10 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./ComposableStablePool.sol";
 
 contract ComposableStablePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    IProtocolFeePercentagesProvider private _protocolFeeProvider;
-
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, type(ComposableStablePool).creationCode)
+        BasePoolFactory(vault, protocolFeeProvider, type(ComposableStablePool).creationCode)
     {
-        _protocolFeeProvider = protocolFeeProvider;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -53,7 +50,7 @@ contract ComposableStablePoolFactory is BasePoolFactory, FactoryWidePauseWindow 
                     abi.encode(
                         ComposableStablePool.NewPoolParams({
                             vault: getVault(),
-                            protocolFeeProvider: _protocolFeeProvider,
+                            protocolFeeProvider: getProtocolFeePercentagesProvider(),
                             name: name,
                             symbol: symbol,
                             tokens: tokens,

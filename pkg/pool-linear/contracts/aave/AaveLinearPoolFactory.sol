@@ -36,7 +36,11 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
 
     address private _lastCreatedPool;
 
-    constructor(IVault vault, IBalancerQueries queries) BasePoolFactory(vault, type(AaveLinearPool).creationCode) {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        IBalancerQueries queries
+    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) {
         _queries = queries;
     }
 

@@ -23,7 +23,9 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./LiquidityBootstrappingPool.sol";
 
 contract LiquidityBootstrappingPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolFactory(vault, type(LiquidityBootstrappingPool).creationCode) {
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolFactory(vault, protocolFeeProvider, type(LiquidityBootstrappingPool).creationCode)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
