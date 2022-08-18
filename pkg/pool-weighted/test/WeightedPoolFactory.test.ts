@@ -43,7 +43,7 @@ describe('WeightedPoolFactory', function () {
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
 
-    rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    rateProviders = await tokens.asyncMap(async () => (await deploy('v2-pool-utils/MockRateProvider')).address);
 
     assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[0] = assetManager.address;
@@ -88,6 +88,11 @@ describe('WeightedPoolFactory', function () {
 
     it('starts with no BPT', async () => {
       expect(await pool.totalSupply()).to.be.equal(0);
+    });
+
+    it('sets the rate providers', async () => {
+      const providers = await pool.getRateProviders();
+      expect(providers).to.deep.eq(rateProviders);
     });
 
     it('sets the asset managers', async () => {
