@@ -177,9 +177,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
     event CircuitBreakerRatioSet(address indexed token, uint256 minRatio, uint256 maxRatio);
 
-    // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
-    // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
-    // argument caused "stack too deep" errors in the constructor.
     struct NewPoolParams {
         string name;
         string symbol;
@@ -860,7 +857,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * joins and exits.
      * @return The amount of BPT minted to the manager.
      */
-    function collectAumManagementFees() external returns (uint256) {
+    function collectAumManagementFees() external whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
@@ -1523,12 +1520,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
             // non-initialization join or exit.
             // We also perform an early return if the AUM fee is zero, to save gas.
-            //
-            // If the Pool has been paused, all fee calculation and minting is skipped to reduce execution
-            // complexity to a minimum (and therefore the likelihood of errors). We do still update the last
-            // collection timestamp however, to avoid potentially collecting extra fees if the Pool were to
-            // be unpaused later. Any fees that would have been collected while the Pool was paused are lost.
-            if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
+            if (managementAumFeePercentage == 0 || lastCollection == 0) {
                 return 0;
             }
 
@@ -1565,6 +1557,23 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
             _mintPoolTokens(getOwner(), managerBPTAmount);
         }
+    }
+
+    /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to prevent AUM fee collection.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused and
+        // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
+        // charged to the remaining LPs for the full period. We then update the collection timestamp on Recovery mode
+        // exits so that no AUM fees are accrued over this period.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return super._doRecoveryModeExit(balances, totalSupply, userData);
     }
 
     // Functions that convert weights between internal (denormalized) and external (normalized) representations
