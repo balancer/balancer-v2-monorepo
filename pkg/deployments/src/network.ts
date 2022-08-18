@@ -4,7 +4,7 @@ import path from 'path';
 import { Network } from './types';
 
 const DEPLOYMENT_TXS_DIRECTORY = path.resolve(__dirname, '../deployment-txs');
-const VERIFIED_NETWORKS = ['mainnet', 'polygon', 'arbitrum', 'optimism'];
+const VERIFIED_NETWORKS = ['mainnet', 'polygon', 'arbitrum', 'optimism', 'goerli'];
 
 export async function saveContractDeploymentTransactionHash(
   deployedAddress: string,

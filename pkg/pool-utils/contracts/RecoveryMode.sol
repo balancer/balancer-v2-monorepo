@@ -14,9 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IRecoveryMode.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryMode.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -47,8 +47,6 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
-    bool private _recoveryMode;
-
     /**
      * @dev Reverts if the contract is in Recovery Mode.
      */
@@ -64,7 +62,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * running, even in a pathological state. Unlike the Pause operation, which is only available during a short window
      * after factory deployment, Recovery Mode can always be enableed.
      */
-    function enableRecoveryMode() external authenticate {
+    function enableRecoveryMode() external override authenticate {
         _setRecoveryMode(true);
     }
 
@@ -73,46 +71,41 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * @dev Protocol fees are not paid while in Recovery Mode, so it should only remain active for as long as strictly
      * necessary.
      */
-    function disableRecoveryMode() external authenticate {
+    function disableRecoveryMode() external override authenticate {
         _setRecoveryMode(false);
     }
 
-    /**
-     * @notice Returns whether the pool is in Recovery Mode.
-     */
-    function inRecoveryMode() public view override returns (bool) {
-        return _recoveryMode;
-    }
+    // Defer implementation for functions that require storage
 
     /**
-     * @dev Sets the recoveryMode state, and emits the corresponding event. Can be overridden
-     * if a pool needs to detect when the Recovery Mode state changes.
+     * @notice Override to check storage and return whether the pool is in Recovery Mode
+     */
+    function inRecoveryMode() public view virtual override returns (bool);
+
+    /**
+     * @dev Override to update storage and emit the event
      *
-     * No complex code or external calls that could fail should be placed here, which could jeopardize
-     * the ability to enable and disable Recovery Mode.
+     * No complex code or external calls that could fail should be placed in the implementations,
+     * which could jeopardize the ability to enable and disable Recovery Mode.
      */
-    function _setRecoveryMode(bool enabled) internal virtual {
-        _recoveryMode = enabled;
-
-        emit RecoveryModeStateChanged(enabled);
-    }
+    function _setRecoveryMode(bool enabled) internal virtual;
 
     /**
      * @dev Reverts if the contract is not in Recovery Mode.
      */
     function _ensureInRecoveryMode() internal view {
-        _require(_recoveryMode, Errors.NOT_IN_RECOVERY_MODE);
+        _require(inRecoveryMode(), Errors.NOT_IN_RECOVERY_MODE);
     }
 
     /**
      * @dev Reverts if the contract is in Recovery Mode.
      */
     function _ensureNotInRecoveryMode() internal view {
-        _require(!_recoveryMode, Errors.IN_RECOVERY_MODE);
+        _require(!inRecoveryMode(), Errors.IN_RECOVERY_MODE);
     }
 
     /**
-     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with Phantom BPT
+     * @dev A minimal proportional exit, suitable as is for most pools: though not for pools with preminted BPT
      * or other special considerations. Designed to be overridden if a pool needs to do extra processing,
      * such as scaling a stored invariant, or caching the new total supply.
      *

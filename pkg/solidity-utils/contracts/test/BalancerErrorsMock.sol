@@ -20,4 +20,8 @@ contract BalancerErrorsMock {
     function fail(uint256 code) external pure {
         _revert(code);
     }
+
+    function failWithPrefix(uint256 code, bytes3 prefix) external pure {
+        _revert(code, prefix);
+    }
 }

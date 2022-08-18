@@ -29,7 +29,6 @@ describe('ManagedPoolFactory', function () {
   let assetManager: SignerWithAddress;
   let admin: SignerWithAddress;
   let poolControllerAddress: string;
-  let protocolFeesCollector: string;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -51,10 +50,8 @@ describe('ManagedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
-    baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address] });
+    baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
-
-    protocolFeesCollector = await baseFactory.getAumProtocolFeesCollector();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
@@ -81,7 +78,6 @@ describe('ManagedPoolFactory', function () {
       protocolSwapFeePercentage: protocolSwapFeePercentage,
       managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
-      aumProtocolFeesCollector: protocolFeesCollector,
     };
 
     const basePoolRights: BasePoolRights = {
@@ -259,13 +255,13 @@ describe('ManagedPoolFactory', function () {
     it('pool created with protocol fees delegated', async () => {
       const pool = await createPool(true, true, true, true);
 
-      expect(await pool.getProtocolFeeDelegation()).to.be.true;
+      expect(await pool.getProtocolSwapFeeDelegation()).to.be.true;
     });
 
     it('pool created with protocol fees disabled', async () => {
       const pool = await createPool(true, true, true, false, fp(0));
 
-      expect(await pool.getProtocolFeeDelegation()).to.be.false;
+      expect(await pool.getProtocolSwapFeeDelegation()).to.be.false;
     });
   });
 });

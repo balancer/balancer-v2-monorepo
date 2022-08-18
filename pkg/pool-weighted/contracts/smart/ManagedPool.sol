@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -23,7 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/AumProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
@@ -53,7 +54,7 @@ import "../BaseWeightedPool.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -177,12 +178,12 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
-        IAumProtocolFeesCollector aumProtocolFeesCollector;
     }
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -199,7 +200,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             owner,
             true
         )
-        AumProtocolFeeCache(vault, params.protocolSwapFeePercentage, params.aumProtocolFeesCollector)
+        ProtocolFeeCache(protocolFeeProvider, params.protocolSwapFeePercentage)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
@@ -844,7 +845,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
      * joins and exits.
      * @return The amount of BPT minted to the manager.
      */
-    function collectAumManagementFees() external returns (uint256) {
+    function collectAumManagementFees() external whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
@@ -990,7 +991,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
         // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = getProtocolSwapFeePercentageCache();
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
         uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
 
         if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
@@ -1240,7 +1241,16 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
     /**
      * @dev Extend ownerOnly functions to include the Managed Pool control functions.
      */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        override(
+            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
+            BasePool,
+            BasePoolAuthorization
+        )
+        returns (bool)
+    {
         return
             (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPool.updateSwapFeeGradually.selector)) ||
@@ -1300,12 +1310,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
             // non-initialization join or exit.
             // We also perform an early return if the AUM fee is zero, to save gas.
-            //
-            // If the Pool has been paused, all fee calculation and minting is skipped to reduce execution
-            // complexity to a minimum (and therefore the likelihood of errors). We do still update the last
-            // collection timestamp however, to avoid potentially collecting extra fees if the Pool were to
-            // be unpaused later. Any fees that would have been collected while the Pool was paused are lost.
-            if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
+            if (managementAumFeePercentage == 0 || lastCollection == 0) {
                 return 0;
             }
 
@@ -1333,7 +1338,7 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
             bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
 
             // Compute the protocol's share of the AUM fee
-            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolAumFeePercentageCache());
+            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
             uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
             _payProtocolFees(protocolBptAmount);
@@ -1342,6 +1347,23 @@ contract ManagedPool is BaseWeightedPool, AumProtocolFeeCache, ReentrancyGuard {
 
             _mintPoolTokens(getOwner(), managerBPTAmount);
         }
+    }
+
+    /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to prevent AUM fee collection.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused and
+        // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
+        // charged to the remaining LPs for the full period. We then update the collection timestamp on Recovery mode
+        // exits so that no AUM fees are accrued over this period.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return super._doRecoveryModeExit(balances, totalSupply, userData);
     }
 
     // Functions that convert weights between internal (denormalized) and external (normalized) representations

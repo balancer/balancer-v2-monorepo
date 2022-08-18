@@ -14,7 +14,7 @@ import {
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { currentTimestamp, MONTH, DAY, HOUR } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { encodeInvestmentConfig } from '@balancer-labs/v2-asset-manager-utils/test/helpers/rebalance';
+import { encodeInvestmentConfig } from '@balancer-labs/v2-pool-utils/test/helpers/rebalance';
 import { ZERO_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
@@ -52,7 +52,7 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
   await allTokens.mint({ to: manager, amount: fp(100) });
   await allTokens.mint({ to: other, amount: fp(100) });
 
-  assetManager = await deploy('v2-asset-manager-utils/MockAssetManager', { args: [allTokens.DAI.address] });
+  assetManager = await deploy('MockAssetManager', { args: [allTokens.DAI.address] });
 });
 
 async function deployControllerAndPool(
@@ -90,10 +90,6 @@ async function deployControllerAndPool(
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
   assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
 
-  const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
-    args: [vault.address],
-  });
-
   const params = {
     vault,
     tokens: allTokens,
@@ -104,7 +100,6 @@ async function deployControllerAndPool(
     poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
     protocolSwapFeePercentage: protocolSwapFeePercentage,
-    aumProtocolFeesCollector: aumProtocolFeesCollector.address,
   };
   pool = await WeightedPool.create(params);
 }

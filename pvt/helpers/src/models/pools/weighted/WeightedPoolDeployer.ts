@@ -26,6 +26,7 @@ export default {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
     const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
+    const poolId = await pool.getPoolId();
 
     const {
       tokens,
@@ -41,7 +42,6 @@ export default {
       aumProtocolFeesCollector,
     } = deployment;
 
-    const poolId = await pool.getPoolId();
     return new WeightedPool(
       pool,
       poolId,
@@ -118,6 +118,7 @@ export default {
               aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
+            vault.protocolFeesProvider.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -130,6 +131,7 @@ export default {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
             vault.address,
+            vault.protocolFeesProvider.address,
             NAME,
             SYMBOL,
             tokens.addresses,
@@ -159,7 +161,6 @@ export default {
       protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -170,7 +171,7 @@ export default {
     switch (poolType) {
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
         const tx = await factory.create(
@@ -189,7 +190,7 @@ export default {
       }
       case WeightedPoolType.MANAGED_POOL: {
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
 
@@ -210,7 +211,6 @@ export default {
           protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
-          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -237,7 +237,10 @@ export default {
         break;
       }
       default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
+          args: [vault.address, vault.getFeesProvider().address],
+          from,
+        });
         const tx = await factory.create(
           NAME,
           SYMBOL,

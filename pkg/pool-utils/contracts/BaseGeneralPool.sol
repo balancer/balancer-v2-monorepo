@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
-import "./LegacyBasePool.sol";
+import "./BasePool.sol";
 
 /**
  * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.
@@ -26,7 +26,7 @@ import "./LegacyBasePool.sol";
  * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the General
  * specialization setting.
  */
-abstract contract BaseGeneralPool is IGeneralPool, LegacyBasePool {
+abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     // Swap Hooks
 
     function onSwap(
@@ -34,7 +34,9 @@ abstract contract BaseGeneralPool is IGeneralPool, LegacyBasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public virtual override onlyVault(swapRequest.poolId) returns (uint256) {
+    ) external override onlyVault(swapRequest.poolId) returns (uint256) {
+        _beforeSwapJoinExit();
+
         _validateIndexes(indexIn, indexOut, _getTotalTokens());
         uint256[] memory scalingFactors = _scalingFactors();
 
@@ -50,7 +52,7 @@ abstract contract BaseGeneralPool is IGeneralPool, LegacyBasePool {
         uint256 indexIn,
         uint256 indexOut,
         uint256[] memory scalingFactors
-    ) internal returns (uint256) {
+    ) internal virtual returns (uint256) {
         // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
         swapRequest.amount = _subtractSwapFeeAmount(swapRequest.amount);
 
@@ -69,7 +71,7 @@ abstract contract BaseGeneralPool is IGeneralPool, LegacyBasePool {
         uint256 indexIn,
         uint256 indexOut,
         uint256[] memory scalingFactors
-    ) internal returns (uint256) {
+    ) internal virtual returns (uint256) {
         _upscaleArray(balances, scalingFactors);
         swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[indexOut]);
 

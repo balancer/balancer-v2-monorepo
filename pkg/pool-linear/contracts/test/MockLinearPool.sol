@@ -28,6 +28,7 @@ contract MockLinearPool is LinearPool, MockLinearMath {
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
+        address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -40,6 +41,7 @@ contract MockLinearPool is LinearPool, MockLinearMath {
             mainToken,
             wrappedToken,
             upperTarget,
+            assetManagers,
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -47,6 +49,10 @@ contract MockLinearPool is LinearPool, MockLinearMath {
         )
     {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function setTotalSupply(uint256 value) external {
+        _setTotalSupply(value);
     }
 
     function getScalingFactor(IERC20 token) external view returns (uint256) {

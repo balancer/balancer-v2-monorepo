@@ -79,6 +79,7 @@ const balancerErrorCodes: Record<string, string> = {
   '350': 'MAX_WEIGHT',
   '351': 'UNAUTHORIZED_JOIN',
   '352': 'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE',
+  '353': 'FRACTIONAL_TARGET',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
@@ -119,6 +120,10 @@ const balancerErrorCodes: Record<string, string> = {
   '437': 'IN_RECOVERY_MODE',
   '438': 'NOT_IN_RECOVERY_MODE',
   '439': 'INDUCED_FAILURE',
+  '440': 'EXPIRED_SIGNATURE',
+  '441': 'MALFORMED_SIGNATURE',
+  '442': 'SAFE_CAST_VALUE_CANT_FIT_UINT64',
+  '443': 'UNHANDLED_FEE_TYPE',
   '500': 'INVALID_POOL_ID',
   '501': 'CALLER_NOT_POOL',
   '502': 'SENDER_NOT_ASSET_MANAGER',
@@ -152,6 +157,8 @@ const balancerErrorCodes: Record<string, string> = {
   '601': 'FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH',
   '602': 'INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT',
   '603': 'AUM_FEE_PERCENTAGE_TOO_HIGH',
+  '998': 'UNIMPLEMENTED',
+  '999': 'SHOULD_NOT_HAPPEN',
 };
 
 export class BalancerErrors {

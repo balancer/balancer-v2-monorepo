@@ -13,8 +13,10 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('AaveLinearPool', function () {
+  let vault: Vault;
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let poolFactory: Contract;
   let mockLendingPool: Contract;
@@ -38,30 +40,48 @@ describe('AaveLinearPool', function () {
   });
 
   sharedBeforeEach('deploy pool factory', async () => {
-    const vault = await Vault.create();
+    vault = await Vault.create();
+    const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
     poolFactory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address],
+    });
+  });
+
+  sharedBeforeEach('deploy and initialize pool', async () => {
+    const tx = await poolFactory.create(
+      'Balancer Pool Token',
+      'BPT',
+      mainToken.address,
+      wrappedToken.address,
+      bn(0),
+      POOL_SWAP_FEE_PERCENTAGE,
+      owner.address
+    );
+
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+    pool = await LinearPool.deployedAt(event.args.pool);
+  });
+
+  describe('asset managers', () => {
+    it('sets the same asset manager for main and wrapped token', async () => {
+      const poolId = await pool.getPoolId();
+
+      const { assetManager: firstAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
+      const { assetManager: secondAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.second);
+
+      expect(firstAssetManager).to.equal(secondAssetManager);
+    });
+
+    it('sets the no asset manager for the BPT', async () => {
+      const poolId = await pool.getPoolId();
+      const { assetManager } = await vault.instance.getPoolTokenInfo(poolId, pool.address);
+      expect(assetManager).to.equal(ZERO_ADDRESS);
     });
   });
 
   describe('getWrappedTokenRate', () => {
-    sharedBeforeEach('deploy and initialize pool', async () => {
-      const tx = await poolFactory.create(
-        'Balancer Pool Token',
-        'BPT',
-        mainToken.address,
-        wrappedToken.address,
-        bn(0),
-        POOL_SWAP_FEE_PERCENTAGE,
-        owner.address
-      );
-
-      const receipt = await tx.wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
-      pool = await LinearPool.deployedAt(event.args.pool);
-    });
-
     it('returns the expected value', async () => {
       // Reserve's normalised income is stored with 27 decimals (i.e. a 'ray' value)
       // 1e27 implies a 1:1 exchange rate between main and wrapped token

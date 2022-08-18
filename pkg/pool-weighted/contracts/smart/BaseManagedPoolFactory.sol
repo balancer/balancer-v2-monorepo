@@ -15,10 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
-
-import "@balancer-labs/v2-standalone-utils/contracts/AumProtocolFeesCollector.sol";
 
 import "./ManagedPool.sol";
 
@@ -31,18 +30,11 @@ import "./ManagedPool.sol";
  * In this design, other controller-specific factories will deploy a pool controller, then call this factory to
  * deploy the pool, passing in the controller as the owner.
  */
-contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    AumProtocolFeesCollector private immutable _aumProtocolFeesCollector;
-
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(ManagedPool).creationCode) {
-        _aumProtocolFeesCollector = new AumProtocolFeesCollector(vault);
-    }
-
-    /**
-     * @dev Getter for the AUM protocol fees collector passed into all Managed Pools created from this factory.
-     */
-    function getAumProtocolFeesCollector() external view returns (AumProtocolFeesCollector) {
-        return _aumProtocolFeesCollector;
+contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
+    {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -66,10 +58,10 @@ contract BaseManagedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWin
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
                         protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
-                        managementAumFeePercentage: poolParams.managementAumFeePercentage,
-                        aumProtocolFeesCollector: _aumProtocolFeesCollector
+                        managementAumFeePercentage: poolParams.managementAumFeePercentage
                     }),
                     getVault(),
+                    getProtocolFeePercentagesProvider(),
                     owner,
                     pauseWindowDuration,
                     bufferPeriodDuration

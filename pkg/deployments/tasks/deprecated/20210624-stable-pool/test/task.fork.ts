@@ -8,17 +8,18 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { getSigner, impersonateWhale } from '../../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-describe('StablePoolFactory', function () {
+describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
   let pool: Contract, factory: Contract, vault: Contract, usdc: Contract, dai: Contract;
 
-  const task = new Task('20210624-stable-pool', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -31,6 +32,7 @@ describe('StablePoolFactory', function () {
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
 
   before('run task', async () => {
+    task = new Task('20210624-stable-pool', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('StablePoolFactory');
   });

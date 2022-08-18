@@ -11,7 +11,7 @@ import { ethers } from 'hardhat';
 import { range } from 'lodash';
 
 export function itPaysProtocolFeesFromInvariantGrowth(): void {
-  const MAX_TOKENS = 10;
+  const MAX_TOKENS = 8;
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
@@ -69,7 +69,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
           itIsUpdatedByExits();
         });
 
-        context('when paused', () => {
+        context.skip('when paused', () => {
           sharedBeforeEach(async () => {
             await pool.pause();
           });
@@ -154,7 +154,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
           });
         });
 
-        context('when paused', () => {
+        context.skip('when paused', () => {
           sharedBeforeEach(async () => {
             await pool.pause();
           });
