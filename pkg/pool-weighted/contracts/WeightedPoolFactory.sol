@@ -32,28 +32,13 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     /**
      * @dev Deploys a new `WeightedPool`.
      */
-    function create(
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        address owner
-    ) external returns (address) {
+    function create(WeightedPool.NewPoolParams memory poolParams, address owner) external returns (address) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return
             _create(
                 abi.encode(
-                    WeightedPool.NewPoolParams({
-                        name: name,
-                        symbol: symbol,
-                        tokens: tokens,
-                        normalizedWeights: normalizedWeights,
-                        assetManagers: assetManagers,
-                        swapFeePercentage: swapFeePercentage
-                    }),
+                    poolParams,
                     getVault(),
                     getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,

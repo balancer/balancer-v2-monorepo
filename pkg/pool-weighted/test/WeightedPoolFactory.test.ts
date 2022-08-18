@@ -49,12 +49,14 @@ describe('WeightedPoolFactory', function () {
   async function createPool(): Promise<Contract> {
     const receipt = await (
       await factory.create(
-        NAME,
-        SYMBOL,
-        tokens.addresses,
-        WEIGHTS,
-        assetManagers,
-        POOL_SWAP_FEE_PERCENTAGE,
+        {
+          name: NAME,
+          symbol: SYMBOL,
+          tokens: tokens.addresses,
+          normalizedWeights: WEIGHTS,
+          assetManagers: assetManagers,
+          swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+        },
         owner.address
       )
     ).wait();

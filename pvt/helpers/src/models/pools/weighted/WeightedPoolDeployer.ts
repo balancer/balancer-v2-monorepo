@@ -244,12 +244,14 @@ export default {
           from,
         });
         const tx = await factory.create(
-          NAME,
-          SYMBOL,
-          tokens.addresses,
-          weights,
-          assetManagers,
-          swapFeePercentage,
+          {
+            name: NAME,
+            symbol: SYMBOL,
+            tokens: tokens.addresses,
+            normalizedWeights: weights,
+            assetManagers: assetManagers,
+            swapFeePercentage: swapFeePercentage,
+          },
           owner
         );
         const receipt = await tx.wait();
