@@ -165,7 +165,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 }
 
 export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
-  return size > 20
+  return size > 8
     ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
     : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
