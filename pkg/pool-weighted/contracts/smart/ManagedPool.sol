@@ -1349,6 +1349,23 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to prevent AUM fee collection.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused and
+        // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
+        // charged to the remaining LPs for the full period. We then update the collection timestamp on Recovery mode
+        // exits so that no AUM fees are accrued over this period.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return super._doRecoveryModeExit(balances, totalSupply, userData);
+    }
+
     // Functions that convert weights between internal (denormalized) and external (normalized) representations
 
     /**
