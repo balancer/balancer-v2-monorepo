@@ -37,8 +37,8 @@ async function main() {
   const joinWeightedUserData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
   const exitWeightedUserData = WeightedPoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
-  // numTokens is the size of the pool: 2,4,6,8,...
-  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
+  // numTokens is the size of the pool: 2,3,4,5...
+  for (let numTokens = 2; numTokens <= 8; numTokens += 1) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),

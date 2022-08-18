@@ -11,7 +11,7 @@ import { itPaysProtocolFeesFromInvariantGrowth } from './InvariantGrowthProtocol
 describe('WeightedPool', function () {
   let allTokens: TokenList;
 
-  const MAX_TOKENS = 20;
+  const MAX_TOKENS = 8;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
