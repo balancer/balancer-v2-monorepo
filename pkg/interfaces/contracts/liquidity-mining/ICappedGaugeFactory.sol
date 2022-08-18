@@ -13,18 +13,15 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
-import "./ICappedGaugeFactory.sol";
+import "./ILiquidityGaugeFactory.sol";
 
-interface ISingleRecipientGaugeFactory is ICappedGaugeFactory {
+interface ICappedGaugeFactory is ILiquidityGaugeFactory {
     /**
-     * @notice Returns the gauge which sends funds to `recipient`.
+     * @notice Deploys a new gauge for the given recipient, with an initial maximum relative weight cap.
+     * @param recipient The address to receive BAL minted from the gauge
+     * @param relativeWeightCap The relative weight cap for the created gauge
+     * @return The address of the deployed gauge
      */
-    function getRecipientGauge(address recipient) external view returns (ILiquidityGauge);
-
-    /**
-     * @notice Returns the recipient of `gauge`.
-     */
-    function getGaugeRecipient(address gauge) external view returns (address);
+    function create(address recipient, uint256 relativeWeightCap) external returns (address);
 }

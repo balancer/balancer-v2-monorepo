@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol"
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ICappedGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
@@ -49,12 +50,14 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
     IVotingEscrow private immutable _votingEscrow;
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
-    ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
+    ICappedGaugeFactory private immutable _ethereumGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
 
     // solhint-disable-next-line var-name-mixedcase
     address public immutable GAUGE_CHECKPOINTER_MULTISIG = 0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B;
+
+    uint256 public constant INITIAL_WEIGHT_CAP = 1e18; // 100%
 
     enum DeploymentStage { PENDING, FIRST_STAGE_DONE, SECOND_STAGE_DONE }
 
@@ -67,7 +70,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor,
         IVotingEscrow votingEscrow,
         IGaugeAdder gaugeAdder,
-        ILiquidityGaugeFactory ethereumGaugeFactory,
+        ICappedGaugeFactory ethereumGaugeFactory,
         ISingleRecipientGaugeFactory polygonGaugeFactory,
         ISingleRecipientGaugeFactory arbitrumGaugeFactory
     ) {
@@ -290,7 +293,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         gauge = address(factory.getRecipientGauge(recipient));
         if (gauge == address(0)) {
             // If gauge doesn't exist yet then create one.
-            gauge = factory.create(recipient);
+            gauge = factory.create(recipient, INITIAL_WEIGHT_CAP);
         }
     }
 

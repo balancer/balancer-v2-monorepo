@@ -87,7 +87,7 @@ contract OptimismRootGaugeFactory is ISingleRecipientGaugeFactory, IOptimismGasL
      * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address recipient, uint256 relativeWeightCap) external returns (address) {
+    function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
         require(_recipientGauge[recipient] == address(0), "Gauge already exists");
 
         address gauge = Clones.clone(address(_gaugeImplementation));

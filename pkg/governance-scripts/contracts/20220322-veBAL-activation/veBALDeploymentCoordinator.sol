@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol"
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ICappedGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
@@ -49,8 +50,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerMinter private immutable _balancerMinter;
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
-    ILiquidityGaugeFactory private immutable _ethereumGaugeFactory;
-    ILiquidityGaugeFactory private immutable _singleRecipientGaugeFactory;
+    ICappedGaugeFactory private immutable _ethereumGaugeFactory;
+    ICappedGaugeFactory private immutable _singleRecipientGaugeFactory;
     IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
     address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
@@ -76,13 +77,14 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     uint256 public constant ETHEREUM_WEIGHT = 56e16; // 56%
     uint256 public constant POLYGON_WEIGHT = 17e16; // 17%
     uint256 public constant ARBITRUM_WEIGHT = 7e16; // 7%
+    uint256 public constant INITIAL_WEIGHT_CAP = 1e18; // 100%
 
     constructor(
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder gaugeAdder,
-        ILiquidityGaugeFactory ethereumGaugeFactory,
-        ILiquidityGaugeFactory singleRecipientGaugeFactory,
+        ICappedGaugeFactory ethereumGaugeFactory,
+        ICappedGaugeFactory singleRecipientGaugeFactory,
         IBALTokenHolderFactory balTokenHolderFactory,
         uint256 activationScheduledTime,
         uint256 thirdStageDelay
@@ -329,7 +331,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
 
             uint256 poolsLength = initialPools.length;
             for (uint256 i = 0; i < poolsLength; i++) {
-                ILiquidityGauge gauge = ILiquidityGauge(_ethereumGaugeFactory.create(initialPools[i]));
+                ILiquidityGauge gauge = ILiquidityGauge(
+                    _ethereumGaugeFactory.create(initialPools[i], INITIAL_WEIGHT_CAP)
+                );
                 _gaugeAdder.addEthereumGauge(IStakingLiquidityGauge(address(gauge)));
             }
 
@@ -406,7 +410,9 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         address recipient
     ) private {
         IBALTokenHolder holder = _balTokenHolderFactory.create(name);
-        ILiquidityGauge gauge = ILiquidityGauge(_singleRecipientGaugeFactory.create(address(holder)));
+        ILiquidityGauge gauge = ILiquidityGauge(
+            _singleRecipientGaugeFactory.create(address(holder), INITIAL_WEIGHT_CAP)
+        );
         _addGauge(gauge, gaugeType);
         getAuthorizer().grantRole(holder.getActionId(IBALTokenHolder.withdrawFunds.selector), recipient);
     }
