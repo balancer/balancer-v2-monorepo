@@ -123,6 +123,9 @@ contract ChildChainDistributionScheduler is SingletonAuthentication {
         require(startTime >= block.timestamp, "Distribution can only be scheduled for the future");
         require(startTime == _roundDownTimestamp(startTime), "Distribution must start at the beginning of the week");
 
+        // Avoid mistakes causing rewards being locked far into the future.
+        require(startTime - block.timestamp <= 365 days, "Distribution too far into the future");
+
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         _insertReward(_rewardsLists[_getRewardsListId(gauge, token)], uint32(startTime), uint224(amount));

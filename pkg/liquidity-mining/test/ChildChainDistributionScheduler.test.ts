@@ -173,7 +173,15 @@ describe('ChildChainDistributionScheduler', () => {
         });
 
         context('when distribution starts at the beginning of a week', () => {
-          context('no rewards currently exist for this gauge', () => {
+          context('when distribution is scheduled too far in the future', () => {
+            it('revert', async () => {
+              await expect(scheduleDistribution(amount, startTime.add(53 * WEEK))).to.be.revertedWith(
+                'Distribution too far into the future'
+              );
+            });
+          });
+
+          context('when no rewards currently exist for this gauge', () => {
             it('updates the the head node to point at the new node', async () => {
               expect(await getNextNodeKey(HEAD)).to.be.eq(0);
 
@@ -208,7 +216,7 @@ describe('ChildChainDistributionScheduler', () => {
               let insertedTime: BigNumber;
 
               sharedBeforeEach('set insertedTime', async () => {
-                insertedTime = startTime.add(999 * WEEK);
+                insertedTime = startTime.add(52 * WEEK);
               });
 
               it('updates the previous node to point at the new node', async () => {
