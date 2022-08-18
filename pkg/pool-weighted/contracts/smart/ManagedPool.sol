@@ -1310,12 +1310,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
             // non-initialization join or exit.
             // We also perform an early return if the AUM fee is zero, to save gas.
-            //
-            // If the Pool has been paused, all fee calculation and minting is skipped to reduce execution
-            // complexity to a minimum (and therefore the likelihood of errors). We do still update the last
-            // collection timestamp however, to avoid potentially collecting extra fees if the Pool were to
-            // be unpaused later. Any fees that would have been collected while the Pool was paused are lost.
-            if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
+            if (managementAumFeePercentage == 0 || lastCollection == 0) {
                 return 0;
             }
 
