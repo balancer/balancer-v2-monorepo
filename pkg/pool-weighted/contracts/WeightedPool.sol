@@ -130,15 +130,14 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        if (token == _token0) { return _normalizedWeight0; }
-        else if (token == _token1) { return _normalizedWeight1; }
-        else if (token == _token2) { return _normalizedWeight2; }
-        else if (token == _token3) { return _normalizedWeight3; }
-        else if (token == _token4) { return _normalizedWeight4; }
-        else if (token == _token5) { return _normalizedWeight5; }
-        else if (token == _token6) { return _normalizedWeight6; }
-        else if (token == _token7) { return _normalizedWeight7; }
+        if (token == _token0) return _normalizedWeight0;
+        if (token == _token1) return _normalizedWeight1;
+        if (token == _token2) return _normalizedWeight2;
+        if (token == _token3) return _normalizedWeight3;
+        if (token == _token4) return _normalizedWeight4;
+        if (token == _token5) return _normalizedWeight5;
+        if (token == _token6) return _normalizedWeight6;
+        if (token == _token7) return _normalizedWeight7;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -148,17 +147,28 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
-        // prettier-ignore
-        {
-            normalizedWeights[0] = _normalizedWeight0;
-            normalizedWeights[1] = _normalizedWeight1;
-            if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
-            if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
-            if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
-            if (totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else { return normalizedWeights; }
-            if (totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else { return normalizedWeights; }
-            if (totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; } else { return normalizedWeights; }
-        }
+        // The Pool will always have at least 2 tokens so we always load these two weights.
+        normalizedWeights[0] = _normalizedWeight0;
+        normalizedWeights[1] = _normalizedWeight1;
+
+        // Before we load the remaining weights we must check that the Pool contains enough tokens.
+        if (totalTokens == 2) return normalizedWeights;
+        normalizedWeights[2] = _normalizedWeight2;
+
+        if (totalTokens == 3) return normalizedWeights;
+        normalizedWeights[3] = _normalizedWeight3;
+
+        if (totalTokens == 4) return normalizedWeights;
+        normalizedWeights[4] = _normalizedWeight4;
+
+        if (totalTokens == 5) return normalizedWeights;
+        normalizedWeights[5] = _normalizedWeight5;
+
+        if (totalTokens == 6) return normalizedWeights;
+        normalizedWeights[6] = _normalizedWeight6;
+
+        if (totalTokens == 7) return normalizedWeights;
+        normalizedWeights[7] = _normalizedWeight7;
 
         return normalizedWeights;
     }
@@ -176,15 +186,14 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
      * Pool.
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        // prettier-ignore
-        if (token == _token0) { return _scalingFactor0; }
-        else if (token == _token1) { return _scalingFactor1; }
-        else if (token == _token2) { return _scalingFactor2; }
-        else if (token == _token3) { return _scalingFactor3; }
-        else if (token == _token4) { return _scalingFactor4; }
-        else if (token == _token5) { return _scalingFactor5; }
-        else if (token == _token6) { return _scalingFactor6; }
-        else if (token == _token7) { return _scalingFactor7; }
+        if (token == _token0) return _scalingFactor0;
+        if (token == _token1) return _scalingFactor1;
+        if (token == _token2) return _scalingFactor2;
+        if (token == _token3) return _scalingFactor3;
+        if (token == _token4) return _scalingFactor4;
+        if (token == _token5) return _scalingFactor5;
+        if (token == _token6) return _scalingFactor6;
+        if (token == _token7) return _scalingFactor7;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -194,17 +203,28 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory scalingFactors = new uint256[](totalTokens);
 
-        // prettier-ignore
-        {
-            scalingFactors[0] = _scalingFactor0;
-            scalingFactors[1] = _scalingFactor1;
-            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
-            if (totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
-            if (totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
-            if (totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
-        }
+        // The Pool will always have at least 2 tokens so we always load these two weights.
+        scalingFactors[0] = _scalingFactor0;
+        scalingFactors[1] = _scalingFactor1;
+
+        // Before we load the remaining weights we must check that the Pool contains enough tokens.
+        if (totalTokens == 2) return scalingFactors;
+        scalingFactors[2] = _scalingFactor2;
+
+        if (totalTokens == 3) return scalingFactors;
+        scalingFactors[3] = _scalingFactor3;
+
+        if (totalTokens == 4) return scalingFactors;
+        scalingFactors[4] = _scalingFactor4;
+
+        if (totalTokens == 5) return scalingFactors;
+        scalingFactors[5] = _scalingFactor5;
+
+        if (totalTokens == 6) return scalingFactors;
+        scalingFactors[6] = _scalingFactor6;
+
+        if (totalTokens == 7) return scalingFactors;
+        scalingFactors[7] = _scalingFactor7;
 
         return scalingFactors;
     }
