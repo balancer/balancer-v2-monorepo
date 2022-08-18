@@ -17,11 +17,12 @@ pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
 import "./WeightedPoolProtocolFees.sol";
+import "./YieldProtocolFees.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
+contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, YieldProtocolFees {
     using FixedPoint for uint256;
 
     uint256 private constant _MAX_TOKENS = 8;
@@ -64,6 +65,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        IRateProvider[] rateProviders;
         address[] assetManagers;
         uint256 swapFeePercentage;
     }
@@ -89,6 +91,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        YieldProtocolFees(params.tokens.length, params.rateProviders)
     {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
