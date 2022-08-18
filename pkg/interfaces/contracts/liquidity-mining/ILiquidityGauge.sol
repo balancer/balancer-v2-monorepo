@@ -21,7 +21,7 @@ pragma solidity ^0.7.0;
 
 interface ILiquidityGauge {
     // solhint-disable-next-line var-name-mixedcase
-    event MaxRelativeWeightChanged(uint256 indexed new_max_relative_weight);
+    event RelativeWeightCapChanged(uint256 new_relative_weight_cap);
 
     function integrate_fraction(address user) external view returns (uint256);
 
@@ -33,11 +33,13 @@ interface ILiquidityGauge {
 
     function unkillGauge() external;
 
-    function set_max_relative_weight(uint256 maxRelativeWeight) external;
+    function set_relative_weight_cap(uint256 maxRelativeWeight) external;
+
+    function get_relative_weight_cap() external view returns (uint256);
 
     function get_capped_relative_weight(uint256 time) external view returns (uint256);
 
     function get_current_capped_relative_weight() external view returns (uint256);
 
-    function get_absolute_max_relative_weight() external pure returns (uint256);
+    function get_max_relative_weight_cap() external pure returns (uint256);
 }

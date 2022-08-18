@@ -68,8 +68,8 @@ event RewardDistributorUpdated:
     reward_token: indexed(address)
     distributor: address
 
-event MaxRelativeWeightChanged:
-    new_max_relative_weight: indexed(uint256)
+event RelativeWeightCapChanged:
+    new_relative_weight_cap: uint256
 
 struct Reward:
     token: address
@@ -100,7 +100,7 @@ MINTER: immutable(address)
 VOTING_ESCROW: immutable(address)
 VEBOOST_PROXY: immutable(address)
 
-ABSOLUTE_MAX_RELATIVE_WEIGHT: constant(uint256) = 10 ** 18
+MAX_RELATIVE_WEIGHT_CAP: constant(uint256) = 10 ** 18
 
 # ERC20
 balanceOf: public(HashMap[address, uint256])
@@ -157,7 +157,7 @@ period_timestamp: public(uint256[100000000000000000000000000000])
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
 integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump epoch when rate() changes
 
-max_relative_weight: public(uint256)
+_relative_weight_cap: uint256
 
 @external
 def __init__(minter: address, veBoostProxy: address, authorizerAdaptor: address):
@@ -196,9 +196,9 @@ def _get_allowance(owner: address, spender: address) -> uint256:
 @view
 def _get_capped_relative_weight(period: uint256) -> uint256:
     """
-    @dev Returns the gauge's relative weight, capped to its max_relative_weight attribute.
+    @dev Returns the gauge's relative weight, capped to its _relative_weight_cap attribute.
     """
-    return min(Controller(GAUGE_CONTROLLER).gauge_relative_weight(self, period), self.max_relative_weight)
+    return min(Controller(GAUGE_CONTROLLER).gauge_relative_weight(self, period), self._relative_weight_cap)
 
 @internal
 def _checkpoint(addr: address):
@@ -843,9 +843,14 @@ def allowance(owner: address, spender: address) -> uint256:
 
 # Initializer
 
+@internal
+def _set_relative_weight_cap(relative_weight_cap: uint256):
+    assert relative_weight_cap <= MAX_RELATIVE_WEIGHT_CAP, "Relative weight cap exceeds allowed absolute maximum"
+    self._relative_weight_cap = relative_weight_cap
+    log RelativeWeightCapChanged(relative_weight_cap)
 
 @external
-def initialize(_lp_token: address):
+def initialize(_lp_token: address, relative_weight_cap: uint256):
     """
     @notice Contract constructor
     @param _lp_token Liquidity Pool contract address
@@ -866,7 +871,7 @@ def initialize(_lp_token: address):
 
     self.period_timestamp[0] = block.timestamp
     self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + TokenAdmin(BAL_TOKEN_ADMIN).rate()
-    self.max_relative_weight = ABSOLUTE_MAX_RELATIVE_WEIGHT
+    self._set_relative_weight_cap(relative_weight_cap)
 
 @internal
 @view
@@ -877,22 +882,28 @@ def _get_current_period() -> uint256:
     return (block.timestamp / WEEK) - 1
 
 @external
-def set_max_relative_weight(max_relative_weight: uint256):
+def set_relative_weight_cap(relative_weight_cap: uint256):
     """
-    @notice Sets a new maximum relative weight for the gauge.
-            The value shall be normalized to 1e18, and not greater than ABSOLUTE_MAX_RELATIVE_WEIGHT.
-    @param max_relative_weight New maximum relative weight.
+    @notice Sets a new relative weight cap for the gauge.
+            The value shall be normalized to 1e18, and not greater than MAX_RELATIVE_WEIGHT_CAP.
+    @param relative_weight_cap New relative weight cap.
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
-    assert max_relative_weight <= ABSOLUTE_MAX_RELATIVE_WEIGHT, "Max relative weight exceeds allowed absolute maximum"
-    self.max_relative_weight = max_relative_weight
-    log MaxRelativeWeightChanged(max_relative_weight)
+    self._set_relative_weight_cap(relative_weight_cap)
+
+@external
+@view
+def get_relative_weight_cap() -> uint256:
+    """
+    @notice Returns relative weight cap for the gauge.
+    """
+    return self._relative_weight_cap
 
 @external
 @view
 def get_capped_relative_weight(time: uint256) -> uint256:
     """
-    @notice Returns the gauge's relative weight for a given time, capped to its max_relative_weight attribute.
+    @notice Returns the gauge's relative weight for a given time, capped to its _relative_weight_cap attribute.
     @param time Timestamp in the past or present.
     """
     return self._get_capped_relative_weight(time)
@@ -901,14 +912,14 @@ def get_capped_relative_weight(time: uint256) -> uint256:
 @view
 def get_current_capped_relative_weight() -> uint256:
     """
-    @notice Returns the gauge's relative weight for the current week, capped to its max_relative_weight attribute.
+    @notice Returns the gauge's relative weight for the current week, capped to its _relative_weight_cap attribute.
     """
     return self._get_capped_relative_weight(self._get_current_period())
 
 @external
 @pure
-def get_absolute_max_relative_weight() -> uint256:
+def get_max_relative_weight_cap() -> uint256:
     """
-    @notice Returns the absolute maximum value that can be set to max_relative_weight attribute.
+    @notice Returns the maximum value that can be set to _relative_weight_cap attribute.
     """
-    return ABSOLUTE_MAX_RELATIVE_WEIGHT
+    return MAX_RELATIVE_WEIGHT_CAP

@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "./IStakelessGauge.sol";
 
 interface ISingleRecipientGauge is IStakelessGauge {
-    function initialize(address recipient) external;
+    function initialize(address recipient, uint256 relativeWeightCap) external;
 
     function getRecipient() external view returns (address);
 }

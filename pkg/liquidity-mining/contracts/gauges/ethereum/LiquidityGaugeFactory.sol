@@ -63,14 +63,15 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory {
      *
      * This factory disallows deploying multiple gauges for a single pool.
      * @param pool The address of the pool for which to deploy a gauge
+     * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address pool) external override returns (address) {
+    function create(address pool, uint256 relativeWeightCap) external returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
         address gauge = Clones.clone(address(_gaugeImplementation));
 
-        IStakingLiquidityGauge(gauge).initialize(pool);
+        IStakingLiquidityGauge(gauge).initialize(pool, relativeWeightCap);
 
         _isGaugeFromFactory[gauge] = true;
         _poolGauge[pool] = gauge;
