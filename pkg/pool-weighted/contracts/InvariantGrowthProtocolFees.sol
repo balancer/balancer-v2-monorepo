@@ -45,8 +45,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
         // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
         // before leaving.
 
-        // We return immediately if the fee percentage is zero (to avoid unnecessary computation). If the pool is
-        // paused it will revert in `_beforeSwapJoinExit`, before this is called.
+        // We return immediately if the fee percentage is zero to avoid unnecessary computation.
         uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
 
         if (protocolSwapFeePercentage == 0) {
