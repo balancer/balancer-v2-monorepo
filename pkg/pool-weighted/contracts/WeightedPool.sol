@@ -61,13 +61,13 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
 
     constructor(
         IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner

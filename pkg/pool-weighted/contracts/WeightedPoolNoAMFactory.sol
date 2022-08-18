@@ -46,13 +46,13 @@ contract WeightedPoolNoAMFactory is BasePoolFactory, FactoryWidePauseWindow {
             _create(
                 abi.encode(
                     getVault(),
+                    getProtocolFeePercentagesProvider(),
                     name,
                     symbol,
                     tokens,
                     weights,
                     new address[](tokens.length), // Don't allow asset managers
                     swapFeePercentage,
-                    getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner
