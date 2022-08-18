@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Create2.sol";
@@ -28,12 +28,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "./AaveLinearPool.sol";
 import "./AaveLinearPoolRebalancer.sol";
 
-contract AaveLinearPoolFactory is
-    ILastCreatedPoolFactory,
-    BasePoolSplitCodeFactory,
-    ReentrancyGuard,
-    FactoryWidePauseWindow
-{
+contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, ReentrancyGuard, FactoryWidePauseWindow {
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
@@ -41,9 +36,11 @@ contract AaveLinearPoolFactory is
 
     address private _lastCreatedPool;
 
-    constructor(IVault vault, IBalancerQueries queries)
-        BasePoolSplitCodeFactory(vault, type(AaveLinearPool).creationCode)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        IBalancerQueries queries
+    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) {
         _queries = queries;
     }
 

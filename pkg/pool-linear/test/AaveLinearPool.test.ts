@@ -43,7 +43,7 @@ describe('AaveLinearPool', function () {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
     poolFactory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address, queries.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address],
     });
   });
 

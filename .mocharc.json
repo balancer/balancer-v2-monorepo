@@ -1,6 +1,6 @@
 {
   "extension": ["ts"],
-  "timeout": 20000,
+  "timeout": 50000,
   "recursive": "test",
   "slow": 500
 }
