@@ -84,7 +84,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             owner,
             false
         )
-        InvariantGrowthProtocolFees(protocolFeeProvider)
+        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);

@@ -28,12 +28,6 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
     // This mechanism requires keeping track of the invariant after the last join or exit.
     uint256 private _lastPostJoinExitInvariant;
 
-    constructor(IProtocolFeePercentagesProvider protocolFeeProvider)
-        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
-    {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     /**
      * @dev Returns the value of the invariant after the last join or exit operation.
      */
