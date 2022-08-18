@@ -36,7 +36,7 @@ contract WeightedPoolNoAMFactory is BasePoolFactory, FactoryWidePauseWindow {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256[] memory weights,
+        uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
         address owner
     ) external returns (address) {
@@ -45,14 +45,16 @@ contract WeightedPoolNoAMFactory is BasePoolFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
+                    WeightedPool.NewPoolParams({
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: normalizedWeights,
+                        assetManagers: new address[](tokens.length), // Don't allow asset managers,
+                        swapFeePercentage: swapFeePercentage
+                    }),
                     getVault(),
                     getProtocolFeePercentagesProvider(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    new address[](tokens.length), // Don't allow asset managers
-                    swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner
