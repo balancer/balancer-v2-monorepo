@@ -52,6 +52,7 @@ contract WeightedPoolNoAMFactory is BasePoolFactory, FactoryWidePauseWindow {
                     weights,
                     new address[](tokens.length), // Don't allow asset managers
                     swapFeePercentage,
+                    getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner

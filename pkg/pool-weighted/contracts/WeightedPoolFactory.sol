@@ -53,6 +53,7 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     weights,
                     assetManagers,
                     swapFeePercentage,
+                    getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner

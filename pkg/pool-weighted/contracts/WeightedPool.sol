@@ -67,6 +67,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         uint256[] memory normalizedWeights,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -83,6 +84,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             owner,
             false
         )
+        InvariantGrowthProtocolFees(protocolFeeProvider)
     {
         uint256 numTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);

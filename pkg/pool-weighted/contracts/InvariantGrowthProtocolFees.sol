@@ -15,9 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+
 import "./BaseWeightedPool.sol";
 
-abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
+abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     using FixedPoint for uint256;
 
     // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
@@ -25,6 +27,12 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
     uint256 private _lastPostJoinExitInvariant;
+
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider)
+        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /**
      * @dev Returns the value of the invariant after the last join or exit operation.
