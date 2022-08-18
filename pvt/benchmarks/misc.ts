@@ -16,6 +16,7 @@ import {
   ManagedPoolParams,
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { poolConfigs } from './config';
 
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
@@ -165,7 +166,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 }
 
 export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
-  return size > 8
+  return size > poolConfigs.WEIGHTED_POOL.maxTokens
     ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
     : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
