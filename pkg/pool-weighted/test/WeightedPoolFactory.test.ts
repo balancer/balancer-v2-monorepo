@@ -17,6 +17,7 @@ describe('WeightedPoolFactory', function () {
   let tokens: TokenList;
   let factory: Contract;
   let vault: Vault;
+  let rateProviders: string[];
   let assetManagers: string[];
   let assetManager: SignerWithAddress, owner: SignerWithAddress;
 
@@ -42,6 +43,8 @@ describe('WeightedPoolFactory', function () {
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
 
+    rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+
     assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[0] = assetManager.address;
   });
@@ -53,6 +56,7 @@ describe('WeightedPoolFactory', function () {
         SYMBOL,
         tokens.addresses,
         WEIGHTS,
+        rateProviders,
         assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address

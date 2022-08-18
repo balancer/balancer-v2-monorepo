@@ -64,6 +64,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        IRateProvider[] rateProviders;
         address[] assetManagers;
         uint256 swapFeePercentage;
     }
@@ -89,6 +90,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        InvariantGrowthProtocolFees(params.tokens.length, params.rateProviders)
     {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);

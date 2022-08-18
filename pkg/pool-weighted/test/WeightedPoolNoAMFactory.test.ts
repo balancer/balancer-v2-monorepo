@@ -19,6 +19,8 @@ describe('WeightedPoolNoAMFactory', function () {
   let vault: Vault;
   let owner: SignerWithAddress;
 
+  let rateProviders: string[];
+
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -40,11 +42,20 @@ describe('WeightedPoolNoAMFactory', function () {
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+    rateProviders = tokens.map(() => ZERO_ADDRESS);
   });
 
   async function createPool(): Promise<Contract> {
     const receipt = await (
-      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, owner.address)
+      await factory.create(
+        NAME,
+        SYMBOL,
+        tokens.addresses,
+        WEIGHTS,
+        rateProviders,
+        POOL_SWAP_FEE_PERCENTAGE,
+        owner.address
+      )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
