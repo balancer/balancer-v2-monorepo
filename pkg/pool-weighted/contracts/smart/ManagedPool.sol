@@ -163,9 +163,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountIn);
     event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
 
-    // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
-    // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
-    // argument caused "stack too deep" errors in the constructor.
     struct NewPoolParams {
         string name;
         string symbol;
