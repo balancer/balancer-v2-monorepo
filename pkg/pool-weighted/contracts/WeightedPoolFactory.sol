@@ -17,13 +17,15 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./WeightedPool.sol";
 
-contract WeightedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(WeightedPool).creationCode) {
+contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -34,7 +36,7 @@ contract WeightedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256[] memory weights,
+        uint256[] memory normalizedWeights,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
         address owner
@@ -44,13 +46,16 @@ contract WeightedPoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow
         return
             _create(
                 abi.encode(
+                    WeightedPool.NewPoolParams({
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: normalizedWeights,
+                        assetManagers: assetManagers,
+                        swapFeePercentage: swapFeePercentage
+                    }),
                     getVault(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    assetManagers,
-                    swapFeePercentage,
+                    getProtocolFeePercentagesProvider(),
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner

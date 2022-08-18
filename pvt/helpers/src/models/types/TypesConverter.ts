@@ -9,7 +9,7 @@ import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
-import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
+import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
@@ -128,7 +128,7 @@ export default {
     };
   },
 
-  toStablePhantomPoolDeployment(params: RawStablePhantomPoolDeployment): StablePhantomPoolDeployment {
+  toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
     let {
       tokens,
       rateProviders,

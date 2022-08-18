@@ -78,6 +78,7 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         uint8 v;
 
         // ecrecover takes the r, s and v signature parameters, and the only way to get them is to use assembly.
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             r := mload(add(signature, 0x20))
             s := mload(add(signature, 0x40))
@@ -96,6 +97,7 @@ abstract contract EOASignaturesValidator is ISignaturesValidator, EIP712 {
         bytes32 s
     ) internal pure returns (bytes memory) {
         bytes memory signature = new bytes(65);
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             mstore(add(signature, 32), r)
             mstore(add(signature, 64), s)
