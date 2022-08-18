@@ -130,13 +130,16 @@ export default {
       default: {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
+            {
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              assetManagers: assetManagers,
+              swapFeePercentage: swapFeePercentage,
+            },
             vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            assetManagers,
-            swapFeePercentage,
+            vault.protocolFeesProvider.address,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,

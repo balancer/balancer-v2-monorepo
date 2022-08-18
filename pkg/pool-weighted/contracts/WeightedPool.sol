@@ -59,26 +59,30 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
     uint256 internal immutable _normalizedWeight6;
     uint256 internal immutable _normalizedWeight7;
 
+    struct NewPoolParams {
+        string name;
+        string symbol;
+        IERC20[] tokens;
+        uint256[] normalizedWeights;
+        address[] assetManagers;
+        uint256 swapFeePercentage;
+    }
+
     constructor(
+        NewPoolParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        uint256[] memory normalizedWeights,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     )
         BaseWeightedPool(
             vault,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
+            params.name,
+            params.symbol,
+            params.tokens,
+            params.assetManagers,
+            params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,
@@ -86,15 +90,15 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
-        uint256 numTokens = tokens.length;
-        InputHelpers.ensureInputLengthMatch(numTokens, normalizedWeights.length);
+        uint256 numTokens = params.tokens.length;
+        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
         _totalTokens = numTokens;
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; i++) {
-            uint256 normalizedWeight = normalizedWeights[i];
+            uint256 normalizedWeight = params.normalizedWeights[i];
 
             _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedSum = normalizedSum.add(normalizedWeight);
@@ -102,33 +106,33 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _normalizedWeight0 = normalizedWeights[0];
-        _normalizedWeight1 = normalizedWeights[1];
-        _normalizedWeight2 = numTokens > 2 ? normalizedWeights[2] : 0;
-        _normalizedWeight3 = numTokens > 3 ? normalizedWeights[3] : 0;
-        _normalizedWeight4 = numTokens > 4 ? normalizedWeights[4] : 0;
-        _normalizedWeight5 = numTokens > 5 ? normalizedWeights[5] : 0;
-        _normalizedWeight6 = numTokens > 6 ? normalizedWeights[6] : 0;
-        _normalizedWeight7 = numTokens > 7 ? normalizedWeights[7] : 0;
+        _normalizedWeight0 = params.normalizedWeights[0];
+        _normalizedWeight1 = params.normalizedWeights[1];
+        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
+        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
+        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
+        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
+        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _token0 = tokens[0];
-        _token1 = tokens[1];
-        _token2 = numTokens > 2 ? tokens[2] : IERC20(0);
-        _token3 = numTokens > 3 ? tokens[3] : IERC20(0);
-        _token4 = numTokens > 4 ? tokens[4] : IERC20(0);
-        _token5 = numTokens > 5 ? tokens[5] : IERC20(0);
-        _token6 = numTokens > 6 ? tokens[6] : IERC20(0);
-        _token7 = numTokens > 7 ? tokens[7] : IERC20(0);
+        _token0 = params.tokens[0];
+        _token1 = params.tokens[1];
+        _token2 = numTokens > 2 ? params.tokens[2] : IERC20(0);
+        _token3 = numTokens > 3 ? params.tokens[3] : IERC20(0);
+        _token4 = numTokens > 4 ? params.tokens[4] : IERC20(0);
+        _token5 = numTokens > 5 ? params.tokens[5] : IERC20(0);
+        _token6 = numTokens > 6 ? params.tokens[6] : IERC20(0);
+        _token7 = numTokens > 7 ? params.tokens[7] : IERC20(0);
 
-        _scalingFactor0 = _computeScalingFactor(tokens[0]);
-        _scalingFactor1 = _computeScalingFactor(tokens[1]);
-        _scalingFactor2 = numTokens > 2 ? _computeScalingFactor(tokens[2]) : 0;
-        _scalingFactor3 = numTokens > 3 ? _computeScalingFactor(tokens[3]) : 0;
-        _scalingFactor4 = numTokens > 4 ? _computeScalingFactor(tokens[4]) : 0;
-        _scalingFactor5 = numTokens > 5 ? _computeScalingFactor(tokens[5]) : 0;
-        _scalingFactor6 = numTokens > 6 ? _computeScalingFactor(tokens[6]) : 0;
-        _scalingFactor7 = numTokens > 7 ? _computeScalingFactor(tokens[7]) : 0;
+        _scalingFactor0 = _computeScalingFactor(params.tokens[0]);
+        _scalingFactor1 = _computeScalingFactor(params.tokens[1]);
+        _scalingFactor2 = numTokens > 2 ? _computeScalingFactor(params.tokens[2]) : 0;
+        _scalingFactor3 = numTokens > 3 ? _computeScalingFactor(params.tokens[3]) : 0;
+        _scalingFactor4 = numTokens > 4 ? _computeScalingFactor(params.tokens[4]) : 0;
+        _scalingFactor5 = numTokens > 5 ? _computeScalingFactor(params.tokens[5]) : 0;
+        _scalingFactor6 = numTokens > 6 ? _computeScalingFactor(params.tokens[6]) : 0;
+        _scalingFactor7 = numTokens > 7 ? _computeScalingFactor(params.tokens[7]) : 0;
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
