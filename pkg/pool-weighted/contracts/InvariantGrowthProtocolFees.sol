@@ -15,9 +15,11 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+
 import "./BaseWeightedPool.sol";
 
-abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
+abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     using FixedPoint for uint256;
 
     // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
@@ -43,9 +45,8 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool {
         // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
         // before leaving.
 
-        // We return immediately if the fee percentage is zero (to avoid unnecessary computation), or when the pool is
-        // paused (to avoid complex computation during emergency withdrawals).
-        if ((protocolSwapFeePercentage == 0) || !_isNotPaused()) {
+        // We return immediately if the fee percentage is zero to avoid unnecessary computation.
+        if (protocolSwapFeePercentage == 0) {
             return;
         }
 

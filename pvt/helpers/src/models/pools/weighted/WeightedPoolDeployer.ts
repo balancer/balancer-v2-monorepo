@@ -131,6 +131,7 @@ export default {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
             vault.address,
+            vault.protocolFeesProvider.address,
             NAME,
             SYMBOL,
             tokens.addresses,
@@ -170,7 +171,7 @@ export default {
     switch (poolType) {
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
         const tx = await factory.create(
@@ -236,7 +237,10 @@ export default {
         break;
       }
       default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
+          args: [vault.address, vault.getFeesProvider().address],
+          from,
+        });
         const tx = await factory.create(
           NAME,
           SYMBOL,

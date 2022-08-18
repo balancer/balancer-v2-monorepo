@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./IBasePoolSplitCodeFactory.sol";
+import "./IBasePoolFactory.sol";
 
-interface ILastCreatedPoolFactory is IBasePoolSplitCodeFactory {
+interface ILastCreatedPoolFactory is IBasePoolFactory {
     /**
      * @dev Returns the address of the last Pool created by this factory.
      *

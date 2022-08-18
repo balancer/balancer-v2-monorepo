@@ -8,13 +8,15 @@ import { ZERO_ADDRESS, ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-describe('BasePoolSplitCodeFactory', function () {
+describe('BasePoolFactory', function () {
   let vault: Contract;
   let factory: Contract;
   let authorizer: Contract;
   let admin: SignerWithAddress;
   let other: SignerWithAddress;
+  let protocolFeesProvider: Contract;
 
   before('setup signers', async () => {
     [, admin, other] = await ethers.getSigners();
@@ -25,8 +27,11 @@ describe('BasePoolSplitCodeFactory', function () {
 
     authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
+    protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
+      args: [vault.address, fp(1), fp(1)],
+    });
 
-    factory = await deploy('MockPoolSplitCodeFactory', { args: [vault.address] });
+    factory = await deploy('MockPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
 
     const action = await actionId(factory, 'disable');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
@@ -34,6 +39,10 @@ describe('BasePoolSplitCodeFactory', function () {
 
   it('stores the vault address', async () => {
     expect(await factory.getVault()).to.equal(vault.address);
+  });
+
+  it('stores the fee provider address', async () => {
+    expect(await factory.getProtocolFeePercentagesProvider()).to.equal(protocolFeesProvider.address);
   });
 
   it('emits an event', async () => {

@@ -16,8 +16,8 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolSplitCodeFactory.sol";
-
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
@@ -35,18 +35,21 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
  * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSplitCodeFactory, SingletonAuthentication {
+abstract contract BasePoolFactory is IBasePoolFactory, BaseSplitCodeFactory, SingletonAuthentication {
+    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
+
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
     event PoolCreated(address indexed pool);
     event FactoryDisabled();
 
-    constructor(IVault vault, bytes memory creationCode)
-        BaseSplitCodeFactory(creationCode)
-        SingletonAuthentication(vault)
-    {
-        // solhint-disable-previous-line no-empty-blocks
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        bytes memory creationCode
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) {
+        _protocolFeeProvider = protocolFeeProvider;
     }
 
     function isPoolFromFactory(address pool) external view override returns (bool) {
@@ -67,6 +70,10 @@ abstract contract BasePoolSplitCodeFactory is IBasePoolSplitCodeFactory, BaseSpl
 
     function _ensureEnabled() internal view {
         _require(!isDisabled(), Errors.DISABLED);
+    }
+
+    function getProtocolFeePercentagesProvider() public view returns (IProtocolFeePercentagesProvider) {
+        return _protocolFeeProvider;
     }
 
     function _create(bytes memory constructorArgs) internal virtual override returns (address) {
