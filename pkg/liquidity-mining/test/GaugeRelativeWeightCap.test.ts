@@ -90,19 +90,29 @@ describe('GaugeRelativeWeightCap', () => {
     }
 
     describe('gauge creation', () => {
-      const initialCap = fp(0.75);
-
-      it('emits a RelativeWeightCapChanged event', async () => {
-        const tx = await factory.create(token.address, initialCap);
-        expectCapChangedEvent(tx, initialCap);
+      context('when the initial cap value is too high', () => {
+        const maxCap = fp(1.0);
+        it('reverts', async () => {
+          await expect(await factory.create(token.address, maxCap.add(1))).to.be.revertedWith(
+            'Relative weight cap exceeds allowed absolute maximum'
+          );
+        });
       });
 
-      it('verifies the initial cap value', async () => {
-        const gauge = await deployedAt(
-          contractName,
-          await deployGauge(factory, token.address, creationEventName, initialCap)
-        );
-        expect(await gauge.get_relative_weight_cap()).to.be.eq(initialCap);
+      context('when the initial cap value is valid', () => {
+        const initialCap = fp(0.75);
+        it('emits a RelativeWeightCapChanged event', async () => {
+          const tx = await factory.create(token.address, initialCap);
+          expectCapChangedEvent(tx, initialCap);
+        });
+
+        it('sets the initial cap value', async () => {
+          const gauge = await deployedAt(
+            contractName,
+            await deployGauge(factory, token.address, creationEventName, initialCap)
+          );
+          expect(await gauge.get_relative_weight_cap()).to.be.eq(initialCap);
+        });
       });
     });
 
@@ -120,7 +130,7 @@ describe('GaugeRelativeWeightCap', () => {
       });
 
       context('when the caller is authorized', () => {
-        context('within the allowed range', () => {
+        context('when the cap value is valid', () => {
           it('sets relative weight cap', async () => {
             await setCap(newCap);
             expect(await gauge.get_relative_weight_cap()).to.be.eq(newCap);
@@ -131,7 +141,7 @@ describe('GaugeRelativeWeightCap', () => {
           });
         });
 
-        context('above the allowed range', () => {
+        context('when the cap value is too high', () => {
           const maxCap = fp(1.0);
           it('reverts', async () => {
             await expect(setCap(maxCap.add(1))).to.be.revertedWith(
