@@ -471,11 +471,11 @@ export function itBehavesAsWeightedPool(
         expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
       });
 
-      it.skip('does not revert if paused', async () => {
+      it('reverts if paused', async () => {
         await pool.pause();
 
         const bptIn = previousBptBalance.div(2);
-        await expect(pool.multiExitGivenIn({ from: lp, bptIn })).not.to.be.reverted;
+        await expect(pool.multiExitGivenIn({ from: lp, bptIn })).to.be.revertedWith('PAUSED');
       });
     });
 
