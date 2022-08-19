@@ -249,8 +249,7 @@ abstract contract ComposableStablePoolProtocolFees is
 
         // This usage of WeightedMath is intentional, `_getJoinExitProtocolSwapFee` is general to several invariants.
         uint256 protocolFeeAmount = WeightedMath._getJoinExitProtocolSwapFee(
-            preJoinExitInvariant,
-            postJoinExitInvariant,
+            postJoinExitInvariant.divDown(preJoinExitInvariant),
             preJoinExitSupply,
             postJoinExitSupply,
             getProtocolFeePercentageCache(ProtocolFeeType.SWAP)

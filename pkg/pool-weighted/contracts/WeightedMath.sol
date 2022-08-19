@@ -407,8 +407,7 @@ library WeightedMath {
     }
 
     function _getJoinExitProtocolSwapFee(
-        uint256 preJoinExitInvariant,
-        uint256 postJoinExitInvariant,
+        uint256 invariantRatio,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply,
         uint256 protocolSwapFeePercentage
@@ -444,15 +443,12 @@ library WeightedMath {
         //
         // Compute the portion of the invariant increase due to fees
         uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
-        uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
 
-        uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
+        uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantRatio);
 
         // To convert to a percentage of pool ownership, multiply by the rate,
         // then normalize against the final invariant
-        uint256 protocolOwnershipPercentage = invariantDeltaFromFees.divDown(postJoinExitInvariant).mulDown(
-            protocolSwapFeePercentage
-        );
+        uint256 protocolOwnershipPercentage = swapFeesPercentage.mulDown(protocolSwapFeePercentage);
 
         // Since this fee amount will be minted as BPT, which increases the total supply, we need to mint
         // slightly more so that it reflects this percentage of the total supply after minting.

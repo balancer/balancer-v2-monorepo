@@ -1003,8 +1003,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // when computing the ratio. So this partial invariant calculation is sufficient
         uint256 supply = totalSupply();
         uint256 totalBptAmount = WeightedMath._getJoinExitProtocolSwapFee(
-            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
-            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+            FixedPoint.divDown(
+                WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+                WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances)
+            ),
             supply,
             supply,
             totalFeePercentage
