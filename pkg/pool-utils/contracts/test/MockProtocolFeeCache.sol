@@ -35,21 +35,4 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     function _getAuthorizer() internal pure override returns (IAuthorizer) {
         return IAuthorizer(address(0));
     }
-
-    function getJoinExitProtocolSwapFee(
-        uint256 preJoinExitInvariant,
-        uint256 postJoinExitInvariant,
-        uint256 preJoinExitSupply,
-        uint256 postJoinExitSupply,
-        uint256 protocolSwapFeePercentage
-    ) external view returns (uint256 protocolFeeAmount) {
-        return
-            _getJoinExitProtocolSwapFee(
-                preJoinExitInvariant,
-                postJoinExitInvariant,
-                preJoinExitSupply,
-                postJoinExitSupply,
-                protocolSwapFeePercentage
-            );
-    }
 }
