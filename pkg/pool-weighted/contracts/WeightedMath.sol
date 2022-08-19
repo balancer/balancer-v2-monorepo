@@ -445,8 +445,8 @@ library WeightedMath {
         // the amount of the invariant due to fees, which we convert to a percentage by normalizing against the
         // final invariant.
         //
-        // This operation can be simplified to give the below expression for fraction of the Pool which is swap fees.
-        // This allows us to work in terms of ratios of invariants rather than true values.
+        // This operation can be simplified to the expression given below for the fraction of the Pool corresponding
+        // to swap fees. This allows us to work in terms of ratios of invariants rather than absolute values.
 
         uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantGrowthRatio);
 
