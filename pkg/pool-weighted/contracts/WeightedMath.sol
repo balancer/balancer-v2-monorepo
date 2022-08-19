@@ -406,7 +406,7 @@ library WeightedMath {
         return amountsOut;
     }
 
-    function _getJoinExitProtocolSwapFee(
+    function _calcDueProtocolSwapFeeBptAmount(
         uint256 invariantRatio,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply,
