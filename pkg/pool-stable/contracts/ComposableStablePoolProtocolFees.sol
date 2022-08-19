@@ -253,7 +253,7 @@ abstract contract ComposableStablePoolProtocolFees is
             postJoinExitInvariant,
             preJoinExitSupply,
             postJoinExitSupply,
-            protocolOwnershipPercentage
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
         );
 
         if (protocolFeeAmount > 0) {
