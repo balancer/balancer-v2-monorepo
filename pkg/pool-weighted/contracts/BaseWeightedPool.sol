@@ -140,11 +140,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
      * behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolSwapFeePercentage
-    ) internal virtual {
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -204,7 +200,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         address,
         uint256[] memory balances,
         uint256,
-        uint256 protocolSwapFeePercentage,
+        uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
@@ -212,7 +208,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
+        _beforeJoinExit(balances, normalizedWeights);
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
             balances,
@@ -325,17 +321,15 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         address,
         uint256[] memory balances,
         uint256,
-        uint256 protocolSwapFeePercentage,
+        uint256,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // Exits are not disabled by default while the contract is paused, as some of them remain available to allow LPs
-        // to safely exit the Pool in case of an emergency. Other exit kinds are disabled on a case-by-case basis in
-        // their handlers.
+        // All exits are disabled while the contract is paused.
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
+        _beforeJoinExit(balances, normalizedWeights);
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
             balances,

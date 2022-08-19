@@ -28,6 +28,10 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
       [, lp] = await ethers.getSigners();
     });
 
+    const protocolFeePercentage = fp(0.3); // 30 %
+    const initialBalances = range(1, numTokens + 1).map(fp);
+    const initialBalanceGrowth = bn(3);
+
     sharedBeforeEach(async () => {
       tokens = await TokenList.create(numTokens, { sorted: true, varyDecimals: true });
 
@@ -39,11 +43,11 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
       });
 
       ({ address: protocolFeesCollector } = await pool.vault.getFeesCollector());
-    });
 
-    const protocolFeePercentage = fp(0.3); // 30 %
-    const initialBalances = range(1, numTokens + 1).map(fp);
-    const initialBalanceGrowth = bn(3);
+      // Set the percentage in the Vault and update the cache, since the pool now reads from it
+      await pool.vault.setSwapFeePercentage(protocolFeePercentage);
+      await pool.instance.updateProtocolFeePercentageCache();
+    });
 
     describe('last post join/exit invariant', () => {
       it('is set on initialization', async () => {
@@ -63,20 +67,9 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
           );
         });
 
-        context('when not paused', () => {
-          itIsUpdatedByJoins();
+        itIsUpdatedByJoins();
 
-          itIsUpdatedByExits();
-        });
-
-        context.skip('when paused', () => {
-          sharedBeforeEach(async () => {
-            await pool.pause();
-          });
-
-          // Joins are disabled while paused
-          itIsUpdatedByExits();
-        });
+        itIsUpdatedByExits();
 
         function itIsUpdatedByJoins() {
           it('is updated by joins', async () => {
@@ -109,7 +102,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
       async function protocolFeesPaid(): Promise<BigNumber> {
         const previousProtocolFeeCollectorBalance = await pool.balanceOf(protocolFeesCollector);
 
-        // We trigger protocol fee payment by executing a proportional exit (which works even while paused) for 0 BPT
+        // We trigger protocol fee payment by executing a proportional exit for 0 BPT
         await pool.exit({
           data: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(0)),
           protocolFeePercentage,
@@ -151,16 +144,6 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
             const secondPayment = await protocolFeesPaid();
             expect(secondPayment).to.equal(0);
-          });
-        });
-
-        context.skip('when paused', () => {
-          sharedBeforeEach(async () => {
-            await pool.pause();
-          });
-
-          it('does not pay protocol fees', async () => {
-            expect(await protocolFeesPaid()).to.equal(0);
           });
         });
       });
