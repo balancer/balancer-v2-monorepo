@@ -227,10 +227,21 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
 
     function _afterJoinExit(
         bool isJoin,
+        bool isExemptFromProtocolFees,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
     ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
-        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
+        InvariantGrowthProtocolFees._afterJoinExit(
+            isJoin,
+            isExemptFromProtocolFees,
+            preBalances,
+            balanceDeltas,
+            normalizedWeights,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
     }
 }
