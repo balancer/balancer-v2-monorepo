@@ -37,7 +37,6 @@ import "./RecoveryMode.sol";
  * stored in the immutable `_fixedProtocolSwapFeePercentage`.
  */
 abstract contract ProtocolFeeCache is RecoveryMode {
-    using FixedPoint for uint256;
     using SafeCast for uint256;
 
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
