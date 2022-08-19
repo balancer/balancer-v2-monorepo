@@ -1,0 +1,67 @@
+name: Benchmark
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches: '*'
+
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Benchmark Deployment
+        run: yarn workspace @balancer-labs/v2-benchmarks measure-deployment
+
+  single-pair-swap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Benchmark Single Pair
+        run: yarn workspace @balancer-labs/v2-benchmarks measure-single-pair
+
+  multihop-swap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Benchmark Multihop
+        run: yarn workspace @balancer-labs/v2-benchmarks measure-multihop
+
+  join-exit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Benchmark Join/Exit
+        run: yarn workspace @balancer-labs/v2-benchmarks measure-join-exit
+
+  merkle-claim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Benchmark Merkle Claim
+        run: yarn workspace @balancer-labs/v2-benchmarks measure-merkle-claim
+
+env:
+  CI: true

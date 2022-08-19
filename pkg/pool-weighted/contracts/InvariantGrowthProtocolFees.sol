@@ -35,33 +35,30 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
         return _lastPostJoinExitInvariant;
     }
 
-    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
-        internal
-        virtual
-        override
-    {
+    function _getSwapProtocolFees(
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply
+    ) internal view returns (uint256) {
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+
+        // We return immediately if the fee percentage is zero to avoid unnecessary computation.
+        if (protocolSwapFeePercentage == 0) return 0;
+
         // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
         // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dilutes all
         // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
         // before leaving.
 
-        // We return immediately if the fee percentage is zero to avoid unnecessary computation.
-        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
-
-        if (protocolSwapFeePercentage == 0) {
-            return;
-        }
-
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
 
-        uint256 toMint = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-            totalSupply(),
-            _lastPostJoinExitInvariant,
-            preJoinExitInvariant,
-            protocolSwapFeePercentage
-        );
-
-        _payProtocolFees(toMint);
+        return
+            WeightedMath._calcDueProtocolSwapFeeBptAmount(
+                preJoinExitSupply,
+                _lastPostJoinExitInvariant,
+                preJoinExitInvariant,
+                protocolSwapFeePercentage
+            );
     }
 
     function _afterJoinExit(
