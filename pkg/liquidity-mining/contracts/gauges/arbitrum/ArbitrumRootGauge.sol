@@ -15,12 +15,11 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IArbitrumFeeProvider.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
 
 import "../StakelessGauge.sol";
 import "./IGatewayRouter.sol";
 
-contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
+contract ArbitrumRootGauge is StakelessGauge {
     address private immutable _gateway;
     IGatewayRouter private immutable _gatewayRouter;
     IArbitrumFeeProvider private immutable _factory;
@@ -33,7 +32,7 @@ contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
         _factory = IArbitrumFeeProvider(msg.sender);
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 

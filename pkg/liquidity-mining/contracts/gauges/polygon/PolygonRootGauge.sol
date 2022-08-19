@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
-
 import "../StakelessGauge.sol";
 
 interface IPolygonRootChainManager {
@@ -26,7 +24,7 @@ interface IPolygonRootChainManager {
     ) external;
 }
 
-contract PolygonRootGauge is ISingleRecipientGauge, StakelessGauge {
+contract PolygonRootGauge is StakelessGauge {
     IPolygonRootChainManager private immutable _polygonRootChainManager;
     address private immutable _polygonERC20Predicate;
 
@@ -42,7 +40,7 @@ contract PolygonRootGauge is ISingleRecipientGauge, StakelessGauge {
         _polygonERC20Predicate = polygonERC20Predicate;
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 
