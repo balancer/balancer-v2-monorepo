@@ -247,7 +247,8 @@ abstract contract ComposableStablePoolProtocolFees is
 
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        // This usage of WeightedMath is intentional, `_calcDueProtocolSwapFeeBptAmount` is general to several invariants.
+        // This usage of WeightedMath is intentional.
+        // `_calcDueProtocolSwapFeeBptAmount` is general to several invariants so we can use it here safely.
         uint256 protocolFeeAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
             postJoinExitInvariant.divDown(preJoinExitInvariant),
             preJoinExitSupply,
