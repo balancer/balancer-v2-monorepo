@@ -23,23 +23,62 @@ interface ILiquidityGauge {
     // solhint-disable-next-line var-name-mixedcase
     event RelativeWeightCapChanged(uint256 new_relative_weight_cap);
 
+    /**
+     * Returns BAL liquidity emissions calculated during checkpoints for the given user.
+     * @param user User address.
+     * @return uint256 BAL amount to issue for the address.
+     */
     function integrate_fraction(address user) external view returns (uint256);
 
+    /**
+     * @notice Record a checkpoint for a given user.
+     * @param user User address.
+     * @return bool Always true.
+     */
     function user_checkpoint(address user) external returns (bool);
 
+    /**
+     * @notice Returns true if gauge is killed; false otherwise.
+     */
     function is_killed() external view returns (bool);
 
+    /**
+     * @notice Kills the gauge so it cannot mint BAL.
+     */
     function killGauge() external;
 
+    /**
+     * @notice Unkills the gauge so it can mint BAL again.
+     */
     function unkillGauge() external;
 
-    function set_relative_weight_cap(uint256 maxRelativeWeight) external;
+    /**
+     * @notice Sets a new relative weight cap for the gauge.
+     * The value shall be normalized to 1e18, and not greater than MAX_RELATIVE_WEIGHT_CAP.
+     * @param relativeWeightCap New relative weight cap.
+     */
+    function set_relative_weight_cap(uint256 relativeWeightCap) external;
 
+    /**
+     * @notice Gets the relative weight cap for the gauge.
+     */
     function get_relative_weight_cap() external view returns (uint256);
 
+    /**
+     * @notice Returns the gauge's relative weight for a given time, capped to its relative weight cap attribute.
+     * @param time Timestamp in the past or present.
+     */
     function get_capped_relative_weight(uint256 time) external view returns (uint256);
 
+    /**
+     * @notice Returns the gauge's relative weight for the current week, capped to its relative weight cap attribute.
+     */
     function get_current_capped_relative_weight() external view returns (uint256);
 
+    /**
+     * @notice Returns the absolute maximum value that can be set to the relative weight cap attribute.
+     * Calling this method is equivalent to reading the public constant; the method is present just to be consistent
+     * with the Vyper gauge counterpart.
+     */
     function get_max_relative_weight_cap() external pure returns (uint256);
 }
