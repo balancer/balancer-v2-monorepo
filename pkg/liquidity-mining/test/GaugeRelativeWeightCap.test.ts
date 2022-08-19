@@ -64,7 +64,7 @@ describe('GaugeRelativeWeightCap', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const action = await actionId(adaptor, 'set_relative_weight_cap', liquidityGaugeImplementation.interface);
+    const action = await actionId(adaptor, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
     await vault.grantPermissionsGlobally([action], admin);
   });
 
@@ -85,7 +85,7 @@ describe('GaugeRelativeWeightCap', () => {
   function testRelativeWeightCapForGauge(contractName: string, creationEventName: string) {
     let gauge: Contract;
     async function setCap(relativeWeightCap: BigNumber): Promise<ContractTransaction> {
-      const calldata = gauge.interface.encodeFunctionData('set_relative_weight_cap', [relativeWeightCap]);
+      const calldata = gauge.interface.encodeFunctionData('setRelativeWeightCap', [relativeWeightCap]);
       return adaptor.connect(admin).performAction(gauge.address, calldata);
     }
 
@@ -111,12 +111,12 @@ describe('GaugeRelativeWeightCap', () => {
             contractName,
             await deployGauge(factory, token.address, creationEventName, initialCap)
           );
-          expect(await gauge.get_relative_weight_cap()).to.be.eq(initialCap);
+          expect(await gauge.getRelativeWeightCap()).to.be.eq(initialCap);
         });
       });
     });
 
-    describe('set_relative_weight_cap', () => {
+    describe('setRelativeWeightCap', () => {
       const newCap = fp(0.3);
 
       sharedBeforeEach('deploy gauge', async () => {
@@ -125,7 +125,7 @@ describe('GaugeRelativeWeightCap', () => {
 
       context('when the caller is not authorized', () => {
         it('reverts', async () => {
-          await expect(gauge.connect(other).set_relative_weight_cap(newCap)).to.be.reverted;
+          await expect(gauge.connect(other).setRelativeWeightCap(newCap)).to.be.reverted;
         });
       });
 
@@ -133,7 +133,7 @@ describe('GaugeRelativeWeightCap', () => {
         context('when the cap value is valid', () => {
           it('sets relative weight cap', async () => {
             await setCap(newCap);
-            expect(await gauge.get_relative_weight_cap()).to.be.eq(newCap);
+            expect(await gauge.getRelativeWeightCap()).to.be.eq(newCap);
           });
 
           it('emits an event', async () => {
@@ -152,7 +152,7 @@ describe('GaugeRelativeWeightCap', () => {
       });
     });
 
-    describe('get_capped_relative_weight', () => {
+    describe('getCappedRelativeWeight', () => {
       const weight = fp(0.7);
       // The timestamp parameter is being ignored in the mock gauge controller.
       const anyTimestamp = bn(1234);
@@ -163,7 +163,7 @@ describe('GaugeRelativeWeightCap', () => {
 
       context('when the gauge is not added to the gauge controller', () => {
         it('returns 0', async () => {
-          expect(await gauge.get_capped_relative_weight(anyTimestamp)).to.be.eq(0);
+          expect(await gauge.getCappedRelativeWeight(anyTimestamp)).to.be.eq(0);
         });
       });
 
@@ -176,7 +176,7 @@ describe('GaugeRelativeWeightCap', () => {
         function capHasNoEffect(cap: BigNumber) {
           it('returns the weight uncapped', async () => {
             await setCap(cap);
-            expect(await gauge.get_capped_relative_weight(anyTimestamp)).to.be.eq(
+            expect(await gauge.getCappedRelativeWeight(anyTimestamp)).to.be.eq(
               await gaugeController.gauge_relative_weight(gauge.address, anyTimestamp)
             );
           });
@@ -185,9 +185,7 @@ describe('GaugeRelativeWeightCap', () => {
         function capAffectsWeight(cap: BigNumber) {
           it('returns the cap', async () => {
             await setCap(cap);
-            expect(await gauge.get_capped_relative_weight(anyTimestamp)).to.be.eq(
-              await gauge.get_relative_weight_cap()
-            );
+            expect(await gauge.getCappedRelativeWeight(anyTimestamp)).to.be.eq(await gauge.getRelativeWeightCap());
           });
         }
 
@@ -209,13 +207,13 @@ describe('GaugeRelativeWeightCap', () => {
       });
     });
 
-    describe('get_max_relative_weight_cap', () => {
+    describe('getMaxRelativeWeightCap', () => {
       sharedBeforeEach('deploy gauge', async () => {
         gauge = await deployedAt(contractName, await deployGauge(factory, token.address, creationEventName));
       });
 
       it('returns 1 normalized to 18 decimals', async () => {
-        expect(await gauge.get_max_relative_weight_cap()).to.be.eq(fp(1));
+        expect(await gauge.getMaxRelativeWeightCap()).to.be.eq(fp(1));
       });
     });
   }

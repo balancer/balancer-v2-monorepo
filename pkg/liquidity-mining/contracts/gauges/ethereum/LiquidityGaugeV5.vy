@@ -194,7 +194,7 @@ def _get_allowance(owner: address, spender: address) -> uint256:
 
 @internal
 @view
-def _get_capped_relative_weight(period: uint256) -> uint256:
+def _getCappedRelativeWeight(period: uint256) -> uint256:
     """
     @dev Returns the gauge's relative weight, capped to its _relative_weight_cap attribute.
     """
@@ -234,7 +234,7 @@ def _checkpoint(addr: address):
 
         for i in range(500):
             dt: uint256 = week_time - prev_week_time
-            w: uint256 = self._get_capped_relative_weight(prev_week_time / WEEK * WEEK)
+            w: uint256 = self._getCappedRelativeWeight(prev_week_time / WEEK * WEEK)
 
             if _working_supply > 0:
                 if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time:
@@ -844,7 +844,7 @@ def allowance(owner: address, spender: address) -> uint256:
 # Initializer
 
 @internal
-def _set_relative_weight_cap(relative_weight_cap: uint256):
+def _setRelativeWeightCap(relative_weight_cap: uint256):
     assert relative_weight_cap <= MAX_RELATIVE_WEIGHT_CAP, "Relative weight cap exceeds allowed absolute maximum"
     self._relative_weight_cap = relative_weight_cap
     log RelativeWeightCapChanged(relative_weight_cap)
@@ -871,7 +871,7 @@ def initialize(_lp_token: address, relative_weight_cap: uint256):
 
     self.period_timestamp[0] = block.timestamp
     self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + TokenAdmin(BAL_TOKEN_ADMIN).rate()
-    self._set_relative_weight_cap(relative_weight_cap)
+    self._setRelativeWeightCap(relative_weight_cap)
 
 @internal
 @view
@@ -882,18 +882,18 @@ def _get_current_period() -> uint256:
     return (block.timestamp / WEEK) - 1
 
 @external
-def set_relative_weight_cap(relative_weight_cap: uint256):
+def setRelativeWeightCap(relative_weight_cap: uint256):
     """
     @notice Sets a new relative weight cap for the gauge.
             The value shall be normalized to 1e18, and not greater than MAX_RELATIVE_WEIGHT_CAP.
     @param relative_weight_cap New relative weight cap.
     """
     assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
-    self._set_relative_weight_cap(relative_weight_cap)
+    self._setRelativeWeightCap(relative_weight_cap)
 
 @external
 @view
-def get_relative_weight_cap() -> uint256:
+def getRelativeWeightCap() -> uint256:
     """
     @notice Returns relative weight cap for the gauge.
     """
@@ -901,24 +901,24 @@ def get_relative_weight_cap() -> uint256:
 
 @external
 @view
-def get_capped_relative_weight(time: uint256) -> uint256:
+def getCappedRelativeWeight(time: uint256) -> uint256:
     """
     @notice Returns the gauge's relative weight for a given time, capped to its _relative_weight_cap attribute.
     @param time Timestamp in the past or present.
     """
-    return self._get_capped_relative_weight(time)
+    return self._getCappedRelativeWeight(time)
 
 @external
 @view
-def get_current_capped_relative_weight() -> uint256:
+def getCurrentCappedRelativeWeight() -> uint256:
     """
     @notice Returns the gauge's relative weight for the current week, capped to its _relative_weight_cap attribute.
     """
-    return self._get_capped_relative_weight(self._get_current_period())
+    return self._getCappedRelativeWeight(self._get_current_period())
 
 @external
 @pure
-def get_max_relative_weight_cap() -> uint256:
+def getMaxRelativeWeightCap() -> uint256:
     """
     @notice Returns the maximum value that can be set to _relative_weight_cap attribute.
     """

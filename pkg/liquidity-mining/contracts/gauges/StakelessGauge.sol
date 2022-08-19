@@ -174,7 +174,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         _isKilled = false;
     }
 
-    function set_relative_weight_cap(uint256 relativeWeightCap) external override {
+    function setRelativeWeightCap(uint256 relativeWeightCap) external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _setRelativeWeightCap(relativeWeightCap);
     }
@@ -185,11 +185,11 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         emit RelativeWeightCapChanged(relativeWeightCap);
     }
 
-    function get_relative_weight_cap() external view override returns (uint256) {
+    function getRelativeWeightCap() external view override returns (uint256) {
         return _relativeWeightCap;
     }
 
-    function get_capped_relative_weight(uint256 time) external view override returns (uint256) {
+    function getCappedRelativeWeight(uint256 time) external view override returns (uint256) {
         return _getCappedRelativeWeight(time);
     }
 
@@ -197,11 +197,11 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         return Math.min(_gaugeController.gauge_relative_weight(address(this), time), _relativeWeightCap);
     }
 
-    function get_current_capped_relative_weight() external view override returns (uint256) {
+    function getCurrentCappedRelativeWeight() external view override returns (uint256) {
         return _getCappedRelativeWeight(_currentPeriod());
     }
 
-    function get_max_relative_weight_cap() external pure override returns (uint256) {
+    function getMaxRelativeWeightCap() external pure override returns (uint256) {
         return MAX_RELATIVE_WEIGHT_CAP;
     }
 }

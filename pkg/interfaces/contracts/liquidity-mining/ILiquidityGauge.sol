@@ -57,28 +57,28 @@ interface ILiquidityGauge {
      * The value shall be normalized to 1e18, and not greater than MAX_RELATIVE_WEIGHT_CAP.
      * @param relativeWeightCap New relative weight cap.
      */
-    function set_relative_weight_cap(uint256 relativeWeightCap) external;
+    function setRelativeWeightCap(uint256 relativeWeightCap) external;
 
     /**
      * @notice Gets the relative weight cap for the gauge.
      */
-    function get_relative_weight_cap() external view returns (uint256);
+    function getRelativeWeightCap() external view returns (uint256);
 
     /**
      * @notice Returns the gauge's relative weight for a given time, capped to its relative weight cap attribute.
      * @param time Timestamp in the past or present.
      */
-    function get_capped_relative_weight(uint256 time) external view returns (uint256);
+    function getCappedRelativeWeight(uint256 time) external view returns (uint256);
 
     /**
      * @notice Returns the gauge's relative weight for the current week, capped to its relative weight cap attribute.
      */
-    function get_current_capped_relative_weight() external view returns (uint256);
+    function getCurrentCappedRelativeWeight() external view returns (uint256);
 
     /**
      * @notice Returns the absolute maximum value that can be set to the relative weight cap attribute.
      * Calling this method is equivalent to reading the public constant; the method is present just to be consistent
      * with the Vyper gauge counterpart.
      */
-    function get_max_relative_weight_cap() external pure returns (uint256);
+    function getMaxRelativeWeightCap() external pure returns (uint256);
 }
