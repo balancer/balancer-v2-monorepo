@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./ICappedGaugeFactory.sol";
+import "./IBaseRootGaugeFactory.sol";
 
-interface ISingleRecipientGaugeFactory is ICappedGaugeFactory {
+interface ISingleRecipientGaugeFactory is IBaseRootGaugeFactory {
     /**
      * @notice Returns the gauge which sends funds to `recipient`.
      */

@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol"
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ICappedGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBaseRootGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
@@ -50,8 +50,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
     IBalancerMinter private immutable _balancerMinter;
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
-    ICappedGaugeFactory private immutable _ethereumGaugeFactory;
-    ICappedGaugeFactory private immutable _singleRecipientGaugeFactory;
+    IBaseRootGaugeFactory private immutable _ethereumGaugeFactory;
+    IBaseRootGaugeFactory private immutable _singleRecipientGaugeFactory;
     IBALTokenHolderFactory private immutable _balTokenHolderFactory;
 
     address public lmCommitteeMultisig = 0xc38c5f97B34E175FFd35407fc91a937300E33860;
@@ -83,8 +83,8 @@ contract veBALDeploymentCoordinator is ReentrancyGuard {
         IBalancerMinter balancerMinter,
         IAuthorizerAdaptor authorizerAdaptor,
         IGaugeAdder gaugeAdder,
-        ICappedGaugeFactory ethereumGaugeFactory,
-        ICappedGaugeFactory singleRecipientGaugeFactory,
+        IBaseRootGaugeFactory ethereumGaugeFactory,
+        IBaseRootGaugeFactory singleRecipientGaugeFactory,
         IBALTokenHolderFactory balTokenHolderFactory,
         uint256 activationScheduledTime,
         uint256 thirdStageDelay

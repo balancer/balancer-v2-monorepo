@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol"
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerMinter.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAdmin.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ICappedGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBaseRootGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBALTokenHolderFactory.sol";
@@ -50,7 +50,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
     IVotingEscrow private immutable _votingEscrow;
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
-    ICappedGaugeFactory private immutable _ethereumGaugeFactory;
+    IBaseRootGaugeFactory private immutable _ethereumGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _polygonGaugeFactory;
     ISingleRecipientGaugeFactory private immutable _arbitrumGaugeFactory;
 
@@ -70,7 +70,7 @@ contract veBALL2GaugeSetupCoordinator is ReentrancyGuard {
         IAuthorizerAdaptor authorizerAdaptor,
         IVotingEscrow votingEscrow,
         IGaugeAdder gaugeAdder,
-        ICappedGaugeFactory ethereumGaugeFactory,
+        IBaseRootGaugeFactory ethereumGaugeFactory,
         ISingleRecipientGaugeFactory polygonGaugeFactory,
         ISingleRecipientGaugeFactory arbitrumGaugeFactory
     ) {

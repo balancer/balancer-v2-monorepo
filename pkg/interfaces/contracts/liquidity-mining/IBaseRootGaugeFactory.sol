@@ -16,9 +16,10 @@ pragma solidity ^0.7.0;
 
 import "./ILiquidityGaugeFactory.sol";
 
-interface ICappedGaugeFactory is ILiquidityGaugeFactory {
+interface IBaseRootGaugeFactory is ILiquidityGaugeFactory {
     /**
      * @notice Deploys a new gauge for the given recipient, with an initial maximum relative weight cap.
+     * The recipient can either be a pool in mainnet, or a recipient in a child chain.
      * @param recipient The address to receive BAL minted from the gauge
      * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge

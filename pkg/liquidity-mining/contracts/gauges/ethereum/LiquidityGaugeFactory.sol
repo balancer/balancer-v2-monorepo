@@ -15,12 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ICappedGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBaseRootGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
-contract LiquidityGaugeFactory is ICappedGaugeFactory {
+contract LiquidityGaugeFactory is IBaseRootGaugeFactory {
     ILiquidityGauge private immutable _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
