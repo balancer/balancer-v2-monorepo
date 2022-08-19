@@ -959,7 +959,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             currentBalanceTokenOut.sub(swapRequest.amount)
         );
 
-        _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
+        uint256 invariantGrowthRatio = FixedPoint.divDown(
+            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances)
+        );
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountIn;
     }
@@ -979,11 +983,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return (normalizedWeights, preSwapBalances);
     }
 
-    function _payProtocolAndManagementFees(
-        uint256[] memory normalizedWeights,
-        uint256[] memory preSwapBalances,
-        uint256[] memory postSwapBalances
-    ) private {
+    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) private {
         // Calculate total BPT for the protocol and management fee
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
@@ -1003,10 +1003,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // when computing the ratio. So this partial invariant calculation is sufficient
         uint256 supply = totalSupply();
         uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-            FixedPoint.divDown(
-                WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
-                WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances)
-            ),
+            invariantGrowthRatio,
             supply,
             supply,
             totalFeePercentage
