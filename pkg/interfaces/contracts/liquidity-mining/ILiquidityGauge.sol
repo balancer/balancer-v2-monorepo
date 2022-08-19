@@ -24,7 +24,7 @@ interface ILiquidityGauge {
     event RelativeWeightCapChanged(uint256 new_relative_weight_cap);
 
     /**
-     * Returns BAL liquidity emissions calculated during checkpoints for the given user.
+     * @notice Returns BAL liquidity emissions calculated during checkpoints for the given user.
      * @param user User address.
      * @return uint256 BAL amount to issue for the address.
      */
