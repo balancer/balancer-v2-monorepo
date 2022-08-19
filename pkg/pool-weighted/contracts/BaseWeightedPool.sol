@@ -158,9 +158,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      */
     function _afterJoinExit(
         bool isJoin,
+        bool isExemptFromProtocolFees,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
     ) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -191,7 +194,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
-        _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
+        // isJoin and isExemptFromProtocolFees flags are both true for pool initialization
+        _afterJoinExit(true, true, new uint256[](amountsIn.length), amountsIn, normalizedWeights, 0, bptAmountOut);
 
         return (bptAmountOut, amountsIn);
     }
@@ -211,16 +215,26 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // All joins are disabled while the contract is paused.
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 preJoinExitSupply = totalSupply();
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
+        (uint256 bptAmountOut, uint256[] memory amountsIn, bool isExemptFromProtocolFees) = _doJoin(
             sender,
             balances,
             normalizedWeights,
             scalingFactors,
             userData
         );
-        _afterJoinExit(true, balances, amountsIn, normalizedWeights);
+
+        _afterJoinExit(
+            true,
+            isExemptFromProtocolFees,
+            balances,
+            amountsIn,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.add(bptAmountOut)
+        );
 
         return (bptAmountOut, amountsIn);
     }
@@ -236,15 +250,31 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
+    )
+        internal
+        view
+        virtual
+        returns (
+            uint256 bptAmountOut,
+            uint256[] memory amountsIn,
+            bool isExemptFromProtocolFees
+        )
+    {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, normalizedWeights, scalingFactors, userData);
+            (bptAmountOut, amountsIn) = _joinExactTokensInForBPTOut(
+                balances,
+                normalizedWeights,
+                scalingFactors,
+                userData
+            );
         } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
+            (bptAmountOut, amountsIn) = _joinTokenInForExactBPTOut(balances, normalizedWeights, userData);
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(balances, userData);
+            (bptAmountOut, amountsIn) = _joinAllTokensInForExactBPTOut(balances, userData);
+            // Proportional joins pay no protocol fees
+            isExemptFromProtocolFees = true;
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -334,16 +364,26 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // their handlers.
 
         uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 preJoinExitSupply = totalSupply();
 
         _beforeJoinExit(balances, normalizedWeights, protocolSwapFeePercentage);
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
+        (uint256 bptAmountIn, uint256[] memory amountsOut, bool isExemptFromProtocolFees) = _doExit(
             sender,
             balances,
             normalizedWeights,
             scalingFactors,
             userData
         );
-        _afterJoinExit(false, balances, amountsOut, normalizedWeights);
+
+        _afterJoinExit(
+            false,
+            isExemptFromProtocolFees,
+            balances,
+            amountsOut,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.sub(bptAmountIn)
+        );
 
         return (bptAmountIn, amountsOut);
     }
@@ -359,15 +399,31 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
+    )
+        internal
+        view
+        virtual
+        returns (
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut,
+            bool isExemptFromProtocolFees
+        )
+    {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
+            (bptAmountIn, amountsOut) = _exitExactBPTInForTokenOut(balances, normalizedWeights, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _exitExactBPTInForTokensOut(balances, userData);
+            (bptAmountIn, amountsOut) = _exitExactBPTInForTokensOut(balances, userData);
+            // Proportional exits pay no protocol fees
+            isExemptFromProtocolFees = true;
         } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(balances, normalizedWeights, scalingFactors, userData);
+            (bptAmountIn, amountsOut) = _exitBPTInForExactTokensOut(
+                balances,
+                normalizedWeights,
+                scalingFactors,
+                userData
+            );
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
