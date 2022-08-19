@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-weighted/contracts/WeightedMath.sol";
 
 import "./ComposableStablePoolStorage.sol";
 import "./ComposableStablePoolRates.sol";
@@ -237,7 +238,8 @@ abstract contract ComposableStablePoolProtocolFees is
     ) internal {
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        uint256 protocolFeeAmount = _getJoinExitProtocolSwapFee(
+        // This usage of WeightedMath is intentional, `_getJoinExitProtocolSwapFee` is general to several invariants.
+        uint256 protocolFeeAmount = WeightedMath._getJoinExitProtocolSwapFee(
             preJoinExitInvariant,
             postJoinExitInvariant,
             preJoinExitSupply,
