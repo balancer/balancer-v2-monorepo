@@ -413,15 +413,6 @@ library WeightedMath {
         uint256 postJoinExitSupply,
         uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256 protocolFeeAmount) {
-        // Compute the growth ratio between the pre- and post-join/exit balances.
-        // Note that the pre-join/exit invariant is *not* the invariant from the last join,
-        // but computed from the balances before this particular join/exit.
-
-        // `_payProtocolFeesBeforeJoinExit` paid protocol fees accumulated between the previous and current
-        // join or exit, while this code pays any protocol fees due on the current join or exit.
-        // The amp and rates are constant during a single transaction, so it doesn't matter if there
-        // is an ongoing amp change, and we can ignore yield.
-
         // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
         // both increase.
 
