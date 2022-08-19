@@ -77,6 +77,8 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
         uint256 preJoinExitInvariant;
 
         if (!isExemptFromProtocolFees) {
+            // We must calculate the `preJoinExitInvariant` here before we mutate `preBalances` into the post
+            // join/exit balances. Keeping the same name is not ideal, but avoids a new memory allocation.
             protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
             preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         }
@@ -92,62 +94,17 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
         _lastPostJoinExitInvariant = postJoinExitInvariant;
 
         // Stop here if we know there are no protocol fees due (e.g., initialization, or proportional join/exit)
-        if (isExemptFromProtocolFees || protocolSwapFeePercentage == 0) {
-            return;
-        }
-
-        // Compute the growth ratio between the pre- and post-join/exit balances.
-        // `_beforeJoinExit` paid protocol fees accumulated between the previous and current join or exit,
-        // while this code pays any protocol fees due on the current join or exit.
-
-        // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
-        // both increase.
-
-        // |-------------------------|-- postJoinExitInvariant
-        // |   increase from fees    |
-        // |-------------------------|-- original invariant * supply growth ratio (fee-less invariant)
-        // |                         |
-        // | increase from balances  |
-        // |-------------------------|-- preJoinExitInvariant
-        // |                         |
-        // |                         |  |------------------|-- postJoinExitSupply
-        // |                         |  |    BPT minted    |
-        // |                         |  |------------------|-- preJoinExitSupply
-        // |   original invariant    |  |  original supply |
-        // |_________________________|  |__________________|
-        //
-        // If the join is proportional, the invariant and supply will likewise increase proportionally,
-        // so the growth ratios (postJoinExit / preJoinExit) will be equal. In this case, we do not charge
-        // any protocol fees.
-        //
-        // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
-        // since the BPT minted will be based on fewer tokens (because swap fees are not included). So the supply growth
-        // is due entirely to the balance changes, while the invariant growth also includes swap fees.
-        //
-        // To isolate the amount of increase by fees then, we multiply the original invariant by the supply growth
-        // ratio to get the "feeless invariant". The difference between the final invariant and this value is then
-        // the amount of the invariant due to fees, which we convert to a percentage by normalizing against the
-        // final (postJoinExit) invariant.
-        //
-        // Compute the portion of the invariant increase due to fees
-        uint256 supplyGrowthRatio = postJoinExitSupply.divDown(preJoinExitSupply);
-        uint256 feelessInvariant = preJoinExitInvariant.mulDown(supplyGrowthRatio);
-
-        uint256 invariantDeltaFromFees = postJoinExitInvariant - feelessInvariant;
-
-        // To convert to a percentage of pool ownership, multiply by the rate,
-        // then normalize against the final invariant
-        uint256 protocolOwnershipPercentage = invariantDeltaFromFees.divDown(postJoinExitInvariant).mulDown(
-            protocolSwapFeePercentage
-        );
-
-        if (protocolOwnershipPercentage > 0) {
-            uint256 protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(
-                postJoinExitSupply,
-                protocolOwnershipPercentage
+        if (!isExemptFromProtocolFees && protocolSwapFeePercentage > 0) {
+            uint256 protocolFeeAmount = _getJoinExitProtocolSwapFee(
+                preJoinExitInvariant,
+                postJoinExitInvariant,
+                preJoinExitSupply,
+                postJoinExitSupply
             );
 
-            _payProtocolFees(protocolFeeAmount);
+            if (protocolFeeAmount > 0) {
+                _payProtocolFees(protocolFeeAmount);
+            }
         }
     }
 }
