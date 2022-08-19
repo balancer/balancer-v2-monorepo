@@ -217,15 +217,12 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
 
     // InvariantGrowthProtocolFees
 
-    function _beforeJoinExit(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights
-    ) internal virtual override {
-        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(
-            preBalances,
-            normalizedWeights,
-            totalSupply()
-        );
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+        internal
+        virtual
+        override
+    {
+        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(preBalances, normalizedWeights, totalSupply());
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
