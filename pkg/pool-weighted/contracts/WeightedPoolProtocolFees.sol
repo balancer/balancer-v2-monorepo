@@ -20,7 +20,7 @@ import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.s
 
 import "./BaseWeightedPool.sol";
 
-abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCache {
+abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     using FixedPoint for uint256;
 
     // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
