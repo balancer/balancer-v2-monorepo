@@ -443,10 +443,21 @@ library WeightedMath {
         // To isolate the amount of increase by fees then, we multiply the original invariant by the supply growth
         // ratio to get the "feeless invariant". The difference between the final invariant and this value is then
         // the amount of the invariant due to fees, which we convert to a percentage by normalizing against the
-        // final invariant.
+        // final invariant. This is expressed as the expression below:
         //
-        // This operation can be simplified to the expression given below for the fraction of the Pool corresponding
-        // to swap fees. This allows us to work in terms of ratios of invariants rather than absolute values.
+        // invariantGrowthFromFees = currentInvariant - supplyGrowthRatio * previousInvariant
+        //
+        // We then divide through by current invariant so the LHS can be identified as the fraction of the pool which
+        // is made up of accumulated swap fees.
+        //
+        // swapFeesPercentage = 1 - supplyGrowthRatio * previousInvariant / currentInvariant
+        //
+        // We then define `invariantGrowthRatio` in a similar fashion to `supplyGrowthRatio` to give the result:
+        //
+        // swapFeesPercentage = 1 - supplyGrowthRatio / invariantGrowthRatio
+        //
+        // Using this form allows us only consider the ratios of the two invariants rather than absolute values,
+        // a useful property as this is sometimes easier than calculating the full invariant twice.
 
         uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantGrowthRatio);
 
