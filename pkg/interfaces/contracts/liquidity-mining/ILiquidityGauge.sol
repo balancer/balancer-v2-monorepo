@@ -74,11 +74,4 @@ interface ILiquidityGauge {
      * @notice Returns the gauge's relative weight for the current week, capped to its relative weight cap attribute.
      */
     function getCurrentCappedRelativeWeight() external view returns (uint256);
-
-    /**
-     * @notice Returns the absolute maximum value that can be set to the relative weight cap attribute.
-     * Calling this method is equivalent to reading the public constant; the method is present just to be consistent
-     * with the Vyper gauge counterpart.
-     */
-    function getMaxRelativeWeightCap() external pure returns (uint256);
 }

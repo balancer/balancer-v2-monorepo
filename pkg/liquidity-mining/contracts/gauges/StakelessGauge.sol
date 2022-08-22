@@ -101,7 +101,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
 
                 uint256 periodTime = i * 1 weeks;
                 uint256 periodEmission = 0;
-                uint256 gaugeWeight = _getCappedRelativeWeight(periodTime);
+                uint256 gaugeWeight = getCappedRelativeWeight(periodTime);
 
                 if (nextEpochTime >= periodTime && nextEpochTime < periodTime + 1 weeks) {
                     // If the period crosses an epoch, we calculate a reduction in the rate
@@ -189,19 +189,11 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         return _relativeWeightCap;
     }
 
-    function getCappedRelativeWeight(uint256 time) external view override returns (uint256) {
-        return _getCappedRelativeWeight(time);
-    }
-
-    function _getCappedRelativeWeight(uint256 time) internal view returns (uint256) {
+    function getCappedRelativeWeight(uint256 time) public view override returns (uint256) {
         return Math.min(_gaugeController.gauge_relative_weight(address(this), time), _relativeWeightCap);
     }
 
     function getCurrentCappedRelativeWeight() external view override returns (uint256) {
-        return _getCappedRelativeWeight(_currentPeriod());
-    }
-
-    function getMaxRelativeWeightCap() external pure override returns (uint256) {
-        return MAX_RELATIVE_WEIGHT_CAP;
+        return getCappedRelativeWeight(_currentPeriod());
     }
 }

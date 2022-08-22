@@ -118,6 +118,16 @@ describe('GaugeRelativeWeightCap', () => {
 
     describe('setRelativeWeightCap', () => {
       const newCap = fp(0.3);
+      function itSetsCap(cap: BigNumber) {
+        it('sets relative weight cap', async () => {
+          await setCap(cap);
+          expect(await gauge.getRelativeWeightCap()).to.be.eq(cap);
+        });
+
+        it('emits an event', async () => {
+          expectCapChangedEvent(await setCap(cap), cap);
+        });
+      }
 
       sharedBeforeEach('deploy gauge', async () => {
         gauge = await deployedAt(contractName, await deployGauge(factory, token.address, creationEventName));
@@ -130,19 +140,17 @@ describe('GaugeRelativeWeightCap', () => {
       });
 
       context('when the caller is authorized', () => {
-        context('when the cap value is valid', () => {
-          it('sets relative weight cap', async () => {
-            await setCap(newCap);
-            expect(await gauge.getRelativeWeightCap()).to.be.eq(newCap);
-          });
+        const maxCap = fp(1.0);
 
-          it('emits an event', async () => {
-            expectCapChangedEvent(await setCap(newCap), newCap);
-          });
+        context('when the cap value is valid', () => {
+          itSetsCap(newCap);
+
+          itSetsCap(maxCap);
+
+          itSetsCap(bn(0));
         });
 
         context('when the cap value is too high', () => {
-          const maxCap = fp(1.0);
           it('reverts', async () => {
             await expect(setCap(maxCap.add(1))).to.be.revertedWith(
               'Relative weight cap exceeds allowed absolute maximum'
@@ -204,16 +212,6 @@ describe('GaugeRelativeWeightCap', () => {
         context('when the cap is 0', () => {
           capAffectsWeight(bn(0));
         });
-      });
-    });
-
-    describe('getMaxRelativeWeightCap', () => {
-      sharedBeforeEach('deploy gauge', async () => {
-        gauge = await deployedAt(contractName, await deployGauge(factory, token.address, creationEventName));
-      });
-
-      it('returns 1 normalized to 18 decimals', async () => {
-        expect(await gauge.getMaxRelativeWeightCap()).to.be.eq(fp(1));
       });
     });
   }
