@@ -1312,11 +1312,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // Join/exit callbacks
 
-    function _beforeJoinExit(
-        uint256[] memory,
-        uint256[] memory,
-        uint256
-    ) internal virtual override {
+    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
