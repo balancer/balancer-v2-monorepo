@@ -14,7 +14,7 @@ const MAX_RELATIVE_ERROR = 0.0001; // Max relative error
 describe('InvariantGrowthProtocolSwapFees', function () {
   let mock: Contract;
 
-  before(async function () {
+  sharedBeforeEach(async function () {
     mock = await deploy('MockInvariantGrowthProtocolSwapFees');
   });
 
