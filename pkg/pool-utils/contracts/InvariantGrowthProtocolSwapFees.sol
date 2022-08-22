@@ -44,8 +44,9 @@ library InvariantGrowthProtocolSwapFees {
         // If the join is proportional, the invariant and supply will likewise increase proportionally,
         // so the growth ratios (invariantGrowthRatio / supplyGrowthRatio) will be equal. In this case, we do not charge
         // any protocol fees.
-        // We also charge no protocol fees in the case where `invariantGrowthRatio > supplyGrowthRatio` to avoid
-        // potential underflows, however this should not occur in normal Pool operation.
+        // We also charge no protocol fees in the case where `invariantGrowthRatio < supplyGrowthRatio` to avoid
+        // potential underflows, however this should only occur in extremely low volume actions due solely to rounding
+        // error.
 
         uint256 supplyGrowthRatio = currentSupply.divDown(previousSupply);
         if ((supplyGrowthRatio >= invariantGrowthRatio) || (protocolSwapFeePercentage == 0)) return 0;
