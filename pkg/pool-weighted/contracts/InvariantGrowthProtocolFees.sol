@@ -38,9 +38,10 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
     function _getSwapProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory normalizedWeights,
-        uint256 preJoinExitSupply,
-        uint256 protocolSwapFeePercentage
+        uint256 preJoinExitSupply
     ) internal view returns (uint256) {
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+
         // We return immediately if the fee percentage is zero to avoid unnecessary computation.
         if (protocolSwapFeePercentage == 0) return 0;
 
@@ -50,6 +51,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
         // before leaving.
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
+
         return
             WeightedMath._calcDueProtocolSwapFeeBptAmount(
                 preJoinExitSupply,
