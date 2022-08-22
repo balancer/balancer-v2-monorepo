@@ -458,7 +458,13 @@ library WeightedMath {
         // Using this form allows us only consider the ratios of the two invariants rather than absolute values,
         // a useful property as this is sometimes easier than calculating the full invariant twice.
 
-        uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantGrowthRatio);
+        uint256 nonSwapFeesPercentage = supplyGrowthRatio.divDown(invariantGrowthRatio);
+
+        // This shouldn't occur, but if the BPT supply increases faster / decreases slower than the invariant then
+        // pay no protocol fees.
+        if (nonSwapFeesPercentage >= FixedPoint.ONE) return 0;
+
+        uint256 swapFeesPercentage = FixedPoint.ONE - nonSwapFeesPercentage;
 
         // We then multiply by the protocol swap fee percentage to get the fraction of the pool which the protocol
         // should own once fees have been collected.
