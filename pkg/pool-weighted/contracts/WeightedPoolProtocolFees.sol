@@ -53,6 +53,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
 
+        // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
+        // supply has not changed.
         return
             InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
                 preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),

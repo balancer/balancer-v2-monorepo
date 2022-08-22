@@ -992,7 +992,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             (FixedPoint.ONE - protocolSwapFeePercentage).mulDown(managementSwapFeePercentage);
 
         // No other balances are changing, so the other terms in the invariant will cancel out
-        // when computing the ratio. So this partial invariant calculation is sufficient
+        // when computing the ratio. So this partial invariant calculation is sufficient.
+        // We pass the same value for total supply twice as we're measuring over a period in which the total supply
+        // has not changed.
         uint256 supply = totalSupply();
         uint256 totalBptAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
             invariantGrowthRatio,
