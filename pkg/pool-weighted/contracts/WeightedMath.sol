@@ -412,8 +412,6 @@ library WeightedMath {
         uint256 currentSupply,
         uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256 protocolFeeAmount) {
-        uint256 supplyGrowthRatio = currentSupply.divDown(previousSupply);
-
         // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
         // both increase.
 
@@ -434,6 +432,7 @@ library WeightedMath {
         // so the growth ratios (invariantGrowthRatio / supplyGrowthRatio) will be equal. In this case, we do not charge
         // any protocol fees.
 
+        uint256 supplyGrowthRatio = currentSupply.divDown(previousSupply);
         if ((supplyGrowthRatio == invariantGrowthRatio) || (protocolSwapFeePercentage == 0)) return 0;
 
         // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
