@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 
 import "./BaseWeightedPool.sol";
 
@@ -51,7 +52,7 @@ abstract contract InvariantGrowthProtocolFees is BaseWeightedPool, ProtocolFeeCa
 
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         return
-            WeightedMath._calcDueProtocolSwapFeeBptAmount(
+            InvariantGrowthProtocolSwapFees._calcDueProtocolFees(
                 preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),
                 preJoinExitSupply,
                 preJoinExitSupply,

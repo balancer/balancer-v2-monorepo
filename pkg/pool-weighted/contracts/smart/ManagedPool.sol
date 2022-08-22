@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
@@ -1006,7 +1007,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // No other balances are changing, so the other terms in the invariant will cancel out
         // when computing the ratio. So this partial invariant calculation is sufficient
         uint256 supply = totalSupply();
-        uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
+        uint256 totalBptAmount = InvariantGrowthProtocolSwapFees._calcDueProtocolFees(
             invariantGrowthRatio,
             supply,
             supply,
