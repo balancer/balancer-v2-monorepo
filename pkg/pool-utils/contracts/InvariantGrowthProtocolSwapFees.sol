@@ -74,6 +74,8 @@ library InvariantGrowthProtocolSwapFees {
         // Using this form allows us to consider only the ratios of the two invariants, rather than their absolute
         // values: a useful property, as this is sometimes easier than calculating the full invariant twice.
 
+        // We've already checked that `supplyGrowthRatio` is smaller than `invariantGrowthRatio`, and hence their ratio
+        // smaller than FixedPoint.ONE, allowing for unchecked arithmetic.
         uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantGrowthRatio);
 
         // We then multiply by the protocol swap fee percentage to get the fraction of the pool which the protocol
