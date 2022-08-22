@@ -33,9 +33,9 @@ contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
         _factory = IArbitrumFeeProvider(msg.sender);
     }
 
-    function initialize(address recipient) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external override {
         // This will revert in all calls except the first one
-        __StakelessGauge_init();
+        __StakelessGauge_init(relativeWeightCap);
 
         _recipient = recipient;
     }

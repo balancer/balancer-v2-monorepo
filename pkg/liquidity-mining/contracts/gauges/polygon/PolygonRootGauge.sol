@@ -42,9 +42,9 @@ contract PolygonRootGauge is ISingleRecipientGauge, StakelessGauge {
         _polygonERC20Predicate = polygonERC20Predicate;
     }
 
-    function initialize(address recipient) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external override {
         // This will revert in all calls except the first one
-        __StakelessGauge_init();
+        __StakelessGauge_init(relativeWeightCap);
 
         _recipient = recipient;
     }

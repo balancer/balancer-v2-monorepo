@@ -43,7 +43,7 @@ contract MockLiquidityGaugeFactory is ILiquidityGaugeFactory {
         return _isGaugeFromFactory[gauge];
     }
 
-    function create(address pool) external override returns (address) {
+    function create(address pool) external returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
         address gauge = address(new MockLiquidityGauge(pool));

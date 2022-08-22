@@ -20,9 +20,12 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBalancerTokenAd
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
+    uint256 public constant MAX_RELATIVE_WEIGHT_CAP = 1e18;
+
     IERC20 internal immutable _balToken;
     IBalancerTokenAdmin private immutable _tokenAdmin;
     IBalancerMinter private immutable _minter;
@@ -43,6 +46,8 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
 
     uint256 private _emissions;
     bool private _isKilled;
+
+    uint256 private _relativeWeightCap;
 
     constructor(IBalancerMinter minter) {
         IBalancerTokenAdmin tokenAdmin = IBalancerTokenAdmin(minter.getBalancerTokenAdmin());
@@ -65,7 +70,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function __StakelessGauge_init() internal {
+    function __StakelessGauge_init(uint256 relativeWeightCap) internal {
         require(_period == 0, "Already initialized");
 
         // Because we calculate the rate locally, this gauge cannot
@@ -76,6 +81,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         _rate = rate;
         _period = _currentPeriod();
         _startEpochTime = _tokenAdmin.startEpochTimeWrite();
+        _setRelativeWeightCap(relativeWeightCap);
     }
 
     function checkpoint() external payable override nonReentrant returns (bool) {
@@ -95,7 +101,7 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
 
                 uint256 periodTime = i * 1 weeks;
                 uint256 periodEmission = 0;
-                uint256 gaugeWeight = _gaugeController.gauge_relative_weight(address(this), periodTime);
+                uint256 gaugeWeight = getCappedRelativeWeight(periodTime);
 
                 if (nextEpochTime >= periodTime && nextEpochTime < periodTime + 1 weeks) {
                     // If the period crosses an epoch, we calculate a reduction in the rate
@@ -158,19 +164,36 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
         return _isKilled;
     }
 
-    /**
-     * @notice Kills the gauge so it cannot mint BAL
-     */
     function killGauge() external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _isKilled = true;
     }
 
-    /**
-     * @notice Unkills the gauge so it can mint BAL again
-     */
     function unkillGauge() external override {
         require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
         _isKilled = false;
+    }
+
+    function setRelativeWeightCap(uint256 relativeWeightCap) external override {
+        require(msg.sender == address(_authorizerAdaptor), "SENDER_NOT_ALLOWED");
+        _setRelativeWeightCap(relativeWeightCap);
+    }
+
+    function _setRelativeWeightCap(uint256 relativeWeightCap) internal {
+        require(relativeWeightCap <= MAX_RELATIVE_WEIGHT_CAP, "Relative weight cap exceeds allowed absolute maximum");
+        _relativeWeightCap = relativeWeightCap;
+        emit RelativeWeightCapChanged(relativeWeightCap);
+    }
+
+    function getRelativeWeightCap() external view override returns (uint256) {
+        return _relativeWeightCap;
+    }
+
+    function getCappedRelativeWeight(uint256 time) public view override returns (uint256) {
+        return Math.min(_gaugeController.gauge_relative_weight(address(this), time), _relativeWeightCap);
+    }
+
+    function getCurrentCappedRelativeWeight() external view override returns (uint256) {
+        return getCappedRelativeWeight(_currentPeriod());
     }
 }
