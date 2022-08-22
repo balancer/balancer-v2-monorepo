@@ -70,8 +70,8 @@ library InvariantGrowthProtocolSwapFees {
         //
         // swapFeesPercentage = 1 - supplyGrowthRatio / invariantGrowthRatio
         //
-        // Using this form allows us only consider the ratios of the two invariants rather than absolute values,
-        // a useful property as this is sometimes easier than calculating the full invariant twice.
+        // Using this form allows us to consider only the ratios of the two invariants, rather than their absolute
+        // values: a useful property, as this is sometimes easier than calculating the full invariant twice.
 
         uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantGrowthRatio);
 
