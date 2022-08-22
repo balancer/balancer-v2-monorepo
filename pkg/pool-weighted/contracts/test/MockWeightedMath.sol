@@ -17,8 +17,6 @@ pragma solidity ^0.7.0;
 import "../WeightedMath.sol";
 
 contract MockWeightedMath {
-    using FixedPoint for uint256;
-
     function invariant(uint256[] memory normalizedWeights, uint256[] memory balances) external pure returns (uint256) {
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
