@@ -44,9 +44,11 @@ library InvariantGrowthProtocolSwapFees {
         // If the join is proportional, the invariant and supply will likewise increase proportionally,
         // so the growth ratios (invariantGrowthRatio / supplyGrowthRatio) will be equal. In this case, we do not charge
         // any protocol fees.
+        // We also charge no protocol fees in the case where `invariantGrowthRatio > supplyGrowthRatio` to avoid
+        // potential underflows, however this should not occur in normal Pool operation.
 
         uint256 supplyGrowthRatio = currentSupply.divDown(previousSupply);
-        if ((supplyGrowthRatio == invariantGrowthRatio) || (protocolSwapFeePercentage == 0)) return 0;
+        if ((supplyGrowthRatio >= invariantGrowthRatio) || (protocolSwapFeePercentage == 0)) return 0;
 
         // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
         // since the BPT minted will be based on fewer tokens (because swap fees are not included). So the supply growth
@@ -71,13 +73,7 @@ library InvariantGrowthProtocolSwapFees {
         // Using this form allows us only consider the ratios of the two invariants rather than absolute values,
         // a useful property as this is sometimes easier than calculating the full invariant twice.
 
-        uint256 nonSwapFeesPercentage = supplyGrowthRatio.divDown(invariantGrowthRatio);
-
-        // This shouldn't occur, but if the BPT supply increases faster / decreases slower than the invariant then
-        // pay no protocol fees.
-        if (nonSwapFeesPercentage >= FixedPoint.ONE) return 0;
-
-        uint256 swapFeesPercentage = FixedPoint.ONE - nonSwapFeesPercentage;
+        uint256 swapFeesPercentage = FixedPoint.ONE - supplyGrowthRatio.divDown(invariantGrowthRatio);
 
         // We then multiply by the protocol swap fee percentage to get the fraction of the pool which the protocol
         // should own once fees have been collected.
