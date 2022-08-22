@@ -933,7 +933,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             currentBalanceTokenOut.sub(amountOut)
         );
 
-        _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
+        uint256 invariantGrowthRatio = FixedPoint.divDown(
+            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances)
+        );
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountOut;
     }
