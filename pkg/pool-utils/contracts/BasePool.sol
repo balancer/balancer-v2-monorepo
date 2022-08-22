@@ -56,7 +56,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
-    uint256 private constant _MIN_TOKENS = 2;
+    uint256 internal constant _MIN_TOKENS = 2;
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 

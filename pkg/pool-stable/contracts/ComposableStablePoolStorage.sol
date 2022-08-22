@@ -32,10 +32,6 @@ abstract contract ComposableStablePoolStorage is BasePool {
         bool[] exemptFromYieldProtocolFeeFlags;
     }
 
-    // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
-    // is therefore _MIN_TOKENS + 1.
-    uint256 private constant _MIN_TOKENS = 2;
-
     // The Pool will register n+1 tokens, where n are the actual tokens in the Pool, and the other one is the BPT
     // itself.
     uint256 private immutable _totalTokens;
