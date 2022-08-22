@@ -24,7 +24,7 @@ library InvariantGrowthProtocolSwapFees {
         uint256 previousSupply,
         uint256 currentSupply,
         uint256 protocolSwapFeePercentage
-    ) internal pure returns (uint256 protocolFeeAmount) {
+    ) internal pure returns (uint256) {
         // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
         // both increase.
 
