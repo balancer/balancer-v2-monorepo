@@ -920,24 +920,25 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
-            swapRequest,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
-            currentBalanceTokenOut.sub(amountOut)
+        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
+        // after the trade.
+        //
+        // invariantGrowthRatio = invariant after trade / invariant before trade
+        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
+        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
+        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
+            _getNormalizedWeight(swapRequest.tokenIn),
+            _getNormalizedWeight(swapRequest.tokenOut)
+        );
+        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
+            FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
         );
 
-        uint256 invariantGrowthRatio = FixedPoint.divDown(
-            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
-            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances)
-        );
+        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
         _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountOut;
@@ -950,42 +951,28 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
-            swapRequest,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
-            currentBalanceTokenOut.sub(swapRequest.amount)
+        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
+        // after the trade.
+        //
+        // invariantGrowthRatio = invariant after trade / invariant before trade
+        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
+        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
+        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
+            FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
         );
-
-        uint256 invariantGrowthRatio = FixedPoint.divDown(
-            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
-            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances)
-        );
-        _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountIn;
-    }
-
-    function _getWeightsAndPreSwapBalances(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) private view returns (uint256[] memory, uint256[] memory) {
         uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
             _getNormalizedWeight(swapRequest.tokenIn),
             _getNormalizedWeight(swapRequest.tokenOut)
         );
 
-        uint256[] memory preSwapBalances = ArrayHelpers.arrayFill(currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
-        return (normalizedWeights, preSwapBalances);
+        return amountIn;
     }
 
     function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) private {
