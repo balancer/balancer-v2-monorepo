@@ -434,7 +434,7 @@ library WeightedMath {
         // so the growth ratios (invariantGrowthRatio / supplyGrowthRatio) will be equal. In this case, we do not charge
         // any protocol fees.
 
-        if (supplyGrowthRatio == invariantGrowthRatio || protocolSwapFeePercentage == 0) return 0;
+        if ((supplyGrowthRatio == invariantGrowthRatio) || (protocolSwapFeePercentage == 0)) return 0;
 
         // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
         // since the BPT minted will be based on fewer tokens (because swap fees are not included). So the supply growth
