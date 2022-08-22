@@ -24,7 +24,7 @@ contract MockInvariantGrowthProtocolSwapFees {
         uint256 protocolSwapFeePercentage
     ) external pure returns (uint256) {
         return
-            InvariantGrowthProtocolSwapFees._calcDueProtocolFees(
+            InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
                 invariantGrowthRatio,
                 previousSupply,
                 currentSupply,

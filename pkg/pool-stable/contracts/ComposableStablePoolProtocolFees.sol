@@ -247,7 +247,7 @@ abstract contract ComposableStablePoolProtocolFees is
 
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees._calcDueProtocolFees(
+        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
             postJoinExitInvariant.divDown(preJoinExitInvariant),
             preJoinExitSupply,
             postJoinExitSupply,

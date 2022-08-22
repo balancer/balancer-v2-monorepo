@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 library InvariantGrowthProtocolSwapFees {
     using FixedPoint for uint256;
 
-    function _calcDueProtocolFees(
+    function calcDueProtocolFees(
         uint256 invariantGrowthRatio,
         uint256 previousSupply,
         uint256 currentSupply,
