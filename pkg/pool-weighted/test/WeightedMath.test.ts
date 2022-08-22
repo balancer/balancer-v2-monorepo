@@ -1,13 +1,12 @@
 import { Contract } from 'ethers';
 
-import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateInvariant,
   calcInGivenOut,
   calcOutGivenIn,
-  calculateBPTSwapFeeFeeAmount,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expect } from 'chai';
 
