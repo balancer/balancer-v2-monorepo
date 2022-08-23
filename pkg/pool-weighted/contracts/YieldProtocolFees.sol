@@ -37,7 +37,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     // All-time high value of the weighted product of the pool's token rates. Comparing such weighted products across
     // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
     // but that growth is captured in the invariant; rate growth is not.
-    uint256 private _athRateProduct;
+    uint256 internal _athRateProduct;
 
     uint256 private constant NO_YIELD_FEES_SENTINEL = type(uint256).max;
 

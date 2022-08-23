@@ -22,6 +22,7 @@ contract MockYieldProtocolFees is YieldProtocolFees {
 
     constructor(
         IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
@@ -44,9 +45,22 @@ contract MockYieldProtocolFees is YieldProtocolFees {
             owner,
             false
         )
+        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
         YieldProtocolFees(tokens.length, rateProviders)
     {
         _totalTokens = tokens.length;
+    }
+
+    function getRateProduct(uint256[] memory normalizedWeights) external view returns (uint256) {
+        return _getRateProduct(normalizedWeights);
+    }
+
+    function getATHRateProduct() external view returns (uint256) {
+        return _athRateProduct;
+    }
+
+    function getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) external returns (uint256) {
+        return _getYieldProtocolFee(normalizedWeights, supply);
     }
 
     // Stubbed functions
