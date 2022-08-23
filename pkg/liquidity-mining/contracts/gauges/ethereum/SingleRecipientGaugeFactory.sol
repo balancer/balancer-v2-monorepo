@@ -15,50 +15,16 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGaugeFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakelessGauge.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
+import "../BaseGaugeFactory.sol";
 import "./SingleRecipientGauge.sol";
 
-contract SingleRecipientGaugeFactory is ISingleRecipientGaugeFactory {
-    ISingleRecipientGauge private _gaugeImplementation;
-
-    mapping(address => bool) private _isGaugeFromFactory;
-    mapping(address => address) private _recipientGauge;
-
-    event SingleRecipientGaugeCreated(address indexed gauge, address indexed recipient);
-
-    constructor(IBalancerMinter minter) {
-        _gaugeImplementation = new SingleRecipientGauge(minter);
-    }
-
-    /**
-     * @notice Returns the address of the implementation used for gauge deployments.
-     */
-    function getGaugeImplementation() public view returns (ISingleRecipientGauge) {
-        return _gaugeImplementation;
-    }
-
-    /**
-     * @notice Returns true if `gauge` was created by this factory.
-     */
-    function isGaugeFromFactory(address gauge) external view override returns (bool) {
-        return _isGaugeFromFactory[gauge];
-    }
-
-    /**
-     * @notice Returns the gauge which sends funds to `recipient`.
-     */
-    function getRecipientGauge(address recipient) external view override returns (ILiquidityGauge) {
-        return ILiquidityGauge(_recipientGauge[recipient]);
-    }
-
-    /**
-     * @notice Returns the recipient of `gauge`.
-     */
-    function getGaugeRecipient(address gauge) external view override returns (address) {
-        return ISingleRecipientGauge(gauge).getRecipient();
+contract SingleRecipientGaugeFactory is BaseGaugeFactory {
+    constructor(IBalancerMinter minter) BaseGaugeFactory(new SingleRecipientGauge(minter)) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -70,16 +36,8 @@ contract SingleRecipientGaugeFactory is ISingleRecipientGaugeFactory {
      * @return The address of the deployed gauge
      */
     function create(address recipient, uint256 relativeWeightCap) external override returns (address) {
-        require(_recipientGauge[recipient] == address(0), "Gauge already exists");
-
-        address gauge = Clones.clone(address(_gaugeImplementation));
-
-        ISingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap);
-
-        _isGaugeFromFactory[gauge] = true;
-        _recipientGauge[recipient] = gauge;
-        emit SingleRecipientGaugeCreated(gauge, recipient);
-
+        address gauge = _create();
+        SingleRecipientGauge(gauge).initialize(recipient, relativeWeightCap);
         return gauge;
     }
 }

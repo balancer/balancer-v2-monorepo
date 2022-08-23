@@ -14,13 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
-
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
 
-contract SingleRecipientGauge is ISingleRecipientGauge, StakelessGauge {
+contract SingleRecipientGauge is StakelessGauge {
     using SafeERC20 for IERC20;
 
     address private _recipient;
@@ -29,7 +27,7 @@ contract SingleRecipientGauge is ISingleRecipientGauge, StakelessGauge {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 

@@ -15,7 +15,6 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOptimismGasLimitProvider.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
 
 import "../StakelessGauge.sol";
 
@@ -30,7 +29,7 @@ interface IL1StandardBridge {
     ) external;
 }
 
-contract OptimismRootGauge is ISingleRecipientGauge, StakelessGauge {
+contract OptimismRootGauge is StakelessGauge {
     IL1StandardBridge private immutable _optimismL1StandardBridge;
     address private immutable _optimismBal;
     IOptimismGasLimitProvider private immutable _factory;
@@ -48,7 +47,7 @@ contract OptimismRootGauge is ISingleRecipientGauge, StakelessGauge {
         _factory = IOptimismGasLimitProvider(msg.sender);
     }
 
-    function initialize(address recipient, uint256 relativeWeightCap) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external {
         // This will revert in all calls except the first one
         __StakelessGauge_init(relativeWeightCap);
 
