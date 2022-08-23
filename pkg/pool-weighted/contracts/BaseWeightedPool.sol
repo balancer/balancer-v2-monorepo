@@ -209,6 +209,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         _beforeJoinExit(balances, normalizedWeights);
+
         uint256 preJoinExitSupply = totalSupply();
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
@@ -243,7 +244,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -372,7 +373,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {

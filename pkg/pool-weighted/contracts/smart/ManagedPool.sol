@@ -1073,7 +1073,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory amountsIn = new uint256[](scalingFactors.length);
         amountsIn[tokenIndex] = _upscale(amountIn, scalingFactors[tokenIndex]);
 
-        // Add token operation is exempt from protocol fees
         return (bptAmountOut, amountsIn);
     }
 
@@ -1123,7 +1122,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory amountsOut = new uint256[](balances.length);
         amountsOut[tokenIndex] = balances[tokenIndex];
 
-        // Remove token is exempt from protocol fees
         return (bptAmountIn, amountsOut);
     }
 
