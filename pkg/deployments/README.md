@@ -74,6 +74,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Delegation of veBAL boosts                              | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
 | Linear Pools for ERC4626 Tokens V2                      | [`20220404-erc4626-linear-pool-v2`](./tasks/deprecated/20220404-erc4626-linear-pool-v2)              |
 | Gauges on child networks (L2s and sidechains)           | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
+
 | veBAL Smart Wallet Checker                              | [`20220420-smart-wallet-checker`](./tasks/20220420-smart-wallet-checker)                             |
 | Linear Pools for Unbutton tokens                        | [`20220425-unbutton-aave-linear-pool`](./tasks/20220425-unbutton-aave-linear-pool)                   |
 | Relayer with the fix for the Double Entrypoint issue    | [`20220513-double-entrypoint-fix-relayer`](./tasks/20220513-double-entrypoint-fix-relayer)           |

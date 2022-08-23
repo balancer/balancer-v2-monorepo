@@ -166,6 +166,7 @@ describeForkTest('ArbitrumRootGaugeFactoryV2', 'mainnet', 15397200, function () 
     // The amount of tokens minted should equal the weekly emissions rate times the relative weight of the gauge
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
 
+    // Note that instead of the weight, we use the cap (since we expect for the weight to be larger than the cap)
     const expectedEmissions = weightCap.mul(weeklyRate).div(FP_SCALING_FACTOR);
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
@@ -216,6 +217,8 @@ describeForkTest('ArbitrumRootGaugeFactoryV2', 'mainnet', 15397200, function () 
     // The amount of tokens allocated to the gauge should equal the sum of the weekly emissions rate times the weight
     // cap.
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
+    
+    // Note that instead of the weight, we use the cap (since we expect for the weight to be larger than the cap)
     const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_SCALING_FACTOR);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
