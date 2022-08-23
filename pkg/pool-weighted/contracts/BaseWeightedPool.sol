@@ -145,7 +145,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     }
 
     /**
-     * @dev Called after any join or exit operation (including initialization). Empty by default, but derived contracts
+     * @dev Called after any regular join or exit operation. Empty by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      *
      * If isJoin is true, balanceDeltas are the amounts in: otherwise they are the amounts out.
@@ -156,8 +156,15 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
     ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    // Derived classes may call this to update state after a join or exit.
+    function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -187,7 +194,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
-        _afterJoinExit(true, new uint256[](amountsIn.length), amountsIn, normalizedWeights);
+        // Initialization is still a join, so we need to do post-join work.
+        _updatePostJoinExit(invariantAfterJoin);
 
         return (bptAmountOut, amountsIn);
     }
@@ -209,6 +217,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         _beforeJoinExit(balances, normalizedWeights);
+
+        uint256 preJoinExitSupply = totalSupply();
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
             balances,
@@ -216,7 +226,15 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             scalingFactors,
             userData
         );
-        _afterJoinExit(true, balances, amountsIn, normalizedWeights);
+
+        _afterJoinExit(
+            true,
+            balances,
+            amountsIn,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.add(bptAmountOut)
+        );
 
         return (bptAmountOut, amountsIn);
     }
@@ -330,6 +348,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
         _beforeJoinExit(balances, normalizedWeights);
+
+        uint256 preJoinExitSupply = totalSupply();
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
             balances,
@@ -337,7 +357,15 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             scalingFactors,
             userData
         );
-        _afterJoinExit(false, balances, amountsOut, normalizedWeights);
+
+        _afterJoinExit(
+            false,
+            balances,
+            amountsOut,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.sub(bptAmountIn)
+        );
 
         return (bptAmountIn, amountsOut);
     }
