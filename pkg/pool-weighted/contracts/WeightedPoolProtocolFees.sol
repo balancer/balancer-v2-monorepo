@@ -102,19 +102,5 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
         // in the next one.
         _lastPostJoinExitInvariant = postJoinExitInvariant;
-
-        // Stop here if we know there are no protocol fees due (e.g., initialization, or proportional join/exit)
-        if (!isExemptFromProtocolFees && protocolSwapFeePercentage > 0) {
-            uint256 protocolFeeAmount = _getJoinExitProtocolSwapFee(
-                preJoinExitInvariant,
-                postJoinExitInvariant,
-                preJoinExitSupply,
-                postJoinExitSupply
-            );
-
-            if (protocolFeeAmount > 0) {
-                _payProtocolFees(protocolFeeAmount);
-            }
-        }
     }
 }

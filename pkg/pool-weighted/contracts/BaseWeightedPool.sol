@@ -150,7 +150,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      */
     function _afterJoinExit(
         bool isJoin,
-        bool isExemptFromProtocolFees,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -208,7 +207,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 preJoinExitSupply = totalSupply();
 
         _beforeJoinExit(balances, normalizedWeights);
         uint256 preJoinExitSupply = totalSupply();
@@ -245,16 +243,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    )
-        internal
-        view
-        virtual
-        returns (
-            uint256 bptAmountOut,
-            uint256[] memory amountsIn,
-            bool isExemptFromProtocolFees
-        )
-    {
+    ) internal view virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -346,7 +335,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 preJoinExitSupply = totalSupply();
 
         _beforeJoinExit(balances, normalizedWeights);
 
@@ -384,16 +372,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    )
-        internal
-        view
-        virtual
-        returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut,
-            bool isExemptFromProtocolFees
-        )
-    {
+    ) internal view virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {

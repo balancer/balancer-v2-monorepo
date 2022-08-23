@@ -231,7 +231,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
     function _afterJoinExit(
         bool isJoin,
-        bool isExemptFromProtocolFees,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,

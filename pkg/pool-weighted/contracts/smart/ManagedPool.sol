@@ -1030,16 +1030,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    )
-        internal
-        view
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            bool
-        )
-    {
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
         // token prices.
         // Adding tokens is also allowed, as that action can only be performed by the manager, who is assumed to
@@ -1066,15 +1057,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         address sender,
         uint256[] memory scalingFactors,
         bytes memory userData
-    )
-        private
-        view
-        returns (
-            uint256,
-            uint256[] memory,
-            bool
-        )
-    {
+    ) private view returns (uint256, uint256[] memory) {
         // This join function can only be called by the Pool itself - the authorization logic that governs when that
         // call can be made resides in addToken.
         _require(sender == address(this), Errors.UNAUTHORIZED_JOIN);
@@ -1091,7 +1074,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         amountsIn[tokenIndex] = _upscale(amountIn, scalingFactors[tokenIndex]);
 
         // Add token operation is exempt from protocol fees
-        return (bptAmountOut, amountsIn, true);
+        return (bptAmountOut, amountsIn);
     }
 
     function _doExit(
@@ -1101,16 +1084,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    )
-        internal
-        view
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            bool
-        )
-    {
+    ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
         // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
@@ -1133,16 +1107,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         address sender,
         uint256[] memory balances,
         bytes memory userData
-    )
-        private
-        view
-        whenNotPaused
-        returns (
-            uint256,
-            uint256[] memory,
-            bool
-        )
-    {
+    ) private view whenNotPaused returns (uint256, uint256[] memory) {
         // This exit function is disabled if the contract is paused.
 
         // This exit function can only be called by the Pool itself - the authorization logic that governs when that
@@ -1159,7 +1124,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         amountsOut[tokenIndex] = balances[tokenIndex];
 
         // Remove token is exempt from protocol fees
-        return (bptAmountIn, amountsOut, true);
+        return (bptAmountIn, amountsOut);
     }
 
     function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
