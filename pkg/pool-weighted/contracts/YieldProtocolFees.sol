@@ -144,7 +144,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
             _athRateProduct = rateProduct;
         } else if (rateProduct > athRateProduct) {
             // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
-            // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until its
+            // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
             // been recovered.
             _athRateProduct = rateProduct;
 
