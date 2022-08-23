@@ -69,9 +69,4 @@ interface ILiquidityGauge {
      * @param time Timestamp in the past or present.
      */
     function getCappedRelativeWeight(uint256 time) external view returns (uint256);
-
-    /**
-     * @notice Returns the gauge's relative weight for the current week, capped to its relative weight cap attribute.
-     */
-    function getCurrentCappedRelativeWeight() external view returns (uint256);
 }
