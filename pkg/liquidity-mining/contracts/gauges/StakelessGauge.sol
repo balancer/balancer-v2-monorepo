@@ -192,8 +192,4 @@ abstract contract StakelessGauge is IStakelessGauge, ReentrancyGuard {
     function getCappedRelativeWeight(uint256 time) public view override returns (uint256) {
         return Math.min(_gaugeController.gauge_relative_weight(address(this), time), _relativeWeightCap);
     }
-
-    function getCurrentCappedRelativeWeight() external view override returns (uint256) {
-        return getCappedRelativeWeight(_currentPeriod());
-    }
 }

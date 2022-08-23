@@ -873,14 +873,6 @@ def initialize(_lp_token: address, relative_weight_cap: uint256):
     self.inflation_params = shift(TokenAdmin(BAL_TOKEN_ADMIN).future_epoch_time_write(), 216) + TokenAdmin(BAL_TOKEN_ADMIN).rate()
     self._setRelativeWeightCap(relative_weight_cap)
 
-@internal
-@view
-def _get_current_period() -> uint256:
-    """
-    @dev Returns current time rounded down to the week's start.
-    """
-    return (block.timestamp / WEEK) - 1
-
 @external
 def setRelativeWeightCap(relative_weight_cap: uint256):
     """
@@ -907,14 +899,6 @@ def getCappedRelativeWeight(time: uint256) -> uint256:
     @param time Timestamp in the past or present.
     """
     return self._getCappedRelativeWeight(time)
-
-@external
-@view
-def getCurrentCappedRelativeWeight() -> uint256:
-    """
-    @notice Returns the gauge's relative weight for the current week, capped to its _relative_weight_cap attribute.
-    """
-    return self._getCappedRelativeWeight(self._get_current_period())
 
 @external
 @pure
