@@ -1028,6 +1028,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
+        uint256 totalSupply,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
@@ -1048,7 +1049,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // Check allowlist for LPs, if applicable
             _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
         }
     }
 
@@ -1080,6 +1081,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
+        uint256 totalSupply,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
@@ -1097,7 +1099,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return
             kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
                 ? _doExitRemoveToken(sender, balances, userData)
-                : super._doExit(sender, balances, normalizedWeights, scalingFactors, userData);
+                : super._doExit(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
     }
 
     function _doExitRemoveToken(
