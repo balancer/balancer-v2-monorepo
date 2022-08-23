@@ -142,8 +142,6 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
             // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
             // Not initialising this here properly will cause all joins/exits to revert.
             _athRateProduct = rateProduct;
-
-            return 0;
         } else if (rateProduct > athRateProduct) {
             // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
             // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until its
@@ -158,5 +156,6 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
                     getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                 );
         }
+        return 0;
     }
 }
