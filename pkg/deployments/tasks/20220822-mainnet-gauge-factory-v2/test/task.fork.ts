@@ -1,42 +1,49 @@
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { Contract, ContractTransaction } from 'ethers';
+import { Contract } from 'ethers';
 
-import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
+import {
+  advanceTime,
+  advanceToTimestamp,
+  currentTimestamp,
+  currentWeekTimestamp,
+  DAY,
+  WEEK,
+} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { range } from 'lodash';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, lpTokenHolder: SignerWithAddress;
   let factory: Contract, gauge: Contract;
   let vault: Contract,
     authorizer: Contract,
-    authorizerAdaptor: Contract,
     BALTokenAdmin: Contract,
     gaugeController: Contract,
     gaugeAdder: Contract,
-    lpToken: Contract;
+    lpToken: Contract,
+    balancerMinter: Contract;
 
   let BAL: string;
 
   let task: Task;
 
-  const VEBAL_HOLDER = '0xCB3593C7c0dFe13129Ff2B6add9bA402f76c797e';
+  const VEBAL_HOLDER = '0xd519D5704B41511951C8CF9f65Fee9AB9beF2611';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   const LP_TOKEN = '0xbc5F4f9332d8415AAf31180Ab4661c9141CC84E4';
-  const LP_TOKEN_HOLDER = '0xbc5f4f9332d8415aaf31180ab4661c9141cc84e4';
+  const LP_TOKEN_HOLDER = '0x24Dd242c3c4061b1fCaA5119af608B56afBaEA95';
 
   const weightCap = fp(0.001);
 
@@ -59,25 +66,19 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
 
   before('setup contracts', async () => {
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    vault = await vaultTask.instanceAt('Vault', '0xBA12222222228d8Ba445958a75a0704d566BF2C8'); // vaultTask.output({ network: 'mainnet' }).Vault
+    vault = await vaultTask.instanceAt('Vault', vaultTask.output({ network: 'mainnet' }).Vault);
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
-    const authorizerAdaptorTask = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    authorizerAdaptor = await authorizerAdaptorTask.instanceAt(
-      'AuthorizerAdaptor',
-      '0x8f42adbba1b16eaae3bb5754915e0d06059add75' // authorizerAdaptorTask.output({ network: 'mainnet' }).AuthorizerAdaptor
-    );
-
-    const gaugeAdderTask = new Task('20220325-gauge-adder', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const gaugeAdderTask = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeAdder = await gaugeAdderTask.instanceAt(
       'GaugeAdder',
-      '0xEd5ba579bB5D516263ff6E1C10fcAc1040075Fe2' // gaugeAdderTask.output({ network: 'mainnet' }).GaugeAdder
+      gaugeAdderTask.output({ network: 'mainnet' }).GaugeAdder
     );
 
     const balancerTokenAdminTask = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, getForkedNetwork(hre));
     BALTokenAdmin = await balancerTokenAdminTask.instanceAt(
       'BalancerTokenAdmin',
-      '0xf302f9F50958c5593770FDf4d4812309fF77414f' // balancerTokenAdminTask.output({ network: 'mainnet' }).BalancerTokenAdmin
+      balancerTokenAdminTask.output({ network: 'mainnet' }).BalancerTokenAdmin
     );
 
     BAL = await BALTokenAdmin.getBalancerToken();
@@ -85,7 +86,12 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.instanceAt(
       'GaugeController',
-      '0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD' // gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
+      gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
+    );
+
+    balancerMinter = await gaugeControllerTask.instanceAt(
+      'BalancerMinter',
+      gaugeControllerTask.output({ network: 'mainnet' }).BalancerMinter
     );
 
     // We use test balancer token to make use of the ERC-20 interface.
@@ -98,7 +104,7 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
     const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
 
     gauge = await task.instanceAt('LiquidityGaugeV5', event.args.gauge);
-    expect(LP_TOKEN).to.equal(await gauge.lp_token());
+    expect(await gauge.lp_token()).to.equal(LP_TOKEN);
 
     expect(await factory.isGaugeFromFactory(gauge.address)).to.be.true;
   });
@@ -108,23 +114,12 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
     // gauges from said factory to the GaugeController.
     const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
 
-    const selectors = ['addGaugeFactory', 'addEthereumGauge'].map((method) => gaugeAdder.interface.getSighash(method));
     await Promise.all(
-      selectors.map(
-        async (selector) =>
-          await authorizer.connect(govMultisig).grantRole(await gaugeAdder.getActionId(selector), admin.address)
+      ['addGaugeFactory', 'addEthereumGauge'].map(
+        async (method) =>
+          await authorizer.connect(govMultisig).grantRole(await actionId(gaugeAdder, method), admin.address)
       )
     );
-
-    // We also need to grant permissions to mint in the gauges, which is done via the Authorizer Adaptor.
-    await authorizer
-      .connect(govMultisig)
-      .grantRole(await authorizerAdaptor.getActionId(gauge.interface.getSighash('user_checkpoint')), admin.address);
-
-    // Grant permission to change cap weight cap via the Authorizer Adaptor.
-    await authorizer
-      .connect(govMultisig)
-      .grantRole(await actionId(authorizerAdaptor, 'setRelativeWeightCap', gauge.interface), admin.address);
   });
 
   it('add gauge to gauge controller', async () => {
@@ -135,14 +130,14 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
   });
 
   it('stake LP tokens in gauge', async () => {
-    const lpTokensToStake = fp(100);
-    await lpToken.connect(lpTokenHolder).approve(gauge.address, lpTokensToStake);
-    await gauge.connect(lpTokenHolder).deposit(lpTokensToStake);
+    await lpToken.connect(lpTokenHolder).approve(gauge.address, MAX_UINT256);
+    await gauge.connect(lpTokenHolder)['deposit(uint256)'](await lpToken.balanceOf(lpTokenHolder.address));
   });
 
   it('vote for gauge so that weight is above cap', async () => {
     expect(await gaugeController.get_gauge_weight(gauge.address)).to.equal(0);
-    expect(await gauge.getCurrentCappedRelativeWeight()).to.equal(0);
+    expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(0);
+
     // Max voting power is 10k points
     await gaugeController.connect(veBALHolder).vote_for_gauge_weights(gauge.address, 10000);
 
@@ -151,133 +146,80 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
 
     await gaugeController.checkpoint();
     // Gauge weight is equal to the cap, and controller weight for the gauge is greater than the cap.
+    expect(
+      await gaugeController['gauge_relative_weight(address,uint256)'](gauge.address, await currentWeekTimestamp())
+    ).to.be.gt(weightCap);
     expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(weightCap);
-    expect(await gaugeController['gauge_relative_weight(address)'](gauge.address)).to.be.gt(weightCap);
   });
 
   it('mint & bridge tokens', async () => {
-    // The gauge has votes for this week, and it will mint the first batch of tokens. We store the current gauge
-    // relative weight, as it will change as time goes by due to vote decay.
+    // For simplicty, we're going to move to the end of the week so that we mint a full week's worth of tokens.
     const firstMintWeekTimestamp = await currentWeekTimestamp();
-    const gaugeRelativeWeight = await gauge.getCappedRelativeWeight(await currentTimestamp());
+    await advanceToTimestamp(firstMintWeekTimestamp.add(WEEK));
 
-    let tx = await gauge.connect(lpTokenHolder).user_checkpoint(lpTokenHolder.address);
-    let event = expectEvent.inReceipt(await tx.wait(), 'UpdateLiquidityLimit');
-    console.log('event args: ', event.args);
-    // const calldata = gauge.interface.encodeFunctionData('checkpoint');
-
-    // // Even though the gauge has relative weight, it cannot mint yet as it needs for the epoch to finish
-    // const zeroMintTx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);
-    // expectEvent.inIndirectReceipt(await zeroMintTx.wait(), gauge.interface, 'Checkpoint', {
-    //   periodTime: firstMintWeekTimestamp.sub(WEEK), // Process past week, which had zero votes
-    //   periodEmissions: 0,
-    // });
-    // // No token transfers are performed if the emissions are zero, but we can't test for a lack of those
-
-    await advanceTime(WEEK);
-    tx = await gauge.connect(lpTokenHolder).user_checkpoint(lpTokenHolder.address);
-    event = expectEvent.inReceipt(await tx.wait(), 'UpdateLiquidityLimit');
-    console.log('event args: ', event.args);
-
-    // // The gauge should now mint and send all minted tokens to the Arbitrum bridge
-    // const mintTx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);
-    // const event = expectEvent.inIndirectReceipt(await mintTx.wait(), gauge.interface, 'Checkpoint', {
-    //   periodTime: firstMintWeekTimestamp,
-    // });
-    // const actualEmissions = event.args.periodEmissions;
-
-    // // The amount of tokens minted should equal the weekly emissions rate times the relative weight of the gauge
-    // const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
-
-    // const expectedEmissions = gaugeRelativeWeight.mul(weeklyRate).div(FP_SCALING_FACTOR);
-    // expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
-
-    // // Tokens are minted for the gauge
-    // expectTransferEvent(
-    //   await mintTx.wait(),
-    //   {
-    //     from: ZERO_ADDRESS,
-    //     to: gauge.address,
-    //     value: actualEmissions,
-    //   },
-    //   BAL
-    // );
-  });
-
-  // it.skip('mint multiple weeks', async () => {
-  //   const numberOfWeeks = 5;
-  //   await advanceTime(WEEK * numberOfWeeks);
-  //   await gaugeController.checkpoint_gauge(gauge.address);
-
-  //   const weekTimestamp = await currentWeekTimestamp();
-
-  //   // We can query the relative weight of the gauge for each of the weeks that have passed
-  //   const relativeWeights: BigNumber[] = await Promise.all(
-  //     range(1, numberOfWeeks + 1).map(async (weekIndex) =>
-  //       gaugeController['gauge_relative_weight(address,uint256)'](gauge.address, weekTimestamp.sub(WEEK * weekIndex))
-  //     )
-  //   );
-
-  //   // The amount of tokens minted should equal the sum of the weekly emissions rate times the relative weight of the
-  //   // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
-  //   const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
-  //   const expectedEmissions = relativeWeights
-  //     .map((weight) => weight.mul(weeklyRate).div(FP_SCALING_FACTOR))
-  //     .reduce((sum, value) => sum.add(value));
-
-  //   const calldata = gauge.interface.encodeFunctionData('checkpoint');
-  //   const tx = await authorizerAdaptor
-  //     .connect(admin)
-  //     .performAction(gauge.address, calldata, { value: await gauge.getTotalBridgeCost() });
-
-  //   await Promise.all(
-  //     range(1, numberOfWeeks + 1).map(async (weekIndex) =>
-  //       expectEvent.inIndirectReceipt(await tx.wait(), gauge.interface, 'Checkpoint', {
-  //         periodTime: weekTimestamp.sub(WEEK * weekIndex),
-  //       })
-  //     )
-  //   );
-
-  //   // Tokens are minted for the gauge
-  //   expectTransferEvent(
-  //     await tx.wait(),
-  //     {
-  //       from: ZERO_ADDRESS,
-  //       to: gauge.address,
-  //       value: expectedEmissions,
-  //     },
-  //     BAL
-  //   );
-
-  //   // And the gauge then deposits those in the predicate via the bridge mechanism
-  //   const bridgeInterface = new ethers.utils.Interface([
-  //     'event DepositInitiated(address l1Token, address indexed from, address indexed to, uint256 indexed sequenceNumber, uint256 amount)',
-  //   ]);
-
-  //   expectEvent.inIndirectReceipt(await tx.wait(), bridgeInterface, 'DepositInitiated', {
-  //     from: gauge.address,
-  //     to: recipient.address,
-  //     l1Token: BAL,
-  //     amount: expectedEmissions,
-  //   });
-  // });
-
-  it('lower cap further below weight', async () => {
-    const lowWeightCap = weightCap.div(2);
-    await setCap(lowWeightCap);
-    expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.be.eq(lowWeightCap);
-    expect(await gaugeController['gauge_relative_weight(address)'](gauge.address)).to.be.gt(lowWeightCap);
-  });
-
-  it('set cap above weight', async () => {
-    await setCap(fp(1));
-    expect(await gauge.getCappedRelativeWeight(await currentTimestamp())).to.equal(
-      await gaugeController['gauge_relative_weight(address)'](gauge.address)
+    const tx = await balancerMinter.connect(lpTokenHolder).mint(gauge.address);
+    const event = expectTransferEvent(
+      await tx.wait(),
+      {
+        from: ZERO_ADDRESS,
+        to: lpTokenHolder.address,
+      },
+      BAL
     );
+
+    // The amount of tokens minted should equal the weekly emissions rate times the relative weight of the gauge.
+    const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
+
+    // Note that we use the cap instead of the weight, since we're testing a scenario in which the weight is larger than
+    // the cap.
+    const expectedGaugeEmissions = weeklyRate.mul(weightCap).div(fp(1));
+
+    // Since the LP token holder is the only account staking in the gauge, they'll receive the full amount destined to
+    // the gauge.
+    const actualEmissions = event.args.value;
+    expectEqualWithError(actualEmissions, expectedGaugeEmissions, 0.001);
   });
 
-  async function setCap(relativeWeightCap: BigNumber): Promise<ContractTransaction> {
-    const calldata = gauge.interface.encodeFunctionData('setRelativeWeightCap', [relativeWeightCap]);
-    return authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);
-  }
+  it('mint multiple weeks', async () => {
+    // Since we're at the beginning of a week, we can simply advance a whole number of weeks for them to be complete.
+    const numberOfWeeks = 5;
+    await advanceTime(WEEK * numberOfWeeks);
+
+    await gaugeController.checkpoint_gauge(gauge.address);
+
+    const weekTimestamp = await currentWeekTimestamp();
+
+    // We can query the relative weight of the gauge for each of the weeks that have passed
+    const relativeWeights: BigNumber[] = await Promise.all(
+      range(1, numberOfWeeks + 1).map(async (weekIndex) =>
+        gaugeController['gauge_relative_weight(address,uint256)'](gauge.address, weekTimestamp.sub(WEEK * weekIndex))
+      )
+    );
+
+    // We require that they're all above the cap for simplicity - this lets us use the cap as each week's weight (and
+    // also tests cap behavior).
+    for (const relativeWeight of relativeWeights) {
+      expect(relativeWeight).to.be.gt(weightCap);
+    }
+
+    const tx = await balancerMinter.connect(lpTokenHolder).mint(gauge.address);
+    const event = expectTransferEvent(
+      await tx.wait(),
+      {
+        from: ZERO_ADDRESS,
+        to: lpTokenHolder.address,
+      },
+      BAL
+    );
+
+    // The amount of tokens allocated to the gauge should equal the sum of the weekly emissions rate times the weight
+    // cap.
+    const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
+    const expectedGaugeEmissions = weeklyRate.mul(numberOfWeeks).mul(weightCap).div(fp(1));
+
+    // Since the LP token holder is the only account staking in the gauge, they'll receive the full amount destined to
+    // the gauge.
+    const actualEmissions = event.args.value;
+    expectEqualWithError(actualEmissions, expectedGaugeEmissions, 0.001);
+  });
 });
