@@ -90,14 +90,13 @@ describe('WeightedPoolProtocolFees', () => {
       let expectedProtocolOwnershipPercentage: BigNumber;
 
       let isJoin: boolean;
-      let isExempt: boolean;
 
       sharedBeforeEach('deploy tokens', async () => {
         tokens = await TokenList.create(numberOfTokens, { sorted: true });
       });
 
       sharedBeforeEach('deploy pool', async () => {
-        pool = await deploy('MockInvariantGrowthProtocolFees', {
+        pool = await deploy('MockWeightedPoolProtocolFees', {
           args: [
             vault.address,
             feesProvider.address,
@@ -154,32 +153,8 @@ describe('WeightedPoolProtocolFees', () => {
 
           setProtocolFees(swapFee);
 
-          context('when the fee exempt flag is set', () => {
-            sharedBeforeEach('initialize pool', async () => {
-              // Simulate a join that would normally incur fees
-              const bptIn = await math.exactTokensInForBPTOut(
-                preBalances,
-                poolWeights,
-                balanceDeltas,
-                preSupply,
-                POOL_SWAP_FEE_PERCENTAGE
-              );
-
-              currentSupply = preSupply.add(bptIn);
-
-              // Set both flags to true for an initialization (same for explicitly proportional join/exit)
-              isJoin = true;
-              isExempt = true;
-            });
-
-            itDoesNotPayAnyProtocolFees();
-
-            itUpdatesThePostJoinExitState();
-          });
-
           context('on proportional join', () => {
-            // A join with the fee exempt flag set to false
-            prepareProportionalJoinOrExit(Operation.JOIN, false);
+            prepareProportionalJoinOrExit(Operation.JOIN);
 
             itDoesNotPayAnyProtocolFees();
 
@@ -187,8 +162,7 @@ describe('WeightedPoolProtocolFees', () => {
           });
 
           context('on proportional exit', () => {
-            // A join with the fee exempt flag set to false
-            prepareProportionalJoinOrExit(Operation.EXIT, false);
+            prepareProportionalJoinOrExit(Operation.EXIT);
 
             itDoesNotPayAnyProtocolFees();
 
@@ -220,8 +194,7 @@ describe('WeightedPoolProtocolFees', () => {
           });
 
           // This is an exact tokens in/out that happens to be proportional
-          // Explicit proportional joins/exits will have the exempt flag set
-          function prepareProportionalJoinOrExit(op: Operation, _isExempt: boolean) {
+          function prepareProportionalJoinOrExit(op: Operation) {
             sharedBeforeEach(async () => {
               const ratio = fp(random(0.1, 0.9));
 
@@ -236,7 +209,6 @@ describe('WeightedPoolProtocolFees', () => {
               }
 
               isJoin = op == Operation.JOIN;
-              isExempt = _isExempt;
             });
           }
 
@@ -276,7 +248,6 @@ describe('WeightedPoolProtocolFees', () => {
               expectedProtocolOwnershipPercentage = poolFeePercentage.mul(swapFee).div(fp(1));
 
               isJoin = op == Operation.JOIN;
-              isExempt = false;
             });
           }
 
@@ -284,7 +255,6 @@ describe('WeightedPoolProtocolFees', () => {
             it('mints no (or negligible) BPT', async () => {
               const tx = await pool.afterJoinExit(
                 isJoin,
-                isExempt,
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -334,7 +304,6 @@ describe('WeightedPoolProtocolFees', () => {
             it('mints BPT to the protocol fee collector', async () => {
               const tx = await pool.afterJoinExit(
                 isJoin,
-                isExempt,
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -353,15 +322,7 @@ describe('WeightedPoolProtocolFees', () => {
 
           function itUpdatesThePostJoinExitState() {
             it('stores the current invariant', async () => {
-              await pool.afterJoinExit(
-                isJoin,
-                isExempt,
-                preBalances,
-                balanceDeltas,
-                poolWeights,
-                preSupply,
-                currentSupply
-              );
+              await pool.afterJoinExit(isJoin, preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
               const lastPostJoinExitInvariant = await pool.getLastInvariant();
               const currentBalances = isJoin
