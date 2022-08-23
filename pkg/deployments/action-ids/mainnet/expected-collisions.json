@@ -271,6 +271,12 @@
       "contractName": "FeeDistributor",
       "signature": "checkpoint()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
     }
   ],
   "0x7cd4c1de57fa031316e3b61c1bca9160d4feb774986a819a7c4c04dc66d7d21e": [
@@ -335,6 +341,12 @@
       "contractName": "OptimismRootGauge",
       "signature": "killGauge()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
     }
   ],
   "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea": [
@@ -364,6 +376,12 @@
     },
     {
       "taskId": "20220628-optimism-root-gauge-factory",
+      "contractName": "OptimismRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
       "contractName": "OptimismRootGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
