@@ -15,12 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IBaseRootGaugeFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidityGauge.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
-contract LiquidityGaugeFactory is ILiquidityGaugeFactory {
+contract LiquidityGaugeFactory is IBaseRootGaugeFactory {
     ILiquidityGauge private immutable _gaugeImplementation;
 
     mapping(address => bool) private _isGaugeFromFactory;
@@ -63,14 +63,15 @@ contract LiquidityGaugeFactory is ILiquidityGaugeFactory {
      *
      * This factory disallows deploying multiple gauges for a single pool.
      * @param pool The address of the pool for which to deploy a gauge
+     * @param relativeWeightCap The relative weight cap for the created gauge
      * @return The address of the deployed gauge
      */
-    function create(address pool) external override returns (address) {
+    function create(address pool, uint256 relativeWeightCap) external override returns (address) {
         require(_poolGauge[pool] == address(0), "Gauge already exists");
 
         address gauge = Clones.clone(address(_gaugeImplementation));
 
-        IStakingLiquidityGauge(gauge).initialize(pool);
+        IStakingLiquidityGauge(gauge).initialize(pool, relativeWeightCap);
 
         _isGaugeFromFactory[gauge] = true;
         _poolGauge[pool] = gauge;

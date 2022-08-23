@@ -14,10 +14,21 @@
 
 pragma solidity ^0.7.0;
 
-import "./IStakelessGauge.sol";
+import "../InvariantGrowthProtocolSwapFees.sol";
 
-interface ISingleRecipientGauge is IStakelessGauge {
-    function initialize(address recipient, uint256 relativeWeightCap) external;
-
-    function getRecipient() external view returns (address);
+contract MockInvariantGrowthProtocolSwapFees {
+    function calculateDueProtocolFees(
+        uint256 invariantGrowthRatio,
+        uint256 previousSupply,
+        uint256 currentSupply,
+        uint256 protocolSwapFeePercentage
+    ) external pure returns (uint256) {
+        return
+            InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+                invariantGrowthRatio,
+                previousSupply,
+                currentSupply,
+                protocolSwapFeePercentage
+            );
+    }
 }

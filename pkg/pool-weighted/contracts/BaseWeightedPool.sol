@@ -107,8 +107,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal virtual override returns (uint256) {
-        // Swaps are disabled while the contract is paused.
-
         return
             WeightedMath._calcOutGivenIn(
                 currentBalanceTokenIn,
@@ -124,8 +122,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal virtual override returns (uint256) {
-        // Swaps are disabled while the contract is paused.
-
         return
             WeightedMath._calcInGivenOut(
                 currentBalanceTokenIn,
@@ -173,9 +169,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // It would be strange for the Pool to be paused before it is initialized, but for consistency we prevent
-        // initialization in this case.
-
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -208,8 +201,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // All joins are disabled while the contract is paused.
-
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256 preJoinExitSupply = totalSupply();
 
@@ -355,8 +346,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // All exits are disabled while the contract is paused.
-
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256 preJoinExitSupply = totalSupply();
 
@@ -428,8 +417,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory normalizedWeights,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the contract is paused.
-
         (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
@@ -457,11 +444,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         view
         returns (uint256, uint256[] memory)
     {
-        // This exit function is the only one that is not disabled if the contract is paused: it remains unrestricted
-        // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
-        // This particular exit function is the only one that remains available because it is the simplest one, and
-        // therefore the one with the lowest likelihood of errors.
-
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
@@ -475,8 +457,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) private view returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the contract is paused.
-
         (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
         InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
         _upscaleArray(amountsOut, scalingFactors);

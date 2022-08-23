@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 
 import "./ComposableStablePoolStorage.sol";
 import "./ComposableStablePoolRates.sol";
@@ -48,8 +49,8 @@ abstract contract ComposableStablePoolProtocolFees is
 
     uint256 private constant _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET = 0;
     uint256 private constant _LAST_POST_JOIN_EXIT_INVARIANT_SIZE = 233;
-    uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET = _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET +
-        _LAST_POST_JOIN_EXIT_INVARIANT_SIZE;
+    uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET =
+        _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET + _LAST_POST_JOIN_EXIT_INVARIANT_SIZE;
 
     uint256 private constant _LAST_JOIN_EXIT_AMPLIFICATION_SIZE = 23;
 
@@ -235,13 +236,22 @@ abstract contract ComposableStablePoolProtocolFees is
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal {
+        // `_payProtocolFeesBeforeJoinExit` paid protocol fees accumulated between the previous and current
+        // join or exit, while this code pays any protocol fees due on the current join or exit.
+        // The amp and rates are constant during a single transaction, so it doesn't matter if there
+        // is an ongoing amp change, and we can ignore yield.
+
+        // Compute the growth ratio between the pre- and post-join/exit balances.
+        // Note that the pre-join/exit invariant is *not* the invariant from the last join,
+        // but computed from the balances before this particular join/exit.
+
         uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        uint256 protocolFeeAmount = _getJoinExitProtocolSwapFee(
-            preJoinExitInvariant,
-            postJoinExitInvariant,
+        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            postJoinExitInvariant.divDown(preJoinExitInvariant),
             preJoinExitSupply,
-            postJoinExitSupply
+            postJoinExitSupply,
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
         );
 
         if (protocolFeeAmount > 0) {

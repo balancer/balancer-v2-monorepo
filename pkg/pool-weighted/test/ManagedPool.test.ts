@@ -1524,6 +1524,7 @@ describe('ManagedPool', function () {
     const poolWeights = [fp(0.8), fp(0.2)];
     let bptFeeBalance: BigNumber;
     let mockMath: Contract;
+    let mockFees: Contract;
 
     let twoTokens: TokenList;
     let localBalances: Array<BigNumber>;
@@ -1556,6 +1557,7 @@ describe('ManagedPool', function () {
       };
       pool = await WeightedPool.create(params);
       mockMath = await deploy('MockWeightedMath');
+      mockFees = await deploy('v2-pool-utils/MockInvariantGrowthProtocolSwapFees');
     });
 
     sharedBeforeEach('initialize pool', async () => {
@@ -1620,10 +1622,10 @@ describe('ManagedPool', function () {
           const postInvariant = await mockMath.invariant(poolWeights, postBalances);
           const totalSupply = await pool.totalSupply();
 
-          const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
+            postInvariant.mul(fp(1)).div(prevInvariant),
             totalSupply,
-            prevInvariant,
-            postInvariant,
+            totalSupply,
             protocolFeePercentage
           );
 
@@ -1672,10 +1674,10 @@ describe('ManagedPool', function () {
           const postInvariant = await mockMath.invariant(poolWeights, postBalances);
           const totalSupply = await pool.totalSupply();
 
-          const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
+            postInvariant.mul(fp(1)).div(prevInvariant),
             totalSupply,
-            prevInvariant,
-            postInvariant,
+            totalSupply,
             protocolFeePercentage
           );
 
