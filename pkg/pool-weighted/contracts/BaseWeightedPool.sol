@@ -414,16 +414,11 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         return (bptAmountIn, amountsOut);
     }
 
-    function _exitExactBPTInForTokensOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
-        // This exit function is the only one that is not disabled if the contract is paused: it remains unrestricted
-        // in an attempt to provide users with a mechanism to retrieve their tokens in case of an emergency.
-        // This particular exit function is the only one that remains available because it is the simplest one, and
-        // therefore the one with the lowest likelihood of errors.
-
+    function _exitExactBPTInForTokensOut(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
