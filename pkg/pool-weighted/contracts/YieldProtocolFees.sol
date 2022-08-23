@@ -39,7 +39,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     // but that growth is captured in the invariant; rate growth is not.
     uint256 internal _athRateProduct;
 
-    uint256 private constant NO_YIELD_FEES_SENTINEL = type(uint256).max;
+    uint256 private constant _NO_YIELD_FEES_SENTINEL = type(uint256).max;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
@@ -48,7 +48,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
         // If so then set _athRateProduct to the sentinel value, otherwise leave it as zero.
         for (uint256 i = 0; i < numTokens; i++) {
             if (rateProviders[i] != IRateProvider(0)) break;
-            _athRateProduct = NO_YIELD_FEES_SENTINEL;
+            _athRateProduct = _NO_YIELD_FEES_SENTINEL;
         }
 
         _rateProvider0 = rateProviders[0];
@@ -135,7 +135,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
 
     function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) internal returns (uint256) {
         uint256 athRateProduct = _athRateProduct;
-        if (athRateProduct == NO_YIELD_FEES_SENTINEL) return 0;
+        if (athRateProduct == _NO_YIELD_FEES_SENTINEL) return 0;
 
         uint256 rateProduct = _getRateProduct(normalizedWeights);
         if (athRateProduct == 0) {
