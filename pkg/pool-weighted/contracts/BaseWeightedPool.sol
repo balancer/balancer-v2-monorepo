@@ -163,7 +163,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    // Derived classes may call this to update state after a join or exit.
+    // Derived contracts may call this to update state after a join or exit.
     function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -194,7 +194,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         // consistent in Pools with similar compositions but different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
-        // Initialization is still a join, so we need to do post-join work.
+        // Initialization is still a join, so we need to do post-join work. Since we are not paying protocol fees,
+        // and all we need to do is update the invariant, call `_updatePostJoinExit` here instead of `_afterJoinExit`.
         _updatePostJoinExit(invariantAfterJoin);
 
         return (bptAmountOut, amountsIn);
