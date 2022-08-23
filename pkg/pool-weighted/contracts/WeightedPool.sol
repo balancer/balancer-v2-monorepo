@@ -226,6 +226,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, YieldProtoc
         override
     {
         uint256 protocolFeesToBeMinted = _getSwapProtocolFees(preBalances, normalizedWeights, totalSupply());
+        protocolFeesToBeMinted += _getYieldProtocolFee(normalizedWeights, totalSupply());
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);

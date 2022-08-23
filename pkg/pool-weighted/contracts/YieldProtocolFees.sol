@@ -16,10 +16,14 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 
 import "./BaseWeightedPool.sol";
 
-abstract contract YieldProtocolFees is BaseWeightedPool {
+abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
+    using FixedPoint for uint256;
+
     // Rate providers are used only for computing yield fees; they do not inform swap/join/exit.
     IRateProvider internal immutable _rateProvider0;
     IRateProvider internal immutable _rateProvider1;
@@ -29,6 +33,11 @@ abstract contract YieldProtocolFees is BaseWeightedPool {
     IRateProvider internal immutable _rateProvider5;
     IRateProvider internal immutable _rateProvider6;
     IRateProvider internal immutable _rateProvider7;
+
+    // All-time high value of the weighted product of the pool's token rates. Comparing such weighted products across
+    // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
+    // but that growth is captured in the invariant; rate growth is not.
+    uint256 private _athRateProduct;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
@@ -63,5 +72,85 @@ abstract contract YieldProtocolFees is BaseWeightedPool {
         }
 
         return providers;
+    }
+
+    /**
+     * @notice Returns the contribution to the total rate product from a token with the given weight and rate provider.
+     */
+    function _getRateFactor(uint256 normalizedWeight, IRateProvider provider) internal view returns (uint256) {
+        return provider == IRateProvider(0) ? FixedPoint.ONE : provider.getRate().powDown(normalizedWeight);
+    }
+
+    /**
+     * @dev Returns the weighted product of all the token rates.
+     */
+    function _getRateProduct(uint256[] memory normalizedWeights) internal view returns (uint256) {
+        uint256 totalTokens = normalizedWeights.length;
+
+        uint256 rateProduct = FixedPoint.mulDown(
+            _getRateFactor(normalizedWeights[0], _rateProvider0),
+            _getRateFactor(normalizedWeights[1], _rateProvider1)
+        );
+
+        if (totalTokens > 2) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[2], _rateProvider2));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 3) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[3], _rateProvider3));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 4) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[4], _rateProvider4));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 5) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[5], _rateProvider5));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 6) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[6], _rateProvider6));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 7) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[7], _rateProvider7));
+        }
+
+        return rateProduct;
+    }
+
+    function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) internal returns (uint256) {
+        uint256 protocolYieldFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.YIELD);
+
+        if (protocolYieldFeePercentage == 0) return 0;
+
+        uint256 rateProduct = _getRateProduct(normalizedWeights);
+        uint256 athRateProduct = _athRateProduct;
+
+        if (athRateProduct == 0) {
+            // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
+            // Not initialising this here properly will cause all joins/exits to revert.
+            _athRateProduct = rateProduct;
+
+            return 0;
+        } else if (rateProduct > athRateProduct) {
+            // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
+            // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until its
+            // been recovered.
+            _athRateProduct = rateProduct;
+
+            return
+                InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+                    rateProduct.divDown(athRateProduct),
+                    supply,
+                    supply,
+                    protocolYieldFeePercentage
+                );
+        }
     }
 }
