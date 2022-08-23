@@ -215,7 +215,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return scalingFactors;
     }
 
-    // InvariantGrowthProtocolFees
+    // WeightedPoolProtocolFees functions
 
     function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
         internal
@@ -237,15 +237,28 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
-        InvariantGrowthProtocolFees._afterJoinExit(
+    ) internal virtual override {
+        (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = _getJoinExitProtocolFees(
             isJoin,
-            isExemptFromProtocolFees,
             preBalances,
             balanceDeltas,
             normalizedWeights,
             preJoinExitSupply,
             postJoinExitSupply
         );
+
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
+
+        _updatePostJoinExit(postJoinExitInvariant);
+    }
+
+    function _updatePostJoinExit(uint256 postJoinExitInvariant)
+        internal
+        virtual
+        override(BaseWeightedPool, WeightedPoolProtocolFees)
+    {
+        WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
 }
