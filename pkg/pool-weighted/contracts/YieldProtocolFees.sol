@@ -134,10 +134,8 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     }
 
     function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) internal returns (uint256) {
-        uint256 protocolYieldFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.YIELD);
-
         uint256 athRateProduct = _athRateProduct;
-        if (athRateProduct == NO_YIELD_FEES_SENTINEL || protocolYieldFeePercentage == 0) return 0;
+        if (athRateProduct == NO_YIELD_FEES_SENTINEL) return 0;
 
         uint256 rateProduct = _getRateProduct(normalizedWeights);
         if (athRateProduct == 0) {
@@ -157,7 +155,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
                     rateProduct.divDown(athRateProduct),
                     supply,
                     supply,
-                    protocolYieldFeePercentage
+                    getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                 );
         }
     }
