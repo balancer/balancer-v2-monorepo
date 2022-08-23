@@ -16,12 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
-import "./InvariantGrowthProtocolFees.sol";
+import "./WeightedPoolProtocolFees.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
+contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     using FixedPoint for uint256;
 
     uint256 private constant _MAX_TOKENS = 8;
@@ -234,7 +234,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights
-    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
-        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
+    ) internal virtual override(BaseWeightedPool, WeightedPoolProtocolFees) {
+        WeightedPoolProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
     }
 }

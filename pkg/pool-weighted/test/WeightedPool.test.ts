@@ -6,7 +6,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 import { range } from 'lodash';
-import { itPaysProtocolFeesFromInvariantGrowth } from './InvariantGrowthProtocolFees.behavior';
+import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;

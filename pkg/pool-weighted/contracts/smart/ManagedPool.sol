@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
@@ -919,21 +920,26 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
-            swapRequest,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
-            currentBalanceTokenOut.sub(amountOut)
+        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
+        // after the trade.
+        //
+        // invariantGrowthRatio = invariant after trade / invariant before trade
+        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
+        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
+        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
+            _getNormalizedWeight(swapRequest.tokenIn),
+            _getNormalizedWeight(swapRequest.tokenOut)
+        );
+        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
+            FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
         );
 
-        _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
+        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountOut;
     }
@@ -945,45 +951,31 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
-            swapRequest,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
-            currentBalanceTokenOut.sub(swapRequest.amount)
+        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
+        // after the trade.
+        //
+        // invariantGrowthRatio = invariant after trade / invariant before trade
+        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
+        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
+        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
+            FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
         );
-
-        _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
-
-        return amountIn;
-    }
-
-    function _getWeightsAndPreSwapBalances(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) private view returns (uint256[] memory, uint256[] memory) {
         uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
             _getNormalizedWeight(swapRequest.tokenIn),
             _getNormalizedWeight(swapRequest.tokenOut)
         );
 
-        uint256[] memory preSwapBalances = ArrayHelpers.arrayFill(currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
-        return (normalizedWeights, preSwapBalances);
+        return amountIn;
     }
 
-    function _payProtocolAndManagementFees(
-        uint256[] memory normalizedWeights,
-        uint256[] memory preSwapBalances,
-        uint256[] memory postSwapBalances
-    ) private {
+    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) private {
         // Calculate total BPT for the protocol and management fee
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
@@ -1000,11 +992,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             (FixedPoint.ONE - protocolSwapFeePercentage).mulDown(managementSwapFeePercentage);
 
         // No other balances are changing, so the other terms in the invariant will cancel out
-        // when computing the ratio. So this partial invariant calculation is sufficient
-        uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-            totalSupply(),
-            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
-            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+        // when computing the ratio. So this partial invariant calculation is sufficient.
+        // We pass the same value for total supply twice as we're measuring over a period in which the total supply
+        // has not changed.
+        uint256 supply = totalSupply();
+        uint256 totalBptAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            invariantGrowthRatio,
+            supply,
+            supply,
             totalFeePercentage
         );
 
