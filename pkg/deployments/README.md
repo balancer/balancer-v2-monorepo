@@ -74,7 +74,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Delegation of veBAL boosts                              | [`20220325-ve-delegation`](./tasks/20220325-ve-delegation)                                           |
 | Linear Pools for ERC4626 Tokens V2                      | [`20220404-erc4626-linear-pool-v2`](./tasks/deprecated/20220404-erc4626-linear-pool-v2)              |
 | Gauges on child networks (L2s and sidechains)           | [`20220413-child-chain-gauge-factory`](./tasks/20220413-child-chain-gauge-factory)                   |
-| Arbitrum Root Gauges, for veBAL voting                  | [`20220413-arbitrum-root-gauge-factory`](./tasks/20220413-arbitrum-root-gauge-factory)               |
 | Polygon Root Gauges, for veBAL voting                   | [`20220413-polygon-root-gauge-factory`](./tasks/20220413-polygon-root-gauge-factory)                 |
 | veBAL Smart Wallet Checker                              | [`20220420-smart-wallet-checker`](./tasks/20220420-smart-wallet-checker)                             |
 | Linear Pools for Unbutton tokens                        | [`20220425-unbutton-aave-linear-pool`](./tasks/20220425-unbutton-aave-linear-pool)                   |
@@ -94,6 +93,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/20220817-aave-rebalanced-linear-pool)               |
 | Composable Stable Pools                                 | [`20220817-composable-stable-pool`](./tasks/20220817-composable-stable-pool)                         |
 | Mainnet Staking Gauges V2                               | [`20220822-mainnet-gauge-factory-v2`](./tasks/20220822-mainnet-gauge-factory-v2)                     |
+| Arbitrum Root Gauges V2, for veBAL voting               | [`20220823-arbitrum-root-gauge-factory-v2`](./tasks/20220823-arbitrum-root-gauge-factory-v2)         |
 
 ## Scripts
 
@@ -133,3 +133,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Batch Relayer V2                                 | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                         |
 | Fee Distributor for veBAL holders                | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
 | Mainnet Staking Gauges                           | [`20220325-mainnet-gauge-factory`](./tasks/deprecated/20220325-mainnet-gauge-factory)               |
+| Arbitrum Root Gauges, for veBAL voting           | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
