@@ -768,5 +768,31 @@
         "updateTokenRateCache(address)": "0x39ed9ac3902bfe3f689cc0cba788cc7c981610d317d875f877411f97763956f5"
       }
     }
+  },
+  "20220822-mainnet-gauge-factory-v2": {
+    "LiquidityGaugeV5": {
+      "useAdaptor": true,
+      "actionIds": {
+        "add_reward(address,address)": "0x3bf29175652a3f0fac5abb715d0b7fe2e7b597e2e2eff555dac6b21a20a7c83e",
+        "claim_rewards()": "0xa1fcfa4f107b70052cfbb2e460d99c96f9b18c1197671fe00ab59c32adcddbeb",
+        "claim_rewards(address)": "0x1c866c9ea7b119a642f593024ced6088dbde65d041e5d3e826b9ad49b949a64b",
+        "claim_rewards(address,address)": "0x17b18f02fd5498a6aba17d20977b1a8a08f888d821999613fee42f9f9acb0bd9",
+        "claimable_tokens(address)": "0x507b520ac43f322b79e43a63eaa5b80ca89ac2c5b63970fa4b6242a23a9e8aa2",
+        "deposit(uint256)": "0x514b6f05525a3f31c3bde60d063e91e88204c5cdc5b35934513f911943b97fcc",
+        "deposit(uint256,address)": "0x360a8a15589674642b2125956d96757fc2f06ff1b968333271de16a20e01df05",
+        "deposit(uint256,address,bool)": "0x7572a9d124a97112d9e0f610651c79f13cf257bea3a71e38663b8a23875a2241",
+        "deposit_reward_token(address,uint256)": "0xb70966c80d8727484d7d85b65c022ce136cadffc1aa72bd6362cd9e160598bf9",
+        "initialize(address,uint256)": "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39",
+        "kick(address)": "0x5d4f8bc2dd6ae588be27076524fbf4fc2a833c466ab107fda2e84bf2f59bc0ca",
+        "killGauge()": "0xec1d467d9ab03a0079c22a89037209f5763aec973897ea763e2cf25d71a5f12e",
+        "setRelativeWeightCap(uint256)": "0xae60dce27f51ce5815357b9f6b40f200557867f8222262a1646c005d09b7dfba",
+        "set_reward_distributor(address,address)": "0xd0090a09f425bba74e6c801fba7c6d15b44147ab0bd319e40076ce07e95168b6",
+        "set_rewards_receiver(address)": "0x1b288a1f96e75e2fda7a0c1ac5c35a7fd2c5e2e5c425c32152ae01f82545e2da",
+        "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea",
+        "user_checkpoint(address)": "0x3aaa120451be1d03b5f871d8f553636453af4ac4fed808c66c169c212b199436",
+        "withdraw(uint256)": "0xec9d6185ed79aed8edc19bc6fc25ca544504ab0970d25b191e5279100224502a",
+        "withdraw(uint256,bool)": "0xb69fa1eb7b5ac6d9f3d5b8707460dc80b1f871eb64473f46b1aaaed1002aec60"
+      }
+    }
   }
 }
