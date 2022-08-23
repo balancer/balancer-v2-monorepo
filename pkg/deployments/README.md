@@ -82,7 +82,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Preseeded Voting Escrow Delegation                      | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Stable Pools V2 of up to 5 tokens                       | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
 | Gauge Registrant V2, supporting new networks            | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
-| Optimism Root Gauges, for veBAL voting                  | [`20220628-optimism-root-gauge-factory`](./tasks/20220628-optimism-root-gauge-factory)               |
 | Distribution Scheduler for reward tokens on gauges      | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                    | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
 | Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
@@ -94,6 +93,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Mainnet Staking Gauges V2                               | [`20220822-mainnet-gauge-factory-v2`](./tasks/20220822-mainnet-gauge-factory-v2)                     |
 | Arbitrum Root Gauges V2, for veBAL voting               | [`20220823-arbitrum-root-gauge-factory-v2`](./tasks/20220823-arbitrum-root-gauge-factory-v2)         |
 | Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
+| Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
 
 ## Scripts
 
@@ -135,3 +135,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Mainnet Staking Gauges                           | [`20220325-mainnet-gauge-factory`](./tasks/deprecated/20220325-mainnet-gauge-factory)               |
 | Arbitrum Root Gauges, for veBAL voting           | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
 | Polygon Root Gauges, for veBAL voting            | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
+| Optimism Root Gauges, for veBAL voting           | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
