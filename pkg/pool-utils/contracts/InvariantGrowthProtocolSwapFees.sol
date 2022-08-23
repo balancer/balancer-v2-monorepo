@@ -86,6 +86,6 @@ library InvariantGrowthProtocolSwapFees {
         // `protocol percentage = to mint / (current supply + to mint)`.
         // Solving for `to mint`, we arrive at:
         // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
-        return currentSupply.mulDown(protocolOwnershipPercentage).divDown(protocolOwnershipPercentage.complement());
+        return currentSupply.divDown(protocolOwnershipPercentage.complement()).mulDown(protocolOwnershipPercentage);
     }
 }
