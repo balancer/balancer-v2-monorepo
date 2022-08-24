@@ -5,7 +5,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { random } from 'lodash';
+import { random, range } from 'lodash';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
