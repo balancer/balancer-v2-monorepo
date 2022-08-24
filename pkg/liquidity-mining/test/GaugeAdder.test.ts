@@ -8,6 +8,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 enum GaugeType {
   LiquidityMiningCommittee = 0,
@@ -50,7 +51,7 @@ describe('GaugeAdder', () => {
   });
 
   async function deployGauge(gaugeFactory: Contract, poolAddress: string): Promise<string> {
-    const tx = await gaugeFactory.create(poolAddress);
+    const tx = await gaugeFactory.create(poolAddress, fp(1)); // Weight cap can be anything; it's not under test.
     const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
 
     return event.args.gauge;
@@ -120,7 +121,7 @@ describe('GaugeAdder', () => {
     let gauge: string;
 
     sharedBeforeEach('deploy gauge', async () => {
-      gauge = await deployGauge(gaugeFactory, ZERO_ADDRESS);
+      gauge = await deployGauge(gaugeFactory, ANY_ADDRESS);
     });
 
     context('when factory has been added to GaugeAdder', () => {
