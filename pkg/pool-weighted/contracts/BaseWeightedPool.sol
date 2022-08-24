@@ -144,12 +144,11 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called after any regular join or exit operation. Empty by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      *
-     * If isJoin is true, balanceDeltas are the amounts in: otherwise they are the amounts out.
+     * If performing a join operation, balanceDeltas are the amounts in: otherwise they are the amounts out.
      *
      * This function is free to mutate the `preBalances` array.
      */
     function _afterJoinExit(
-        bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -220,14 +219,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(
-            true,
-            balances,
-            amountsIn,
-            normalizedWeights,
-            preJoinExitSupply,
-            preJoinExitSupply.add(bptAmountOut)
-        );
+        _afterJoinExit(balances, amountsIn, normalizedWeights, preJoinExitSupply, preJoinExitSupply.add(bptAmountOut));
 
         return (bptAmountOut, amountsIn);
     }
@@ -349,14 +341,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(
-            false,
-            balances,
-            amountsOut,
-            normalizedWeights,
-            preJoinExitSupply,
-            preJoinExitSupply.sub(bptAmountIn)
-        );
+        _afterJoinExit(balances, amountsOut, normalizedWeights, preJoinExitSupply, preJoinExitSupply.sub(bptAmountIn));
 
         return (bptAmountIn, amountsOut);
     }
