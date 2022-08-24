@@ -45,11 +45,11 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         // If we know that no rate providers are set then we can skip yield fees logic.
-        // If so then leave `_paysYieldFees` as false, otherwise switch it to true.
-        bool paysYieldFees;
+        // If so then set `_paysYieldFees` to false, otherwise set it to true.
+        bool paysYieldFees = true;
         for (uint256 i = 0; i < numTokens; i++) {
             if (rateProviders[i] != IRateProvider(0)) break;
-            paysYieldFees = true;
+            paysYieldFees = false;
         }
         _paysYieldFees = paysYieldFees;
 

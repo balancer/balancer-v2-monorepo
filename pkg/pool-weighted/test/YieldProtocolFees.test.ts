@@ -121,6 +121,7 @@ describe('YieldProtocolFees', () => {
         context('on subsequent calls', () => {
           sharedBeforeEach('initialize athRateProduct', async () => {
             await pool.getYieldProtocolFee(normalizedWeights, fp(1));
+            expect(await pool.getATHRateProduct()).to.be.gt(0);
           });
 
           context('when rate product has increased', () => {
