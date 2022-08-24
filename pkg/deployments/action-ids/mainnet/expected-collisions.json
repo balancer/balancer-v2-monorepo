@@ -283,6 +283,12 @@
       "contractName": "ArbitrumRootGauge",
       "signature": "checkpoint()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
     }
   ],
   "0x3bf29175652a3f0fac5abb715d0b7fe2e7b597e2e2eff555dac6b21a20a7c83e": [
@@ -533,6 +539,12 @@
       "contractName": "ArbitrumRootGauge",
       "signature": "killGauge()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
     }
   ],
   "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea": [
@@ -623,6 +635,12 @@
     {
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
     }
@@ -908,6 +926,46 @@
       "taskId": "20220714-fee-distributor-v2",
       "contractName": "FeeDistributor",
       "signature": "depositTokens(address[],uint256[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39": [
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xae60dce27f51ce5815357b9f6b40f200557867f8222262a1646c005d09b7dfba": [
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
       "useAdaptor": true
     }
   ]
