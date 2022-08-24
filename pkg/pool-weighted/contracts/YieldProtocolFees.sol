@@ -134,26 +134,35 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
         return rateProduct;
     }
 
-    function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) internal returns (uint256) {
+    function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 preJoinExitSupply)
+        internal
+        returns (uint256)
+    {
         if (!_paysYieldFees) return 0;
 
         uint256 athRateProduct = _athRateProduct;
         uint256 rateProduct = _getRateProduct(normalizedWeights);
+
+        // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
+        // Not initialising this here properly will cause all joins/exits to revert.
         if (athRateProduct == 0) {
-            // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
-            // Not initialising this here properly will cause all joins/exits to revert.
             _athRateProduct = rateProduct;
-        } else if (rateProduct > athRateProduct) {
-            // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
-            // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
-            // been recovered.
+            return 0;
+        }
+
+        // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
+        // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
+        // been recovered.
+        if (rateProduct > athRateProduct) {
             _athRateProduct = rateProduct;
 
+            // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
+            // supply has not changed.
             return
                 InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
                     rateProduct.divDown(athRateProduct),
-                    supply,
-                    supply,
+                    preJoinExitSupply,
+                    preJoinExitSupply,
                     getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                 );
         }
