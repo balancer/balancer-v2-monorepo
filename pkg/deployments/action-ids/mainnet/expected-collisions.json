@@ -355,11 +355,6 @@
       "useAdaptor": true
     },
     {
-      "taskId": "20220823-optimism-root-gauge-factory-v2",
-      "contractName": "OptimismRootGauge",
-      "signature": "killGauge()",
-      "useAdaptor": true
-    },
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
       "signature": "killGauge()",
@@ -368,6 +363,12 @@
     {
       "taskId": "20220823-polygon-root-gauge-factory-v2",
       "contractName": "PolygonRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
       "signature": "killGauge()",
       "useAdaptor": true
     }
@@ -404,12 +405,6 @@
       "useAdaptor": true
     },
     {
-      "taskId": "20220823-optimism-root-gauge-factory-v2",
-      "contractName": "OptimismRootGauge",
-      "signature": "unkillGauge()",
-      "useAdaptor": true
-    },
-    {
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
       "signature": "unkillGauge()",
@@ -418,6 +413,12 @@
     {
       "taskId": "20220823-polygon-root-gauge-factory-v2",
       "contractName": "PolygonRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
     }
