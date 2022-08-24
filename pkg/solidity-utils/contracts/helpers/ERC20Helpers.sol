@@ -72,6 +72,22 @@ function _appendToken(IERC20[] memory tokens, IERC20 newToken) pure returns (IER
 
 function _getSortedTokenIndexes(
     IERC20 tokenA,
+    IERC20 tokenB
+)
+    pure
+    returns (
+        uint256 indexTokenA,
+        uint256 indexTokenB
+    )
+{
+    if (tokenA < tokenB) 
+        return (0, 1);
+    else
+        return (1, 0);
+}
+
+function _getSortedTokenIndexes(
+    IERC20 tokenA,
     IERC20 tokenB,
     IERC20 tokenC
 )

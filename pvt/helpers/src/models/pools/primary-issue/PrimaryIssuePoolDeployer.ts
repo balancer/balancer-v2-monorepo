@@ -33,6 +33,10 @@ export default {
     } = deployment;
 
     const poolId = await pool.getPoolId();
+    const name = await pool.name();
+    const symbol = await pool.symbol();
+    const decimals = await pool.decimals();
+    const bptToken = new Token(name, symbol, decimals, pool);
 
     return new PrimaryPool(
       pool,
@@ -40,6 +44,7 @@ export default {
       vault,
       securityToken,
       currencyToken,
+      bptToken,
       minimumPrice,
       basePrice,
       maxSecurityOffered,
@@ -65,10 +70,6 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
-    // console.log(securityToken.name);
-    // console.log(securityToken.address);
-    // console.log(currencyToken.name);
-    // console.log(currencyToken.address);
     return deploy('pool-primary-issues/PrimaryIssuePool', {
       args: [
         vault.address,
@@ -86,4 +87,5 @@ export default {
       from,
     });
   },
+
 };

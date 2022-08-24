@@ -5,12 +5,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
-
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 import "./PrimaryIssuePool.sol";
 import "./interfaces/IPrimaryIssuePoolFactory.sol";
@@ -40,8 +38,8 @@ contract PrimaryIssuePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWi
                     bufferPeriodDuration,
                     params.cutOffTime,
                     msg.sender
-                ));
-
+                )
+            );
     }
 
 }

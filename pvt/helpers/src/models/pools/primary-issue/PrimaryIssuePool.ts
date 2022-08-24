@@ -24,6 +24,7 @@ export default class PrimaryPool {
   poolId: string;
   securityToken: Token;
   currencyToken: Token;
+  bptToken: Token;
   minimumPrice: BigNumberish;
   basePrice: BigNumberish;
   maxSecurityOffered: BigNumberish;
@@ -71,6 +72,7 @@ export default class PrimaryPool {
     vault: Vault,
     securityToken: Token,
     currencyToken: Token,
+    bptToken: Token,
     minimumPrice: BigNumberish,
     basePrice: BigNumberish,
     maxSecurityOffered: BigNumberish,
@@ -83,6 +85,7 @@ export default class PrimaryPool {
     this.vault = vault;
     this.securityToken = securityToken;
     this.currencyToken = currencyToken;
+    this.bptToken = bptToken;
     this.minimumPrice = minimumPrice;
     this.basePrice = basePrice;
     this.maxSecurityOffered = maxSecurityOffered;
@@ -96,7 +99,7 @@ export default class PrimaryPool {
   }
 
   get tokens(): TokenList {
-    return new TokenList([this.securityToken, this.currencyToken]).sort();
+    return new TokenList([this.securityToken, this.currencyToken, this.bptToken]).sort();
   }
 
   get securityIndex(): number {
@@ -107,15 +110,20 @@ export default class PrimaryPool {
     return this.getTokenIndex(this.currencyToken);
   }
 
-  get tokenIndexes(): { securityIndex: number; currencyIndex: number } {
+  get bptIndex(): number {
+    return this.getTokenIndex(this.bptToken);
+  }
+
+  get tokenIndexes(): { securityIndex: number; currencyIndex: number; bptIndex: number } {
     const securityIndex = this.securityIndex;
     const currencyIndex = this.currencyIndex;
-    return { securityIndex, currencyIndex };
+    const bptIndex = this.bptIndex;
+    return { securityIndex, currencyIndex, bptIndex };
   }
 
   getTokenIndex(token: Token): number {
     const addresses = this.tokens.addresses;
-    return addresses[0] == token.address ? 0 : addresses[1] == token.address ? 1 : 2;
+    return addresses[0] == token.address ? 0 : 1;
   }
 
   async name(): Promise<string> {
@@ -132,6 +140,22 @@ export default class PrimaryPool {
 
   async totalSupply(): Promise<BigNumber> {
     return this.instance.totalSupply();
+  }
+
+  async getminimumPrice(): Promise<BigNumber> {
+    return this.instance.getMinimumPrice();
+  }
+
+  async getbasePrice(): Promise<BigNumber> {
+    return this.instance.getBasePrice();
+  }
+
+  async maxsecurityOffered(): Promise<BigNumber> {
+    return this.instance.maxSecurityOffered();
+  }
+
+  async getissueCutoffTime(): Promise<BigNumber> {
+    return this.instance.getissueCutoffTime()();
   }
 
   async balanceOf(account: Account): Promise<BigNumber> {

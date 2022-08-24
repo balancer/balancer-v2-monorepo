@@ -14,6 +14,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import PrimaryPool from '@balancer-labs/v2-helpers/src/models/pools/primary-issue/PrimaryIssuePool';
 
+import * as math from './math';
 import Decimal from 'decimal.js';
 
 describe('PrimaryPool', function () {
@@ -24,8 +25,13 @@ describe('PrimaryPool', function () {
     owner: SignerWithAddress,
     other: SignerWithAddress;
 
-  const TOTAL_TOKENS = 3;
+  const TOTAL_TOKENS = 2;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  
+  const minimumPrice = BigNumber.from("5");
+  const basePrice = BigNumber.from("10");
+  const maxSecurityOffered = BigNumber.from("1000");
+  const issueCutoffTime = BigNumber.from("1672444800");
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -73,7 +79,6 @@ describe('PrimaryPool', function () {
 
         expect(tokens).to.have.members(pool.tokens.addresses);
         expect(testAllEqualTo(balances, 0)).to.be.equal(true);
-        // expect(balances).to.be.zeros;
       });
 
       it('sets the asset managers', async () => {
@@ -98,6 +103,7 @@ describe('PrimaryPool', function () {
       it('sets the decimals', async () => {
         expect(await pool.decimals()).to.equal(18);
       });
+      
     });
 
     context('when the creation fails', () => {
@@ -108,27 +114,25 @@ describe('PrimaryPool', function () {
       });
     });
   });
-  /*
+  
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
-      // minimum price should be given as non-zero value so that zero-division error won't occur
-      await deployPool({ securityToken, currencyToken, minimumPrice: BigNumber.from(1) }, false);
+      await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime}, false);
     });
     
     it('initialize pool', async () => {
       const previousBalances = await pool.getBalances();
-      expect(testAllEqualTo(previousBalances, 0)).to.be.equal(true);
-      // expect(previousBalances).to.be.zeros;
+      expect(previousBalances).to.be.zeros;
 
       await pool.initialize();
 
       const currentBalances = await pool.getBalances();
+      expect(currentBalances[pool.bptIndex]).to.be.equal(MAX_UINT112);
       expect(currentBalances[pool.securityIndex]).to.be.equal(0);
       expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
 
-      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
-
+    
     it('cannot be initialized outside of the initialize function', async () => {
       await expect(
         pool.vault.joinPool({
@@ -142,5 +146,161 @@ describe('PrimaryPool', function () {
       await pool.initialize();
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
-  });*/
+    
+  });
+  /*
+  describe('swaps', () => {
+    let currentBalances: BigNumber[];
+    let params: math.Params;
+
+    sharedBeforeEach('deploy and initialize pool', async () => {
+
+      await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, true);
+      currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
+
+      params = {
+        fee: POOL_SWAP_FEE_PERCENTAGE,
+        minPrice : minimumPrice,
+        maxPrice : basePrice,
+      };
+    });
+
+    context('given security in', () => {
+      let amount: BigNumber;
+      let bptSupply: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(100);
+        bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
+      });
+
+      it('calculate bpt out', async () => {
+        const result = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.bptIndex,
+          amount: amount,
+          balances: currentBalances,
+        });
+
+        const expected = math.calcBptOutPerSecurityIn(
+          amount,
+          currentBalances[pool.securityIndex],
+          currentBalances[pool.currencyIndex],
+          bptSupply,
+          params
+        );
+
+        expect(result).to.be.equals(bn(expected));
+
+        currentBalances[pool.securityIndex] = currentBalances[pool.securityIndex].add(amount);
+        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenIn({
+              in: pool.securityIndex,
+              out: pool.bptIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+
+    context('given security out', () => {
+      let amount: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(50);
+      });
+
+      it('calculate currency in', async () => {
+        const result = await pool.swapGivenOut({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: amount,
+          balances: currentBalances,
+        });
+
+        const expected = math.calcCashInPerSecurityOut(amount, 
+                                                      currentBalances[pool.securityIndex], 
+                                                      currentBalances[pool.currencyIndex],
+                                                      params);
+
+        expect(result).to.be.equals(bn(expected));
+
+        currentBalances[pool.currencyIndex] = currentBalances[pool.currencyIndex].add(amount);
+        currentBalances[pool.securityIndex] = currentBalances[pool.securityIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.currencyIndex,
+              out: pool.securityIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+
+    context('given security in', () => {
+      let amount: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        amount = fp(10);
+      });
+
+      it('calculate currency out', async () => {
+        const result = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: amount,
+          balances: currentBalances,
+        });
+
+        const expected = math.calcSecurityInPerCashOut(amount, 
+                                                      currentBalances[pool.currencyIndex], 
+                                                      currentBalances[pool.securityIndex],
+                                                      params);
+
+        expect(result).to.be.equals(bn(expected));
+
+        currentBalances[pool.securityIndex] = currentBalances[pool.securityIndex].add(amount);
+        currentBalances[pool.currencyIndex] = currentBalances[pool.currencyIndex].sub(result);
+      });
+
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenIn({
+              in: pool.securityIndex,
+              out: pool.currencyIndex,
+              amount: amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
+    });
+  });
+  */
 });
