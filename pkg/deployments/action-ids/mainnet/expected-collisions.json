@@ -355,6 +355,12 @@
       "useAdaptor": true
     },
     {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
       "signature": "killGauge()",
@@ -363,12 +369,6 @@
     {
       "taskId": "20220823-polygon-root-gauge-factory-v2",
       "contractName": "PolygonRootGauge",
-      "signature": "killGauge()",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220823-optimism-root-gauge-factory-v2",
-      "contractName": "OptimismRootGauge",
       "signature": "killGauge()",
       "useAdaptor": true
     }
@@ -405,6 +405,12 @@
       "useAdaptor": true
     },
     {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
       "signature": "unkillGauge()",
@@ -413,12 +419,6 @@
     {
       "taskId": "20220823-polygon-root-gauge-factory-v2",
       "contractName": "PolygonRootGauge",
-      "signature": "unkillGauge()",
-      "useAdaptor": true
-    },
-    {
-      "taskId": "20220823-optimism-root-gauge-factory-v2",
-      "contractName": "OptimismRootGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
     }
@@ -709,6 +709,12 @@
   ],
   "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39": [
     {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
       "signature": "initialize(address,uint256)",
@@ -722,6 +728,12 @@
     }
   ],
   "0xae60dce27f51ce5815357b9f6b40f200557867f8222262a1646c005d09b7dfba": [
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
     {
       "taskId": "20220823-arbitrum-root-gauge-factory-v2",
       "contractName": "ArbitrumRootGauge",
