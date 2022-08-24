@@ -769,6 +769,26 @@
       }
     }
   },
+  "20220823-arbitrum-root-gauge-factory-v2": {
+    "ArbitrumRootGaugeFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(address,uint256)": "0x913025a8b073b3bbce553fdc0021545af9dfa573aa8dd3274a1d2dc91a4911b8",
+        "setArbitrumFees(uint64,uint64,uint64)": "0xd5799f5a62cdbcebada0c4ff21f7a0d82cfc1ad293c79f597c27bd1c03ad100b"
+      }
+    },
+    "ArbitrumRootGauge": {
+      "useAdaptor": true,
+      "factoryOutput": "0x6337949cbC4825Bbd09242c811770F6F6fee9FfC",
+      "actionIds": {
+        "checkpoint()": "0x3f63974a377ba4713661ede455bceda6686a0395f8b8ed8701ad1f13bb926c4d",
+        "initialize(address,uint256)": "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39",
+        "killGauge()": "0xec1d467d9ab03a0079c22a89037209f5763aec973897ea763e2cf25d71a5f12e",
+        "setRelativeWeightCap(uint256)": "0xae60dce27f51ce5815357b9f6b40f200557867f8222262a1646c005d09b7dfba",
+        "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea"
+      }
+    }
+  },
   "20220823-polygon-root-gauge-factory-v2": {
     "PolygonRootGauge": {
       "useAdaptor": true,

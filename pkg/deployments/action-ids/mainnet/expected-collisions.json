@@ -273,6 +273,12 @@
       "useAdaptor": true
     },
     {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20220823-polygon-root-gauge-factory-v2",
       "contractName": "PolygonRootGauge",
       "signature": "checkpoint()",
@@ -343,6 +349,12 @@
       "useAdaptor": true
     },
     {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
       "taskId": "20220823-polygon-root-gauge-factory-v2",
       "contractName": "PolygonRootGauge",
       "signature": "killGauge()",
@@ -377,6 +389,12 @@
     {
       "taskId": "20220628-optimism-root-gauge-factory",
       "contractName": "OptimismRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
       "signature": "unkillGauge()",
       "useAdaptor": true
     },
