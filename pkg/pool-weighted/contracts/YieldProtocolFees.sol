@@ -41,7 +41,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     bool internal immutable _paysYieldFees;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
-        _require(numTokens < 8, Errors.MAX_TOKENS);
+        _require(numTokens <= 8, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         // If we know that no rate providers are set then we can skip yield fees logic.
