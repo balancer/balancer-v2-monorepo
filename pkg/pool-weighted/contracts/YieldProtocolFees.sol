@@ -38,18 +38,19 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
     // but that growth is captured in the invariant; rate growth is not.
     uint256 internal _athRateProduct;
-
-    uint256 private constant _NO_YIELD_FEES_SENTINEL = type(uint256).max;
+    bool internal immutable _paysYieldFees;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         // If we know that no rate providers are set then we can skip yield fees logic.
-        // If so then set _athRateProduct to the sentinel value, otherwise leave it as zero.
+        // If so then leave `_paysYieldFees` as false, otherwise switch it to true.
+        bool paysYieldFees;
         for (uint256 i = 0; i < numTokens; i++) {
             if (rateProviders[i] != IRateProvider(0)) break;
-            _athRateProduct = _NO_YIELD_FEES_SENTINEL;
+            paysYieldFees = true;
         }
+        _paysYieldFees = paysYieldFees;
 
         _rateProvider0 = rateProviders[0];
         _rateProvider1 = rateProviders[1];
@@ -134,9 +135,9 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     }
 
     function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) internal returns (uint256) {
-        uint256 athRateProduct = _athRateProduct;
-        if (athRateProduct == _NO_YIELD_FEES_SENTINEL) return 0;
+        if (!_paysYieldFees) return 0;
 
+        uint256 athRateProduct = _athRateProduct;
         uint256 rateProduct = _getRateProduct(normalizedWeights);
         if (athRateProduct == 0) {
             // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
