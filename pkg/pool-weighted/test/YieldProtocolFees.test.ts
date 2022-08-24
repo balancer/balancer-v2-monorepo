@@ -82,7 +82,7 @@ describe('YieldProtocolFees', () => {
         });
 
         it("returns the weighted product of the tokens' rates", async () => {
-          const normalizedWeights = toNormalizedWeights(rates.map(() => fp(random(1, 5))));
+          const normalizedWeights = toNormalizedWeights(range(numTokens).map(() => fp(random(1, 5))));
           const expectedRateProduct = calculateInvariant(rates, normalizedWeights);
 
           const rateProduct = await pool.getRateProduct(normalizedWeights);

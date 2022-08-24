@@ -64,7 +64,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+    function getRateProviders() external view returns (IRateProvider[] memory) {
         uint256 totalTokens = _getTotalTokens();
         providers = new IRateProvider[](totalTokens);
 
