@@ -11,6 +11,8 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
+const randomFloat = (min: number, max: number) => random(min, max, true);
+
 describe('YieldProtocolFees', () => {
   let vault: Vault;
   let pool: Contract;
@@ -74,7 +76,7 @@ describe('YieldProtocolFees', () => {
         let rates: BigNumber[];
 
         sharedBeforeEach(async () => {
-          rates = rateProviders.map(() => fp(random(1, 5)));
+          rates = rateProviders.map(() => fp(randomFloat(1, 5)));
 
           for (const [index, provider] of rateProviders.entries()) {
             await provider.mockRate(rates[index]);
@@ -124,7 +126,7 @@ describe('YieldProtocolFees', () => {
           context('when rate product has increased', () => {
             let rates: BigNumber[];
             sharedBeforeEach('set rates', async () => {
-              rates = rateProviders.map(() => fp(random(1, 2)));
+              rates = rateProviders.map(() => fp(randomFloat(1, 2)));
 
               for (const [index, provider] of rateProviders.entries()) {
                 await provider.mockRate(rates[index]);
@@ -141,7 +143,7 @@ describe('YieldProtocolFees', () => {
             it('it returns the expected amount of protocol fees', async () => {
               const athRateProduct = await pool.getATHRateProduct();
 
-              const currentSupply = fp(random(0, 5));
+              const currentSupply = fp(randomFloat(1, 5));
               const protocolFees = await pool.callStatic.getYieldProtocolFee(normalizedWeights, currentSupply);
 
               const rateProductGrowth = calculateInvariant(rates, normalizedWeights).mul(fp(1)).div(athRateProduct);
