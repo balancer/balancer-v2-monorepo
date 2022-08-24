@@ -769,7 +769,6 @@
       }
     }
   },
-
   "20220822-mainnet-gauge-factory-v2": {
     "LiquidityGaugeV5": {
       "useAdaptor": true,
@@ -793,6 +792,8 @@
         "user_checkpoint(address)": "0x3aaa120451be1d03b5f871d8f553636453af4ac4fed808c66c169c212b199436",
         "withdraw(uint256)": "0xec9d6185ed79aed8edc19bc6fc25ca544504ab0970d25b191e5279100224502a",
         "withdraw(uint256,bool)": "0xb69fa1eb7b5ac6d9f3d5b8707460dc80b1f871eb64473f46b1aaaed1002aec60"
+      }
+    }
   },
   "20220823-optimism-root-gauge-factory-v2": {
     "OptimismRootGauge": {
