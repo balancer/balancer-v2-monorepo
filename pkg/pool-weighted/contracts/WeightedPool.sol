@@ -230,7 +230,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     }
 
     function _afterJoinExit(
-        bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -238,7 +237,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 postJoinExitSupply
     ) internal virtual override {
         (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = _getJoinExitProtocolFees(
-            isJoin,
             preBalances,
             balanceDeltas,
             normalizedWeights,
