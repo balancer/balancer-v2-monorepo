@@ -49,7 +49,7 @@ export default {
       vault,
       tokens,
       weights,
-      rateProviders,
+      TypesConverter.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       poolType,
