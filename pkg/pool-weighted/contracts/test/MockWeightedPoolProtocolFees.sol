@@ -49,7 +49,35 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     }
 
     function beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights) external {
-        super._beforeJoinExit(preBalances, normalizedWeights);
+        uint256 protocolFeesToBeMinted = super._getSwapProtocolFees(preBalances, normalizedWeights, totalSupply());
+
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
+    }
+
+    function afterJoinExit(
+        bool isJoin,
+        uint256[] memory preBalances,
+        uint256[] memory balanceDeltas,
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) external {
+        (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = super._getJoinExitProtocolFees(
+            isJoin,
+            preBalances,
+            balanceDeltas,
+            normalizedWeights,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
+
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
+
+        super._updatePostJoinExit(postJoinExitInvariant);
     }
 
     function getSwapProtocolFees(
