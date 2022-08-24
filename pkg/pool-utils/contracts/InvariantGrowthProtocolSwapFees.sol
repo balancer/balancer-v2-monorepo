@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 library InvariantGrowthProtocolSwapFees {
     using FixedPoint for uint256;
@@ -86,6 +87,10 @@ library InvariantGrowthProtocolSwapFees {
         // `protocol percentage = to mint / (current supply + to mint)`.
         // Solving for `to mint`, we arrive at:
         // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
-        return currentSupply.mulDown(protocolOwnershipPercentage).divDown(protocolOwnershipPercentage.complement());
+        return
+            Math.divDown(
+                Math.mul(currentSupply, protocolOwnershipPercentage),
+                protocolOwnershipPercentage.complement()
+            );
     }
 }
