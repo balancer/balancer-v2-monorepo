@@ -72,17 +72,17 @@ describe('GaugeRelativeWeightCap', () => {
     beforeEach('use liquidity gauge factory', () => {
       factory = liquidityGaugeFactory;
     });
-    testRelativeWeightCapForGauge('LiquidityGaugeV5', 'GaugeCreated');
+    testRelativeWeightCapForGauge('LiquidityGaugeV5');
   });
 
   describe('StakelessGauge', () => {
     beforeEach('use stakeless gauge factory', () => {
       factory = stakelessGaugeFactory;
     });
-    testRelativeWeightCapForGauge('SingleRecipientGauge', 'SingleRecipientGaugeCreated');
+    testRelativeWeightCapForGauge('SingleRecipientGauge');
   });
 
-  function testRelativeWeightCapForGauge(contractName: string, creationEventName: string) {
+  function testRelativeWeightCapForGauge(contractName: string) {
     let gauge: Contract;
     async function setCap(relativeWeightCap: BigNumber): Promise<ContractTransaction> {
       const calldata = gauge.interface.encodeFunctionData('setRelativeWeightCap', [relativeWeightCap]);
@@ -107,10 +107,7 @@ describe('GaugeRelativeWeightCap', () => {
         });
 
         it('sets the initial cap value', async () => {
-          const gauge = await deployedAt(
-            contractName,
-            await deployGauge(factory, token.address, creationEventName, initialCap)
-          );
+          const gauge = await deployedAt(contractName, await deployGauge(factory, token.address, initialCap));
           expect(await gauge.getRelativeWeightCap()).to.be.eq(initialCap);
         });
       });
@@ -130,7 +127,7 @@ describe('GaugeRelativeWeightCap', () => {
       }
 
       sharedBeforeEach('deploy gauge', async () => {
-        gauge = await deployedAt(contractName, await deployGauge(factory, token.address, creationEventName));
+        gauge = await deployedAt(contractName, await deployGauge(factory, token.address));
       });
 
       context('when the caller is not authorized', () => {
@@ -166,7 +163,7 @@ describe('GaugeRelativeWeightCap', () => {
       const anyTimestamp = bn(1234);
 
       sharedBeforeEach('deploy gauge', async () => {
-        gauge = await deployedAt(contractName, await deployGauge(factory, token.address, creationEventName));
+        gauge = await deployedAt(contractName, await deployGauge(factory, token.address));
       });
 
       context('when the gauge is not added to the gauge controller', () => {
@@ -219,11 +216,10 @@ describe('GaugeRelativeWeightCap', () => {
   async function deployGauge(
     gaugeFactory: Contract,
     poolAddress: string,
-    eventName: string,
     relativeWeightCap: BigNumber = defaultRelativeWeightCap
   ): Promise<string> {
     const tx = await gaugeFactory.create(poolAddress, relativeWeightCap);
-    const event = expectEvent.inReceipt(await tx.wait(), eventName);
+    const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
 
     return event.args.gauge;
   }
