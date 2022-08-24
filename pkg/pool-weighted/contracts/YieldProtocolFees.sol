@@ -66,7 +66,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
      */
     function getRateProviders() external view returns (IRateProvider[] memory) {
         uint256 totalTokens = _getTotalTokens();
-        providers = new IRateProvider[](totalTokens);
+        IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
         // prettier-ignore
         {
