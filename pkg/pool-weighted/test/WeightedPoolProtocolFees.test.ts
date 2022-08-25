@@ -67,7 +67,7 @@ describe('WeightedPoolProtocolFees', () => {
       );
   });
 
-  for (let numTokens = 2; numTokens <= 2; numTokens++) { //asdf
+  for (let numTokens = 2; numTokens <= MAX_TOKENS; numTokens++) {
     context(`for a ${numTokens} token pool`, () => {
       itBehavesAsWeightedPoolProtocolFees(numTokens);
     });
@@ -247,13 +247,7 @@ describe('WeightedPoolProtocolFees', () => {
 
           function itDoesNotPayAnyProtocolFees() {
             it('mints no (or negligible) BPT', async () => {
-              const tx = await pool.afterJoinExit(
-                preBalances,
-                balanceDeltas,
-                poolWeights,
-                preSupply,
-                currentSupply
-              );
+              const tx = await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
               // If the protocol swap fee percentage is non-zero, we can't quite guarantee that there'll be zero
               // protocol fees since there's some rounding error in the computation of the currentInvariant the Pool
@@ -295,13 +289,7 @@ describe('WeightedPoolProtocolFees', () => {
             });
 
             it('mints BPT to the protocol fee collector', async () => {
-              const tx = await pool.afterJoinExit(
-                preBalances,
-                balanceDeltas,
-                poolWeights,
-                preSupply,
-                currentSupply
-              );
+              const tx = await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
               const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
                 from: ZERO_ADDRESS,
@@ -314,9 +302,10 @@ describe('WeightedPoolProtocolFees', () => {
 
           function itUpdatesThePostJoinExitState() {
             it('stores the current invariant', async () => {
-              const currentBalances = currentSupply >= preSupply
-                ? arrayAdd(preBalances, balanceDeltas)
-                : arraySub(preBalances, balanceDeltas);
+              const currentBalances =
+                currentSupply >= preSupply
+                  ? arrayAdd(preBalances, balanceDeltas)
+                  : arraySub(preBalances, balanceDeltas);
 
               await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
