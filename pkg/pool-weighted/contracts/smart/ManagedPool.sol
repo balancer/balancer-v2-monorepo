@@ -1321,15 +1321,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // which can be rearranged into:
         //
         // toMint = supply * f / (1 - f)
-        uint256 annualizedFee = totalSupply.mulDown(managementAumFeePercentage).divDown(
+        uint256 annualizedFee = Math.divDown(
+            Math.mul(totalSupply, managementAumFeePercentage),
             managementAumFeePercentage.complement()
         );
 
         // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
         // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
         uint256 elapsedTime = currentTime - lastCollection;
-        uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
-        uint256 bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
+        uint256 bptAmount = Math.divDown(Math.mul(annualizedFee, elapsedTime), 365 days);
 
         // Compute the protocol's share of the AUM fee
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
