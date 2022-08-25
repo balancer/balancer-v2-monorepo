@@ -71,6 +71,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal view returns (uint256, uint256) {
+        // We calculate `preJoinExitInvariant` now before we mutate `preBalances` into the post joinExit balances.
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         bool isJoin = postJoinExitSupply >= preJoinExitSupply;
 
