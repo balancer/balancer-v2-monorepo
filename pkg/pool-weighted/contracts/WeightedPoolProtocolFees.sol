@@ -64,23 +64,43 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             );
     }
 
-    function _afterJoinExit(
-        bool isJoin,
+    function _getJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
-    ) internal virtual override {
-        // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
-        // in the next one.
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) internal view returns (uint256, uint256) {
+        bool isJoin = postJoinExitSupply >= preJoinExitSupply;
 
-        // Compute the post balances by adding or removing the deltas. Note that we're allowed to mutate preBalances.
+        // Compute the post balances by adding or removing the deltas.
         for (uint256 i = 0; i < preBalances.length; ++i) {
             preBalances[i] = isJoin
                 ? SafeMath.add(preBalances[i], balanceDeltas[i])
                 : SafeMath.sub(preBalances[i], balanceDeltas[i]);
         }
 
+        // preBalances have now been mutated to reflect the postJoinExit balances.
         uint256 postJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
+        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+
+        // We return immediately if the fee percentage is zero to avoid unnecessary computation.
+        if (protocolSwapFeePercentage == 0) return (0, postJoinExitInvariant);
+
+        uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
+        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            postJoinExitInvariant.divDown(preJoinExitInvariant),
+            preJoinExitSupply,
+            postJoinExitSupply,
+            protocolSwapFeePercentage
+        );
+
+        return (protocolFeeAmount, postJoinExitInvariant);
+    }
+
+    function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual override {
+        // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
+        // in the next one.
         _lastPostJoinExitInvariant = postJoinExitInvariant;
     }
 }
