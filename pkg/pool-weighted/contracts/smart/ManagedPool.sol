@@ -1285,7 +1285,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees() internal returns (uint256 bptAmount) {
+    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         uint256 currentTime = block.timestamp;
 
