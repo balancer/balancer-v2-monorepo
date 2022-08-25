@@ -28,6 +28,10 @@ contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
         _cacheTokenRateIfNecessary(index);
     }
 
+    function isOwnerOnlyAction(bytes32 actionId) external view returns (bool) {
+        return _isOwnerOnlyAction(actionId);
+    }
+
     function _updateTokenRateCache(
         uint256 index,
         IRateProvider provider,
