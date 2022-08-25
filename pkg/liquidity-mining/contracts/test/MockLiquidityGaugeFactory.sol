@@ -15,42 +15,20 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGaugeFactory.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
 
+import "../gauges/BaseGaugeFactory.sol";
 import "./MockLiquidityGauge.sol";
 
-contract MockLiquidityGaugeFactory is ILiquidityGaugeFactory {
-    mapping(address => bool) private _isGaugeFromFactory;
-    mapping(address => address) private _poolGauge;
-
-    event GaugeCreated(address indexed gauge, address indexed pool);
-
-    /**
-     * @notice Returns the address of the gauge belonging to `pool`.
-     */
-    function getPoolGauge(address pool) external view returns (ILiquidityGauge) {
-        return ILiquidityGauge(_poolGauge[pool]);
+contract MockLiquidityGaugeFactory is BaseGaugeFactory {
+    constructor(MockLiquidityGauge gaugeImplementation) BaseGaugeFactory(gaugeImplementation) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
-    /**
-     * @notice Returns true if `gauge` was created by this factory.
-     */
-    function isGaugeFromFactory(address gauge) external view override returns (bool) {
-        return _isGaugeFromFactory[gauge];
-    }
+    function create(address pool, uint256 relativeWeightCap) external override returns (address) {
+        address gauge = _create();
 
-    function create(address pool) external returns (address) {
-        require(_poolGauge[pool] == address(0), "Gauge already exists");
-
-        address gauge = address(new MockLiquidityGauge(pool));
-
-        _isGaugeFromFactory[gauge] = true;
-        _poolGauge[pool] = gauge;
-        emit GaugeCreated(gauge, pool);
+        MockLiquidityGauge(gauge).initialize(pool, relativeWeightCap);
 
         return gauge;
     }
