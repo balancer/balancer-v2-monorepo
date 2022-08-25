@@ -21,7 +21,9 @@ contract MockLiquidityGauge is ILiquidityGauge {
     // solhint-disable-next-line var-name-mixedcase
     address public lp_token;
 
-    constructor() {}
+    constructor() {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function initialize(address pool, uint256) external {
         lp_token = pool;
@@ -29,6 +31,7 @@ contract MockLiquidityGauge is ILiquidityGauge {
 
     // Methods below are not implemented; they are present just to comply with ILiquidityGauge.
     // State mutability was set to "pure" to avoid compiler warnings.
+    // solhint-disable func-name-mixedcase
 
     function integrate_fraction(address) external pure override returns (uint256) {
         revert("Mock method; not implemented");

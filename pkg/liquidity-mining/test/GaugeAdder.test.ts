@@ -21,6 +21,7 @@ enum GaugeType {
 describe('GaugeAdder', () => {
   let vault: Vault;
   let gaugeController: Contract;
+  let gaugeImplementation: Contract;
   let gaugeFactory: Contract;
   let adaptor: Contract;
   let gaugeAdder: Contract;
@@ -37,7 +38,8 @@ describe('GaugeAdder', () => {
     adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
-    gaugeFactory = await deploy('MockLiquidityGaugeFactory');
+    gaugeImplementation = await deploy('MockLiquidityGauge');
+    gaugeFactory = await deploy('MockLiquidityGaugeFactory', { args: [gaugeImplementation.address] });
     gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, ZERO_ADDRESS] });
 
     await gaugeController.add_type('LiquidityMiningCommittee', 0);
@@ -176,7 +178,9 @@ describe('GaugeAdder', () => {
             await gaugeAdder.connect(admin).addGaugeFactory(gaugeFactory.address, GaugeType.Ethereum);
             await gaugeAdder.connect(admin).addEthereumGauge(gauge);
 
-            const duplicateGaugeFactory = await deploy('MockLiquidityGaugeFactory');
+            const duplicateGaugeFactory = await deploy('MockLiquidityGaugeFactory', {
+              args: [gaugeImplementation.address],
+            });
             duplicateGauge = await deployGauge(duplicateGaugeFactory, ANY_ADDRESS);
           });
 
