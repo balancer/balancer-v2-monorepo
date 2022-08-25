@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../YieldProtocolFees.sol";
+import "../WeightedPoolProtocolFees.sol";
 
-contract MockYieldProtocolFees is YieldProtocolFees {
+contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     uint256 private immutable _totalTokens;
 
     constructor(
@@ -46,7 +46,7 @@ contract MockYieldProtocolFees is YieldProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
-        YieldProtocolFees(tokens.length, rateProviders)
+        WeightedPoolProtocolFees(tokens.length, rateProviders)
     {
         _totalTokens = tokens.length;
     }

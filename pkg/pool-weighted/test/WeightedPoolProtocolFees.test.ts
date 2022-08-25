@@ -14,7 +14,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 
 const randomFloat = (min: number, max: number) => random(min, max, true);
 
-describe('YieldProtocolFees', () => {
+describe('WeightedPoolProtocolFees', () => {
   let vault: Vault;
   let pool: Contract;
   let rateProviders: (Contract | string)[];
@@ -44,7 +44,7 @@ describe('YieldProtocolFees', () => {
       rateProviders = await tokens.asyncMap(async () => ZERO_ADDRESS);
     }
 
-    pool = await deploy('MockYieldProtocolFees', {
+    pool = await deploy('MockWeightedPoolProtocolFees', {
       args: [
         vault.address,
         vault.protocolFeesProvider.address,
