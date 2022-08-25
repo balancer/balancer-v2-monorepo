@@ -89,8 +89,6 @@ describe('WeightedPoolProtocolFees', () => {
       let currentSupply: BigNumber;
       let expectedProtocolOwnershipPercentage: BigNumber;
 
-      let isJoin: boolean;
-
       sharedBeforeEach('deploy tokens', async () => {
         tokens = await TokenList.create(numberOfTokens, { sorted: true });
       });
@@ -207,8 +205,6 @@ describe('WeightedPoolProtocolFees', () => {
               } else {
                 currentSupply = preSupply.mul(fp(1).sub(ratio)).div(fp(1));
               }
-
-              isJoin = op == Operation.JOIN;
             });
           }
 
@@ -246,15 +242,12 @@ describe('WeightedPoolProtocolFees', () => {
 
               const poolFeePercentage = deltaSum.mul(fp(1)).div(currSum);
               expectedProtocolOwnershipPercentage = poolFeePercentage.mul(swapFee).div(fp(1));
-
-              isJoin = op == Operation.JOIN;
             });
           }
 
           function itDoesNotPayAnyProtocolFees() {
             it('mints no (or negligible) BPT', async () => {
               const tx = await pool.afterJoinExit(
-                isJoin,
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -303,7 +296,6 @@ describe('WeightedPoolProtocolFees', () => {
 
             it('mints BPT to the protocol fee collector', async () => {
               const tx = await pool.afterJoinExit(
-                isJoin,
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -322,10 +314,10 @@ describe('WeightedPoolProtocolFees', () => {
 
           function itUpdatesThePostJoinExitState() {
             it('stores the current invariant', async () => {
-              await pool.afterJoinExit(isJoin, preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
+              await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
               const lastPostJoinExitInvariant = await pool.getLastInvariant();
-              const currentBalances = isJoin
+              const currentBalances = currentSupply >= preSupply
                 ? arrayAdd(preBalances, balanceDeltas)
                 : arraySub(preBalances, balanceDeltas);
 
