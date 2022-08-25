@@ -820,8 +820,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
         // To prevent this, we perform a collection before updating the fee percentage.
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
-        if (totalSupply() > 0) {
-            amount = _collectAumManagementFees();
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        if (supplyBeforeFeeCollection > 0) {
+            amount = _collectAumManagementFees(supplyBeforeFeeCollection);
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -847,9 +848,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        if (totalSupply() == 0) _revert(Errors.UNINITIALIZED);
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        return _collectAumManagementFees();
+        return _collectAumManagementFees(supplyBeforeFeeCollection);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -1278,7 +1280,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         uint256 supplyBeforeFeeCollection = totalSupply();
-        return supplyBeforeFeeCollection + _collectAumManagementFees();
+        return supplyBeforeFeeCollection + _collectAumManagementFees(supplyBeforeFeeCollection);
     }
 
     /**
@@ -1319,7 +1321,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // which can be rearranged into:
         //
         // toMint = supply * f / (1 - f)
-        uint256 annualizedFee = totalSupply().mulDown(managementAumFeePercentage).divDown(
+        uint256 annualizedFee = totalSupply.mulDown(managementAumFeePercentage).divDown(
             managementAumFeePercentage.complement()
         );
 
