@@ -155,7 +155,7 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
         // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
         // been recovered.
         if (rateProduct > athRateProduct) {
-            // Yield manifests in the Pool by individual tokens becoming more valueable, we convert this into comparable
+            // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
             // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
             //
             // non-yield-bearing balance = rate * yield-bearing balance
