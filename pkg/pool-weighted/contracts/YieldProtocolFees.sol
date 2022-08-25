@@ -154,40 +154,39 @@ abstract contract YieldProtocolFees is BaseWeightedPool, ProtocolFeeCache {
         // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
         // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
         // been recovered.
-        if (rateProduct > athRateProduct) {
-            // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
-            // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
-            //
-            // non-yield-bearing balance = rate * yield-bearing balance
-            //                       x'i = ri * xi
-            //
-            // To measure the amount of fees to pay due to yield, we take advantage of the fact that scaling the
-            // Pool's balances results in a scaling factor being applied to the original invariant.
-            //
-            // I(r1 * x1, r2 * x2) = (r1 * x1)^w1 * (r2 * x2)^w2
-            //                     = (r1)^w1 * (r2)^w2 * (x1)^w1 * (x2)^w2
-            //                     = I(r1, r2) * I(x1, x2)
-            //
-            // We then only need to measure the growth of this scaling factor to measure how the value of the BPT token
-            // increases due to yield; we can ignore the invariant calculated from the Pool's balances as these cancel.
-            // We then have the result:
-            //
-            // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old)
-            //
-            // We then replace the stored value of I(r1_old, r2_old) with I(r1_new, r2_new) to ensure we only collect
-            // fees on yield once.
-            _athRateProduct = rateProduct;
+        if (rateProduct <= athRateProduct) return 0;
 
-            // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
-            // supply has not changed.
-            return
-                InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
-                    rateProduct.divDown(athRateProduct),
-                    preJoinExitSupply,
-                    preJoinExitSupply,
-                    getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
-                );
-        }
-        return 0;
+        // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
+        // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
+        //
+        // non-yield-bearing balance = rate * yield-bearing balance
+        //                       x'i = ri * xi
+        //
+        // To measure the amount of fees to pay due to yield, we take advantage of the fact that scaling the
+        // Pool's balances results in a scaling factor being applied to the original invariant.
+        //
+        // I(r1 * x1, r2 * x2) = (r1 * x1)^w1 * (r2 * x2)^w2
+        //                     = (r1)^w1 * (r2)^w2 * (x1)^w1 * (x2)^w2
+        //                     = I(r1, r2) * I(x1, x2)
+        //
+        // We then only need to measure the growth of this scaling factor to measure how the value of the BPT token
+        // increases due to yield; we can ignore the invariant calculated from the Pool's balances as these cancel.
+        // We then have the result:
+        //
+        // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old)
+        //
+        // We then replace the stored value of I(r1_old, r2_old) with I(r1_new, r2_new) to ensure we only collect
+        // fees on yield once.
+        _athRateProduct = rateProduct;
+
+        // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
+        // supply has not changed.
+        return
+            InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+                rateProduct.divDown(athRateProduct),
+                preJoinExitSupply,
+                preJoinExitSupply,
+                getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
+            );
     }
 }
