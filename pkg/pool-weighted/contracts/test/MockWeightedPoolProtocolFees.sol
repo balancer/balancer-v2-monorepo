@@ -49,7 +49,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     }
 
     function beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights) external {
-        uint256 protocolFeesToBeMinted = super._getSwapProtocolFees(preBalances, normalizedWeights, totalSupply());
+        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(preBalances, normalizedWeights, totalSupply());
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
@@ -63,7 +63,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) external {
-        (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = super._getJoinExitProtocolFees(
+        (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = _getJoinExitProtocolFees(
             preBalances,
             balanceDeltas,
             normalizedWeights,
@@ -75,7 +75,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             _payProtocolFees(protocolFeesToBeMinted);
         }
 
-        super._updatePostJoinExit(postJoinExitInvariant);
+        _updatePostJoinExit(postJoinExitInvariant);
     }
 
     function getSwapProtocolFees(
@@ -83,7 +83,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply
     ) external view returns (uint256) {
-        return super._getSwapProtocolFees(preBalances, normalizedWeights, preJoinExitSupply);
+        return _getSwapProtocolFees(preBalances, normalizedWeights, preJoinExitSupply);
     }
 
     function getJoinExitProtocolFees(
@@ -94,7 +94,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256 postJoinExitSupply
     ) external view returns (uint256, uint256) {
         return
-            super._getJoinExitProtocolFees(
+            _getJoinExitProtocolFees(
                 preBalances,
                 balanceDeltas,
                 normalizedWeights,
@@ -104,7 +104,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     }
 
     function updatePostJoinExit(uint256 postJoinExitInvariant) external {
-        super._updatePostJoinExit(postJoinExitInvariant);
+        _updatePostJoinExit(postJoinExitInvariant);
     }
 
     // Stubbed functions

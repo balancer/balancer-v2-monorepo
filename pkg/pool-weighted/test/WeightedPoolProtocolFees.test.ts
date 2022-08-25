@@ -67,7 +67,7 @@ describe('WeightedPoolProtocolFees', () => {
       );
   });
 
-  for (let numTokens = 2; numTokens <= MAX_TOKENS; numTokens++) {
+  for (let numTokens = 2; numTokens <= 2; numTokens++) { //asdf
     context(`for a ${numTokens} token pool`, () => {
       itBehavesAsWeightedPoolProtocolFees(numTokens);
     });
@@ -314,12 +314,13 @@ describe('WeightedPoolProtocolFees', () => {
 
           function itUpdatesThePostJoinExitState() {
             it('stores the current invariant', async () => {
-              await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
-
-              const lastPostJoinExitInvariant = await pool.getLastInvariant();
               const currentBalances = currentSupply >= preSupply
                 ? arrayAdd(preBalances, balanceDeltas)
                 : arraySub(preBalances, balanceDeltas);
+
+              await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
+
+              const lastPostJoinExitInvariant = await pool.getLastInvariant();
 
               expect(lastPostJoinExitInvariant).to.almostEqual(
                 await math.invariant(poolWeights, currentBalances),
