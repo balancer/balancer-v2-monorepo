@@ -136,7 +136,11 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
      * behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights) internal virtual {
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+        internal
+        virtual
+        returns (uint256 preJoinExitSupply)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -207,9 +211,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoinExit(balances, normalizedWeights);
+        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
-        uint256 preJoinExitSupply = totalSupply();
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
             balances,
@@ -329,9 +332,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        _beforeJoinExit(balances, normalizedWeights);
+        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
-        uint256 preJoinExitSupply = totalSupply();
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
             balances,
