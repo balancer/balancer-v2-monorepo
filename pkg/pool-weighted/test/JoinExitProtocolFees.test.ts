@@ -93,7 +93,8 @@ describe('JoinExitProtocolFees', () => {
             'Test WP',
             'TWP',
             tokens.addresses,
-            Array(tokens.length).fill(ZERO_ADDRESS), // asset managers
+            tokens.map(() => ZERO_ADDRESS), // rate providers
+            tokens.map(() => ZERO_ADDRESS), // asset managers
             POOL_SWAP_FEE_PERCENTAGE,
             MONTH * 3, // pause window
             MONTH, // buffer period
