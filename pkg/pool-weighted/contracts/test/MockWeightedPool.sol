@@ -15,21 +15,21 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Clones.sol";
+import "../WeightedPool.sol";
 
-import "../gauges/BaseGaugeFactory.sol";
-import "./MockLiquidityGauge.sol";
-
-contract MockLiquidityGaugeFactory is BaseGaugeFactory {
-    constructor(MockLiquidityGauge gaugeImplementation) BaseGaugeFactory(gaugeImplementation) {
+contract MockWeightedPool is WeightedPool {
+    constructor(
+        NewPoolParams memory params,
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration,
+        address owner
+    ) WeightedPool(params, vault, protocolFeeProvider, pauseWindowDuration, bufferPeriodDuration, owner) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function create(address pool, uint256 relativeWeightCap) external override returns (address) {
-        address gauge = _create();
-
-        MockLiquidityGauge(gauge).initialize(pool, relativeWeightCap);
-
-        return gauge;
+    function isOwnerOnlyAction(bytes32 actionId) external view returns (bool) {
+        return _isOwnerOnlyAction(actionId);
     }
 }
