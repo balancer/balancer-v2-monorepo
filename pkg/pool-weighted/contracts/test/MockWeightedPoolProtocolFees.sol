@@ -43,6 +43,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        WeightedPoolProtocolFees(0, new IRateProvider[](0))
     {
         // solhint-disable-previous-line no-empty-blocks
     }
