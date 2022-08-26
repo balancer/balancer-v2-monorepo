@@ -11,6 +11,7 @@ import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 import { anyAddressArray } from '@balancer-labs/v2-helpers/src/address';
 
 import { GaugeType } from './GaugeAdder.test';
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('L2GaugeCheckpointer', () => {
   let vault: Vault;
@@ -49,10 +50,14 @@ describe('L2GaugeCheckpointer', () => {
     // Allow all gauge types in the controller.
     await Promise.all(GAUGE_TYPES.concat(UNSUPPORTED_GAUGE_TYPES).map(() => gaugeController.add_type('0x', 0)));
 
+    const gaugeImplementation = await deploy('MockLiquidityGauge');
     // Gauge factories creation: one per gauge type.
     const gaugeFactories = await Promise.all(
       GAUGE_TYPES.map(async (gaugeType) => {
-        return { type: gaugeType, contract: await deploy('MockLiquidityGaugeFactory') };
+        return {
+          type: gaugeType,
+          contract: await deploy('MockLiquidityGaugeFactory', { args: [gaugeImplementation.address] }),
+        };
       })
     );
 
@@ -300,7 +305,7 @@ describe('L2GaugeCheckpointer', () => {
    * @returns A promise with the array of addresses corresponding to the created gauges.
    */
   async function createGauges(factory: Contract, seed: number, amount: number): Promise<string[]> {
-    const txArray = await Promise.all(anyAddressArray(seed, amount).map((address) => factory.create(address)));
+    const txArray = await Promise.all(anyAddressArray(seed, amount).map((address) => factory.create(address, fp(1)))); // No weight cap.
     const receipts = await Promise.all(txArray.map((tx) => tx.wait()));
     return receipts.map((receipt) => expectEvent.inReceipt(receipt, 'GaugeCreated').args.gauge);
   }
