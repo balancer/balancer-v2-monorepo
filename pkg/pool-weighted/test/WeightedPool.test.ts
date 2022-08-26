@@ -72,6 +72,7 @@ describe('WeightedPool', function () {
             symbol: '',
             tokens: allTokens.subset(2).addresses,
             normalizedWeights: [fp(0.5), fp(0.5)],
+            rateProviders: new Array(2).fill(ZERO_ADDRESS),
             assetManagers: new Array(2).fill(ZERO_ADDRESS),
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
           },
