@@ -39,7 +39,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     // All-time high value of the weighted product of the pool's token rates. Comparing such weighted products across
     // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
     // but that growth is captured in the invariant; rate growth is not.
-    uint256 internal _athRateProduct;
+    uint256 private _athRateProduct;
 
     // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
     // immutable, the invariant only changes due to accumulated swap fees, which saves gas by freeing the Pool
@@ -103,6 +103,10 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
                 preJoinExitSupply,
                 protocolSwapFeePercentage
             );
+    }
+
+    function getATHRateProduct() external view returns (uint256) {
+        return _athRateProduct;
     }
 
     /**
