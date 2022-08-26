@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { random, range } from 'lodash';
 
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
@@ -15,6 +15,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('ComposableStablePool', () => {
   let lp: SignerWithAddress,
@@ -1745,6 +1746,54 @@ describe('ComposableStablePool', () => {
             itAllowsBothLpsToExit();
           });
         });
+      });
+    });
+
+    describe('permissioned actions', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+      });
+
+      function itIsOwnerOnly(method: string) {
+        it(`${method} can only be called by non-delegated owners`, async () => {
+          expect(await pool.instance.isOwnerOnlyAction(await actionId(pool.instance, method))).to.be.true;
+        });
+      }
+
+      function itIsNotOwnerOnly(method: string) {
+        it(`${method} can never be called by the owner`, async () => {
+          expect(await pool.instance.isOwnerOnlyAction(await actionId(pool.instance, method))).to.be.false;
+        });
+      }
+
+      const poolArtifact = getArtifact('v2-pool-stable/MockComposableStablePool');
+      const nonViewFunctions = poolArtifact.abi
+        .filter(
+          (elem) =>
+            elem.type === 'function' && (elem.stateMutability === 'payable' || elem.stateMutability === 'nonpayable')
+        )
+        .map((fn) => fn.name);
+
+      const expectedOwnerOnlyFunctions = [
+        'setSwapFeePercentage',
+        'setAssetManagerPoolConfig',
+        'startAmplificationParameterUpdate',
+        'stopAmplificationParameterUpdate',
+        'setTokenRateCacheDuration',
+      ];
+
+      const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));
+
+      describe('owner only actions', () => {
+        for (const expectedOwnerOnlyFunction of expectedOwnerOnlyFunctions) {
+          itIsOwnerOnly(expectedOwnerOnlyFunction);
+        }
+      });
+
+      describe('non owner only actions', () => {
+        for (const expectedNotOwnerOnlyFunction of expectedNotOwnerOnlyFunctions) {
+          itIsNotOwnerOnly(expectedNotOwnerOnlyFunction);
+        }
       });
     });
   }

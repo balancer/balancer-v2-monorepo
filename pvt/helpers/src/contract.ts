@@ -28,7 +28,7 @@ export async function deploy(
   if (!args) args = [];
   if (!from) from = (await ethers.getSigners())[0];
 
-  const artifact = await getArtifact(contract);
+  const artifact = getArtifact(contract);
   if (libraries !== undefined) artifact.bytecode = linkBytecode(artifact, libraries);
 
   const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, from);
@@ -40,11 +40,11 @@ export async function deploy(
 // Creates a contract object for a contract deployed at a known address. The `contract` argument follows the same rules
 // as in `deploy`.
 export async function deployedAt(contract: string, address: string): Promise<Contract> {
-  const artifact = await getArtifact(contract);
+  const artifact = getArtifact(contract);
   return ethers.getContractAt(artifact.abi, address);
 }
 
-export async function getArtifact(contract: string): Promise<Artifact> {
+export function getArtifact(contract: string): Artifact {
   let artifactsPath: string;
   if (!contract.includes('/')) {
     artifactsPath = path.resolve('./artifacts');
@@ -55,7 +55,7 @@ export async function getArtifact(contract: string): Promise<Artifact> {
   }
 
   const artifacts = new Artifacts(artifactsPath);
-  return artifacts.readArtifact(contract.split('/').slice(-1)[0]);
+  return artifacts.readArtifactSync(contract.split('/').slice(-1)[0]);
 }
 
 // From https://github.com/nomiclabs/hardhat/issues/611#issuecomment-638891597, temporary workaround until
