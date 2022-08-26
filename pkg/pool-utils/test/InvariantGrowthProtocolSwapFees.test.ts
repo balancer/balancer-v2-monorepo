@@ -5,7 +5,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateInvariant,
-  calculateBPTSwapFeeFeeAmount,
+  calculateBPTSwapFeeAmount,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { expect } from 'chai';
 
@@ -53,14 +53,14 @@ describe('InvariantGrowthProtocolSwapFees', function () {
 
       // The TS helper outputs the same value
 
-      const expectedToMint = calculateBPTSwapFeeFeeAmount(
+      const expectedToMint = calculateBPTSwapFeeAmount(
+        currentInvariant.mul(fp(1)).div(lastInvariant),
         totalSupply,
-        lastInvariant,
-        currentInvariant,
+        totalSupply,
         protocolSwapFeePercentage
       );
 
-      expectEqualWithError(toMint, fp(expectedToMint), MAX_RELATIVE_ERROR);
+      expectEqualWithError(toMint, expectedToMint, MAX_RELATIVE_ERROR);
     });
   });
 

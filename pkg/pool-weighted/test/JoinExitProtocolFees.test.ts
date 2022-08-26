@@ -2,20 +2,11 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
-import {
-  arrayAdd,
-  BigNumberish,
-  bn,
-  bnSum,
-  fp,
-  FP_SCALING_FACTOR,
-  arraySub,
-} from '@balancer-labs/v2-helpers/src/numbers';
+import { arrayAdd, BigNumberish, bn, fp, FP_SCALING_FACTOR, arraySub } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -25,8 +16,9 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { random, range } from 'lodash';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { calculateBPTSwapFeeAmount } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 
-describe('WeightedPoolProtocolFees', () => {
+describe('JoinExitProtocolFees', () => {
   let admin: SignerWithAddress;
   let owner: SignerWithAddress;
   let vault: Vault, feesCollector: Contract, feesProvider: Contract;
@@ -88,7 +80,6 @@ describe('WeightedPoolProtocolFees', () => {
       let postInvariant: BigNumber;
       let preSupply: BigNumber;
       let currentSupply: BigNumber;
-      let expectedProtocolOwnershipPercentage: BigNumber;
 
       sharedBeforeEach('deploy tokens', async () => {
         tokens = await TokenList.create(numberOfTokens, { sorted: true });
@@ -134,7 +125,7 @@ describe('WeightedPoolProtocolFees', () => {
         preSupply = preInvariant.mul(fp(random(1.5, 10))).div(FP_SCALING_FACTOR);
       });
 
-      describe('updateInvariantAfterJoinExit', () => {
+      describe('getJoinExitProtocolFees', () => {
         context('when the protocol swap fee percentage is zero', () => {
           itPaysProtocolFeesOnJoinExitSwaps(bn(0));
         });
@@ -154,41 +145,33 @@ describe('WeightedPoolProtocolFees', () => {
           context('on proportional join', () => {
             prepareProportionalJoinOrExit(Operation.JOIN);
 
-            itDoesNotPayAnyProtocolFees();
-
-            itUpdatesThePostJoinExitState();
+            itReturnsZeroProtocolFees();
           });
 
           context('on proportional exit', () => {
             prepareProportionalJoinOrExit(Operation.EXIT);
 
-            itDoesNotPayAnyProtocolFees();
-
-            itUpdatesThePostJoinExitState();
+            itReturnsZeroProtocolFees();
           });
 
           context('on non-proportional join', () => {
             prepareMultiTokenNonProportionalJoinOrExit(Operation.JOIN);
 
             if (swapFee.eq(0)) {
-              itDoesNotPayAnyProtocolFees();
+              itReturnsZeroProtocolFees();
             } else {
-              itPaysTheExpectedProtocolFees();
+              itReturnsTheExpectedProtocolFees();
             }
-
-            itUpdatesThePostJoinExitState();
           });
 
           context('on non-proportional exit', () => {
             prepareMultiTokenNonProportionalJoinOrExit(Operation.EXIT);
 
             if (swapFee.eq(0)) {
-              itDoesNotPayAnyProtocolFees();
+              itReturnsZeroProtocolFees();
             } else {
-              itPaysTheExpectedProtocolFees();
+              itReturnsTheExpectedProtocolFees();
             }
-
-            itUpdatesThePostJoinExitState();
           });
 
           // This is an exact tokens in/out that happens to be proportional
@@ -241,79 +224,74 @@ describe('WeightedPoolProtocolFees', () => {
               }
 
               postInvariant = await math.invariant(poolWeights, currentBalances);
-
-              // The deltas are pure swap fees: the protocol ownership percentage is their percentage of the entire
-              // Pool, multiplied by the protocol fee percentage.
-              const deltaSum = bnSum(deltas);
-              const currSum = bnSum(currentBalances);
-
-              const poolFeePercentage = deltaSum.mul(fp(1)).div(currSum);
-              expectedProtocolOwnershipPercentage = poolFeePercentage.mul(swapFee).div(fp(1));
             });
           }
 
-          function itDoesNotPayAnyProtocolFees() {
-            it('mints no (or negligible) BPT', async () => {
-              const tx = await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
+          function itReturnsZeroProtocolFees() {
+            it('returns no (or negligible) BPT', async () => {
+              const [protocolFeeAmount] = await pool.getJoinExitProtocolFees(
+                preBalances,
+                balanceDeltas,
+                poolWeights,
+                preSupply,
+                currentSupply
+              );
 
               // If the protocol swap fee percentage is non-zero, we can't quite guarantee that there'll be zero
               // protocol fees since there's some rounding error in the computation of the currentInvariant the Pool
               // will make, which might result in negligible fees.
 
-              // If no tokens were minted, there'll be no transfer event. If some were minted, we check that the
-              // transfer event is for a negligible amount.
-              const receipt = await tx.wait();
-              const minted = receipt.events.length > 0;
+              // The BPT amount to mint is computed as a percentage of the current supply. This is done with precision
+              // of up to 18 decimal places, so any error below that is always considered negligible. We test for
+              // precision of up to 17 decimal places to give some leeway and account for e.g. different rounding
+              // directions, etc.
+              expect(protocolFeeAmount).to.be.lte(currentSupply.div(bn(1e17)));
+            });
 
-              if (!minted) {
-                expectEvent.notEmitted(receipt, 'Transfer');
-              } else {
-                const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
-                  from: ZERO_ADDRESS,
-                  to: feesCollector.address,
-                });
+            it('calculates the postJoin invariant', async () => {
+              const [, postJoinExitInvariant] = await pool.getJoinExitProtocolFees(
+                preBalances,
+                balanceDeltas,
+                poolWeights,
+                preSupply,
+                currentSupply
+              );
 
-                const bptAmount = event.args.value;
-
-                // The BPT amount to mint is computed as a percentage of the current supply. This is done with precision
-                // of up to 18 decimal places, so any error below that is always considered negligible. We test for
-                // precision of up to 17 decimal places to give some leeway and account for e.g. different rounding
-                // directions, etc.
-                expect(bptAmount).to.be.lte(currentSupply.div(bn(1e17)));
-              }
+              expect(postJoinExitInvariant).to.almostEqual(postInvariant);
             });
           }
 
-          function itPaysTheExpectedProtocolFees() {
-            let expectedBptAmount: BigNumber;
+          function itReturnsTheExpectedProtocolFees() {
+            it('returns the expected protocol fees', async () => {
+              const [protocolFeeAmount] = await pool.getJoinExitProtocolFees(
+                preBalances,
+                balanceDeltas,
+                poolWeights,
+                preSupply,
+                currentSupply
+              );
 
-            sharedBeforeEach(async () => {
-              // protocol ownership = to mint / (supply + to mint)
-              // to mint = supply * protocol ownership / (1 - protocol ownership)
-              expectedBptAmount = currentSupply
-                .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+              const invariantGrowthRatio = postInvariant.mul(fp(1)).div(preInvariant);
+              const expectedBptAmount = calculateBPTSwapFeeAmount(
+                invariantGrowthRatio,
+                preSupply,
+                currentSupply,
+                SWAP_PROTOCOL_FEE_PERCENTAGE
+              );
+
+              expect(protocolFeeAmount).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
             });
 
-            it('mints BPT to the protocol fee collector', async () => {
-              const tx = await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
+            it('calculates the postJoin invariant', async () => {
+              const [, postJoinExitInvariant] = await pool.getJoinExitProtocolFees(
+                preBalances,
+                balanceDeltas,
+                poolWeights,
+                preSupply,
+                currentSupply
+              );
 
-              const event = expectEvent.inReceipt(await tx.wait(), 'Transfer', {
-                from: ZERO_ADDRESS,
-                to: feesCollector.address,
-              });
-
-              expect(event.args.value).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
-            });
-          }
-
-          function itUpdatesThePostJoinExitState() {
-            it('stores the current invariant', async () => {
-              await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
-
-              const lastPostJoinExitInvariant = await pool.getLastInvariant();
-
-              expect(lastPostJoinExitInvariant).to.almostEqual(postInvariant, 0.000001);
+              expect(postJoinExitInvariant).to.almostEqual(postInvariant);
             });
           }
         }
