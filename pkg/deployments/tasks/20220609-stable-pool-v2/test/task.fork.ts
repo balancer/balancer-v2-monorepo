@@ -157,7 +157,7 @@ describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
       // explicitly check the last invariant.
 
       const expectedInvariant = calculateInvariant(upscaledUnbalancedBalances, amplificationParameter);
-      const lastInvariant = await pool.getLastPostJoinExitInvariant();
+      const [lastInvariant] = await pool.getLastInvariant();
       expectEqualWithError(lastInvariant, expectedInvariant, 0.001);
     });
   });
