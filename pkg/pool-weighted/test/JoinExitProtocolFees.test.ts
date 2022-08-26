@@ -147,12 +147,16 @@ describe('JoinExitProtocolFees', () => {
             prepareProportionalJoinOrExit(Operation.JOIN);
 
             itReturnsZeroProtocolFees();
+
+            itUpdatesThePostJoinInvariant();
           });
 
           context('on proportional exit', () => {
             prepareProportionalJoinOrExit(Operation.EXIT);
 
             itReturnsZeroProtocolFees();
+
+            itUpdatesThePostJoinInvariant();
           });
 
           context('on non-proportional join', () => {
@@ -163,6 +167,8 @@ describe('JoinExitProtocolFees', () => {
             } else {
               itReturnsTheExpectedProtocolFees();
             }
+
+            itUpdatesThePostJoinInvariant();
           });
 
           context('on non-proportional exit', () => {
@@ -173,6 +179,8 @@ describe('JoinExitProtocolFees', () => {
             } else {
               itReturnsTheExpectedProtocolFees();
             }
+
+            itUpdatesThePostJoinInvariant();
           });
 
           // This is an exact tokens in/out that happens to be proportional
@@ -230,7 +238,7 @@ describe('JoinExitProtocolFees', () => {
 
           function itReturnsZeroProtocolFees() {
             it('returns no (or negligible) BPT', async () => {
-              const [protocolFeeAmount] = await pool.getJoinExitProtocolFees(
+              const protocolFeeAmount = await pool.callStatic.getJoinExitProtocolFees(
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -248,23 +256,11 @@ describe('JoinExitProtocolFees', () => {
               // directions, etc.
               expect(protocolFeeAmount).to.be.lte(currentSupply.div(bn(1e17)));
             });
-
-            it('calculates the postJoin invariant', async () => {
-              const [, postJoinExitInvariant] = await pool.getJoinExitProtocolFees(
-                preBalances,
-                balanceDeltas,
-                poolWeights,
-                preSupply,
-                currentSupply
-              );
-
-              expect(postJoinExitInvariant).to.almostEqual(postInvariant);
-            });
           }
 
           function itReturnsTheExpectedProtocolFees() {
             it('returns the expected protocol fees', async () => {
-              const [protocolFeeAmount] = await pool.getJoinExitProtocolFees(
+              const protocolFeeAmount = await pool.callStatic.getJoinExitProtocolFees(
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -282,17 +278,16 @@ describe('JoinExitProtocolFees', () => {
 
               expect(protocolFeeAmount).to.be.almostEqual(expectedBptAmount, FEE_RELATIVE_ERROR);
             });
+          }
 
-            it('calculates the postJoin invariant', async () => {
-              const [, postJoinExitInvariant] = await pool.getJoinExitProtocolFees(
-                preBalances,
-                balanceDeltas,
-                poolWeights,
-                preSupply,
-                currentSupply
-              );
+          function itUpdatesThePostJoinInvariant() {
+            it('updates the postJoin invariant', async () => {
+              // _lastPostJoinExitInvariant is expected to be uninitialised.
+              expect(await pool.getLastPostJoinExitInvariant()).to.be.eq(0);
 
-              expect(postJoinExitInvariant).to.almostEqual(postInvariant);
+              await pool.getJoinExitProtocolFees(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
+
+              expect(await pool.getLastPostJoinExitInvariant()).to.almostEqual(postInvariant);
             });
           }
         }

@@ -52,7 +52,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
     describe('last post join/exit invariant', () => {
       it('is set on initialization', async () => {
         await pool.init({ initialBalances });
-        expectEqualWithError(await pool.getLastInvariant(), await pool.estimateInvariant());
+        expectEqualWithError(await pool.getLastPostJoinExitInvariant(), await pool.estimateInvariant());
       });
 
       context('once initialized and with accumulated fees', () => {
@@ -79,7 +79,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
               from: lp,
             });
 
-            expectEqualWithError(await pool.getLastInvariant(), await pool.estimateInvariant());
+            expectEqualWithError(await pool.getLastPostJoinExitInvariant(), await pool.estimateInvariant());
           });
         }
 
@@ -92,7 +92,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
               from: lp,
             });
 
-            expectEqualWithError(await pool.getLastInvariant(), await pool.estimateInvariant());
+            expectEqualWithError(await pool.getLastPostJoinExitInvariant(), await pool.estimateInvariant());
           });
         }
       });

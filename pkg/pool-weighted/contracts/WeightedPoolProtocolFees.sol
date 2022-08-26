@@ -39,7 +39,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     // All-time high value of the weighted product of the pool's token rates. Comparing such weighted products across
     // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
     // but that growth is captured in the invariant; rate growth is not.
-    uint256 internal _athRateProduct;
+    uint256 private _athRateProduct;
 
     // This Pool pays protocol fees by measuring the growth of the invariant between joins and exits. Since weights are
     // immutable, the invariant only changes due to accumulated swap fees, which saves gas by freeing the Pool
@@ -71,10 +71,18 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     }
 
     /**
-     * @dev Returns the value of the invariant after the last join or exit operation.
+     * @notice Returns the value of the invariant after the last join or exit operation.
      */
-    function getLastInvariant() public view returns (uint256) {
+    function getLastInvariant() external view returns (uint256) {
         return _lastPostJoinExitInvariant;
+    }
+
+    /**
+     * @notice Returns the all time high value for the weighted product of the Pool's tokens' rates.
+     * @dev Yield protocol fees are only charged when this value is exceeded.
+     */
+    function getATHRateProduct() external view returns (uint256) {
+        return _athRateProduct;
     }
 
     function _getSwapProtocolFees(
@@ -177,6 +185,11 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return rateProduct;
     }
 
+    /**
+     * @dev Returns the amount of BPT to be minted to pay protocol fees on yield accrued by the Pool.
+     * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
+     * proper accounting is performed to prevent charging duplicate protocol fees.
+     */
     function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 preJoinExitSupply)
         internal
         returns (uint256)
@@ -232,13 +245,18 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             );
     }
 
+    /**
+     * @dev Returns the amount of BPT to be minted to pay protocol fees on swap fees accrued during a join/exit.
+     * Note that this isn't a view function. This function automatically updates `_lastPostJoinExitInvariant` to
+     * ensure that proper accounting is performed to prevent charging duplicate protocol fees.
+     */
     function _getJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) internal view returns (uint256, uint256) {
+    ) internal returns (uint256) {
         // We calculate `preJoinExitInvariant` now before we mutate `preBalances` into the post joinExit balances.
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         bool isJoin = postJoinExitSupply >= preJoinExitSupply;
@@ -254,8 +272,9 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         uint256 postJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
 
+        _updatePostJoinExit(postJoinExitInvariant);
         // We return immediately if the fee percentage is zero to avoid unnecessary computation.
-        if (protocolSwapFeePercentage == 0) return (0, postJoinExitInvariant);
+        if (protocolSwapFeePercentage == 0) return 0;
 
         uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
             postJoinExitInvariant.divDown(preJoinExitInvariant),
@@ -264,7 +283,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             protocolSwapFeePercentage
         );
 
-        return (protocolFeeAmount, postJoinExitInvariant);
+        return protocolFeeAmount;
     }
 
     function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual override {

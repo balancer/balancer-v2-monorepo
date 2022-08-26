@@ -111,8 +111,8 @@ export default class WeightedPool extends BasePool {
     return bn(maxIdx);
   }
 
-  async getLastInvariant(): Promise<BigNumber> {
-    return this.instance.getLastInvariant();
+  async getLastPostJoinExitInvariant(): Promise<BigNumber> {
+    return this.instance.getLastPostJoinExitInvariant();
   }
 
   async getMaxInvariantDecrease(): Promise<BigNumber> {
