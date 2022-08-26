@@ -44,7 +44,7 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
       rateProviders = await tokens.asyncMap(async () => ZERO_ADDRESS);
     }
 
-    pool = await deploy('MockWeightedPoolProtocolFees', {
+    pool = await deploy('MockYieldProtocolFees', {
       args: [
         vault.address,
         vault.protocolFeesProvider.address,
