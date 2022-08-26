@@ -224,14 +224,20 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees, YieldProtoc
         internal
         virtual
         override
+        returns (uint256)
     {
-        uint256 preJoinExitSupply = totalSupply();
-        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(preBalances, normalizedWeights, preJoinExitSupply);
-        protocolFeesToBeMinted += _getYieldProtocolFee(normalizedWeights, preJoinExitSupply);
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(
+            preBalances,
+            normalizedWeights,
+            supplyBeforeFeeCollection
+        );
+        protocolFeesToBeMinted += _getYieldProtocolFee(normalizedWeights, supplyBeforeFeeCollection);
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
         }
+        return supplyBeforeFeeCollection.add(protocolFeesToBeMinted);
     }
 
     function _afterJoinExit(
