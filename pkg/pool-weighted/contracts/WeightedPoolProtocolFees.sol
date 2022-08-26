@@ -45,7 +45,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     // immutable, the invariant only changes due to accumulated swap fees, which saves gas by freeing the Pool
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
-    uint256 private _lastPostJoinExitInvariant;
+    uint256 internal _lastPostJoinExitInvariant;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         _require(numTokens <= 8, Errors.MAX_TOKENS);
@@ -238,7 +238,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) internal view returns (uint256, uint256) {
+    ) internal returns (uint256) {
         // We calculate `preJoinExitInvariant` now before we mutate `preBalances` into the post joinExit balances.
         uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         bool isJoin = postJoinExitSupply >= preJoinExitSupply;
@@ -254,8 +254,9 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         uint256 postJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
 
+        _updatePostJoinExit(postJoinExitInvariant);
         // We return immediately if the fee percentage is zero to avoid unnecessary computation.
-        if (protocolSwapFeePercentage == 0) return (0, postJoinExitInvariant);
+        if (protocolSwapFeePercentage == 0) return 0;
 
         uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
             postJoinExitInvariant.divDown(preJoinExitInvariant),
@@ -264,7 +265,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             protocolSwapFeePercentage
         );
 
-        return (protocolFeeAmount, postJoinExitInvariant);
+        return protocolFeeAmount;
     }
 
     function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual override {

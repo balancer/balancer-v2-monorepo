@@ -48,13 +48,17 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function getLastPostJoinExitInvariant() external view returns (uint256) {
+        return _lastPostJoinExitInvariant;
+    }
+
     function getJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) external view returns (uint256, uint256) {
+    ) external returns (uint256) {
         return
             _getJoinExitProtocolFees(
                 preBalances,
