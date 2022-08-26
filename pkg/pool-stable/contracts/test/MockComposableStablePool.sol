@@ -53,4 +53,16 @@ contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
     ) internal virtual override whenNotInFailureMode(FailureMode.INVARIANT) returns (uint256 amountIn) {
         return super._onSwapGivenOut(request, balancesIncludingBpt, indexIn, indexOut);
     }
+
+    function beforeJoinExit(uint256[] memory registeredBalances)
+        external
+        returns (
+            uint256 preJoinExitSupply,
+            uint256[] memory balances,
+            uint256 currentAmp,
+            uint256 preJoinExitInvariant
+        )
+    {
+        return _beforeJoinExit(registeredBalances);
+    }
 }

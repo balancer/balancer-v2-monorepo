@@ -59,16 +59,21 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function payProtocolFeesBeforeJoinExit(uint256[] memory balancesWithBpt)
-        external
-        returns (uint256 virtualSupply, uint256[] memory balances)
-    {
-        return _payProtocolFeesBeforeJoinExit(balancesWithBpt);
+    function payProtocolFeesBeforeJoinExit(
+        uint256[] memory registeredBalances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    ) external returns (uint256 virtualSupply, uint256[] memory balances) {
+        (virtualSupply, balances, ) = _payProtocolFeesBeforeJoinExit(
+            registeredBalances,
+            lastJoinExitAmp,
+            lastPostJoinExitInvariant
+        );
     }
 
     function updateInvariantAfterJoinExit(
         uint256 currentAmp,
-        uint256[] memory balancesWithoutBpt,
+        uint256[] memory balances,
         uint256 preJoinExitInvariant,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
@@ -76,7 +81,7 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         return
             _updateInvariantAfterJoinExit(
                 currentAmp,
-                balancesWithoutBpt,
+                balances,
                 preJoinExitInvariant,
                 preJoinExitSupply,
                 postJoinExitSupply
@@ -103,8 +108,17 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         return _getGrowthInvariants(balances, lastPostJoinExitAmp);
     }
 
-    function getProtocolPoolOwnershipPercentage(uint256[] memory balances) external view returns (uint256) {
-        return _getProtocolPoolOwnershipPercentage(balances);
+    function getProtocolPoolOwnershipPercentage(
+        uint256[] memory balances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    ) external view returns (uint256) {
+        (uint256 percentage, ) = _getProtocolPoolOwnershipPercentage(
+            balances,
+            lastJoinExitAmp,
+            lastPostJoinExitInvariant
+        );
+        return percentage;
     }
 
     // Stubbed functions

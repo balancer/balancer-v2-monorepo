@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 
 import "./ComposableStablePoolStorage.sol";
 import "./ComposableStablePoolRates.sol";
@@ -57,25 +58,33 @@ abstract contract ComposableStablePoolProtocolFees is
      * @dev Calculates due protocol fees originating from accumulated swap fees and yield of non-exempt tokens, pays
      * them by minting BPT, and returns the updated virtual supply and current balances.
      */
-    function _payProtocolFeesBeforeJoinExit(uint256[] memory registeredBalances)
+    function _payProtocolFeesBeforeJoinExit(
+        uint256[] memory registeredBalances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    )
         internal
-        returns (uint256, uint256[] memory)
+        returns (
+            uint256,
+            uint256[] memory,
+            uint256
+        )
     {
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
         // First, we'll compute what percentage of the Pool the protocol should own due to charging protocol fees on
         // swap fees and yield.
-        uint256 expectedProtocolOwnershipPercentage = _getProtocolPoolOwnershipPercentage(balances);
+        (
+            uint256 expectedProtocolOwnershipPercentage,
+            uint256 totalGrowthInvariant
+        ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
-        // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how much
-        // BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value of each
-        // BPT is going to be reduced as all LPs get diluted. The percentage of the Pool the protocol will own after
-        // minting is given by `protocol percentage = to mint / (current supply + to mint)`.
-        // Solving for `to mint`, we arrive at:
-        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
-
-        uint256 protocolFeeAmount = virtualSupply.mulDown(expectedProtocolOwnershipPercentage).divDown(
-            expectedProtocolOwnershipPercentage.complement()
+        // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
+        // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
+        // of each BPT is going to be reduced as all LPs get diluted.
+        uint256 protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(
+            virtualSupply,
+            expectedProtocolOwnershipPercentage
         );
 
         if (protocolFeeAmount > 0) {
@@ -87,10 +96,14 @@ abstract contract ComposableStablePoolProtocolFees is
         // supply by minting the protocol fee tokens, so those are included in the return value.
         //
         // For this addition to overflow, the actual total supply would have already overflowed.
-        return (virtualSupply + protocolFeeAmount, balances);
+        return (virtualSupply + protocolFeeAmount, balances, totalGrowthInvariant);
     }
 
-    function _getProtocolPoolOwnershipPercentage(uint256[] memory balances) internal view returns (uint256) {
+    function _getProtocolPoolOwnershipPercentage(
+        uint256[] memory balances,
+        uint256 lastJoinExitAmp,
+        uint256 lastPostJoinExitInvariant
+    ) internal view returns (uint256, uint256) {
         // We compute three invariants, adjusting the balances of tokens that have rate providers by undoing the current
         // rate adjustment and then applying the old rate. This is equivalent to multiplying by old rate / current rate.
         //
@@ -107,8 +120,6 @@ abstract contract ComposableStablePoolProtocolFees is
         // 'total growth invariant', since it includes both swap fee growth, non-exempt yield growth and exempt yield
         // growth. If the last join-exit amplification equals the current one, this invariant equals the current
         // invariant.
-
-        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
 
         (
             uint256 swapFeeGrowthInvariant,
@@ -162,7 +173,8 @@ abstract contract ComposableStablePoolProtocolFees is
         );
 
         // These percentages can then be simply added to compute the total protocol Pool ownership percentage.
-        return protocolSwapFeePercentage.add(protocolYieldPercentage);
+        // This is naturally bounded above by FixedPoint.ONE so this addition cannot overflow.
+        return (protocolSwapFeePercentage + protocolYieldPercentage, totalGrowthInvariant);
     }
 
     function _getGrowthInvariants(uint256[] memory balances, uint256 lastJoinExitAmp)
@@ -211,8 +223,12 @@ abstract contract ComposableStablePoolProtocolFees is
         }
     }
 
-    // Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
-    // Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
+    /**
+     * @dev Store the latest invariant based on the adjusted balances after the join or exit, using current rates.
+     * Also cache the amp factor, so that the invariant is not affected by amp updates between joins and exits.
+     *
+     * Pay protocol fees due on any current join or exit swap.
+     */
     function _updateInvariantAfterJoinExit(
         uint256 currentAmp,
         uint256[] memory balances,
@@ -220,50 +236,36 @@ abstract contract ComposableStablePoolProtocolFees is
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal {
-        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
+        // `_payProtocolFeesBeforeJoinExit` paid protocol fees accumulated between the previous and current
+        // join or exit, while this code pays any protocol fees due on the current join or exit.
+        // The amp and rates are constant during a single transaction, so it doesn't matter if there
+        // is an ongoing amp change, and we can ignore yield.
 
         // Compute the growth ratio between the pre- and post-join/exit balances.
         // Note that the pre-join/exit invariant is *not* the invariant from the last join,
         // but computed from the balances before this particular join/exit.
 
-        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
+        uint256 postJoinExitInvariant = StableMath._calculateInvariant(currentAmp, balances);
 
-        if (protocolSwapFeePercentage > 0) {
-            uint256 invariantGrowthRatio = (
-                postJoinExitInvariant > preJoinExitInvariant
-                    ? postJoinExitInvariant.sub(preJoinExitInvariant)
-                    : preJoinExitInvariant.sub(postJoinExitInvariant)
-            )
-                .divDown(preJoinExitInvariant);
+        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            postJoinExitInvariant.divDown(preJoinExitInvariant),
+            preJoinExitSupply,
+            postJoinExitSupply,
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+        );
 
-            // Compute the bpt ratio
-            uint256 bptGrowthRatio = (
-                postJoinExitSupply > preJoinExitInvariant
-                    ? postJoinExitSupply.sub(preJoinExitSupply)
-                    : preJoinExitSupply.sub(postJoinExitSupply)
-            )
-                .divDown(preJoinExitSupply);
-
-            // The difference between the invariant growth and bpt increase rates must be due to the
-            // balance change from this join/exit.
-            // Protocol fees due = (invariant growth / bpt increase - 1) * virtual supply * protocol fee %
-            // For instance, if the invariant growth is 1.05, and the bpt increase is 1.0475, with 1000 supply,
-            // and a protocol fee of 50%, we would mint (1.05/1.0475 - 1) * 1000 * 0.5 = 1.193 BPT.
-
-            if (invariantGrowthRatio > bptGrowthRatio) {
-                uint256 protocolFeeAmount = invariantGrowthRatio
-                    .divDown(bptGrowthRatio)
-                    .sub(FixedPoint.ONE)
-                    .mulDown(preJoinExitSupply)
-                    .mulDown(protocolSwapFeePercentage);
-
-                _payProtocolFees(protocolFeeAmount);
-            }
+        if (protocolFeeAmount > 0) {
+            _payProtocolFees(protocolFeeAmount);
         }
 
         _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }
 
+    /**
+     * @dev Update the stored values of the amp and final post-join/exit invariant, to reset the basis for protocol
+     * swap fees. Also copy the current rates to the old rates, to establish the new protocol yield basis for protocol
+     * yield fees.
+     */
     function _updatePostJoinExit(uint256 currentAmp, uint256 postJoinExitInvariant) internal {
         _lastJoinExitData =
             WordCodec.encodeUint(currentAmp, _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET, _LAST_JOIN_EXIT_AMPLIFICATION_SIZE) |
@@ -276,20 +278,44 @@ abstract contract ComposableStablePoolProtocolFees is
         _updateOldRates();
     }
 
-    function getLastJoinExitData() public view returns (uint256, uint256) {
+    /**
+     * @dev Adjust a protocol fee percentage calculated before minting, to the equivalent value after minting.
+     */
+    function _calculateAdjustedProtocolFeeAmount(uint256 supply, uint256 basePercentage)
+        internal
+        pure
+        returns (uint256)
+    {
+        // Since this fee amount will be minted as BPT, which increases the total supply, we need to mint
+        // slightly more so that it reflects this percentage of the total supply after minting.
+        //
+        // The percentage of the Pool the protocol will own after minting is given by:
+        // `protocol percentage = to mint / (current supply + to mint)`.
+        // Solving for `to mint`, we arrive at:
+        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
+        //
+        return supply.mulDown(basePercentage).divDown(basePercentage.complement());
+    }
+
+    /**
+     * @notice Return the amplification factor and invariant as of the most recent join or exit (including BPT swaps)
+     */
+    function getLastJoinExitData()
+        public
+        view
+        returns (uint256 lastJoinExitAmplification, uint256 lastPostJoinExitInvariant)
+    {
         bytes32 rawData = _lastJoinExitData;
 
-        uint256 lastJoinExitAmplification = rawData.decodeUint(
+        lastJoinExitAmplification = rawData.decodeUint(
             _LAST_JOIN_EXIT_AMPLIFICATION_OFFSET,
             _LAST_JOIN_EXIT_AMPLIFICATION_SIZE
         );
 
-        uint256 lastPostJoinExitInvariant = rawData.decodeUint(
+        lastPostJoinExitInvariant = rawData.decodeUint(
             _LAST_POST_JOIN_EXIT_INVARIANT_OFFSET,
             _LAST_POST_JOIN_EXIT_INVARIANT_SIZE
         );
-
-        return (lastJoinExitAmplification, lastPostJoinExitInvariant);
     }
 
     /**

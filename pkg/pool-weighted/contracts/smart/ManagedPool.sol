@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
@@ -163,9 +164,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountIn);
     event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
 
-    // Making aumProtocolFeesCollector a constructor parameter would be more consistent with the intent
-    // of NewPoolParams: it is supposed to be for parameters passed in by users. However, adding the
-    // argument caused "stack too deep" errors in the constructor.
     struct NewPoolParams {
         string name;
         string symbol;
@@ -845,7 +843,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * joins and exits.
      * @return The amount of BPT minted to the manager.
      */
-    function collectAumManagementFees() external returns (uint256) {
+    function collectAumManagementFees() external whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
@@ -922,21 +920,26 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
-            swapRequest,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
-            currentBalanceTokenOut.sub(amountOut)
+        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
+        // after the trade.
+        //
+        // invariantGrowthRatio = invariant after trade / invariant before trade
+        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
+        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
+        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
+            _getNormalizedWeight(swapRequest.tokenIn),
+            _getNormalizedWeight(swapRequest.tokenOut)
+        );
+        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
+            FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
         );
 
-        _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
+        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountOut;
     }
@@ -948,45 +951,31 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        (uint256[] memory normalizedWeights, uint256[] memory preSwapBalances) = _getWeightsAndPreSwapBalances(
-            swapRequest,
-            currentBalanceTokenIn,
-            currentBalanceTokenOut
-        );
-
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = ArrayHelpers.arrayFill(
-            currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
-            currentBalanceTokenOut.sub(swapRequest.amount)
+        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
+        // after the trade.
+        //
+        // invariantGrowthRatio = invariant after trade / invariant before trade
+        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
+        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
+        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
+            FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
         );
-
-        _payProtocolAndManagementFees(normalizedWeights, preSwapBalances, postSwapBalances);
-
-        return amountIn;
-    }
-
-    function _getWeightsAndPreSwapBalances(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) private view returns (uint256[] memory, uint256[] memory) {
         uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
             _getNormalizedWeight(swapRequest.tokenIn),
             _getNormalizedWeight(swapRequest.tokenOut)
         );
 
-        uint256[] memory preSwapBalances = ArrayHelpers.arrayFill(currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
+        _payProtocolAndManagementFees(invariantGrowthRatio);
 
-        return (normalizedWeights, preSwapBalances);
+        return amountIn;
     }
 
-    function _payProtocolAndManagementFees(
-        uint256[] memory normalizedWeights,
-        uint256[] memory preSwapBalances,
-        uint256[] memory postSwapBalances
-    ) private {
+    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) private {
         // Calculate total BPT for the protocol and management fee
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
@@ -1003,11 +992,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             (FixedPoint.ONE - protocolSwapFeePercentage).mulDown(managementSwapFeePercentage);
 
         // No other balances are changing, so the other terms in the invariant will cancel out
-        // when computing the ratio. So this partial invariant calculation is sufficient
-        uint256 totalBptAmount = WeightedMath._calcDueProtocolSwapFeeBptAmount(
-            totalSupply(),
-            WeightedMath._calculateInvariant(normalizedWeights, preSwapBalances),
-            WeightedMath._calculateInvariant(normalizedWeights, postSwapBalances),
+        // when computing the ratio. So this partial invariant calculation is sufficient.
+        // We pass the same value for total supply twice as we're measuring over a period in which the total supply
+        // has not changed.
+        uint256 supply = totalSupply();
+        uint256 totalBptAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            invariantGrowthRatio,
+            supply,
+            supply,
             totalFeePercentage
         );
 
@@ -1036,6 +1028,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
+        uint256 totalSupply,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
@@ -1056,7 +1049,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // Check allowlist for LPs, if applicable
             _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, userData);
+            return super._doJoin(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
         }
     }
 
@@ -1088,6 +1081,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
+        uint256 totalSupply,
         bytes memory userData
     ) internal view override returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
@@ -1105,7 +1099,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         return
             kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
                 ? _doExitRemoveToken(sender, balances, userData)
-                : super._doExit(sender, balances, normalizedWeights, scalingFactors, userData);
+                : super._doExit(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
     }
 
     function _doExitRemoveToken(
@@ -1278,11 +1272,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // Join/exit callbacks
 
-    function _beforeJoinExit(
-        uint256[] memory,
-        uint256[] memory,
-        uint256
-    ) internal virtual override {
+    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -1310,12 +1300,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
             // non-initialization join or exit.
             // We also perform an early return if the AUM fee is zero, to save gas.
-            //
-            // If the Pool has been paused, all fee calculation and minting is skipped to reduce execution
-            // complexity to a minimum (and therefore the likelihood of errors). We do still update the last
-            // collection timestamp however, to avoid potentially collecting extra fees if the Pool were to
-            // be unpaused later. Any fees that would have been collected while the Pool was paused are lost.
-            if (managementAumFeePercentage == 0 || lastCollection == 0 || !_isNotPaused()) {
+            if (managementAumFeePercentage == 0 || lastCollection == 0) {
                 return 0;
             }
 
@@ -1332,15 +1317,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
             // which can be rearranged into:
             //
             // toMint = supply * f / (1 - f)
-            uint256 annualizedFee = totalSupply().mulDown(managementAumFeePercentage).divDown(
+            uint256 annualizedFee = Math.divDown(
+                Math.mul(totalSupply(), managementAumFeePercentage),
                 managementAumFeePercentage.complement()
             );
 
             // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
             // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
             uint256 elapsedTime = currentTime - lastCollection;
-            uint256 fractionalTimePeriod = elapsedTime.divDown(365 days);
-            bptAmount = annualizedFee.mulDown(fractionalTimePeriod);
+            bptAmount = Math.divDown(Math.mul(annualizedFee, elapsedTime), 365 days);
 
             // Compute the protocol's share of the AUM fee
             uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
@@ -1352,6 +1337,23 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
             _mintPoolTokens(getOwner(), managerBPTAmount);
         }
+    }
+
+    /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to prevent AUM fee collection.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused and
+        // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
+        // charged to the remaining LPs for the full period. We then update the collection timestamp on Recovery mode
+        // exits so that no AUM fees are accrued over this period.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return super._doRecoveryModeExit(balances, totalSupply, userData);
     }
 
     // Functions that convert weights between internal (denormalized) and external (normalized) representations

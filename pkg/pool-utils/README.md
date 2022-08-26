@@ -9,7 +9,7 @@ This package contains Solidity utilities for developing Balancer V2 Pools, imple
 
 The most useful contracts are [`BaseGeneralPool`](./contracts/BaseGeneralPool.sol) and [`BaseMinimalSwapInfoPool`](./contracts/BaseMinimalSwapInfoPool.sol), used as base contracts for Pools with the General and MinimalSwapInfo/TwoTokens specializations respectively.
 
-The recommended pattern is to create new Pools from factory contracts, as that lets other systems reason about Pool logic by checking if a Pool was deployed from a given factory. [`BasePoolFactory`](./contracts/factories/BasePoolFactory.sol) and [`BasePoolSplitCodeFactory`](./contracts/factories/BasePoolSplitCodeFactory.sol) (for large contracts) can be used for this purpose.
+The recommended pattern is to create new Pools from factory contracts, as that lets other systems reason about Pool logic by checking whether a Pool was deployed from a given factory. [`BasePoolFactory`](./contracts/factories/BasePoolFactory.sol) can be used for this purpose.
 
 ## Overview
 

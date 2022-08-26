@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS, MAX_UINT256 } from '../../../constants';
 import { GeneralSwap, ProtocolFee, QueryBatchSwap } from '../../vault/types';
-import { RawStablePoolDeployment, SwapStablePool } from './types';
+import { LastJoinExitData, RawStablePoolDeployment, SwapStablePool } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -119,6 +119,10 @@ export default class StablePool extends BasePool {
 
   async getProtocolSwapFeePercentageCache(): Promise<BigNumber> {
     return this.instance.getProtocolFeePercentageCache(ProtocolFee.SWAP);
+  }
+
+  async getLastJoinExitData(): Promise<LastJoinExitData> {
+    return this.instance.getLastJoinExitData();
   }
 
   async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {

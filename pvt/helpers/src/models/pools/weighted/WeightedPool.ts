@@ -52,6 +52,7 @@ const MIN_INVARIANT_RATIO = fp(0.7);
 
 export default class WeightedPool extends BasePool {
   weights: BigNumberish[];
+  rateProviders: string[];
   assetManagers: string[];
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
@@ -71,6 +72,7 @@ export default class WeightedPool extends BasePool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
+    rateProviders: string[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
     poolType: WeightedPoolType,
@@ -85,6 +87,7 @@ export default class WeightedPool extends BasePool {
     super(instance, poolId, vault, tokens, swapFeePercentage, owner);
 
     this.weights = weights;
+    this.rateProviders = rateProviders;
     this.assetManagers = assetManagers;
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
