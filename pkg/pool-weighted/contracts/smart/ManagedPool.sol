@@ -820,8 +820,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
         // To prevent this, we perform a collection before updating the fee percentage.
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
-        if (totalSupply() > 0) {
-            amount = _collectAumManagementFees();
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        if (supplyBeforeFeeCollection > 0) {
+            amount = _collectAumManagementFees(supplyBeforeFeeCollection);
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -847,9 +848,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        if (totalSupply() == 0) _revert(Errors.UNINITIALIZED);
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        return _collectAumManagementFees();
+        return _collectAumManagementFees(supplyBeforeFeeCollection);
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -1272,71 +1274,74 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
     // Join/exit callbacks
 
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override {
+    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override returns (uint256) {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-        _collectAumManagementFees();
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        return supplyBeforeFeeCollection + _collectAumManagementFees(supplyBeforeFeeCollection);
     }
 
     /**
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees() internal returns (uint256 bptAmount) {
+    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         uint256 currentTime = block.timestamp;
 
-        // Collect fees based on the time elapsed
-        if (currentTime > lastCollection) {
-            // Reset the collection timer to the current block
-            _lastAumFeeCollectionTimestamp = currentTime;
+        // If no time has passed since the last join/exit we've already collected fees so we can return early.
+        if (currentTime <= lastCollection) return 0;
 
-            uint256 managementAumFeePercentage = getManagementAumFeePercentage();
+        // Reset the collection timer to the current block
+        _lastAumFeeCollectionTimestamp = currentTime;
 
-            // If `lastCollection` has not been set then we don't know what period over which to collect fees.
-            // We then perform an early return after initializing it so that we can collect fees next time. This
-            // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
-            // non-initialization join or exit.
-            // We also perform an early return if the AUM fee is zero, to save gas.
-            if (managementAumFeePercentage == 0 || lastCollection == 0) {
-                return 0;
-            }
+        uint256 managementAumFeePercentage = getManagementAumFeePercentage();
 
-            // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
-            // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
-            // and receive this fraction of the Pool's assets.
-            // Note that the total BPT supply will increase when minting, so we need to account for this
-            // in order to compute the percentage of Pool ownership the manager will have.
-
-            // The formula can be derived from:
-            //
-            // f = toMint / (supply + toMint)
-            //
-            // which can be rearranged into:
-            //
-            // toMint = supply * f / (1 - f)
-            uint256 annualizedFee = Math.divDown(
-                Math.mul(totalSupply(), managementAumFeePercentage),
-                managementAumFeePercentage.complement()
-            );
-
-            // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
-            // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
-            uint256 elapsedTime = currentTime - lastCollection;
-            bptAmount = Math.divDown(Math.mul(annualizedFee, elapsedTime), 365 days);
-
-            // Compute the protocol's share of the AUM fee
-            uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
-            uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
-
-            _payProtocolFees(protocolBptAmount);
-
-            emit ManagementAumFeeCollected(managerBPTAmount);
-
-            _mintPoolTokens(getOwner(), managerBPTAmount);
+        // If `lastCollection` has not been set then we don't know what period over which to collect fees.
+        // We then perform an early return after initializing it so that we can collect fees next time. This
+        // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
+        // non-initialization join or exit.
+        // We also perform an early return if the AUM fee is zero, to save gas.
+        if (managementAumFeePercentage == 0 || lastCollection == 0) {
+            return 0;
         }
+
+        // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
+        // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
+        // and receive this fraction of the Pool's assets.
+        // Note that the total BPT supply will increase when minting, so we need to account for this
+        // in order to compute the percentage of Pool ownership the manager will have.
+
+        // The formula can be derived from:
+        //
+        // f = toMint / (supply + toMint)
+        //
+        // which can be rearranged into:
+        //
+        // toMint = supply * f / (1 - f)
+        uint256 annualizedFee = Math.divDown(
+            Math.mul(totalSupply, managementAumFeePercentage),
+            managementAumFeePercentage.complement()
+        );
+
+        // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
+        // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
+        uint256 elapsedTime = currentTime - lastCollection;
+        uint256 bptAmount = Math.divDown(Math.mul(annualizedFee, elapsedTime), 365 days);
+
+        // Compute the protocol's share of the AUM fee
+        uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
+        uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
+
+        _payProtocolFees(protocolBptAmount);
+
+        emit ManagementAumFeeCollected(managerBPTAmount);
+
+        _mintPoolTokens(getOwner(), managerBPTAmount);
+
+        return bptAmount;
     }
 
     /**
