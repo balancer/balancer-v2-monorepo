@@ -85,6 +85,7 @@ describe('WeightedPoolProtocolFees', () => {
       let preBalances: BigNumber[];
       let balanceDeltas: BigNumber[];
       let preInvariant: BigNumber;
+      let postInvariant: BigNumber;
       let preSupply: BigNumber;
       let currentSupply: BigNumber;
       let expectedProtocolOwnershipPercentage: BigNumber;
@@ -204,6 +205,11 @@ describe('WeightedPoolProtocolFees', () => {
               } else {
                 currentSupply = preSupply.mul(fp(1).sub(ratio)).div(fp(1));
               }
+
+              const currentBalances =
+                op == Operation.JOIN ? arrayAdd(preBalances, balanceDeltas) : arraySub(preBalances, balanceDeltas);
+
+              postInvariant = await math.invariant(poolWeights, currentBalances);
             });
           }
 
@@ -233,6 +239,8 @@ describe('WeightedPoolProtocolFees', () => {
                 currentBalances = arrayAdd(proportionalBalances, deltas);
                 balanceDeltas = arraySub(preBalances, currentBalances);
               }
+
+              postInvariant = await math.invariant(poolWeights, currentBalances);
 
               // The deltas are pure swap fees: the protocol ownership percentage is their percentage of the entire
               // Pool, multiplied by the protocol fee percentage.
@@ -301,19 +309,11 @@ describe('WeightedPoolProtocolFees', () => {
 
           function itUpdatesThePostJoinExitState() {
             it('stores the current invariant', async () => {
-              const currentBalances =
-                currentSupply >= preSupply
-                  ? arrayAdd(preBalances, balanceDeltas)
-                  : arraySub(preBalances, balanceDeltas);
-
               await pool.afterJoinExit(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
               const lastPostJoinExitInvariant = await pool.getLastInvariant();
 
-              expect(lastPostJoinExitInvariant).to.almostEqual(
-                await math.invariant(poolWeights, currentBalances),
-                0.000001
-              );
+              expect(lastPostJoinExitInvariant).to.almostEqual(postInvariant, 0.000001);
             });
           }
         }
