@@ -34,9 +34,8 @@ abstract contract BaseGeneralPool is IGeneralPool, BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public virtual override onlyVault(swapRequest.poolId) returns (uint256) {
-        // Block all swaps when paused
-        _ensureNotPaused();
+    ) external override onlyVault(swapRequest.poolId) returns (uint256) {
+        _beforeSwapJoinExit();
 
         _validateIndexes(indexIn, indexOut, _getTotalTokens());
         uint256[] memory scalingFactors = _scalingFactors();

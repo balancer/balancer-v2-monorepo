@@ -1525,6 +1525,7 @@ describe('ManagedPool', function () {
     const poolWeights = [fp(0.8), fp(0.2)];
     let bptFeeBalance: BigNumber;
     let mockMath: Contract;
+    let mockFees: Contract;
 
     let twoTokens: TokenList;
     let localBalances: Array<BigNumber>;
@@ -1557,6 +1558,7 @@ describe('ManagedPool', function () {
       };
       pool = await WeightedPool.create(params);
       mockMath = await deploy('MockWeightedMath');
+      mockFees = await deploy('v2-pool-utils/MockInvariantGrowthProtocolSwapFees');
     });
 
     sharedBeforeEach('initialize pool', async () => {
@@ -1621,10 +1623,10 @@ describe('ManagedPool', function () {
           const postInvariant = await mockMath.invariant(poolWeights, postBalances);
           const totalSupply = await pool.totalSupply();
 
-          const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
+            postInvariant.mul(fp(1)).div(prevInvariant),
             totalSupply,
-            prevInvariant,
-            postInvariant,
+            totalSupply,
             protocolFeePercentage
           );
 
@@ -1673,10 +1675,10 @@ describe('ManagedPool', function () {
           const postInvariant = await mockMath.invariant(poolWeights, postBalances);
           const totalSupply = await pool.totalSupply();
 
-          const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
+            postInvariant.mul(fp(1)).div(prevInvariant),
             totalSupply,
-            prevInvariant,
-            postInvariant,
+            totalSupply,
             protocolFeePercentage
           );
 
@@ -1862,6 +1864,12 @@ describe('ManagedPool', function () {
           .div(fp(1).sub(aumFeePercentage));
       }
 
+      function itReverts(collectAUMFees: () => Promise<ContractReceipt>) {
+        it('reverts', async () => {
+          await expect(collectAUMFees()).to.be.revertedWith('PAUSED');
+        });
+      }
+
       function itCollectsNoAUMFees(collectAUMFees: () => Promise<ContractReceipt>) {
         it('collects no AUM fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
@@ -1938,25 +1946,32 @@ describe('ManagedPool', function () {
               return tx.wait();
             }, timeElapsed);
 
-            context.skip('when the pool is paused', () => {
+            context('when the pool is paused', () => {
               sharedBeforeEach('pause pool', async () => {
                 await pool.pause();
               });
 
-              itCollectsNoAUMFees(async () => {
+              itReverts(async () => {
                 const tx = await pool.collectAumManagementFees(owner);
                 return tx.wait();
               });
 
               context('when the pool is then unpaused', () => {
                 sharedBeforeEach('collect fees and unpause pool', async () => {
-                  // Trigger a collection of the management fees, this will collect no fees but will update the
-                  // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+                  if (!vault.admin) throw Error('No Vault admin account');
+                  await pool.enableRecoveryMode(vault.admin);
+
+                  // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
+                  // last collection. This avoids the pool overcharging AUM fees after the unpause.
                   // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
                   // as if the pool were never paused, however this is unlikely to occur.
-                  await pool.collectAumManagementFees(owner);
+                  await pool.recoveryModeExit({
+                    from: other,
+                    bptIn: (await pool.balanceOf(other)).div(10),
+                  });
 
                   await pool.unpause();
+                  await pool.disableRecoveryMode(vault.admin);
 
                   // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
                   // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2005,15 +2020,21 @@ describe('ManagedPool', function () {
 
           context('when the pool is paused and then then unpaused', () => {
             sharedBeforeEach('pause pool, collect fees and unpause pool', async () => {
+              if (!vault.admin) throw Error('No Vault admin account');
               await pool.pause();
+              await pool.enableRecoveryMode(vault.admin);
 
-              // Trigger a collection of the management fees, this will collect no fees but will update the
-              // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+              // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
+              // last collection. This avoids the pool overcharging AUM fees after the unpause.
               // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
               // as if the pool were never paused, however this is unlikely to occur.
-              await pool.collectAumManagementFees(owner);
+              await pool.recoveryModeExit({
+                from: other,
+                bptIn: (await pool.balanceOf(other)).div(10),
+              });
 
               await pool.unpause();
+              await pool.disableRecoveryMode(vault.admin);
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2045,25 +2066,32 @@ describe('ManagedPool', function () {
           return receipt;
         }, timeElapsed);
 
-        context.skip('when the pool is paused', () => {
+        context('when the pool is paused', () => {
           sharedBeforeEach('pause pool', async () => {
             await pool.pause();
           });
 
-          itCollectsNoAUMFees(async () => {
+          itReverts(async () => {
             const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
             return receipt;
           });
 
           context('when the pool is then unpaused', () => {
             sharedBeforeEach('collect fees and unpause pool', async () => {
-              // Trigger a collection of the management fees, this will collect no fees but will update the
-              // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+              if (!vault.admin) throw Error('No Vault admin account');
+              await pool.enableRecoveryMode(vault.admin);
+
+              // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
+              // last collection. This avoids the pool overcharging AUM fees after the unpause.
               // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
               // as if the pool were never paused, however this is unlikely to occur.
-              await pool.collectAumManagementFees(owner);
+              await pool.recoveryModeExit({
+                from: other,
+                bptIn: (await pool.balanceOf(other)).div(10),
+              });
 
               await pool.unpause();
+              await pool.disableRecoveryMode(vault.admin);
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2098,15 +2126,21 @@ describe('ManagedPool', function () {
 
           context('when the pool is paused and then then unpaused', () => {
             sharedBeforeEach('pause pool, collect fees and unpause pool', async () => {
+              if (!vault.admin) throw Error('No Vault admin account');
               await pool.pause();
+              await pool.enableRecoveryMode(vault.admin);
 
-              // Trigger a collection of the management fees, this will collect no fees but will update the
-              // timestamp of the last collection. This avoids the pool overcharging AUM fees after the unpause.
+              // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
+              // last collection. This avoids the pool overcharging AUM fees after the unpause.
               // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
               // as if the pool were never paused, however this is unlikely to occur.
-              await pool.collectAumManagementFees(owner);
+              await pool.recoveryModeExit({
+                from: other,
+                bptIn: (await pool.balanceOf(other)).div(10),
+              });
 
               await pool.unpause();
+              await pool.disableRecoveryMode(vault.admin);
 
               // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
               // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
@@ -2121,6 +2155,7 @@ describe('ManagedPool', function () {
           });
         });
       });
+<<<<<<< HEAD
 
       describe('management aum fee collection', () => {
         function expectedAUMFees(
@@ -2306,6 +2341,8 @@ describe('ManagedPool', function () {
           });
         });
       });
+=======
+>>>>>>> master
     });
   });
 
