@@ -73,7 +73,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     /**
      * @notice Returns the value of the invariant after the last join or exit operation.
      */
-    function getLastInvariant() external view returns (uint256) {
+    function getLastPostJoinExitInvariant() external view returns (uint256) {
         return _lastPostJoinExitInvariant;
     }
 
