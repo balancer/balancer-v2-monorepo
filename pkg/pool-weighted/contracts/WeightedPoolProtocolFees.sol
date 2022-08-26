@@ -177,6 +177,11 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return rateProduct;
     }
 
+    /**
+     * @notice Returns the amount of BPT to be minted to pay protocol fees on yield accrued by the Pool.
+     * @dev Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
+     * proper accounting is performed to prevent charging duplicate protocol fees.
+     */
     function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 preJoinExitSupply)
         internal
         returns (uint256)
@@ -232,6 +237,11 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             );
     }
 
+    /**
+     * @notice Returns the amount of BPT to be minted to pay protocol fees on swap fees accrued during a join/exit.
+     * @dev Note that this isn't a view function. This function automatically updates `_lastPostJoinExitInvariant` to
+     * ensure that proper accounting is performed to prevent charging duplicate protocol fees.
+     */
     function _getJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
