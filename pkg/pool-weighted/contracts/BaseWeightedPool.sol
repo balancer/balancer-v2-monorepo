@@ -133,13 +133,13 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     }
 
     /**
-     * @dev Called before any join or exit operation. Empty by default, but derived contracts may choose to add custom
-     * behavior at these steps. This often has to do with protocol fee processing.
+     * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
+     * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
     function _beforeJoinExit(
         uint256[] memory, /* preBalances */
         uint256[] memory /* normalizedWeights */
-    ) internal virtual returns (uint256 preJoinExitSupply) {
+    ) internal virtual returns (uint256) {
         return totalSupply();
     }
 
