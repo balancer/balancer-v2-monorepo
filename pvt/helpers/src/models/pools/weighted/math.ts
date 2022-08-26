@@ -187,24 +187,23 @@ export function calculateOneTokenSwapFeeAmount(
   return toFp(accruedFees);
 }
 
-export function calculateBPTSwapFeeFeeAmount(
-  fpBptTotalSupply: BigNumberish,
-  lastInvariant: BigNumberish,
-  currentInvariant: BigNumberish,
+export function calculateBPTSwapFeeAmount(
+  fpInvariantGrowthRatio: BigNumberish,
+  preSupply: BigNumberish,
+  postSupply: BigNumberish,
   fpProtocolSwapFeePercentage: BigNumberish
-): Decimal {
-  if (bn(currentInvariant).lte(lastInvariant)) {
-    return decimal(1);
+): BigNumber {
+  const supplyGrowthRatio = bn(postSupply).mul(fp(1)).div(preSupply);
+
+  if (bn(fpInvariantGrowthRatio).lte(supplyGrowthRatio)) {
+    return bn(0);
   }
 
-  const growth = decimal(currentInvariant).div(decimal(lastInvariant));
+  const swapFeePercentage = fp(1).sub(supplyGrowthRatio.mul(fp(1)).div(fpInvariantGrowthRatio));
+  const k = swapFeePercentage.mul(fpProtocolSwapFeePercentage).div(fp(1));
 
-  const k = fromFp(fpProtocolSwapFeePercentage)
-    .mul(growth.sub(decimal(1)))
-    .div(growth);
-
-  const numerator = fromFp(fpBptTotalSupply).mul(k);
-  const denominator = decimal(1).sub(k);
+  const numerator = bn(postSupply).mul(k);
+  const denominator = fp(1).sub(k);
 
   return numerator.div(denominator);
 }
