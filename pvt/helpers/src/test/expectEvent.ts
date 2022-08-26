@@ -47,10 +47,18 @@ export function inIndirectReceipt(
   emitter: Interface,
   eventName: string,
   eventArgs = {},
-  address?: string
+  address?: string,
+  amount?: number
 ): any {
   const expectedEvents = arrayFromIndirectReceipt(receipt, emitter, eventName, address);
-  expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`);
+  if (amount === undefined) {
+    expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`);
+  } else {
+    expect(expectedEvents.length).to.equal(
+      amount,
+      `${expectedEvents.length} '${eventName}' events found; expected ${amount}`
+    );
+  }
 
   const exceptions: Array<string> = [];
   const event = expectedEvents.find(function (e) {
@@ -76,16 +84,6 @@ export function inIndirectReceipt(
   }
 
   return event;
-}
-
-export function amountFromIndirectReceipt(
-  receipt: ContractReceipt,
-  emitter: Interface,
-  eventName: string,
-  eventAmount: number
-): void {
-  const expectedEvents = arrayFromIndirectReceipt(receipt, emitter, eventName);
-  expect(expectedEvents.length).to.equal(eventAmount);
 }
 
 export function notEmitted(receipt: ContractReceipt, eventName: string): void {

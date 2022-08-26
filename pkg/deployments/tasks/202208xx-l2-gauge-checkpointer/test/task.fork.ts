@@ -151,8 +151,67 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15272610, function () {
     });
   });
 
-  describe('performs checkpoints with successively lower minimum relative weights', () => {
-    itCheckpointsGaugesAboveRelativeWeight([1, 0.0001, 0]);
+  describe('checkpoint', () => {
+    const checkpointedGauges: GaugeData[] = [];
+    let gaugeDataAboveMinWeight: GaugeData[] = [];
+    let minRelativeWeight: BigNumber;
+
+    // Gauges won't be checkpointed twice, so when the threshold is lowered and more gauges get above the threshold
+    // we need to filter out those that have already been checkpointed.
+    beforeEach('get non-checkpointed gauges above min weight', () => {
+      gaugeDataAboveMinWeight = [
+        ...getGaugeDataAboveMinWeight(GaugeType.Polygon, minRelativeWeight),
+        ...getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight),
+      ];
+    });
+
+    afterEach('mark checkpointed gauges to consider in the next iteration', () => {
+      checkpointedGauges.push(...gaugeDataAboveMinWeight);
+    });
+
+    context('when threshold is 1', () => {
+      minRelativeWeight = fp(1);
+      itCheckpointsGaugesAboveRelativeWeight();
+    });
+
+    context('when threshold is 0.0001', () => {
+      minRelativeWeight = fp(0.0001);
+      itCheckpointsGaugesAboveRelativeWeight();
+    });
+
+    context('when threshold is 0', () => {
+      minRelativeWeight = fp(0);
+      itCheckpointsGaugesAboveRelativeWeight();
+    });
+
+    function itCheckpointsGaugesAboveRelativeWeight() {
+      const checkpointInterface = new ethers.utils.Interface([
+        'function checkpoint()',
+        'event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions)',
+      ]);
+
+      it('performs a checkpoint for (non-checkpointed) gauges', async () => {
+        const tx = await L2GaugeCheckpointer.checkpointGaugesAboveRelativeWeight(minRelativeWeight, {
+          value: await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight),
+        });
+        const receipt = await tx.wait();
+
+        // Only gauges that haven't been checkpointed so far should have been covered in this test iteration.
+        const gaugesToCheckpoint = gaugeDataAboveMinWeight.filter((data) => !checkpointedGauges.includes(data));
+
+        // Check that the right amount of checkpoints were actually performed for every gauge that required them.
+        gaugesToCheckpoint.forEach((gaugeData) => {
+          expectEvent.inIndirectReceipt(
+            receipt,
+            checkpointInterface,
+            'Checkpoint',
+            {},
+            gaugeData.address,
+            gaugeData.expectedCheckpoints
+          );
+        });
+      });
+    }
   });
 
   function itChecksTotalBridgeCost(minRelativeWeight: BigNumber) {
@@ -166,64 +225,6 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15272610, function () {
       expect(await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight)).to.be.almostEqual(
         singleGaugeBridgeCost * gaugesAmountAboveMinWeight
       );
-    });
-  }
-
-  function itCheckpointsGaugesAboveRelativeWeight(minRelativeWeights: number[]) {
-    const checkpointedAddresses: string[] = [];
-    let addressesAboveMinWeight: string[] = [];
-    let fpMinRelativeWeight: BigNumber;
-    let expectedCheckpoints: number;
-
-    const gaugeCheckpointInterface = new ethers.utils.Interface([
-      'function checkpoint()',
-      'event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions)',
-    ]);
-
-    minRelativeWeights.forEach((minRelativeWeight) => {
-      context(`with min relative weight ${minRelativeWeight}`, () => {
-        before('get gauges above min weight', () => {
-          fpMinRelativeWeight = fp(minRelativeWeight);
-          const polygonGaugeDataAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Polygon, fpMinRelativeWeight);
-          const arbitrumGaugeDataAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Arbitrum, fpMinRelativeWeight);
-
-          // List all the addresses that should be checkpointed this iteration.
-          addressesAboveMinWeight = [
-            ...polygonGaugeDataAboveMinWeight.map((data) => data.address),
-            ...arbitrumGaugeDataAboveMinWeight.map((data) => data.address),
-          ];
-
-          // Sum expected checkpoints, filtering out those addresses that have already been checkpointed.
-          expectedCheckpoints = [...polygonGaugeDataAboveMinWeight, ...arbitrumGaugeDataAboveMinWeight]
-            .filter((data) => !checkpointedAddresses.includes(data.address))
-            .map((data) => data.expectedCheckpoints)
-            .reduce((sum, current) => sum + current, 0);
-        });
-
-        after('mark checkpointed gauges to consider in the next iteration', () => {
-          checkpointedAddresses.push(...addressesAboveMinWeight);
-        });
-
-        it('performs a checkpoint for (non-checkpointed) gauges', async () => {
-          const tx = await L2GaugeCheckpointer.checkpointGaugesAboveRelativeWeight(fpMinRelativeWeight, {
-            value: await L2GaugeCheckpointer.getTotalBridgeCost(fpMinRelativeWeight),
-          });
-          const receipt = await tx.wait();
-
-          // Only gauges that haven't been checkpointed so far should have been covered in this test iteration.
-          const gaugesToCheckpoint = addressesAboveMinWeight.filter(
-            (address) => !checkpointedAddresses.includes(address)
-          );
-
-          // Check that the checkpoint was actually performed for every gauge that required it.
-          gaugesToCheckpoint.forEach((address) => {
-            expectEvent.inIndirectReceipt(receipt, gaugeCheckpointInterface, 'Checkpoint', {}, address);
-          });
-
-          // Check that no extra gauge was checkpointed in the process.
-          expectEvent.amountFromIndirectReceipt(receipt, gaugeCheckpointInterface, 'Checkpoint', expectedCheckpoints);
-        });
-      });
     });
   }
 
