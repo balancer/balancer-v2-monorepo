@@ -282,11 +282,11 @@ describe('JoinExitProtocolFees', () => {
           function itUpdatesThePostJoinInvariant() {
             it('updates the postJoin invariant', async () => {
               // _lastPostJoinExitInvariant is expected to be uninitialised.
-              expect(await pool.getLastPostJoinExitInvariant()).to.be.eq(0);
+              expect(await pool.getLastInvariant()).to.be.eq(0);
 
               await pool.getJoinExitProtocolFees(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
-              expect(await pool.getLastPostJoinExitInvariant()).to.almostEqual(postInvariant);
+              expect(await pool.getLastInvariant()).to.almostEqual(postInvariant);
             });
           }
         }

@@ -45,7 +45,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     // immutable, the invariant only changes due to accumulated swap fees, which saves gas by freeing the Pool
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
-    uint256 internal _lastPostJoinExitInvariant;
+    uint256 private _lastPostJoinExitInvariant;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         _require(numTokens <= 8, Errors.MAX_TOKENS);
