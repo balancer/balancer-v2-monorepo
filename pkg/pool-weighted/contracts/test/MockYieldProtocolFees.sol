@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "../WeightedPoolProtocolFees.sol";
 
-contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
+contract MockYieldProtocolFees is WeightedPoolProtocolFees {
     uint256 private immutable _totalTokens;
 
     constructor(

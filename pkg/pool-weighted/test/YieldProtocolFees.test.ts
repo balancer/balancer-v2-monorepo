@@ -14,7 +14,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 
 const randomFloat = (min: number, max: number) => random(min, max, true);
 
-describe('WeightedPoolProtocolFees', () => {
+describe('WeightedPoolProtocolFees (Yield)', () => {
   let vault: Vault;
   let pool: Contract;
   let rateProviders: (Contract | string)[];
