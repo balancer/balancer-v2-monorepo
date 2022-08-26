@@ -137,24 +137,35 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15272610, function () {
     }
   });
 
-  itChecksTotalBridgeCost([1, 0.0001, 0]);
+  describe('getTotalBridgeCost', () => {
+    context('when threshold is 1', () => {
+      itChecksTotalBridgeCost(fp(1));
+    });
+
+    context('when threshold is 0.0001', () => {
+      itChecksTotalBridgeCost(fp(0.0001));
+    });
+
+    context('when threshold is 0', () => {
+      itChecksTotalBridgeCost(fp(0));
+    });
+  });
 
   describe('performs checkpoints with successively lower minimum relative weights', () => {
     itCheckpointsGaugesAboveRelativeWeight([1, 0.0001, 0]);
   });
 
-  function itChecksTotalBridgeCost(minRelativeWeights: number[]) {
-    minRelativeWeights.forEach((minRelativeWeight) => {
-      const fpMinRelativeWeight = fp(minRelativeWeight);
-      it(`checks total bridge cost for min weight: ${minRelativeWeight}`, async () => {
-        const gaugesAmountAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Arbitrum, fpMinRelativeWeight).length;
-        const arbitrumGauge = await task.instanceAt('ArbitrumRootGauge', gauges.get(GaugeType.Arbitrum)![0].address);
-        const singleGaugeBridgeCost = await arbitrumGauge.getTotalBridgeCost();
+  function itChecksTotalBridgeCost(minRelativeWeight: BigNumber) {
+    it('checks total bridge cost', async () => {
+      const arbitrumGauge = await task.instanceAt('ArbitrumRootGauge', gauges.get(GaugeType.Arbitrum)![0].address);
 
-        expect(await L2GaugeCheckpointer.getTotalBridgeCost(fpMinRelativeWeight)).to.be.almostEqual(
-          singleGaugeBridgeCost * gaugesAmountAboveMinWeight
-        );
-      });
+      const gaugesAmountAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight).length;
+      const singleGaugeBridgeCost = await arbitrumGauge.getTotalBridgeCost();
+
+      // Bridge cost per gauge is always the same, so total cost is (single gauge cost) * (number of gauges).
+      expect(await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight)).to.be.almostEqual(
+        singleGaugeBridgeCost * gaugesAmountAboveMinWeight
+      );
     });
   }
 
