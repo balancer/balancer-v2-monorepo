@@ -140,7 +140,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @dev Stores `value` as the amount referenced by chained reference `ref`.
      */
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
-        bytes32 slot = _getTempStorageSlot(ref);
+        bytes32 slot = _getStorageSlot(ref);
 
         // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
         // access it.
@@ -157,7 +157,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * (see `_isTemporaryChainedReference` function).
      */
     function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
-        bytes32 slot = _getTempStorageSlot(ref);
+        bytes32 slot = _getStorageSlot(ref);
 
         // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
         // access it.
@@ -177,7 +177,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _TEMP_STORAGE_SUFFIX = keccak256("balancer.base-relayer-library");
 
-    function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
+    function _getStorageSlot(uint256 ref) private view returns (bytes32) {
         // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
         // mapping's storage slot, and subtracting 1 at the end. This should be more than enough to prevent collisions
         // with other state variables this or derived contracts might use.
