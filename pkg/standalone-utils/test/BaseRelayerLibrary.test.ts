@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -56,40 +56,61 @@ describe('BaseRelayerLibrary', function () {
 
     describe('read and write', () => {
       const key = 5;
-      const reference = toChainedReference(key);
+
+      context('when the reference is temporary', () => {
+        const reference = toChainedReference(key, true);
+
+        itReadsAndWritesData(reference);
+
+        it('clears data after reading', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 5);
+          await expectChainedReferenceContents(reference, 5);
+
+          // The reference is now cleared
+          await expectChainedReferenceContents(reference, 0);
+        });
+      });
+
+      context('when the reference is not temporary', () => {
+        const reference = toChainedReference(key, false);
+
+        itReadsAndWritesData(reference);
+
+        it('preserves data after reading', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 5);
+          await expectChainedReferenceContents(reference, 5);
+
+          // The reference is preserved
+          await expectChainedReferenceContents(reference, 5);
+        });
+      });
 
       async function expectChainedReferenceContents(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
         const receipt = await (await relayerLibrary.getChainedReferenceValue(key)).wait();
         expectEvent.inReceipt(receipt, 'ChainedReferenceValueRead', { value: bn(expectedValue) });
       }
 
-      it('reads uninitialized references as zero', async () => {
-        await expectChainedReferenceContents(reference, 0);
-      });
+      function itReadsAndWritesData(reference: BigNumber) {
+        it('reads uninitialized references as zero', async () => {
+          await expectChainedReferenceContents(reference, 0);
+        });
 
-      it('reads stored references', async () => {
-        await relayerLibrary.setChainedReferenceValue(reference, 42);
-        await expectChainedReferenceContents(reference, 42);
-      });
+        it('reads stored references', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 42);
+          await expectChainedReferenceContents(reference, 42);
+        });
 
-      it('writes replace old data', async () => {
-        await relayerLibrary.setChainedReferenceValue(reference, 42);
-        await relayerLibrary.setChainedReferenceValue(reference, 17);
-        await expectChainedReferenceContents(reference, 17);
-      });
+        it('writes replace old data', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 42);
+          await relayerLibrary.setChainedReferenceValue(reference, 17);
+          await expectChainedReferenceContents(reference, 17);
+        });
 
-      it('stored data in independent slots', async () => {
-        await relayerLibrary.setChainedReferenceValue(reference, 5);
-        await expectChainedReferenceContents(reference.add(1), 0);
-      });
-
-      it('clears read data', async () => {
-        await relayerLibrary.setChainedReferenceValue(reference, 5);
-        await expectChainedReferenceContents(reference, 5);
-
-        // The reference is now cleared
-        await expectChainedReferenceContents(reference, 0);
-      });
+        it('stored data in independent slots', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 5);
+          await expectChainedReferenceContents(reference.add(1), 0);
+        });
+      }
     });
   });
 
