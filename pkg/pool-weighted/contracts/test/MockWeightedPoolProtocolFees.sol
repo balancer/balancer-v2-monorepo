@@ -43,17 +43,9 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
-        WeightedPoolProtocolFees(0, new IRateProvider[](0))
+        WeightedPoolProtocolFees(tokens.length, new IRateProvider[](tokens.length))
     {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function getSwapProtocolFees(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 preJoinExitSupply
-    ) external view returns (uint256) {
-        return _getSwapProtocolFees(preBalances, normalizedWeights, preJoinExitSupply);
     }
 
     function getJoinExitProtocolFees(
@@ -71,10 +63,6 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
                 preJoinExitSupply,
                 postJoinExitSupply
             );
-    }
-
-    function updatePostJoinExit(uint256 postJoinExitInvariant) external {
-        _updatePostJoinExit(postJoinExitInvariant);
     }
 
     // Stubbed functions
