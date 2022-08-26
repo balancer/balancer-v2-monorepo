@@ -106,7 +106,6 @@ describe('WeightedPoolProtocolFees', () => {
             MONTH * 3, // pause window
             MONTH, // buffer period
             owner.address,
-            false, // mutable tokens
           ],
         });
 

@@ -28,8 +28,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner,
-        bool mutableTokens
+        address owner
     )
         BaseWeightedPool(
             vault,
@@ -41,7 +40,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,
-            mutableTokens
+            false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
