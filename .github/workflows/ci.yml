@@ -59,7 +59,7 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
 
-  test-pools:
+  test-pool-utils:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -68,7 +68,40 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Test
-        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-pool-* run test
+        run: yarn workspace @balancer-labs/v2-pool-utils test
+
+  test-pool-weighted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Test
+        run: yarn workspace @balancer-labs/v2-pool-weighted test
+
+  test-pool-stable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Test
+        run: yarn workspace @balancer-labs/v2-pool-stable test
+
+  test-pool-linear:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - name: Compile
+        run: yarn build
+      - name: Test
+        run: yarn workspace @balancer-labs/v2-pool-linear test
 
   test-asset-managers:
     runs-on: ubuntu-latest
@@ -161,17 +194,6 @@ jobs:
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
-
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-      - name: Benchmark
-        run: yarn workspace @balancer-labs/v2-benchmarks benchmark
 
 env:
   CI: true

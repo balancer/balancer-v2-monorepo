@@ -31,7 +31,7 @@ describe('UnbuttonAaveLinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('UnbuttonAaveLinearPoolFactory', { args: [vault.address] });
+    factory = await deploy('UnbuttonAaveLinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     creationTime = await currentTimestamp();
 
     // rates are arbitrary, AMPL has 9 decimals

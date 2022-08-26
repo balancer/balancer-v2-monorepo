@@ -70,6 +70,20 @@ contract MockVault is IPoolSwapStructs {
         }
     }
 
+    function getPoolTokenInfo(bytes32 poolId, IERC20 token)
+        external
+        view
+        returns (
+            uint256 cash,
+            uint256,
+            uint256,
+            address
+        )
+    {
+        Pool storage pool = pools[poolId];
+        cash = pool.balances[token];
+    }
+
     function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
         // solhint-disable-previous-line no-empty-blocks
     }
