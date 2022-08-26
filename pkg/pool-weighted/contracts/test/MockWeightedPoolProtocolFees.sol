@@ -54,7 +54,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) external view returns (uint256, uint256) {
+    ) external returns (uint256) {
         return
             _getJoinExitProtocolFees(
                 preBalances,
