@@ -43,38 +43,9 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        WeightedPoolProtocolFees(0, new IRateProvider[](0))
     {
         // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights) external {
-        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(preBalances, normalizedWeights, totalSupply());
-
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
-    }
-
-    function afterJoinExit(
-        uint256[] memory preBalances,
-        uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights,
-        uint256 preJoinExitSupply,
-        uint256 postJoinExitSupply
-    ) external {
-        (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = _getJoinExitProtocolFees(
-            preBalances,
-            balanceDeltas,
-            normalizedWeights,
-            preJoinExitSupply,
-            postJoinExitSupply
-        );
-
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
-
-        _updatePostJoinExit(postJoinExitInvariant);
     }
 
     function getSwapProtocolFees(
