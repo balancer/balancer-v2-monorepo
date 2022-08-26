@@ -71,10 +71,18 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     }
 
     /**
-     * @dev Returns the value of the invariant after the last join or exit operation.
+     * @notice Returns the value of the invariant after the last join or exit operation.
      */
-    function getLastInvariant() public view returns (uint256) {
+    function getLastInvariant() external view returns (uint256) {
         return _lastPostJoinExitInvariant;
+    }
+
+    /**
+     * @notice Returns the all time high value for the weighted product of the Pool's tokens' rates.
+     * @dev Yield protocol fees are only charged when this value is exceeded.
+     */
+    function getATHRateProduct() external view returns (uint256) {
+        return _athRateProduct;
     }
 
     function _getSwapProtocolFees(
@@ -103,10 +111,6 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
                 preJoinExitSupply,
                 protocolSwapFeePercentage
             );
-    }
-
-    function getATHRateProduct() external view returns (uint256) {
-        return _athRateProduct;
     }
 
     /**
