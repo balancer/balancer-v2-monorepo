@@ -7,9 +7,11 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-primary/PrimaryPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 import "./utils/BokkyPooBahsDateTimeLibrary.sol";
@@ -18,8 +20,10 @@ import "./interfaces/IMarketMaker.sol";
 
 contract PrimaryIssuePool is BasePool, IGeneralPool {
 
+    using PrimaryPoolUserData for bytes;
     using BokkyPooBahsDateTimeLibrary for uint256;
     using Math for uint256;
+    using FixedPoint for uint256;
 
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
@@ -137,35 +141,41 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
     }
 
     function initialize() external {
-        IAsset[] memory _assets = new IAsset[](_TOTAL_TOKENS);
-        _assets[0] = IAsset(address(_security));
-        _assets[1] = IAsset(address(_currency));
+        bytes32 poolId = getPoolId();
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+        //IAsset[] memory _assets = new IAsset[](_TOTAL_TOKENS);
+        //_assets[0] = IAsset(address(_security));
+        //_assets[1] = IAsset(address(_currency));
         uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
         _maxAmountsIn[_currencyIndex] = Math.div(_MAX_TOKEN_BALANCE, _minPrice, false);
         _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
-        //_mintPoolTokens(address(this), _INITIAL_BPT_SUPPLY);
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _assets,
+            //assets: _assets,
+            assets: _asIAsset(tokens),
             maxAmountsIn: _maxAmountsIn,
-            userData: "",
+            userData: abi.encode("INIT", _maxAmountsIn),
             fromInternalBalance: false
         });
-        //getVault().joinPool(getPoolId(), address(this), address(this), request);
+        getVault().joinPool(getPoolId(), address(this), address(this), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime);
     }
 
     function exit() external {
-        IAsset[] memory _assets = new IAsset[](2);
-        _assets[0] = IAsset(address(_security));
-        _assets[1] = IAsset(address(_currency));
-        uint256[] memory _minAmountsOut = new uint256[](2);
-        _minAmountsOut[0] = 0;
-        _minAmountsOut[1] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
+        bytes32 poolId = getPoolId();
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+        //IAsset[] memory _assets = new IAsset[](2);
+        //_assets[0] = IAsset(address(_security));
+        //_assets[1] = IAsset(address(_currency));
+        uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
+        _minAmountsOut[_securityIndex] = 0;
+        _minAmountsOut[_currencyIndex] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
+        _minAmountsOut[_bptIndex] = 0;
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
-            assets: _assets,
+            //assets: _assets,
+            assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
-            userData: "",
+            userData: abi.encode("EXACT_BPT_IN_FOR_TOKENS_OUT", _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
         getVault().exitPool(getPoolId(), address(this), payable(_balancerManager), request);
@@ -357,20 +367,49 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        _revert(Errors.MAX_STABLE_TOKENS);
+        _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
     }
 
     function _onExitPool(
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory
-    ) internal pure override returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED_JOIN_KIND);
+        bytes memory userData
+    ) internal view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        PrimaryPoolUserData.ExitKind kind = userData.exitKind();
+        if (kind != PrimaryPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            //usually exit pool reverts
+            _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
+        } else {
+            //unless paused in which case tokens are retrievable by contributors
+            _ensurePaused();
+            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
+        }
+    }
+
+    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
+        // retrieve their tokens in case of an emergency.
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
+            if (i != _bptIndex) {
+                amountsOut[i] = balances[i].mulDown(bptRatio);
+            }
+        }
+
+        return (bptAmountIn, amountsOut);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
