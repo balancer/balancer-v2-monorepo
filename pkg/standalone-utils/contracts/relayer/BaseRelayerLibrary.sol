@@ -81,6 +81,15 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         token.approve(address(getVault()), amount);
     }
 
+    /**
+     * @notice Returns the amount referenced by chained reference `ref`.
+     * @dev It does not alter the reference (even if it's marked as temporary), and it does not expose the reference
+     * slot (see `_peekChainedReferenceValue`).
+     */
+    function peekChainedReferenceValue(uint256 ref) public view override returns (uint256 value) {
+        (, value) = _peekChainedReferenceValue(ref);
+    }
+
     function _pullToken(
         address sender,
         IERC20 token,
@@ -157,20 +166,29 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * (see `_isTemporaryChainedReference` function).
      */
     function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
-        bytes32 slot = _getStorageSlot(ref);
-
-        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
-        // access it.
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            value := sload(slot)
-        }
+        bytes32 slot;
+        (slot, value) = _peekChainedReferenceValue(ref);
 
         if (_isTemporaryChainedReference(ref)) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
                 sstore(slot, 0)
             }
+        }
+    }
+
+    /**
+     * @dev Returns the storage slot for reference `ref` as well as the amount referenced by it.
+     * It does not alter the reference (even if it's marked as temporary).
+     */
+    function _peekChainedReferenceValue(uint256 ref) private view returns (bytes32 slot, uint256 value) {
+        slot = _getStorageSlot(ref);
+
+        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
+        // access it.
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            value := sload(slot)
         }
     }
 
