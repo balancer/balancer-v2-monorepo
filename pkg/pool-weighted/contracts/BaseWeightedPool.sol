@@ -135,7 +135,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     /**
      * @dev Called before any join or exit operation. Derived contracts may add custom behavior here to calculate any
      * fees to be paid to the protocol (or e.g. the Pool's owner) before the join or exit.
-     * @return preJoinExitTotalSupply - the total supply once all protocol fees prior to the join/exit have been paid.
+     * @return preJoinExitTotalSupply - the total supply once all fees prior to the join/exit have been paid.
      * @return preJoinExitProtocolFees - the amount of protocol fees which are to be collected before the join/exit.
      */
     function _beforeJoinExit(
