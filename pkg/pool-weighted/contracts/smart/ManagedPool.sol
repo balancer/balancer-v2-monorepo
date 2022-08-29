@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
@@ -55,7 +56,7 @@ import "../BaseWeightedPool.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -423,7 +424,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 startTime,
         uint256 endTime,
         uint256[] memory endWeights
-    ) external authenticate whenNotPaused nonReentrant {
+    ) external override authenticate whenNotPaused nonReentrant {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         InputHelpers.ensureInputLengthMatch(tokens.length, endWeights.length);
@@ -475,7 +476,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * Emits the AllowlistAddressAdded event. This is a permissioned function.
      * @param member - The address to be added to the allowlist.
      */
-    function addAllowedAddress(address member) external authenticate whenNotPaused {
+    function addAllowedAddress(address member) external override authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
         _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
@@ -490,7 +491,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * is disabled. This is a permissioned function.
      * @param member - The address to be removed from the allowlist.
      */
-    function removeAllowedAddress(address member) external authenticate whenNotPaused {
+    function removeAllowedAddress(address member) external override authenticate whenNotPaused {
         _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
@@ -505,7 +506,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * Emits the MustAllowlistLPsSet event. This is a permissioned function.
      * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
-    function setMustAllowlistLPs(bool mustAllowlistLPs) external authenticate whenNotPaused {
+    function setMustAllowlistLPs(bool mustAllowlistLPs) external override authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
     }
 
@@ -520,7 +521,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * @dev Emits the SwapEnabledSet event. This is a permissioned function.
      * @param swapEnabled - The new value of the swap enabled flag.
      */
-    function setSwapEnabled(bool swapEnabled) external authenticate whenNotPaused {
+    function setSwapEnabled(bool swapEnabled) external override authenticate whenNotPaused {
         _setSwapEnabled(swapEnabled);
     }
 
@@ -789,7 +790,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * Emits the ManagementSwapFeePercentageChanged event. This is a permissioned function.
      * @param managementSwapFeePercentage - The new management swap fee percentage.
      */
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external authenticate whenNotPaused {
+    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
+        external
+        override
+        authenticate
+        whenNotPaused
+    {
         _setManagementSwapFeePercentage(managementSwapFeePercentage);
     }
 
@@ -813,6 +819,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
+        override
         authenticate
         whenNotPaused
         returns (uint256 amount)
@@ -822,7 +829,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection > 0) {
-            amount = _collectAumManagementFees(supplyBeforeFeeCollection);
+            (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -844,14 +851,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * joins and exits.
      * @return The amount of BPT minted to the manager.
      */
-    function collectAumManagementFees() external whenNotPaused returns (uint256) {
+    function collectAumManagementFees() external override whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        return _collectAumManagementFees(supplyBeforeFeeCollection);
+        (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
+        return managerAUMFees;
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -1280,19 +1288,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         uint256 supplyBeforeFeeCollection = totalSupply();
-        return supplyBeforeFeeCollection + _collectAumManagementFees(supplyBeforeFeeCollection);
+        (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
+        return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
     }
 
     /**
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
+    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256, uint256) {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         uint256 currentTime = block.timestamp;
 
         // If no time has passed since the last join/exit we've already collected fees so we can return early.
-        if (currentTime <= lastCollection) return 0;
+        if (currentTime <= lastCollection) return (0, 0);
 
         // Reset the collection timer to the current block
         _lastAumFeeCollectionTimestamp = currentTime;
@@ -1305,7 +1314,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // non-initialization join or exit.
         // We also perform an early return if the AUM fee is zero, to save gas.
         if (managementAumFeePercentage == 0 || lastCollection == 0) {
-            return 0;
+            return (0, 0);
         }
 
         // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
@@ -1341,7 +1350,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         _mintPoolTokens(getOwner(), managerBPTAmount);
 
-        return bptAmount;
+        return (protocolBptAmount, managerBPTAmount);
     }
 
     /**

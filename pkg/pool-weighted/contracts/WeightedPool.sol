@@ -246,7 +246,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal virtual override {
-        (uint256 protocolFeesToBeMinted, uint256 postJoinExitInvariant) = _getJoinExitProtocolFees(
+        uint256 protocolFeesToBeMinted = _getJoinExitProtocolFees(
             preBalances,
             balanceDeltas,
             normalizedWeights,
@@ -257,8 +257,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
         }
-
-        _updatePostJoinExit(postJoinExitInvariant);
     }
 
     function _updatePostJoinExit(uint256 postJoinExitInvariant)
