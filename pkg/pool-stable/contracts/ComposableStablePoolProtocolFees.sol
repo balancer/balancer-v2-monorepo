@@ -164,12 +164,14 @@ abstract contract ComposableStablePoolProtocolFees is
         // the total growth invariant. These values, multiplied by the protocol fee percentage for each growth type,
         // represent the percentage of Pool ownership the protocol should have due to each source.
 
-        uint256 protocolSwapFeePercentage = swapFeeGrowthInvariantDelta.divDown(totalGrowthInvariant).mulDown(
-            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+        uint256 protocolSwapFeePercentage = Math.divDown(
+            Math.mul(swapFeeGrowthInvariantDelta, getProtocolFeePercentageCache(ProtocolFeeType.SWAP)),
+            totalGrowthInvariant
         );
 
-        uint256 protocolYieldPercentage = nonExemptYieldGrowthInvariantDelta.divDown(totalGrowthInvariant).mulDown(
-            getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
+        uint256 protocolYieldPercentage = Math.divDown(
+            Math.mul(nonExemptYieldGrowthInvariantDelta, getProtocolFeePercentageCache(ProtocolFeeType.YIELD)),
+            totalGrowthInvariant
         );
 
         // These percentages can then be simply added to compute the total protocol Pool ownership percentage.

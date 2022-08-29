@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 /**
  * @dev Library for compressing and decompressing numbers by using smaller types.
@@ -53,7 +54,7 @@ library WeightCompression {
 
         uint256 maxCompressedValue = (1 << bitLength) - 1;
 
-        return value.mulDown(maxCompressedValue).divDown(maxUncompressedValue);
+        return Math.divDown(Math.mul(value, maxCompressedValue), maxUncompressedValue);
     }
 
     /**
@@ -78,7 +79,7 @@ library WeightCompression {
         // uncompressed value.
         _require(value <= maxCompressedValue, Errors.OUT_OF_BOUNDS);
 
-        return value.mulUp(maxUncompressedValue).divDown(maxCompressedValue);
+        return Math.divDown(Math.mul(value, maxUncompressedValue), maxCompressedValue);
     }
 
     // Special case overloads
