@@ -934,10 +934,23 @@ contract ComposableStablePool is
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+        if (currentAmp == lastJoinExitAmp) {
+            (uint256 protocolOwnershipPercentage, uint256 oldAmpInvariant) = _getProtocolPoolOwnershipPercentage(
+                balances,
+                lastJoinExitAmp,
+                lastPostJoinExitInvariant
+            );
+
+            // Multiply the rate by the fraction of the pool which is not owed to the protocol on the next collection
+            // of protocol fees to reduce the value of BPT accordingly, otherwise the value of BPT can be manipulated
+            // by timing collections of protocol fees.
+            return oldAmpInvariant.mulDown(protocolOwnershipPercentage.complement()).divDown(virtualSupply);
+        } else {
+            return StableMath._getRate(balances, currentAmp, virtualSupply);
+        }
     }
 
     // Helpers
