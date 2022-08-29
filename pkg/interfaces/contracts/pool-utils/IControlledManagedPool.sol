@@ -31,9 +31,9 @@ interface IControlledManagedPool is IControlledPool {
 
     function setMustAllowlistLPs(bool mustAllowlistLPs) external;
 
-    function withdrawCollectedManagementFees(address recipient) external;
+    function collectAumManagementFees() external returns (uint256);
 
     function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external;
 
-    function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external;
+    function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external returns (uint256);
 }

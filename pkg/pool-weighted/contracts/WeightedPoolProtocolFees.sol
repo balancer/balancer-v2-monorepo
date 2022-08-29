@@ -34,7 +34,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     IRateProvider internal immutable _rateProvider6;
     IRateProvider internal immutable _rateProvider7;
 
-    bool internal immutable _paysYieldFees;
+    bool internal immutable _exemptFromYieldFees;
 
     // All-time high value of the weighted product of the pool's token rates. Comparing such weighted products across
     // time provides a measure of the pool's growth resulting from rate changes. The pool also grows due to swap fees,
@@ -52,13 +52,13 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
         // If we know that no rate providers are set then we can skip yield fees logic.
-        // If so then set `_paysYieldFees` to false, otherwise set it to true.
-        bool paysYieldFees = true;
+        // If so then set `_exemptFromYieldFees` to true, otherwise leave it false.
+        bool exemptFromYieldFees;
         for (uint256 i = 0; i < numTokens; i++) {
             if (rateProviders[i] != IRateProvider(0)) break;
-            paysYieldFees = false;
+            exemptFromYieldFees = true;
         }
-        _paysYieldFees = paysYieldFees;
+        _exemptFromYieldFees = exemptFromYieldFees;
 
         _rateProvider0 = rateProviders[0];
         _rateProvider1 = rateProviders[1];
@@ -194,7 +194,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         internal
         returns (uint256)
     {
-        if (!_paysYieldFees) return 0;
+        if (_exemptFromYieldFees) return 0;
 
         uint256 athRateProduct = _athRateProduct;
         uint256 rateProduct = _getRateProduct(normalizedWeights);
