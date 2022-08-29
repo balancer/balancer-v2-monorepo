@@ -135,6 +135,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     /**
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
+     * @return preJoinExitTotalSupply - the total supply once all protocol fees prior to the join/exit have been paid.
+     * @return preJoinExitProtocolFees - the amount of protocol fees which are to be collected before the join/exit.
      */
     function _beforeJoinExit(
         uint256[] memory, /* preBalances */
@@ -150,6 +152,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * If performing a join operation, balanceDeltas are the amounts in: otherwise they are the amounts out.
      *
      * This function is free to mutate the `preBalances` array.
+     * @return postJoinExitProtocolFees - the amount of protocol fees which are to be collected after the join/exit.
      */
     function _afterJoinExit(
         uint256[] memory, /* preBalances */
