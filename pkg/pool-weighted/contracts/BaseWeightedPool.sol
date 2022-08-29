@@ -139,12 +139,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     function _beforeJoinExit(
         uint256[] memory, /* preBalances */
         uint256[] memory /* normalizedWeights */
-    ) internal virtual returns (uint256) {
-        return totalSupply();
+    ) internal virtual returns (uint256, uint256) {
+        return (totalSupply(), 0);
     }
 
     /**
-     * @dev Called after any regular join or exit operation. Empty by default, but derived contracts
+     * @dev Called after any regular join or exit operation. Returns zero by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      *
      * If performing a join operation, balanceDeltas are the amounts in: otherwise they are the amounts out.
@@ -152,13 +152,13 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * This function is free to mutate the `preBalances` array.
      */
     function _afterJoinExit(
-        uint256[] memory preBalances,
-        uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights,
-        uint256 preJoinExitSupply,
-        uint256 postJoinExitSupply
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
+        uint256[] memory, /* preBalances */
+        uint256[] memory, /* balanceDeltas */
+        uint256[] memory, /* normalizedWeights */
+        uint256, /* preJoinExitSupply */
+        uint256 /* postJoinExitSupply */
+    ) internal virtual returns (uint256) {
+        return 0;
     }
 
     // Derived contracts may call this to update state after a join or exit.
@@ -210,7 +210,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        // `preJoinExitSupply` represents the total supply once all protocol fees prior to the join/exit have been paid.
+        // This is the supply to be used in calculations inside the join/exit. The amount of protocol fees to be minted
+        // is also returned separately.
+        (uint256 preJoinExitSupply, uint256 preJoinExitProtocolFees) = _beforeJoinExit(balances, normalizedWeights);
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
@@ -221,7 +224,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(balances, amountsIn, normalizedWeights, preJoinExitSupply, preJoinExitSupply.add(bptAmountOut));
+        uint256 postJoinExitProtocolFees = _afterJoinExit(
+            balances,
+            amountsIn,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.add(bptAmountOut)
+        );
+
+        uint256 protocolFeesToBeMinted = preJoinExitProtocolFees.add(postJoinExitProtocolFees);
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
 
         return (bptAmountOut, amountsIn);
     }
@@ -331,7 +345,10 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        // `preJoinExitSupply` represents the total supply once all protocol fees prior to the join/exit have been paid.
+        // This is the supply to be used in calculations inside the join/exit. The amount of protocol fees to be minted
+        // is also returned separately.
+        (uint256 preJoinExitSupply, uint256 preJoinExitProtocolFees) = _beforeJoinExit(balances, normalizedWeights);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
@@ -342,7 +359,18 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(balances, amountsOut, normalizedWeights, preJoinExitSupply, preJoinExitSupply.sub(bptAmountIn));
+        uint256 postJoinExitProtocolFees = _afterJoinExit(
+            balances,
+            amountsOut,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.sub(bptAmountIn)
+        );
+
+        uint256 protocolFeesToBeMinted = preJoinExitProtocolFees.add(postJoinExitProtocolFees);
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
 
         return (bptAmountIn, amountsOut);
     }

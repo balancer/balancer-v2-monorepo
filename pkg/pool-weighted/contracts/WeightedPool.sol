@@ -223,7 +223,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         internal
         virtual
         override
-        returns (uint256)
+        returns (uint256, uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
         uint256 protocolFeesToBeMinted = _getSwapProtocolFees(
@@ -233,10 +233,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         );
         protocolFeesToBeMinted += _getYieldProtocolFee(normalizedWeights, supplyBeforeFeeCollection);
 
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
-        return supplyBeforeFeeCollection.add(protocolFeesToBeMinted);
+        return (supplyBeforeFeeCollection.add(protocolFeesToBeMinted), protocolFeesToBeMinted);
     }
 
     function _afterJoinExit(
@@ -245,18 +242,15 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
-    ) internal virtual override {
-        uint256 protocolFeesToBeMinted = _getJoinExitProtocolFees(
-            preBalances,
-            balanceDeltas,
-            normalizedWeights,
-            preJoinExitSupply,
-            postJoinExitSupply
-        );
-
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
+    ) internal virtual override returns (uint256) {
+        return
+            _getJoinExitProtocolFees(
+                preBalances,
+                balanceDeltas,
+                normalizedWeights,
+                preJoinExitSupply,
+                postJoinExitSupply
+            );
     }
 
     function _updatePostJoinExit(uint256 postJoinExitInvariant)
