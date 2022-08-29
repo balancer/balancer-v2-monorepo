@@ -809,20 +809,23 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
      * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
      * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
      * @param managementAumFeePercentage - The new management AUM fee percentage.
-     * @return amount - The amount of BPT minted to the manager before the update, if any.
+     * @return managerFeesAmount - The amount of BPT minted to the manager before the update, if any.
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
         authenticate
         whenNotPaused
-        returns (uint256 amount)
+        returns (uint256 managerFeesAmount)
     {
         // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
         // To prevent this, we perform a collection before updating the fee percentage.
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection > 0) {
-            (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
+            uint256 protocolFeesAmount;
+            (protocolFeesAmount, managerFeesAmount) = _collectAumManagementFees(supplyBeforeFeeCollection);
+
+            _payProtocolFees(protocolFeesAmount);
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -851,7 +854,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
+        (uint256 protocolFeesAmount, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
+
+        _payProtocolFees(protocolFeesAmount);
         return managerAUMFees;
     }
 
