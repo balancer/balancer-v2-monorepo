@@ -1349,8 +1349,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
         uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
-        // We only mint the Pool Manager's BPT here. This is because the protocol's BPT is minted in the
-        // `_onJoinPool`/`_onExitPool` hooks.
+        // We only mint the Pool Manager's BPT here. The protocol's BPT is minted separately to allow us to combine it
+        // with other collected protocol fees.
 
         emit ManagementAumFeeCollected(managerBPTAmount);
 
