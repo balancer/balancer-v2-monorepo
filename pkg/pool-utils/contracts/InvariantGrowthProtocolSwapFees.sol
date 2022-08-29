@@ -83,14 +83,19 @@ library InvariantGrowthProtocolSwapFees {
         // should own once fees have been collected.
         uint256 protocolOwnershipPercentage = swapFeesPercentage.mulDown(protocolSwapFeePercentage);
 
-        // The percentage of the Pool the protocol will own after minting is given by:
-        // `protocol percentage = to mint / (current supply + to mint)`.
-        // Solving for `to mint`, we arrive at:
-        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
-        return
-            Math.divDown(
-                Math.mul(currentSupply, protocolOwnershipPercentage),
-                protocolOwnershipPercentage.complement()
-            );
+        return bptForPoolPercentage(currentSupply, protocolOwnershipPercentage);
+    }
+
+    /**
+     * @dev Calculates the amount of BPT necessary to give ownership of a given percentage of the Pool.
+     * Note that this function reverts if `poolPercentage` >= 100%, it's expected that the caller will enforce this.
+     * @return bptAmount - The amount of BPT to mint such that it is `poolPercentage` of the resultant total supply.
+     */
+    function bptForPoolPercentage(uint256 totalSupply, uint256 poolPercentage) internal pure returns (uint256) {
+        // If we mint some amount `bptAmount` of BPT then the percentage ownership of the pool this grants is given by:
+        // `poolPercentage = bptAmount / (totalSupply + bptAmount)`.
+        // Solving for `bptAmount`, we arrive at:
+        // `bptAmount = totalSupply * poolPercentage / (1 - poolPercentage)`.
+        return Math.divDown(Math.mul(totalSupply, poolPercentage), poolPercentage.complement());
     }
 }

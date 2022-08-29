@@ -82,7 +82,7 @@ abstract contract ComposableStablePoolProtocolFees is
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
         // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
         // of each BPT is going to be reduced as all LPs get diluted.
-        uint256 protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(
+        uint256 protocolFeeAmount = InvariantGrowthProtocolSwapFees.bptForPoolPercentage(
             virtualSupply,
             expectedProtocolOwnershipPercentage
         );
@@ -276,25 +276,6 @@ abstract contract ComposableStablePoolProtocolFees is
             );
 
         _updateOldRates();
-    }
-
-    /**
-     * @dev Adjust a protocol fee percentage calculated before minting, to the equivalent value after minting.
-     */
-    function _calculateAdjustedProtocolFeeAmount(uint256 supply, uint256 basePercentage)
-        internal
-        pure
-        returns (uint256)
-    {
-        // Since this fee amount will be minted as BPT, which increases the total supply, we need to mint
-        // slightly more so that it reflects this percentage of the total supply after minting.
-        //
-        // The percentage of the Pool the protocol will own after minting is given by:
-        // `protocol percentage = to mint / (current supply + to mint)`.
-        // Solving for `to mint`, we arrive at:
-        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
-        //
-        return supply.mulDown(basePercentage).divDown(basePercentage.complement());
     }
 
     /**
