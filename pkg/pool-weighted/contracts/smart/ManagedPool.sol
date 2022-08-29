@@ -822,7 +822,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection > 0) {
-            amount = _collectAumManagementFees(supplyBeforeFeeCollection);
+            (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -851,7 +851,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        return _collectAumManagementFees(supplyBeforeFeeCollection);
+        (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
+        return managerAUMFees;
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
@@ -1280,19 +1281,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         uint256 supplyBeforeFeeCollection = totalSupply();
-        return supplyBeforeFeeCollection + _collectAumManagementFees(supplyBeforeFeeCollection);
+        (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
+        return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
     }
 
     /**
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
+    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256, uint256) {
         uint256 lastCollection = _lastAumFeeCollectionTimestamp;
         uint256 currentTime = block.timestamp;
 
         // If no time has passed since the last join/exit we've already collected fees so we can return early.
-        if (currentTime <= lastCollection) return 0;
+        if (currentTime <= lastCollection) return (0, 0);
 
         // Reset the collection timer to the current block
         _lastAumFeeCollectionTimestamp = currentTime;
@@ -1305,7 +1307,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
         // non-initialization join or exit.
         // We also perform an early return if the AUM fee is zero, to save gas.
         if (managementAumFeePercentage == 0 || lastCollection == 0) {
-            return 0;
+            return (0, 0);
         }
 
         // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
@@ -1341,7 +1343,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard {
 
         _mintPoolTokens(getOwner(), managerBPTAmount);
 
-        return bptAmount;
+        return (protocolBptAmount, managerBPTAmount);
     }
 
     /**
