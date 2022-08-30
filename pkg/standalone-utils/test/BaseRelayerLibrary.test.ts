@@ -131,13 +131,20 @@ describe('BaseRelayerLibrary', function () {
           expect(await relayerLibrary.peekChainedReferenceValue(reference.add(1))).to.be.eq(0);
         });
 
-        it('peeks same slot multiple times and then reads', async () => {
+        it('peeks same slot multiple times', async () => {
           await relayerLibrary.setChainedReferenceValue(reference, 19);
           expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
           expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
           expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
 
           await expectChainedReferenceContents(reference, 19);
+        });
+
+        it('peeks and reads same slot', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 31);
+
+          expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(31);
+          await expectChainedReferenceContents(reference, 31);
         });
       }
     });
