@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "./ProtocolFees.sol";
 
 library InvariantGrowthProtocolSwapFees {
     using FixedPoint for uint256;
@@ -83,14 +84,6 @@ library InvariantGrowthProtocolSwapFees {
         // should own once fees have been collected.
         uint256 protocolOwnershipPercentage = swapFeesPercentage.mulDown(protocolSwapFeePercentage);
 
-        // The percentage of the Pool the protocol will own after minting is given by:
-        // `protocol percentage = to mint / (current supply + to mint)`.
-        // Solving for `to mint`, we arrive at:
-        // `to mint = current supply * protocol percentage / (1 - protocol percentage)`.
-        return
-            Math.divDown(
-                Math.mul(currentSupply, protocolOwnershipPercentage),
-                protocolOwnershipPercentage.complement()
-            );
+        return ProtocolFees.bptForPoolOwnershipPercentage(currentSupply, protocolOwnershipPercentage);
     }
 }
