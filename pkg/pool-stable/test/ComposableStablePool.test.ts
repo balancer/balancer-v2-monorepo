@@ -1581,13 +1581,13 @@ describe('ComposableStablePool', () => {
         context('with protocol fees', () => {
           sharedBeforeEach('swap bpt in', async () => {
             const amount = fp(50);
-            const tokenIn = pool.bpt;
+            const tokenIn = tokens.first;
             const tokenOut = tokens.second;
 
-            await tokens.mint({ to: lp, amount });
+            await tokens.mint({ to: lp, amount: amount.mul(2) });
             await tokens.approve({ from: lp, to: pool.vault });
 
-            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient: lp });
           });
 
           it('reports correctly', async () => {
