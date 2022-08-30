@@ -443,7 +443,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev This function returns the appreciation of one BPT relative to the
      * underlying tokens. This starts at 1 when the pool is created and grows over time
      */
-    function getRate() public view returns (uint256) {
+    function getRate() public view virtual returns (uint256) {
         // The initial BPT supply is equal to the invariant times the number of tokens.
         return Math.mul(getInvariant(), _getTotalTokens()).divDown(totalSupply());
     }
