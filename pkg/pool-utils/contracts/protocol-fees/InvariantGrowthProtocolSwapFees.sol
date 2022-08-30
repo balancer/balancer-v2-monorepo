@@ -84,6 +84,6 @@ library InvariantGrowthProtocolSwapFees {
         // should own once fees have been collected.
         uint256 protocolOwnershipPercentage = swapFeesPercentage.mulDown(protocolSwapFeePercentage);
 
-        return ProtocolFees.bptForPoolPercentage(currentSupply, protocolOwnershipPercentage);
+        return ProtocolFees.bptForPoolOwnershipPercentage(currentSupply, protocolOwnershipPercentage);
     }
 }

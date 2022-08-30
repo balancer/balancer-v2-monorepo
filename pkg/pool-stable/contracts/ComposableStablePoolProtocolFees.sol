@@ -82,7 +82,7 @@ abstract contract ComposableStablePoolProtocolFees is
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
         // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
         // of each BPT is going to be reduced as all LPs get diluted.
-        uint256 protocolFeeAmount = ProtocolFees.bptForPoolPercentage(
+        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
             virtualSupply,
             expectedProtocolOwnershipPercentage
         );

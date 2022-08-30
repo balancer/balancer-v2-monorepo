@@ -1320,7 +1320,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // We want to collect fees so that the manager will receive `managementAumFeePercentage` percent of the Pool's
         // AUM after a year. We compute the amount of BPT to mint for the manager that would allow it to proportionally
         // exit the Pool and receive this fraction of the Pool's assets.
-        uint256 annualizedFee = ProtocolFees.bptForPoolPercentage(totalSupply, managementAumFeePercentage);
+        uint256 annualizedFee = ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, managementAumFeePercentage);
 
         // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
         // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
