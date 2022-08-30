@@ -10,6 +10,7 @@ import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR, arrayAdd, bnSum } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
+import { QueryBatchSwap } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { currentTimestamp, advanceTime, MONTH, WEEK, DAY } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -1747,5 +1748,213 @@ describe('ComposableStablePool', () => {
         });
       });
     });
+
+    if (numberOfTokens === 2) {
+      describe('Virtual supply tests', () => {
+        let poolNested: StablePool; 
+        let equalBalances: BigNumber[];
+        let otherToken: Token;
+        const swapFeePercentage = fp(0.1); // 10 %
+        const protocolFeePercentage = fp(0.5); // 50 %
+  
+        sharedBeforeEach('deploy pool', async () => {
+          await deployPool({ swapFeePercentage });
+          await pool.vault.setSwapFeePercentage(protocolFeePercentage);
+  
+          await pool.updateProtocolFeePercentageCache();
+  
+          // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
+          equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
+          await pool.init({ recipient: lp.address, initialBalances: equalBalances });
+  
+          await tokens.mint({ to: [lp, other], amount: fp(10000) });
+          await tokens.approve({from: lp, to: pool.vault });
+          await tokens.approve({from: other, to: pool.vault });
+  
+          const rateProvider: Contract = await deploy('v2-pool-utils/MockRateProvider');
+  
+          otherToken = await Token.create({symbol: 'OTHER-TOKEN'});
+  
+          const tokensNested = (new TokenList([pool.bpt, otherToken])).sort();
+  
+           poolNested = await StablePool.create({
+            tokens: tokensNested,
+            rateProviders: tokensNested.map(token => token.address === pool.bpt.address ? pool : rateProvider),
+            tokenRateCacheDurations: [1, 1],
+            exemptFromYieldProtocolFeeFlags: [false, false],
+            owner,
+            admin,
+            swapFeePercentage: fp(0.00001),
+            vault: pool.vault,
+          });
+  
+          await otherToken.mint(lp, fp(10000));
+          await otherToken.mint(other, fp(10000));
+  
+          const bptIdx = await poolNested.getBptIndex();
+          const initialBalances = Array.from({ length: tokensNested.length + 1 }).map((_, i) => (i == bptIdx ? bn(0) : fp(10)));
+          await poolNested.init({from: lp, recipient: lp.address, initialBalances, skipMint: true });
+  
+          await tokensNested.approve({from: lp, to: poolNested.vault });
+          await tokensNested.approve({from: other, to: poolNested.vault });
+        });
+  
+        it('minting protocol fee BPT should not cause a decrease in getRate', async () => {
+          //generate owed protocol fee
+          await pool.swapGivenIn({ in: tokens.tokens[0], out: tokens.tokens[1], amount: fp(25), from: lp, recipient: lp });
+  
+          const rateBeforeJoin = await pool.getRate();
+  
+          //join with a very small equal amount
+          const amountsIn = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(0.0000001)));
+          await pool.joinGivenIn({from: other, amountsIn });
+  
+          const raterAfterJoin = await pool.getRate();
+  
+          expect(raterAfterJoin).to.gte(rateBeforeJoin);
+        });
+  
+        it('A small balanced downstream join should not greatly impact swap amount out on the parent pool', async () => {
+          //generate owed protocol fee
+          await pool.swapGivenIn({ in: tokens.tokens[0], out: tokens.tokens[1], amount: fp(50), from: lp, recipient: lp });
+          await pool.swapGivenIn({ in: tokens.tokens[1], out: tokens.tokens[0], amount: fp(50), from: lp, recipient: lp });
+  
+          //swap 1 nested BPT for otherToken
+          const response = await poolNested.swapGivenIn({ in: pool.bpt, out: otherToken, amount: fp(1), from: lp, recipient: lp });
+  
+          //store query result of bpt swap prior to down stream join
+          const queryResult = await poolNested.querySwapGivenIn({ in: otherToken, out: pool.bpt, amount: response.amountOut, from: lp, recipient: lp })
+  
+          //perform downstream join, trigger protocol fee BPT minting
+          const amountsIn = Array.from({ length: tokens.length + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(0.0000000001)));
+          await pool.joinGivenIn({from: other, amountsIn });
+  
+          //perform bpt swap
+          const responseAfter = await poolNested.swapGivenIn({ in: otherToken, out: pool.bpt, amount: response.amountOut, from: lp, recipient: lp });
+  
+          expect(queryResult).to.be.equalWithError(responseAfter.amountOut, 0.00001);
+        });
+  
+        it('Protocol fee minting on bptSwaps should not allow for value extraction: bb-a-USDC -> bb-a-USD -> bbaUSD-TUSD', async () => {
+          //generate owed protocol fee
+          await pool.swapGivenIn({ in: tokens.tokens[0], out: tokens.tokens[1], amount: fp(50), from: lp, recipient: lp });
+          await pool.swapGivenIn({ in: tokens.tokens[1], out: tokens.tokens[0], amount: fp(50), from: lp, recipient: lp });
+  
+          //This swap is a generalization of bb-a-USDC -> bb-a-USD -> bbaUSD-TUSD
+          //by querying as a batch swap, the protocol bpt mint is being accounted for on the bb-a-USD rate provider (1 sec cache duration)
+          //generally said, the batchSwapQuery generates the "correct" result
+          const query: QueryBatchSwap = {
+            kind: SwapKind.GivenIn,
+            assets: [pool.tokens.tokens[0].address, pool.address, poolNested.address],
+            swaps: [
+              {
+                poolId: pool.poolId,
+                assetInIndex: 0,
+                assetOutIndex: 1,
+                amount: fp(1),
+                userData: '0x',
+              },
+              {
+                poolId: poolNested.poolId,
+                assetInIndex: 1,
+                assetOutIndex: 2,
+                amount: '0',
+                userData: '0x',
+              }
+            ],
+            funds: {
+              fromInternalBalance: false,
+              toInternalBalance: false,
+              sender: lp.address,
+              recipient: other.address,
+            }
+          }
+         
+          const batchSwapQuery = await pool.vault.queryBatchSwap(query);
+  
+          //Here we query the same swap path as above, but using individual queries.
+          //This simulates the "bad" result when the rate provider for pool.bpt is still cached (after protocol fee bpt mint) on the nestedPool,
+          //allowing us to extract value from the pool
+          const bptOut = await pool.querySwapGivenIn({
+            from: lp,
+            in: pool.tokens.tokens[0],
+            out: pool.bpt,
+            amount: fp(1),
+          });
+  
+          const nestedBptOut = await poolNested.querySwapGivenIn({
+            from: lp,
+            in: pool.bpt,
+            out: poolNested.bpt,
+            amount: bptOut,
+          });
+  
+          //under normal circumstances, the above operation sets should produce the exact same output.
+          //But, with the virtual supply not reflecting the BPT that will be minted on bptSwap, we are able to construct
+          //scenarios that extract value from the pool
+          expect(batchSwapQuery[2].abs()).to.be.equalWithError(nestedBptOut, 0.00001);
+        });
+
+        it('Protocol fee minting on bptSwaps should not allow for value extraction: bb-a-USDC -> bb-a-USD -> TUSD', async () => {
+          //generate owed protocol fee
+          await pool.swapGivenIn({ in: tokens.tokens[0], out: tokens.tokens[1], amount: fp(50), from: lp, recipient: lp });
+          await pool.swapGivenIn({ in: tokens.tokens[1], out: tokens.tokens[0], amount: fp(50), from: lp, recipient: lp });
+  
+          //This swap is a generalization of bb-a-USDC -> bb-a-USD -> TUSD
+          //by querying as a batch swap, the protocol bpt mint is being accounted for on the bb-a-USD rate provider (1 sec cache duration)
+          //generally said, the batchSwapQuery generates the "correct" result
+          const query: QueryBatchSwap = {
+            kind: SwapKind.GivenIn,
+            assets: [pool.tokens.tokens[0].address, pool.address, otherToken.address],
+            swaps: [
+              {
+                poolId: pool.poolId,
+                assetInIndex: 0,
+                assetOutIndex: 1,
+                amount: fp(1),
+                userData: '0x',
+              },
+              {
+                poolId: poolNested.poolId,
+                assetInIndex: 1,
+                assetOutIndex: 2,
+                amount: '0',
+                userData: '0x',
+              }
+            ],
+            funds: {
+              fromInternalBalance: false,
+              toInternalBalance: false,
+              sender: lp.address,
+              recipient: other.address,
+            }
+          }
+         
+          const batchSwapQuery = await pool.vault.queryBatchSwap(query);
+          //Here we query the same swap path as above, but using individual queries.
+          //This simulates the "bad" result when the rate provider for pool.bpt is still cached (after protocol fee bpt mint) on the nestedPool,
+          //allowing us to extract value from the pool
+          const bptOut = await pool.querySwapGivenIn({
+            from: lp,
+            in: pool.tokens.tokens[0],
+            out: pool.bpt,
+            amount: fp(1),
+          });
+  
+          const otherTokenOut = await poolNested.querySwapGivenIn({
+            from: lp,
+            in: pool.bpt,
+            out: otherToken,
+            amount: bptOut,
+          });
+
+      
+          //under normal circumstances, the above operation sets should produce the exact same output.
+          //But, with the virtual supply not reflecting the BPT that will be minted on bptSwap, we are able to construct
+          //scenarios that extract value from the pool
+          expect(batchSwapQuery[2].abs()).to.be.equalWithError(otherTokenOut, 0.00001);
+        });
+      });
+    }
   }
 });

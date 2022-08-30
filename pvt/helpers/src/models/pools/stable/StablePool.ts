@@ -296,7 +296,10 @@ export default class StablePool extends BasePool {
       balances.map(async (balance, i) => {
         const token = this.tokens.get(i);
 
-        await token.mint(from, balance);
+        if (!initParams.skipMint) {
+          await token.mint(from, balance);
+        }
+        
         await token.approve(this.vault, balance, { from });
       })
     );
