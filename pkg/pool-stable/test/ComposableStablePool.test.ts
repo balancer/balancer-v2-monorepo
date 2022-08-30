@@ -1600,6 +1600,21 @@ describe('ComposableStablePool', () => {
 
             expect(rate).to.be.equalWithError(expectedRate, 0.0001);
           });
+
+          it('minting protocol fee BPT should not affect rate', async () => {
+            const rateBeforeJoin = await pool.getRate();
+
+            // Perform a very small proportional join. This ensures that the rate should not increase from swap fees
+            // due to this join so this can't mask issues with the rate.
+            const poolBalances = await pool.getBalances();
+            const amountsIn = poolBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(10000)));
+            await pool.joinGivenIn({ from: lp, amountsIn });
+
+            const rateAfterJoin = await pool.getRate();
+
+            const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
+            expect(rateDelta.abs()).to.be.lte(1);
+          });
         });
       });
     });
