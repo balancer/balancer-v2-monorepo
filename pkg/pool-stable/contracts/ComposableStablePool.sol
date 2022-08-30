@@ -934,22 +934,25 @@ contract ComposableStablePool is
         _upscaleArray(balancesIncludingBpt, _scalingFactors());
 
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
         (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
-        if (currentAmp == lastJoinExitAmp) {
-            (uint256 protocolOwnershipPercentage, uint256 oldAmpInvariant) = _getProtocolPoolOwnershipPercentage(
-                balances,
-                lastJoinExitAmp,
-                lastPostJoinExitInvariant
-            );
+        (uint256 protocolOwnershipPercentage, uint256 oldAmpInvariant) = _getProtocolPoolOwnershipPercentage(
+            balances,
+            lastJoinExitAmp,
+            lastPostJoinExitInvariant
+        );
 
-            // Multiply the rate by the fraction of the pool which is not owed to the protocol on the next collection
-            // of protocol fees to reduce the value of BPT accordingly, otherwise the value of BPT can be manipulated
-            // by timing collections of protocol fees.
-            return oldAmpInvariant.mulDown(protocolOwnershipPercentage.complement()).divDown(virtualSupply);
+        // We want to multiply the rate by the fraction of the pool which is not owed to the protocol on the next
+        // collection of protocol fees to reduce the value of BPT accordingly, otherwise the value of BPT can be
+        // manipulated by timing collections of protocol fees.
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        if (currentAmp == lastJoinExitAmp) {
+            // If the amplitude hasn't changed then we can reuse the already calculated invariant.
+            return oldAmpInvariant.divDown(virtualSupply).mulDown(protocolOwnershipPercentage.complement());
         } else {
-            return StableMath._getRate(balances, currentAmp, virtualSupply);
+            return
+                StableMath._getRate(balances, currentAmp, virtualSupply).mulDown(
+                    protocolOwnershipPercentage.complement()
+                );
         }
     }
 
