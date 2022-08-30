@@ -14,21 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "../protocol-fees/InvariantGrowthProtocolSwapFees.sol";
+import "../protocol-fees/ProtocolFees.sol";
 
-contract MockInvariantGrowthProtocolSwapFees {
-    function calculateDueProtocolFees(
-        uint256 invariantGrowthRatio,
-        uint256 previousSupply,
-        uint256 currentSupply,
-        uint256 protocolSwapFeePercentage
-    ) external pure returns (uint256) {
-        return
-            InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
-                invariantGrowthRatio,
-                previousSupply,
-                currentSupply,
-                protocolSwapFeePercentage
-            );
+contract MockProtocolFees {
+    function bptForPoolOwnershipPercentage(uint256 totalSupply, uint256 poolPercentage)
+        external
+        pure
+        returns (uint256)
+    {
+        return ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, poolPercentage);
     }
 }
