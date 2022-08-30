@@ -1590,15 +1590,17 @@ describe('ComposableStablePool', () => {
             await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient: lp });
           });
 
-          it('reports correctly', async () => {
+          it("doesn't include the value of uncollected protocol fees in the rate", async () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
 
             const rate = await pool.getRate();
 
-            expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+            const rateDifference = rateAssumingNoProtocolFees.sub(rate);
+            // 10000 is chosen as a non-negligible amount to show that the difference is not just from rounding errors.
+            expect(rateDifference).to.be.gt(10000);
           });
 
           it('minting protocol fee BPT should not affect rate', async () => {
@@ -1613,7 +1615,7 @@ describe('ComposableStablePool', () => {
             const rateAfterJoin = await pool.getRate();
 
             const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
-            expect(rateDelta.abs()).to.be.lte(1);
+            expect(rateDelta.abs()).to.be.lte(2);
           });
         });
       });
