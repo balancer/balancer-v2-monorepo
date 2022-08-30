@@ -21,7 +21,7 @@ import "./ProtocolFees.sol";
 library InvariantGrowthProtocolSwapFees {
     using FixedPoint for uint256;
 
-    function calcDueProtocolFees(
+    function getProtocolOwnershipPercentage(
         uint256 invariantGrowthRatio,
         uint256 previousSupply,
         uint256 currentSupply,
@@ -82,7 +82,21 @@ library InvariantGrowthProtocolSwapFees {
 
         // We then multiply by the protocol swap fee percentage to get the fraction of the pool which the protocol
         // should own once fees have been collected.
-        uint256 protocolOwnershipPercentage = swapFeesPercentage.mulDown(protocolSwapFeePercentage);
+        return swapFeesPercentage.mulDown(protocolSwapFeePercentage);
+    }
+
+    function calcDueProtocolFees(
+        uint256 invariantGrowthRatio,
+        uint256 previousSupply,
+        uint256 currentSupply,
+        uint256 protocolSwapFeePercentage
+    ) internal pure returns (uint256) {
+        uint256 protocolOwnershipPercentage = getProtocolOwnershipPercentage(
+            invariantGrowthRatio,
+            previousSupply,
+            currentSupply,
+            protocolSwapFeePercentage
+        );
 
         return ProtocolFees.bptForPoolOwnershipPercentage(currentSupply, protocolOwnershipPercentage);
     }
