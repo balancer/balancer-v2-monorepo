@@ -96,5 +96,12 @@ library ProtocolFeeType {
     uint256 internal constant FLASH_LOAN = 1;
     uint256 internal constant YIELD = 2;
     uint256 internal constant AUM = 3;
+    
+    uint256 internal constant SWAP_TIER_1 = 4;
+    uint256 internal constant SWAP_TIER_2 = 5;
+    uint256 internal constant SWAP_TIER_3 = 6;
+    uint256 internal constant YIELD_TIER_1 = 7;
+    uint256 internal constant YIELD_TIER_2 = 8;
+    uint256 internal constant YIELD_TIER_3 = 9;
     // solhint-enable private-vars-leading-underscore
 }

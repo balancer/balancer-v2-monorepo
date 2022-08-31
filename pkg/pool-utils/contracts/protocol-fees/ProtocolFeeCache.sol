@@ -47,11 +47,13 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         uint64 swapFee;
         uint64 yieldFee;
         uint64 aumFee;
+        uint8 feeTier;
     }
 
     FeeTypeCache private _cache;
 
     event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolSwapFeePercentage);
+    event PoolProtocolFeeTierChanged(uint8 feeTier);
 
     // Swap fees can be set to a fixed value at construction, or delegated to the ProtocolFeePercentagesProvider if
     // passing the special sentinel value.
@@ -90,6 +92,10 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
         // As `_fixedProtocolSwapFeePercentage` is immutable we must set a value, but just set to zero if it's not used.
         _fixedProtocolSwapFeePercentage = delegatedProtocolSwapFees ? 0 : protocolSwapFeePercentage;
+
+        // By default the feeTier is set to the lowest possible. It is the role of governance to decide to change
+        // the tier for pools
+        _cache.feeTier = 0;
     }
 
     /**
@@ -114,6 +120,22 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
+     * @dev TODO
+     * 
+     */
+    function setFeeTier(unit8 feeTier) external authenticate {
+        require(feeTier <= 3, "Invalid fee tier");
+        require(feeTier != _cache.feeTier, "New fee tier is same as existing");
+
+        _cache.feeTier = feeTier;
+
+        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP);
+        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.YIELD);
+
+        emit PoolProtocolFeeTierChanged(feeTier);
+    }
+
+    /**
      * @dev Can be called by anyone to update the cached fee percentages (swap fee is only updated when delegated).
      * Updates the cache to the latest value set by governance.
      */
@@ -134,18 +156,50 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeType) private {
-        uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(feeType);
+        uint256 currentValue = 0;
 
         if (feeType == ProtocolFeeType.SWAP) {
+            uint256 swapFeeType = _getSwapFeeTierFeeType();
+
+            currentValue = protocolFeeProvider.getFeeTypePercentage(swapFeeType);
             _cache.swapFee = currentValue.toUint64();
         } else if (feeType == ProtocolFeeType.YIELD) {
+            uint256 yieldFeeType = _getYieldFeeTierFeeType();
+
+            currentValue = protocolFeeProvider.getFeeTypePercentage(yieldFeeType);
             _cache.yieldFee = currentValue.toUint64();
         } else if (feeType == ProtocolFeeType.AUM) {
+            currentValue = protocolFeeProvider.getFeeTypePercentage(feeType);
             _cache.aumFee = currentValue.toUint64();
+            
         } else {
             _revert(Errors.UNHANDLED_FEE_TYPE);
         }
 
         emit ProtocolFeePercentageCacheUpdated(feeType, currentValue);
+    }
+
+    function _getSwapFeeTierFeeType() private returns (uint256) {
+        if (_cache.feeTier == 1) {
+            return ProtocolFeeType.SWAP_TIER_1;
+        }else if (_cache.feeTier == 2) {
+            return ProtocolFeeType.SWAP_TIER_2;
+        }else if (_cache.feeTier == 3) {
+            return ProtocolFeeType.SWAP_TIER_3;
+        }
+    
+        return ProtocolFeeType.SWAP;
+    }
+
+    function _getYieldFeeTierFeeType() private returns (uint256) {
+        if (_cache.feeTier == 1) {
+            return ProtocolFeeType.YIELD_TIER_1;
+        }else if (_cache.feeTier == 2) {
+            return ProtocolFeeType.YIELD_TIER_2;
+        }else if (_cache.feeTier == 3) {
+            return ProtocolFeeType.YIELD_TIER_3;
+        }
+    
+        return ProtocolFeeType.YIELD;
     }
 }

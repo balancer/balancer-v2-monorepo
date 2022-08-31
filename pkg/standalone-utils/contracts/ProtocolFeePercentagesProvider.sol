@@ -66,6 +66,16 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
 
         _feeTypeData[ProtocolFeeType.FLASH_LOAN].registered = true;
         _feeTypeData[ProtocolFeeType.FLASH_LOAN].name = "Flash Loan";
+
+        // Fee tiers are initalized to zero. They represent higher orders of fees that governance can set for both
+        // swap and yield.
+        _registerFeeType(ProtocolFeeType.SWAP_TIER_1, "Swap Tier 1", _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, 0);
+        _registerFeeType(ProtocolFeeType.SWAP_TIER_2, "Swap Tier 2", _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, 0);
+        _registerFeeType(ProtocolFeeType.SWAP_TIER_3, "Swap Tier 3", _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, 0);
+
+        _registerFeeType(ProtocolFeeType.YIELD_TIER_1, "Yield Tier 1", maxYieldValue, 0);
+        _registerFeeType(ProtocolFeeType.YIELD_TIER_2, "Yield Tier 2", maxYieldValue, 0);
+        _registerFeeType(ProtocolFeeType.YIELD_TIER_3, "Yield Tier 3", maxYieldValue, 0);
     }
 
     modifier withValidFeeType(uint256 feeType) {
