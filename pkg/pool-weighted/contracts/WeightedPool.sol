@@ -288,7 +288,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
                 if (rateProduct > athRateProduct) {
                     protocolYieldFeesPoolPercentage = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                         rateProduct.divDown(athRateProduct),
-                        FixedPoint.ONE,
+                        FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
                         getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                     );
                 }

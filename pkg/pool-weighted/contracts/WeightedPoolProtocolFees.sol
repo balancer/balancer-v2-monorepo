@@ -98,7 +98,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return
             InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                 preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),
-                FixedPoint.ONE,
+                FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
                 protocolSwapFeePercentage
             );
     }
@@ -224,7 +224,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return
             InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                 rateProduct.divDown(athRateProduct),
-                FixedPoint.ONE,
+                FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
                 getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
             );
     }
