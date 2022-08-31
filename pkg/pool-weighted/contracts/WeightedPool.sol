@@ -270,7 +270,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     function getRate() public view virtual override returns (uint256) {
         // The initial BPT supply is equal to the invariant times the number of tokens.
         uint256 invariant = getInvariant();
-        uint256 totalSupply = totalSupply();
         uint256 yieldFeeOwnership;
         uint256 swapFeeOwnership;
 
@@ -279,8 +278,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         if (invariant != lastPostJoinExitInvariant) {
             swapFeeOwnership = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                 invariant.divDown(lastPostJoinExitInvariant),
-                totalSupply,
-                totalSupply,
+                FixedPoint.ONE,
                 getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
             );
         }
@@ -294,8 +292,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
                 if (rateProduct > athRateProduct) {
                     yieldFeeOwnership = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                         rateProduct.divDown(athRateProduct),
-                        totalSupply,
-                        totalSupply,
+                        FixedPoint.ONE,
                         getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                     );
                 }
@@ -305,6 +302,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return
             Math
                 .mul(Math.mul(invariant, _getTotalTokens()), (swapFeeOwnership + yieldFeeOwnership).complement())
-                .divDown(totalSupply);
+                .divDown(totalSupply());
     }
 }
