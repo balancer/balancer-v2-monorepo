@@ -239,6 +239,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
         );
         uint256 protocolYieldFeesPoolPercentage = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
+
         return
             ProtocolFees.bptForPoolOwnershipPercentage(
                 preJoinExitSupply,
