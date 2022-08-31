@@ -120,10 +120,10 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
-     * @dev TODO
+     * @dev Sets the feeTier for this pool, causing and update to both the swap fee and yield fee
      * 
      */
-    function setFeeTier(unit8 feeTier) external authenticate {
+    function setFeeTier(uint8 feeTier) external authenticate {
         require(feeTier <= 3, "Invalid fee tier");
         require(feeTier != _cache.feeTier, "New fee tier is same as existing");
 
@@ -179,7 +179,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         emit ProtocolFeePercentageCacheUpdated(feeType, currentValue);
     }
 
-    function _getSwapFeeTierFeeType() private returns (uint256) {
+    function _getSwapFeeTierFeeType() private view returns (uint256) {
         if (_cache.feeTier == 1) {
             return ProtocolFeeType.SWAP_TIER_1;
         }else if (_cache.feeTier == 2) {
@@ -191,7 +191,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         return ProtocolFeeType.SWAP;
     }
 
-    function _getYieldFeeTierFeeType() private returns (uint256) {
+    function _getYieldFeeTierFeeType() private view returns (uint256) {
         if (_cache.feeTier == 1) {
             return ProtocolFeeType.YIELD_TIER_1;
         }else if (_cache.feeTier == 2) {
