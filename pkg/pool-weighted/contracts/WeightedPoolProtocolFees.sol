@@ -85,30 +85,20 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return _athRateProduct;
     }
 
-    function _getSwapProtocolFees(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 preJoinExitSupply
-    ) internal view returns (uint256) {
-        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
-
-        // We return immediately if the fee percentage is zero to avoid unnecessary computation.
-        if (protocolSwapFeePercentage == 0) return 0;
-
+    function _getSwapProtocolFeesPoolPercentage(uint256 preJoinExitInvariant, uint256 protocolSwapFeePercentage)
+        internal
+        view
+        returns (uint256)
+    {
         // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
         // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dilutes all
         // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
         // before leaving.
 
-        uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
-
-        // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
-        // supply has not changed.
         return
-            InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                 preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),
-                preJoinExitSupply,
-                preJoinExitSupply,
+                FixedPoint.ONE,
                 protocolSwapFeePercentage
             );
     }
@@ -186,14 +176,11 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     }
 
     /**
-     * @dev Returns the amount of BPT to be minted to pay protocol fees on yield accrued by the Pool.
+     * @dev Returns the percentage of the Pool's supply which corresponds to protocol fees on yield accrued by the Pool.
      * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
      * proper accounting is performed to prevent charging duplicate protocol fees.
      */
-    function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 preJoinExitSupply)
-        internal
-        returns (uint256)
-    {
+    function _getYieldProtocolFeesPoolPercentage(uint256[] memory normalizedWeights) internal returns (uint256) {
         if (_exemptFromYieldFees) return 0;
 
         uint256 athRateProduct = _athRateProduct;
@@ -234,14 +221,28 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         // fees on yield once.
         _athRateProduct = rateProduct;
 
-        // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
-        // supply has not changed.
         return
-            InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
+            InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                 rateProduct.divDown(athRateProduct),
-                preJoinExitSupply,
-                preJoinExitSupply,
+                FixedPoint.ONE,
                 getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
+            );
+    }
+
+    function _getPreJoinExitProtocolFees(
+        uint256[] memory preBalances,
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply
+    ) internal returns (uint256) {
+        uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
+            WeightedMath._calculateInvariant(normalizedWeights, preBalances),
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+        );
+        uint256 protocolYieldFeesPoolPercentage = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
+        return
+            ProtocolFees.bptForPoolOwnershipPercentage(
+                preJoinExitSupply,
+                protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage
             );
     }
 
@@ -250,7 +251,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * Note that this isn't a view function. This function automatically updates `_lastPostJoinExitInvariant` to
      * ensure that proper accounting is performed to prevent charging duplicate protocol fees.
      */
-    function _getJoinExitProtocolFees(
+    function _getPostJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
