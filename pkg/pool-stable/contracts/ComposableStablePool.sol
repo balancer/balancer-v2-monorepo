@@ -941,19 +941,20 @@ contract ComposableStablePool is
             lastPostJoinExitInvariant
         );
 
-        // We want to multiply the rate by the fraction of the pool which is not owed to the protocol on the next
-        // collection of protocol fees to reduce the value of BPT accordingly, otherwise the value of BPT can be
-        // manipulated by timing collections of protocol fees.
+        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+            virtualSupply,
+            protocolOwnershipPercentage
+        );
+
+        // If the amplitude hasn't changed then we can reuse the already calculated invariant.
         (uint256 currentAmp, ) = _getAmplificationParameter();
-        if (currentAmp == lastJoinExitAmp) {
-            // If the amplitude hasn't changed then we can reuse the already calculated invariant.
-            return oldAmpInvariant.divDown(virtualSupply).mulDown(protocolOwnershipPercentage.complement());
-        } else {
-            return
-                StableMath._getRate(balances, currentAmp, virtualSupply).mulDown(
-                    protocolOwnershipPercentage.complement()
-                );
-        }
+        uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
+            ? oldAmpInvariant
+            : StableMath._calculateInvariant(currentAmp, balances);
+
+        // We add on the to-be-minted protocol fees to the virtual supply to dilute the value of the remaining BPT.
+        // This prevents the Pool's rate being affected by the collection of protocol fees.
+        return currentInvariant.divDown(virtualSupply.add(protocolFeeAmount));
     }
 
     // Helpers
