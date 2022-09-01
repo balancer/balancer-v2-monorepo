@@ -226,7 +226,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
+        // Initialize `_athRateProduct` if the Pool will pay protocol fees on yield.
         // Not initialising this here properly will cause all joins/exits to revert.
         if (!_exemptFromYieldFees) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
 
