@@ -1,4 +1,6 @@
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -6,9 +8,9 @@ import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { ethers } from 'hardhat';
-import { range } from 'lodash';
+import { random, range } from 'lodash';
 
 export function itPaysProtocolFeesFromInvariantGrowth(): void {
   const MAX_TOKENS = 8;
@@ -19,6 +21,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
   let pool: WeightedPool;
   let tokens: TokenList;
+  let rateProviders: Contract[];
   let protocolFeesCollector: string;
 
   let lp: SignerWithAddress;
@@ -34,11 +37,13 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
     sharedBeforeEach(async () => {
       tokens = await TokenList.create(numTokens, { sorted: true, varyDecimals: true });
+      rateProviders = await tokens.asyncMap(() => deploy('v2-pool-utils/MockRateProvider'));
 
       pool = await WeightedPool.create({
         poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
         weights: WEIGHTS.slice(0, numTokens),
+        rateProviders,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       });
 
@@ -95,6 +100,111 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
             expectEqualWithError(await pool.getLastPostJoinExitInvariant(), await pool.estimateInvariant());
           });
         }
+      });
+    });
+
+    describe('ath rate product', () => {
+      context('when the pool is exempt from yield fees', () => {
+        let yieldFeeExemptPool: WeightedPool;
+
+        sharedBeforeEach(async () => {
+          yieldFeeExemptPool = await WeightedPool.create({
+            poolType: WeightedPoolType.WEIGHTED_POOL,
+            tokens,
+            weights: WEIGHTS.slice(0, numTokens),
+            swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+          });
+        });
+
+        it('is not set on initialization', async () => {
+          await yieldFeeExemptPool.init({ initialBalances });
+
+          // expect(await yieldFeeExemptPool.instance.getATHRateProduct()).to.be.eq(0);
+        });
+      });
+
+      context('when the pool pays yield fees', () => {
+        it('is set on initialization', async () => {
+          await pool.init({ initialBalances });
+
+          const rates = pool.weights.map(() => fp(1));
+          const expectedRateProduct = calculateInvariant(rates, pool.weights);
+          expect(await pool.instance.getATHRateProduct()).to.be.almostEqual(expectedRateProduct, 0.0000001);
+        });
+
+        context('once initialized', () => {
+          sharedBeforeEach('initialize pool', async () => {
+            await pool.init({ initialBalances, recipient: lp });
+          });
+
+          context('when rates increase', () => {
+            let expectedRateProduct: BigNumber;
+            sharedBeforeEach('accumulate fees by increasing balance', async () => {
+              const rates = rateProviders.map(() => fp(random(1.0, 5.0)));
+
+              for (const [index, provider] of rateProviders.entries()) {
+                if (typeof provider !== 'string') await provider.mockRate(rates[index]);
+              }
+
+              expectedRateProduct = calculateInvariant(rates, pool.weights);
+            });
+
+            it('is updated by joins', async () => {
+              // We only test with a proportional join, since all joins are treated equally
+              await pool.join({
+                data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut((await pool.totalSupply()).div(2)),
+                from: lp,
+              });
+
+              expectEqualWithError(await pool.instance.getATHRateProduct(), expectedRateProduct);
+            });
+
+            it('is updated by exits', async () => {
+              // We only test with a proportional exit, since all exits are treated equally and proportional exits remain
+              // enabled while paused
+              await pool.exit({
+                data: WeightedPoolEncoder.exitExactBPTInForTokensOut((await pool.totalSupply()).div(2)),
+                from: lp,
+              });
+
+              expectEqualWithError(await pool.instance.getATHRateProduct(), expectedRateProduct);
+            });
+          });
+
+          context('when rates decrease', () => {
+            let expectedRateProduct: BigNumber;
+            sharedBeforeEach('accumulate fees by increasing balance', async () => {
+              const rates = rateProviders.map(() => fp(random(0.5, 1.0)));
+
+              for (const [index, provider] of rateProviders.entries()) {
+                if (typeof provider !== 'string') await provider.mockRate(rates[index]);
+              }
+
+              expectedRateProduct = await pool.instance.getATHRateProduct();
+            });
+
+            it('is unaffected by joins', async () => {
+              // We only test with a proportional join, since all joins are treated equally
+              await pool.join({
+                data: WeightedPoolEncoder.joinAllTokensInForExactBPTOut((await pool.totalSupply()).div(2)),
+                from: lp,
+              });
+
+              expectEqualWithError(await pool.instance.getATHRateProduct(), expectedRateProduct);
+            });
+
+            it('is unaffected by exits', async () => {
+              // We only test with a proportional exit, since all exits are treated equally and proportional exits remain
+              // enabled while paused
+              await pool.exit({
+                data: WeightedPoolEncoder.exitExactBPTInForTokensOut((await pool.totalSupply()).div(2)),
+                from: lp,
+              });
+
+              expectEqualWithError(await pool.instance.getATHRateProduct(), expectedRateProduct);
+            });
+          });
+        });
       });
     });
 
