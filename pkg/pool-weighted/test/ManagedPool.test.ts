@@ -1872,7 +1872,10 @@ describe('ManagedPool', function () {
         });
       }
 
-      function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>, timeElapsed: BigNumberish) {
+      function itCollectsAUMFeesForExpectedDuration(
+        collectAUMFees: () => Promise<ContractReceipt>,
+        timeElapsed: BigNumberish
+      ) {
         it('collects the expected amount of fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
 
@@ -1891,6 +1894,40 @@ describe('ManagedPool', function () {
         });
       }
 
+      function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>) {
+        const timeElapsed = 10 * DAY;
+
+        sharedBeforeEach('advance time', async () => {
+          await advanceTime(timeElapsed);
+        });
+
+        itCollectsAUMFeesForExpectedDuration(collectAUMFees, timeElapsed);
+
+        context('when the pool is paused and enters into recovery mode', () => {
+          sharedBeforeEach('pause pool and enter recovery mode', async () => {
+            await pool.pause();
+            await pool.enableRecoveryMode();
+          });
+
+          itReverts(collectAUMFees);
+
+          context('when the pool is then unpaused and removed from recovery mode', () => {
+            sharedBeforeEach('unpause pool and exit recovery mode', async () => {
+              // Exiting recovery mode will update the timestamp of the last collection.
+              // This avoids the pool overcharging AUM fees after the unpause.
+              await pool.unpause();
+              await pool.disableRecoveryMode();
+
+              // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
+              // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
+              await advanceTime(timeElapsed);
+            });
+
+            itCollectsAUMFeesForExpectedDuration(collectAUMFees, timeElapsed);
+          });
+        });
+      }
+
       sharedBeforeEach('mint tokens', async () => {
         await poolTokens.mint({ to: other, amount: fp(10000) });
         await poolTokens.approve({ from: other, to: await pool.getVault() });
@@ -1904,12 +1941,8 @@ describe('ManagedPool', function () {
         });
 
         context('when the pool is initialized', () => {
-          const timeElapsed = 10 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
-
-            await advanceTime(timeElapsed);
           });
 
           context('on the first attempt to collect fees', () => {
@@ -1920,43 +1953,14 @@ describe('ManagedPool', function () {
           });
 
           context('on subsequent attempts to collect fees', () => {
-            sharedBeforeEach('advance time', async () => {
-              // AUM fees only accrue after the first collection so we have to wait for more time to elapse.
+            sharedBeforeEach('perform first fee collection', async () => {
+              // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
               await pool.collectAumManagementFees(owner);
-              await advanceTime(timeElapsed);
             });
 
             itCollectsAUMFeesCorrectly(async () => {
               const tx = await pool.collectAumManagementFees(owner);
               return tx.wait();
-            }, timeElapsed);
-
-            context('when the pool is paused and enters into recovery mode', () => {
-              sharedBeforeEach('pause pool', async () => {
-                await pool.enableRecoveryMode();
-                await pool.pause();
-              });
-
-              itReverts(async () => {
-                const tx = await pool.collectAumManagementFees(owner);
-                return tx.wait();
-              });
-
-              context('when the pool is then unpaused and removed from recovery mode', () => {
-                sharedBeforeEach('unpause pool and exit recovery mode', async () => {
-                  await pool.unpause();
-                  await pool.disableRecoveryMode();
-
-                  // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-                  // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-                  await advanceTime(timeElapsed);
-                });
-
-                itCollectsAUMFeesCorrectly(async () => {
-                  const tx = await pool.collectAumManagementFees(owner);
-                  return tx.wait();
-                }, timeElapsed);
-              });
             });
           });
         });
@@ -1971,149 +1975,45 @@ describe('ManagedPool', function () {
         });
 
         context('after pool initialization', () => {
-          const timeElapsed = 10 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
             // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
             await pool.collectAumManagementFees(owner);
-
-            await advanceTime(timeElapsed);
-          });
-
-          sharedBeforeEach('mint tokens', async () => {
-            await poolTokens.mint({ to: other, amount: fp(10000) });
-            await poolTokens.approve({ from: other, to: await pool.getVault() });
           });
 
           itCollectsAUMFeesCorrectly(async () => {
             const amountsIn = initialBalances.map((x) => x.div(2));
             const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
             return receipt;
-          }, timeElapsed);
-
-          context('when the pool is paused and enters into recovery mode', () => {
-            sharedBeforeEach('pause pool and enter recovery mode', async () => {
-              await pool.pause();
-              await pool.enableRecoveryMode();
-            });
-  
-            itReverts(async () => {
-              const amountsIn = initialBalances.map((x) => x.div(2));
-              const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
-              return receipt;
-            });
-  
-            context('when the pool is then unpaused and removed from recovery mode', () => {
-              sharedBeforeEach('unpause pool and exit recovery mode', async () => {
-                // Exiting recovery mode will update the timestamp of the last collection.
-                // This avoids the pool overcharging AUM fees after the unpause.
-                await pool.unpause();
-                await pool.disableRecoveryMode();
-  
-                // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-                // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-                await advanceTime(timeElapsed);
-              });
-  
-              itCollectsAUMFeesCorrectly(async () => {
-                const amountsIn = initialBalances.map((x) => x.div(2));
-                const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
-                return receipt;
-              }, timeElapsed);
-            });
+          });
         });
       });
 
       context('on pool exits', () => {
-        const timeElapsed = 10 * DAY;
-
-        sharedBeforeEach('initialize pool and advance time', async () => {
+        sharedBeforeEach('initialize pool', async () => {
           await pool.init({ from: other, initialBalances });
           // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
           await pool.collectAumManagementFees(owner);
-
-          await advanceTime(timeElapsed);
         });
 
         itCollectsAUMFeesCorrectly(async () => {
           const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
           return receipt;
-        }, timeElapsed);
-
-        context('when the pool is paused and enters into recovery mode', () => {
-          sharedBeforeEach('pause pool and enter recovery mode', async () => {
-            await pool.pause();
-            await pool.enableRecoveryMode();
-          });
-
-          itReverts(async () => {
-            const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
-            return receipt;
-          });
-
-          context('when the pool is then unpaused and removed from recovery mode', () => {
-            sharedBeforeEach('unpause pool and exit recovery mode', async () => {
-              // Exiting recovery mode will update the timestamp of the last collection.
-              // This avoids the pool overcharging AUM fees after the unpause.
-              await pool.unpause();
-              await pool.disableRecoveryMode();
-
-              // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-              // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-              await advanceTime(timeElapsed);
-            });
-
-            itCollectsAUMFeesCorrectly(async () => {
-              const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
-              return receipt;
-            }, timeElapsed);
-          });
         });
       });
 
       context('on token removal', () => {
         context('after pool initialization', () => {
-          const timeElapsed = 10 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
             // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
             await pool.collectAumManagementFees(owner);
-
-            await advanceTime(timeElapsed);
           });
 
           itCollectsAUMFeesCorrectly(async () => {
             const { tokens } = await pool.getTokens();
             const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
             return tx.wait();
-          }, timeElapsed);
-
-          context('when the pool is paused and enters into recovery mode', () => {
-            sharedBeforeEach('pause pool and enter recovery mode', async () => {
-              await pool.pause();
-              await pool.enableRecoveryMode();
-            });
-
-            context('when the pool is then unpaused and removed from recovery mode', () => {
-              sharedBeforeEach('unpause pool and exit recovery mode', async () => {
-                // Exiting recovery mode will update the timestamp of the last collection.
-                // This avoids the pool overcharging AUM fees after the unpause.
-                await pool.unpause();
-                await pool.disableRecoveryMode();
-
-                // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-                // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-                await advanceTime(timeElapsed);
-              });
-
-              itCollectsAUMFeesCorrectly(async () => {
-                const { tokens } = await pool.getTokens();
-                const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
-                return tx.wait();
-              }, timeElapsed);
-            });
           });
         });
       });
