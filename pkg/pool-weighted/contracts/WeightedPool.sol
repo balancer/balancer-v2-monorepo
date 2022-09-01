@@ -266,4 +266,9 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     {
         WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
+
+    function _onDisableRecoveryMode() internal override {
+        // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.
+        _updatePostJoinExit(getInvariant());
+    }
 }

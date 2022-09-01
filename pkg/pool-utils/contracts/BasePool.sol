@@ -229,6 +229,12 @@ abstract contract BasePool is
     }
 
     /**
+     * @dev Performs any necessary actions on the disabling of Recovery Mode.
+     * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forwards.
+     */
+    function _onDisableRecoveryMode() internal virtual {}
+
+    /**
      * @notice Set the asset manager parameters for the given token.
      * @dev This is a permissioned function, unavailable when the pool is paused.
      * The details of the configuration data are set by each Asset Manager. (For an example, see
