@@ -138,8 +138,6 @@ describe('BaseRelayerLibrary', function () {
           expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
           expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
           expect(await relayerLibrary.peekChainedReferenceValue(reference)).to.be.eq(19);
-
-          await expectChainedReferenceContents(reference, 19);
         });
 
         it('peeks and reads same slot', async () => {
