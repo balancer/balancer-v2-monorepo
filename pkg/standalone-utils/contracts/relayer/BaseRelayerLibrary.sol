@@ -81,6 +81,14 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         token.approve(address(getVault()), amount);
     }
 
+    /**
+     * @notice Returns the amount referenced by chained reference `ref`.
+     * @dev It does not alter the reference (even if it's marked as temporary).
+     */
+    function peekChainedReferenceValue(uint256 ref) public view override returns (uint256 value) {
+        (, value) = _peekChainedReferenceValue(ref);
+    }
+
     function _pullToken(
         address sender,
         IERC20 token,
@@ -156,21 +164,30 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * If the reference is not temporary (i.e. read-only), it will not be cleared after reading it
      * (see `_isTemporaryChainedReference` function).
      */
-    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
-        bytes32 slot = _getStorageSlot(ref);
-
-        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
-        // access it.
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            value := sload(slot)
-        }
+    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256) {
+        (bytes32 slot, uint256 value) = _peekChainedReferenceValue(ref);
 
         if (_isTemporaryChainedReference(ref)) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
                 sstore(slot, 0)
             }
+        }
+        return value;
+    }
+
+    /**
+     * @dev Returns the storage slot for reference `ref` as well as the amount referenced by it.
+     * It does not alter the reference (even if it's marked as temporary).
+     */
+    function _peekChainedReferenceValue(uint256 ref) private view returns (bytes32 slot, uint256 value) {
+        slot = _getStorageSlot(ref);
+
+        // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
+        // access it.
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            value := sload(slot)
         }
     }
 
