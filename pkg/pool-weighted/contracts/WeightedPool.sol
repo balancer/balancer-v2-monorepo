@@ -248,6 +248,8 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             normalizedWeights,
             supplyBeforeFeeCollection
         );
+
+        // A non-zero value for `athRateProduct` represents that we have exceeded the old ATH and so must update it.
         if (athRateProduct > 0) {
             _updateATHRateProduct(athRateProduct);
         }
