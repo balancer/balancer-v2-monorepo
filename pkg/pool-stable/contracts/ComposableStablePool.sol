@@ -937,7 +937,8 @@ contract ComposableStablePool is
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
+        uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
+        return invariant.divDown(virtualSupply);
     }
 
     // Helpers
