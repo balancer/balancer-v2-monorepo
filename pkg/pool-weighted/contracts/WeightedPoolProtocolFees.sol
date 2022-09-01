@@ -257,6 +257,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         _lastPostJoinExitInvariant = postJoinExitInvariant;
     }
 
+    // Helper functions
+
     /**
      * @notice Returns the contribution to the total rate product from a token with the given weight and rate provider.
      */
