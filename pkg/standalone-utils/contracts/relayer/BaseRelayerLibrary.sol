@@ -77,6 +77,9 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @dev This is needed to avoid having to send intermediate tokens back to the user
      */
     function approveVault(IERC20 token, uint256 amount) public override {
+        if (_isChainedReference(amount)) {
+            amount = _getChainedReferenceValue(amount);
+        }
         // TODO: gas golf this a bit
         token.approve(address(getVault()), amount);
     }
