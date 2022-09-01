@@ -83,8 +83,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
 
     /**
      * @notice Returns the amount referenced by chained reference `ref`.
-     * @dev It does not alter the reference (even if it's marked as temporary), and it does not expose the reference
-     * slot (see `_peekChainedReferenceValue`).
+     * @dev It does not alter the reference (even if it's marked as temporary).
      */
     function peekChainedReferenceValue(uint256 ref) public view override returns (uint256 value) {
         (, value) = _peekChainedReferenceValue(ref);
@@ -165,9 +164,8 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * If the reference is not temporary (i.e. read-only), it will not be cleared after reading it
      * (see `_isTemporaryChainedReference` function).
      */
-    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
-        bytes32 slot;
-        (slot, value) = _peekChainedReferenceValue(ref);
+    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256) {
+        (bytes32 slot, uint256 value) = _peekChainedReferenceValue(ref);
 
         if (_isTemporaryChainedReference(ref)) {
             // solhint-disable-next-line no-inline-assembly
@@ -175,6 +173,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
                 sstore(slot, 0)
             }
         }
+        return value;
     }
 
     /**
