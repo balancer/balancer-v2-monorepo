@@ -119,7 +119,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
         it('is not set on initialization', async () => {
           await yieldFeeExemptPool.init({ initialBalances });
 
-          // expect(await yieldFeeExemptPool.instance.getATHRateProduct()).to.be.eq(0);
+          expect(await yieldFeeExemptPool.instance.getATHRateProduct()).to.be.eq(0);
         });
       });
 
