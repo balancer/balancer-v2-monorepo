@@ -240,8 +240,6 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     }
 
     function _updateATHRateProduct(uint256 rateProduct) internal {
-        // We then replace the stored value of I(r1_old, r2_old) with I(r1_new, r2_new) to ensure we only collect
-        // fees on yield once.
         _athRateProduct = rateProduct;
     }
 
