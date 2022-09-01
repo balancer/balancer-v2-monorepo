@@ -1630,7 +1630,7 @@ describe('ComposableStablePool', () => {
               expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
             });
 
-            it('does not change due to joins or exits', async () => {
+            it('does not change due to proportional joins', async () => {
               const rateBeforeJoin = await pool.getRate();
 
               // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
@@ -1646,6 +1646,25 @@ describe('ComposableStablePool', () => {
 
               // There's some minute diference due to rounding error
               const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
+              expect(rateDelta.abs()).to.be.lte(2);
+            });
+
+            it('does not change due to proportional exits', async () => {
+              const rateBeforeExit = await pool.getRate();
+
+              // Perform a proportional exit. These have no swap fees, which means that the rate should remain the same
+              // (even though this triggers a due protocol fee payout).
+
+              // Note that we exit with proportional *unscaled* balances - otherwise we'd need to take their different
+              // scaling factors into account.
+              const { balances: unscaledBalances } = await pool.getTokens();
+              const amountsOut = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+              await pool.exitGivenOut({ from: lp, amountsOut });
+
+              const rateAfterExit = await pool.getRate();
+
+              // There's some minute diference due to rounding error
+              const rateDelta = rateAfterExit.sub(rateBeforeExit);
               expect(rateDelta.abs()).to.be.lte(2);
             });
           }
