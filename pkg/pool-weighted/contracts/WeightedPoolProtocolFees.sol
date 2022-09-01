@@ -197,14 +197,6 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     {
         if (_exemptFromYieldFees) return (0, 0);
 
-        uint256 athRateProduct = _athRateProduct;
-        uint256 rateProduct = _getRateProduct(normalizedWeights);
-
-        // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
-        // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
-        // been recovered.
-        if (rateProduct <= athRateProduct) return (0, 0);
-
         // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
         // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
         //
@@ -222,7 +214,15 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         // increases due to yield; we can ignore the invariant calculated from the Pool's balances as these cancel.
         // We then have the result:
         //
-        // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old)
+        // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old) = rateProduct / athRateProduct
+
+        uint256 athRateProduct = _athRateProduct;
+        uint256 rateProduct = _getRateProduct(normalizedWeights);
+
+        // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
+        // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
+        // been recovered.
+        if (rateProduct <= athRateProduct) return (0, 0);
 
         // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
         // supply has not changed.
