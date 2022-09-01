@@ -309,6 +309,7 @@ describe('BaseRelayerLibrary', function () {
           'Approval',
           { owner: relayerLibrary.address, spender: vault.address, value: allowance }
         );
+        expect(await token.allowance(relayerLibrary.address, vault.address)).to.equal(allowance);
       });
     }
 
