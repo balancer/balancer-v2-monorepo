@@ -1558,10 +1558,12 @@ describe('ComposableStablePool', () => {
       });
 
       context('once initialized', () => {
+        const initialBalance = fp(100);
+
         sharedBeforeEach('initialize pool', async () => {
           // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
           const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
-            i == bptIndex ? bn(0) : fp(100)
+            i == bptIndex ? bn(0) : initialBalance
           );
           await pool.init({ recipient: lp.address, initialBalances: equalBalances });
         });
@@ -1579,27 +1581,61 @@ describe('ComposableStablePool', () => {
           });
         });
 
-        context('with protocol fees', () => {
-          sharedBeforeEach('swap bpt in', async () => {
-            const amount = fp(50);
-            const tokenIn = pool.bpt;
-            const tokenOut = tokens.second;
+        context('with swap protocol fees', () => {
+          let feeAmount: BigNumber;
 
-            await tokens.mint({ to: lp, amount });
+          sharedBeforeEach('accrue fees due to a swap', async () => {
+            await tokens.mint({ to: lp, amount: initialBalance.mul(100) });
             await tokens.approve({ from: lp, to: pool.vault });
 
-            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+            const amount = initialBalance.div(20);
+            feeAmount = amount.mul(swapFeePercentage).div(fp(1));
+
+            const tokenIn = tokens.first;
+            const tokenOut = tokens.second;
+            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient: lp });
           });
 
-          it('reports correctly', async () => {
-            const virtualSupply = await pool.getVirtualSupply();
+          it('takes into account unminted protocol fees', async () => {
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
+            // Since all balances are relatively close and the pool is balanced, we can estimate their prices as being
+            // equal to then price the due protocool fees.
+            const virtualSupply = await pool.getVirtualSupply();
+            const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
+            const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
+            const protocolOwnership = feePercentage.mul(protocolFeePercentage).div(fp(1));
 
-            const rate = await pool.getRate();
+            // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
+            const unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
+            const actualSupply = virtualSupply.add(unmintedBPT);
 
-            expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+            const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
+
+            // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
+            // rounding error.
+            expect(rateConsideringProtocolFees).to.be.lt(rateAssumingNoProtocolFees.mul(9999).div(10000));
+
+            expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
+          });
+
+          it('does not change due to joins or exits', async () => {
+            const rateBeforeJoin = await pool.getRate();
+
+            // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
+            // (even though this triggers a due protocol fee payout).
+
+            const poolBalances = await pool.getBalances();
+            const amountsIn = poolBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+            await pool.joinGivenIn({ from: lp, amountsIn });
+
+            const rateAfterJoin = await pool.getRate();
+
+            // There's some minute diference due to rounding error
+            const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
+            expect(rateDelta.abs()).to.be.lte(2);
           });
         });
       });
