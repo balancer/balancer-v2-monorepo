@@ -267,9 +267,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     }
 
     function getRate() public view virtual override returns (uint256) {
-        // The initial BPT supply is equal to the invariant times the number of tokens.
         uint256 invariant = getInvariant();
-        uint256 feelessBptRate = Math.mul(invariant, _getTotalTokens()).divDown(totalSupply());
 
         // Swap fees
         uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
@@ -295,10 +293,13 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             }
         }
 
-        // We want to multiply the rate by the fraction of the pool which is not owed to the protocol on the next
-        // collection of protocol fees to reduce the value of BPT accordingly, otherwise the value of BPT can be
-        // manipulated by timing collections of protocol fees.
-        uint256 protocolOwnedPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
-        return feelessBptRate.mulDown(protocolOwnedPercentage.complement());
+        uint256 supply = totalSupply();
+        uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
+        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolOwnershipPercentage);
+
+        // This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
+        // We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
+        // This prevents the Pool's rate being affected by the collection of protocol fees.
+        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeeAmount));
     }
 }
