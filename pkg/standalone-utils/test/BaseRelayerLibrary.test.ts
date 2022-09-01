@@ -302,9 +302,10 @@ describe('BaseRelayerLibrary', function () {
     function itApprovesVault(approveAmount: BigNumberish, allowance: BigNumberish) {
       it('approves vault to use tokens', async () => {
         const tx = await relayerLibrary.approveVault(token.address, approveAmount);
+
         expectEvent.inIndirectReceipt(
           await tx.wait(),
-          new ethers.utils.Interface(['event Approval(address indexed owner, address indexed spender, uint256 value)']),
+          token.interface,
           'Approval',
           { owner: relayerLibrary.address, spender: vault.address, value: allowance }
         );
