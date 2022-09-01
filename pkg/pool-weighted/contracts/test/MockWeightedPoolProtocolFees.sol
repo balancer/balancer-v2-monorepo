@@ -56,10 +56,11 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     }
 
     function getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) external returns (uint256) {
-        return _getYieldProtocolFee(normalizedWeights, supply);
+        return
+            ProtocolFees.bptForPoolOwnershipPercentage(supply, _getYieldProtocolFeesPoolPercentage(normalizedWeights));
     }
 
-    function getJoinExitProtocolFees(
+    function getPostJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -67,7 +68,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256 postJoinExitSupply
     ) external returns (uint256) {
         return
-            _getJoinExitProtocolFees(
+            _getPostJoinExitProtocolFees(
                 preBalances,
                 balanceDeltas,
                 normalizedWeights,

@@ -226,12 +226,11 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         returns (uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
-        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(
+        uint256 protocolFeesToBeMinted = _getPreJoinExitProtocolFees(
             preBalances,
             normalizedWeights,
             supplyBeforeFeeCollection
         );
-        protocolFeesToBeMinted += _getYieldProtocolFee(normalizedWeights, supplyBeforeFeeCollection);
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
@@ -246,7 +245,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal virtual override {
-        uint256 protocolFeesToBeMinted = _getJoinExitProtocolFees(
+        uint256 protocolFeesToBeMinted = _getPostJoinExitProtocolFees(
             preBalances,
             balanceDeltas,
             normalizedWeights,
@@ -269,21 +268,15 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
     function getRate() public view virtual override returns (uint256) {
         uint256 invariant = getInvariant();
-        uint256 totalSupply = totalSupply();
-        uint256 yieldFeeOwnership;
-        uint256 swapFeeOwnership;
 
-        uint256 lastPostJoinExitInvariant = getLastPostJoinExitInvariant();
+        // Swap fees
+        uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
+            invariant,
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+        );
 
-        if (invariant != lastPostJoinExitInvariant) {
-            swapFeeOwnership = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
-                invariant.divDown(lastPostJoinExitInvariant),
-                totalSupply,
-                totalSupply,
-                getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
-            );
-        }
-
+        // Yield fees
+        uint256 protocolYieldFeesPoolPercentage;
         if (!_exemptFromYieldFees) {
             uint256 athRateProduct = getATHRateProduct();
 
@@ -291,19 +284,22 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
                 uint256 rateProduct = _getRateProduct(_getNormalizedWeights());
 
                 if (rateProduct > athRateProduct) {
-                    yieldFeeOwnership = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
+                    protocolYieldFeesPoolPercentage = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                         rateProduct.divDown(athRateProduct),
-                        totalSupply,
-                        totalSupply,
+                        FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
                         getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
                     );
                 }
             }
         }
 
-        return
-            Math.mul(invariant, _getTotalTokens()).mulDown((swapFeeOwnership + yieldFeeOwnership).complement()).divDown(
-                totalSupply
-            );
+        uint256 supply = totalSupply();
+        uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
+        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolOwnershipPercentage);
+
+        // This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
+        // We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
+        // This prevents the Pool's rate being affected by the collection of protocol fees.
+        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeeAmount));
     }
 }
