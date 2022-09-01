@@ -135,12 +135,12 @@ describe('LinearPool', function () {
     });
 
     it('adds bpt to the vault', async () => {
-      const previousBalances = await pool.getBalances();
+      const previousBalances = await pool.getScaledBalances();
       expect(previousBalances).to.be.zeros;
 
       await pool.initialize();
 
-      const currentBalances = await pool.getBalances();
+      const currentBalances = await pool.getScaledBalances();
       expect(currentBalances[pool.bptIndex]).to.be.equal(MAX_UINT112);
       expect(currentBalances[pool.mainIndex]).to.be.equal(0);
       expect(currentBalances[pool.wrappedIndex]).to.be.equal(0);
@@ -844,7 +844,7 @@ describe('LinearPool', function () {
       sharedBeforeEach('swap bpt', async () => {
         await tokens.approve({ to: pool.vault.address, from: [lp], amount: fp(50) });
 
-        const balances = await pool.getBalances();
+        const balances = await pool.getScaledBalances();
         await pool.swapGivenIn({
           in: pool.mainIndex,
           out: pool.bptIndex,
@@ -879,7 +879,7 @@ describe('LinearPool', function () {
     context('when not in recovery mode', () => {
       it('reverts', async () => {
         const totalBptBalance = await pool.balanceOf(lp);
-        const currentBalances = await pool.getBalances();
+        const currentBalances = await pool.getScaledBalances();
 
         await expect(
           pool.recoveryModeExit({
@@ -907,7 +907,7 @@ describe('LinearPool', function () {
             in: pool.mainIndex,
             out: pool.bptIndex,
             amount: amountIn,
-            balances: await pool.getBalances(),
+            balances: await pool.getScaledBalances(),
             from: lp,
             recipient: lp,
           });
@@ -917,12 +917,12 @@ describe('LinearPool', function () {
             in: pool.wrappedIndex,
             out: pool.bptIndex,
             amount: amountIn,
-            balances: await pool.getBalances(),
+            balances: await pool.getScaledBalances(),
             from: lp,
             recipient: lp,
           });
 
-          const currentBalances = await pool.getBalances();
+          const currentBalances = await pool.getScaledBalances();
           const previousVirtualSupply = await pool.getVirtualSupply();
           const previousBptBalance = await pool.balanceOf(lp);
 

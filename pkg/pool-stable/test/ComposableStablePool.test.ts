@@ -303,7 +303,7 @@ describe('ComposableStablePool', () => {
       sharedBeforeEach('deploy and initialize pool', async () => {
         await deployPool({ admin });
         await pool.init({ initialBalances, recipient: lp });
-        registeredBalances = await pool.getBalances();
+        registeredBalances = await pool.getScaledBalances();
       });
 
       function itPaysProtocolFeesAndReturnsNecessaryData() {
@@ -1644,7 +1644,7 @@ describe('ComposableStablePool', () => {
             // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
             // (even though this triggers a due protocol fee payout).
 
-            const poolBalances = await pool.getBalances();
+            const poolBalances = await pool.getScaledBalances();
             const amountsIn = poolBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
             await pool.joinGivenIn({ from: lp, amountsIn });
 
@@ -1765,7 +1765,7 @@ describe('ComposableStablePool', () => {
             //Exit with 1/4 of BPT balance
             const bptIn = (await pool.balanceOf(sender)).div(4);
 
-            const currentBalances = await pool.getBalances();
+            const currentBalances = await pool.getScaledBalances();
             const expectedAmountsOut = currentBalances.map((balance, i) =>
               i == pool.bptIndex ? bn(0) : bn(balance).mul(previousSenderBptBalance).div(previousVirtualSupply).div(4)
             );
@@ -1819,7 +1819,7 @@ describe('ComposableStablePool', () => {
               const previousVirtualSupply = await pool.getVirtualSupply();
               const previousLpBptBalance = await pool.balanceOf(lp);
 
-              const currentBalances = await pool.getBalances();
+              const currentBalances = await pool.getScaledBalances();
               const expectedAmountsOut = currentBalances.map((balance, i) =>
                 i == pool.bptIndex ? bn(0) : bn(balance).mul(previousLpBptBalance).div(previousVirtualSupply)
               );

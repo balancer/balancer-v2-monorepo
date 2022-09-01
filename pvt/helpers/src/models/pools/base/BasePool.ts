@@ -103,7 +103,7 @@ export default class BasePool {
     return this.vault.getPoolTokens(this.poolId);
   }
 
-  async getBalances(): Promise<BigNumber[]> {
+  async getScaledBalances(): Promise<BigNumber[]> {
     const { balances } = await this.getTokens();
     const scalingFactors = await this.getScalingFactors();
 
@@ -135,7 +135,7 @@ export default class BasePool {
   }
 
   async exit(params: JoinExitBasePool): Promise<ExitResult> {
-    const currentBalances = params.currentBalances || (await this.getBalances());
+    const currentBalances = params.currentBalances || (await this.getScaledBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
     const { tokens: allTokens } = await this.getTokens();
 
