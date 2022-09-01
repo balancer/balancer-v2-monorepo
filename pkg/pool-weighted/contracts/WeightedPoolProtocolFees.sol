@@ -187,8 +187,6 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
     /**
      * @dev Returns the amount of BPT to be minted to pay protocol fees on yield accrued by the Pool.
-     * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
-     * proper accounting is performed to prevent charging duplicate protocol fees.
      * @return yieldProtocolFees - The amount of BPT to be minted as protocol fees on yield.
      * @return athRateProduct - The new all-time-high rate product if it has increased, otherwise zero.
      */
