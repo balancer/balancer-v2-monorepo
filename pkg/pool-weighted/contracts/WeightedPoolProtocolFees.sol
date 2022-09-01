@@ -81,7 +81,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @notice Returns the all time high value for the weighted product of the Pool's tokens' rates.
      * @dev Yield protocol fees are only charged when this value is exceeded.
      */
-    function getATHRateProduct() external view returns (uint256) {
+    function getATHRateProduct() public view returns (uint256) {
         return _athRateProduct;
     }
 
@@ -189,27 +189,23 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @dev Returns the amount of BPT to be minted to pay protocol fees on yield accrued by the Pool.
      * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
      * proper accounting is performed to prevent charging duplicate protocol fees.
+     * @return yieldProtocolFees - The amount of BPT to be minted as protocol fees on yield.
+     * @return athRateProduct - The new all-time-high rate product if it has increased, otherwise zero.
      */
     function _getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 preJoinExitSupply)
         internal
-        returns (uint256)
+        view
+        returns (uint256, uint256)
     {
-        if (_exemptFromYieldFees) return 0;
+        if (_exemptFromYieldFees) return (0, 0);
 
         uint256 athRateProduct = _athRateProduct;
         uint256 rateProduct = _getRateProduct(normalizedWeights);
 
-        // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
-        // Not initialising this here properly will cause all joins/exits to revert.
-        if (athRateProduct == 0) {
-            _athRateProduct = rateProduct;
-            return 0;
-        }
-
         // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
         // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
         // been recovered.
-        if (rateProduct <= athRateProduct) return 0;
+        if (rateProduct <= athRateProduct) return (0, 0);
 
         // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
         // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
@@ -229,20 +225,24 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         // We then have the result:
         //
         // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old)
-        //
-        // We then replace the stored value of I(r1_old, r2_old) with I(r1_new, r2_new) to ensure we only collect
-        // fees on yield once.
-        _athRateProduct = rateProduct;
 
         // We pass `preJoinExitSupply` as the total supply twice as we're measuring over a period in which the total
         // supply has not changed.
-        return
+        return (
             InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
                 rateProduct.divDown(athRateProduct),
                 preJoinExitSupply,
                 preJoinExitSupply,
                 getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
-            );
+            ),
+            rateProduct
+        );
+    }
+
+    function _updateATHRateProduct(uint256 rateProduct) internal {
+        // We then replace the stored value of I(r1_old, r2_old) with I(r1_new, r2_new) to ensure we only collect
+        // fees on yield once.
+        _athRateProduct = rateProduct;
     }
 
     /**
