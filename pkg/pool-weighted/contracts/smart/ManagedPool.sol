@@ -1153,6 +1153,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
+        // Note that we can't assume that tokens are sorted due to ManagedPool being able to add new tokens.
+        // New tokens are always added onto the end of the tokens array which breaks sorting.
         uint256 tokensLength = tokens.length;
         for (uint256 i = 0; i < tokensLength; i++) {
             if (tokens[i] == token) {
