@@ -4,7 +4,7 @@ import { BasePoolEncoder } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import TypesConverter from '../../types/TypesConverter';
-import { BigNumberish, bn, fp } from '../../../numbers';
+import { arrayFpMul, BigNumberish, bn, fp } from '../../../numbers';
 import { Account } from '../../types/types';
 import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
@@ -105,7 +105,9 @@ export default class BasePool {
 
   async getBalances(): Promise<BigNumber[]> {
     const { balances } = await this.getTokens();
-    return balances;
+    const scalingFactors = await this.getScalingFactors();
+
+    return arrayFpMul(balances, scalingFactors);
   }
 
   async getRate(): Promise<BigNumber> {

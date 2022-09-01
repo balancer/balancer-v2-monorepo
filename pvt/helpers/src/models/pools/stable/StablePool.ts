@@ -81,10 +81,6 @@ export default class StablePool extends BasePool {
     return (await this.getTokens()).tokens.indexOf(token.address);
   }
 
-  async getBalances(): Promise<BigNumber[]> {
-    return (await this.getTokens()).balances;
-  }
-
   async getDueProtocolFeeBptAmount(): Promise<BigNumber> {
     return this.instance.getDueProtocolFeeBptAmount();
   }
