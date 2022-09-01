@@ -25,8 +25,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/InvariantGrowthProtocolSwapFees.sol";
-import "@balancer-labs/v2-pool-utils/contracts/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
@@ -1317,23 +1317,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             return (0, 0);
         }
 
-        // We want to collect fees so that the manager will receive `f` percent of the Pool's AUM after a year.
-        // We compute the amount of BPT to mint for the manager that would allow it to proportionally exit the Pool
-        // and receive this fraction of the Pool's assets.
-        // Note that the total BPT supply will increase when minting, so we need to account for this
-        // in order to compute the percentage of Pool ownership the manager will have.
-
-        // The formula can be derived from:
-        //
-        // f = toMint / (supply + toMint)
-        //
-        // which can be rearranged into:
-        //
-        // toMint = supply * f / (1 - f)
-        uint256 annualizedFee = Math.divDown(
-            Math.mul(totalSupply, managementAumFeePercentage),
-            managementAumFeePercentage.complement()
-        );
+        // We want to collect fees so that the manager will receive `managementAumFeePercentage` percent of the Pool's
+        // AUM after a year. We compute the amount of BPT to mint for the manager that would allow it to proportionally
+        // exit the Pool and receive this fraction of the Pool's assets.
+        uint256 annualizedFee = ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, managementAumFeePercentage);
 
         // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
         // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
