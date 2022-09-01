@@ -232,7 +232,7 @@ abstract contract BasePool is
 
     /**
      * @dev Performs any necessary actions on the disabling of Recovery Mode.
-     * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forwards.
+     * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forward.
      */
     function _onDisableRecoveryMode() internal virtual {}
 
