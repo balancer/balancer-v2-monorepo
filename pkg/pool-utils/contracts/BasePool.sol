@@ -227,6 +227,8 @@ abstract contract BasePool is
 
         emit RecoveryModeStateChanged(enabled);
 
+        // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
+        // We do not allow an `_onEnableRecoveryMode()` hook as this may jeopardize the ability to enable Recovery mode.
         if (!enabled) _onDisableRecoveryMode();
     }
 
