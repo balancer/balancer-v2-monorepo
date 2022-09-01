@@ -226,6 +226,8 @@ abstract contract BasePool is
         _miscData = _miscData.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
 
         emit RecoveryModeStateChanged(enabled);
+
+        if (!enabled) _onDisableRecoveryMode();
     }
 
     /**
