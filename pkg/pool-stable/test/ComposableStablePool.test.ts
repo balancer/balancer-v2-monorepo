@@ -1601,120 +1601,84 @@ describe('ComposableStablePool', () => {
           });
         });
 
-        context('with swap protocol fees', () => {
-          let feeAmount: BigNumber;
+        context('with protocol fees', () => {
+          let feeAmount: BigNumber; // The number of tokens in the Pool that are fees
 
-          sharedBeforeEach('accrue fees due to a swap', async () => {
-            const amount = initialBalance.div(20);
-            feeAmount = amount.mul(swapFeePercentage).div(fp(1));
+          function itReportsRateCorrectly() {
+            it('takes into account unminted protocol fees', async () => {
+              const invariant = await pool.estimateInvariant();
 
-            const tokenIn = tokens.first;
-            const tokenOut = tokens.second;
-            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient: lp });
+              // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
+              // Since all balances are relatively close and the pool is balanced, we can estimate their prices as being
+              // equal to then price the due protocool fees.
+              const virtualSupply = await pool.getVirtualSupply();
+              const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
+              const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
+              const protocolOwnership = feePercentage.mul(protocolFeePercentage).div(fp(1));
+
+              // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
+              const unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
+              const actualSupply = virtualSupply.add(unmintedBPT);
+
+              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+              const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
+
+              // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
+              // rounding error.
+              expect(rateConsideringProtocolFees).to.be.lt(rateAssumingNoProtocolFees.mul(9999).div(10000));
+
+              expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
+            });
+
+            it('does not change due to joins or exits', async () => {
+              const rateBeforeJoin = await pool.getRate();
+
+              // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
+              // (even though this triggers a due protocol fee payout).
+
+              // Note that we join with proportional *unscaled* balances - otherwise we'd need to take their different
+              // scaling factors into account.
+              const { balances: unscaledBalances } = await pool.getTokens();
+              const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+              await pool.joinGivenIn({ from: lp, amountsIn });
+
+              const rateAfterJoin = await pool.getRate();
+
+              // There's some minute diference due to rounding error
+              const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
+              expect(rateDelta.abs()).to.be.lte(2);
+            });
+          }
+
+          context('with swap protocol fees', () => {
+            sharedBeforeEach('accrue fees due to a swap', async () => {
+              const amount = initialBalance.div(20);
+              feeAmount = amount.mul(swapFeePercentage).div(fp(1));
+
+              const tokenIn = tokens.first;
+              const tokenOut = tokens.second;
+              await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient: lp });
+            });
+
+            itReportsRateCorrectly();
           });
 
-          it('takes into account unminted protocol fees', async () => {
-            const invariant = await pool.estimateInvariant();
+          context('with yield protocol fees', () => {
+            sharedBeforeEach('accrue fees due to yield', async () => {
+              // Even tokens are exempt from yield fee, so we cause some on an odd one.
 
-            // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
-            // Since all balances are relatively close and the pool is balanced, we can estimate their prices as being
-            // equal to then price the due protocool fees.
-            const virtualSupply = await pool.getVirtualSupply();
-            const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
-            const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
-            const protocolOwnership = feePercentage.mul(protocolFeePercentage).div(fp(1));
+              const rateProvider = rateProviders[1];
+              const currentRate = await rateProvider.getRate();
 
-            // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
-            const unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
-            const actualSupply = virtualSupply.add(unmintedBPT);
+              // Cause a 0.5% (1/200) rate increase
+              const newRate = currentRate.mul(fp(1.005)).div(fp(1));
+              await rateProvider.mockRate(newRate);
+              await pool.updateTokenRateCache(tokens.second);
 
-            const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
-            const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
+              feeAmount = initialBalance.mul(newRate.sub(currentRate)).div(fp(1));
+            });
 
-            // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
-            // rounding error.
-            expect(rateConsideringProtocolFees).to.be.lt(rateAssumingNoProtocolFees.mul(9999).div(10000));
-
-            expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
-          });
-
-          it('does not change due to joins or exits', async () => {
-            const rateBeforeJoin = await pool.getRate();
-
-            // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
-            // (even though this triggers a due protocol fee payout).
-
-            const poolBalances = await pool.getScaledBalances();
-            const amountsIn = poolBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
-            await pool.joinGivenIn({ from: lp, amountsIn });
-
-            const rateAfterJoin = await pool.getRate();
-
-            // There's some minute diference due to rounding error
-            const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
-            expect(rateDelta.abs()).to.be.lte(2);
-          });
-        });
-
-        context('with yield protocol fees', () => {
-          let feeAmount: BigNumber;
-
-          sharedBeforeEach('accrue fees due to yield', async () => {
-            // Even tokens are exempt from yield fee, so we cause some on an odd one.
-
-            const rateProvider = rateProviders[1];
-            const currentRate = await rateProvider.getRate();
-
-            // Cause a 0.5% (1/200) rate increase
-            const newRate = currentRate.mul(fp(1.005)).div(fp(1));
-            await rateProvider.mockRate(newRate);
-            await pool.updateTokenRateCache(tokens.second);
-
-            feeAmount = initialBalance.mul(newRate.sub(currentRate)).div(fp(1));
-          });
-
-          it('takes into account unminted protocol fees', async () => {
-            const invariant = await pool.estimateInvariant();
-
-            // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
-            // Since all balances are relatively close and the pool is balanced, we can estimate their prices as being
-            // equal to then price the due protocool fees.
-            const virtualSupply = await pool.getVirtualSupply();
-            const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
-            const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
-            const protocolOwnership = feePercentage.mul(protocolFeePercentage).div(fp(1));
-
-            // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
-            const unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
-            const actualSupply = virtualSupply.add(unmintedBPT);
-
-            const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
-            const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
-
-            // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
-            // rounding error.
-            expect(rateConsideringProtocolFees).to.be.lt(rateAssumingNoProtocolFees.mul(9999).div(10000));
-
-            expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
-          });
-
-          it('does not change due to joins or exits', async () => {
-            const rateBeforeJoin = await pool.getRate();
-
-            // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
-            // (even though this triggers a due protocol fee payout).
-
-            // Note that we join with proportional *unscaled* balances - otherwise we'd need to account for the
-            // different scaling factors
-            const { balances: unscaledBalances } = await pool.getTokens();
-            const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
-            await pool.joinGivenIn({ from: lp, amountsIn });
-
-            const rateAfterJoin = await pool.getRate();
-
-            // There's some minute diference due to rounding error
-            const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
-            expect(rateDelta.abs()).to.be.lte(2);
+            itReportsRateCorrectly();
           });
         });
       });
