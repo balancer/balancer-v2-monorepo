@@ -85,24 +85,6 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return _athRateProduct;
     }
 
-    function _getSwapProtocolFeesPoolPercentage(uint256 preJoinExitInvariant, uint256 protocolSwapFeePercentage)
-        internal
-        view
-        returns (uint256)
-    {
-        // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
-        // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dilutes all
-        // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
-        // before leaving.
-
-        return
-            InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
-                preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),
-                FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
-                protocolSwapFeePercentage
-            );
-    }
-
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
@@ -125,54 +107,24 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return providers;
     }
 
-    /**
-     * @notice Returns the contribution to the total rate product from a token with the given weight and rate provider.
-     */
-    function _getRateFactor(uint256 normalizedWeight, IRateProvider provider) internal view returns (uint256) {
-        return provider == IRateProvider(0) ? FixedPoint.ONE : provider.getRate().powDown(normalizedWeight);
-    }
+    // Protocol Fees
 
-    /**
-     * @dev Returns the weighted product of all the token rates.
-     */
-    function _getRateProduct(uint256[] memory normalizedWeights) internal view returns (uint256) {
-        uint256 totalTokens = normalizedWeights.length;
+    function _getSwapProtocolFeesPoolPercentage(uint256 preJoinExitInvariant, uint256 protocolSwapFeePercentage)
+        internal
+        view
+        returns (uint256)
+    {
+        // Before joins and exits, we measure the growth of the invariant compared to the invariant after the last join
+        // or exit, which will have been caused by swap fees, and use it to mint BPT as protocol fees. This dilutes all
+        // LPs, which means that new LPs will join the pool debt-free, and exiting LPs will pay any amounts due
+        // before leaving.
 
-        uint256 rateProduct = FixedPoint.mulDown(
-            _getRateFactor(normalizedWeights[0], _rateProvider0),
-            _getRateFactor(normalizedWeights[1], _rateProvider1)
-        );
-
-        if (totalTokens > 2) {
-            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[2], _rateProvider2));
-        } else {
-            return rateProduct;
-        }
-        if (totalTokens > 3) {
-            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[3], _rateProvider3));
-        } else {
-            return rateProduct;
-        }
-        if (totalTokens > 4) {
-            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[4], _rateProvider4));
-        } else {
-            return rateProduct;
-        }
-        if (totalTokens > 5) {
-            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[5], _rateProvider5));
-        } else {
-            return rateProduct;
-        }
-        if (totalTokens > 6) {
-            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[6], _rateProvider6));
-        } else {
-            return rateProduct;
-        }
-        if (totalTokens > 7) {
-            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[7], _rateProvider7));
-        }
-
-        return rateProduct;
+        return
+            InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
+                preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),
+                FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
+                protocolSwapFeePercentage
+            );
     }
 
     /**
@@ -292,5 +244,55 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
         // in the next one.
         _lastPostJoinExitInvariant = postJoinExitInvariant;
+    }
+
+    /**
+     * @notice Returns the contribution to the total rate product from a token with the given weight and rate provider.
+     */
+    function _getRateFactor(uint256 normalizedWeight, IRateProvider provider) internal view returns (uint256) {
+        return provider == IRateProvider(0) ? FixedPoint.ONE : provider.getRate().powDown(normalizedWeight);
+    }
+
+    /**
+     * @dev Returns the weighted product of all the token rates.
+     */
+    function _getRateProduct(uint256[] memory normalizedWeights) internal view returns (uint256) {
+        uint256 totalTokens = normalizedWeights.length;
+
+        uint256 rateProduct = FixedPoint.mulDown(
+            _getRateFactor(normalizedWeights[0], _rateProvider0),
+            _getRateFactor(normalizedWeights[1], _rateProvider1)
+        );
+
+        if (totalTokens > 2) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[2], _rateProvider2));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 3) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[3], _rateProvider3));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 4) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[4], _rateProvider4));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 5) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[5], _rateProvider5));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 6) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[6], _rateProvider6));
+        } else {
+            return rateProduct;
+        }
+        if (totalTokens > 7) {
+            rateProduct = rateProduct.mulDown(_getRateFactor(normalizedWeights[7], _rateProvider7));
+        }
+
+        return rateProduct;
     }
 }
