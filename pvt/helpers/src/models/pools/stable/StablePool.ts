@@ -288,14 +288,16 @@ export default class StablePool extends BasePool {
     const initialBalances = initParams.initialBalances;
     const balances = await this._dropBptItem(Array.isArray(initialBalances) ? initialBalances : [initialBalances]);
 
-    await Promise.all(
-      balances.map(async (balance, i) => {
-        const token = this.tokens.get(i);
+    if (!initParams.skipMint) {
+      await Promise.all(
+        balances.map(async (balance, i) => {
+          const token = this.tokens.get(i);
 
-        await token.mint(from, balance);
-        await token.approve(this.vault, balance, { from });
-      })
-    );
+          await token.mint(from, balance);
+          await token.approve(this.vault, balance, { from });
+        })
+      );
+    }
 
     const { tokens: allTokens } = await this.getTokens();
     const params: JoinExitStablePool = this._buildInitParams(initParams);
