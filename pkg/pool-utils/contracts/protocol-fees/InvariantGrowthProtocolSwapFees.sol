@@ -23,8 +23,7 @@ library InvariantGrowthProtocolSwapFees {
 
     function getProtocolOwnershipPercentage(
         uint256 invariantGrowthRatio,
-        uint256 previousSupply,
-        uint256 currentSupply,
+        uint256 supplyGrowthRatio,
         uint256 protocolSwapFeePercentage
     ) internal pure returns (uint256) {
         // Joins and exits are symmetrical; for simplicity, we consider a join, where the invariant and supply
@@ -50,7 +49,6 @@ library InvariantGrowthProtocolSwapFees {
         // potential underflows, however this should only occur in extremely low volume actions due solely to rounding
         // error.
 
-        uint256 supplyGrowthRatio = currentSupply.divDown(previousSupply);
         if ((supplyGrowthRatio >= invariantGrowthRatio) || (protocolSwapFeePercentage == 0)) return 0;
 
         // If the join is non-proportional, the supply increase will be proportionally less than the invariant increase,
@@ -93,8 +91,7 @@ library InvariantGrowthProtocolSwapFees {
     ) internal pure returns (uint256) {
         uint256 protocolOwnershipPercentage = getProtocolOwnershipPercentage(
             invariantGrowthRatio,
-            previousSupply,
-            currentSupply,
+            currentSupply.divDown(previousSupply),
             protocolSwapFeePercentage
         );
 
