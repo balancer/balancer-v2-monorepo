@@ -566,6 +566,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
+        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
+        // Otherwise we'd have to reason about how changes in the weights of other tokens could affect the pricing
+        // between them and the newly added token, etc.
+        _ensureNoWeightChange();
+
         (IERC20[] memory currentTokens, , ) = getVault().getPoolTokens(getPoolId());
 
         uint256 weightSumAfterAdd = _validateAddToken(currentTokens, normalizedWeight);
@@ -625,11 +630,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
         // Make sure the new token is above the minimum weight.
         _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
-        // Otherwise we'd have to reason about how changes in the weights of other tokens could affect the pricing
-        // between them and the newly added token, etc.
-        _ensureNoWeightChange();
 
         uint256 numTokens = tokens.length;
         _require(numTokens + 1 <= _getMaxTokens(), Errors.MAX_TOKENS);
@@ -712,12 +712,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // This prevents the AUM fee calculation being triggered before the pool contains any assets.
         _require(totalSupply() > 0, Errors.UNINITIALIZED);
 
+        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
+        _ensureNoWeightChange();
+
         // Exit the pool, returning the full balance of the token to the recipient
         (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length > 2, Errors.MIN_TOKENS);
-
-        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
-        _ensureNoWeightChange();
 
         // Reverts if the token does not exist in the pool.
         uint256 tokenIndex = _tokenAddressToIndex(tokens, token);
