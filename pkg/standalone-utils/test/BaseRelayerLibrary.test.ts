@@ -301,12 +301,11 @@ describe('BaseRelayerLibrary', function () {
       it('approves vault to use tokens', async () => {
         const tx = await relayerLibrary.approveVault(token.address, approveAmount);
 
-        expectEvent.inIndirectReceipt(
-          await tx.wait(),
-          token.interface,
-          'Approval',
-          { owner: relayerLibrary.address, spender: vault.address, value: allowance }
-        );
+        expectEvent.inIndirectReceipt(await tx.wait(), token.interface, 'Approval', {
+          owner: relayerLibrary.address,
+          spender: vault.address,
+          value: allowance,
+        });
         expect(await token.allowance(relayerLibrary.address, vault.address)).to.equal(allowance);
       });
     }
