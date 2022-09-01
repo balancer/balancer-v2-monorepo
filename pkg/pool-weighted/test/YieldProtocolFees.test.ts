@@ -39,9 +39,9 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
   async function deployPool(numTokens: number, { payYieldFees } = { payYieldFees: true }) {
     const tokens = await TokenList.create(numTokens, { sorted: true });
     if (payYieldFees) {
-      rateProviders = await tokens.asyncMap(async () => await deploy('v2-pool-utils/MockRateProvider'));
+      rateProviders = await tokens.asyncMap(() => deploy('v2-pool-utils/MockRateProvider'));
     } else {
-      rateProviders = await tokens.asyncMap(async () => ZERO_ADDRESS);
+      rateProviders = tokens.map(() => ZERO_ADDRESS);
     }
 
     pool = await deploy('MockWeightedPoolProtocolFees', {
