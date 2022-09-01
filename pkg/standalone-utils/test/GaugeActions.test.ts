@@ -1,0 +1,436 @@
+import { ethers } from 'hardhat';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+import { BigNumber, Contract, ContractReceipt } from 'ethers';
+import { expect } from 'chai';
+import { setChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+
+describe('GaugeActions', function () {
+  let vault: Vault;
+  let relayer: Contract, relayerLibrary: Contract;
+  let admin: SignerWithAddress, sender: SignerWithAddress, other: SignerWithAddress, recipient: SignerWithAddress;
+
+  let adaptor: Contract, balMinter: Contract;
+  let BAL: Contract, veBAL: Contract, lpToken: Contract;
+
+  let gaugeFactory: Contract;
+  let gauge: Contract;
+
+  const totalLpTokens = fp(100);
+
+  before('get signers', async () => {
+    [, admin, sender, other] = await ethers.getSigners();
+  });
+
+  sharedBeforeEach('deploy token mocks', async () => {
+    vault = await Vault.create({ admin });
+
+    BAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
+      args: [admin.address, 'Balancer', 'BAL'],
+    });
+
+    veBAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
+      args: [admin.address, 'Balancer Voting Escrow', 'veBAL'],
+    });
+
+    lpToken = await deploy('v2-pool-utils/MockBalancerPoolToken', {
+      args: ['Mock Balancer Pool Token', 'BPT', vault.address],
+    });
+
+    await lpToken.mint(sender.address, totalLpTokens);
+  });
+
+  sharedBeforeEach('set up relayer', async () => {
+    adaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
+
+    const gaugeController = await deploy('v2-liquidity-mining/MockGaugeController', {
+      args: [veBAL.address, adaptor.address],
+    });
+
+    const balTokenAdmin = await deploy('v2-liquidity-mining/MockBalancerTokenAdmin', {
+      args: [vault.address, BAL.address],
+    });
+
+    balMinter = await deploy('v2-liquidity-mining/BalancerMinter', {
+      args: [balTokenAdmin.address, gaugeController.address],
+    });
+
+    // Deploy Relayer: vault and BAL minter are required; we can skip wstETH.
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', {
+      args: [vault.address, ZERO_ADDRESS, balMinter.address],
+    });
+    relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
+
+    // Authorize Relayer for all actions
+    const relayerActionIds = await Promise.all(
+      ['setRelayerApproval', 'manageUserBalance'].map((action) => actionId(vault.instance, action))
+    );
+    await vault.grantPermissionsGlobally(relayerActionIds, relayer);
+
+    // Approve relayer by BPT holder
+    await vault.setRelayerApproval(sender, relayer, true);
+  });
+
+  // We won't be needing the adder; we just need a staking liquidity gauge where tokens can be deposited / withdrawn.
+  sharedBeforeEach('set up gauge', async () => {
+    const veBalDelegation = await deploy('v2-liquidity-mining/MockVeDelegation');
+
+    const veBalDelegationProxy = await deploy('v2-liquidity-mining/VotingEscrowDelegationProxy', {
+      args: [vault.address, veBAL.address, veBalDelegation.address],
+    });
+
+    const gaugeImplementation = await deploy('v2-liquidity-mining/LiquidityGaugeV5', {
+      args: [balMinter.address, veBalDelegationProxy.address, adaptor.address],
+    });
+    gaugeFactory = await deploy('v2-liquidity-mining/LiquidityGaugeFactory', { args: [gaugeImplementation.address] });
+
+    gauge = await deployedAt(
+      'v2-liquidity-mining/LiquidityGaugeV5',
+      await deployGauge(gaugeFactory, lpToken.address) // No weight cap.
+    );
+  });
+
+  describe('gaugeDeposit', () => {
+    context('when using relayer library directly', () => {
+      it('reverts', async () => {
+        expect(
+          relayerLibrary.connect(sender).gaugeDeposit(gauge.address, sender.address, gauge.address, fp(1))
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when sender does not have enough BPT', () => {
+      it('reverts', async () => {
+        expect(
+          relayer
+            .connect(sender)
+            .multicall([
+              encodeDeposit({ gauge: gauge, sender: sender, recipient: sender, amount: totalLpTokens.add(1) }),
+            ])
+        ).to.be.reverted;
+      });
+    });
+
+    context('when sender has enough BPT', () => {
+      context('when recipient is sender', () => {
+        sharedBeforeEach('', async () => {
+          recipient = sender;
+        });
+
+        itDepositsWithEnoughTokens();
+      });
+
+      context('when recipient is not sender', () => {
+        sharedBeforeEach('', async () => {
+          recipient = other;
+        });
+
+        itDepositsWithEnoughTokens();
+      });
+    });
+
+    function itDepositsWithEnoughTokens() {
+      context('when depositing some of the tokens', () => {
+        itDepositsWithRefsAndAmounts(totalLpTokens.div(3));
+      });
+
+      context('when depositing all of the available tokens', () => {
+        itDepositsWithRefsAndAmounts(totalLpTokens);
+      });
+
+      context('when depositing 0 tokens', () => {
+        itDepositsWithRefsAndAmounts(bn(0));
+      });
+    }
+
+    function itDepositsWithRefsAndAmounts(amount: BigNumber) {
+      context('when using immediate amounts', () => {
+        itDepositsTokens(amount, amount);
+      });
+
+      context('when using chained references', () => {
+        const reference = toChainedReference(123);
+
+        sharedBeforeEach('set chained reference', async () => {
+          await setChainedReferenceContents(relayer, reference, amount);
+        });
+
+        itDepositsTokens(reference, amount);
+      });
+    }
+
+    function itDepositsTokens(depositAmountOrRef: BigNumber, expectedAmount: BigNumber) {
+      let receipt: ContractReceipt;
+
+      sharedBeforeEach('check initial balances and make deposit', async () => {
+        // Start: sender has all the BPT, no gauge tokens minted, recipient is clean unless it is sender.
+        expect(await lpToken.balanceOf(gauge.address)).to.be.eq(0);
+        expect(await lpToken.balanceOf(sender.address)).to.be.eq(totalLpTokens);
+        if (sender.address != recipient.address) {
+          expect(await lpToken.balanceOf(recipient.address)).to.be.eq(0);
+        }
+
+        expect(await gauge.balanceOf(gauge.address)).to.be.eq(0);
+        expect(await gauge.balanceOf(sender.address)).to.be.eq(0);
+        expect(await gauge.balanceOf(recipient.address)).to.be.eq(0);
+
+        const tx = await relayer
+          .connect(sender)
+          .multicall([
+            encodeDeposit({ gauge: gauge, sender: sender, recipient: recipient, amount: depositAmountOrRef }),
+          ]);
+        receipt = await tx.wait();
+      });
+
+      // Short-circuit when no tokens are deposited.
+      expectedAmount.gt(0) &&
+        it('pulls BPT tokens from sender', async () => {
+          expectTransferEvent(
+            receipt,
+            { from: sender.address, to: relayer.address, value: expectedAmount },
+            lpToken.address
+          );
+        });
+
+      it("approves gauge to use relayer's BPT funds", async () => {
+        expectEvent.inIndirectReceipt(receipt, lpToken.interface, 'Approval', {
+          owner: relayer.address,
+          spender: gauge.address,
+          value: expectedAmount,
+        });
+      });
+
+      // Short-circuit when no tokens are deposited.
+      expectedAmount.gt(0) &&
+        it('emits BPT transfer event from relayer to gauge', async () => {
+          expectTransferEvent(
+            receipt,
+            { from: relayer.address, to: gauge.address, value: expectedAmount },
+            lpToken.address
+          );
+        });
+
+      it('transfers BPT tokens to gauge', async () => {
+        expect(await lpToken.balanceOf(sender.address)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
+        expect(await lpToken.balanceOf(gauge.address)).to.be.eq(expectedAmount);
+      });
+
+      it('emits deposit event', async () => {
+        expectEvent.inIndirectReceipt(receipt, gauge.interface, 'Deposit', {
+          provider: recipient.address,
+          value: expectedAmount,
+        });
+      });
+
+      it('mints gauge tokens to recipient', async () => {
+        expect(await gauge.balanceOf(recipient.address)).to.be.eq(expectedAmount);
+      });
+
+      it('emits transfer event for minted gauge tokens', async () => {
+        expectTransferEvent(
+          receipt,
+          { from: ZERO_ADDRESS, to: recipient.address, value: expectedAmount },
+          gauge.address
+        );
+      });
+    }
+  });
+
+  describe('gaugeWithdraw', () => {
+    // Sender has BPT and needs gauge tokens to start the test, so here recipient should be sender.
+    sharedBeforeEach('make initial deposit', async () => {
+      await relayer
+        .connect(sender)
+        .multicall([encodeDeposit({ gauge: gauge, sender: sender, recipient: sender, amount: totalLpTokens })]);
+    });
+
+    context('when using relayer library directly', () => {
+      it('reverts', async () => {
+        expect(
+          relayerLibrary.connect(sender).gaugeWithdraw(gauge.address, sender.address, gauge.address, fp(1))
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when sender does not have enough gauge tokens', () => {
+      it('reverts', async () => {
+        expect(
+          relayer
+            .connect(sender)
+            .multicall([
+              encodeWithdraw({ gauge: gauge, sender: sender, recipient: sender, amount: totalLpTokens.add(1) }),
+            ])
+        ).to.be.reverted;
+      });
+    });
+
+    context('when sender has enough gauge tokens', () => {
+      context('when recipient is sender', () => {
+        sharedBeforeEach('', async () => {
+          recipient = sender;
+        });
+
+        itWithdrawsWithEnoughTokens();
+      });
+
+      context('when recipient is not sender', () => {
+        sharedBeforeEach('', async () => {
+          recipient = other;
+        });
+
+        itWithdrawsWithEnoughTokens();
+      });
+    });
+
+    function itWithdrawsWithEnoughTokens() {
+      context('when withdrawing some of the tokens', () => {
+        itWithdrawsWithRefsAndAmounts(totalLpTokens.div(3));
+      });
+
+      context('when withdrawing all the available tokens', () => {
+        itWithdrawsWithRefsAndAmounts(totalLpTokens);
+      });
+
+      context('when withdrawing 0 tokens', () => {
+        itWithdrawsWithRefsAndAmounts(bn(0));
+      });
+    }
+
+    function itWithdrawsWithRefsAndAmounts(amount: BigNumber) {
+      context('when using immediate amounts', () => {
+        itWithdrawsTokens(amount, amount);
+      });
+
+      context('when using chained references', () => {
+        const reference = toChainedReference(123);
+
+        sharedBeforeEach('set chained reference', async () => {
+          await setChainedReferenceContents(relayer, reference, amount);
+        });
+
+        itWithdrawsTokens(reference, amount);
+      });
+    }
+
+    function itWithdrawsTokens(withdrawAmountOrRef: BigNumber, expectedAmount: BigNumber) {
+      let receipt: ContractReceipt;
+
+      sharedBeforeEach('check initial balances and withdraw', async () => {
+        // Start: gauge has all the BPT, sender has all the gauge tokens, recipient is clean unless it is sender.
+        expect(await lpToken.balanceOf(gauge.address)).to.be.eq(totalLpTokens);
+        expect(await lpToken.balanceOf(sender.address)).to.be.eq(0);
+        expect(await lpToken.balanceOf(recipient.address)).to.be.eq(0);
+
+        expect(await gauge.balanceOf(gauge.address)).to.be.eq(0);
+        expect(await gauge.balanceOf(sender.address)).to.be.eq(totalLpTokens);
+        if (sender.address != recipient.address) {
+          expect(await gauge.balanceOf(recipient.address)).to.be.eq(0);
+        }
+
+        const tx = await relayer
+          .connect(sender)
+          .multicall([
+            encodeWithdraw({ gauge: gauge, sender: sender, recipient: recipient, amount: withdrawAmountOrRef }),
+          ]);
+
+        receipt = await tx.wait();
+      });
+
+      // Short-circuit when no tokens are withdrawn.
+      expectedAmount.gt(0) &&
+        it('pulls gauge tokens from sender', async () => {
+          expectTransferEvent(
+            receipt,
+            { from: sender.address, to: relayer.address, value: expectedAmount },
+            gauge.address
+          );
+        });
+
+      // Short-circuit when no tokens are withdrawn.
+      expectedAmount.gt(0) &&
+        it('emits BPT transfer event from gauge to relayer', async () => {
+          expectTransferEvent(
+            receipt,
+            { from: gauge.address, to: relayer.address, value: expectedAmount },
+            lpToken.address
+          );
+        });
+
+      it('emits withdraw event', async () => {
+        expectEvent.inIndirectReceipt(receipt, gauge.interface, 'Withdraw', {
+          provider: relayer.address,
+          value: expectedAmount,
+        });
+      });
+
+      it('burns gauge tokens', async () => {
+        expect(await gauge.balanceOf(sender.address)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
+      });
+
+      it('emits transfer event for burned gauge tokens', async () => {
+        expectTransferEvent(receipt, { from: relayer.address, to: ZERO_ADDRESS, value: expectedAmount }, gauge.address);
+      });
+
+      it('emits BPT transfer event from relayer to recipient', async () => {
+        expectTransferEvent(
+          receipt,
+          { from: relayer.address, to: recipient.address, value: expectedAmount },
+          lpToken.address
+        );
+      });
+
+      it('transfers BPT tokens to recipient', async () => {
+        if (recipient.address == sender.address) {
+          expect(await lpToken.balanceOf(sender.address)).to.be.eq(expectedAmount);
+        } else {
+          expect(await lpToken.balanceOf(sender.address)).to.be.eq(0);
+        }
+        expect(await lpToken.balanceOf(recipient.address)).to.be.eq(expectedAmount);
+        expect(await lpToken.balanceOf(gauge.address)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
+      });
+    }
+  });
+
+  async function deployGauge(gaugeFactory: Contract, poolAddress: string): Promise<string> {
+    const tx = await gaugeFactory.create(poolAddress, fp(1)); // No weight cap.
+    const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
+
+    return event.args.gauge;
+  }
+
+  function encodeDeposit(params: {
+    gauge: Contract;
+    sender: SignerWithAddress;
+    recipient: SignerWithAddress;
+    amount: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeDeposit', [
+      params.gauge.address,
+      params.sender.address,
+      params.recipient.address,
+      params.amount,
+    ]);
+  }
+
+  function encodeWithdraw(params: {
+    gauge: Contract;
+    sender: SignerWithAddress;
+    recipient: SignerWithAddress;
+    amount: BigNumberish;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeWithdraw', [
+      params.gauge.address,
+      params.sender.address,
+      params.recipient.address,
+      params.amount,
+    ]);
+  }
+});
