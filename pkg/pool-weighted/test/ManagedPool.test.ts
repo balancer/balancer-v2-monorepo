@@ -11,6 +11,7 @@ import {
   advanceTime,
   advanceToTimestamp,
   currentTimestamp,
+  receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, fp, FP_SCALING_FACTOR, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -1749,6 +1750,42 @@ describe('ManagedPool', function () {
 
           expect(bptFeeBalance).to.be.zero;
         });
+      });
+    });
+  });
+
+  describe('recovery mode', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens: poolTokens,
+        weights: poolWeights,
+        owner: owner.address,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        swapEnabledOnStart: true,
+        vault,
+      };
+      pool = await WeightedPool.create(params);
+      await pool.init({ from: other, initialBalances });
+
+      await pool.collectAumManagementFees(owner);
+    });
+
+    context('when leaving recovery mode', () => {
+      it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
+        const lastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
+        // Set recovery mode to stop AUM fee calculations.
+        await pool.enableRecoveryMode();
+
+        // Advance time so that AUM fees would otherwise be accrued.
+        await advanceTime(365 * DAY);
+
+        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(lastAUMCollectionTimestamp);
+
+        // On disabling recovery mode we expect the `_lastAumFeeCollectionTimestamp` to be be equal to the current time.
+        const tx = await pool.disableRecoveryMode();
+        const expectedLastAUMCollectionTimestamp = await receiptTimestamp(tx.wait());
+        const updatedLastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
+        expect(updatedLastAUMCollectionTimestamp).to.be.eq(expectedLastAUMCollectionTimestamp);
       });
     });
   });

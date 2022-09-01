@@ -264,6 +264,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     /**
+     * @notice Returns the timestamp of the last collection of AUM fees.
+     */
+    function getLastAumFeeCollectionTimestamp() external view returns (uint256) {
+        return _lastAumFeeCollectionTimestamp;
+    }
+
+    /**
      * @notice Returns the current value of the swap fee percentage.
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
