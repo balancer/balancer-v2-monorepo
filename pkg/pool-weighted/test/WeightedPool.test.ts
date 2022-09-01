@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
@@ -12,14 +13,21 @@ import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
+  let admin: SignerWithAddress;
+  let lp: SignerWithAddress;
 
   const MAX_TOKENS = 8;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
+
+  before('setup signers', async () => {
+    [, admin, lp] = await ethers.getSigners();
+  });
 
   sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
@@ -120,6 +128,98 @@ describe('WeightedPool', function () {
       for (const expectedNotOwnerOnlyFunction of expectedNotOwnerOnlyFunctions) {
         itIsNotOwnerOnly(expectedNotOwnerOnlyFunction);
       }
+    });
+  });
+
+  describe('getRate', () => {
+    const swapFeePercentage = fp(0.1); // 10 %
+    const protocolFeePercentage = fp(0.5); // 50 %
+    const numTokens = 2;
+
+    let tokens: TokenList;
+    let pool: WeightedPool;
+
+    sharedBeforeEach('deploy pool', async () => {
+      tokens = allTokens.subset(numTokens);
+      const vault = await Vault.create({ admin });
+
+      pool = await WeightedPool.create({
+        poolType: WeightedPoolType.WEIGHTED_POOL,
+        tokens,
+        weights: WEIGHTS.slice(0, numTokens),
+        swapFeePercentage: swapFeePercentage,
+        vault,
+      });
+      await vault.setSwapFeePercentage(protocolFeePercentage);
+
+      await pool.updateProtocolFeePercentageCache();
+    });
+
+    context('before initialized', () => {
+      it('rate is zero', async () => {
+        await expect(pool.getRate()).to.be.revertedWith('ZERO_INVARIANT');
+      });
+    });
+
+    context('once initialized', () => {
+      sharedBeforeEach('initialize pool', async () => {
+        // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
+        const equalBalances = Array(numTokens).fill(fp(100));
+
+        await allTokens.mint({ to: lp.address, amount: fp(1000) });
+        await allTokens.approve({ from: lp, to: pool.vault.address });
+
+        await pool.init({ from: lp, recipient: lp.address, initialBalances: equalBalances });
+      });
+
+      context('without protocol fees', () => {
+        it('reports correctly', async () => {
+          const totalSupply = await pool.totalSupply();
+          const invariant = await pool.estimateInvariant();
+
+          const expectedRate = invariant.mul(numTokens).div(totalSupply).mul(fp(1));
+          const rate = await pool.getRate();
+
+          expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+        });
+      });
+
+      context.skip('with protocol fees', () => {
+        sharedBeforeEach('swap bpt in', async () => {
+          const amount = fp(20);
+          const tokenIn = tokens.first;
+          const tokenOut = tokens.second;
+
+          await pool.swapGivenIn({ from: lp, recipient: lp.address, in: tokenIn, out: tokenOut, amount });
+        });
+
+        it("doesn't include the value of uncollected protocol fees in the rate", async () => {
+          const totalSupply = await pool.totalSupply();
+          const invariant = await pool.estimateInvariant();
+
+          const rateAssumingNoProtocolFees = invariant.mul(numTokens).div(totalSupply).mul(fp(1));
+          const rate = await pool.getRate();
+
+          const rateDifference = rateAssumingNoProtocolFees.sub(rate);
+          // 10000 is chosen as a non-negligible amount to show that the difference is not just from rounding errors.
+          expect(rateDifference).to.be.gt(10000);
+        });
+
+        it('minting protocol fee BPT should not affect rate', async () => {
+          const rateBeforeJoin = await pool.getRate();
+
+          // Perform a very small proportional join. This ensures that the rate should not increase from swap fees
+          // due to this join so this can't mask issues with the rate.
+          const poolBalances = await pool.getBalances();
+          const amountsIn = poolBalances.map((balance) => balance.div(10000));
+          await pool.joinGivenIn({ from: lp, amountsIn });
+
+          const rateAfterJoin = await pool.getRate();
+
+          const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
+          expect(rateDelta.abs()).to.be.lte(2);
+        });
+      });
     });
   });
 });
