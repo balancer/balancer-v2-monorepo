@@ -55,7 +55,15 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         return _getRateProduct(normalizedWeights);
     }
 
-    function getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply) external returns (uint256) {
+    function updateATHRateProduct(uint256 rateProduct) external {
+        _updateATHRateProduct(rateProduct);
+    }
+
+    function getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply)
+        external
+        view
+        returns (uint256 yieldProtocolFees, uint256 athRateProduct)
+    {
         return _getYieldProtocolFee(normalizedWeights, supply);
     }
 
