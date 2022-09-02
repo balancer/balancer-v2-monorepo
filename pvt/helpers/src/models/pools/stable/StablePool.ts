@@ -74,7 +74,7 @@ export default class StablePool extends BasePool {
   }
 
   async virtualTotalSupply(): Promise<BigNumber> {
-    return PREMINTED_BPT.sub((await this.getScaledBalances())[this.bptIndex]);
+    return PREMINTED_BPT.sub((await this.getBalances())[this.bptIndex]);
   }
 
   async getTokenIndex(token: Token): Promise<number> {
@@ -148,28 +148,28 @@ export default class StablePool extends BasePool {
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     return calculateInvariant(await this._dropBptItem(currentBalances), this.amplificationParameter);
   }
 
   async estimateTokenOutGivenTokenIn(tokenIn: Token, tokenOut: Token, amountIn: BigNumberish): Promise<BigNumberish> {
     const indexIn = this._skipBptIndex(await this.getTokenIndex(tokenIn));
     const indexOut = this._skipBptIndex(await this.getTokenIndex(tokenOut));
-    const currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    const currentBalances = await this._dropBptItem(await this.getBalances());
     return bn(calcOutGivenIn(currentBalances, this.amplificationParameter, indexIn, indexOut, amountIn));
   }
 
   async estimateTokenInGivenTokenOut(tokenIn: Token, tokenOut: Token, amountOut: BigNumberish): Promise<BigNumberish> {
     const indexIn = this._skipBptIndex(await this.getTokenIndex(tokenIn));
     const indexOut = this._skipBptIndex(await this.getTokenIndex(tokenOut));
-    const currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    const currentBalances = await this._dropBptItem(await this.getBalances());
     return bn(calcInGivenOut(currentBalances, this.amplificationParameter, indexIn, indexOut, amountOut));
   }
 
   async estimateTokenOutGivenBptIn(token: Token, bptIn: BigNumberish): Promise<BigNumberish> {
     const tokenIndex = this._skipBptIndex(await this.getTokenIndex(token));
     const virtualSupply = await this.virtualTotalSupply();
-    const currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    const currentBalances = await this._dropBptItem(await this.getBalances());
     const currentInvariant = calculateInvariant(currentBalances, this.amplificationParameter);
 
     return calcTokenOutGivenExactBptIn(
@@ -186,7 +186,7 @@ export default class StablePool extends BasePool {
   async estimateTokenInGivenBptOut(token: Token, bptOut: BigNumberish): Promise<BigNumberish> {
     const tokenIndex = this._skipBptIndex(await this.getTokenIndex(token));
     const virtualSupply = await this.virtualTotalSupply();
-    const currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    const currentBalances = await this._dropBptItem(await this.getBalances());
     const currentInvariant = calculateInvariant(currentBalances, this.amplificationParameter);
 
     return calcTokenInGivenExactBptOut(
@@ -203,7 +203,7 @@ export default class StablePool extends BasePool {
   async estimateBptOutGivenTokenIn(token: Token, amountIn: BigNumberish): Promise<BigNumberish> {
     const tokenIndex = this._skipBptIndex(await this.getTokenIndex(token));
     const virtualSupply = await this.virtualTotalSupply();
-    const currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    const currentBalances = await this._dropBptItem(await this.getBalances());
     const amountsIn = Array.from({ length: currentBalances.length }, (_, i) => (i == tokenIndex ? amountIn : 0));
     const currentInvariant = calculateInvariant(currentBalances, this.amplificationParameter);
 
@@ -220,7 +220,7 @@ export default class StablePool extends BasePool {
   async estimateBptInGivenTokenOut(token: Token, amountOut: BigNumberish): Promise<BigNumberish> {
     const tokenIndex = this._skipBptIndex(await this.getTokenIndex(token));
     const virtualSupply = await this.virtualTotalSupply();
-    const currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    const currentBalances = await this._dropBptItem(await this.getBalances());
     const amountsOut = Array.from({ length: currentBalances.length }, (_, i) => (i == tokenIndex ? amountOut : 0));
     const currentInvariant = calculateInvariant(currentBalances, this.amplificationParameter);
 
@@ -240,9 +240,9 @@ export default class StablePool extends BasePool {
     supply?: BigNumberish
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.virtualTotalSupply();
-    if (!currentBalances) currentBalances = await this._dropBptItem(await this.getScaledBalances());
+    if (!currentBalances) currentBalances = await this._dropBptItem(await this.getBalances());
     const swapFeePercentage = await this.getSwapFeePercentage();
-    const tokenCountWithBpt = (await this.getScaledBalances()).length;
+    const tokenCountWithBpt = (await this.getBalances()).length;
 
     if (currentBalances.length == tokenCountWithBpt) {
       currentBalances = await this._dropBptItem(currentBalances);
@@ -301,7 +301,7 @@ export default class StablePool extends BasePool {
 
     const { tokens: allTokens } = await this.getTokens();
     const params: JoinExitStablePool = this._buildInitParams(initParams);
-    const currentBalances = params.currentBalances || (await this.getScaledBalances());
+    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
     const tx = this.vault.joinPool({
@@ -352,7 +352,7 @@ export default class StablePool extends BasePool {
   }
 
   async join(params: JoinExitStablePool): Promise<JoinResult> {
-    const currentBalances = params.currentBalances || (await this.getScaledBalances());
+    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
     const { tokens: allTokens } = await this.getTokens();
 
@@ -532,7 +532,7 @@ export default class StablePool extends BasePool {
   }
 
   private async _executeQuery(params: JoinExitStablePool, fn: ContractFunction): Promise<PoolQueryResult> {
-    const currentBalances = params.currentBalances || (await this.getScaledBalances());
+    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
     return fn(

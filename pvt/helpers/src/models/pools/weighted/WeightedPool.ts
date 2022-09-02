@@ -123,12 +123,12 @@ export default class WeightedPool extends BasePool {
   }
 
   async getMaxIn(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     return currentBalances[tokenIndex].mul(MAX_IN_RATIO).div(fp(1));
   }
 
   async getMaxOut(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
   }
 
@@ -149,7 +149,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
 
     const scalingFactors = await this.getScalingFactors();
     return calculateSpotPrice(
@@ -163,7 +163,7 @@ export default class WeightedPool extends BasePool {
     currentBalance?: BigNumberish,
     currentSupply?: BigNumberish
   ): Promise<BigNumber> {
-    if (!currentBalance) currentBalance = (await this.getScaledBalances())[tokenIndex];
+    if (!currentBalance) currentBalance = (await this.getBalances())[tokenIndex];
     if (!currentSupply) currentSupply = await this.totalSupply();
 
     const scalingFactors = await this.getScalingFactors();
@@ -176,7 +176,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const scalingFactors = await this.getScalingFactors();
 
     return calculateInvariant(
@@ -190,7 +190,7 @@ export default class WeightedPool extends BasePool {
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
   ): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
     const feeAmount = calculateOneTokenSwapFeeAmount(currentBalances, this.weights, lastInvariant, paidTokenIndex);
@@ -202,7 +202,7 @@ export default class WeightedPool extends BasePool {
     protocolFeePercentage: BigNumberish,
     currentBalances?: BigNumberish[]
   ): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
     const feeAmount = calculateMaxOneTokenSwapFeeAmount(
       currentBalances,
@@ -214,7 +214,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async estimateGivenIn(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
     return bn(
@@ -229,7 +229,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async estimateGivenOut(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
 
     return bn(
@@ -249,7 +249,7 @@ export default class WeightedPool extends BasePool {
     supply?: BigNumberish
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.totalSupply();
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     return calcBptOutGivenExactTokensIn(currentBalances, this.weights, amountsIn, supply, this.swapFeePercentage);
   }
 
@@ -260,7 +260,7 @@ export default class WeightedPool extends BasePool {
     supply?: BigNumberish
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.totalSupply();
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
     return calcTokenInGivenExactBptOut(
       tokenIndex,
@@ -279,7 +279,7 @@ export default class WeightedPool extends BasePool {
     supply?: BigNumberish
   ): Promise<BigNumberish> {
     if (!supply) supply = await this.totalSupply();
-    if (!currentBalances) currentBalances = await this.getScaledBalances();
+    if (!currentBalances) currentBalances = await this.getBalances();
     const tokenIndex = this.tokens.indexOf(token);
     return calcTokenOutGivenExactBptIn(
       tokenIndex,
@@ -364,7 +364,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async join(params: JoinExitWeightedPool): Promise<JoinResult> {
-    const currentBalances = params.currentBalances || (await this.getScaledBalances());
+    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
     const tx = this.vault.joinPool({
@@ -390,7 +390,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
-    const currentBalances = params.currentBalances || (await this.getScaledBalances());
+    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
     const tx = await this.vault.exitPool({
@@ -411,7 +411,7 @@ export default class WeightedPool extends BasePool {
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {
-    const currentBalances = params.currentBalances || (await this.getScaledBalances());
+    const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
     return fn(
@@ -426,7 +426,7 @@ export default class WeightedPool extends BasePool {
   }
 
   private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<MinimalSwap> {
-    const currentBalances = await this.getScaledBalances();
+    const currentBalances = await this.getBalances();
     const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
     return {
       kind,

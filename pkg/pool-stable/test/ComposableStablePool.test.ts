@@ -7,7 +7,16 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/c
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR, arrayAdd, bnSum } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  BigNumberish,
+  bn,
+  fp,
+  pct,
+  FP_SCALING_FACTOR,
+  arrayAdd,
+  bnSum,
+  arrayFpMul,
+} from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { currentTimestamp, advanceTime, MONTH, WEEK, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -303,7 +312,7 @@ describe('ComposableStablePool', () => {
       sharedBeforeEach('deploy and initialize pool', async () => {
         await deployPool({ admin });
         await pool.init({ initialBalances, recipient: lp });
-        registeredBalances = await pool.getScaledBalances();
+        registeredBalances = await pool.getBalances();
       });
 
       function itPaysProtocolFeesAndReturnsNecessaryData() {
@@ -1606,7 +1615,13 @@ describe('ComposableStablePool', () => {
 
           function itReportsRateCorrectly() {
             it('takes into account unminted protocol fees', async () => {
-              const invariant = await pool.estimateInvariant();
+              const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
+                (_, i) => i != bptIndex
+              );
+              const invariant = calculateInvariant(
+                scaledBalances,
+                (await pool.getAmplificationParameter()).value.div(1000)
+              );
 
               // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
               // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
@@ -1748,7 +1763,7 @@ describe('ComposableStablePool', () => {
             //Exit with 1/4 of BPT balance
             const bptIn = (await pool.balanceOf(sender)).div(4);
 
-            const currentBalances = await pool.getScaledBalances();
+            const currentBalances = await pool.getBalances();
             const expectedAmountsOut = currentBalances.map((balance, i) =>
               i == pool.bptIndex ? bn(0) : bn(balance).mul(previousSenderBptBalance).div(previousVirtualSupply).div(4)
             );
@@ -1802,7 +1817,7 @@ describe('ComposableStablePool', () => {
               const previousVirtualSupply = await pool.getVirtualSupply();
               const previousLpBptBalance = await pool.balanceOf(lp);
 
-              const currentBalances = await pool.getScaledBalances();
+              const currentBalances = await pool.getBalances();
               const expectedAmountsOut = currentBalances.map((balance, i) =>
                 i == pool.bptIndex ? bn(0) : bn(balance).mul(previousLpBptBalance).div(previousVirtualSupply)
               );
