@@ -4,7 +4,7 @@ import { BasePoolEncoder } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import TypesConverter from '../../types/TypesConverter';
-import { arrayFpMul, BigNumberish, bn, fp } from '../../../numbers';
+import { BigNumberish, bn, fp } from '../../../numbers';
 import { Account } from '../../types/types';
 import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
