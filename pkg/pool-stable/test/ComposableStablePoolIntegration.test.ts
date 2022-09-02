@@ -4,16 +4,12 @@ import { BigNumber, Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { SwapKind } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
-import { QueryBatchSwap } from '@balancer-labs/v2-helpers/src/models/vault/types';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('ComposableStablePoolIntegration', () => {
   let lp: SignerWithAddress, owner: SignerWithAddress, admin: SignerWithAddress, other: SignerWithAddress;

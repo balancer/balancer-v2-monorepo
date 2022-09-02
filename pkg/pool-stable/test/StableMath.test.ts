@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, fp, BigNumber, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, BigNumber } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateAnalyticalInvariantForTwoTokens,
