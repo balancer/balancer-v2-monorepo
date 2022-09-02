@@ -109,6 +109,12 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
     // Protocol Fees
 
+    /**
+     * @dev Returns the percentage of the Pool's supply which corresponds to protocol fees on swaps accrued by the Pool.
+     * @param preJoinExitInvariant - The Pool's invariant prior to the join/exit *before* minting protocol fees.
+     * @param protocolSwapFeePercentage - The percentage of swap fees which are paid to the protocol.
+     * @return swapProtocolFeesPercentage - The percentage of the Pool which corresponds to protocol fees on swaps.
+     */
     function _getSwapProtocolFeesPoolPercentage(uint256 preJoinExitInvariant, uint256 protocolSwapFeePercentage)
         internal
         view
@@ -129,6 +135,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
     /**
      * @dev Returns the percentage of the Pool's supply which corresponds to protocol fees on yield accrued by the Pool.
+     * @param normalizedWeights - The Pool's normalized token weights.
      * @return yieldProtocolFees - The amount of BPT to be minted as protocol fees on yield.
      * @return athRateProduct - The new all-time-high rate product if it has increased, otherwise zero.
      */
@@ -201,7 +208,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             normalizedWeights
         );
 
-        // We then update the recorded of `athRateProduct` to ensure we only collect fees on yield once.
+        // We then update the recorded value of `athRateProduct` to ensure we only collect fees on yield once.
         // A zero value for `athRateProduct` represents that it is unchanged so we can skip updating it.
         if (athRateProduct > 0) {
             _updateATHRateProduct(athRateProduct);
