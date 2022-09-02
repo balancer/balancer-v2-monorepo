@@ -220,9 +220,9 @@ describe('WeightedPool', function () {
         it("doesn't include the value of uncollected protocol fees in the rate", async () => {
           const rate = await pool.getRate();
 
-          const rateDifference = rate.sub(originalRate);
-          // 10000 is chosen as a non-negligible amount to show that the difference is not just from rounding errors.
-          expect(rateDifference).to.be.gt(10000);
+          // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
+          // rounding error.
+          expect(originalRate).to.be.lt(rate.mul(9999).div(10000));
         });
 
         it.skip('minting protocol fee BPT should not affect rate', async () => {
