@@ -962,8 +962,8 @@ contract ComposableStablePool is
         // supply to make the calculation with the correct amount.
         uint256 actualTotalSupply = virtualSupply.add(protocolFeeAmount);
 
-        // All that's missing is now the invariant. We have the balances already, but are missing the current
-        // amplification factor.
+        // All that's missing now is the invariant. We have the balances required to calculate it already, but are still
+        // need the current amplification factor.
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         // It turns out that the process for due protocol fee calculation involves computing the current invariant,
@@ -977,6 +977,36 @@ contract ComposableStablePool is
 
         // With the current invariant and actual total supply, we can compute the rate as a fixed-point number.
         return currentInvariant.divDown(actualTotalSupply);
+    }
+
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
+        // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
+        // sensitive value.
+        // Because of this, we pay any due protocol fees *before* updating the cached rates, making it so that the new
+        // percentages only affect future operation of the Pool, and not past fees. As a result, `getRate()` is
+        // unaffected by the cached protocol fee percentages changing.
+
+        // First we need to get the data required to compute and pay due protocol fees.
+        (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(registeredBalances, _scalingFactors());
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+
+        (, uint256[] memory balances, uint256 currentInvariantWithLastJoinExitAmp) = _payProtocolFeesBeforeJoinExit(
+            registeredBalances,
+            lastJoinExitAmp,
+            lastPostJoinExitInvariant
+        );
+
+        // With the fees paid, we now store the current invariant and the amplification factor used to compute it,
+        // marking the Pool as free of protocol debt.
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
+            ? currentInvariantWithLastJoinExitAmp
+            : StableMath._calculateInvariant(currentAmp, balances);
+
+        _updatePostJoinExit(currentAmp, currentInvariant);
     }
 
     // Helpers

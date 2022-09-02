@@ -118,6 +118,8 @@ abstract contract ProtocolFeeCache is RecoveryMode {
      * Updates the cache to the latest value set by governance.
      */
     function updateProtocolFeePercentageCache() external {
+        _beforeProtocolFeeCacheUpdate();
+
         if (getProtocolSwapFeeDelegation()) {
             _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP);
         }
@@ -125,6 +127,8 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.YIELD);
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.AUM);
     }
+
+    function _beforeProtocolFeeCacheUpdate() internal virtual {}
 
     /**
      * @dev Returns whether this Pool tracks protocol swap fee changes in the IProtocolFeePercentagesProvider.
