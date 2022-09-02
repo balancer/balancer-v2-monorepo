@@ -968,7 +968,7 @@ contract ComposableStablePool is
 
         // It turns out that the process for due protocol fee calculation involves computing the current invariant,
         // except using the amplification factor at the last join or exit. This would typically not be terribly useful,
-        // but since the amplification factor only changes rarely there is high probabilty of its current value being
+        // but since the amplification factor only changes rarely there is high probability of its current value being
         // the same as it was in the last join or exit. If that is the case, then we can skip the costly invariant
         // computation altogether.
         uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
