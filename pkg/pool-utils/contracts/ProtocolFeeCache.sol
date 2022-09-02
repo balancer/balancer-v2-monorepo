@@ -128,6 +128,11 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.AUM);
     }
 
+    /**
+     * @dev Override in derived contracts to perform some action before the cache is updated. This is typically relevant
+     * in Pools that have protocol debt that is dependent in the protocol fee percentages, as it needs to be paid out
+     * before said percentages change.
+     */
     function _beforeProtocolFeeCacheUpdate() internal virtual {}
 
     /**
