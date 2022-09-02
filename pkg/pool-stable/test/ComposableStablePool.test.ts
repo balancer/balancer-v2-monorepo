@@ -1557,22 +1557,8 @@ describe('ComposableStablePool', () => {
       sharedBeforeEach('deploy pool and set fees', async () => {
         await deployPool({ swapFeePercentage });
 
-        const authorizer = pool.vault.authorizer;
-        const feeCollector = await pool.vault.getFeesCollector();
-        const feeProvider = pool.vault.protocolFeesProvider;
-
-        await authorizer
-          .connect(admin)
-          .grantPermissions([actionId(feeProvider, 'setFeeTypePercentage')], admin.address, [feeProvider.address]);
-
-        await authorizer.connect(admin).grantPermissions(
-          ['setSwapFeePercentage', 'setFlashLoanFeePercentage'].map((fn) => actionId(feeCollector, fn)),
-          feeProvider.address,
-          [feeCollector.address, feeCollector.address]
-        );
-
-        await feeProvider.connect(admin).setFeeTypePercentage(ProtocolFee.SWAP, protocolFeePercentage);
-        await feeProvider.connect(admin).setFeeTypePercentage(ProtocolFee.YIELD, protocolFeePercentage);
+        await pool.vault.setFeeTypePercentage(ProtocolFee.SWAP, protocolFeePercentage);
+        await pool.vault.setFeeTypePercentage(ProtocolFee.YIELD, protocolFeePercentage);
 
         await pool.updateProtocolFeePercentageCache();
       });
