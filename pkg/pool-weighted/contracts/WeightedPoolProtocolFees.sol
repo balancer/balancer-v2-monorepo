@@ -81,7 +81,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @notice Returns the all time high value for the weighted product of the Pool's tokens' rates.
      * @dev Yield protocol fees are only charged when this value is exceeded.
      */
-    function getATHRateProduct() public view returns (uint256) {
+    function getATHRateProduct() external view returns (uint256) {
         return _athRateProduct;
     }
 
