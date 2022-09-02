@@ -987,6 +987,10 @@ contract ComposableStablePool is
         // percentages only affect future operation of the Pool, and not past fees. As a result, `getRate()` is
         // unaffected by the cached protocol fee percentages changing.
 
+        // Given that this operation is state-changing and relatively complex, we only allow it as long as the Pool is
+        // not paused.
+        _ensureNotPaused();
+
         // First we need to get the data required to compute and pay due protocol fees.
         (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
         _upscaleArray(registeredBalances, _scalingFactors());

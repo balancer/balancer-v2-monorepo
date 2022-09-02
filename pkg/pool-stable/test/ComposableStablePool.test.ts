@@ -1619,7 +1619,7 @@ describe('ComposableStablePool', () => {
               unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
             });
 
-            it('takes into account unminted protocol fees', async () => {
+            it('rate takes into account unminted protocol fees', async () => {
               const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
                 (_, i) => i != bptIndex
               );
@@ -1657,7 +1657,7 @@ describe('ComposableStablePool', () => {
               expect(rateDelta.abs()).to.be.lte(2);
             }
 
-            it('does not change due to proportional joins', async () => {
+            it('rate does not change due to proportional joins', async () => {
               await expectNoRateChange(async () => {
                 // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
                 // (even though this triggers a due protocol fee payout).
@@ -1670,7 +1670,7 @@ describe('ComposableStablePool', () => {
               });
             });
 
-            it('does not change due to proportional exits', async () => {
+            it('rate does not change due to proportional exits', async () => {
               await expectNoRateChange(async () => {
                 // Perform a proportional exit. These have no swap fees, which means that the rate should remain the same
                 // (even though this triggers a due protocol fee payout).
@@ -1722,6 +1722,17 @@ describe('ComposableStablePool', () => {
 
                 expectEvent.notEmitted(receipt, 'Transfer');
               });
+
+              context('when paused', () => {
+                sharedBeforeEach('pause pool', async () => {
+                  await pool.pause();
+                });
+
+                it('reverts on protocol fee cache updated', async () => {
+                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+                  await expect(pool.updateProtocolFeePercentageCache()).to.be.revertedWith('PAUSED');
+                });
+              });
             }
 
             context('on swap protocol fee change', () => {
@@ -1730,6 +1741,10 @@ describe('ComposableStablePool', () => {
 
             context('on yield protocol fee change', () => {
               itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.YIELD);
+            });
+
+            context('on aum protocol fee change', () => {
+              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.AUM);
             });
           }
 
