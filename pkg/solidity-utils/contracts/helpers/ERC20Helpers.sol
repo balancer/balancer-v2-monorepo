@@ -62,8 +62,8 @@ function _appendToken(IERC20[] memory tokens, IERC20 newToken) pure returns (IER
 }
 
 function _findTokenIndex(IERC20[] memory tokens, IERC20 token) pure returns (uint256) {
-    // Note that we can't assume that tokens are sorted due to ManagedPool being able to add new tokens.
-    // New tokens are always added onto the end of the tokens array which breaks sorting.
+    // Note that while we know tokens are initially sorted, we cannot assume this will hold throughout
+    // the pool's lifetime, as pools with mutable tokens can append and remove tokens in any order.
     uint256 tokensLength = tokens.length;
     for (uint256 i = 0; i < tokensLength; i++) {
         if (tokens[i] == token) {
