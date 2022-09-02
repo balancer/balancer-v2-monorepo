@@ -18,7 +18,7 @@ import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { calculateBPTSwapFeeAmount } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
 
-describe('JoinExitProtocolFees', () => {
+describe('PostJoinExitProtocolFees', () => {
   let admin: SignerWithAddress;
   let owner: SignerWithAddress;
   let vault: Vault, feesCollector: Contract, feesProvider: Contract;
@@ -126,7 +126,7 @@ describe('JoinExitProtocolFees', () => {
         preSupply = preInvariant.mul(fp(random(1.5, 10))).div(FP_SCALING_FACTOR);
       });
 
-      describe('getJoinExitProtocolFees', () => {
+      describe('getPostJoinExitProtocolFees', () => {
         context('when the protocol swap fee percentage is zero', () => {
           itPaysProtocolFeesOnJoinExitSwaps(bn(0));
         });
@@ -238,7 +238,7 @@ describe('JoinExitProtocolFees', () => {
 
           function itReturnsZeroProtocolFees() {
             it('returns no (or negligible) BPT', async () => {
-              const protocolFeeAmount = await pool.callStatic.getJoinExitProtocolFees(
+              const protocolFeeAmount = await pool.callStatic.getPostJoinExitProtocolFees(
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -260,7 +260,7 @@ describe('JoinExitProtocolFees', () => {
 
           function itReturnsTheExpectedProtocolFees() {
             it('returns the expected protocol fees', async () => {
-              const protocolFeeAmount = await pool.callStatic.getJoinExitProtocolFees(
+              const protocolFeeAmount = await pool.callStatic.getPostJoinExitProtocolFees(
                 preBalances,
                 balanceDeltas,
                 poolWeights,
@@ -285,7 +285,7 @@ describe('JoinExitProtocolFees', () => {
               // _lastPostJoinExitInvariant is expected to be uninitialised.
               expect(await pool.getLastPostJoinExitInvariant()).to.be.eq(0);
 
-              await pool.getJoinExitProtocolFees(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
+              await pool.getPostJoinExitProtocolFees(preBalances, balanceDeltas, poolWeights, preSupply, currentSupply);
 
               expect(await pool.getLastPostJoinExitInvariant()).to.almostEqual(postInvariant);
             });
