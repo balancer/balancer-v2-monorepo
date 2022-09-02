@@ -1609,8 +1609,8 @@ describe('ComposableStablePool', () => {
               const invariant = await pool.estimateInvariant();
 
               // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
-              // Since all balances are relatively close and the pool is balanced, we can estimate their prices as being
-              // equal to then price the due protocool fees.
+              // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
+              // to the current balances to obtain the final sum.
               const virtualSupply = await pool.getVirtualSupply();
               const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
               const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
