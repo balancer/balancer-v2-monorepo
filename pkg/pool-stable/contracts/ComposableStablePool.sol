@@ -925,19 +925,58 @@ contract ComposableStablePool is
     // BPT rate
 
     /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     * @dev This function returns the appreciation of BPT relative to the underlying tokens, as an 18 decimal fixed
+     * point number. It is simply the ratio of the invariant to the BPT supply.
+     *
+     * The total supply is initialized to equal the invariant, so this value starts at one. During Pool operation the
+     * invariant always grows and shrinks either proportionally to the total supply (in scenarios with no price impact,
+     * e.g. proportional joins), or grows faster and shrinks more slowly than it (whenever swap fees are collected or
+     * the token rates increase). Therefore, the rate is a monotonically increasing function.
      */
     function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+        // We need to compute the current invariant and actual total supply. The latter includes protocol fees that have
+        // accrued but are not yet minted: in calculating these we'll actually end up fetching most of the data we need
+        // for the invariant.
 
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+        // First we query the Vault for current registered balances (which includes preminted BPT), to then calculate
+        // the current scaled balances and virtual supply.
+        (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(registeredBalances, _scalingFactors());
+        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
+        // Now we need to calculate any BPT due in the form of protocol fees. This requires data from the last join or
+        // exit operation.
+        (uint256 lastJoinExitAmp, uint256 lastPostJoinExitInvariant) = getLastJoinExitData();
+
+        (
+            uint256 expectedProtocolOwnershipPercentage,
+            uint256 currentInvariantWithLastJoinExitAmp
+        ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
+
+        uint256 protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(
+            virtualSupply,
+            expectedProtocolOwnershipPercentage
+        );
+
+        // Due protocol fees will be minted at the next join or exit, so we can simply add them to the current virtual
+        // supply to make the calculation with the correct amount.
+        uint256 actualTotalSupply = virtualSupply.add(protocolFeeAmount);
+
+        // All that's missing is now the invariant. We have the balances already, but are missing the current
+        // amplification factor.
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
+        // It turns out that the process for due protocol fee calculation involves computing the current invariant,
+        // except using the amplification factor at the last join or exit. This would typically not be terribly useful,
+        // but since the amplification factor only changes rarely there is high probabilty of its current value being
+        // the same as it was in the last join or exit. If that is the case, then we can skip the costly invariant
+        // computation altogether.
+        uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
+            ? currentInvariantWithLastJoinExitAmp
+            : StableMath._calculateInvariant(currentAmp, balances);
+
+        // With the current invariant and actual total supply, we can compute the rate as a fixed-point number.
+        return currentInvariant.divDown(actualTotalSupply);
     }
 
     // Helpers
