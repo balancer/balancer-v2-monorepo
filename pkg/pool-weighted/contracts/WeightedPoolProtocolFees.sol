@@ -129,26 +129,15 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
     /**
      * @dev Returns the percentage of the Pool's supply which corresponds to protocol fees on yield accrued by the Pool.
-     * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
-     * proper accounting is performed to prevent charging duplicate protocol fees.
+     * @return yieldProtocolFees - The amount of BPT to be minted as protocol fees on yield.
+     * @return athRateProduct - The new all-time-high rate product if it has increased, otherwise zero.
      */
-    function _getYieldProtocolFeesPoolPercentage(uint256[] memory normalizedWeights) internal returns (uint256) {
-        if (_exemptFromYieldFees) return 0;
-
-        uint256 athRateProduct = _athRateProduct;
-        uint256 rateProduct = _getRateProduct(normalizedWeights);
-
-        // Initialise `_athRateProduct`. This will occur on the first join/exit after Pool initialisation.
-        // Not initialising this here properly will cause all joins/exits to revert.
-        if (athRateProduct == 0) {
-            _athRateProduct = rateProduct;
-            return 0;
-        }
-
-        // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
-        // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
-        // been recovered.
-        if (rateProduct <= athRateProduct) return 0;
+    function _getYieldProtocolFeesPoolPercentage(uint256[] memory normalizedWeights)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        if (_exemptFromYieldFees) return (0, 0);
 
         // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
         // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
@@ -167,22 +156,34 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         // increases due to yield; we can ignore the invariant calculated from the Pool's balances as these cancel.
         // We then have the result:
         //
-        // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old)
-        //
-        // We then replace the stored value of I(r1_old, r2_old) with I(r1_new, r2_new) to ensure we only collect
-        // fees on yield once.
-        _athRateProduct = rateProduct;
+        // invariantGrowthRatio = I(r1_new, r2_new) / I(r1_old, r2_old) = rateProduct / athRateProduct
 
-        return
+        uint256 athRateProduct = _athRateProduct;
+        uint256 rateProduct = _getRateProduct(normalizedWeights);
+
+        // Only charge yield fees if we've exceeded the all time high of Pool value generated through yield.
+        // i.e. if the Pool makes a loss through the yield strategies then it shouldn't charge fees until it's
+        // been recovered.
+        if (rateProduct <= athRateProduct) return (0, 0);
+
+        return (
             InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
                 rateProduct.divDown(athRateProduct),
                 FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
                 getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
-            );
+            ),
+            rateProduct
+        );
+    }
+
+    function _updateATHRateProduct(uint256 rateProduct) internal {
+        _athRateProduct = rateProduct;
     }
 
     /**
      * @dev Returns the amount of BPT to be minted as protocol fees prior to processing a join/exit.
+     * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
+     * proper accounting is performed to prevent charging duplicate protocol fees.
      * @param preBalances - The Pool's balances prior to the join/exit.
      * @param normalizedWeights - The Pool's normalized token weights.
      * @param preJoinExitSupply - The Pool's total supply prior to the join/exit *before* minting protocol fees.
@@ -196,7 +197,15 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
             WeightedMath._calculateInvariant(normalizedWeights, preBalances),
             getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
         );
-        uint256 protocolYieldFeesPoolPercentage = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
+        (uint256 protocolYieldFeesPoolPercentage, uint256 athRateProduct) = _getYieldProtocolFeesPoolPercentage(
+            normalizedWeights
+        );
+
+        // We then update the recorded of `athRateProduct` to ensure we only collect fees on yield once.
+        // A zero value for `athRateProduct` represents that it is unchanged so we can skip updating it.
+        if (athRateProduct > 0) {
+            _updateATHRateProduct(athRateProduct);
+        }
 
         return
             ProtocolFees.bptForPoolOwnershipPercentage(

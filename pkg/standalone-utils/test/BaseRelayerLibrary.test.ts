@@ -17,6 +17,7 @@ import { toChainedReference } from './helpers/chainedReferences';
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
   let relayer: Contract, relayerLibrary: Contract;
+  let token: Contract;
   let otherRelayer: SignerWithAddress;
 
   let admin: SignerWithAddress, signer: SignerWithAddress;
@@ -33,6 +34,7 @@ describe('BaseRelayerLibrary', function () {
     // Deploy Relayer
     relayerLibrary = await deploy('MockBaseRelayerLibrary', { args: [vault.address] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
+    token = await deploy('TestWETH'); // Any ERC-20 will do.
   });
 
   describe('relayer getters', () => {
@@ -291,6 +293,39 @@ describe('BaseRelayerLibrary', function () {
           await expect(relayer.connect(signer).multicall([approvalData])).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       });
+    });
+  });
+
+  describe('approve vault', () => {
+    function itApprovesVault(approveAmount: BigNumberish, allowance: BigNumberish) {
+      it('approves vault to use tokens', async () => {
+        const tx = await relayerLibrary.approveVault(token.address, approveAmount);
+
+        expectEvent.inIndirectReceipt(await tx.wait(), token.interface, 'Approval', {
+          owner: relayerLibrary.address,
+          spender: vault.address,
+          value: allowance,
+        });
+        expect(await token.allowance(relayerLibrary.address, vault.address)).to.equal(allowance);
+      });
+    }
+
+    context('when using values as argument', () => {
+      // Argument sent to approveVault is equal to allowance.
+      itApprovesVault(145, 145);
+    });
+
+    context('when using chained references as argument', () => {
+      const key = 135;
+      const reference = toChainedReference(key);
+      const allowance = 7;
+
+      sharedBeforeEach('set reference', async () => {
+        await relayerLibrary.setChainedReferenceValue(reference, allowance);
+      });
+
+      // approveVault reads value from chained reference.
+      itApprovesVault(reference, allowance);
     });
   });
 });

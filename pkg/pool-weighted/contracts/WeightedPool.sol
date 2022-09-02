@@ -217,6 +217,22 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return scalingFactors;
     }
 
+    // Initialize
+
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Initialize `_athRateProduct` if the Pool will pay protocol fees on yield.
+        // Not initializing this here properly will cause all joins/exits to revert.
+        if (!_exemptFromYieldFees) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+
+        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
+    }
+
     // WeightedPoolProtocolFees functions
 
     function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
@@ -276,22 +292,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         );
 
         // Yield fees
-        uint256 protocolYieldFeesPoolPercentage;
-        if (!_exemptFromYieldFees) {
-            uint256 athRateProduct = getATHRateProduct();
-
-            if (athRateProduct > 0) {
-                uint256 rateProduct = _getRateProduct(_getNormalizedWeights());
-
-                if (rateProduct > athRateProduct) {
-                    protocolYieldFeesPoolPercentage = InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
-                        rateProduct.divDown(athRateProduct),
-                        FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
-                        getProtocolFeePercentageCache(ProtocolFeeType.YIELD)
-                    );
-                }
-            }
-        }
+        (uint256 protocolYieldFeesPoolPercentage, ) = _getYieldProtocolFeesPoolPercentage(_getNormalizedWeights());
 
         uint256 supply = totalSupply();
         uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
