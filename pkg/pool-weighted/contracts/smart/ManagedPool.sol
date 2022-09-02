@@ -720,7 +720,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
         // Reverts if the token does not exist in the pool.
-        uint256 tokenIndex = _tokenAddressToIndex(tokens, token);
+        uint256 tokenIndex = _findTokenIndex(tokens, token);
         uint256 tokenBalance = unscaledBalances[tokenIndex];
         uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
 
@@ -1150,19 +1150,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _lastAumFeeCollectionTimestamp = block.timestamp;
 
         return super._doRecoveryModeExit(balances, totalSupply, userData);
-    }
-
-    function _tokenAddressToIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
-        // Note that we can't assume that tokens are sorted due to ManagedPool being able to add new tokens.
-        // New tokens are always added onto the end of the tokens array which breaks sorting.
-        uint256 tokensLength = tokens.length;
-        for (uint256 i = 0; i < tokensLength; i++) {
-            if (tokens[i] == token) {
-                return i;
-            }
-        }
-
-        _revert(Errors.INVALID_TOKEN);
     }
 
     /**
