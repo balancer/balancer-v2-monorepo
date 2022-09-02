@@ -1678,7 +1678,7 @@ describe('ComposableStablePool', () => {
 
               const rateAfterExit = await pool.getRate();
 
-              // There's some minute diference due to rounding error
+              // There's some minute difference due to rounding error
               const rateDelta = rateAfterExit.sub(rateBeforeExit);
               expect(rateDelta.abs()).to.be.lte(2);
             });
