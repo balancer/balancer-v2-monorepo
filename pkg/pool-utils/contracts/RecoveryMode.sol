@@ -60,7 +60,7 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * @dev Does not otherwise affect pool operations (beyond deferring payment of protocol fees), though some pools may
      * perform certain operations in a "safer" manner that is less likely to fail, in an attempt to keep the pool
      * running, even in a pathological state. Unlike the Pause operation, which is only available during a short window
-     * after factory deployment, Recovery Mode can always be enableed.
+     * after factory deployment, Recovery Mode can always be enabled.
      */
     function enableRecoveryMode() external override authenticate {
         _setRecoveryMode(true);
