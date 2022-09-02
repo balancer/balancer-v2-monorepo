@@ -90,8 +90,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
         function itIsUpdatedByExits() {
           it('is updated by exits', async () => {
-            // We only test with a proportional exit, since all exits are treated equally and proportional exits remain
-            // enabled while paused
+            // We only test with a proportional exit, since all exits are treated equally.
             await pool.exit({
               data: WeightedPoolEncoder.exitExactBPTInForTokensOut((await pool.totalSupply()).div(2)),
               from: lp,
@@ -160,8 +159,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
             });
 
             it('is updated by exits', async () => {
-              // We only test with a proportional exit, since all exits are treated equally and proportional exits remain
-              // enabled while paused
+              // We only test with a proportional exit, since all exits are treated equally.
               await pool.exit({
                 data: WeightedPoolEncoder.exitExactBPTInForTokensOut((await pool.totalSupply()).div(2)),
                 from: lp,
@@ -194,8 +192,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
             });
 
             it('is unaffected by exits', async () => {
-              // We only test with a proportional exit, since all exits are treated equally and proportional exits remain
-              // enabled while paused
+              // We only test with a proportional exit, since all exits are treated equally.
               await pool.exit({
                 data: WeightedPoolEncoder.exitExactBPTInForTokensOut((await pool.totalSupply()).div(2)),
                 from: lp,
