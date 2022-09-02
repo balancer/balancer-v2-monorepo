@@ -444,7 +444,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * underlying tokens. The rate starts at 1 when the pool is created, and grows over time.
      * Note that this base implementation is only accurate for pools that do not accrue
      * BPT fees (e.g., protocol fees).
-     * 
+     *
      * If there are pending BPT fees, the nominal totalSupply will be lower than the actual
      * total supply, which would make the rate manipulable: the rate could then be affected by
      * the timing of joins/exits (or any other operation that triggers protocol fee payment).
