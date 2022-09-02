@@ -7,7 +7,6 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/c
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-
 import {
   BigNumberish,
   bn,
@@ -18,6 +17,7 @@ import {
   arrayFpMul,
   fpDiv,
   fpMul,
+  FP_SCALING_FACTOR,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
@@ -28,7 +28,6 @@ import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/Stable
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('ComposableStablePool', () => {
   let lp: SignerWithAddress,
@@ -1558,7 +1557,7 @@ describe('ComposableStablePool', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
 
-      sharedBeforeEach('deploy  pool', async () => {
+      sharedBeforeEach('deploy pool and set fees', async () => {
         await deployPool({ swapFeePercentage });
       });
 
@@ -1606,30 +1605,7 @@ describe('ComposableStablePool', () => {
           let feeAmount: BigNumber; // The number of tokens in the Pool that are fees
 
           function itReportsRateCorrectly() {
-            let unmintedBPT: BigNumber;
-
-            sharedBeforeEach('compute protocol ownership', async () => {
-              const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
-              const feePercentage = fpDiv(feeAmount, balanceSum);
-              const protocolOwnership = fpMul(feePercentage, protocolFeePercentage);
-
-              // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
-              // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
-              // to the current balances to obtain the final sum.
-              const virtualSupply = await pool.getVirtualSupply();
-
-              // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
-              unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
-            });
-
-            it('the actual supply takes into account unminted protocol fees', async () => {
-              const virtualSupply = await pool.getVirtualSupply();
-              const expectedActualSupply = virtualSupply.add(unmintedBPT);
-
-              expect(await pool.getActualSupply()).to.almostEqual(expectedActualSupply, 1e-6);
-            });
-
-            it('rate takes into account unminted protocol fees', async () => {
+            it('takes into account unminted protocol fees', async () => {
               const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
                 (_, i) => i != bptIndex
               );
@@ -1642,11 +1618,16 @@ describe('ComposableStablePool', () => {
               // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
               // to the current balances to obtain the final sum.
               const virtualSupply = await pool.getVirtualSupply();
+              const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
+              const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
+              const protocolOwnership = feePercentage.mul(protocolFeePercentage).div(fp(1));
 
+              // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
+              const unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
               const actualSupply = virtualSupply.add(unmintedBPT);
 
-              const rateAssumingNoProtocolFees = fpDiv(invariant, virtualSupply);
-              const rateConsideringProtocolFees = fpDiv(invariant, actualSupply);
+              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+              const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
 
               // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
               // rounding error.
@@ -1655,150 +1636,49 @@ describe('ComposableStablePool', () => {
               expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
             });
 
-            async function expectNoRateChange(action: () => Promise<void>): Promise<void> {
-              const rateBeforeAction = await pool.getRate();
+            it('does not change due to proportional joins', async () => {
+              const rateBeforeJoin = await pool.getRate();
 
-              await action();
+              // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
+              // (even though this triggers a due protocol fee payout).
 
-              const rateAfterAction = await pool.getRate();
+              // Note that we join with proportional *unscaled* balances - otherwise we'd need to take their different
+              // scaling factors into account.
+              const { balances: unscaledBalances } = await pool.getTokens();
+              const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+              await pool.joinGivenIn({ from: lp, amountsIn });
+
+              const rateAfterJoin = await pool.getRate();
 
               // There's some minute diference due to rounding error
-              const rateDelta = rateAfterAction.sub(rateBeforeAction);
+              const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
               expect(rateDelta.abs()).to.be.lte(2);
-            }
-
-            it('rate does not change due to proportional joins', async () => {
-              await expectNoRateChange(async () => {
-                // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
-                // (even though this triggers a due protocol fee payout).
-
-                // Note that we join with proportional *unscaled* balances - otherwise we'd need to take their different
-                // scaling factors into account.
-                const { balances: unscaledBalances } = await pool.getTokens();
-                const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
-                await pool.joinGivenIn({ from: lp, amountsIn });
-              });
             });
 
-            it('rate does not change due to proportional exits', async () => {
-              await expectNoRateChange(async () => {
-                // Perform a proportional exit. These have no swap fees, which means that the rate should remain the same
-                // (even though this triggers a due protocol fee payout).
+            it('does not change due to proportional exits', async () => {
+              const rateBeforeExit = await pool.getRate();
 
-                // Note that we exit with proportional *unscaled* balances - otherwise we'd need to take their different
-                // scaling factors into account.
-                const { balances: unscaledBalances } = await pool.getTokens();
-                const amountsOut = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
-                await pool.exitGivenOut({ from: lp, amountsOut });
-              });
-            });
+              // Perform a proportional exit. These have no swap fees, which means that the rate should remain the same
+              // (even though this triggers a due protocol fee payout).
 
-            it('rate increases when enabling recovery mode', async () => {
-              const initialRate = await pool.getRate();
+              // Note that we exit with proportional *unscaled* balances - otherwise we'd need to take their different
+              // scaling factors into account.
+              const { balances: unscaledBalances } = await pool.getTokens();
+              const amountsOut = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+              await pool.exitGivenOut({ from: lp, amountsOut });
 
-              // When enabling recovery mode, protocol fees are forfeit and the percentages drop to zero. This causes
-              // an increase in the rate, since the BPT's value increases (as it no longer carries any protocol debt).
-              await pool.enableRecoveryMode(admin);
-              const newRate = await pool.getRate();
+              const rateAfterExit = await pool.getRate();
 
-              expect(newRate).to.be.gt(initialRate);
-
-              // We can compute the new rate by computing the ratio of invariant and total supply, not considering any
-              // due protocol fees (because there should be none).
-              const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
-                (_, i) => i != bptIndex
-              );
-              const invariant = calculateInvariant(
-                scaledBalances,
-                (await pool.getAmplificationParameter()).value.div(AMP_PRECISION)
-              );
-
-              const virtualSupply = await pool.getVirtualSupply();
-
-              const rateAssumingNoProtocolFees = fpDiv(invariant, virtualSupply);
-
-              expect(newRate).to.be.almostEqual(rateAssumingNoProtocolFees, 1e-6);
-            });
-
-            it('rate does not change when disabling recovery mode', async () => {
-              await pool.enableRecoveryMode(admin);
-
-              await expectNoRateChange(async () => {
-                // Disabling recovery mode should cause no rate changes - fees have already been forfeit when recovery
-                // mode was enabled.
-                await pool.disableRecoveryMode(admin);
-              });
-            });
-
-            function itReactsToProtocolFeePercentageChangesCorrectly(feeType: number) {
-              it('rate does not change on protocol fee update', async () => {
-                await expectNoRateChange(async () => {
-                  // Changing the fee on the providere should cause no changes as the Pool ignores the provider outside
-                  // of cache updates.
-                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-                });
-              });
-
-              it('rate does not change on protocol fee cache update', async () => {
-                await expectNoRateChange(async () => {
-                  // Even though there's due protocol fees, which are a function of the protocol fee percentage, changing
-                  // this value should not change the Pool's rate (to avoid manipulation).
-                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-                  await pool.updateProtocolFeePercentageCache();
-                });
-              });
-
-              it('due protocol fees are minted on protocol fee cache update', async () => {
-                await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-                const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
-
-                const event = expectEvent.inReceipt(receipt, 'Transfer', {
-                  from: ZERO_ADDRESS,
-                  to: (await pool.vault.getFeesCollector()).address,
-                });
-
-                expect(event.args.value).to.be.almostEqual(unmintedBPT, 1e-3);
-              });
-
-              it('repeated protocol fee cache updates do not mint any more fees', async () => {
-                await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-                await pool.updateProtocolFeePercentageCache();
-
-                await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(4));
-                const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
-
-                expectEvent.notEmitted(receipt, 'Transfer');
-              });
-
-              context('when paused', () => {
-                sharedBeforeEach('pause pool', async () => {
-                  await pool.pause();
-                });
-
-                it('reverts on protocol fee cache updated', async () => {
-                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-                  await expect(pool.updateProtocolFeePercentageCache()).to.be.revertedWith('PAUSED');
-                });
-              });
-            }
-
-            context('on swap protocol fee change', () => {
-              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.SWAP);
-            });
-
-            context('on yield protocol fee change', () => {
-              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.YIELD);
-            });
-
-            context('on aum protocol fee change', () => {
-              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.AUM);
+              // There's some minute difference due to rounding error
+              const rateDelta = rateAfterExit.sub(rateBeforeExit);
+              expect(rateDelta.abs()).to.be.lte(2);
             });
           }
 
           context('with swap protocol fees', () => {
             sharedBeforeEach('accrue fees due to a swap', async () => {
               const amount = initialBalance.div(20);
-              feeAmount = fpMul(amount, swapFeePercentage);
+              feeAmount = amount.mul(swapFeePercentage).div(fp(1));
 
               const tokenIn = tokens.first;
               const tokenOut = tokens.second;
@@ -1811,15 +1691,16 @@ describe('ComposableStablePool', () => {
           context('with yield protocol fees', () => {
             sharedBeforeEach('accrue fees due to yield', async () => {
               // Even tokens are exempt from yield fee, so we cause some on an odd one.
+
               const rateProvider = rateProviders[1];
               const currentRate = await rateProvider.getRate();
 
               // Cause a 0.5% (1/200) rate increase
-              const newRate = fpMul(currentRate, fp(1.005));
+              const newRate = currentRate.mul(fp(1.005)).div(fp(1));
               await rateProvider.mockRate(newRate);
               await pool.updateTokenRateCache(tokens.second);
 
-              feeAmount = fpMul(initialBalance, newRate.sub(currentRate));
+              feeAmount = initialBalance.mul(newRate.sub(currentRate)).div(fp(1));
             });
 
             itReportsRateCorrectly();
