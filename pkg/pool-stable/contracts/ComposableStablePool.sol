@@ -962,7 +962,7 @@ contract ComposableStablePool is
         // supply to make the calculation with the correct amount.
         uint256 actualTotalSupply = virtualSupply.add(protocolFeeAmount);
 
-        // All that's missing now is the invariant. We have the balances required to calculate it already, but are still
+        // All that's missing now is the invariant. We have the balances required to calculate it already, but still
         // need the current amplification factor.
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
