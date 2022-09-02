@@ -926,7 +926,7 @@ contract ComposableStablePool is
 
     /**
      * @dev This function returns the appreciation of BPT relative to the underlying tokens, as an 18 decimal fixed
-     * point number. It is simply the ratio of the invariant over the BPT supply.
+     * point number. It is simply the ratio of the invariant to the BPT supply.
      *
      * The total supply is initialized to equal the invariant, so this value starts at one. During Pool operation the
      * invariant always grows and shrinks either proportionally to the total supply (in scenarios with no price impact,
