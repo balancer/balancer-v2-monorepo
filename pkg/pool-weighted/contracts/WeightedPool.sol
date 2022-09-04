@@ -217,6 +217,22 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return scalingFactors;
     }
 
+    // Initialize
+
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Initialize `_athRateProduct` if the Pool will pay protocol fees on yield.
+        // Not initializing this here properly will cause all joins/exits to revert.
+        if (!_exemptFromYieldFees) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+
+        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
+    }
+
     // WeightedPoolProtocolFees functions
 
     function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
@@ -226,12 +242,11 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         returns (uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
-        uint256 protocolFeesToBeMinted = _getSwapProtocolFees(
+        uint256 protocolFeesToBeMinted = _getPreJoinExitProtocolFees(
             preBalances,
             normalizedWeights,
             supplyBeforeFeeCollection
         );
-        protocolFeesToBeMinted += _getYieldProtocolFee(normalizedWeights, supplyBeforeFeeCollection);
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
@@ -246,7 +261,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal virtual override {
-        uint256 protocolFeesToBeMinted = _getJoinExitProtocolFees(
+        uint256 protocolFeesToBeMinted = _getPostJoinExitProtocolFees(
             preBalances,
             balanceDeltas,
             normalizedWeights,

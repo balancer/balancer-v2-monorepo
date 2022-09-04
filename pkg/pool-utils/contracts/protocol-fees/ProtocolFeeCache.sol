@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePerc
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 
-import "./RecoveryMode.sol";
+import "../RecoveryMode.sol";
 
 /**
  * @dev The Vault does not provide the protocol swap fee percentage in swap hooks (as swaps don't typically need this
