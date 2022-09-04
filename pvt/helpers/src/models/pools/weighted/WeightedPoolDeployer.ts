@@ -31,6 +31,7 @@ export default {
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       poolType,
@@ -48,6 +49,7 @@ export default {
       vault,
       tokens,
       weights,
+      TypesConverter.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       poolType,
@@ -64,6 +66,7 @@ export default {
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
@@ -135,6 +138,7 @@ export default {
               symbol: SYMBOL,
               tokens: tokens.addresses,
               normalizedWeights: weights,
+              rateProviders: rateProviders,
               assetManagers: assetManagers,
               swapFeePercentage: swapFeePercentage,
             },
@@ -156,6 +160,7 @@ export default {
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
@@ -248,6 +253,7 @@ export default {
           SYMBOL,
           tokens.addresses,
           weights,
+          rateProviders,
           assetManagers,
           swapFeePercentage,
           owner

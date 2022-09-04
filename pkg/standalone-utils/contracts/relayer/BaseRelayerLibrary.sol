@@ -77,8 +77,19 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @dev This is needed to avoid having to send intermediate tokens back to the user
      */
     function approveVault(IERC20 token, uint256 amount) public override {
+        if (_isChainedReference(amount)) {
+            amount = _getChainedReferenceValue(amount);
+        }
         // TODO: gas golf this a bit
         token.approve(address(getVault()), amount);
+    }
+
+    /**
+     * @notice Returns the amount referenced by chained reference `ref`.
+     * @dev It does not alter the reference (even if it's marked as temporary).
+     */
+    function peekChainedReferenceValue(uint256 ref) public view override returns (uint256 value) {
+        (, value) = _peekChainedReferenceValue(ref);
     }
 
     function _pullToken(
@@ -118,6 +129,19 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @dev Returns true if `amount` is not actually an amount, but rather a chained reference.
      */
     function _isChainedReference(uint256 amount) internal pure override returns (bool) {
+        // First 3 nibbles are enough to determine if it's a chained reference.
+        return
+            (amount & 0xfff0000000000000000000000000000000000000000000000000000000000000) ==
+            0xba10000000000000000000000000000000000000000000000000000000000000;
+    }
+
+    /**
+     * @dev Returns true if `ref` is temporary reference, i.e. to be deleted after reading it.
+     */
+    function _isTemporaryChainedReference(uint256 amount) internal pure returns (bool) {
+        // First 3 nibbles determine if it's a chained reference.
+        // If the 4th nibble is 0 it is temporary; otherwise it is considered read-only.
+        // In practice, we shall use '0xba11' for read-only references.
         return
             (amount & 0xffff000000000000000000000000000000000000000000000000000000000000) ==
             0xba10000000000000000000000000000000000000000000000000000000000000;
@@ -127,7 +151,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @dev Stores `value` as the amount referenced by chained reference `ref`.
      */
     function _setChainedReferenceValue(uint256 ref, uint256 value) internal override {
-        bytes32 slot = _getTempStorageSlot(ref);
+        bytes32 slot = _getStorageSlot(ref);
 
         // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
         // access it.
@@ -138,25 +162,42 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
     }
 
     /**
-     * @dev Returns the amount referenced by chained reference `ref`. Reading an amount clears it, so they can each
-     * only be read once.
+     * @dev Returns the amount referenced by chained reference `ref`.
+     * If the reference is temporary, it will be cleared after reading it, so they can each only be read once.
+     * If the reference is not temporary (i.e. read-only), it will not be cleared after reading it
+     * (see `_isTemporaryChainedReference` function).
      */
-    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256 value) {
-        bytes32 slot = _getTempStorageSlot(ref);
+    function _getChainedReferenceValue(uint256 ref) internal override returns (uint256) {
+        (bytes32 slot, uint256 value) = _peekChainedReferenceValue(ref);
+
+        if (_isTemporaryChainedReference(ref)) {
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                sstore(slot, 0)
+            }
+        }
+        return value;
+    }
+
+    /**
+     * @dev Returns the storage slot for reference `ref` as well as the amount referenced by it.
+     * It does not alter the reference (even if it's marked as temporary).
+     */
+    function _peekChainedReferenceValue(uint256 ref) private view returns (bytes32 slot, uint256 value) {
+        slot = _getStorageSlot(ref);
 
         // Since we do manual calculation of storage slots, it is easier (and cheaper) to rely on internal assembly to
         // access it.
         // solhint-disable-next-line no-inline-assembly
         assembly {
             value := sload(slot)
-            sstore(slot, 0)
         }
     }
 
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _TEMP_STORAGE_SUFFIX = keccak256("balancer.base-relayer-library");
 
-    function _getTempStorageSlot(uint256 ref) private view returns (bytes32) {
+    function _getStorageSlot(uint256 ref) private view returns (bytes32) {
         // This replicates the mechanism Solidity uses to allocate storage slots for mappings, but using a hash as the
         // mapping's storage slot, and subtracting 1 at the end. This should be more than enough to prevent collisions
         // with other state variables this or derived contracts might use.

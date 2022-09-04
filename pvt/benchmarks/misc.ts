@@ -115,7 +115,9 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
         break;
       }
       default: {
-        params = [tokens.addresses, weights, assetManagers, swapFeePercentage];
+        const rateProviders = Array(weights.length).fill(ZERO_ADDRESS);
+
+        params = [tokens.addresses, weights, rateProviders, assetManagers, swapFeePercentage];
       }
     }
 

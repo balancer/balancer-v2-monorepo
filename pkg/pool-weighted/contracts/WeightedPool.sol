@@ -16,12 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "./BaseWeightedPool.sol";
-import "./InvariantGrowthProtocolFees.sol";
+import "./WeightedPoolProtocolFees.sol";
 
 /**
  * @dev Basic Weighted Pool with immutable weights.
  */
-contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
+contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     using FixedPoint for uint256;
 
     uint256 private constant _MAX_TOKENS = 8;
@@ -64,6 +64,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        IRateProvider[] rateProviders;
         address[] assetManagers;
         uint256 swapFeePercentage;
     }
@@ -89,6 +90,7 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
             false
         )
         ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        WeightedPoolProtocolFees(params.tokens.length, params.rateProviders)
     {
         uint256 numTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
@@ -215,22 +217,68 @@ contract WeightedPool is BaseWeightedPool, InvariantGrowthProtocolFees {
         return scalingFactors;
     }
 
-    // InvariantGrowthProtocolFees
+    // Initialize
 
-    function _beforeJoinExit(
-        uint256[] memory preBalances,
-        uint256[] memory normalizedWeights,
-        uint256 protocolSwapFeePercentage
-    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
-        InvariantGrowthProtocolFees._beforeJoinExit(preBalances, normalizedWeights, protocolSwapFeePercentage);
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // Initialize `_athRateProduct` if the Pool will pay protocol fees on yield.
+        // Not initializing this here properly will cause all joins/exits to revert.
+        if (!_exemptFromYieldFees) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+
+        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
+    }
+
+    // WeightedPoolProtocolFees functions
+
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+        internal
+        virtual
+        override
+        returns (uint256)
+    {
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 protocolFeesToBeMinted = _getPreJoinExitProtocolFees(
+            preBalances,
+            normalizedWeights,
+            supplyBeforeFeeCollection
+        );
+
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
+        return supplyBeforeFeeCollection.add(protocolFeesToBeMinted);
     }
 
     function _afterJoinExit(
-        bool isJoin,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
-        uint256[] memory normalizedWeights
-    ) internal virtual override(BaseWeightedPool, InvariantGrowthProtocolFees) {
-        InvariantGrowthProtocolFees._afterJoinExit(isJoin, preBalances, balanceDeltas, normalizedWeights);
+        uint256[] memory normalizedWeights,
+        uint256 preJoinExitSupply,
+        uint256 postJoinExitSupply
+    ) internal virtual override {
+        uint256 protocolFeesToBeMinted = _getPostJoinExitProtocolFees(
+            preBalances,
+            balanceDeltas,
+            normalizedWeights,
+            preJoinExitSupply,
+            postJoinExitSupply
+        );
+
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
+    }
+
+    function _updatePostJoinExit(uint256 postJoinExitInvariant)
+        internal
+        virtual
+        override(BaseWeightedPool, WeightedPoolProtocolFees)
+    {
+        WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
 }

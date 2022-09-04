@@ -195,16 +195,5 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
 
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-      - name: Benchmark
-        run: yarn workspace @balancer-labs/v2-benchmarks benchmark
-
 env:
   CI: true
