@@ -89,7 +89,7 @@ export default {
     return {
       tokens,
       weights,
-      rateProviders,
+      rateProviders: this.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
