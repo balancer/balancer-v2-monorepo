@@ -64,12 +64,12 @@ abstract contract ComposableStablePoolStorage is BasePool {
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
-    IRateProvider private immutable _rateProvider0;
-    IRateProvider private immutable _rateProvider1;
-    IRateProvider private immutable _rateProvider2;
-    IRateProvider private immutable _rateProvider3;
-    IRateProvider private immutable _rateProvider4;
-    IRateProvider private immutable _rateProvider5;
+    IRateProvider internal immutable _rateProvider0;
+    IRateProvider internal immutable _rateProvider1;
+    IRateProvider internal immutable _rateProvider2;
+    IRateProvider internal immutable _rateProvider3;
+    IRateProvider internal immutable _rateProvider4;
+    IRateProvider internal immutable _rateProvider5;
 
     // This is a bitmap which allows querying whether a token at a particular index:
     // - has a rate provider associated with it.
@@ -221,30 +221,6 @@ abstract contract ComposableStablePoolStorage is BasePool {
         _revert(Errors.INVALID_TOKEN);
     }
 
-    function _getScalingFactor0() internal view returns (uint256) {
-        return _scalingFactor0;
-    }
-
-    function _getScalingFactor1() internal view returns (uint256) {
-        return _scalingFactor1;
-    }
-
-    function _getScalingFactor2() internal view returns (uint256) {
-        return _scalingFactor2;
-    }
-
-    function _getScalingFactor3() internal view returns (uint256) {
-        return _scalingFactor3;
-    }
-
-    function _getScalingFactor4() internal view returns (uint256) {
-        return _scalingFactor4;
-    }
-
-    function _getScalingFactor5() internal view returns (uint256) {
-        return _scalingFactor5;
-    }
-
     function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
         // We never use a single token's scaling factor by itself, we always process the entire array at once.
         // Therefore we don't bother providing an implementation for this.
@@ -320,60 +296,39 @@ abstract contract ComposableStablePoolStorage is BasePool {
 
     // Rate Providers
 
-    function _getRateProvider0() internal view returns (IRateProvider) {
-        return _rateProvider0;
-    }
-
-    function _getRateProvider1() internal view returns (IRateProvider) {
-        return _rateProvider1;
-    }
-
-    function _getRateProvider2() internal view returns (IRateProvider) {
-        return _rateProvider2;
-    }
-
-    function _getRateProvider3() internal view returns (IRateProvider) {
-        return _rateProvider3;
-    }
-
-    function _getRateProvider4() internal view returns (IRateProvider) {
-        return _rateProvider4;
-    }
-
-    function _getRateProvider5() internal view returns (IRateProvider) {
-        return _rateProvider5;
+    function _getScalingFactor(uint256 index) internal view returns (uint256) {
+        if (index == 0) return _scalingFactor0;
+        if (index == 1) return _scalingFactor1;
+        if (index == 2) return _scalingFactor2;
+        if (index == 3) return _scalingFactor3;
+        if (index == 4) return _scalingFactor4;
+        if (index == 5) return _scalingFactor5;
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
     }
 
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+    function getRateProviders() external view returns (IRateProvider[] memory) {
         uint256 totalTokens = _getTotalTokens();
-        providers = new IRateProvider[](totalTokens);
+        IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
-        // The Pool will always have at least 3 tokens so we always load these three rate providers.
-        providers[0] = _getRateProvider0();
-        providers[1] = _getRateProvider1();
-        providers[2] = _getRateProvider2();
+        for (uint256 i = 0; i < totalTokens; ++i) {
+            providers[i] = _getRateProvider(i);
+        }
 
-        // Before we load the remaining rate providers we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return providers;
-        providers[3] = _getRateProvider3();
-
-        if (totalTokens == 4) return providers;
-        providers[4] = _getRateProvider4();
-
-        if (totalTokens == 5) return providers;
-        providers[5] = _getRateProvider5();
+        return providers;
     }
 
     function _getRateProvider(uint256 index) internal view returns (IRateProvider) {
-        if (index == 0) return _getRateProvider0();
-        if (index == 1) return _getRateProvider1();
-        if (index == 2) return _getRateProvider2();
-        if (index == 3) return _getRateProvider3();
-        if (index == 4) return _getRateProvider4();
-        if (index == 5) return _getRateProvider5();
+        if (index == 0) return _rateProvider0;
+        if (index == 1) return _rateProvider1;
+        if (index == 2) return _rateProvider2;
+        if (index == 3) return _rateProvider3;
+        if (index == 4) return _rateProvider4;
+        if (index == 5) return _rateProvider5;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
