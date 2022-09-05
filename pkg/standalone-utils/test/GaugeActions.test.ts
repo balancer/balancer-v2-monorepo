@@ -13,7 +13,6 @@ import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { expect } from 'chai';
 import { setChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 import { BalancerMinterAuthorization } from '@balancer-labs/balancer-js/src/utils/signatures';
-import { currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 
 describe('GaugeActions', function () {
   let vault: Vault;
@@ -21,7 +20,7 @@ describe('GaugeActions', function () {
   let admin: SignerWithAddress, sender: SignerWithAddress, other: SignerWithAddress, recipient: SignerWithAddress;
 
   let adaptor: Contract, gaugeController: Contract, balMinter: Contract;
-  let BAL: Contract, veBAL: Contract, lpToken: Contract;
+  let BAL: Contract, veBAL: Contract, rewardToken: Contract, lpToken: Contract;
 
   let gaugeFactory: Contract;
   let gauge: Contract;
@@ -41,6 +40,10 @@ describe('GaugeActions', function () {
 
     veBAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
       args: [admin.address, 'Balancer Voting Escrow', 'veBAL'],
+    });
+
+    rewardToken = await deploy('v2-liquidity-mining/TestBalancerToken', {
+      args: [admin.address, 'Reward', 'RWT'],
     });
 
     lpToken = await deploy('v2-pool-utils/MockBalancerPoolToken', {
@@ -446,6 +449,31 @@ describe('GaugeActions', function () {
     });
   });
 
+  describe('gaugeClaimRewards', () => {
+    sharedBeforeEach('setup and deposit reward tokens in gauge', async () => {
+      const action = await actionId(adaptor, 'add_reward', gauge.interface);
+      await vault.grantPermissionsGlobally([action], admin);
+
+      const rewardAmount = fp(500);
+      await rewardToken.connect(admin).mint(admin.address, rewardAmount);
+      await rewardToken.connect(admin).approve(gauge.address, rewardAmount);
+
+      const calldata = gauge.interface.encodeFunctionData('add_reward', [rewardToken.address, admin.address]);
+      await adaptor.connect(admin).performAction(gauge.address, calldata);
+      await gauge.connect(admin).deposit_reward_token(rewardToken.address, rewardAmount);
+    });
+
+    sharedBeforeEach('stake BPT in gauge', async () => {
+      await lpToken.connect(sender).approve(gauge.address, MAX_UINT256);
+      await gauge.connect(sender)['deposit(uint256)'](await lpToken.balanceOf(sender.address));
+    });
+
+    it('transfers rewards to sender', async () => {
+      const tx = await relayer.connect(sender).multicall([encodeGaugeClaimRewards({ gauges: [gauge.address] })]);
+      expectTransferEvent(await tx.wait(), { from: gauge.address, to: sender.address }, rewardToken.address);
+    });
+  });
+
   async function deployGauge(gaugeFactory: Contract, poolAddress: string): Promise<string> {
     const tx = await gaugeFactory.create(poolAddress, fp(1)); // No weight cap.
     const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
@@ -501,5 +529,9 @@ describe('GaugeActions', function () {
 
   function encodeGaugeMint(params: { gauges: string[]; outputReference: BigNumber }): string {
     return relayerLibrary.interface.encodeFunctionData('gaugeMint', [params.gauges, params.outputReference]);
+  }
+
+  function encodeGaugeClaimRewards(params: { gauges: string[] }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeClaimRewards', [params.gauges]);
   }
 });
