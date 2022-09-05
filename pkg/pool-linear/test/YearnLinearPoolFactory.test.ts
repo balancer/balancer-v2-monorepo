@@ -29,15 +29,13 @@ describe('YearnLinearPoolFactory', function () {
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    const [deployer] = await ethers.getSigners();
-
     vault = await Vault.create();
-    factory = await deploy('YearnLinearPoolFactory', { args: [vault.address] });
+    factory = await deploy('YearnLinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
     creationTime = await currentTimestamp();
 
     const mainToken = await Token.create('DAI');
     const wrappedTokenInstance = await deploy('MockYearnTokenVault', {
-      args: [deployer.address, 'cDAI', 'cDAI', 18, mainToken.address, fp(1.05)],
+      args: ['cDAI', 'cDAI', 18, mainToken.address, fp(1.05)],
     });
     const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 

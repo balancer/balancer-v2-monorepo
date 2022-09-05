@@ -40,4 +40,24 @@ contract MockYearnTokenVault is TestToken {
     function pricePerShare() external view returns (uint256) {
         return _pricePerShare;
     }
+
+    function deposit(uint256 _amount, address recipient) public returns (uint256) {
+        ERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        
+        uint256 amountToMint = _amount * 10**decimals() / _pricePerShare;
+        
+        _mint(recipient, amountToMint);
+
+        return amountToMint;
+    }
+
+    function withdraw(uint256 maxShares, address recipient) public returns (uint256) {
+        _burn(msg.sender, maxShares);
+        
+        uint256 amountToReturn = maxShares * _pricePerShare / 10**decimals();
+        
+        ERC20(_token).transfer(recipient, amountToReturn);
+
+        return amountToReturn;
+    }
 }

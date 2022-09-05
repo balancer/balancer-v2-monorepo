@@ -28,11 +28,9 @@ describe('YearnLinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    const [deployer] = await ethers.getSigners();
-
     mainToken = await Token.create('DAI');
     mockYearnTokenVault = await deploy('MockYearnTokenVault', {
-      args: [deployer.address, 'yvDAI', 'yvDAI', 18, mainToken.address, sharePrice],
+      args: ['yvDAI', 'yvDAI', 18, mainToken.address, sharePrice],
     });
     wrappedToken = await Token.deployedAt(mockYearnTokenVault.address);
 
@@ -44,7 +42,7 @@ describe('YearnLinearPool', function () {
   sharedBeforeEach('deploy pool factory', async () => {
     const vault = await Vault.create();
     poolFactory = await deploy('YearnLinearPoolFactory', {
-      args: [vault.address],
+      args: [vault.address, vault.getFeesProvider().address],
     });
   });
 
