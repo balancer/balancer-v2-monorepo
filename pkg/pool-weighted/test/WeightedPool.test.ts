@@ -17,7 +17,6 @@ import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constan
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
-  let admin: SignerWithAddress;
   let lp: SignerWithAddress;
 
   const MAX_TOKENS = 8;
@@ -26,7 +25,7 @@ describe('WeightedPool', function () {
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   before('setup signers', async () => {
-    [, admin, lp] = await ethers.getSigners();
+    [, lp] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -183,7 +182,7 @@ describe('WeightedPool', function () {
 
     sharedBeforeEach('deploy pool', async () => {
       tokens = allTokens.subset(numTokens);
-      const vault = await Vault.create({ admin });
+      const vault = await Vault.create();
       vaultContract = vault.instance;
 
       pool = await WeightedPool.create({
