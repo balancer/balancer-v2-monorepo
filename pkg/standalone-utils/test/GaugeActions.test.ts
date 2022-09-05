@@ -11,7 +11,11 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { expect } from 'chai';
-import { setChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import {
+  expectChainedReferenceContents,
+  setChainedReferenceContents,
+  toChainedReference,
+} from './helpers/chainedReferences';
 import { BalancerMinterAuthorization } from '@balancer-labs/balancer-js/src/utils/signatures';
 
 describe('GaugeActions', function () {
@@ -430,13 +434,35 @@ describe('GaugeActions', function () {
     });
 
     context('when caller is approved to mint', () => {
-      it('mints BAL to sender', async () => {
-        // We just check the transfer and its 'from' / 'to' attributes; the actual amount depends on the gauge votes
-        // which is mocked and out of scope of this test.
-        const tx = await relayer
-          .connect(sender)
-          .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference: bn(0) })]);
-        expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: sender.address }, BAL.address);
+      // We just check the transfer and its 'from' / 'to' attributes; the actual amount depends on the gauge votes
+      // which is mocked and out of scope of this test.
+      context('when not using output references', () => {
+        it('mints BAL to sender', async () => {
+          const tx = await relayer
+            .connect(sender)
+            .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference: bn(0) })]);
+          expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: sender.address }, BAL.address);
+        });
+      });
+
+      context('when using output references', () => {
+        const outputReference = toChainedReference(174);
+
+        it('mints BAL to sender', async () => {
+          const tx = await relayer
+            .connect(sender)
+            .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference })]);
+          expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: sender.address }, BAL.address);
+        });
+
+        it('stores the output in a chained reference', async () => {
+          const tx = await relayer
+            .connect(sender)
+            .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference })]);
+          const event = expectEvent.inIndirectReceipt(await tx.wait(), gauge.interface, 'Transfer');
+          const transferValue = event.args._value;
+          await expectChainedReferenceContents(relayer, outputReference, transferValue);
+        });
       });
     });
 
