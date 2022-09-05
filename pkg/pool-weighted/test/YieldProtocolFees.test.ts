@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp, FpDiv, FpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';

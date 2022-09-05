@@ -5,7 +5,7 @@ import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { bn, fp, FpDiv } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';

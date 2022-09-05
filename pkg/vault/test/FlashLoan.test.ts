@@ -10,7 +10,7 @@ import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { bn, divCeil, fp, FpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, divCeil, fp, fpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 

@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ManagedPoolEncoder, PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, FpMul, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, fpMul, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';

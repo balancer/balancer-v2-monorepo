@@ -6,7 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
-import { arrayAdd, BigNumberish, bn, fp, arraySub, FpMul, FpDiv } from '@balancer-labs/v2-helpers/src/numbers';
+import { arrayAdd, BigNumberish, bn, fp, arraySub, fpMul, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';

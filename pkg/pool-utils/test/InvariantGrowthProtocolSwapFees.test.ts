@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 
-import { bn, fp, FpDiv, FpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {

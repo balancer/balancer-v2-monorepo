@@ -4,7 +4,7 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { bn, fp, FpDiv } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';

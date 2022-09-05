@@ -1,5 +1,5 @@
 import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
-import { BigNumberish, bn, fp, FpMul } from '../../../numbers';
+import { BigNumberish, bn, fp, fpMul } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import Vault from '../../vault/Vault';

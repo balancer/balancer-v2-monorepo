@@ -7,7 +7,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct, arrayAdd, bnSum, FpDiv, FpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, pct, arrayAdd, bnSum, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { currentTimestamp, advanceTime, MONTH, WEEK, DAY } from '@balancer-labs/v2-helpers/src/time';
