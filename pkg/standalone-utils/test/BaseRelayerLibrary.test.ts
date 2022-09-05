@@ -13,8 +13,6 @@ import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constant
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { toChainedReference } from './helpers/chainedReferences';
-import { random, range } from 'lodash';
-import Decimal from 'decimal.js';
 
 describe('BaseRelayerLibrary', function () {
   let vault: Contract;
