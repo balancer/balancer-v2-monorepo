@@ -264,19 +264,14 @@ describe('WeightedPool', function () {
           expect(originalRate).to.be.lt(rate.mul(9999).div(10000));
         });
 
-        it.skip('minting protocol fee BPT should not affect rate', async () => {
+        it('minting protocol fee BPT should not affect rate', async () => {
           const rateBeforeJoin = await pool.getRate();
-
-          // Perform a very small proportional join. This ensures that the rate should not increase from swap fees
-          // due to this join so this can't mask issues with the rate.
-          const poolBalances = await pool.getBalances();
-          const amountsIn = poolBalances.map((balance) => balance.div(10000));
 
           const latInvariant1 = await pool.getLastPostJoinExitInvariant();
           const invariant1 = await pool.instance.getInvariant();
           console.log(`last ${latInvariant1}: current ${invariant1}`);
 
-          await pool.joinGivenIn({ from: lp, amountsIn });
+          await pool.joinAllGivenOut({ from: lp, bptOut: fp(1) });
 
           const rateAfterJoin = await pool.getRate();
           const latInvariant = await pool.getLastPostJoinExitInvariant();
