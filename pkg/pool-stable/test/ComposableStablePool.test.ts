@@ -1683,6 +1683,43 @@ describe('ComposableStablePool', () => {
               });
             });
 
+            it('rate increases when enabling recovery mode', async () => {
+              const initialRate = await pool.getRate();
+
+              // When enabling recovery mode, protocol fees are forfeit and the percentages drop to zero. This causes
+              // an increase in the rate, since the BPT's value increases (as it no longer carries any protocol debt).
+              await pool.enableRecoveryMode(admin);
+              const newRate = await pool.getRate();
+
+              expect(newRate).to.be.gt(initialRate);
+
+              // We can compute the new rate by computing the ratio of invariant and total supply, not considering any
+              // due protocol fees (because there should be none).
+              const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
+                (_, i) => i != bptIndex
+              );
+              const invariant = calculateInvariant(
+                scaledBalances,
+                (await pool.getAmplificationParameter()).value.div(AMP_PRECISION)
+              );
+
+              const virtualSupply = await pool.getVirtualSupply();
+
+              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+
+              expect(newRate).to.be.almostEqual(rateAssumingNoProtocolFees, 1e-6);
+            });
+
+            it('rate does not change when disabling recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+
+              await expectNoRateChange(async () => {
+                // Disabling recovery mode should cause no rate changes - fees have already been forfeit when recovery
+                // mode was enabled.
+                await pool.disableRecoveryMode(admin);
+              });
+            });
+
             function itReactsToProtocolFeePercentageChangesCorrectly(feeType: number) {
               it('rate does not change on protocol fee update', async () => {
                 await expectNoRateChange(async () => {

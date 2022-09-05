@@ -1013,6 +1013,24 @@ contract ComposableStablePool is
         _updatePostJoinExit(currentAmp, currentInvariant);
     }
 
+    function _onDisableRecoveryMode() internal override {
+        // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
+        // increasing the return value of `getRate()` and effectively forfeiting due protocol fees.
+
+        // Therefore, when exiting recovery mode we store the current invariant and the amplification factor used to
+        // compute it, marking the Pool as free of protocol debt. Otherwise it'd be possible for debt to be
+        // retroactively accrued, which would be incorrect and could lead to the value of `getRate` decreasing.
+
+        (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(registeredBalances, _scalingFactors());
+        uint256[] memory balances = _dropBptItem(registeredBalances);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 currentInvariant = StableMath._calculateInvariant(currentAmp, balances);
+
+        _updatePostJoinExit(currentAmp, currentInvariant);
+    }
+
     // Helpers
 
     /**
