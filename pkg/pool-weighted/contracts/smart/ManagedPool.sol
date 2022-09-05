@@ -117,7 +117,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     uint256 private constant _MANAGER_SWAP_FEE_OFFSET = 0;
     uint256 private constant _MANAGER_AUM_FEE_OFFSET = 64;
     uint256 private constant _MANAGER_AUM_TIME_OFFSET = 128;
-    // uint256 private constant _TOTAL_TOKENS_CACHE_OFFSET = 160;
+    uint256 private constant _TOTAL_TOKENS_CACHE_OFFSET = 160;
     // uint256 private constant _DENORM_WEIGHT_SUM_OFFSET = 166;
 
     // Store scaling factor and start/end denormalized weights for each token
@@ -146,9 +146,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     //
     // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
     uint256 private _denormWeightSum;
-
-    // Store the token count locally (can change if tokens are added or removed)
-    uint256 private _totalTokensCache;
 
     // Event declarations
 
@@ -213,7 +210,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
-        _totalTokensCache = totalTokens;
+        _managedData = bytes32(0).insertUint(totalTokens, _TOTAL_TOKENS_CACHE_OFFSET, 6);
 
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
@@ -420,7 +417,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _totalTokensCache;
+        return _managedData.decodeUint(_TOTAL_TOKENS_CACHE_OFFSET, 6);
     }
 
     /**
@@ -603,6 +600,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         _registerNewToken(token, normalizedWeight, weightSumAfterAdd);
 
+        _managedData = _managedData.insertUint(currentTokens.length + 1, _TOTAL_TOKENS_CACHE_OFFSET, 6);
+
         // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
         // zero). We immediately perform a join using the newly added token to restore a valid state.
         // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
@@ -696,7 +695,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // `_encodeTokenState` performs an external call to `token` (to get its decimals). Nevertheless, this is
         // reentrancy safe. View functions are called in a STATICCALL context, and will revert if they modify state.
         _tokenState[token] = _encodeTokenState(token, normalizedWeight, normalizedWeight, newDenormWeightSum);
-        _totalTokensCache += 1;
     }
 
     /**
@@ -774,7 +772,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         delete _tokenState[token];
         _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight, _denormWeightSum);
 
-        _totalTokensCache = tokens.length - 1;
+        _managedData = _managedData.insertUint(tokens.length - 1, _TOTAL_TOKENS_CACHE_OFFSET, 6);
 
         if (burnAmount > 0) {
             _burnPoolTokens(msg.sender, burnAmount);
