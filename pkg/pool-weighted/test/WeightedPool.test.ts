@@ -1,20 +1,19 @@
 import { ethers } from 'hardhat';
+import { BigNumber, Contract } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-
+import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { BigNumber, Contract } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
@@ -35,6 +34,46 @@ describe('WeightedPool', function () {
   });
 
   itPaysProtocolFeesFromInvariantGrowth();
+
+  describe('recovery mode', () => {
+    let pool: WeightedPool;
+    let tokens: TokenList;
+
+    const initialBalances = range(1, 3).map(fp);
+
+    sharedBeforeEach('deploy pool', async () => {
+      tokens = allTokens.subset(2);
+
+      pool = await WeightedPool.create({
+        poolType: WeightedPoolType.WEIGHTED_POOL,
+        tokens,
+        weights: WEIGHTS.slice(0, 2),
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      });
+
+      await pool.init({ initialBalances, recipient: lp });
+    });
+
+    context('when leaving recovery mode', () => {
+      it('sets the lastPostJoinInvariant to the current invariant', async () => {
+        // Set recovery mode to stop protocol fee calculations.
+        await pool.enableRecoveryMode();
+
+        // Perform a recovery mode exit. This will reduce the invariant but this isn't tracked due to recovery mode.
+        const preExitInvariant = await pool.getLastPostJoinExitInvariant();
+        await pool.recoveryModeExit({ from: lp, bptIn: fp(100) });
+        const realPostExitInvariant = await pool.estimateInvariant();
+
+        // Check that the real invariant is has dropped as a result of the exit.
+        expect(realPostExitInvariant).to.be.lt(preExitInvariant);
+
+        // On disabling recovery mode we expect the `lastPostJoinExitInvariant` to be be equal to the current value.
+        await pool.disableRecoveryMode();
+        const updatedLastPostJoinExitInvariant = await pool.getLastPostJoinExitInvariant();
+        expect(updatedLastPostJoinExitInvariant).to.be.almostEqual(realPostExitInvariant);
+      });
+    });
+  });
 
   describe('weights and scaling factors', () => {
     for (const numTokens of range(2, MAX_TOKENS + 1)) {

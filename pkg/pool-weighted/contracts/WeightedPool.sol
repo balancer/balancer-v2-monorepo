@@ -282,6 +282,12 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
 
+    /**
+     * @notice Returns the appreciation of one BPT relative to the underlying tokens.
+     * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
+     * We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
+     * This prevents the Pool's rate being affected by the collection of protocol fees.
+     */
     function getRate() public view virtual override returns (uint256) {
         uint256 invariant = getInvariant();
 
@@ -298,9 +304,16 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
         uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolOwnershipPercentage);
 
-        // This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
-        // We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
-        // This prevents the Pool's rate being affected by the collection of protocol fees.
         return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeeAmount));
+    }
+
+    function _onDisableRecoveryMode() internal override {
+        // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.
+        _updatePostJoinExit(getInvariant());
+
+        // Update the athRateProduct to the value of the current rateProduct, zeroing out any protocol yield fees.
+        if (!_exemptFromYieldFees) {
+            _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+        }
     }
 }

@@ -440,8 +440,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     // BPT rate
 
     /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. The rate starts at 1 when the pool is created, and grows over time.
+     * @notice Returns the appreciation of one BPT relative to the underlying tokens.
+     * @dev The rate starts at 1 when the pool is created, and grows over time.
      * Note that this base implementation is only accurate for pools that do not accrue
      * BPT fees (e.g., protocol fees).
      *

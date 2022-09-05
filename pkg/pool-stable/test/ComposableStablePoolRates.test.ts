@@ -5,7 +5,7 @@ import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -807,7 +807,7 @@ describe('ComposableStablePoolRates', () => {
         it('returns the array with elements scaled by the ratio of current and old cached token rates', async () => {
           for (let i = 0; i < 5; i++) {
             const inputArray = tokens.map(() => fp(Math.random()));
-            const expectedOutputArray = inputArray.map((input, i) => input.mul(fp(1)).div(rates[i]));
+            const expectedOutputArray = inputArray.map((input, i) => fpDiv(input, rates[i]));
 
             expect(await pool.getAdjustedBalances(inputArray, true)).to.be.deep.eq(expectedOutputArray);
           }
@@ -819,7 +819,7 @@ describe('ComposableStablePoolRates', () => {
           for (let i = 0; i < 5; i++) {
             const inputArray = tokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) =>
-              exemptFromYieldProtocolFeeFlags[i] ? input.mul(fp(1)).div(rates[i]) : input
+              exemptFromYieldProtocolFeeFlags[i] ? fpDiv(input, rates[i]) : input
             );
 
             expect(await pool.getAdjustedBalances(inputArray, false)).to.be.deep.eq(expectedOutputArray);
