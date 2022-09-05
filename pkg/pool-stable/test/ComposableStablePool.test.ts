@@ -1700,7 +1700,7 @@ describe('ComposableStablePool', () => {
               );
               const invariant = calculateInvariant(
                 scaledBalances,
-                (await pool.getAmplificationParameter()).value.div(1000)
+                (await pool.getAmplificationParameter()).value.div(AMP_PRECISION)
               );
 
               const virtualSupply = await pool.getVirtualSupply();
