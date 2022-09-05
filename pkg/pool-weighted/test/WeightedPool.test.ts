@@ -256,7 +256,7 @@ describe('WeightedPool', function () {
           await vaultContract.connect(lp).swap(singleSwap, funds, 0, MAX_UINT256);
         });
 
-        it("doesn't include the value of uncollected protocol fees in the rate", async () => {
+        it('uncollected protocol fees should increase the effective supply (and lower the rate)', async () => {
           const rate = await pool.getRate();
 
           // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
