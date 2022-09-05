@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
-import { BigNumberish, bn, decimal, fp, fromFp, toFp } from '../../../numbers';
+import { BigNumberish, bn, decimal, fp, fromFp, toFp, fpDiv } from '../../../numbers';
 
 export function calculateInvariant(fpRawBalances: BigNumberish[], fpRawWeights: BigNumberish[]): BigNumber {
   const normalizedWeights = fpRawWeights.map(fromFp);
@@ -193,13 +193,12 @@ export function calculateBPTSwapFeeAmount(
   postSupply: BigNumberish,
   fpProtocolSwapFeePercentage: BigNumberish
 ): BigNumber {
-  const supplyGrowthRatio = bn(postSupply).mul(fp(1)).div(preSupply);
+  const supplyGrowthRatio = fpDiv(postSupply, preSupply);
 
   if (bn(fpInvariantGrowthRatio).lte(supplyGrowthRatio)) {
     return bn(0);
   }
-
-  const swapFeePercentage = fp(1).sub(supplyGrowthRatio.mul(fp(1)).div(fpInvariantGrowthRatio));
+  const swapFeePercentage = fp(1).sub(fpDiv(supplyGrowthRatio, fpInvariantGrowthRatio));
   const k = swapFeePercentage.mul(fpProtocolSwapFeePercentage).div(fp(1));
 
   const numerator = bn(postSupply).mul(k);
