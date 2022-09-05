@@ -264,24 +264,17 @@ describe('WeightedPool', function () {
           expect(originalRate).to.be.lt(rate.mul(9999).div(10000));
         });
 
-        it.skip('minting protocol fee BPT should not affect rate', async () => {
-          const rateBeforeJoin = await pool.getRate();
-
-          // Perform a very small proportional join. This ensures that the rate should not increase from swap fees
+        it('minting protocol fee BPT should not affect rate', async () => {
+          // Perform a zero-amount join. This ensures that the rate should not increase from swap fees
           // due to this join so this can't mask issues with the rate.
+          // In weighted pools, even small proportional joins can generate very small protocol fees,
+          // which are enough to make this test fail.
           const poolBalances = await pool.getBalances();
-          const amountsIn = poolBalances.map((balance) => balance.div(10000));
+          const amountsIn = Array(poolBalances.length).fill(1);
 
-          const latInvariant1 = await pool.getLastPostJoinExitInvariant();
-          const invariant1 = await pool.estimateInvariant();
-          console.log(`last ${latInvariant1}: current ${invariant1}`);
-
+          const rateBeforeJoin = await pool.getRate();
           await pool.joinGivenIn({ from: lp, amountsIn });
-
           const rateAfterJoin = await pool.getRate();
-          const latInvariant = await pool.getLastPostJoinExitInvariant();
-          const invariant = await pool.estimateInvariant();
-          console.log(`last ${latInvariant}: current ${invariant}`);
 
           const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
           expect(rateDelta.abs()).to.be.lte(2);
