@@ -29,7 +29,6 @@ describe('YearnLinearPool', function () {
     });
   });
 
-
   async function deployPool(mainTokenAddress: string, wrappedTokenAddress: string) {
     const tx = await poolFactory.create(
       'Linear pool',
