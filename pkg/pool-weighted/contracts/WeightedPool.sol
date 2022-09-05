@@ -242,20 +242,12 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         returns (uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
-        uint256 swapProtocolFees = _getSwapProtocolFees(preBalances, normalizedWeights, supplyBeforeFeeCollection);
-
-        (uint256 yieldProtocolFees, uint256 athRateProduct) = _getYieldProtocolFee(
+        uint256 protocolFeesToBeMinted = _getPreJoinExitProtocolFees(
+            preBalances,
             normalizedWeights,
             supplyBeforeFeeCollection
         );
 
-        // We then update the recorded of `athRateProduct` to ensure we only collect fees on yield once.
-        // A zero value for `athRateProduct` represents that it is unchanged so we can skip updating it.
-        if (athRateProduct > 0) {
-            _updateATHRateProduct(athRateProduct);
-        }
-
-        uint256 protocolFeesToBeMinted = swapProtocolFees + yieldProtocolFees;
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
         }
@@ -269,7 +261,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal virtual override {
-        uint256 protocolFeesToBeMinted = _getJoinExitProtocolFees(
+        uint256 protocolFeesToBeMinted = _getPostJoinExitProtocolFees(
             preBalances,
             balanceDeltas,
             normalizedWeights,
