@@ -51,11 +51,22 @@ export const min = (a: BigNumberish, b: BigNumberish): BigNumber => {
   return a.lt(b) ? a : b;
 };
 
+export const bnSum = (bnArr: BigNumberish[]): BigNumber => {
+  return bn(bnArr.reduce((prev, curr) => bn(prev).add(bn(curr)), 0));
+};
+
 export const arrayAdd = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
   arrA.map((a, i) => bn(a).add(bn(arrB[i])));
 
+export const arrayFpMul = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
+  arrA.map((a, i) => fpMul(a, arrB[i]));
+
 export const arraySub = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
   arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
+
+export const fpMul = (a: BigNumberish, b: BigNumberish): BigNumber => bn(a).mul(b).div(FP_SCALING_FACTOR);
+
+export const fpDiv = (a: BigNumberish, b: BigNumberish): BigNumber => bn(a).mul(FP_SCALING_FACTOR).div(b);
 
 export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   // ceil(x/y) == (x + y - 1) / y

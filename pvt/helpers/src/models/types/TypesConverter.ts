@@ -9,7 +9,7 @@ import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
-import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
+import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
@@ -57,6 +57,7 @@ export default {
     let {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
@@ -77,6 +78,7 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (undefined == reserveAssetManager) reserveAssetManager = ZERO_ADDRESS;
@@ -89,6 +91,7 @@ export default {
     return {
       tokens,
       weights,
+      rateProviders: this.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
@@ -127,7 +130,7 @@ export default {
     };
   },
 
-  toStablePhantomPoolDeployment(params: RawStablePhantomPoolDeployment): StablePhantomPoolDeployment {
+  toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
     let {
       tokens,
       rateProviders,
