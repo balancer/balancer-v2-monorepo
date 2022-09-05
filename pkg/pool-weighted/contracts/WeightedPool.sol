@@ -288,7 +288,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
      * This prevents the Pool's rate being affected by the collection of protocol fees.
      */
-    function getRate() public view virtual override returns (uint256) {
+    function getRate() public view override returns (uint256) {
         uint256 invariant = getInvariant();
 
         // Swap fees
