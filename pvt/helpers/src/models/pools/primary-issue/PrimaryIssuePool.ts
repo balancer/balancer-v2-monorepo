@@ -57,6 +57,7 @@ export default class PrimaryPool {
       vault,
       await Token.deployedAt(securityToken),
       await Token.deployedAt(currencyToken),
+      await Token.deployedAt(instance.address),
       minimumPrice,
       basePrice,
       maxSecurityOffered,
@@ -123,7 +124,8 @@ export default class PrimaryPool {
 
   getTokenIndex(token: Token): number {
     const addresses = this.tokens.addresses;
-    return addresses[0] == token.address ? 0 : 1;
+    //return addresses[0] == token.address ? 0 : 1;
+    return addresses[0] == token.address ? 0 : addresses[1] == token.address ? 1 : 2;
   }
 
   async name(): Promise<string> {

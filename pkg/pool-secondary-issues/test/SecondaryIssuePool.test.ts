@@ -102,7 +102,7 @@ describe('SecondaryPool', function () {
 
     });
   });
-  /*
+  
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({ securityToken, currencyToken }, false);
@@ -117,8 +117,6 @@ describe('SecondaryPool', function () {
       const currentBalances = await pool.getBalances();
       expect(currentBalances[pool.securityIndex]).to.be.equal(0);
       expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
-
-      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
 
     it('cannot be initialized outside of the initialize function', async () => {
@@ -135,5 +133,6 @@ describe('SecondaryPool', function () {
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
     });
   });
-  */
+  
+
 });

@@ -25,12 +25,12 @@ describe('PrimaryPool', function () {
     owner: SignerWithAddress,
     other: SignerWithAddress;
 
-  const TOTAL_TOKENS = 2;
+  const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   
   const minimumPrice = BigNumber.from("5");
   const basePrice = BigNumber.from("10");
-  const maxSecurityOffered = BigNumber.from("1000");
+  const maxSecurityOffered = BigNumber.from("100");
   const issueCutoffTime = BigNumber.from("1672444800");
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
@@ -109,7 +109,7 @@ describe('PrimaryPool', function () {
     context('when the creation fails', () => {
       it('reverts if there are repeated tokens', async () => {
         await expect(
-          deployPool({ securityToken: securityToken, currencyToken: securityToken }, false)
+          deployPool({ securityToken, currencyToken: securityToken }, false)
         ).to.be.revertedWith(BalancerErrorCodes.UNSORTED_ARRAY.toString());
       });
     });

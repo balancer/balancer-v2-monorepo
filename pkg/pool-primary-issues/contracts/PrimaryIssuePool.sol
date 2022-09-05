@@ -6,6 +6,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -30,7 +31,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
 
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
-    uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
+    uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1; //setting to max BPT allowed in Vault
 
     uint256 private immutable _scalingFactorSecurity;
     uint256 private immutable _scalingFactorCurrency;
@@ -210,6 +211,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         uint256[] memory balances,
         Params memory params
     ) internal returns (uint256) {
+        //BPT is only held by the pool manager transferred to it during pool initialization, so no BPT swap is considered
         if (request.tokenIn == _security) {
             return _swapSecurityIn(request, balances, params);
         } else if (request.tokenIn == _currency) {
@@ -278,6 +280,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         uint256[] memory balances,
         Params memory params
     ) internal returns (uint256) {
+        //BPT is only held by the pool manager transferred to it during pool initialization, so no BPT swap is supported
         if (request.tokenOut == _security) {
             return _swapSecurityOut(request, balances, params);
         } else if (request.tokenOut == _currency) {

@@ -24,6 +24,7 @@ export default class SecondaryPool {
   poolId: string;
   securityToken: Token;
   currencyToken: Token;
+  bptToken: Token;
   maxSecurityOffered: BigNumberish;
   swapFeePercentage: BigNumberish;
   vault: Vault;
@@ -50,6 +51,7 @@ export default class SecondaryPool {
       vault,
       await Token.deployedAt(securityToken),
       await Token.deployedAt(currencyToken),
+      await Token.deployedAt(instance.address),
       maxSecurityOffered,
       swapFee,
       owner
@@ -62,6 +64,7 @@ export default class SecondaryPool {
     vault: Vault,
     securityToken: Token,
     currencyToken: Token,
+    bptToken: Token,
     maxSecurityOffered: BigNumberish,
     swapFeePercentage: BigNumberish,
     owner?: SignerWithAddress
@@ -71,6 +74,7 @@ export default class SecondaryPool {
     this.vault = vault;
     this.securityToken = securityToken;
     this.currencyToken = currencyToken;
+    this.bptToken = bptToken;
     this.maxSecurityOffered = maxSecurityOffered;
     this.swapFeePercentage = swapFeePercentage;
     this.owner = owner;
@@ -81,7 +85,7 @@ export default class SecondaryPool {
   }
 
   get tokens(): TokenList {
-    return new TokenList([this.securityToken, this.currencyToken]).sort();
+    return new TokenList([this.securityToken, this.currencyToken, this.bptToken]).sort();
   }
 
   get securityIndex(): number {
@@ -92,10 +96,15 @@ export default class SecondaryPool {
     return this.getTokenIndex(this.currencyToken);
   }
 
-  get tokenIndexes(): { securityIndex: number; currencyIndex: number } {
+  get bptIndex(): number {
+    return this.getTokenIndex(this.bptToken);
+  }
+
+  get tokenIndexes(): { securityIndex: number; currencyIndex: number, bptIndex: number } {
     const securityIndex = this.securityIndex;
     const currencyIndex = this.currencyIndex;
-    return { securityIndex, currencyIndex };
+    const bptIndex = this.bptIndex;
+    return { securityIndex, currencyIndex, bptIndex };
   }
 
   getTokenIndex(token: Token): number {

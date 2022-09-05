@@ -26,6 +26,10 @@ export default {
     const { owner, securityToken, currencyToken, maxSecurityOffered, swapFeePercentage } = deployment;
 
     const poolId = await pool.getPoolId();
+    const name = await pool.name();
+    const symbol = await pool.symbol();
+    const decimals = await pool.decimals();
+    const bptToken = new Token(name, symbol, decimals, pool);
 
     return new SecondaryPool(
       pool,
@@ -33,6 +37,7 @@ export default {
       vault,
       securityToken,
       currencyToken,
+      bptToken,
       maxSecurityOffered,
       swapFeePercentage,
       owner

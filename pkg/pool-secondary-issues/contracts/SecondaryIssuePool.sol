@@ -12,21 +12,28 @@ import "./interfaces/ISettlor.sol";
 import "./utilities/StringUtils.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-secondary/SecondaryPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 {   
     using Math for uint256;
+    using FixedPoint for uint256;
     using StringUtils for string;
+    using SecondaryPoolUserData for bytes;
 
     address private immutable _security;
     address private immutable _currency;
 
-    uint256 private constant _TOTAL_TOKENS = 2; //Balancer pool token, Security token, Currency token (ie, paired token)
+    uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
+
+    uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
     uint256 private immutable _scalingFactorSecurity;
     uint256 private immutable _scalingFactorCurrency;
@@ -128,7 +135,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
             IVault.PoolSpecialization.GENERAL,
             name,
             symbol,
-            _sortTokens(IERC20(security), IERC20(currency)),
+            _sortTokens(IERC20(security), IERC20(currency), IERC20(this)),
             new address[](_TOTAL_TOKENS),
             tradeFeePercentage,
             pauseWindowDuration,
@@ -174,35 +181,41 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 
     function initialize() external {
         // join the pool
-        IAsset[] memory _assets = new IAsset[](2);
-        _assets[0] = IAsset(address(_security));
-        _assets[1] = IAsset(address(_currency));
-        uint256[] memory _maxAmountsIn = new uint256[](1);
-        _maxAmountsIn[0] = _MAX_TOKEN_BALANCE;
+        bytes32 poolId = getPoolId();
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+        //IAsset[] memory _assets = new IAsset[](2);
+        //_assets[0] = IAsset(address(_security));
+        //_assets[1] = IAsset(address(_currency));
+        uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
+        _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _assets,
+            //assets: _assets,
+            assets: _asIAsset(tokens),
             maxAmountsIn: _maxAmountsIn,
-            userData: "",
+            userData: abi.encode("INIT", _maxAmountsIn),
             fromInternalBalance: false
         });        
-        getVault().joinPool(getPoolId(), balancerManager, address(this), request);   
+        getVault().joinPool(getPoolId(), address(this), address(this), request);   
         emit Offer(_security, _maxAmountsIn[0]);                             
     }
 
     function exit() external {
         // exit the pool
-        IAsset[] memory _assets = new IAsset[](2);
-        _assets[0] = IAsset(address(_security));
-        _assets[1] = IAsset(address(_currency));
-        uint256[] memory _minAmountsOut = new uint256[](1);
-        _minAmountsOut[0] = _MAX_TOKEN_BALANCE;
+        bytes32 poolId = getPoolId();
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+        //IAsset[] memory _assets = new IAsset[](2);
+        //_assets[0] = IAsset(address(_security));
+        //_assets[1] = IAsset(address(_currency));
+        uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
+        _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
-            assets: _assets,
+            //assets: _assets,
+            assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
-            userData: "",
+            userData: abi.encode("EXACT_BPT_IN_FOR_TOKENS_OUT", _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });        
-        getVault().exitPool(getPoolId(), address(this), balancerManager, request);                                
+        getVault().exitPool(getPoolId(), address(this), payable(balancerManager), request);                                
     }
 
     function onSwap(
@@ -271,15 +284,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
     ) internal override whenNotPaused view returns (uint256, uint256[] memory) {
 
         //the secondary issue pool is initialized by the balancer manager contract
-        _require(sender == balancerManager, Errors.CALLER_IS_NOT_OWNER);
+        //_require(sender == balancerManager, Errors.CALLER_IS_NOT_OWNER);
         _require(recipient == address(this), Errors.CALLER_IS_NOT_OWNER);
 
+        uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        //setting balancer pool token balance to maximum amount of security tokens that can potentially be sold (at the minimum price)
-        amountsIn[_bptIndex] = _MAX_TOKEN_BALANCE;
+        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
-        return (_MAX_TOKEN_BALANCE, amountsIn);
-        
+        return (bptAmountOut, amountsIn);        
     }
 
     function _onJoinPool(
@@ -300,28 +312,57 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
             uint256[] memory
         )
     {
-        _revert(Errors.UNHANDLED_JOIN_KIND);
+        _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
     }
 
     function _onExitPool(
         bytes32,
         address,
         address,
-        uint256[] memory,
+        uint256[] memory balances,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     )
         internal
-        pure
+        view
         override
         returns (
-            uint256,
-            uint256[] memory
+            uint256 bptAmountIn,
+            uint256[] memory amountsOut
         )
     {
-        _revert(Errors.UNHANDLED_JOIN_KIND);
+        SecondaryPoolUserData.ExitKind kind = userData.exitKind();
+        if (kind != SecondaryPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            //usually exit pool reverts
+            _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
+        } else {
+            //unless paused in which case tokens are retrievable by contributors
+            _ensurePaused();
+            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
+        }
+    }
+
+    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
+        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
+        // retrieve their tokens in case of an emergency.
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
+            if (i != _bptIndex) {
+                amountsOut[i] = balances[i].mulDown(bptRatio);
+            }
+        }
+
+        return (bptAmountIn, amountsOut);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {
