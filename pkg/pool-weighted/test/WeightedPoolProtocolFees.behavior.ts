@@ -4,7 +4,7 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
@@ -240,7 +240,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
             // therefore have been paid (initialBalanceGrowth - 1) * protocolFeePercentage / initialBalanceGrowth of the
             // total BPT.
 
-            const bptOwnership = fees.mul(FP_SCALING_FACTOR).div(totalBPT);
+            const bptOwnership = FpDiv(fees, totalBPT);
             const expectedOwnership = initialBalanceGrowth.sub(1).mul(protocolFeePercentage).div(initialBalanceGrowth);
 
             await expectEqualWithError(bptOwnership, expectedOwnership);

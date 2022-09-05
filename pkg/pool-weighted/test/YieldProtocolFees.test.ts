@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, FpDiv, FpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -131,9 +131,9 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
               const currentSupply = fp(randomFloat(1, 5));
               const { yieldProtocolFees } = await pool.getYieldProtocolFee(normalizedWeights, currentSupply);
 
-              const rateProductGrowth = calculateInvariant(rates, normalizedWeights).mul(fp(1)).div(athRateProduct);
-              const yieldPercentage = fp(1).sub(fp(1).mul(fp(1)).div(rateProductGrowth));
-              const protocolYieldFeesPercentage = yieldPercentage.mul(PROTOCOL_YIELD_FEE_PERCENTAGE).div(fp(1));
+              const rateProductGrowth = FpDiv(calculateInvariant(rates, normalizedWeights), athRateProduct);
+              const yieldPercentage = fp(1).sub(FpDiv(fp(1), rateProductGrowth));
+              const protocolYieldFeesPercentage = FpMul(yieldPercentage, PROTOCOL_YIELD_FEE_PERCENTAGE);
 
               const expectedProtocolFees = currentSupply
                 .mul(protocolYieldFeesPercentage)
