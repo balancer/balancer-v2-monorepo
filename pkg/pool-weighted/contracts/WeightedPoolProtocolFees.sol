@@ -136,7 +136,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     /**
      * @dev Returns the percentage of the Pool's supply which corresponds to protocol fees on yield accrued by the Pool.
      * @param normalizedWeights - The Pool's normalized token weights.
-     * @return yieldProtocolFees - The amount of BPT to be minted as protocol fees on yield.
+     * @return yieldProtocolFeesPercentage - The percentage of the Pool which corresponds to protocol fees on yield.
      * @return athRateProduct - The new all-time-high rate product if it has increased, otherwise zero.
      */
     function _getYieldProtocolFeesPoolPercentage(uint256[] memory normalizedWeights)
