@@ -214,7 +214,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
     // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
     function _updateOldRates() internal {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+        uint256 totalTokens = _getTotalTokens();
+        for (uint256 i = 0; i < totalTokens; ++i) {
             if (_hasRateProvider(i)) _updateOldRate(i);
         }
     }
