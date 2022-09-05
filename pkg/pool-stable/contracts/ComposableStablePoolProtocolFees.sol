@@ -155,6 +155,15 @@ abstract contract ComposableStablePoolProtocolFees is
         // Each invariant should be larger than its precedessor. In case any rounding error results in them being
         // smaller, we adjust the subtraction to equal 0.
 
+        // Note: in the unexpected scenario where the rates of the tokens shrink over time instead of growing (i.e. if the
+        // yield is negative), the non-exempt growth invariant might actually be *smaller* than the swap fee growth
+        // invariant, and the total growth invariant might be *smaller* than the non-exempt growth invariant. Depending on 
+        // the order in which swaps, joins/exits and rate changes happen, as well as their relative magnitudes, it is 
+        // possible for the Pool to either pay more or less protocol fees than it should.
+        // Due to the complexity that handling all of these cases would introduce, this behavior is considered out of
+        // scope, and is expected to be handled on a case-by-case basis if the token rates were to ever decrease (which
+        // would also mean that the Pool value has dropped).
+
         uint256 swapFeeGrowthInvariantDelta = (swapFeeGrowthInvariant > lastPostJoinExitInvariant)
             ? swapFeeGrowthInvariant - lastPostJoinExitInvariant
             : 0;
