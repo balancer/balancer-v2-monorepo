@@ -1014,8 +1014,8 @@ contract ComposableStablePool is
     }
 
     function _onDisableRecoveryMode() internal override {
-        // Enabling recovery mode forcefully sets all protocol fee percentages to zero, increasing the return value of
-        // `getRate()` and effectively forfeiting due protocol fees.
+        // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
+        // increasing the return value of `getRate()` and effectively forfeiting due protocol fees.
 
         // Therefore, when exiting recovery mode we store the current invariant and the amplification factor used to
         // compute it, marking the Pool as free of protocol debt. Otherwise it'd be possible for debt to be
