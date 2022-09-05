@@ -8,7 +8,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -220,7 +220,7 @@ describe('WeightedPool', function () {
           const totalSupply = await pool.totalSupply();
           const invariant = await pool.estimateInvariant();
 
-          const expectedRate = invariant.mul(numTokens).div(totalSupply).mul(fp(1));
+          const expectedRate = fpDiv(invariant.mul(numTokens), totalSupply);
           const rate = await pool.getRate();
 
           expect(rate).to.be.equalWithError(expectedRate, 0.0001);
@@ -264,23 +264,18 @@ describe('WeightedPool', function () {
           expect(originalRate).to.be.lt(rate.mul(9999).div(10000));
         });
 
-        it.skip('minting protocol fee BPT should not affect rate', async () => {
+        it('minting protocol fee BPT should not affect rate', async () => {
           const rateBeforeJoin = await pool.getRate();
 
-          // Perform a very small proportional join. This ensures that the rate should not increase from swap fees
-          // due to this join so this can't mask issues with the rate.
-          const poolBalances = await pool.getBalances();
-          const amountsIn = poolBalances.map((balance) => balance.div(10000));
-
           const latInvariant1 = await pool.getLastPostJoinExitInvariant();
-          const invariant1 = await pool.estimateInvariant();
+          const invariant1 = await pool.instance.getInvariant();
           console.log(`last ${latInvariant1}: current ${invariant1}`);
 
-          await pool.joinGivenIn({ from: lp, amountsIn });
+          await pool.joinAllGivenOut({ from: lp, bptOut: fp(1) });
 
           const rateAfterJoin = await pool.getRate();
           const latInvariant = await pool.getLastPostJoinExitInvariant();
-          const invariant = await pool.estimateInvariant();
+          const invariant = await pool.instance.getInvariant();
           console.log(`last ${latInvariant}: current ${invariant}`);
 
           const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
