@@ -59,7 +59,7 @@ export const arrayAdd = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[
   arrA.map((a, i) => bn(a).add(bn(arrB[i])));
 
 export const arrayFpMul = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
-  arrA.map((a, i) => bn(a).mul(bn(arrB[i])).div(FP_SCALING_FACTOR));
+  arrA.map((a, i) => FpMul(a, arrB[i]));
 
 export const arraySub = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
   arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
