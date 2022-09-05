@@ -273,14 +273,14 @@ describe('WeightedPool', function () {
           const amountsIn = poolBalances.map((balance) => balance.div(10000));
 
           const latInvariant1 = await pool.getLastPostJoinExitInvariant();
-          const invariant1 = await pool.estimateInvariant();
+          const invariant1 = await pool.instance.getInvariant();
           console.log(`last ${latInvariant1}: current ${invariant1}`);
 
           await pool.joinGivenIn({ from: lp, amountsIn });
 
           const rateAfterJoin = await pool.getRate();
           const latInvariant = await pool.getLastPostJoinExitInvariant();
-          const invariant = await pool.estimateInvariant();
+          const invariant = await pool.instance.getInvariant();
           console.log(`last ${latInvariant}: current ${invariant}`);
 
           const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
