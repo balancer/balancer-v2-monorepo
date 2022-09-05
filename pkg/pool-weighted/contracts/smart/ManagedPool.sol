@@ -101,6 +101,25 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
+    // New bitmap in ManagedPool
+    // The first 10 bits are unused.
+    //
+    // Store non-token-based values:
+    // Manager swap fee percentage.
+    // Manager AUM fee percentage and timestamp of last collection.
+    // Start/end values of the swap fee (The MSB "start" swap fee corresponds to the reserved bits in BasePool,
+    // and cannot be written from this contract.)
+    // Flags for the LP allowlist and enabling/disabling trading
+    // [ 10 bits  |     80 bits      |  6 bits  |  32 bits  |  64 bits |  64 bits  ]
+    // [ unused   |  denormWeightSum | # tokens |  aum time |  mgr aum |  mgr swap ]
+    // |MSB                                                                     LSB|
+    bytes32 private _managedData;
+    uint256 private constant _MANAGER_SWAP_FEE_OFFSET = 0;
+    uint256 private constant _MANAGER_AUM_FEE_OFFSET = 64;
+    // uint256 private constant _MANAGER_AUM_TIME_OFFSET = 128;
+    // uint256 private constant _TOTAL_TOKENS_CACHE_OFFSET = 160;
+    // uint256 private constant _DENORM_WEIGHT_SUM_OFFSET = 166;
+
     // Store scaling factor and start/end denormalized weights for each token
     // Mapping should be more efficient than trying to compress it further
     // [ 123 bits |  5 bits  |  64 bits   |   64 bits    |
@@ -128,14 +147,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
     uint256 private _denormWeightSum;
 
-    // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
-    uint256 private _managementSwapFeePercentage;
-
     // Store the token count locally (can change if tokens are added or removed)
     uint256 private _totalTokensCache;
-
-    // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
-    uint256 private _managementAumFeePercentage;
 
     // Timestamp of the most recent collection of management AUM fees.
     // Note that this is only initialized the first time fees are collected.
@@ -260,7 +273,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @notice Returns the management swap fee percentage as an 18-decimal fixed point number.
      */
     function getManagementSwapFeePercentage() public view returns (uint256) {
-        return _managementSwapFeePercentage;
+        return _managedData.decodeUint(_MANAGER_SWAP_FEE_OFFSET, 64);
     }
 
     /**
@@ -349,7 +362,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number.
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
-        return _managementAumFeePercentage;
+        return _managedData.decodeUint(_MANAGER_AUM_FEE_OFFSET, 64);
     }
 
     /**
@@ -812,7 +825,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
         );
 
-        _managementSwapFeePercentage = managementSwapFeePercentage;
+        _managedData = _managedData.insertUint(managementSwapFeePercentage, _MANAGER_SWAP_FEE_OFFSET, 64);
         emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
     }
 
@@ -848,7 +861,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             Errors.MAX_MANAGEMENT_AUM_FEE_PERCENTAGE
         );
 
-        _managementAumFeePercentage = managementAumFeePercentage;
+        _managedData = _managedData.insertUint(managementAumFeePercentage, _MANAGER_AUM_FEE_OFFSET, 64);
         emit ManagementAumFeePercentageChanged(managementAumFeePercentage);
     }
 
@@ -998,7 +1011,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // after the protocol fee has been collected.
         // So totalFee = protocolFee + (1 - protocolFee) * managementFee
         uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
-        uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
+        uint256 managementSwapFeePercentage = getManagementSwapFeePercentage();
 
         if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
             return;
