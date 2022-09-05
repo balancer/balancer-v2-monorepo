@@ -8,35 +8,20 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
+
 describe('YearnLinearPool', function () {
-  let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
   let poolFactory: Contract;
-  let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
-  let mockYearnTokenVault: Contract;
-  const sharePrice = fp(1.05);
+  let owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
   before('setup', async () => {
-    [, lp, trader, owner] = await ethers.getSigners();
-  });
-
-  sharedBeforeEach('deploy tokens', async () => {
-    mainToken = await Token.create('DAI');
-    mockYearnTokenVault = await deploy('MockYearnTokenVault', {
-      args: ['yvDAI', 'yvDAI', 18, mainToken.address, sharePrice],
-    });
-    wrappedToken = await Token.deployedAt(mockYearnTokenVault.address);
-
-    tokens = new TokenList([mainToken, wrappedToken]).sort();
-
-    await tokens.mint({ to: [lp, trader], amount: fp(100) });
+    [, , , owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy pool factory', async () => {
@@ -46,26 +31,83 @@ describe('YearnLinearPool', function () {
     });
   });
 
+
+  async function deployPool(mainTokenAddress: string, wrappedTokenAddress: string) {
+    const tx = await poolFactory.create(
+      'Linear pool',
+      'BPT',
+      mainTokenAddress,
+      wrappedTokenAddress,
+      bn(0),
+      POOL_SWAP_FEE_PERCENTAGE,
+      owner.address
+    );
+
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+    return LinearPool.deployedAt(event.args.pool);
+  }
+
   describe('getWrappedTokenRate', () => {
-    sharedBeforeEach('deploy and initialize pool', async () => {
-      const tx = await poolFactory.create(
-        'Balancer Pool Token',
-        'BPT',
-        mainToken.address,
-        wrappedToken.address,
-        bn(0),
-        POOL_SWAP_FEE_PERCENTAGE,
-        owner.address
-      );
+    //The yearn vault pricePerShare is a decimal scaled version of getRate
+    //for tokens with 6 decimals (USDC), pps is returned as 6 decimals
+    //for tokens with 18 decimals (DAI), pps is returned as 18 decimals, etc, etc.
+    //We test that under different circumstances, the wrappedTokenRate is always correct
+    //and properly scaled to 18 decimals, regardless of token decimals.
 
-      const receipt = await tx.wait();
-      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+    it('should return correct rates for 18 decimal tokens', async () => {
+      const token = await Token.create('DAI');
+      const tokenVault = await deploy('MockYearnTokenVault', {
+        args: ['yvDAI', 'yvDAI', 18, token.address, fp(1)],
+      });
 
-      pool = await LinearPool.deployedAt(event.args.pool);
+      const pool = await deployPool(token.address, tokenVault.address);
+
+      await tokenVault.setPricePerShare(fp(1.05));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.05));
+
+      await tokenVault.setPricePerShare(fp(1.03));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.03));
+
+      await tokenVault.setPricePerShare(fp(2.01));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2.01));
     });
 
-    it('returns the expected value', async () => {
-      expect(await pool.getWrappedTokenRate()).to.be.eq(sharePrice);
+    it('should return correct rates for 6 decimal tokens', async () => {
+      const token = await Token.create({ symbol: 'USDC', decimals: 6 });
+      const tokenVault = await deploy('MockYearnTokenVault', {
+        args: ['yvUSDC', 'yvUSDC', 6, token.address, 1e6],
+      });
+
+      const pool = await deployPool(token.address, tokenVault.address);
+
+      await tokenVault.setPricePerShare(1.05e6);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.05));
+
+      await tokenVault.setPricePerShare(1.03e6);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.03));
+
+      await tokenVault.setPricePerShare(2.01e6);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2.01));
+    });
+
+    it('should return correct rates for 8 decimal tokens', async () => {
+      const token = await Token.create({ symbol: 'wBTC', decimals: 6 });
+      const tokenVault = await deploy('MockYearnTokenVault', {
+        args: ['yvBTC', 'yvBTC', 8, token.address, 1e8],
+      });
+
+      const pool = await deployPool(token.address, tokenVault.address);
+
+      await tokenVault.setPricePerShare(1.05e8);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.05));
+
+      await tokenVault.setPricePerShare(1.03e8);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.03));
+
+      await tokenVault.setPricePerShare(2.01e8);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2.01));
     });
   });
 });

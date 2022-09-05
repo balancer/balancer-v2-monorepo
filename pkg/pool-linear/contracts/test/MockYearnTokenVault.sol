@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 //the TestToken ERC20 implementation
 contract MockYearnTokenVault is TestToken {
     address private immutable _token;
-    uint256 private immutable _pricePerShare;
+    uint256 private _pricePerShare;
 
     constructor(
         string memory name,
@@ -39,6 +39,10 @@ contract MockYearnTokenVault is TestToken {
 
     function pricePerShare() external view returns (uint256) {
         return _pricePerShare;
+    }
+
+    function setPricePerShare(uint256 _newPricePerShare) public {
+        _pricePerShare = _newPricePerShare;
     }
 
     function deposit(uint256 _amount, address recipient) public returns (uint256) {
