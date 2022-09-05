@@ -85,6 +85,20 @@ describe('ProtocolFeeCache', () => {
           expect(await protocolFeeCache.getProtocolFeePercentageCache(feeType)).to.equal(NEW_VALUE);
         });
 
+        it('calls the hook before the cache is updated', async () => {
+          const preSwapFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP);
+          const preYieldFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.YIELD);
+          const preAumFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.AUM);
+
+          const receipt = await protocolFeeCache.updateProtocolFeePercentageCache();
+
+          expectEvent.inReceipt(await receipt.wait(), 'FeesInBeforeHook', {
+            swap: preSwapFee,
+            yield: preYieldFee,
+            aum: preAumFee,
+          });
+        });
+
         it('emits an event when updating the cache', async () => {
           const receipt = await protocolFeeCache.updateProtocolFeePercentageCache();
 

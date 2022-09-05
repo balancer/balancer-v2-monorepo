@@ -118,6 +118,8 @@ abstract contract ProtocolFeeCache is RecoveryMode {
      * Updates the cache to the latest value set by governance.
      */
     function updateProtocolFeePercentageCache() external {
+        _beforeProtocolFeeCacheUpdate();
+
         if (getProtocolSwapFeeDelegation()) {
             _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP);
         }
@@ -125,6 +127,13 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.YIELD);
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.AUM);
     }
+
+    /**
+     * @dev Override in derived contracts to perform some action before the cache is updated. This is typically relevant
+     * to Pools that incur protocol debt between operations. To avoid altering the amount due retroactively, this debt
+     * needs to be paid before the fee percentages change.
+     */
+    function _beforeProtocolFeeCacheUpdate() internal virtual {}
 
     /**
      * @dev Returns whether this Pool tracks protocol swap fee changes in the IProtocolFeePercentagesProvider.
