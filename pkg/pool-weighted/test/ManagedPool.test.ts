@@ -1781,7 +1781,7 @@ describe('ManagedPool', function () {
 
         expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(lastAUMCollectionTimestamp);
 
-        // On disabling recovery mode we expect the `_lastAumFeeCollectionTimestamp` to be be equal to the current time.
+        // On disabling recovery mode we expect the AUM fee collection timestamp to be be equal to the current time.
         const tx = await pool.disableRecoveryMode();
         const expectedLastAUMCollectionTimestamp = await receiptTimestamp(tx.wait());
         const updatedLastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();

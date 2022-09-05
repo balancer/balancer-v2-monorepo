@@ -116,7 +116,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     bytes32 private _managedData;
     uint256 private constant _MANAGER_SWAP_FEE_OFFSET = 0;
     uint256 private constant _MANAGER_AUM_FEE_OFFSET = 64;
-    // uint256 private constant _MANAGER_AUM_TIME_OFFSET = 128;
+    uint256 private constant _MANAGER_AUM_TIME_OFFSET = 128;
     // uint256 private constant _TOTAL_TOKENS_CACHE_OFFSET = 160;
     // uint256 private constant _DENORM_WEIGHT_SUM_OFFSET = 166;
 
@@ -149,10 +149,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Store the token count locally (can change if tokens are added or removed)
     uint256 private _totalTokensCache;
-
-    // Timestamp of the most recent collection of management AUM fees.
-    // Note that this is only initialized the first time fees are collected.
-    uint256 private _lastAumFeeCollectionTimestamp;
 
     // Event declarations
 
@@ -279,8 +275,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     /**
      * @notice Returns the timestamp of the last collection of AUM fees.
      */
-    function getLastAumFeeCollectionTimestamp() external view returns (uint256) {
-        return _lastAumFeeCollectionTimestamp;
+    function getLastAumFeeCollectionTimestamp() public view returns (uint256) {
+        return _managedData.decodeUint(_MANAGER_AUM_TIME_OFFSET, 32);
     }
 
     /**
@@ -1167,7 +1163,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
         // charged to the remaining LPs for the full period. We then update the collection timestamp on Recovery mode
         // exits so that no AUM fees are accrued over this period.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
+        _managedData = _managedData.insertUint(block.timestamp, _MANAGER_SWAP_FEE_OFFSET, 64);
 
         return super._doRecoveryModeExit(balances, totalSupply, userData);
     }
@@ -1323,14 +1319,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * This function is called automatically on joins and exits.
      */
     function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256, uint256) {
-        uint256 lastCollection = _lastAumFeeCollectionTimestamp;
+        uint256 lastCollection = getLastAumFeeCollectionTimestamp();
         uint256 currentTime = block.timestamp;
 
         // If no time has passed since the last join/exit we've already collected fees so we can return early.
         if (currentTime <= lastCollection) return (0, 0);
 
         // Reset the collection timer to the current block
-        _lastAumFeeCollectionTimestamp = currentTime;
+        _managedData = _managedData.insertUint(currentTime, _MANAGER_AUM_TIME_OFFSET, 32);
 
         uint256 managementAumFeePercentage = getManagementAumFeePercentage();
 
@@ -1373,7 +1369,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
         // charged to the remaining LPs for the full period. We then update the collection timestamp so that no AUM fees
         // are accrued over this period.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
+        _managedData = _managedData.insertUint(block.timestamp, _MANAGER_AUM_TIME_OFFSET, 32);
     }
 
     // Functions that convert weights between internal (denormalized) and external (normalized) representations
