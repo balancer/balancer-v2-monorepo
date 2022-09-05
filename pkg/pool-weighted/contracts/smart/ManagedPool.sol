@@ -118,7 +118,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     uint256 private constant _MANAGER_AUM_FEE_OFFSET = 64;
     uint256 private constant _MANAGER_AUM_TIME_OFFSET = 128;
     uint256 private constant _TOTAL_TOKENS_CACHE_OFFSET = 160;
-    // uint256 private constant _DENORM_WEIGHT_SUM_OFFSET = 166;
+    uint256 private constant _DENORM_WEIGHT_SUM_OFFSET = 166;
 
     // Store scaling factor and start/end denormalized weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -138,14 +138,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
-
-    // We need to work with normalized weights (i.e. they should add up to 100%), but storing normalized weights
-    // would require updating all weights whenever one of them changes, for example in an add or remove token
-    // operation. Instead, we keep track of the sum of all denormalized weights, and dynamically normalize them
-    // for I/O by multiplying or dividing by the `_denormWeightSum`.
-    //
-    // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
-    uint256 private _denormWeightSum;
 
     // Event declarations
 
@@ -210,15 +202,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
-        _managedData = bytes32(0).insertUint(totalTokens, _TOTAL_TOKENS_CACHE_OFFSET, 6);
+        // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
+        _managedData = bytes32(0).insertUint(totalTokens, _TOTAL_TOKENS_CACHE_OFFSET, 6).insertUint(
+            FixedPoint.ONE,
+            _DENORM_WEIGHT_SUM_OFFSET,
+            80
+        );
 
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
-
-        // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
-        _denormWeightSum = FixedPoint.ONE;
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -388,7 +382,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         startWeights = new uint256[](totalTokens);
         endWeights = new uint256[](totalTokens);
 
-        uint256 denormWeightSum = _denormWeightSum;
+        uint256 denormWeightSum = getDenormalizedWeightSum();
         for (uint256 i = 0; i < totalTokens; i++) {
             bytes32 state = _tokenState[tokens[i]];
 
@@ -409,7 +403,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * tokens. This value is an internal implementation detail and typically useless from the outside.
      */
     function getDenormalizedWeightSum() public view returns (uint256) {
-        return _denormWeightSum;
+        return _managedData.decodeUint(_DENORM_WEIGHT_SUM_OFFSET, 80);
     }
 
     function _getMaxTokens() internal pure virtual override returns (uint256) {
@@ -631,7 +625,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         // Adding the new token to the pool increases the total weight across all the Pool's tokens.
         // We then update the sum of denormalized weights used to account for this.
-        _denormWeightSum = weightSumAfterAdd;
+        _managedData = _managedData.insertUint(weightSumAfterAdd, _DENORM_WEIGHT_SUM_OFFSET, 80);
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
@@ -656,7 +650,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // As we're working with normalized weights, `totalWeight` is equal to 1.
         //
         // We can then easily calculate the new denormalized weight sum by applying this ratio to the old sum.
-        uint256 weightSumAfterAdd = _denormWeightSum.divDown(FixedPoint.ONE - normalizedWeight);
+        uint256 weightSumAfterAdd = getDenormalizedWeightSum().divDown(FixedPoint.ONE - normalizedWeight);
 
         // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
         // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.
@@ -770,9 +764,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // all other token weights accordingly.
         // Clean up data structures and update the token count
         delete _tokenState[token];
-        _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight, _denormWeightSum);
 
-        _managedData = _managedData.insertUint(tokens.length - 1, _TOTAL_TOKENS_CACHE_OFFSET, 6);
+        bytes32 managedData = _managedData;
+        uint256 denormWeightSum = managedData.decodeUint(_DENORM_WEIGHT_SUM_OFFSET, 80);
+        uint256 tokenDenormalizedWeight = _denormalizeWeight(tokenNormalizedWeight, denormWeightSum);
+
+        _managedData = managedData
+            .insertUint(denormWeightSum - tokenDenormalizedWeight, _DENORM_WEIGHT_SUM_OFFSET, 80)
+            .insertUint(tokens.length - 1, _TOTAL_TOKENS_CACHE_OFFSET, 6);
 
         if (burnAmount > 0) {
             _burnPoolTokens(msg.sender, burnAmount);
@@ -903,7 +902,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return
             _normalizeWeight(
                 GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime),
-                _denormWeightSum
+                getDenormalizedWeightSum()
             );
     }
 
@@ -919,7 +918,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
         uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
 
-        uint256 denormWeightSum = _denormWeightSum;
+        uint256 denormWeightSum = getDenormalizedWeightSum();
         for (uint256 i = 0; i < numTokens; i++) {
             bytes32 tokenData = _tokenState[tokens[i]];
             uint256 startWeight = tokenData.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(
@@ -1179,7 +1178,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual {
         uint256 normalizedSum;
 
-        uint256 denormWeightSum = _denormWeightSum;
+        uint256 denormWeightSum = getDenormalizedWeightSum();
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
