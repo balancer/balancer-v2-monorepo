@@ -6,19 +6,21 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { expect } from 'chai';
 import { setChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
+import { BalancerMinterAuthorization } from '@balancer-labs/balancer-js/src/utils/signatures';
+import { currentTimestamp, WEEK } from '@balancer-labs/v2-helpers/src/time';
 
 describe('GaugeActions', function () {
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
   let admin: SignerWithAddress, sender: SignerWithAddress, other: SignerWithAddress, recipient: SignerWithAddress;
 
-  let adaptor: Contract, balMinter: Contract;
+  let adaptor: Contract, gaugeController: Contract, balMinter: Contract;
   let BAL: Contract, veBAL: Contract, lpToken: Contract;
 
   let gaugeFactory: Contract;
@@ -51,13 +53,14 @@ describe('GaugeActions', function () {
   sharedBeforeEach('set up relayer', async () => {
     adaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
 
-    const gaugeController = await deploy('v2-liquidity-mining/MockGaugeController', {
+    gaugeController = await deploy('v2-liquidity-mining/MockGaugeController', {
       args: [veBAL.address, adaptor.address],
     });
 
     const balTokenAdmin = await deploy('v2-liquidity-mining/MockBalancerTokenAdmin', {
       args: [vault.address, BAL.address],
     });
+    await BAL.connect(admin).grantRole(await BAL.MINTER_ROLE(), balTokenAdmin.address);
 
     balMinter = await deploy('v2-liquidity-mining/BalancerMinter', {
       args: [balTokenAdmin.address, gaugeController.address],
@@ -96,6 +99,10 @@ describe('GaugeActions', function () {
       'v2-liquidity-mining/LiquidityGaugeV5',
       await deployGauge(gaugeFactory, lpToken.address) // No weight cap.
     );
+
+    // Type weight is ignored in the mock controller.
+    await gaugeController.add_type('Ethereum', 0);
+    await gaugeController.add_gauge(gauge.address, 0); // Type: Ethereum in mock controller.
   });
 
   describe('gaugeDeposit', () => {
@@ -399,6 +406,46 @@ describe('GaugeActions', function () {
     }
   });
 
+  describe('gaugeMint', () => {
+    sharedBeforeEach('grant mint approval to sender via relayer', async () => {
+      const { v, r, s, deadline } = await BalancerMinterAuthorization.signSetMinterApproval(
+        balMinter,
+        relayer.address,
+        true,
+        sender
+      );
+
+      await relayer
+        .connect(sender)
+        .multicall([encodeGaugeSetMinterApproval({ approval: true, user: sender, deadline, v, r, s })]);
+    });
+
+    sharedBeforeEach('stake BPT in gauge and mock votes in the controller', async () => {
+      await lpToken.connect(sender).approve(gauge.address, MAX_UINT256);
+      await gauge.connect(sender)['deposit(uint256)'](await lpToken.balanceOf(sender.address));
+      await gaugeController.setGaugeWeight(gauge.address, fp(1));
+    });
+
+    context('when caller is approved to mint', () => {
+      it('mints BAL to sender', async () => {
+        // We just check the transfer and its 'from' / 'to' attributes; the actual amount depends on the gauge votes
+        // which is mocked and out of scope of this test.
+        const tx = await relayer
+          .connect(sender)
+          .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference: bn(0) })]);
+        expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: sender.address }, BAL.address);
+      });
+    });
+
+    context('when caller is not approved to mint', () => {
+      it('reverts', async () => {
+        expect(
+          relayer.connect(other).multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference: bn(0) })])
+        ).to.be.revertedWith('Caller not allowed to mint for user');
+      });
+    });
+  });
+
   async function deployGauge(gaugeFactory: Contract, poolAddress: string): Promise<string> {
     const tx = await gaugeFactory.create(poolAddress, fp(1)); // No weight cap.
     const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
@@ -432,5 +479,27 @@ describe('GaugeActions', function () {
       params.recipient.address,
       params.amount,
     ]);
+  }
+
+  function encodeGaugeSetMinterApproval(params: {
+    approval: boolean;
+    user: SignerWithAddress;
+    deadline: BigNumber;
+    v: number;
+    r: string;
+    s: string;
+  }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeSetMinterApproval', [
+      params.approval,
+      params.user.address,
+      params.deadline,
+      params.v,
+      params.r,
+      params.s,
+    ]);
+  }
+
+  function encodeGaugeMint(params: { gauges: string[]; outputReference: BigNumber }): string {
+    return relayerLibrary.interface.encodeFunctionData('gaugeMint', [params.gauges, params.outputReference]);
   }
 });
