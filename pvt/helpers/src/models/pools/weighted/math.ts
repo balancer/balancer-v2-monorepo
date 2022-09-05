@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
-import { BigNumberish, bn, decimal, fp, fromFp, toFp } from '../../../numbers';
+import { BigNumberish, bn, decimal, fp, fromFp, toFp, fpDiv } from '../../../numbers';
 
 export function calculateInvariant(fpRawBalances: BigNumberish[], fpRawWeights: BigNumberish[]): BigNumber {
   const normalizedWeights = fpRawWeights.map(fromFp);
@@ -187,24 +187,22 @@ export function calculateOneTokenSwapFeeAmount(
   return toFp(accruedFees);
 }
 
-export function calculateBPTSwapFeeFeeAmount(
-  fpBptTotalSupply: BigNumberish,
-  lastInvariant: BigNumberish,
-  currentInvariant: BigNumberish,
+export function calculateBPTSwapFeeAmount(
+  fpInvariantGrowthRatio: BigNumberish,
+  preSupply: BigNumberish,
+  postSupply: BigNumberish,
   fpProtocolSwapFeePercentage: BigNumberish
-): Decimal {
-  if (bn(currentInvariant).lte(lastInvariant)) {
-    return decimal(1);
+): BigNumber {
+  const supplyGrowthRatio = fpDiv(postSupply, preSupply);
+
+  if (bn(fpInvariantGrowthRatio).lte(supplyGrowthRatio)) {
+    return bn(0);
   }
+  const swapFeePercentage = fp(1).sub(fpDiv(supplyGrowthRatio, fpInvariantGrowthRatio));
+  const k = swapFeePercentage.mul(fpProtocolSwapFeePercentage).div(fp(1));
 
-  const growth = decimal(currentInvariant).div(decimal(lastInvariant));
-
-  const k = fromFp(fpProtocolSwapFeePercentage)
-    .mul(growth.sub(decimal(1)))
-    .div(growth);
-
-  const numerator = fromFp(fpBptTotalSupply).mul(k);
-  const denominator = decimal(1).sub(k);
+  const numerator = bn(postSupply).mul(k);
+  const denominator = fp(1).sub(k);
 
   return numerator.div(denominator);
 }

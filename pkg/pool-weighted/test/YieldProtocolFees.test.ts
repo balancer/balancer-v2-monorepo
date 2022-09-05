@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -14,7 +14,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 
 const randomFloat = (min: number, max: number) => random(min, max, true);
 
-describe('YieldProtocolFees', () => {
+describe('WeightedPoolProtocolFees (Yield)', () => {
   let vault: Vault;
   let pool: Contract;
   let rateProviders: (Contract | string)[];
@@ -39,12 +39,12 @@ describe('YieldProtocolFees', () => {
   async function deployPool(numTokens: number, { payYieldFees } = { payYieldFees: true }) {
     const tokens = await TokenList.create(numTokens, { sorted: true });
     if (payYieldFees) {
-      rateProviders = await tokens.asyncMap(async () => await deploy('v2-pool-utils/MockRateProvider'));
+      rateProviders = await tokens.asyncMap(() => deploy('v2-pool-utils/MockRateProvider'));
     } else {
-      rateProviders = await tokens.asyncMap(async () => ZERO_ADDRESS);
+      rateProviders = tokens.map(() => ZERO_ADDRESS);
     }
 
-    pool = await deploy('MockYieldProtocolFees', {
+    pool = await deploy('MockWeightedPoolProtocolFees', {
       args: [
         vault.address,
         vault.protocolFeesProvider.address,
@@ -103,88 +103,65 @@ describe('YieldProtocolFees', () => {
         });
 
         context('when pool pays fees on yield', () => {
-          context('when first called', () => {
-            sharedBeforeEach('check athRateProduct is uninitialized', async () => {
-              expect(await pool.getATHRateProduct()).to.be.eq(0);
+          sharedBeforeEach('initialize athRateProduct', async () => {
+            const initialRateProduct = await pool.getRateProduct(toNormalizedWeights(rateProviders.map(() => fp(1))));
+            await pool.updateATHRateProduct(initialRateProduct);
+          });
+
+          context('when rate product has increased', () => {
+            let rates: BigNumber[];
+            sharedBeforeEach('set rates', async () => {
+              rates = rateProviders.map(() => fp(randomFloat(1, 2)));
+
+              for (const [index, provider] of rateProviders.entries()) {
+                if (typeof provider !== 'string') await provider.mockRate(rates[index]);
+              }
             });
 
-            it('initializes athRateProduct', async () => {
-              await pool.getYieldProtocolFee(normalizedWeights, fp(1));
+            it('it returns the updated athRateProduct', async () => {
+              const { athRateProduct } = await pool.getYieldProtocolFee(normalizedWeights, fp(1));
 
-              // All rate providers return 1 by default so the product is 1.
-              const expectedRateProduct = fp(1);
-              expect(await pool.getATHRateProduct()).to.be.almostEqual(expectedRateProduct, 0.0001);
+              const expectedRateProduct = calculateInvariant(rates, normalizedWeights);
+              expect(athRateProduct).to.be.almostEqual(expectedRateProduct, 0.0001);
             });
 
-            it('returns zero', async () => {
-              const protocolFees = await pool.callStatic.getYieldProtocolFee(normalizedWeights, fp(1));
+            it('it returns the expected amount of protocol fees', async () => {
+              const athRateProduct = await pool.getATHRateProduct();
 
-              expect(protocolFees).to.be.eq(0);
+              const currentSupply = fp(randomFloat(1, 5));
+              const { yieldProtocolFees } = await pool.getYieldProtocolFee(normalizedWeights, currentSupply);
+
+              const rateProductGrowth = fpDiv(calculateInvariant(rates, normalizedWeights), athRateProduct);
+              const yieldPercentage = fp(1).sub(fpDiv(fp(1), rateProductGrowth));
+              const protocolYieldFeesPercentage = fpMul(yieldPercentage, PROTOCOL_YIELD_FEE_PERCENTAGE);
+
+              const expectedProtocolFees = currentSupply
+                .mul(protocolYieldFeesPercentage)
+                .div(fp(1).sub(protocolYieldFeesPercentage));
+              expect(yieldProtocolFees).to.be.almostEqual(expectedProtocolFees, 0.0001);
             });
           });
 
-          context('on subsequent calls', () => {
-            sharedBeforeEach('initialize athRateProduct', async () => {
-              await pool.getYieldProtocolFee(normalizedWeights, fp(1));
-              expect(await pool.getATHRateProduct()).to.be.gt(0);
+          context('when rate product has decreased', () => {
+            let rates: BigNumber[];
+            sharedBeforeEach('set rates', async () => {
+              rates = rateProviders.map(() => fp(random(0.5, 1)));
+
+              for (const [index, provider] of rateProviders.entries()) {
+                if (typeof provider !== 'string') await provider.mockRate(rates[index]);
+              }
             });
 
-            context('when rate product has increased', () => {
-              let rates: BigNumber[];
-              sharedBeforeEach('set rates', async () => {
-                rates = rateProviders.map(() => fp(randomFloat(1, 2)));
+            it('it returns zero value for athRateProduct', async () => {
+              const { athRateProduct } = await pool.getYieldProtocolFee(normalizedWeights, fp(1));
 
-                for (const [index, provider] of rateProviders.entries()) {
-                  if (typeof provider !== 'string') await provider.mockRate(rates[index]);
-                }
-              });
-
-              it('it updates athRateProduct', async () => {
-                await pool.getYieldProtocolFee(normalizedWeights, fp(1));
-
-                const expectedRateProduct = calculateInvariant(rates, normalizedWeights);
-                expect(await pool.getATHRateProduct()).to.be.almostEqual(expectedRateProduct, 0.0001);
-              });
-
-              it('it returns the expected amount of protocol fees', async () => {
-                const athRateProduct = await pool.getATHRateProduct();
-
-                const currentSupply = fp(randomFloat(1, 5));
-                const protocolFees = await pool.callStatic.getYieldProtocolFee(normalizedWeights, currentSupply);
-
-                const rateProductGrowth = calculateInvariant(rates, normalizedWeights).mul(fp(1)).div(athRateProduct);
-                const yieldPercentage = fp(1).sub(fp(1).mul(fp(1)).div(rateProductGrowth));
-                const protocolYieldFeesPercentage = yieldPercentage.mul(PROTOCOL_YIELD_FEE_PERCENTAGE).div(fp(1));
-
-                const expectedProtocolFees = currentSupply
-                  .mul(protocolYieldFeesPercentage)
-                  .div(fp(1).sub(protocolYieldFeesPercentage));
-                expect(protocolFees).to.be.almostEqual(expectedProtocolFees, 0.0001);
-              });
+              expect(athRateProduct).to.be.eq(0);
             });
 
-            context('when rate product has decreased', () => {
-              let rates: BigNumber[];
-              sharedBeforeEach('set rates', async () => {
-                rates = rateProviders.map(() => fp(random(0.5, 1)));
+            it('it returns zero', async () => {
+              const { yieldProtocolFees } = await pool.getYieldProtocolFee(normalizedWeights, fp(1));
 
-                for (const [index, provider] of rateProviders.entries()) {
-                  if (typeof provider !== 'string') await provider.mockRate(rates[index]);
-                }
-              });
-
-              it("it doesn't change athRateProduct", async () => {
-                const expectedATHRateProduct = await pool.getATHRateProduct();
-                await pool.getYieldProtocolFee(normalizedWeights, fp(1));
-
-                expect(await pool.getATHRateProduct()).to.be.eq(expectedATHRateProduct);
-              });
-
-              it('it returns zero', async () => {
-                const protocolFees = await pool.callStatic.getYieldProtocolFee(normalizedWeights, fp(1));
-
-                expect(protocolFees).to.be.eq(0);
-              });
+              expect(yieldProtocolFees).to.be.eq(0);
             });
           });
         });
@@ -194,36 +171,20 @@ describe('YieldProtocolFees', () => {
             await deployPool(numTokens, { payYieldFees: false });
           });
 
-          function itSkipsFeeLogic() {
-            it('does not initialize athRateProduct', async () => {
-              await pool.getYieldProtocolFee(normalizedWeights, fp(1));
-
-              expect(await pool.getATHRateProduct()).to.be.eq(0);
-            });
-
-            it('returns zero', async () => {
-              const protocolFees = await pool.callStatic.getYieldProtocolFee(normalizedWeights, fp(1));
-
-              expect(protocolFees).to.be.eq(0);
-            });
-          }
-
-          context('when first called', () => {
-            sharedBeforeEach('check athRateProduct is uninitialized', async () => {
-              expect(await pool.getATHRateProduct()).to.be.eq(0);
-            });
-
-            itSkipsFeeLogic();
+          sharedBeforeEach('check athRateProduct is uninitialized', async () => {
+            expect(await pool.getATHRateProduct()).to.be.eq(0);
           });
 
-          context('on subsequent calls', () => {
-            sharedBeforeEach('perform initialisation step', async () => {
-              // The first call to `getYieldProtocolFee` would usually initialise the fee logic.
-              // This is not the case for fee-exempt pools but we do it to check subsequent calls happen correctly.
-              await pool.getYieldProtocolFee(normalizedWeights, fp(1));
-            });
+          it('returns zero protocol fees', async () => {
+            const { yieldProtocolFees } = await pool.getYieldProtocolFee(normalizedWeights, fp(1));
 
-            itSkipsFeeLogic();
+            expect(yieldProtocolFees).to.be.eq(0);
+          });
+
+          it('returns zero value for athRateProduct', async () => {
+            const { athRateProduct } = await pool.getYieldProtocolFee(normalizedWeights, fp(1));
+
+            expect(athRateProduct).to.be.eq(0);
           });
         });
       });

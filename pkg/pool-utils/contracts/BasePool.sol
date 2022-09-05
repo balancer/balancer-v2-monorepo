@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IAssetManager.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
@@ -51,7 +52,14 @@ import "./RecoveryMode.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToken, TemporarilyPausable, RecoveryMode {
+abstract contract BasePool is
+    IBasePool,
+    IControlledPool,
+    BasePoolAuthorization,
+    BalancerPoolToken,
+    TemporarilyPausable,
+    RecoveryMode
+{
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
@@ -179,7 +187,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override authenticate whenNotPaused {
         _setSwapFeePercentage(swapFeePercentage);
     }
 
@@ -218,6 +226,18 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _miscData = _miscData.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
 
         emit RecoveryModeStateChanged(enabled);
+
+        // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
+        // We do not allow an `_onEnableRecoveryMode()` hook as this may jeopardize the ability to enable Recovery mode.
+        if (!enabled) _onDisableRecoveryMode();
+    }
+
+    /**
+     * @dev Performs any necessary actions on the disabling of Recovery Mode.
+     * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forward.
+     */
+    function _onDisableRecoveryMode() internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -229,6 +249,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
         public
         virtual
+        override
         authenticate
         whenNotPaused
     {

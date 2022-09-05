@@ -8,13 +8,14 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
   arrayAdd,
-  arrayFpMul,
   BigNumberish,
   bn,
   bnSum,
   fp,
-  FP_SCALING_FACTOR,
   arraySub,
+  arrayFpMul,
+  fpMul,
+  fpDiv,
 } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -355,7 +356,7 @@ describe('ComposableStablePoolProtocolFees', () => {
         preInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
 
         // The virtual supply is some factor of the invariant
-        preVirtualSupply = preInvariant.mul(fp(random(1.5, 10))).div(FP_SCALING_FACTOR);
+        preVirtualSupply = fpMul(preInvariant, fp(random(1.5, 10)));
 
         // We don't use the stored amplification factor and invariant as the lastJoinExit values in tests as we pass
         // them in. However this function also sets the old token rates which we *do* use.
@@ -442,9 +443,9 @@ describe('ComposableStablePoolProtocolFees', () => {
 
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(currentBalances);
-              const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas.mul(swapFee).div(FP_SCALING_FACTOR);
+              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, swapFee);
             });
           }
 
@@ -465,16 +466,14 @@ describe('ComposableStablePoolProtocolFees', () => {
 
               const deltaSum = bnSum(
                 preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i]
-                    ? 0
-                    : balance.mul(rates[i].sub(FP_SCALING_FACTOR)).div(FP_SCALING_FACTOR)
+                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
                 )
               );
 
               const currSum = bnSum(currentBalances);
-              const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas.mul(yieldFee).div(FP_SCALING_FACTOR);
+              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, yieldFee);
             });
           }
 
@@ -503,18 +502,17 @@ describe('ComposableStablePoolProtocolFees', () => {
               const swapFeeDeltaSum = bnSum(swapFeeDeltas);
               const yieldDeltaSum = bnSum(
                 preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : balance.mul(rates[i].sub(fp(1))).div(FP_SCALING_FACTOR)
+                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
                 )
               );
               const currSum = bnSum(currentBalances);
 
-              const poolPercentageDueToSwapFeeDeltas = swapFeeDeltaSum.mul(FP_SCALING_FACTOR).div(currSum);
-              const poolPercentageDueToYieldDeltas = yieldDeltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const poolPercentageDueToSwapFeeDeltas = fpDiv(swapFeeDeltaSum, currSum);
+              const poolPercentageDueToYieldDeltas = fpDiv(yieldDeltaSum, currSum);
 
-              expectedProtocolOwnershipPercentage = poolPercentageDueToSwapFeeDeltas
-                .mul(swapFee)
-                .div(FP_SCALING_FACTOR)
-                .add(poolPercentageDueToYieldDeltas.mul(yieldFee).div(FP_SCALING_FACTOR));
+              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToSwapFeeDeltas, swapFee).add(
+                fpMul(poolPercentageDueToYieldDeltas, yieldFee)
+              );
             });
           }
 
@@ -700,15 +698,15 @@ describe('ComposableStablePoolProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              const amounts = preBalances.map((balance) => balance.mul(ratio).div(fp(1)));
+              const amounts = preBalances.map((balance) => fpMul(balance, ratio));
 
               // Compute the balances, and increase/decrease the virtual supply proportionally
               if (op == Operation.JOIN) {
                 currentBalances = arrayAdd(preBalances, amounts);
-                currentVirtualSupply = preVirtualSupply.mul(fp(1).add(ratio)).div(fp(1));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
               } else {
                 currentBalances = arraySub(preBalances, amounts);
-                currentVirtualSupply = preVirtualSupply.mul(fp(1).sub(ratio)).div(fp(1));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
               }
             });
           }
@@ -718,21 +716,21 @@ describe('ComposableStablePoolProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              const proportionalAmounts = preBalances.map((balance) => balance.mul(ratio).div(fp(1)));
+              const proportionalAmounts = preBalances.map((balance) => fpMul(balance, ratio));
 
               // Compute deltas that are going to modify the proportional amounts. These will be swap fees.
-              const deltas = proportionalAmounts.map((amount) => fp(random(0.05, 0.1)).mul(amount).div(fp(1)));
+              const deltas = proportionalAmounts.map((amount) => fpMul(amount, fp(random(0.05, 0.1))));
 
               // Compute the balances with the added deltas, and the virtual supply without taking them into account
               // (because they are fees).
               if (op == Operation.JOIN) {
                 const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
-                currentVirtualSupply = preVirtualSupply.mul(fp(1).add(ratio)).div(fp(1));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
               } else {
                 const proportionalBalances = arraySub(preBalances, proportionalAmounts);
-                currentVirtualSupply = preVirtualSupply.mul(fp(1).sub(ratio)).div(fp(1));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
               }
@@ -743,8 +741,8 @@ describe('ComposableStablePoolProtocolFees', () => {
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(currentBalances);
 
-              const poolFeePercentage = deltaSum.mul(fp(1)).div(currSum);
-              expectedProtocolOwnershipPercentage = poolFeePercentage.mul(swapFee).div(fp(1));
+              const poolFeePercentage = fpDiv(deltaSum, currSum);
+              expectedProtocolOwnershipPercentage = fpMul(poolFeePercentage, swapFee);
             });
           }
 
