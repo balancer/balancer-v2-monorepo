@@ -16,6 +16,7 @@ import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-secondary/SecondaryPoolUserData.sol";
@@ -179,45 +180,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         return _MAX_TOKEN_BALANCE;
     }
 
-    function initialize() external {
-        // join the pool
-        bytes32 poolId = getPoolId();
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
-        //IAsset[] memory _assets = new IAsset[](2);
-        //_assets[0] = IAsset(address(_security));
-        //_assets[1] = IAsset(address(_currency));
-        uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-        _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
-        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            //assets: _assets,
-            assets: _asIAsset(tokens),
-            maxAmountsIn: _maxAmountsIn,
-            userData: abi.encode("INIT", _maxAmountsIn),
-            fromInternalBalance: false
-        });        
-        getVault().joinPool(getPoolId(), address(this), address(this), request);   
-        emit Offer(_security, _maxAmountsIn[0]);                             
-    }
-
-    function exit() external {
-        // exit the pool
-        bytes32 poolId = getPoolId();
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
-        //IAsset[] memory _assets = new IAsset[](2);
-        //_assets[0] = IAsset(address(_security));
-        //_assets[1] = IAsset(address(_currency));
-        uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
-        _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
-        IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
-            //assets: _assets,
-            assets: _asIAsset(tokens),
-            minAmountsOut: _minAmountsOut,
-            userData: abi.encode("EXACT_BPT_IN_FOR_TOKENS_OUT", _INITIAL_BPT_SUPPLY),
-            toInternalBalance: false
-        });        
-        getVault().exitPool(getPoolId(), address(this), payable(balancerManager), request);                                
-    }
-
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
@@ -277,21 +239,21 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 
     function _onInitializePool(
         bytes32,
-        address sender,
-        address recipient,
+        address,
+        address,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     ) internal override whenNotPaused view returns (uint256, uint256[] memory) {
-
-        //the secondary issue pool is initialized by the balancer manager contract
-        //_require(sender == balancerManager, Errors.CALLER_IS_NOT_OWNER);
-        _require(recipient == address(this), Errors.CALLER_IS_NOT_OWNER);
+        //on initialization, pool simply premints max BPT supply possible
+        SecondaryPoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == SecondaryPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
+
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
         amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
-        return (bptAmountOut, amountsIn);        
+        return (bptAmountOut, amountsIn);
     }
 
     function _onJoinPool(
@@ -312,6 +274,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
             uint256[] memory
         )
     {
+        //joins are not supported as this pool supports an order book only
         _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
     }
 
@@ -319,50 +282,22 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         bytes32,
         address,
         address,
-        uint256[] memory balances,
+        uint256[] memory,
         uint256,
         uint256,
         uint256[] memory,
-        bytes memory userData
+        bytes memory
     )
         internal
-        view
+        pure
         override
         returns (
-            uint256 bptAmountIn,
-            uint256[] memory amountsOut
+            uint256,
+            uint256[] memory
         )
     {
-        SecondaryPoolUserData.ExitKind kind = userData.exitKind();
-        if (kind != SecondaryPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            //usually exit pool reverts
-            _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
-        } else {
-            //unless paused in which case tokens are retrievable by contributors
-            _ensurePaused();
-            (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-        }
-    }
-
-    function _emergencyProportionalExit(uint256[] memory balances, bytes memory userData)
-        private
-        view
-        returns (uint256, uint256[] memory)
-    {
-        // This proportional exit function is only enabled if the contract is paused, to provide users a way to
-        // retrieve their tokens in case of an emergency.
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
-            if (i != _bptIndex) {
-                amountsOut[i] = balances[i].mulDown(bptRatio);
-            }
-        }
-
-        return (bptAmountIn, amountsOut);
+        //exits are not required now, but we perhaps need to provide an emergency pause mechanism that returns tokens to order takers and makers
+        _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
     }
 
     function _getMaxTokens() internal pure override returns (uint256) {

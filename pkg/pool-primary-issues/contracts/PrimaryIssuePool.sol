@@ -350,7 +350,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         bytes memory
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
-        //_require(sender == _balancerManager, Errors.INVALID_INITIALIZATION);
+        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
         _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
         
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
