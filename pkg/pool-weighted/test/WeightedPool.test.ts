@@ -258,9 +258,20 @@ describe('WeightedPool', function () {
         it('uncollected protocol fees should increase the effective supply (and lower the rate)', async () => {
           const rate = await pool.getRate();
 
-          // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
-          // rounding error.
+          // We expect that the Pool has accrued fees due to the swap, which increases the BPT's rate.
+          // Check that we have a difference of at least 0.01% to discard rounding error.
           expect(originalRate).to.be.lt(rate.mul(9999).div(10000));
+
+          const invariant = await pool.instance.getInvariant();
+          const numTokens = pool.tokens.length;
+          const totalSupply = await pool.totalSupply();
+
+          const feelessRate = fpDiv(invariant.mul(numTokens), totalSupply);
+
+          // The Pool should report a rate which is lower than it would have for the current balances where we are
+          // ignoring protocol fees.
+          // Check that we have a difference of at least 0.01% to discard rounding error.
+          expect(rate).to.be.lt(feelessRate.mul(9999).div(10000));
         });
 
         it('minting protocol fee BPT should not affect rate', async () => {
