@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 //the TestToken ERC20 implementation
 contract MockReaperVault is TestToken {
     address private immutable _token;
-    uint256 private immutable _pricePerFullShare;
+    uint256 private _pricePerFullShare;
 
     constructor(
         string memory name,
@@ -39,5 +39,25 @@ contract MockReaperVault is TestToken {
 
     function getPricePerFullShare() external view returns (uint256) {
         return _pricePerFullShare;
+    }
+
+    function setPricePerFullShare(uint256 _newPricePerFullShare) public {
+        _pricePerFullShare = _newPricePerFullShare;
+    }
+
+    function deposit(uint256 _amount) public {
+        ERC20(_token).transferFrom(msg.sender, address(this), _amount);
+
+        uint256 amountToMint = _amount * 10**18 / _pricePerFullShare;
+
+        _mint(msg.sender, amountToMint);
+    }
+
+    function withdraw(uint256 _shares) public {
+        _burn(msg.sender, _shares);
+
+        uint256 amountToReturn = _shares * _pricePerFullShare / 10**18;
+
+        ERC20(_token).transfer(msg.sender, amountToReturn);
     }
 }

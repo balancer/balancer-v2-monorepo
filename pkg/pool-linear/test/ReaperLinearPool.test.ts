@@ -50,19 +50,19 @@ describe('ReaperLinearPool', function () {
   sharedBeforeEach('deploy tokens', async () => {
     USDC = await Token.create({ symbol: 'USDC', name: 'USDC', decimals: 6 });
     usdcReaperVault = await deploy('MockReaperVault', {
-      args: [deployer.address, 'rfUSDC', 'rfUSDC', 18, USDC.address, usdcPricePerFullShare],
+      args: ['rfUSDC', 'rfUSDC', 18, USDC.address, usdcPricePerFullShare],
     });
     rfUSDC = await Token.deployedAt(usdcReaperVault.address);
 
     DAI = await Token.create({ symbol: 'DAI', name: 'DAI', decimals: 18 });
     daiReaperVault = await deploy('MockReaperVault', {
-      args: [deployer.address, 'rfDAI', 'rfDAI', 18, DAI.address, daiPricePerFullShare],
+      args: ['rfDAI', 'rfDAI', 18, DAI.address, daiPricePerFullShare],
     });
     rfDAI = await Token.deployedAt(daiReaperVault.address);
 
     WBTC = await Token.create({ symbol: 'WBTC', name: 'WBTC', decimals: 8 });
     wbtcReaperVault = await deploy('MockReaperVault', {
-      args: [deployer.address, 'rfWBTC', 'rfWBTC', 18, WBTC.address, wbtcPricePerFullShare],
+      args: ['rfWBTC', 'rfWBTC', 18, WBTC.address, wbtcPricePerFullShare],
     });
     rfWBTC = await Token.deployedAt(wbtcReaperVault.address);
 
@@ -87,7 +87,7 @@ describe('ReaperLinearPool', function () {
 
   sharedBeforeEach('deploy pool factory', async () => {
     poolFactory = await deploy('ReaperLinearPoolFactory', {
-      args: [vault.address],
+      args: [vault.address, vault.getFeesProvider().address],
     });
   });
 
