@@ -8,7 +8,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -220,7 +220,7 @@ describe('WeightedPool', function () {
           const totalSupply = await pool.totalSupply();
           const invariant = await pool.estimateInvariant();
 
-          const expectedRate = invariant.mul(numTokens).div(totalSupply).mul(fp(1));
+          const expectedRate = fpDiv(invariant.mul(numTokens), totalSupply);
           const rate = await pool.getRate();
 
           expect(rate).to.be.equalWithError(expectedRate, 0.0001);
@@ -265,15 +265,8 @@ describe('WeightedPool', function () {
         });
 
         it('minting protocol fee BPT should not affect rate', async () => {
-          // Perform a zero-amount join. This ensures that the rate should not increase from swap fees
-          // due to this join so this can't mask issues with the rate.
-          // In weighted pools, even small proportional joins can generate very small protocol fees,
-          // which are enough to make this test fail.
-          const poolBalances = await pool.getBalances();
-          const amountsIn = Array(poolBalances.length).fill(1);
-
           const rateBeforeJoin = await pool.getRate();
-          await pool.joinGivenIn({ from: lp, amountsIn });
+          await pool.joinAllGivenOut({ from: lp, bptOut: fp(1) });
           const rateAfterJoin = await pool.getRate();
 
           const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
