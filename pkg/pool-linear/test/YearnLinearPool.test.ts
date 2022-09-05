@@ -18,8 +18,6 @@ describe('YearnLinearPool', function () {
   let poolFactory: Contract;
   let owner: SignerWithAddress;
 
-  const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-
   before('setup', async () => {
     [, , , owner] = await ethers.getSigners();
   });
@@ -39,7 +37,7 @@ describe('YearnLinearPool', function () {
       mainTokenAddress,
       wrappedTokenAddress,
       bn(0),
-      POOL_SWAP_FEE_PERCENTAGE,
+      fp(0.01),
       owner.address
     );
 
