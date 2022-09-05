@@ -11,8 +11,18 @@ import {
   advanceTime,
   advanceToTimestamp,
   currentTimestamp,
+  receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import { BigNumberish, bn, fp, FP_SCALING_FACTOR, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  BigNumberish,
+  bn,
+  fp,
+  fpDiv,
+  fpMul,
+  FP_SCALING_FACTOR,
+  fromFp,
+  pct,
+} from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -1053,10 +1063,11 @@ describe('ManagedPool', function () {
                             const someTokenBeforeIndex = beforeTokens.indexOf(someToken.token);
                             const otherTokenBeforeIndex = beforeTokens.indexOf(otherToken.token);
 
-                            const afterWeightRatio = someToken.weight.mul(FP_SCALING_FACTOR).div(otherToken.weight);
-                            const beforeWeightRatio = beforeTokenWeights[someTokenBeforeIndex].weight
-                              .mul(FP_SCALING_FACTOR)
-                              .div(beforeTokenWeights[otherTokenBeforeIndex].weight);
+                            const afterWeightRatio = fpDiv(someToken.weight, otherToken.weight);
+                            const beforeWeightRatio = fpDiv(
+                              beforeTokenWeights[someTokenBeforeIndex].weight,
+                              beforeTokenWeights[otherTokenBeforeIndex].weight
+                            );
 
                             expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
                           });
@@ -1069,7 +1080,7 @@ describe('ManagedPool', function () {
 
                       const expectedDenormWeightSum = beforeWeights
                         .filter((_, i) => i !== tokenIndex)
-                        .reduce((sum, weight) => sum.add(weight.mul(beforeSum).div(FP_SCALING_FACTOR)), bn(0));
+                        .reduce((sum, weight) => sum.add(fpMul(weight, beforeSum)), bn(0));
 
                       await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
 
@@ -1456,10 +1467,11 @@ describe('ManagedPool', function () {
                           const someTokenAfterIndex = afterTokens.indexOf(someToken.token);
                           const otherTokenAfterIndex = afterTokens.indexOf(otherToken.token);
 
-                          const beforeWeightRatio = someToken.weight.mul(FP_SCALING_FACTOR).div(otherToken.weight);
-                          const afterWeightRatio = afterTokenWeights[someTokenAfterIndex].weight
-                            .mul(FP_SCALING_FACTOR)
-                            .div(afterTokenWeights[otherTokenAfterIndex].weight);
+                          const beforeWeightRatio = fpDiv(someToken.weight, otherToken.weight);
+                          const afterWeightRatio = fpDiv(
+                            afterTokenWeights[someTokenAfterIndex].weight,
+                            afterTokenWeights[otherTokenAfterIndex].weight
+                          );
 
                           expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
                         });
@@ -1471,7 +1483,7 @@ describe('ManagedPool', function () {
 
                     const normalizedWeight = fp(0.5);
                     const weightSumRatio = fp(FP_SCALING_FACTOR).div(fp(1).sub(normalizedWeight));
-                    const expectedDenormWeightSum = beforeSum.mul(weightSumRatio).div(FP_SCALING_FACTOR);
+                    const expectedDenormWeightSum = fpMul(beforeSum, weightSumRatio);
 
                     await pool.addToken(sender, newToken, fp(0.5), fp(100), 0, other.address);
 
@@ -1524,6 +1536,7 @@ describe('ManagedPool', function () {
     const poolWeights = [fp(0.8), fp(0.2)];
     let bptFeeBalance: BigNumber;
     let mockMath: Contract;
+    let mockFees: Contract;
 
     let twoTokens: TokenList;
     let localBalances: Array<BigNumber>;
@@ -1556,6 +1569,7 @@ describe('ManagedPool', function () {
       };
       pool = await WeightedPool.create(params);
       mockMath = await deploy('MockWeightedMath');
+      mockFees = await deploy('v2-pool-utils/MockInvariantGrowthProtocolSwapFees');
     });
 
     sharedBeforeEach('initialize pool', async () => {
@@ -1607,7 +1621,7 @@ describe('ManagedPool', function () {
 
           const prevInvariant = await mockMath.invariant(poolWeights, upscaledBalances);
 
-          const adjustedAmountIn = upscaledSwapAmount.mul(fp(1).sub(swapFeePercentage)).div(fp(1));
+          const adjustedAmountIn = fpMul(upscaledSwapAmount, fp(1).sub(swapFeePercentage));
           const amountOut = await mockMath.outGivenIn(
             upscaledBalances[0],
             poolWeights[0],
@@ -1620,10 +1634,10 @@ describe('ManagedPool', function () {
           const postInvariant = await mockMath.invariant(poolWeights, postBalances);
           const totalSupply = await pool.totalSupply();
 
-          const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
+            fpDiv(postInvariant, prevInvariant),
             totalSupply,
-            prevInvariant,
-            postInvariant,
+            totalSupply,
             protocolFeePercentage
           );
 
@@ -1672,10 +1686,10 @@ describe('ManagedPool', function () {
           const postInvariant = await mockMath.invariant(poolWeights, postBalances);
           const totalSupply = await pool.totalSupply();
 
-          const expectedProtocolFees = await mockMath.calculateDueProtocolSwapFeeBPTAmount(
+          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
+            fpDiv(postInvariant, prevInvariant),
             totalSupply,
-            prevInvariant,
-            postInvariant,
+            totalSupply,
             protocolFeePercentage
           );
 
@@ -1747,6 +1761,42 @@ describe('ManagedPool', function () {
 
           expect(bptFeeBalance).to.be.zero;
         });
+      });
+    });
+  });
+
+  describe('recovery mode', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens: poolTokens,
+        weights: poolWeights,
+        owner: owner.address,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        swapEnabledOnStart: true,
+        vault,
+      };
+      pool = await WeightedPool.create(params);
+      await pool.init({ from: other, initialBalances });
+
+      await pool.collectAumManagementFees(owner);
+    });
+
+    context('when leaving recovery mode', () => {
+      it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
+        const lastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
+        // Set recovery mode to stop AUM fee calculations.
+        await pool.enableRecoveryMode();
+
+        // Advance time so that AUM fees would otherwise be accrued.
+        await advanceTime(365 * DAY);
+
+        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(lastAUMCollectionTimestamp);
+
+        // On disabling recovery mode we expect the `_lastAumFeeCollectionTimestamp` to be be equal to the current time.
+        const tx = await pool.disableRecoveryMode();
+        const expectedLastAUMCollectionTimestamp = await receiptTimestamp(tx.wait());
+        const updatedLastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
+        expect(updatedLastAUMCollectionTimestamp).to.be.eq(expectedLastAUMCollectionTimestamp);
       });
     });
   });
@@ -1833,7 +1883,10 @@ describe('ManagedPool', function () {
         });
       }
 
-      function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>, timeElapsed: BigNumberish) {
+      function itCollectsAUMFeesForExpectedDuration(
+        collectAUMFees: () => Promise<ContractReceipt>,
+        timeElapsed: BigNumberish
+      ) {
         it('collects the expected amount of fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
 
@@ -1852,6 +1905,40 @@ describe('ManagedPool', function () {
         });
       }
 
+      function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>) {
+        const timeElapsed = 10 * DAY;
+
+        sharedBeforeEach('advance time', async () => {
+          await advanceTime(timeElapsed);
+        });
+
+        itCollectsAUMFeesForExpectedDuration(collectAUMFees, timeElapsed);
+
+        context('when the pool is paused and enters into recovery mode', () => {
+          sharedBeforeEach('pause pool and enter recovery mode', async () => {
+            await pool.pause();
+            await pool.enableRecoveryMode();
+          });
+
+          itReverts(collectAUMFees);
+
+          context('when the pool is then unpaused and removed from recovery mode', () => {
+            sharedBeforeEach('unpause pool and exit recovery mode', async () => {
+              // Exiting recovery mode will update the timestamp of the last collection.
+              // This avoids the pool overcharging AUM fees after the unpause.
+              await pool.unpause();
+              await pool.disableRecoveryMode();
+
+              // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
+              // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
+              await advanceTime(timeElapsed);
+            });
+
+            itCollectsAUMFeesForExpectedDuration(collectAUMFees, timeElapsed);
+          });
+        });
+      }
+
       sharedBeforeEach('mint tokens', async () => {
         await poolTokens.mint({ to: other, amount: fp(10000) });
         await poolTokens.approve({ from: other, to: await pool.getVault() });
@@ -1865,12 +1952,8 @@ describe('ManagedPool', function () {
         });
 
         context('when the pool is initialized', () => {
-          const timeElapsed = 10 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
-
-            await advanceTime(timeElapsed);
           });
 
           context('on the first attempt to collect fees', () => {
@@ -1881,54 +1964,14 @@ describe('ManagedPool', function () {
           });
 
           context('on subsequent attempts to collect fees', () => {
-            sharedBeforeEach('advance time', async () => {
-              // AUM fees only accrue after the first collection so we have to wait for more time to elapse.
+            sharedBeforeEach('perform first fee collection', async () => {
+              // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
               await pool.collectAumManagementFees(owner);
-              await advanceTime(timeElapsed);
             });
 
             itCollectsAUMFeesCorrectly(async () => {
               const tx = await pool.collectAumManagementFees(owner);
               return tx.wait();
-            }, timeElapsed);
-
-            context('when the pool is paused', () => {
-              sharedBeforeEach('pause pool', async () => {
-                await pool.pause();
-              });
-
-              itReverts(async () => {
-                const tx = await pool.collectAumManagementFees(owner);
-                return tx.wait();
-              });
-
-              context('when the pool is then unpaused', () => {
-                sharedBeforeEach('collect fees and unpause pool', async () => {
-                  if (!vault.admin) throw Error('No Vault admin account');
-                  await pool.enableRecoveryMode(vault.admin);
-
-                  // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
-                  // last collection. This avoids the pool overcharging AUM fees after the unpause.
-                  // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
-                  // as if the pool were never paused, however this is unlikely to occur.
-                  await pool.recoveryModeExit({
-                    from: other,
-                    bptIn: (await pool.balanceOf(other)).div(10),
-                  });
-
-                  await pool.unpause();
-                  await pool.disableRecoveryMode(vault.admin);
-
-                  // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-                  // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-                  await advanceTime(timeElapsed);
-                });
-
-                itCollectsAUMFeesCorrectly(async () => {
-                  const tx = await pool.collectAumManagementFees(owner);
-                  return tx.wait();
-                }, timeElapsed);
-              });
             });
           });
         });
@@ -1943,161 +1986,45 @@ describe('ManagedPool', function () {
         });
 
         context('after pool initialization', () => {
-          const timeElapsed = 10 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
             // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
             await pool.collectAumManagementFees(owner);
-
-            await advanceTime(timeElapsed);
-          });
-
-          sharedBeforeEach('mint tokens', async () => {
-            await poolTokens.mint({ to: other, amount: fp(10000) });
-            await poolTokens.approve({ from: other, to: await pool.getVault() });
           });
 
           itCollectsAUMFeesCorrectly(async () => {
             const amountsIn = initialBalances.map((x) => x.div(2));
             const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
             return receipt;
-          }, timeElapsed);
-
-          context('when the pool is paused and then then unpaused', () => {
-            sharedBeforeEach('pause pool, collect fees and unpause pool', async () => {
-              if (!vault.admin) throw Error('No Vault admin account');
-              await pool.pause();
-              await pool.enableRecoveryMode(vault.admin);
-
-              // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
-              // last collection. This avoids the pool overcharging AUM fees after the unpause.
-              // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
-              // as if the pool were never paused, however this is unlikely to occur.
-              await pool.recoveryModeExit({
-                from: other,
-                bptIn: (await pool.balanceOf(other)).div(10),
-              });
-
-              await pool.unpause();
-              await pool.disableRecoveryMode(vault.admin);
-
-              // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-              // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-              await advanceTime(timeElapsed);
-            });
-
-            itCollectsAUMFeesCorrectly(async () => {
-              const amountsIn = initialBalances.map((x) => x.div(2));
-              const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
-              return receipt;
-            }, timeElapsed);
           });
         });
       });
 
       context('on pool exits', () => {
-        const timeElapsed = 10 * DAY;
-
-        sharedBeforeEach('initialize pool and advance time', async () => {
+        sharedBeforeEach('initialize pool', async () => {
           await pool.init({ from: other, initialBalances });
           // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
           await pool.collectAumManagementFees(owner);
-
-          await advanceTime(timeElapsed);
         });
 
         itCollectsAUMFeesCorrectly(async () => {
           const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
           return receipt;
-        }, timeElapsed);
-
-        context('when the pool is paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await pool.pause();
-          });
-
-          itReverts(async () => {
-            const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
-            return receipt;
-          });
-
-          context('when the pool is then unpaused', () => {
-            sharedBeforeEach('collect fees and unpause pool', async () => {
-              if (!vault.admin) throw Error('No Vault admin account');
-              await pool.enableRecoveryMode(vault.admin);
-
-              // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
-              // last collection. This avoids the pool overcharging AUM fees after the unpause.
-              // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
-              // as if the pool were never paused, however this is unlikely to occur.
-              await pool.recoveryModeExit({
-                from: other,
-                bptIn: (await pool.balanceOf(other)).div(10),
-              });
-
-              await pool.unpause();
-              await pool.disableRecoveryMode(vault.admin);
-
-              // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-              // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-              await advanceTime(timeElapsed);
-            });
-
-            itCollectsAUMFeesCorrectly(async () => {
-              const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
-              return receipt;
-            }, timeElapsed);
-          });
         });
       });
 
       context('on token removal', () => {
         context('after pool initialization', () => {
-          const timeElapsed = 10 * DAY;
-
-          sharedBeforeEach('initialize pool and advance time', async () => {
+          sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
             // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
             await pool.collectAumManagementFees(owner);
-
-            await advanceTime(timeElapsed);
           });
 
           itCollectsAUMFeesCorrectly(async () => {
             const { tokens } = await pool.getTokens();
             const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
             return tx.wait();
-          }, timeElapsed);
-
-          context('when the pool is paused and then then unpaused', () => {
-            sharedBeforeEach('pause pool, collect fees and unpause pool', async () => {
-              if (!vault.admin) throw Error('No Vault admin account');
-              await pool.pause();
-              await pool.enableRecoveryMode(vault.admin);
-
-              // Perform a Recovery mode exit. This will collect no fees but will update the timestamp of the
-              // last collection. This avoids the pool overcharging AUM fees after the unpause.
-              // Note that if nobody interacts with the pool before it is unpaused then AUM fees will be charged
-              // as if the pool were never paused, however this is unlikely to occur.
-              await pool.recoveryModeExit({
-                from: other,
-                bptIn: (await pool.balanceOf(other)).div(10),
-              });
-
-              await pool.unpause();
-              await pool.disableRecoveryMode(vault.admin);
-
-              // We now advance time so that we can test that the collected fees correspond to `timeElapsed`,
-              // rather than `2 * timeElapsed` as we'd expect if the pool didn't correctly update while paused.
-              await advanceTime(timeElapsed);
-            });
-
-            itCollectsAUMFeesCorrectly(async () => {
-              const { tokens } = await pool.getTokens();
-              const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
-              return tx.wait();
-            }, timeElapsed);
           });
         });
       });
@@ -2168,7 +2095,7 @@ describe('ManagedPool', function () {
 
       const balanceBefore = await pool.balanceOf(owner);
 
-      const protocolPortion = expectedBpt.mul(AUM_PROTOCOL_FEE_PERCENTAGE).div(fp(1));
+      const protocolPortion = fpMul(expectedBpt, AUM_PROTOCOL_FEE_PERCENTAGE);
       const ownerPortion = expectedBpt.sub(protocolPortion);
 
       await advanceTime(180 * DAY);

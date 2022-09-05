@@ -118,19 +118,4 @@ contract MockWeightedMath {
                 swapFee
             );
     }
-
-    function calculateDueProtocolSwapFeeBPTAmount(
-        uint256 totalSupply,
-        uint256 previousInvariant,
-        uint256 currentInvariant,
-        uint256 protocolSwapFeePercentage
-    ) external pure returns (uint256) {
-        return
-            WeightedMath._calcDueProtocolSwapFeeBptAmount(
-                totalSupply,
-                previousInvariant,
-                currentInvariant,
-                protocolSwapFeePercentage
-            );
-    }
 }

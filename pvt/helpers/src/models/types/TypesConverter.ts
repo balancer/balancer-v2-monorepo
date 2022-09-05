@@ -58,6 +58,7 @@ export default {
     let {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
@@ -78,6 +79,7 @@ export default {
     if (!swapFeePercentage) swapFeePercentage = bn(1e16);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
@@ -90,6 +92,7 @@ export default {
     return {
       tokens,
       weights,
+      rateProviders: this.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,

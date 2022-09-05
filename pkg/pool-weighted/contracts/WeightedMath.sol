@@ -406,44 +406,6 @@ library WeightedMath {
         return amountsOut;
     }
 
-    function _calcDueProtocolSwapFeeBptAmount(
-        uint256 totalSupply,
-        uint256 previousInvariant,
-        uint256 currentInvariant,
-        uint256 protocolSwapFeePercentage
-    ) internal pure returns (uint256) {
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
-        // fees to the Vault.
-        uint256 growth = currentInvariant.divDown(previousInvariant);
-
-        // Shortcut in case there was no growth when comparing the current against the previous invariant.
-        // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
-        // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
-        if (growth <= FixedPoint.ONE) {
-            return 0;
-        }
-
-        // Assuming the Pool is balanced and token weights have not changed, a growth of the invariant translates into
-        // proportional growth of all token balances. The protocol is due a percentage of that growth: more precisely,
-        // it is due `k = protocol fee * (growth - 1) * balance / growth` for each token.
-        // We compute the amount of BPT to mint for the protocol that would allow it to proportionally exit the Pool and
-        // receive these balances. Note that the total BPT supply will increase when minting, so we need to account for
-        // this in order to compute the percentage of Pool ownership the protocol will have.
-
-        // The formula is:
-        //
-        // toMint = supply * k / (1 - k)
-
-        // We compute protocol fee * (growth - 1) / growth, as we'll use that value twice.
-        // There is no need to use SafeMath since we already checked growth is strictly greater than one.
-        uint256 k = protocolSwapFeePercentage.mulDown(growth - FixedPoint.ONE).divDown(growth);
-
-        uint256 numerator = totalSupply.mulDown(k);
-        uint256 denominator = k.complement();
-
-        return denominator == 0 ? 0 : numerator.divDown(denominator);
-    }
-
     /**
      * @dev Calculate the amount of BPT which should be minted when adding a new token to the Pool.
      *

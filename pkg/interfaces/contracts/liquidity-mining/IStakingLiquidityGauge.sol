@@ -25,7 +25,7 @@ import "./IRewardTokenDistributor.sol";
 // solhint-disable func-name-mixedcase, var-name-mixedcase
 
 interface IStakingLiquidityGauge is IRewardTokenDistributor, ILiquidityGauge, IERC20 {
-    function initialize(address lpToken) external;
+    function initialize(address lpToken, uint256 relativeWeightCap) external;
 
     function lp_token() external view returns (IERC20);
 
