@@ -5,7 +5,7 @@ import { BasePoolEncoder } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import TypesConverter from '../../types/TypesConverter';
-import { BigNumberish, bn, fp } from '../../../numbers';
+import { BigNumberish, fpDiv, fpMul } from '../../../numbers';
 import { Account } from '../../types/types';
 import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
@@ -92,12 +92,12 @@ export default class BasePool {
 
   async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
-    return balances.map((b, i) => bn(b).mul(scalingFactors[i]).div(fp(1)));
+    return balances.map((b, i) => fpMul(b, scalingFactors[i]));
   }
 
   async downscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
-    return balances.map((b, i) => bn(b).mul(fp(1)).div(scalingFactors[i]));
+    return balances.map((b, i) => fpDiv(b, scalingFactors[i]));
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
