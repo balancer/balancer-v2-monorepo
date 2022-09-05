@@ -10,7 +10,7 @@ import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { bn, divCeil, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, divCeil, fp, fpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -141,7 +141,7 @@ describe('Flash Loans', () => {
       await recipient.setRepayInExcess(true);
 
       // The recipient pays one extra token
-      const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR).add(1);
+      const feeAmount = fpMul(bn(1e18), feePercentage).add(1);
 
       const tx: ContractTransaction = await expectBalanceChange(
         () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
@@ -182,7 +182,7 @@ describe('Flash Loans', () => {
     describe('multi asset loan', () => {
       it('the Vault receives protocol fees proportional to each loan', async () => {
         const amounts = [1e18, 2e18].map(bn);
-        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FP_SCALING_FACTOR));
+        const feeAmounts = amounts.map((amount) => fpMul(amount, feePercentage));
 
         await expectBalanceChange(
           () =>
