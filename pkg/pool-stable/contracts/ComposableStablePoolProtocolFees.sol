@@ -301,7 +301,7 @@ abstract contract ComposableStablePoolProtocolFees is
             // To convert to a percentage of pool ownership, multiply by the rate,
             // then normalize against the final invariant
             uint256 protocolOwnershipPercentage = Math.divDown(
-                Math.mul(invariantDeltaFromFees, getProtocolFeePercentageCache(ProtocolFeeType.SWAP), 
+                Math.mul(invariantDeltaFromFees, getProtocolFeePercentageCache(ProtocolFeeType.SWAP)),
                 postJoinExitInvariant
             );
 
