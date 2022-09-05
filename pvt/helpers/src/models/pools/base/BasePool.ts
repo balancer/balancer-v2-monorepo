@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BasePoolEncoder } from '@balancer-labs/balancer-js';
@@ -164,14 +165,16 @@ export default class BasePool {
     await this.instance.unpause();
   }
 
-  async enableRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
-    await this.grantRecoveryPermissions();
+  async enableRecoveryMode(from?: SignerWithAddress): Promise<ContractTransaction> {
+    from = await this.getSigner(from);
+    await this.grantRecoveryPermissions(from);
     const pool = this.instance.connect(from);
     return await pool.enableRecoveryMode();
   }
 
-  async disableRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
-    await this.grantRecoveryPermissions();
+  async disableRecoveryMode(from?: SignerWithAddress): Promise<ContractTransaction> {
+    from = await this.getSigner(from);
+    await this.grantRecoveryPermissions(from);
     const pool = this.instance.connect(from);
     return await pool.disableRecoveryMode();
   }
@@ -194,9 +197,13 @@ export default class BasePool {
     await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
   }
 
-  private async grantRecoveryPermissions(): Promise<void> {
+  private async grantRecoveryPermissions(grantee: SignerWithAddress): Promise<void> {
     const enableRecoveryAction = await actionId(this.instance, 'enableRecoveryMode');
     const disableRecoveryAction = await actionId(this.instance, 'disableRecoveryMode');
-    await this.vault.grantPermissionsGlobally([enableRecoveryAction, disableRecoveryAction], this.vault.admin);
+    await this.vault.grantPermissionsGlobally([enableRecoveryAction, disableRecoveryAction], grantee);
+  }
+
+  private async getSigner(from?: SignerWithAddress): Promise<SignerWithAddress> {
+    return from || (await ethers.getSigners())[0];
   }
 }

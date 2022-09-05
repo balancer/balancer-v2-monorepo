@@ -1,3 +1,6 @@
+import { ethers } from 'hardhat';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { Contract } from 'ethers';
 import { expect } from 'chai';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
@@ -11,21 +14,66 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { Contract } from 'ethers';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
+
+  let lp: SignerWithAddress;
 
   const MAX_TOKENS = 8;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = range(1000, 1000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
+  sharedBeforeEach('setup signers', async () => {
+    [, lp] = await ethers.getSigners();
+  });
+
   sharedBeforeEach('deploy tokens', async () => {
     allTokens = await TokenList.create(MAX_TOKENS, { sorted: true, varyDecimals: true });
   });
 
   itPaysProtocolFeesFromInvariantGrowth();
+
+  describe('recovery mode', () => {
+    let pool: WeightedPool;
+    let tokens: TokenList;
+
+    const initialBalances = range(1, 3).map(fp);
+
+    sharedBeforeEach('deploy pool', async () => {
+      tokens = allTokens.subset(2);
+
+      pool = await WeightedPool.create({
+        poolType: WeightedPoolType.WEIGHTED_POOL,
+        tokens,
+        weights: WEIGHTS.slice(0, 2),
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      });
+
+      await pool.init({ initialBalances, recipient: lp });
+    });
+
+    context('when leaving recovery mode', () => {
+      it('sets the lastPostJoinInvariant to the current invariant', async () => {
+        // Set recovery mode to stop protocol fee calculations.
+        await pool.enableRecoveryMode();
+
+        // Perform a recovery mode exit. This will reduce the invariant but this isn't tracked due to recovery mode.
+        const preExitInvariant = await pool.getLastPostJoinExitInvariant();
+        await pool.recoveryModeExit({ from: lp, bptIn: fp(100) });
+        const realPostExitInvariant = await pool.estimateInvariant();
+
+        // Check that the real invariant is has dropped as a result of the exit.
+        expect(realPostExitInvariant).to.be.lt(preExitInvariant);
+
+        // On disabling recovery mode we expect the `lastPostJoinExitInvariant` to be be equal to the current value.
+        await pool.disableRecoveryMode();
+        const updatedLastPostJoinExitInvariant = await pool.getLastPostJoinExitInvariant();
+        expect(updatedLastPostJoinExitInvariant).to.be.almostEqual(realPostExitInvariant);
+      });
+    });
+  });
 
   describe('weights and scaling factors', () => {
     for (const numTokens of range(2, MAX_TOKENS + 1)) {
