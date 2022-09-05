@@ -36,24 +36,24 @@ describe('InvariantGrowthProtocolSwapFees', function () {
       const currentInvariant = calculateInvariant(currentBalances, normalizedWeights);
 
       const toMint = await mock.calculateDueProtocolFees(
-        FpDiv(currentInvariant, lastInvariant),
+        fpDiv(currentInvariant, lastInvariant),
         totalSupply,
         totalSupply,
         protocolSwapFeePercentage
       );
 
       // The BPT to mint should be such that it'd let the protocol claim the tokens it is due if exiting proportionally
-      const protocolPoolOwnership = FpDiv(toMint, totalSupply.add(toMint)); // The BPT supply grows
+      const protocolPoolOwnership = fpDiv(toMint, totalSupply.add(toMint)); // The BPT supply grows
 
-      const tokenAFeeAmount = FpMul(currentBalances[0], protocolPoolOwnership);
-      const tokenBFeeAmount = FpMul(currentBalances[1], protocolPoolOwnership);
+      const tokenAFeeAmount = fpMul(currentBalances[0], protocolPoolOwnership);
+      const tokenBFeeAmount = fpMul(currentBalances[1], protocolPoolOwnership);
 
       expectEqualWithError(tokenAFeeAmount, bn(3e18), MAX_RELATIVE_ERROR);
       expectEqualWithError(tokenBFeeAmount, bn(60e18), MAX_RELATIVE_ERROR);
 
       // The TS helper outputs the same value
       const expectedToMint = calculateBPTSwapFeeAmount(
-        FpDiv(currentInvariant, lastInvariant),
+        fpDiv(currentInvariant, lastInvariant),
         totalSupply,
         totalSupply,
         protocolSwapFeePercentage
@@ -72,7 +72,7 @@ describe('InvariantGrowthProtocolSwapFees', function () {
       const currentInvariant = fp(299);
 
       const toMint = await mock.calculateDueProtocolFees(
-        FpDiv(currentInvariant, lastInvariant),
+        fpDiv(currentInvariant, lastInvariant),
         totalSupply,
         totalSupply,
         protocolSwapFeePercentage

@@ -91,12 +91,12 @@ export default class BasePool {
 
   async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
-    return balances.map((b, i) => FpMul(b, scalingFactors[i]));
+    return balances.map((b, i) => fpMul(b, scalingFactors[i]));
   }
 
   async downscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
-    return balances.map((b, i) => FpDiv(b, scalingFactors[i]));
+    return balances.map((b, i) => fpDiv(b, scalingFactors[i]));
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {

@@ -333,9 +333,9 @@ describe('ComposableStablePool', () => {
 
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != bptIndex));
-              const poolPercentageDueToDeltas = FpDiv(deltaSum, currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              const expectedProtocolOwnershipPercentage = FpMul(
+              const expectedProtocolOwnershipPercentage = fpMul(
                 poolPercentageDueToDeltas,
                 PROTOCOL_SWAP_FEE_PERCENTAGE
               );
@@ -1571,7 +1571,7 @@ describe('ComposableStablePool', () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = FpDiv(invariant, virtualSupply);
+            const expectedRate = fpDiv(invariant, virtualSupply);
 
             const rate = await pool.getRate();
 
@@ -1595,7 +1595,7 @@ describe('ComposableStablePool', () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = FpDiv(invariant, virtualSupply);
+            const expectedRate = fpDiv(invariant, virtualSupply);
 
             const rate = await pool.getRate();
 

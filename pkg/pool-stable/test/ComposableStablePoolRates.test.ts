@@ -807,7 +807,7 @@ describe('ComposableStablePoolRates', () => {
         it('returns the array with elements scaled by the ratio of current and old cached token rates', async () => {
           for (let i = 0; i < 5; i++) {
             const inputArray = tokens.map(() => fp(Math.random()));
-            const expectedOutputArray = inputArray.map((input, i) => FpDiv(input, rates[i]));
+            const expectedOutputArray = inputArray.map((input, i) => fpDiv(input, rates[i]));
 
             expect(await pool.getAdjustedBalances(inputArray, true)).to.be.deep.eq(expectedOutputArray);
           }
@@ -819,7 +819,7 @@ describe('ComposableStablePoolRates', () => {
           for (let i = 0; i < 5; i++) {
             const inputArray = tokens.map(() => fp(Math.random()));
             const expectedOutputArray = inputArray.map((input, i) =>
-              exemptFromYieldProtocolFeeFlags[i] ? FpDiv(input, rates[i]) : input
+              exemptFromYieldProtocolFeeFlags[i] ? fpDiv(input, rates[i]) : input
             );
 
             expect(await pool.getAdjustedBalances(inputArray, false)).to.be.deep.eq(expectedOutputArray);

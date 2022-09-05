@@ -193,12 +193,12 @@ export function calculateBPTSwapFeeAmount(
   postSupply: BigNumberish,
   fpProtocolSwapFeePercentage: BigNumberish
 ): BigNumber {
-  const supplyGrowthRatio = FpDiv(postSupply, preSupply);
+  const supplyGrowthRatio = fpDiv(postSupply, preSupply);
 
   if (bn(fpInvariantGrowthRatio).lte(supplyGrowthRatio)) {
     return bn(0);
   }
-  const swapFeePercentage = fp(1).sub(FpDiv(supplyGrowthRatio, fpInvariantGrowthRatio));
+  const swapFeePercentage = fp(1).sub(fpDiv(supplyGrowthRatio, fpInvariantGrowthRatio));
   const k = swapFeePercentage.mul(fpProtocolSwapFeePercentage).div(fp(1));
 
   const numerator = bn(postSupply).mul(k);

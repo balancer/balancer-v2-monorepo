@@ -575,7 +575,7 @@ export function itBehavesAsWeightedPool(
 
       it('calculates amount out', async () => {
         const amount = fp(0.1);
-        const amountWithFees = FpMul(amount, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
+        const amountWithFees = fpMul(amount, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
         const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
@@ -585,7 +585,7 @@ export function itBehavesAsWeightedPool(
 
       it('calculates max amount out', async () => {
         const maxAmountIn = await pool.getMaxIn(1);
-        const maxAmountInWithFees = FpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
+        const maxAmountInWithFees = fpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
         const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
@@ -595,7 +595,7 @@ export function itBehavesAsWeightedPool(
 
       it('reverts if token in exceeds max in ratio', async () => {
         const maxAmountIn = await pool.getMaxIn(1);
-        const maxAmountInWithFees = FpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
+        const maxAmountInWithFees = fpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
 
         const amount = maxAmountInWithFees.add(fp(1));
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');

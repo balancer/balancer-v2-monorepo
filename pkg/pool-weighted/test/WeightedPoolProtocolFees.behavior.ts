@@ -240,7 +240,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
             // therefore have been paid (initialBalanceGrowth - 1) * protocolFeePercentage / initialBalanceGrowth of the
             // total BPT.
 
-            const bptOwnership = FpDiv(fees, totalBPT);
+            const bptOwnership = fpDiv(fees, totalBPT);
             const expectedOwnership = initialBalanceGrowth.sub(1).mul(protocolFeePercentage).div(initialBalanceGrowth);
 
             await expectEqualWithError(bptOwnership, expectedOwnership);

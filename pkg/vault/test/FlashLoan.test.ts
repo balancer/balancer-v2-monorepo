@@ -141,7 +141,7 @@ describe('Flash Loans', () => {
       await recipient.setRepayInExcess(true);
 
       // The recipient pays one extra token
-      const feeAmount = FpMul(bn(1e18), feePercentage).add(1);
+      const feeAmount = fpMul(bn(1e18), feePercentage).add(1);
 
       const tx: ContractTransaction = await expectBalanceChange(
         () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
@@ -182,7 +182,7 @@ describe('Flash Loans', () => {
     describe('multi asset loan', () => {
       it('the Vault receives protocol fees proportional to each loan', async () => {
         const amounts = [1e18, 2e18].map(bn);
-        const feeAmounts = amounts.map((amount) => FpMul(amount, feePercentage));
+        const feeAmounts = amounts.map((amount) => fpMul(amount, feePercentage));
 
         await expectBalanceChange(
           () =>

@@ -356,7 +356,7 @@ describe('ComposableStablePoolProtocolFees', () => {
         preInvariant = await math.invariant(AMPLIFICATION_FACTOR, preBalances);
 
         // The virtual supply is some factor of the invariant
-        preVirtualSupply = FpMul(preInvariant, fp(random(1.5, 10)));
+        preVirtualSupply = fpMul(preInvariant, fp(random(1.5, 10)));
 
         // We don't use the stored amplification factor and invariant as the lastJoinExit values in tests as we pass
         // them in. However this function also sets the old token rates which we *do* use.
@@ -443,9 +443,9 @@ describe('ComposableStablePoolProtocolFees', () => {
 
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(currentBalances);
-              const poolPercentageDueToDeltas = FpDiv(deltaSum, currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              expectedProtocolOwnershipPercentage = FpMul(poolPercentageDueToDeltas, swapFee);
+              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, swapFee);
             });
           }
 
@@ -458,7 +458,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               // seen as a change in rates from old to current.
               await tokens.asyncMap((token) => pool.updateTokenRateCache(token.address));
 
-              currentBalances = arrayFpMul(preBalances, rates);
+              currentBalances = arrayfpMul(preBalances, rates);
 
               // We assume all tokens have similar value, and simply add the non-exempt the amounts together to
               // represent how much value is being added to the Pool. This is equivalent to assuming the invariant is
@@ -466,14 +466,14 @@ describe('ComposableStablePoolProtocolFees', () => {
 
               const deltaSum = bnSum(
                 preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : FpMul(balance, rates[i].sub(fp(1)))
+                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
                 )
               );
 
               const currSum = bnSum(currentBalances);
-              const poolPercentageDueToDeltas = FpDiv(deltaSum, currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              expectedProtocolOwnershipPercentage = FpMul(poolPercentageDueToDeltas, yieldFee);
+              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToDeltas, yieldFee);
             });
           }
 
@@ -493,7 +493,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               // We first apply the swap deltas, and then multiply by the rates, which is the model the Pool uses when
               // splitting swap and yield fees.
 
-              currentBalances = arrayFpMul(arrayAdd(preBalances, swapFeeDeltas), rates);
+              currentBalances = arrayfpMul(arrayAdd(preBalances, swapFeeDeltas), rates);
 
               // We assume all tokens have similar value, and simply add the swap deltas and non-exempt yield deltas
               // together to represent how much value is being added to the Pool. This is equivalent to assuming the
@@ -502,16 +502,16 @@ describe('ComposableStablePoolProtocolFees', () => {
               const swapFeeDeltaSum = bnSum(swapFeeDeltas);
               const yieldDeltaSum = bnSum(
                 preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : FpMul(balance, rates[i].sub(fp(1)))
+                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
                 )
               );
               const currSum = bnSum(currentBalances);
 
-              const poolPercentageDueToSwapFeeDeltas = FpDiv(swapFeeDeltaSum, currSum);
-              const poolPercentageDueToYieldDeltas = FpDiv(yieldDeltaSum, currSum);
+              const poolPercentageDueToSwapFeeDeltas = fpDiv(swapFeeDeltaSum, currSum);
+              const poolPercentageDueToYieldDeltas = fpDiv(yieldDeltaSum, currSum);
 
-              expectedProtocolOwnershipPercentage = FpMul(poolPercentageDueToSwapFeeDeltas, swapFee).add(
-                FpMul(poolPercentageDueToYieldDeltas, yieldFee)
+              expectedProtocolOwnershipPercentage = fpMul(poolPercentageDueToSwapFeeDeltas, swapFee).add(
+                fpMul(poolPercentageDueToYieldDeltas, yieldFee)
               );
             });
           }
@@ -698,15 +698,15 @@ describe('ComposableStablePoolProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              const amounts = preBalances.map((balance) => FpMul(balance, ratio));
+              const amounts = preBalances.map((balance) => fpMul(balance, ratio));
 
               // Compute the balances, and increase/decrease the virtual supply proportionally
               if (op == Operation.JOIN) {
                 currentBalances = arrayAdd(preBalances, amounts);
-                currentVirtualSupply = FpMul(preVirtualSupply, fp(1).add(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
               } else {
                 currentBalances = arraySub(preBalances, amounts);
-                currentVirtualSupply = FpMul(preVirtualSupply, fp(1).sub(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
               }
             });
           }
@@ -716,21 +716,21 @@ describe('ComposableStablePoolProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              const proportionalAmounts = preBalances.map((balance) => FpMul(balance, ratio));
+              const proportionalAmounts = preBalances.map((balance) => fpMul(balance, ratio));
 
               // Compute deltas that are going to modify the proportional amounts. These will be swap fees.
-              const deltas = proportionalAmounts.map((amount) => FpMul(amount, fp(random(0.05, 0.1))));
+              const deltas = proportionalAmounts.map((amount) => fpMul(amount, fp(random(0.05, 0.1))));
 
               // Compute the balances with the added deltas, and the virtual supply without taking them into account
               // (because they are fees).
               if (op == Operation.JOIN) {
                 const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
-                currentVirtualSupply = FpMul(preVirtualSupply, fp(1).add(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
               } else {
                 const proportionalBalances = arraySub(preBalances, proportionalAmounts);
-                currentVirtualSupply = FpMul(preVirtualSupply, fp(1).sub(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
               }
@@ -741,8 +741,8 @@ describe('ComposableStablePoolProtocolFees', () => {
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(currentBalances);
 
-              const poolFeePercentage = FpDiv(deltaSum, currSum);
-              expectedProtocolOwnershipPercentage = FpMul(poolFeePercentage, swapFee);
+              const poolFeePercentage = fpDiv(deltaSum, currSum);
+              expectedProtocolOwnershipPercentage = fpMul(poolFeePercentage, swapFee);
             });
           }
 

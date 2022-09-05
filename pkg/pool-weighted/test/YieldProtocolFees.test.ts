@@ -131,9 +131,9 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
               const currentSupply = fp(randomFloat(1, 5));
               const { yieldProtocolFees } = await pool.getYieldProtocolFee(normalizedWeights, currentSupply);
 
-              const rateProductGrowth = FpDiv(calculateInvariant(rates, normalizedWeights), athRateProduct);
-              const yieldPercentage = fp(1).sub(FpDiv(fp(1), rateProductGrowth));
-              const protocolYieldFeesPercentage = FpMul(yieldPercentage, PROTOCOL_YIELD_FEE_PERCENTAGE);
+              const rateProductGrowth = fpDiv(calculateInvariant(rates, normalizedWeights), athRateProduct);
+              const yieldPercentage = fp(1).sub(fpDiv(fp(1), rateProductGrowth));
+              const protocolYieldFeesPercentage = fpMul(yieldPercentage, PROTOCOL_YIELD_FEE_PERCENTAGE);
 
               const expectedProtocolFees = currentSupply
                 .mul(protocolYieldFeesPercentage)

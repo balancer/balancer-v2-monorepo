@@ -123,7 +123,7 @@ describe('PostJoinExitProtocolFees', () => {
         preInvariant = await math.invariant(poolWeights, preBalances);
 
         // The supply is some factor of the invariant
-        preSupply = FpMul(preInvariant, fp(random(1.5, 10)));
+        preSupply = fpMul(preInvariant, fp(random(1.5, 10)));
       });
 
       describe('getPostJoinExitProtocolFees', () => {
@@ -189,13 +189,13 @@ describe('PostJoinExitProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              balanceDeltas = preBalances.map((balance) => FpMul(balance, ratio));
+              balanceDeltas = preBalances.map((balance) => fpMul(balance, ratio));
 
               // increase/decrease the virtual proportionally
               if (op == Operation.JOIN) {
-                currentSupply = FpMul(preSupply, fp(1).add(ratio));
+                currentSupply = fpMul(preSupply, fp(1).add(ratio));
               } else {
-                currentSupply = FpMul(preSupply, fp(1).sub(ratio));
+                currentSupply = fpMul(preSupply, fp(1).sub(ratio));
               }
 
               const currentBalances =
@@ -210,23 +210,23 @@ describe('PostJoinExitProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              const proportionalAmounts = preBalances.map((balance) => FpMul(balance, ratio));
+              const proportionalAmounts = preBalances.map((balance) => fpMul(balance, ratio));
 
               // Compute deltas that are going to modify the proportional amounts. These will be swap fees.
-              const deltas = proportionalAmounts.map((amount) => FpMul(amount, fp(random(0.05, 0.1))));
+              const deltas = proportionalAmounts.map((amount) => fpMul(amount, fp(random(0.05, 0.1))));
               let currentBalances: BigNumber[];
 
               // Compute the balances with the added deltas, and the supply without taking them into account
               // (because they are fees).
               if (op == Operation.JOIN) {
                 const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
-                currentSupply = FpMul(preSupply, fp(1).add(ratio));
+                currentSupply = fpMul(preSupply, fp(1).add(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
                 balanceDeltas = arraySub(currentBalances, preBalances);
               } else {
                 const proportionalBalances = arraySub(preBalances, proportionalAmounts);
-                currentSupply = FpMul(preSupply, fp(1).sub(ratio));
+                currentSupply = fpMul(preSupply, fp(1).sub(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
                 balanceDeltas = arraySub(preBalances, currentBalances);
@@ -268,7 +268,7 @@ describe('PostJoinExitProtocolFees', () => {
                 currentSupply
               );
 
-              const invariantGrowthRatio = FpDiv(postInvariant, preInvariant);
+              const invariantGrowthRatio = fpDiv(postInvariant, preInvariant);
               const expectedBptAmount = calculateBPTSwapFeeAmount(
                 invariantGrowthRatio,
                 preSupply,
