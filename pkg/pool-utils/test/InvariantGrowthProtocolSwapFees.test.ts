@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 
-import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FpDiv, FpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
@@ -36,25 +36,24 @@ describe('InvariantGrowthProtocolSwapFees', function () {
       const currentInvariant = calculateInvariant(currentBalances, normalizedWeights);
 
       const toMint = await mock.calculateDueProtocolFees(
-        currentInvariant.mul(fp(1)).div(lastInvariant),
+        FpDiv(currentInvariant, lastInvariant),
         totalSupply,
         totalSupply,
         protocolSwapFeePercentage
       );
 
       // The BPT to mint should be such that it'd let the protocol claim the tokens it is due if exiting proportionally
-      const protocolPoolOwnership = toMint.mul(FP_SCALING_FACTOR).div(totalSupply.add(toMint)); // The BPT supply grows
+      const protocolPoolOwnership = FpDiv(toMint, totalSupply.add(toMint)); // The BPT supply grows
 
-      const tokenAFeeAmount = currentBalances[0].mul(protocolPoolOwnership).div(FP_SCALING_FACTOR);
-      const tokenBFeeAmount = currentBalances[1].mul(protocolPoolOwnership).div(FP_SCALING_FACTOR);
+      const tokenAFeeAmount = FpMul(currentBalances[0], protocolPoolOwnership);
+      const tokenBFeeAmount = FpMul(currentBalances[1], protocolPoolOwnership);
 
       expectEqualWithError(tokenAFeeAmount, bn(3e18), MAX_RELATIVE_ERROR);
       expectEqualWithError(tokenBFeeAmount, bn(60e18), MAX_RELATIVE_ERROR);
 
       // The TS helper outputs the same value
-
       const expectedToMint = calculateBPTSwapFeeAmount(
-        currentInvariant.mul(fp(1)).div(lastInvariant),
+        FpDiv(currentInvariant, lastInvariant),
         totalSupply,
         totalSupply,
         protocolSwapFeePercentage
@@ -73,7 +72,7 @@ describe('InvariantGrowthProtocolSwapFees', function () {
       const currentInvariant = fp(299);
 
       const toMint = await mock.calculateDueProtocolFees(
-        currentInvariant.mul(fp(1)).div(lastInvariant),
+        FpDiv(currentInvariant, lastInvariant),
         totalSupply,
         totalSupply,
         protocolSwapFeePercentage
