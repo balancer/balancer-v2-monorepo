@@ -185,7 +185,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * @dev Caches the rates of all tokens if necessary
      */
     function _cacheTokenRatesIfNecessary() internal {
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
+        uint256 totalTokens = _getTotalTokens();
+        for (uint256 i = 0; i < totalTokens; ++i) {
             _cacheTokenRateIfNecessary(i);
         }
     }
