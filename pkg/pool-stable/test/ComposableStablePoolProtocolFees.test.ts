@@ -6,7 +6,17 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { arrayAdd, BigNumberish, bn, bnSum, fp, arraySub, fpMul, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  arrayAdd,
+  BigNumberish,
+  bn,
+  bnSum,
+  fp,
+  arraySub,
+  arrayFpMul,
+  fpMul,
+  fpDiv,
+} from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -448,7 +458,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               // seen as a change in rates from old to current.
               await tokens.asyncMap((token) => pool.updateTokenRateCache(token.address));
 
-              currentBalances = arrayfpMul(preBalances, rates);
+              currentBalances = arrayFpMul(preBalances, rates);
 
               // We assume all tokens have similar value, and simply add the non-exempt the amounts together to
               // represent how much value is being added to the Pool. This is equivalent to assuming the invariant is
@@ -483,7 +493,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               // We first apply the swap deltas, and then multiply by the rates, which is the model the Pool uses when
               // splitting swap and yield fees.
 
-              currentBalances = arrayfpMul(arrayAdd(preBalances, swapFeeDeltas), rates);
+              currentBalances = arrayFpMul(arrayAdd(preBalances, swapFeeDeltas), rates);
 
               // We assume all tokens have similar value, and simply add the swap deltas and non-exempt yield deltas
               // together to represent how much value is being added to the Pool. This is equivalent to assuming the
