@@ -302,6 +302,10 @@ export default class WeightedPool extends BasePool {
     return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
+  async updateProtocolFeePercentageCache(): Promise<void> {
+    await this.instance.updateProtocolFeePercentageCache();
+  }
+
   async swap(params: MinimalSwap): Promise<SwapResult> {
     const tx = await this.vault.minimalSwap(params);
     const receipt = await tx.wait();
