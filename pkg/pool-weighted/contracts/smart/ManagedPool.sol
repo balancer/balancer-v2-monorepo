@@ -81,8 +81,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
+    // We need to work with normalized weights (i.e. they should add up to 100%), but storing normalized weights
+    // would require updating all weights whenever one of them changes, for example in an add or remove token
+    // operation. Instead, we keep track of the sum of all denormalized weights, and dynamically normalize them
+    // for I/O by multiplying or dividing by the "denormWeightSum".
+    //
+    // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
+    //
+    // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
+    // denormalized weight: independent of the current "denormWeightSum", which avoids having to recompute the denorm
+    // weights as the sum changes.
+    uint256 private constant _MAX_DENORM_WEIGHT = 1e22; // FP 10,000
+
     // Use the _miscData slot in BasePool
-    // The first 64 bits are reserved for the swap fee
+    // The first 64 bits are reserved for the swap fee.
     //
     // Store non-token-based values:
     // Start/end timestamps for gradual weight and swap fee updates
@@ -105,13 +117,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     // The first 10 bits are unused.
     //
     // Store non-token-based values:
-    // Manager swap fee percentage.
-    // Manager AUM fee percentage and timestamp of last collection.
-    // Start/end values of the swap fee (The MSB "start" swap fee corresponds to the reserved bits in BasePool,
-    // and cannot be written from this contract.)
-    // Flags for the LP allowlist and enabling/disabling trading
+    // Manager swap fee percentage (applied after protocol swap fees).
+    // Manager AUM fee percentage (subject to protocol fees).
+    // Timestamp of the last collection of AUM fees (initialized on first collection).
+    // Number of tokens contained in the Pool (can change if tokens are added or removed).
+    // Sum of the tokens' denormalized weights.
     // [ 10 bits  |     80 bits      |  6 bits  |  32 bits  |  64 bits |  64 bits  ]
-    // [ unused   |  denormWeightSum | # tokens |  aum time |  mgr aum |  mgr swap ]
+    // [  unused  |  denormWeightSum | # tokens |  aum time |  mgr aum |  mgr swap ]
     // |MSB                                                                     LSB|
     bytes32 private _managedData;
     uint256 private constant _MANAGER_SWAP_FEE_OFFSET = 0;
@@ -126,11 +138,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     // [ unused   | decimals | end denorm | start denorm |
     // |MSB                                           LSB|
     mapping(IERC20 => bytes32) private _tokenState;
-
-    // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
-    // denormalized weight: independent of the current _denormWeightSum, which avoids having to recompute the denorm
-    // weights as the sum changes.
-    uint256 private constant _MAX_DENORM_WEIGHT = 1e22; // FP 10,000
 
     uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
