@@ -13,7 +13,16 @@ import {
   currentTimestamp,
   receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import { BigNumberish, bn, fp, FP_SCALING_FACTOR, fromFp, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  BigNumberish,
+  bn,
+  fp,
+  fpDiv,
+  fpMul,
+  FP_SCALING_FACTOR,
+  fromFp,
+  pct,
+} from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -1054,10 +1063,11 @@ describe('ManagedPool', function () {
                             const someTokenBeforeIndex = beforeTokens.indexOf(someToken.token);
                             const otherTokenBeforeIndex = beforeTokens.indexOf(otherToken.token);
 
-                            const afterWeightRatio = someToken.weight.mul(FP_SCALING_FACTOR).div(otherToken.weight);
-                            const beforeWeightRatio = beforeTokenWeights[someTokenBeforeIndex].weight
-                              .mul(FP_SCALING_FACTOR)
-                              .div(beforeTokenWeights[otherTokenBeforeIndex].weight);
+                            const afterWeightRatio = fpDiv(someToken.weight, otherToken.weight);
+                            const beforeWeightRatio = fpDiv(
+                              beforeTokenWeights[someTokenBeforeIndex].weight,
+                              beforeTokenWeights[otherTokenBeforeIndex].weight
+                            );
 
                             expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
                           });
@@ -1070,7 +1080,7 @@ describe('ManagedPool', function () {
 
                       const expectedDenormWeightSum = beforeWeights
                         .filter((_, i) => i !== tokenIndex)
-                        .reduce((sum, weight) => sum.add(weight.mul(beforeSum).div(FP_SCALING_FACTOR)), bn(0));
+                        .reduce((sum, weight) => sum.add(fpMul(weight, beforeSum)), bn(0));
 
                       await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
 
@@ -1457,10 +1467,11 @@ describe('ManagedPool', function () {
                           const someTokenAfterIndex = afterTokens.indexOf(someToken.token);
                           const otherTokenAfterIndex = afterTokens.indexOf(otherToken.token);
 
-                          const beforeWeightRatio = someToken.weight.mul(FP_SCALING_FACTOR).div(otherToken.weight);
-                          const afterWeightRatio = afterTokenWeights[someTokenAfterIndex].weight
-                            .mul(FP_SCALING_FACTOR)
-                            .div(afterTokenWeights[otherTokenAfterIndex].weight);
+                          const beforeWeightRatio = fpDiv(someToken.weight, otherToken.weight);
+                          const afterWeightRatio = fpDiv(
+                            afterTokenWeights[someTokenAfterIndex].weight,
+                            afterTokenWeights[otherTokenAfterIndex].weight
+                          );
 
                           expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
                         });
@@ -1472,7 +1483,7 @@ describe('ManagedPool', function () {
 
                     const normalizedWeight = fp(0.5);
                     const weightSumRatio = fp(FP_SCALING_FACTOR).div(fp(1).sub(normalizedWeight));
-                    const expectedDenormWeightSum = beforeSum.mul(weightSumRatio).div(FP_SCALING_FACTOR);
+                    const expectedDenormWeightSum = fpMul(beforeSum, weightSumRatio);
 
                     await pool.addToken(sender, newToken, fp(0.5), fp(100), 0, other.address);
 
@@ -1610,7 +1621,7 @@ describe('ManagedPool', function () {
 
           const prevInvariant = await mockMath.invariant(poolWeights, upscaledBalances);
 
-          const adjustedAmountIn = upscaledSwapAmount.mul(fp(1).sub(swapFeePercentage)).div(fp(1));
+          const adjustedAmountIn = fpMul(upscaledSwapAmount, fp(1).sub(swapFeePercentage));
           const amountOut = await mockMath.outGivenIn(
             upscaledBalances[0],
             poolWeights[0],
@@ -1624,7 +1635,7 @@ describe('ManagedPool', function () {
           const totalSupply = await pool.totalSupply();
 
           const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
-            postInvariant.mul(fp(1)).div(prevInvariant),
+            fpDiv(postInvariant, prevInvariant),
             totalSupply,
             totalSupply,
             protocolFeePercentage
@@ -1676,7 +1687,7 @@ describe('ManagedPool', function () {
           const totalSupply = await pool.totalSupply();
 
           const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
-            postInvariant.mul(fp(1)).div(prevInvariant),
+            fpDiv(postInvariant, prevInvariant),
             totalSupply,
             totalSupply,
             protocolFeePercentage
@@ -2084,7 +2095,7 @@ describe('ManagedPool', function () {
 
       const balanceBefore = await pool.balanceOf(owner);
 
-      const protocolPortion = expectedBpt.mul(AUM_PROTOCOL_FEE_PERCENTAGE).div(fp(1));
+      const protocolPortion = fpMul(expectedBpt, AUM_PROTOCOL_FEE_PERCENTAGE);
       const ownerPortion = expectedBpt.sub(protocolPortion);
 
       await advanceTime(180 * DAY);

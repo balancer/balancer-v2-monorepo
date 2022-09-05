@@ -7,7 +7,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR, arrayAdd, bnSum } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, pct, arrayAdd, bnSum, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { currentTimestamp, advanceTime, MONTH, WEEK, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -333,11 +333,12 @@ describe('ComposableStablePool', () => {
 
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != bptIndex));
-              const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              const expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas
-                .mul(PROTOCOL_SWAP_FEE_PERCENTAGE)
-                .div(FP_SCALING_FACTOR);
+              const expectedProtocolOwnershipPercentage = fpMul(
+                poolPercentageDueToDeltas,
+                PROTOCOL_SWAP_FEE_PERCENTAGE
+              );
 
               // protocol ownership = to mint / (supply + to mint)
               // to mint = supply * protocol ownership / (1 - protocol ownership)
@@ -1570,7 +1571,7 @@ describe('ComposableStablePool', () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const expectedRate = fpDiv(invariant, virtualSupply);
 
             const rate = await pool.getRate();
 
@@ -1594,7 +1595,7 @@ describe('ComposableStablePool', () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const expectedRate = fpDiv(invariant, virtualSupply);
 
             const rate = await pool.getRate();
 
