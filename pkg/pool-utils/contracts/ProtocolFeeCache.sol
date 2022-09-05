@@ -51,7 +51,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     FeeTypeCache private _cache;
 
-    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolSwapFeePercentage);
+    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolFeePercentage);
 
     // Swap fees can be set to a fixed value at construction, or delegated to the ProtocolFeePercentagesProvider if
     // passing the special sentinel value.
@@ -130,8 +130,8 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     /**
      * @dev Override in derived contracts to perform some action before the cache is updated. This is typically relevant
-     * in Pools that have protocol debt that is dependent in the protocol fee percentages, as it needs to be paid out
-     * before said percentages change.
+     * to Pools that incur protocol debt between operations. To avoid altering the amount due retroactively, this debt
+     * needs to be paid before the fee percentages change.
      */
     function _beforeProtocolFeeCacheUpdate() internal virtual {}
 

@@ -968,7 +968,7 @@ contract ComposableStablePool is
 
         // It turns out that the process for due protocol fee calculation involves computing the current invariant,
         // except using the amplification factor at the last join or exit. This would typically not be terribly useful,
-        // but since the amplification factor only changes rarely there is high probabilty of its current value being
+        // but since the amplification factor only changes rarely there is high probability of its current value being
         // the same as it was in the last join or exit. If that is the case, then we can skip the costly invariant
         // computation altogether.
         uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
@@ -983,7 +983,7 @@ contract ComposableStablePool is
         // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
         // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
         // sensitive value.
-        // Because of this, we pay any due protocol fees *before* updating the cached rates, making it so that the new
+        // Because of this, we pay any due protocol fees *before* updating the cache, making it so that the new
         // percentages only affect future operation of the Pool, and not past fees. As a result, `getRate()` is
         // unaffected by the cached protocol fee percentages changing.
 

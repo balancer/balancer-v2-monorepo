@@ -104,7 +104,7 @@ describe('ProtocolFeeCache', () => {
 
           expectEvent.inReceipt(await receipt.wait(), 'ProtocolFeePercentageCacheUpdated', {
             feeType,
-            protocolSwapFeePercentage: NEW_VALUE,
+            protocolFeePercentage: NEW_VALUE,
           });
         });
       });
