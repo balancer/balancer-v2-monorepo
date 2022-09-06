@@ -12,20 +12,24 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 
 describe('YearnLinearPool', function () {
   let poolFactory: Contract;
   let owner: SignerWithAddress;
+  let vault: Vault;
 
   before('setup', async () => {
     [, , , owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy pool factory', async () => {
-    const vault = await Vault.create();
+    vault = await Vault.create();
+    const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
     poolFactory = await deploy('YearnLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address],
     });
   });
 
@@ -45,6 +49,35 @@ describe('YearnLinearPool', function () {
 
     return LinearPool.deployedAt(event.args.pool);
   }
+
+  describe('asset managers', () => {
+    let pool: LinearPool, tokens: TokenList;
+
+    sharedBeforeEach('deploy pool', async () => {
+      const token = await Token.create('DAI');
+      const tokenVault = await deploy('MockYearnTokenVault', {
+        args: ['yvDAI', 'yvDAI', 18, token.address, fp(1)],
+      });
+
+      tokens = new TokenList([token, await Token.deployedAt(tokenVault.address)]).sort();
+      pool = await deployPool(token.address, tokenVault.address);
+    });
+
+    it('sets the same asset manager for main and wrapped token', async () => {
+      const poolId = await pool.getPoolId();
+
+      const { assetManager: firstAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
+      const { assetManager: secondAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.second);
+
+      expect(firstAssetManager).to.equal(secondAssetManager);
+    });
+
+    it('sets the no asset manager for the BPT', async () => {
+      const poolId = await pool.getPoolId();
+      const { assetManager } = await vault.instance.getPoolTokenInfo(poolId, pool.address);
+      expect(assetManager).to.equal(ZERO_ADDRESS);
+    });
+  });
 
   describe('getWrappedTokenRate', () => {
     //The yearn vault pricePerShare is a decimal scaled version of getRate

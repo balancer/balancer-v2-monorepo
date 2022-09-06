@@ -22,34 +22,49 @@ import "../LinearPool.sol";
 contract YearnLinearPool is LinearPool {
     IYearnTokenVault private immutable _tokenVault;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20 mainToken,
-        IERC20 wrappedToken,
-        uint256 upperTarget,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
+    struct ConstructorArgs {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20 mainToken;
+        IERC20 wrappedToken;
+        address assetManager;
+        uint256 upperTarget;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+    }
+
+    constructor(ConstructorArgs memory args)
         LinearPool(
-            vault,
-            name,
-            symbol,
-            mainToken,
-            wrappedToken,
-            upperTarget,
-            new address[](2),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            args.vault,
+            args.name,
+            args.symbol,
+            args.mainToken,
+            args.wrappedToken,
+            args.upperTarget,
+            _toAssetManagerArray(args),
+            args.swapFeePercentage,
+            args.pauseWindowDuration,
+            args.bufferPeriodDuration,
+            args.owner
         )
     {
-        _tokenVault = IYearnTokenVault(address(wrappedToken));
-        _require(address(mainToken) == IYearnTokenVault(address(wrappedToken)).token(), Errors.TOKENS_MISMATCH);
+        IYearnTokenVault tokenVault = IYearnTokenVault(address(args.wrappedToken));
+        
+        _tokenVault = tokenVault;
+
+        _require(address(args.mainToken) == tokenVault.token(), Errors.TOKENS_MISMATCH);
+    }
+
+    function _toAssetManagerArray(ConstructorArgs memory args) private pure returns (address[] memory) {
+        // We assign the same asset manager to both the main and wrapped tokens.
+        address[] memory assetManagers = new address[](2);
+        assetManagers[0] = args.assetManager;
+        assetManagers[1] = args.assetManager;
+
+        return assetManagers;
     }
 
     //_getWrappedTokenRate is expected to return the rate scaled to 18 decimal points, regardless of underlying decimals

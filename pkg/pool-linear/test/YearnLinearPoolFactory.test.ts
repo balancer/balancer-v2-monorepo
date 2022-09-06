@@ -30,7 +30,8 @@ describe('YearnLinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('YearnLinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    factory = await deploy('YearnLinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address, queries.address] });
     creationTime = await currentTimestamp();
 
     const mainToken = await Token.create('DAI');
@@ -86,12 +87,14 @@ describe('YearnLinearPoolFactory', function () {
       expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
 
-    it('sets no asset managers', async () => {
+    it('sets a rebalancer as the asset manager', async () => {
       const poolId = await pool.getPoolId();
-      await tokens.asyncEach(async (token) => {
-        const info = await vault.getPoolTokenInfo(poolId, token);
-        expect(info.assetManager).to.equal(ZERO_ADDRESS);
-      });
+      // We only check the first token, but this will be the asset manager for both main and wrapped
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
+
+      const rebalancer = await deployedAt('YearnLinearPoolRebalancer', assetManager);
+
+      expect(await rebalancer.getPool()).to.equal(pool.address);
     });
 
     it('sets swap fee', async () => {
@@ -126,6 +129,18 @@ describe('YearnLinearPoolFactory', function () {
       const targets = await pool.getTargets();
       expect(targets.lowerTarget).to.be.equal(fp(0));
       expect(targets.upperTarget).to.be.equal(UPPER_TARGET);
+    });
+  });
+
+  describe('with a created pool', () => {
+    let pool: Contract;
+
+    sharedBeforeEach('create pool', async () => {
+      pool = await createPool();
+    });
+
+    it('returns the address of the last pool created by the factory', async () => {
+      expect(await factory.getLastCreatedPool()).to.equal(pool.address);
     });
   });
 
