@@ -42,7 +42,7 @@ interface IReaperTokenVault is IERC20 {
 
     /**
      * @dev returns the number of decimals for this vault token.
-     * For reaper token vaults, the decimals are fixed to 18
+     * For reaper single-strat vaults, the decimals are fixed to 18.
      */
     function decimals() external view returns (uint8);
 }
