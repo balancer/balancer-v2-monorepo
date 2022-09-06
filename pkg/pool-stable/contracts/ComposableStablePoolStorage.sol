@@ -376,6 +376,9 @@ abstract contract ComposableStablePoolStorage is BasePool {
     /**
      * @dev Returns the number of tokens in circulation.
      *
+     * WARNING: in the vast majority of cases this is not a useful value, since it does not include the debt the Pool
+     * accrued in the form of unminted BPT for the ProtocolFeesCollector. Consider using `getActualSupply()` instead.
+     *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
      * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
@@ -395,10 +398,10 @@ abstract contract ComposableStablePoolStorage is BasePool {
         return _getVirtualSupply(cash + managed);
     }
 
-    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
-    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-    // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in
+        // the vault. So the virtualSupply (the amount of BPT supply in circulation) is defined as:
+        // virtualSupply = totalSupply() - _balances[_bptIndex]
         return totalSupply().sub(bptBalance);
     }
 }

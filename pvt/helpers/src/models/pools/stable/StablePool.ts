@@ -109,6 +109,10 @@ export default class StablePool extends BasePool {
     return this.instance.getVirtualSupply();
   }
 
+  async getActualSupply(): Promise<BigNumber> {
+    return this.instance.getActualSupply();
+  }
+
   async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
     return this.instance.updateTokenRateCache(token.address);
   }

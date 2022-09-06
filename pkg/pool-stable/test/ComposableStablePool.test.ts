@@ -1551,7 +1551,7 @@ describe('ComposableStablePool', () => {
       });
     });
 
-    describe('getRate and protocol fees', () => {
+    describe.only('getRate and protocol fees', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
 
@@ -1617,6 +1617,13 @@ describe('ComposableStablePool', () => {
 
               // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
               unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
+            });
+
+            it('the actual supply takes into account unminted protocol fees', async () => {
+              const virtualSupply = await pool.getVirtualSupply();
+              const expectedActualSupply = virtualSupply.add(unmintedBPT);
+
+              expect(await pool.getActualSupply()).to.almostEqual(expectedActualSupply, 1e-6);
             });
 
             it('rate takes into account unminted protocol fees', async () => {
