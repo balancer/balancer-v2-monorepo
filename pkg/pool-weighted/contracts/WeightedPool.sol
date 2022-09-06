@@ -242,11 +242,18 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         returns (uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
-        uint256 protocolFeesToBeMinted = _getPreJoinExitProtocolFees(
-            preBalances,
+        uint256 invariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
+        (uint256 protocolFeesToBeMinted, uint256 athRateProduct) = _getPreJoinExitProtocolFees(
+            invariant,
             normalizedWeights,
             supplyBeforeFeeCollection
         );
+
+        // We then update the recorded value of `athRateProduct` to ensure we only collect fees on yield once.
+        // A zero value for `athRateProduct` represents that it is unchanged so we can skip updating it.
+        if (athRateProduct > 0) {
+            _updateATHRateProduct(athRateProduct);
+        }
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
@@ -296,25 +303,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
         uint256 invariant = getInvariant();
 
-        // Swap fees
-        uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
+        (uint256 protocolFeesToBeMinted, uint256 athRateProduct) = _getPreJoinExitProtocolFees(
             invariant,
-            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+            _getNormalizedWeights(),
+            totalSupply()
         );
 
-        // Yield fees
-        (uint256 protocolYieldFeesPoolPercentage, uint256 athRateProduct) = _getYieldProtocolFeesPoolPercentage(
-            _getNormalizedWeights()
-        );
-
-        uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
-        if (protocolOwnershipPercentage > 0) {
-            uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
-                totalSupply(),
-                protocolOwnershipPercentage
-            );
-
-            _payProtocolFees(protocolFeeAmount);
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
         }
 
         // With the fees paid, we now store the current invariant and update the ATH rate product (if necessary),
