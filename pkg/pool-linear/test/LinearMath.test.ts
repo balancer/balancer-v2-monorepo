@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, bn, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 import * as math from './math';
@@ -18,13 +18,13 @@ describe('LinearMath', function () {
   describe('init', () => {
     const params = {
       fee: fp(0.01),
-      lowerTarget: fp(0),
+      lowerTarget: FP_ZERO,
       upperTarget: fp(200),
     };
 
-    const mainBalance = fp(0);
-    const wrappedBalance = fp(0);
-    const bptSupply = fp(0);
+    const mainBalance = FP_ZERO;
+    const wrappedBalance = FP_ZERO;
+    const bptSupply = FP_ZERO;
 
     it('given main in within lower and upper', async () => {
       const mainIn = fp(5);

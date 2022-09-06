@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE, FP_SCALING_FACTOR, FP_ZERO, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -625,8 +625,8 @@ describe('LinearPool', function () {
     });
 
     const itAdaptsTheScalingFactorsCorrectly = () => {
-      const expectedBptScalingFactor = fp(1);
-      const expectedMainTokenScalingFactor = fp(1);
+      const expectedBptScalingFactor = FP_SCALING_FACTOR;
+      const expectedMainTokenScalingFactor = FP_SCALING_FACTOR;
 
       it('adapt the scaling factors with the price rate', async () => {
         const scalingFactors = await pool.getScalingFactors();
@@ -653,7 +653,7 @@ describe('LinearPool', function () {
 
     context('with a price rate equal to 1', () => {
       sharedBeforeEach('mock rate', async () => {
-        await pool.instance.setWrappedTokenRate(fp(1));
+        await pool.instance.setWrappedTokenRate(FP_ONE);
       });
 
       itAdaptsTheScalingFactorsCorrectly();
@@ -674,7 +674,7 @@ describe('LinearPool', function () {
     let params: math.Params;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(0);
+      lowerTarget = FP_ZERO;
       upperTarget = fp(2000);
       await deployPool({ mainToken, wrappedToken, upperTarget }, true);
       await pool.instance.setTotalSupply(MAX_UINT112);
