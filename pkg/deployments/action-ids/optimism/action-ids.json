@@ -253,15 +253,6 @@
       }
     }
   },
-  "20220906-composable-stable-pool": {
-    "ComposableStablePoolFactory": {
-      "useAdaptor": false,
-      "actionIds": {
-        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0x1118ad8f5b5bbeda2680575f94dd15ba613cef4276661f1ddc543c1db3f54fe6",
-        "disable()": "0xd9049e35b4af4ed3a308c76cd91b94baafcc84b2e3c4c87ca20f97a24553dc7c"
-      }
-    }
-  },
   "20220609-stable-pool-v2": {
     "StablePool": {
       "useAdaptor": false,
@@ -275,6 +266,15 @@
         "startAmplificationParameterUpdate(uint256,uint256)": "0x54b956df6ebebde109e89d5774d06eb7f574f998effb944e2616b50cbec54225",
         "stopAmplificationParameterUpdate()": "0x199befbc09ac2a04a737f858447d5557b711631b334a0f05c035d2933574fce8",
         "unpause()": "0xf119550f558b5b1397b8e2c2f46007895fb892d231743995953ff4ef6680f5e6"
+      }
+    }
+  },
+  "20220906-composable-stable-pool": {
+    "ComposableStablePoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0x1118ad8f5b5bbeda2680575f94dd15ba613cef4276661f1ddc543c1db3f54fe6",
+        "disable()": "0xd9049e35b4af4ed3a308c76cd91b94baafcc84b2e3c4c87ca20f97a24553dc7c"
       }
     }
   }
