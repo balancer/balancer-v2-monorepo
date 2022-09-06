@@ -323,22 +323,34 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     }
 
     /**
+     * @notice Returns the effective BPT supply.
+     *
+     * @dev This would be the same as `totalSupply` however the Pool owes debt to the Protocol in the form of unminted
+     * BPT, which will be minted immediately before the next join or exit. We need to take these into account since,
+     * even if they don't yet exist, they will effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() public view returns (uint256) {
+        uint256 supply = totalSupply();
+
+        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
+            getInvariant(),
+            _getNormalizedWeights(),
+            supply
+        );
+
+        return supply.add(protocolFeesToBeMinted);
+    }
+
+    /**
      * @notice Returns the appreciation of one BPT relative to the underlying tokens.
      * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
      * We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
      * This prevents the Pool's rate being affected by the collection of protocol fees.
      */
     function getRate() public view override returns (uint256) {
-        uint256 invariant = getInvariant();
-        uint256 supply = totalSupply();
-
-        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
-            invariant,
-            _getNormalizedWeights(),
-            totalSupply()
-        );
-
-        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeesToBeMinted));
+        return Math.mul(getInvariant(), _getTotalTokens()).divDown(getActualSupply());
     }
 
     function _onDisableRecoveryMode() internal override {
