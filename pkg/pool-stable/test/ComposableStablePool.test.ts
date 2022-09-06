@@ -1619,6 +1619,13 @@ describe('ComposableStablePool', () => {
               unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
             });
 
+            it('the actual supply takes into account unminted protocol fees', async () => {
+              const virtualSupply = await pool.getVirtualSupply();
+              const expectedActualSupply = virtualSupply.add(unmintedBPT);
+
+              expect(await pool.getActualSupply()).to.almostEqual(expectedActualSupply, 1e-6);
+            });
+
             it('rate takes into account unminted protocol fees', async () => {
               const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
                 (_, i) => i != bptIndex

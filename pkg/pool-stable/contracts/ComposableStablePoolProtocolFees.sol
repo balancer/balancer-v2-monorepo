@@ -55,7 +55,7 @@ abstract contract ComposableStablePoolProtocolFees is
 
     /**
      * @dev Calculates due protocol fees originating from accumulated swap fees and yield of non-exempt tokens, pays
-     * them by minting BPT, and returns the updated virtual supply and current balances.
+     * them by minting BPT, and returns the actual supply and current balances.
      *
      * We also return the current invariant computed using the amplification factor at the last join or exit, which can
      * be useful to skip computations in scenarios where the amplification factor is not changing.
@@ -93,11 +93,10 @@ abstract contract ComposableStablePoolProtocolFees is
             _payProtocolFees(protocolFeeAmount);
         }
 
-        // We pay fees before a join or exit to ensure the pool is debt-free, so that swap fee and quote calculations
-        // based on the virtual supply reflect only the current user's transaction. We have just increased the virtual
-        // supply by minting the protocol fee tokens, so those are included in the return value.
+        // We pay fees before a join or exit to ensure the pool is debt-free. This increases the virtual supply (making
+        // it match the actual supply).
         //
-        // For this addition to overflow, the actual total supply would have already overflowed.
+        // For this addition to overflow, `totalSupply` would also have already overflowed.
         return (virtualSupply + protocolFeeAmount, balances, currentInvariantWithLastJoinExitAmp);
     }
 
