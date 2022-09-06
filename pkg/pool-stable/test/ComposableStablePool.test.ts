@@ -1551,7 +1551,7 @@ describe('ComposableStablePool', () => {
       });
     });
 
-    describe.only('getRate and protocol fees', () => {
+    describe('getRate and protocol fees', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
 
