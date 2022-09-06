@@ -7,15 +7,17 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/c
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
+
 import {
   BigNumberish,
   bn,
   fp,
   pct,
-  FP_SCALING_FACTOR,
   arrayAdd,
   bnSum,
   arrayFpMul,
+  fpDiv,
+  fpMul,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
@@ -345,11 +347,12 @@ describe('ComposableStablePool', () => {
 
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != bptIndex));
-              const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              const expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas
-                .mul(PROTOCOL_SWAP_FEE_PERCENTAGE)
-                .div(FP_SCALING_FACTOR);
+              const expectedProtocolOwnershipPercentage = fpMul(
+                poolPercentageDueToDeltas,
+                PROTOCOL_SWAP_FEE_PERCENTAGE
+              );
 
               // protocol ownership = to mint / (supply + to mint)
               // to mint = supply * protocol ownership / (1 - protocol ownership)
@@ -1591,7 +1594,7 @@ describe('ComposableStablePool', () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const expectedRate = fpDiv(invariant, virtualSupply);
 
             const rate = await pool.getRate();
 
@@ -1607,8 +1610,8 @@ describe('ComposableStablePool', () => {
 
             sharedBeforeEach('compute protocol ownership', async () => {
               const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
-              const feePercentage = feeAmount.mul(fp(1)).div(balanceSum);
-              const protocolOwnership = feePercentage.mul(protocolFeePercentage).div(fp(1));
+              const feePercentage = fpDiv(feeAmount, balanceSum);
+              const protocolOwnership = fpMul(feePercentage, protocolFeePercentage);
 
               // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
               // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
@@ -1642,8 +1645,8 @@ describe('ComposableStablePool', () => {
 
               const actualSupply = virtualSupply.add(unmintedBPT);
 
-              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
-              const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
+              const rateAssumingNoProtocolFees = fpDiv(invariant, virtualSupply);
+              const rateConsideringProtocolFees = fpDiv(invariant, actualSupply);
 
               // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
               // rounding error.
@@ -1712,7 +1715,7 @@ describe('ComposableStablePool', () => {
 
               const virtualSupply = await pool.getVirtualSupply();
 
-              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+              const rateAssumingNoProtocolFees = fpDiv(invariant, virtualSupply);
 
               expect(newRate).to.be.almostEqual(rateAssumingNoProtocolFees, 1e-6);
             });
@@ -1795,7 +1798,7 @@ describe('ComposableStablePool', () => {
           context('with swap protocol fees', () => {
             sharedBeforeEach('accrue fees due to a swap', async () => {
               const amount = initialBalance.div(20);
-              feeAmount = amount.mul(swapFeePercentage).div(fp(1));
+              feeAmount = fpMul(amount, swapFeePercentage);
 
               const tokenIn = tokens.first;
               const tokenOut = tokens.second;
@@ -1808,16 +1811,15 @@ describe('ComposableStablePool', () => {
           context('with yield protocol fees', () => {
             sharedBeforeEach('accrue fees due to yield', async () => {
               // Even tokens are exempt from yield fee, so we cause some on an odd one.
-
               const rateProvider = rateProviders[1];
               const currentRate = await rateProvider.getRate();
 
               // Cause a 0.5% (1/200) rate increase
-              const newRate = currentRate.mul(fp(1.005)).div(fp(1));
+              const newRate = fpMul(currentRate, fp(1.005));
               await rateProvider.mockRate(newRate);
               await pool.updateTokenRateCache(tokens.second);
 
-              feeAmount = initialBalance.mul(newRate.sub(currentRate)).div(fp(1));
+              feeAmount = fpMul(initialBalance, newRate.sub(currentRate));
             });
 
             itReportsRateCorrectly();

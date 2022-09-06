@@ -1,5 +1,5 @@
 import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
-import { BigNumberish, bn, fp, FP_SCALING_FACTOR } from '../../../numbers';
+import { BigNumberish, bn, fp, fpMul } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import Vault from '../../vault/Vault';
@@ -52,6 +52,7 @@ const MIN_INVARIANT_RATIO = fp(0.7);
 
 export default class WeightedPool extends BasePool {
   weights: BigNumberish[];
+  rateProviders: string[];
   assetManagers: string[];
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
@@ -71,6 +72,7 @@ export default class WeightedPool extends BasePool {
     vault: Vault,
     tokens: TokenList,
     weights: BigNumberish[],
+    rateProviders: string[],
     assetManagers: string[],
     swapFeePercentage: BigNumberish,
     poolType: WeightedPoolType,
@@ -85,6 +87,7 @@ export default class WeightedPool extends BasePool {
     super(instance, poolId, vault, tokens, swapFeePercentage, owner);
 
     this.weights = weights;
+    this.rateProviders = rateProviders;
     this.assetManagers = assetManagers;
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
@@ -108,28 +111,28 @@ export default class WeightedPool extends BasePool {
     return bn(maxIdx);
   }
 
-  async getLastInvariant(): Promise<BigNumber> {
-    return this.instance.getLastInvariant();
+  async getLastPostJoinExitInvariant(): Promise<BigNumber> {
+    return this.instance.getLastPostJoinExitInvariant();
   }
 
   async getMaxInvariantDecrease(): Promise<BigNumber> {
     const supply = await this.totalSupply();
-    return supply.sub(MIN_INVARIANT_RATIO.mul(supply).div(fp(1)));
+    return supply.sub(fpMul(MIN_INVARIANT_RATIO, supply));
   }
 
   async getMaxInvariantIncrease(): Promise<BigNumber> {
     const supply = await this.totalSupply();
-    return MAX_INVARIANT_RATIO.mul(supply).div(fp(1)).sub(supply);
+    return fpMul(MAX_INVARIANT_RATIO, supply).sub(supply);
   }
 
   async getMaxIn(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return currentBalances[tokenIndex].mul(MAX_IN_RATIO).div(fp(1));
+    return fpMul(currentBalances[tokenIndex], MAX_IN_RATIO);
   }
 
   async getMaxOut(tokenIndex: number, currentBalances?: BigNumber[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
-    return currentBalances[tokenIndex].mul(MAX_OUT_RATIO).div(fp(1));
+    return fpMul(currentBalances[tokenIndex], MAX_OUT_RATIO);
   }
 
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
@@ -153,7 +156,7 @@ export default class WeightedPool extends BasePool {
 
     const scalingFactors = await this.getScalingFactors();
     return calculateSpotPrice(
-      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      currentBalances.map((x, i) => fpMul(x, scalingFactors[i])),
       this.weights
     );
   }
@@ -169,7 +172,7 @@ export default class WeightedPool extends BasePool {
     const scalingFactors = await this.getScalingFactors();
 
     return calculateBPTPrice(
-      bn(currentBalance).mul(scalingFactors[tokenIndex]).div(FP_SCALING_FACTOR),
+      fpMul(currentBalance, scalingFactors[tokenIndex]),
       this.weights[tokenIndex],
       currentSupply
     );
@@ -180,7 +183,7 @@ export default class WeightedPool extends BasePool {
     const scalingFactors = await this.getScalingFactors();
 
     return calculateInvariant(
-      currentBalances.map((x, i) => bn(x).mul(scalingFactors[i]).div(FP_SCALING_FACTOR)),
+      currentBalances.map((x, i) => fpMul(x, scalingFactors[i])),
       this.weights
     );
   }
@@ -194,7 +197,7 @@ export default class WeightedPool extends BasePool {
     const lastInvariant = await this.estimateInvariant();
     const paidTokenIndex = this.tokens.indexOf(paidToken);
     const feeAmount = calculateOneTokenSwapFeeAmount(currentBalances, this.weights, lastInvariant, paidTokenIndex);
-    return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
+    return fpMul(bn(feeAmount), protocolFeePercentage);
   }
 
   async estimateMaxSwapFeeAmount(
@@ -210,7 +213,7 @@ export default class WeightedPool extends BasePool {
       MIN_INVARIANT_RATIO,
       paidTokenIndex
     );
-    return bn(feeAmount).mul(protocolFeePercentage).div(fp(1));
+    return fpMul(bn(feeAmount), protocolFeePercentage);
   }
 
   async estimateGivenIn(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {
@@ -297,6 +300,10 @@ export default class WeightedPool extends BasePool {
 
   async swapGivenOut(params: SwapWeightedPool): Promise<SwapResult> {
     return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
+  }
+
+  async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {
+    return this.instance.updateProtocolFeePercentageCache();
   }
 
   async swap(params: MinimalSwap): Promise<SwapResult> {

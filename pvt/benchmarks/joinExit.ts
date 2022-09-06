@@ -9,13 +9,14 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { poolConfigs } from './config';
 
 // setup environment
 const BPTAmount = bn(1e18);
 const numberJoinsExits = 3;
-const managedPoolMin = 15;
+const managedPoolMin = 10;
 const managedPoolMax = 35;
-const maxManagedTokens = 38;
+const maxManagedTokens = poolConfigs.MANAGED_POOL.maxTokens;
 const managedPoolStep = 5;
 
 let vault: Vault;
@@ -37,8 +38,8 @@ async function main() {
   const joinWeightedUserData = WeightedPoolEncoder.joinTokenInForExactBPTOut(BPTAmount, 0);
   const exitWeightedUserData = WeightedPoolEncoder.exitExactBPTInForTokensOut(BPTAmount);
 
-  // numTokens is the size of the pool: 2,4,6,8,...
-  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
+  // numTokens is the size of the pool: 2,3,4,5...
+  for (let numTokens = 2; numTokens <= poolConfigs.WEIGHTED_POOL.maxTokens; numTokens += 1) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
@@ -83,7 +84,7 @@ async function main() {
   console.log(`#With user balance\n`);
 
   // numTokens is the size of the pool: 2,4,6,8,...
-  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= poolConfigs.WEIGHTED_POOL.maxTokens; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
@@ -129,7 +130,7 @@ async function main() {
 
   console.log(`\n#Transferring tokens\n`);
 
-  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= poolConfigs.WEIGHTED_POOL.maxTokens; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),
@@ -174,7 +175,7 @@ async function main() {
 
   console.log(`#With user balance\n`);
 
-  for (let numTokens = 2; numTokens <= 20; numTokens += 2) {
+  for (let numTokens = 2; numTokens <= poolConfigs.WEIGHTED_POOL.maxTokens; numTokens += 2) {
     printTokens('Weighted pool', numTokens);
     await joinAndExitWeightedPool(
       () => getWeightedPool(vault, tokens, numTokens, 0),

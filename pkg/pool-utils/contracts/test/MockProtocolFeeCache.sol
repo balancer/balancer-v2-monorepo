@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../ProtocolFeeCache.sol";
+import "../protocol-fees/ProtocolFeeCache.sol";
 import "./MockRecoveryModeStorage.sol";
 
 contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {

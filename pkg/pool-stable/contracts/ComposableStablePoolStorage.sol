@@ -33,8 +33,8 @@ abstract contract ComposableStablePoolStorage is BasePool {
     }
 
     // This minimum refers not to the total tokens, but rather to the non-BPT tokens. The minimum value for _totalTokens
-    // is therefore _MIN_TOKENS + 1.
-    uint256 private constant _MIN_TOKENS = 2;
+    // is therefore _MIN_NON_BPT_TOKENS + 1.
+    uint256 private constant _MIN_NON_BPT_TOKENS = 2;
 
     // The Pool will register n+1 tokens, where n are the actual tokens in the Pool, and the other one is the BPT
     // itself.
@@ -94,7 +94,7 @@ abstract contract ComposableStablePoolStorage is BasePool {
         // need to check ourselves that there are at least creator-supplied tokens (i.e. the minimum number of total
         // tokens for this contract is actually three, including the BPT).
         uint256 totalTokens = params.registeredTokens.length;
-        _require(totalTokens > _MIN_TOKENS, Errors.MIN_TOKENS);
+        _require(totalTokens > _MIN_NON_BPT_TOKENS, Errors.MIN_TOKENS);
         InputHelpers.ensureInputLengthMatch(
             totalTokens - 1,
             params.tokenRateProviders.length,
