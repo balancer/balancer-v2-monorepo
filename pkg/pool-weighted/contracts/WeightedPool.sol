@@ -294,11 +294,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         // not paused.
         _ensureNotPaused();
 
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balances, _scalingFactors());
-
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
+        uint256 invariant = getInvariant();
 
         // Swap fees
         uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
@@ -308,7 +304,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
         // Yield fees
         (uint256 protocolYieldFeesPoolPercentage, uint256 athRateProduct) = _getYieldProtocolFeesPoolPercentage(
-            normalizedWeights
+            _getNormalizedWeights()
         );
 
         uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
