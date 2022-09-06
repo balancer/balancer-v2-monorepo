@@ -397,4 +397,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     function _getScalingFactor7() internal view returns (uint256) {
         return _scalingFactor7;
     }
+
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(BasePool, WeightedPoolProtocolFees)
+        returns (bool)
+    {
+        return super._isOwnerOnlyAction(actionId);
+    }
 }
