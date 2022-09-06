@@ -185,14 +185,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      */
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
         // prettier-ignore
-        if (token == _token0) { return _scalingFactor0; }
-        else if (token == _token1) { return _scalingFactor1; }
-        else if (token == _token2) { return _scalingFactor2; }
-        else if (token == _token3) { return _scalingFactor3; }
-        else if (token == _token4) { return _scalingFactor4; }
-        else if (token == _token5) { return _scalingFactor5; }
-        else if (token == _token6) { return _scalingFactor6; }
-        else if (token == _token7) { return _scalingFactor7; }
+        if (token == _token0) { return _getScalingFactor0(); }
+        else if (token == _token1) { return _getScalingFactor1(); }
+        else if (token == _token2) { return _getScalingFactor2(); }
+        else if (token == _token3) { return _getScalingFactor3(); }
+        else if (token == _token4) { return _getScalingFactor4(); }
+        else if (token == _token5) { return _getScalingFactor5(); }
+        else if (token == _token6) { return _getScalingFactor6(); }
+        else if (token == _token7) { return _getScalingFactor7(); }
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -204,14 +204,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
         // prettier-ignore
         {
-            scalingFactors[0] = _scalingFactor0;
-            scalingFactors[1] = _scalingFactor1;
-            if (totalTokens > 2) { scalingFactors[2] = _scalingFactor2; } else { return scalingFactors; }
-            if (totalTokens > 3) { scalingFactors[3] = _scalingFactor3; } else { return scalingFactors; }
-            if (totalTokens > 4) { scalingFactors[4] = _scalingFactor4; } else { return scalingFactors; }
-            if (totalTokens > 5) { scalingFactors[5] = _scalingFactor5; } else { return scalingFactors; }
-            if (totalTokens > 6) { scalingFactors[6] = _scalingFactor6; } else { return scalingFactors; }
-            if (totalTokens > 7) { scalingFactors[7] = _scalingFactor7; } else { return scalingFactors; }
+            scalingFactors[0] = _getScalingFactor0();
+            scalingFactors[1] = _getScalingFactor1();
+            if (totalTokens > 2) { scalingFactors[2] = _getScalingFactor2(); } else { return scalingFactors; }
+            if (totalTokens > 3) { scalingFactors[3] = _getScalingFactor3(); } else { return scalingFactors; }
+            if (totalTokens > 4) { scalingFactors[4] = _getScalingFactor4(); } else { return scalingFactors; }
+            if (totalTokens > 5) { scalingFactors[5] = _getScalingFactor5(); } else { return scalingFactors; }
+            if (totalTokens > 6) { scalingFactors[6] = _getScalingFactor6(); } else { return scalingFactors; }
+            if (totalTokens > 7) { scalingFactors[7] = _getScalingFactor7(); } else { return scalingFactors; }
         }
 
         return scalingFactors;
@@ -228,7 +228,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     ) internal virtual override returns (uint256, uint256[] memory) {
         // Initialize `_athRateProduct` if the Pool will pay protocol fees on yield.
         // Not initializing this here properly will cause all joins/exits to revert.
-        if (!_exemptFromYieldFees) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+        if (!_isExemptFromYieldProtocolFees()) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
 
         return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
@@ -323,21 +323,36 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     }
 
     /**
+     * @notice Returns the effective BPT supply.
+     *
+     * @dev This would be the same as `totalSupply` however the Pool owes debt to the Protocol in the form of unminted
+     * BPT, which will be minted immediately before the next join or exit. We need to take these into account since,
+     * even if they don't yet exist, they will effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() public view returns (uint256) {
+        uint256 supply = totalSupply();
+
+        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
+            getInvariant(),
+            _getNormalizedWeights(),
+            supply
+        );
+
+        return supply.add(protocolFeesToBeMinted);
+    }
+
+    /**
      * @notice Returns the appreciation of one BPT relative to the underlying tokens.
      * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
      * We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
      * This prevents the Pool's rate being affected by the collection of protocol fees.
      */
     function getRate() public view override returns (uint256) {
-        uint256 invariant = getInvariant();
         uint256 supply = totalSupply();
-
-        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
-            invariant,
-            _getNormalizedWeights(),
-            totalSupply()
-        );
-
+        uint256 invariant = getInvariant();
+        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(invariant, _getNormalizedWeights(), supply);
         return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeesToBeMinted));
     }
 
@@ -346,8 +361,40 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         _updatePostJoinExit(getInvariant());
 
         // Update the athRateProduct to the value of the current rateProduct, zeroing out any protocol yield fees.
-        if (!_exemptFromYieldFees) {
+        if (!_isExemptFromYieldProtocolFees()) {
             _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
         }
+    }
+
+    function _getScalingFactor0() internal view returns (uint256) {
+        return _scalingFactor0;
+    }
+
+    function _getScalingFactor1() internal view returns (uint256) {
+        return _scalingFactor1;
+    }
+
+    function _getScalingFactor2() internal view returns (uint256) {
+        return _scalingFactor2;
+    }
+
+    function _getScalingFactor3() internal view returns (uint256) {
+        return _scalingFactor3;
+    }
+
+    function _getScalingFactor4() internal view returns (uint256) {
+        return _scalingFactor4;
+    }
+
+    function _getScalingFactor5() internal view returns (uint256) {
+        return _scalingFactor5;
+    }
+
+    function _getScalingFactor6() internal view returns (uint256) {
+        return _scalingFactor6;
+    }
+
+    function _getScalingFactor7() internal view returns (uint256) {
+        return _scalingFactor7;
     }
 }

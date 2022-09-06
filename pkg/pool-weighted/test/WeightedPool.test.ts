@@ -8,7 +8,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
-import { fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv, fpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFees.behavior';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -228,6 +228,7 @@ describe('WeightedPool', function () {
       });
 
       context('with protocol fees', () => {
+        let unmintedBPT: BigNumber;
         let originalRate: BigNumber;
 
         async function expectNoRateChange(action: () => Promise<void>): Promise<void> {
@@ -248,6 +249,7 @@ describe('WeightedPool', function () {
           const tokenOut = tokens.second;
 
           originalRate = await pool.getRate();
+          const originalInvariant = await pool.instance.getInvariant();
 
           const singleSwap = {
             poolId: await pool.getPoolId(),
@@ -266,6 +268,15 @@ describe('WeightedPool', function () {
           };
 
           await vaultContract.connect(lp).swap(singleSwap, funds, 0, MAX_UINT256);
+
+          const postInvariant = await pool.instance.getInvariant();
+          const swapFeesPercentage = FP_SCALING_FACTOR.sub(fpDiv(originalInvariant, postInvariant));
+          const protocolOwnershipPercentage = fpMul(swapFeesPercentage, protocolFeePercentage);
+
+          unmintedBPT = fpMul(
+            await pool.totalSupply(),
+            fpDiv(protocolOwnershipPercentage, FP_SCALING_FACTOR.sub(protocolOwnershipPercentage))
+          );
         });
 
         it('uncollected protocol fees should increase the effective supply (and lower the rate)', async () => {
@@ -285,6 +296,13 @@ describe('WeightedPool', function () {
           // ignoring protocol fees.
           // Check that we have a difference of at least 0.01% to discard rounding error.
           expect(rate).to.be.lt(feelessRate.mul(9999).div(10000));
+        });
+
+        it('the actual supply takes into account unminted protocol fees', async () => {
+          const totalSupply = await pool.totalSupply();
+          const expectedActualSupply = totalSupply.add(unmintedBPT);
+
+          expect(await pool.getActualSupply()).to.almostEqual(expectedActualSupply, 1e-6);
         });
 
         it('minting protocol fee BPT should not affect rate', async () => {
@@ -320,7 +338,7 @@ describe('WeightedPool', function () {
               to: (await pool.vault.getFeesCollector()).address,
             });
 
-            expect(event.args.value).to.be.gt(0);
+            expect(event.args.value).to.be.almostEqual(unmintedBPT, 1e-6);
           });
 
           it('repeated protocol fee cache updates do not mint any more fees', async () => {
