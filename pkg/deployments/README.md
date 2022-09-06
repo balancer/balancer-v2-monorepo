@@ -94,6 +94,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Arbitrum Root Gauges V2, for veBAL voting               | [`20220823-arbitrum-root-gauge-factory-v2`](./tasks/20220823-arbitrum-root-gauge-factory-v2)         |
 | Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
+| Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 
 ## Scripts
 
