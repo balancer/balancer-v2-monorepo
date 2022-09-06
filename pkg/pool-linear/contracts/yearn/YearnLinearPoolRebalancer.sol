@@ -17,10 +17,13 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "../LinearPoolRebalancer.sol";
 
 contract YearnLinearPoolRebalancer is LinearPoolRebalancer {
+    using Math for uint256;
+
     // These Rebalancers can only be deployed from a factory to work around a circular dependency: the Pool must know
     // the address of the Rebalancer in order to register it, and the Rebalancer must know the address of the Pool
     // during construction.
@@ -47,6 +50,6 @@ contract YearnLinearPoolRebalancer is LinearPoolRebalancer {
         IYearnTokenVault tokenVault = IYearnTokenVault(address(_wrappedToken));
         
         // wrappedAmount * pps / 10^decimals
-        return wrappedAmount * tokenVault.pricePerShare() / 10**tokenVault.decimals();
+        return wrappedAmount.mul(tokenVault.pricePerShare()).divUp(10**tokenVault.decimals());
     }
 }
