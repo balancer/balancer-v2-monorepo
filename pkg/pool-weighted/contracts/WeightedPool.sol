@@ -331,20 +331,14 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     function getRate() public view override returns (uint256) {
         uint256 invariant = getInvariant();
 
-        // Swap fees
-        uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
+        uint256 supply = totalSupply();
+        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
             invariant,
-            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+            _getNormalizedWeights(),
+            totalSupply()
         );
 
-        // Yield fees
-        (uint256 protocolYieldFeesPoolPercentage, ) = _getYieldProtocolFeesPoolPercentage(_getNormalizedWeights());
-
-        uint256 supply = totalSupply();
-        uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
-        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolOwnershipPercentage);
-
-        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeeAmount));
+        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeesToBeMinted));
     }
 
     function _onDisableRecoveryMode() internal override {
