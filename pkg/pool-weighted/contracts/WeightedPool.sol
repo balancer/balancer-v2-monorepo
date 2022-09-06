@@ -228,7 +228,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     ) internal virtual override returns (uint256, uint256[] memory) {
         // Initialize `_athRateProduct` if the Pool will pay protocol fees on yield.
         // Not initializing this here properly will cause all joins/exits to revert.
-        if (!_exemptFromYieldFees) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+        if (!_isExemptFromYieldProtocolFees()) _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
 
         return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
@@ -358,7 +358,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         _updatePostJoinExit(getInvariant());
 
         // Update the athRateProduct to the value of the current rateProduct, zeroing out any protocol yield fees.
-        if (!_exemptFromYieldFees) {
+        if (!_isExemptFromYieldProtocolFees()) {
             _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
         }
     }

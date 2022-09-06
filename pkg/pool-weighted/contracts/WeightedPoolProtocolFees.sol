@@ -71,6 +71,13 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     }
 
     /**
+     * @dev Returns whether the pool is exempt from protocol fees on yield.
+     */
+    function _isExemptFromYieldProtocolFees() internal view returns (bool) {
+        return _exemptFromYieldFees;
+    }
+
+    /**
      * @notice Returns the value of the invariant after the last join or exit operation.
      */
     function getLastPostJoinExitInvariant() public view returns (uint256) {
@@ -144,7 +151,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         view
         returns (uint256, uint256)
     {
-        if (_exemptFromYieldFees) return (0, 0);
+        if (_isExemptFromYieldProtocolFees()) return (0, 0);
 
         // Yield manifests in the Pool by individual tokens becoming more valuable, we convert this into comparable
         // units by applying a rate to get the equivalent balance of non-yield-bearing tokens
