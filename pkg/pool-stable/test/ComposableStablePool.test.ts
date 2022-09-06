@@ -7,7 +7,20 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct, arrayAdd, bnSum, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  BigNumberish,
+  bn,
+  fp,
+  pct,
+  arrayAdd,
+  bnSum,
+  fpDiv,
+  fpMul,
+  FP_ONE,
+  FP_ZERO,
+  FP_SCALING_FACTOR,
+  FP_100_PCT,
+} from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { currentTimestamp, advanceTime, MONTH, WEEK, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -80,7 +93,7 @@ describe('ComposableStablePool', () => {
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
-        await rateProviders[i].mockRate(rates[i] || fp(1));
+        await rateProviders[i].mockRate(rates[i] || FP_ONE);
         tokenRateCacheDurations[i] = MONTH + i;
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
@@ -345,7 +358,7 @@ describe('ComposableStablePool', () => {
               const preVirtualSupply = await pool.getVirtualSupply();
               expectedBptAmount = preVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+                .div(FP_100_PCT.sub(expectedProtocolOwnershipPercentage));
             });
 
             it('returns the total supply after protocol fees are paid', async () => {
@@ -467,7 +480,7 @@ describe('ComposableStablePool', () => {
 
         context('when the pool was not initialized', () => {
           it('reverts', async () => {
-            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(0), recipient });
+            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: FP_ZERO, recipient });
             await expect(tx).to.be.reverted;
           });
         });
@@ -1376,7 +1389,7 @@ describe('ComposableStablePool', () => {
               const value = Math.random() / 5;
 
               await rateProviders[i].mockRate(
-                previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))
+                fpMul(previousCache.rate, Math.random() > 0.5 ? fp(1 + value) : fp(1 - value))
               );
             });
           }
@@ -1391,7 +1404,7 @@ describe('ComposableStablePool', () => {
               expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
-            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_SCALING_FACTOR);
           }
 
           sharedBeforeEach('fund lp and pool', async () => {
