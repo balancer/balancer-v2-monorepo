@@ -49,7 +49,7 @@ contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
         IReaperTokenVault tokenVault = IReaperTokenVault(address(_wrappedToken));
         
-        // wrappedAmount * pps / 10^decimals
+        // wrappedAmount * pricePerFullShare / 10^decimals
         return wrappedAmount.mul(tokenVault.getPricePerFullShare()).divUp(10**tokenVault.decimals());
     }
 }
