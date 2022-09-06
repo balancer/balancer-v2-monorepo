@@ -350,7 +350,10 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      * This prevents the Pool's rate being affected by the collection of protocol fees.
      */
     function getRate() public view override returns (uint256) {
-        return Math.mul(getInvariant(), _getTotalTokens()).divDown(getActualSupply());
+        uint256 supply = totalSupply();
+        uint256 invariant = getInvariant();
+        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(invariant, _getNormalizedWeights(), supply);
+        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeesToBeMinted));
     }
 
     function _onDisableRecoveryMode() internal override {
