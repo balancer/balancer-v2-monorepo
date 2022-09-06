@@ -41,7 +41,8 @@ interface IReaperTokenVault is IERC20 {
     function withdraw(uint256 _shares) external;
 
     /**
-     * @dev returns the number of decimals for this vault token
+     * @dev returns the number of decimals for this vault token.
+     * For reaper token vaults, the decimals are fixed to 18
      */
     function decimals() external view returns (uint8);
 }
