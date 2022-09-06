@@ -972,7 +972,10 @@ contract ComposableStablePool is
             currentInvariantWithLastJoinExitAmp
         ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
-        protocolFeeAmount = _calculateAdjustedProtocolFeeAmount(virtualSupply, expectedProtocolOwnershipPercentage);
+        protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+            virtualSupply,
+            expectedProtocolOwnershipPercentage
+        );
     }
 
     /**
