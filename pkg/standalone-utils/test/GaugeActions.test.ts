@@ -242,7 +242,7 @@ describe('GaugeActions', function () {
 
       // Short-circuit when no tokens are deposited.
       expectedAmount.gt(0) &&
-        it('pulls BPT tokens from sender', async () => {
+        it('pulls BPT tokens from sender if necessary', async () => {
           // This transfer is skipped if token sender is relayer, but addresses are undefined outside this scope.
           if (tokenSenderAddress != relayer.address) {
             expectTransferEvent(
@@ -434,7 +434,7 @@ describe('GaugeActions', function () {
 
       // Short-circuit when no tokens are withdrawn.
       expectedAmount.gt(0) &&
-        it('pulls gauge tokens from sender', async () => {
+        it('pulls gauge tokens from sender if necessary', async () => {
           // This transfer is skipped if token sender is relayer, but addresses are undefined outside this scope.
           if (tokenSenderAddress != relayer.address) {
             expectTransferEvent(
@@ -470,7 +470,7 @@ describe('GaugeActions', function () {
         expectTransferEvent(receipt, { from: relayer.address, to: ZERO_ADDRESS, value: expectedAmount }, gauge.address);
       });
 
-      it('emits BPT transfer event from relayer to recipient', async () => {
+      it('emits BPT transfer event from relayer to recipient if necessary', async () => {
         // This transfer is skipped if token recipient is relayer, but addresses are undefined outside this scope.
         if (tokenRecipientAddress != relayer.address) {
           expectTransferEvent(
