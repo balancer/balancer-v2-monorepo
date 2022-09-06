@@ -16,10 +16,8 @@ import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-secondary/SecondaryPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
@@ -27,7 +25,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
     using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for string;
-    using SecondaryPoolUserData for bytes;
 
     address private immutable _security;
     address private immutable _currency;
@@ -180,6 +177,23 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         return _MAX_TOKEN_BALANCE;
     }
 
+    function initialize() external {
+        bytes32 poolId = getPoolId();
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+
+        uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
+        _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+
+        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
+            assets: _asIAsset(tokens),
+            maxAmountsIn: _maxAmountsIn,
+            userData: "",
+            fromInternalBalance: false
+        });
+        getVault().joinPool(getPoolId(), address(this), address(this), request);
+        emit Offer(_security, _MAX_TOKEN_BALANCE);  
+    }
+
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
@@ -239,14 +253,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 
     function _onInitializePool(
         bytes32,
-        address,
-        address,
+        address sender,
+        address recipient,
         uint256[] memory,
-        bytes memory userData
+        bytes memory
     ) internal override whenNotPaused view returns (uint256, uint256[] memory) {
         //on initialization, pool simply premints max BPT supply possible
-        SecondaryPoolUserData.JoinKind kind = userData.joinKind();
-        _require(kind == SecondaryPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
+        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
+        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
 
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
 

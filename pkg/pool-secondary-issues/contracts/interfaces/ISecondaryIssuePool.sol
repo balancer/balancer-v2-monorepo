@@ -18,5 +18,13 @@ interface IPrimaryIssuePool {
 
     function exit() external;
 
+    function getOrderRef() external view returns(bytes32[] memory);
+
+    function editOrder( bytes32 ref, uint256 _price, uint256 _qty) external;
+
+    function cancelOrder(bytes32 ref) external;
+
+    function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
+
 }
 
