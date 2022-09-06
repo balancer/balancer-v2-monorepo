@@ -932,8 +932,13 @@ contract ComposableStablePool is
      * invariant always grows and shrinks either proportionally to the total supply (in scenarios with no price impact,
      * e.g. proportional joins), or grows faster and shrinks more slowly than it (whenever swap fees are collected or
      * the token rates increase). Therefore, the rate is a monotonically increasing function.
+     *
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. However, this can only happen if one of the tokens in the Pool contains some form of callback
+     * behavior in the `transferFrom` function (like ERC777 tokens do). These tokens are strictly incompatible with the
+     * Vault and Pool design, and are not safe to be used.
      */
-    function getRate() public view virtual override returns (uint256) {
+    function getRate() external view virtual override returns (uint256) {
         // We need to compute the current invariant and actual total supply. The latter includes protocol fees that have
         // accrued but are not yet minted: in calculating these we'll actually end up fetching most of the data we need
         // for the invariant.
