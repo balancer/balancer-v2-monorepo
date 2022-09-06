@@ -377,7 +377,8 @@ abstract contract ComposableStablePoolStorage is BasePool {
      * @dev Returns the number of tokens in circulation.
      *
      * WARNING: in the vast majority of cases this is not a useful value, since it does not include the debt the Pool
-     * accrued in the form of unminted BPT for the ProtocolFeesCollector. Consider using `getActualSupply()` instead.
+     * accrued in the form of unminted BPT for the ProtocolFeesCollector. Look into `getActualSupply()` and how that's
+     * different.
      *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
      * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
@@ -385,19 +386,6 @@ abstract contract ComposableStablePoolStorage is BasePool {
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
      * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
      */
-    function getVirtualSupply() external view returns (uint256) {
-        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
-        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
-        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
-        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
-        // remains constant.
-        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
-
-        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
-        // ONE. This addition cannot overflow due to the Vault's balance limits.
-        return _getVirtualSupply(cash + managed);
-    }
-
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in
         // the vault. So the virtualSupply (the amount of BPT supply in circulation) is defined as:
