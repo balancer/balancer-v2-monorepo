@@ -16,10 +16,12 @@ import {
 import {
   BigNumberish,
   bn,
+  FP_SCALING_FACTOR,
+  FP_100_PCT,
+  FP_ZERO,
   fp,
   fpDiv,
   fpMul,
-  FP_SCALING_FACTOR,
   fromFp,
   pct,
 } from '@balancer-labs/v2-helpers/src/numbers';
@@ -655,7 +657,7 @@ describe('ManagedPool', function () {
     });*/
 
     it('cannot set 100% swap fee', async () => {
-      await expect(pool.setSwapFeePercentage(owner, fp(1))).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
+      await expect(pool.setSwapFeePercentage(owner, FP_100_PCT)).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
     });
 
     context('with the max swap fee', () => {
@@ -1482,7 +1484,7 @@ describe('ManagedPool', function () {
                     const beforeSum = await pool.instance.getDenormalizedWeightSum();
 
                     const normalizedWeight = fp(0.5);
-                    const weightSumRatio = fp(FP_SCALING_FACTOR).div(fp(1).sub(normalizedWeight));
+                    const weightSumRatio = fp(FP_SCALING_FACTOR).div(FP_100_PCT.sub(normalizedWeight));
                     const expectedDenormWeightSum = fpMul(beforeSum, weightSumRatio);
 
                     await pool.addToken(sender, newToken, fp(0.5), fp(100), 0, other.address);
@@ -1531,7 +1533,7 @@ describe('ManagedPool', function () {
     let vault: Vault;
     const swapFeePercentage = fp(0.02);
     const protocolFeePercentage = fp(0.5); // 50 %
-    const managementSwapFeePercentage = fp(0); // Set to zero to isolate BPT fees
+    const managementSwapFeePercentage = FP_ZERO; // Set to zero to isolate BPT fees
     const tokenAmount = 100;
     const poolWeights = [fp(0.8), fp(0.2)];
     let bptFeeBalance: BigNumber;
@@ -2080,7 +2082,7 @@ describe('ManagedPool', function () {
 
       // Clock no longer starts at initialization
       // Now we have to do a join to start the clock
-      await expect(pool.joinAllGivenOut({ from: owner, bptOut: fp(0) }));
+      await expect(pool.joinAllGivenOut({ from: owner, bptOut: FP_ZERO }));
     });
 
     it('accounts for the protocol portion of the AUM fee', async () => {
@@ -2091,7 +2093,7 @@ describe('ManagedPool', function () {
         .mul(180)
         .div(365)
         .mul(managementAumFeePercentage)
-        .div(fp(1).sub(managementAumFeePercentage));
+        .div(FP_100_PCT.sub(managementAumFeePercentage));
 
       const balanceBefore = await pool.balanceOf(owner);
 

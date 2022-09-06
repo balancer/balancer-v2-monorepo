@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -259,7 +259,7 @@ describe('ManagedPoolFactory', function () {
     });
 
     it('pool created with protocol fees disabled', async () => {
-      const pool = await createPool(true, true, true, false, fp(0));
+      const pool = await createPool(true, true, true, false, FP_ZERO);
 
       expect(await pool.getProtocolSwapFeeDelegation()).to.be.false;
     });
