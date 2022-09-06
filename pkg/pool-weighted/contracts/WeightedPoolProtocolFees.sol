@@ -191,34 +191,32 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @dev Returns the amount of BPT to be minted as protocol fees prior to processing a join/exit.
      * Note that this isn't a view function. This function automatically updates `_athRateProduct`  to ensure that
      * proper accounting is performed to prevent charging duplicate protocol fees.
-     * @param preBalances - The Pool's balances prior to the join/exit.
+     * @param preJoinExitInvariant - The Pool's invariant prior to the join/exit.
      * @param normalizedWeights - The Pool's normalized token weights.
      * @param preJoinExitSupply - The Pool's total supply prior to the join/exit *before* minting protocol fees.
+     * @return protocolFeesToBeMinted -  The amount of BPT to be minted as protocol fees.
+     * @return athRateProduct - The new all-time-high rate product if it has increased, otherwise zero.
      */
     function _getPreJoinExitProtocolFees(
-        uint256[] memory preBalances,
+        uint256 preJoinExitInvariant,
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply
-    ) internal returns (uint256) {
+    ) internal view returns (uint256, uint256) {
         uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
-            WeightedMath._calculateInvariant(normalizedWeights, preBalances),
+            preJoinExitInvariant,
             getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
         );
         (uint256 protocolYieldFeesPoolPercentage, uint256 athRateProduct) = _getYieldProtocolFeesPoolPercentage(
             normalizedWeights
         );
 
-        // We then update the recorded value of `athRateProduct` to ensure we only collect fees on yield once.
-        // A zero value for `athRateProduct` represents that it is unchanged so we can skip updating it.
-        if (athRateProduct > 0) {
-            _updateATHRateProduct(athRateProduct);
-        }
-
-        return
+        return (
             ProtocolFees.bptForPoolOwnershipPercentage(
                 preJoinExitSupply,
                 protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage
-            );
+            ),
+            athRateProduct
+        );
     }
 
     /**

@@ -14,6 +14,8 @@ import { itPaysProtocolFeesFromInvariantGrowth } from './WeightedPoolProtocolFee
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('WeightedPool', function () {
   let allTokens: TokenList;
@@ -171,7 +173,7 @@ describe('WeightedPool', function () {
     });
   });
 
-  describe('getRate', () => {
+  describe('getRate and protocol fees', () => {
     const swapFeePercentage = fp(0.1); // 10 %
     const protocolFeePercentage = fp(0.5); // 50 %
     const numTokens = 2;
@@ -185,6 +187,8 @@ describe('WeightedPool', function () {
       const vault = await Vault.create();
       vaultContract = vault.instance;
 
+      await vault.setSwapFeePercentage(protocolFeePercentage);
+
       pool = await WeightedPool.create({
         poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
@@ -192,9 +196,6 @@ describe('WeightedPool', function () {
         swapFeePercentage: swapFeePercentage,
         vault,
       });
-      await vault.setSwapFeePercentage(protocolFeePercentage);
-
-      await pool.updateProtocolFeePercentageCache();
     });
 
     context('before initialized', () => {
@@ -228,6 +229,18 @@ describe('WeightedPool', function () {
 
       context('with protocol fees', () => {
         let originalRate: BigNumber;
+
+        async function expectNoRateChange(action: () => Promise<void>): Promise<void> {
+          const rateBeforeAction = await pool.getRate();
+
+          await action();
+
+          const rateAfterAction = await pool.getRate();
+
+          // There's some minute diference due to rounding error
+          const rateDelta = rateAfterAction.sub(rateBeforeAction);
+          expect(rateDelta.abs()).to.be.lte(2);
+        }
 
         sharedBeforeEach('swap bpt in', async () => {
           const amount = fp(20);
@@ -275,12 +288,73 @@ describe('WeightedPool', function () {
         });
 
         it('minting protocol fee BPT should not affect rate', async () => {
-          const rateBeforeJoin = await pool.getRate();
-          await pool.joinAllGivenOut({ from: lp, bptOut: fp(1) });
-          const rateAfterJoin = await pool.getRate();
+          await expectNoRateChange(async () => {
+            await pool.joinAllGivenOut({ from: lp, bptOut: fp(1) });
+          });
+        });
 
-          const rateDelta = rateAfterJoin.sub(rateBeforeJoin);
-          expect(rateDelta.abs()).to.be.lte(2);
+        function itReactsToProtocolFeePercentageChangesCorrectly(feeType: number) {
+          it('rate does not change on protocol fee update', async () => {
+            await expectNoRateChange(async () => {
+              // Changing the fee on the providere should cause no changes as the Pool ignores the provider outside
+              // of cache updates.
+              await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+            });
+          });
+
+          it('rate does not change on protocol fee cache update', async () => {
+            await expectNoRateChange(async () => {
+              // Even though there's due protocol fees, which are a function of the protocol fee percentage, changing
+              // this value should not change the Pool's rate (to avoid manipulation).
+              await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+              await pool.updateProtocolFeePercentageCache();
+            });
+          });
+
+          it('due protocol fees are minted on protocol fee cache update', async () => {
+            await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+            const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
+
+            const event = expectEvent.inReceipt(receipt, 'Transfer', {
+              from: ZERO_ADDRESS,
+              to: (await pool.vault.getFeesCollector()).address,
+            });
+
+            expect(event.args.value).to.be.gt(0);
+          });
+
+          it('repeated protocol fee cache updates do not mint any more fees', async () => {
+            await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+            await pool.updateProtocolFeePercentageCache();
+
+            await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(4));
+            const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
+
+            expectEvent.notEmitted(receipt, 'Transfer');
+          });
+
+          context('when paused', () => {
+            sharedBeforeEach('pause pool', async () => {
+              await pool.pause();
+            });
+
+            it('reverts on protocol fee cache updated', async () => {
+              await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+              await expect(pool.updateProtocolFeePercentageCache()).to.be.revertedWith('PAUSED');
+            });
+          });
+        }
+
+        context('on swap protocol fee change', () => {
+          itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.SWAP);
+        });
+
+        context('on yield protocol fee change', () => {
+          itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.YIELD);
+        });
+
+        context('on aum protocol fee change', () => {
+          itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.AUM);
         });
       });
     });

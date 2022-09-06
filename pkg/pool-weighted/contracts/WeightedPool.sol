@@ -242,11 +242,18 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         returns (uint256)
     {
         uint256 supplyBeforeFeeCollection = totalSupply();
-        uint256 protocolFeesToBeMinted = _getPreJoinExitProtocolFees(
-            preBalances,
+        uint256 invariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
+        (uint256 protocolFeesToBeMinted, uint256 athRateProduct) = _getPreJoinExitProtocolFees(
+            invariant,
             normalizedWeights,
             supplyBeforeFeeCollection
         );
+
+        // We then update the recorded value of `athRateProduct` to ensure we only collect fees on yield once.
+        // A zero value for `athRateProduct` represents that it is unchanged so we can skip updating it.
+        if (athRateProduct > 0) {
+            _updateATHRateProduct(athRateProduct);
+        }
 
         if (protocolFeesToBeMinted > 0) {
             _payProtocolFees(protocolFeesToBeMinted);
@@ -282,6 +289,39 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
 
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
+        // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
+        // sensitive value.
+        // Because of this, we pay any due protocol fees *before* updating the cache, making it so that the new
+        // percentages only affect future operation of the Pool, and not past fees. As a result, `getRate()` is
+        // unaffected by the cached protocol fee percentages changing.
+
+        // Given that this operation is state-changing and relatively complex, we only allow it as long as the Pool is
+        // not paused.
+        _ensureNotPaused();
+
+        uint256 invariant = getInvariant();
+
+        (uint256 protocolFeesToBeMinted, uint256 athRateProduct) = _getPreJoinExitProtocolFees(
+            invariant,
+            _getNormalizedWeights(),
+            totalSupply()
+        );
+
+        if (protocolFeesToBeMinted > 0) {
+            _payProtocolFees(protocolFeesToBeMinted);
+        }
+
+        // With the fees paid, we now store the current invariant and update the ATH rate product (if necessary),
+        // marking the Pool as free of protocol debt.
+
+        _updatePostJoinExit(invariant);
+        if (athRateProduct > 0) {
+            _updateATHRateProduct(athRateProduct);
+        }
+    }
+
     /**
      * @notice Returns the appreciation of one BPT relative to the underlying tokens.
      * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
@@ -290,21 +330,15 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
      */
     function getRate() public view override returns (uint256) {
         uint256 invariant = getInvariant();
+        uint256 supply = totalSupply();
 
-        // Swap fees
-        uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
+        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(
             invariant,
-            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+            _getNormalizedWeights(),
+            totalSupply()
         );
 
-        // Yield fees
-        (uint256 protocolYieldFeesPoolPercentage, ) = _getYieldProtocolFeesPoolPercentage(_getNormalizedWeights());
-
-        uint256 supply = totalSupply();
-        uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
-        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolOwnershipPercentage);
-
-        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeeAmount));
+        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeesToBeMinted));
     }
 
     function _onDisableRecoveryMode() internal override {
