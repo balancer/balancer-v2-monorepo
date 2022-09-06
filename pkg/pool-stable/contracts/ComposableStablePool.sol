@@ -931,12 +931,12 @@ contract ComposableStablePool is
      * greatly reducing bytecode size.
      *
      * The return values are:
-     *  - the current upscaled token balances (not including BPT)
-     *  - the virtual supply
-     *  - the BPT amount of unpaid protocol fees
-     *  - the amplification factor at the last join or exit operation
-     *  - the invariant of the current balances, calculated using the amplification factor at the last join or exit
-     *    operation.
+     *  @return balances - The current upscaled token balances (not including BPT)
+     *  @return virtualSupply - The Pool's virtual supply
+     *  @return protocolFeeAmount - The amount of unpaid protocol fees in BPT
+     *  @return lastJoinExitAmp - The Pool's amplification factor at the last join or exit operation
+     *  @return currentInvariantWithLastJoinExitAmp - The invariant of the current balances, calculated using the
+     *  amplification factor at the last join or exit operation.
      */
     function _getSupplyAndFeesData()
         private
