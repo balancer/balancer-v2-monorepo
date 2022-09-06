@@ -282,6 +282,54 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         WeightedPoolProtocolFees._updatePostJoinExit(postJoinExitInvariant);
     }
 
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
+        // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
+        // sensitive value.
+        // Because of this, we pay any due protocol fees *before* updating the cache, making it so that the new
+        // percentages only affect future operation of the Pool, and not past fees. As a result, `getRate()` is
+        // unaffected by the cached protocol fee percentages changing.
+
+        // Given that this operation is state-changing and relatively complex, we only allow it as long as the Pool is
+        // not paused.
+        _ensureNotPaused();
+
+        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(balances, _scalingFactors());
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 invariant = WeightedMath._calculateInvariant(normalizedWeights, balances);
+
+        // Swap fees
+        uint256 protocolSwapFeesPoolPercentage = _getSwapProtocolFeesPoolPercentage(
+            invariant,
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
+        );
+
+        // Yield fees
+        (uint256 protocolYieldFeesPoolPercentage, uint256 athRateProduct) = _getYieldProtocolFeesPoolPercentage(
+            normalizedWeights
+        );
+
+        uint256 protocolOwnershipPercentage = (protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage);
+        if (protocolOwnershipPercentage > 0) {
+            uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+                totalSupply(),
+                protocolOwnershipPercentage
+            );
+
+            _payProtocolFees(protocolFeeAmount);
+        }
+
+        // With the fees paid, we now store the current invariant and update the ATH rate product (if necessary),
+        // marking the Pool as free of protocol debt.
+
+        _updatePostJoinExit(invariant);
+        if (athRateProduct > 0) {
+            _updateATHRateProduct(athRateProduct);
+        }
+    }
+
     /**
      * @notice Returns the appreciation of one BPT relative to the underlying tokens.
      * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
