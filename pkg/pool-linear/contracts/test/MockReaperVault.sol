@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 //we're unable to implement IYearnTokenVault because it defines the decimals function, which collides with
 //the TestToken ERC20 implementation
 contract MockReaperVault is TestToken {
-    address private immutable _token;
+    address public immutable token;
     uint256 private _pricePerFullShare;
 
     constructor(
@@ -29,12 +29,8 @@ contract MockReaperVault is TestToken {
         address underlyingAsset,
         uint256 fullSharePrice
     ) TestToken(name, symbol, decimals) {
-        _token = underlyingAsset;
+        token = underlyingAsset;
         _pricePerFullShare = fullSharePrice;
-    }
-
-    function token() external view returns (address) {
-        return _token;
     }
 
     function getPricePerFullShare() external view returns (uint256) {
@@ -46,7 +42,7 @@ contract MockReaperVault is TestToken {
     }
 
     function deposit(uint256 _amount) public {
-        ERC20(_token).transferFrom(msg.sender, address(this), _amount);
+        ERC20(token).transferFrom(msg.sender, address(this), _amount);
 
         uint256 amountToMint = _amount * 10**18 / _pricePerFullShare;
 
@@ -58,6 +54,6 @@ contract MockReaperVault is TestToken {
 
         uint256 amountToReturn = _shares * _pricePerFullShare / 10**18;
 
-        ERC20(_token).transfer(msg.sender, amountToReturn);
+        ERC20(token).transfer(msg.sender, amountToReturn);
     }
 }
