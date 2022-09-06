@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, scaleUp } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -104,6 +104,24 @@ describe('YearnLinearPool', function () {
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.03));
 
       await tokenVault.setPricePerShare(2.01e8);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2.01));
+    });
+
+    it('should return correct rates for 2 decimal tokens', async () => {
+      const token = await Token.create({ symbol: 'TOKEN', decimals: 2 });
+      const tokenVault = await deploy('MockYearnTokenVault', {
+        args: ['TOKEN', 'TOKEN', 2, token.address, 1e2],
+      });
+
+      const pool = await deployPool(token.address, tokenVault.address);
+
+      await tokenVault.setPricePerShare(1.05e2);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.05));
+
+      await tokenVault.setPricePerShare(1.03e2);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.03));
+
+      await tokenVault.setPricePerShare(2.01e2);
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2.01));
     });
   });
