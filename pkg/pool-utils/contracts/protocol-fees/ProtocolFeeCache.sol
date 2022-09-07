@@ -51,7 +51,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     FeeTypeCache private _cache;
 
-    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolSwapFeePercentage);
+    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolFeePercentage);
 
     // Swap fees can be set to a fixed value at construction, or delegated to the ProtocolFeePercentagesProvider if
     // passing the special sentinel value.

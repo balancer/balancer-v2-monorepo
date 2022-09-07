@@ -23,6 +23,7 @@ import "./BaseWeightedPool.sol";
 
 abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache {
     using FixedPoint for uint256;
+    using WordCodec for bytes32;
 
     // Rate providers are used only for computing yield fees; they do not inform swap/join/exit.
     IRateProvider internal immutable _rateProvider0;
@@ -45,20 +46,18 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     // immutable, the invariant only changes due to accumulated swap fees, which saves gas by freeing the Pool
     // from performing any computation or accounting associated with protocol fees during swaps.
     // This mechanism requires keeping track of the invariant after the last join or exit.
-    uint256 private _lastPostJoinExitInvariant;
+    //
+    // The maximum value of the invariant is the maximum allowable balance in the Vault (2**112) multiplied by the
+    // largest possible scaling factor (10**18 for a zero decimals token). The largest invariant is then
+    // 2**112 * 10**18 ~= 2**172, which means that to save gas we can place this in BasePool's `_miscData`.
+    uint256 private constant _LAST_POST_JOINEXIT_INVARIANT_OFFSET = 0;
+    uint256 private constant _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH = 192;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         _require(numTokens <= 8, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
-        // If we know that no rate providers are set then we can skip yield fees logic.
-        // If so then set `_exemptFromYieldFees` to true, otherwise leave it false.
-        bool exemptFromYieldFees;
-        for (uint256 i = 0; i < numTokens; i++) {
-            if (rateProviders[i] != IRateProvider(0)) break;
-            exemptFromYieldFees = true;
-        }
-        _exemptFromYieldFees = exemptFromYieldFees;
+        _exemptFromYieldFees = _getYieldFeeExemption(rateProviders);
 
         _rateProvider0 = rateProviders[0];
         _rateProvider1 = rateProviders[1];
@@ -68,6 +67,17 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         _rateProvider5 = numTokens > 5 ? rateProviders[5] : IRateProvider(0);
         _rateProvider6 = numTokens > 6 ? rateProviders[6] : IRateProvider(0);
         _rateProvider7 = numTokens > 7 ? rateProviders[7] : IRateProvider(0);
+    }
+
+    function _getYieldFeeExemption(IRateProvider[] memory rateProviders) internal pure returns (bool) {
+        // If we know that no rate providers are set then we can skip yield fees logic.
+        // If any tokens have rate providers, then set `_exemptFromYieldFees` to false, otherwise leave it true.
+        for (uint256 i = 0; i < rateProviders.length; i++) {
+            if (rateProviders[i] != IRateProvider(0)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -81,7 +91,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @notice Returns the value of the invariant after the last join or exit operation.
      */
     function getLastPostJoinExitInvariant() public view returns (uint256) {
-        return _lastPostJoinExitInvariant;
+        return
+            _getMiscData().decodeUint(_LAST_POST_JOINEXIT_INVARIANT_OFFSET, _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH);
     }
 
     /**
@@ -134,7 +145,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
         return
             InvariantGrowthProtocolSwapFees.getProtocolOwnershipPercentage(
-                preJoinExitInvariant.divDown(_lastPostJoinExitInvariant),
+                preJoinExitInvariant.divDown(getLastPostJoinExitInvariant()),
                 FixedPoint.ONE, // Supply has not changed so supplyGrowthRatio = 1
                 protocolSwapFeePercentage
             );
@@ -275,7 +286,13 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     function _updatePostJoinExit(uint256 postJoinExitInvariant) internal virtual override {
         // After all joins and exits we store the post join/exit invariant in order to compute growth due to swap fees
         // in the next one.
-        _lastPostJoinExitInvariant = postJoinExitInvariant;
+        _setMiscData(
+            _getMiscData().insertUint(
+                postJoinExitInvariant,
+                _LAST_POST_JOINEXIT_INVARIANT_OFFSET,
+                _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH
+            )
+        );
     }
 
     // Helper functions

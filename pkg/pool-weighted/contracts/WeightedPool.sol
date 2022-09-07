@@ -108,15 +108,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _normalizedWeight0 = params.normalizedWeights[0];
-        _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
-        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
-        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
-        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
-        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
-
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = params.tokens[0];
         _token1 = params.tokens[1];
@@ -135,6 +126,15 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         _scalingFactor5 = numTokens > 5 ? _computeScalingFactor(params.tokens[5]) : 0;
         _scalingFactor6 = numTokens > 6 ? _computeScalingFactor(params.tokens[6]) : 0;
         _scalingFactor7 = numTokens > 7 ? _computeScalingFactor(params.tokens[7]) : 0;
+
+        _normalizedWeight0 = params.normalizedWeights[0];
+        _normalizedWeight1 = params.normalizedWeights[1];
+        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
+        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
+        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
+        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
+        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
@@ -343,26 +343,20 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         return supply.add(protocolFeesToBeMinted);
     }
 
-    /**
-     * @notice Returns the appreciation of one BPT relative to the underlying tokens.
-     * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
-     * We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
-     * This prevents the Pool's rate being affected by the collection of protocol fees.
-     */
-    function getRate() public view override returns (uint256) {
-        uint256 supply = totalSupply();
-        uint256 invariant = getInvariant();
-        (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(invariant, _getNormalizedWeights(), supply);
-        return Math.mul(invariant, _getTotalTokens()).divDown(supply.add(protocolFeesToBeMinted));
-    }
-
     function _onDisableRecoveryMode() internal override {
         // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.
         _updatePostJoinExit(getInvariant());
 
-        // Update the athRateProduct to the value of the current rateProduct, zeroing out any protocol yield fees.
+        // If the Pool has any protocol yield fees accrued then we update the athRateProduct to zero these out.
+        // If the current rate product is less than the athRateProduct then we do not perform this update.
+        // This prevents the Pool from paying protocol fees on the same yield twice if the rate product were to drop.
         if (!_isExemptFromYieldProtocolFees()) {
-            _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+            uint256 athRateProduct = getATHRateProduct();
+            uint256 rateProduct = _getRateProduct(_getNormalizedWeights());
+
+            if (rateProduct > athRateProduct) {
+                _updateATHRateProduct(rateProduct);
+            }
         }
     }
 
