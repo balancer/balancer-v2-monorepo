@@ -1,3 +1,6 @@
+// (c) Kallol Borah, 2022
+//"SPDX-License-Identifier: BUSL1.1"
+
 pragma solidity ^0.7.0;
 
 library PrimaryPoolUserData {

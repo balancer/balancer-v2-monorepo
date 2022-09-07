@@ -232,12 +232,12 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         // but only if new price of security do not go out of price band
         if (request.tokenOut == _currency) {
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
+            uint256 tokenOutAmt = Math.sub(balances[_currencyIndex], Math.mul(balances[_securityIndex], Math.div(balances[_currencyIndex], postPaidSecurityBalance, false)));
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], tokenOutAmt);
 
             if (
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
                 emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
@@ -259,12 +259,12 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         // but only if new price of security do not go out of price band
         if (request.tokenOut == _security) {
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
+            uint256 tokenOutAmt = Math.sub(balances[_securityIndex], Math.mul(balances[_currencyIndex], Math.div(balances[_securityIndex], postPaidCurrencyBalance, false)));
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], tokenOutAmt);
 
             if (
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
                 emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
@@ -300,16 +300,16 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         //returning security to be swapped out for paid in currency
         if (request.tokenIn == _currency) {
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidSecurityBalance, balances[_currencyIndex], false);
-            uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenOutAmt);
+            uint256 tokenInAmt = Math.sub(balances[_currencyIndex], Math.mul(balances[_securityIndex], Math.div(postPaidSecurityBalance, balances[_currencyIndex], false)));
+            uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenInAmt);
 
             if (
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
-                emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
-                return tokenOutAmt;
+                emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
+                return tokenInAmt;
             }
             else 
                 return 0;
@@ -326,16 +326,16 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         //returning currency to be paid in for security paid in
         if (request.tokenIn == _security) {
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
-            uint256 tokenOutAmt = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-            uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenOutAmt);
+            uint256 tokenInAmt = Math.sub(balances[_securityIndex], Math.mul(balances[_currencyIndex], Math.div(postPaidCurrencyBalance, balances[_securityIndex], false)));
+            uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenInAmt);
 
             if (
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) >= params.minPrice &&
-                Math.div(postPaidSecurityBalance, postPaidCurrencyBalance, false) <= params.maxPrice
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
+                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
-                emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
-                return tokenOutAmt;
+                emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
+                return tokenInAmt;
             }
             else 
                 return 0;
