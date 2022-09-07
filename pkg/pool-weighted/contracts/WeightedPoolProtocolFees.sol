@@ -72,14 +72,12 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     function _getYieldFeeExemption(IRateProvider[] memory rateProviders) internal pure returns (bool) {
         // If we know that no rate providers are set then we can skip yield fees logic.
         // If any tokens have rate providers, then set `_exemptFromYieldFees` to false, otherwise leave it true.
-        bool exemptFromYieldFees = true;
         for (uint256 i = 0; i < rateProviders.length; i++) {
             if (rateProviders[i] != IRateProvider(0)) {
-                exemptFromYieldFees = false;
-                break;
+                return false;
             }
         }
-        return exemptFromYieldFees;
+        return true;
     }
 
     /**
