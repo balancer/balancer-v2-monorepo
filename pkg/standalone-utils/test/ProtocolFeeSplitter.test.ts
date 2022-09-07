@@ -13,6 +13,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '../../../pvt/helpers/src/numbers';
 import { JoinPoolRequest, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
@@ -88,6 +89,12 @@ describe('ProtocolFeeSplitter', function () {
     const setRevenueSharingFeeRole = await actionId(protocolFeeSplitter, 'setRevenueSharingFeePercentage');
     await vault.grantPermissionsGlobally([setRevenueSharingFeeRole], admin);
 
+    const setDefaultRevenueSharingFeePercentageRole = await actionId(
+      protocolFeeSplitter,
+      'setDefaultRevenueSharingFeePercentage'
+    );
+    await vault.grantPermissionsGlobally([setDefaultRevenueSharingFeePercentageRole], admin);
+
     const withdrawCollectedFeesRole = await actionId(protocolFeesCollector, 'withdrawCollectedFees');
     await vault.grantPermissionsGlobally([withdrawCollectedFeesRole], protocolFeeSplitter);
   });
@@ -115,6 +122,17 @@ describe('ProtocolFeeSplitter', function () {
     });
     it('sets the treasury', async () => {
       expect(await protocolFeeSplitter.treasury()).to.be.eq(treasury.address);
+    });
+  });
+
+  describe('default revenue sharing fee', async () => {
+    it('sets default fee', async () => {
+      const newFee = bn(10e16); // 10%
+      const receipt = await (
+        await protocolFeeSplitter.connect(admin).setDefaultRevenueSharingFeePercentage(newFee)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'DefaultRevenueSharingFeePercentageChanged', { revenueSharePercentage: newFee });
+      expect(await protocolFeeSplitter.defaultRevenueSharingFeePercentage()).to.be.eq(newFee);
     });
   });
 

@@ -29,6 +29,7 @@ interface IProtocolFeeSplitter {
     );
 
     event PoolRevenueShareChanged(bytes32 indexed poolId, uint256 revenueSharePercentage);
+    event DefaultRevenueSharingFeePercentageChanged(uint256 revenueSharePercentage);
 
     /**
      * @notice Allows a authorized user to change revenueShare for a `poolId`
@@ -36,6 +37,12 @@ interface IProtocolFeeSplitter {
      * @param newSwapFeePercentage - new swap fee percentage
      */
     function setRevenueSharingFeePercentage(bytes32 poolId, uint256 newSwapFeePercentage) external;
+    
+    /**
+     * @notice Allows a authorized user to change the default revenue sharing fee percentage
+     * @param feePercentage - new default revenue sharing fee percentage
+     */
+    function setDefaultRevenueSharingFeePercentage(uint256 feePercentage) external;
 
     /**
      * @notice Collects and distributes fees for a `poolId`

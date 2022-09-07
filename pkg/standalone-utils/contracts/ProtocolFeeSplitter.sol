@@ -36,6 +36,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     // All fee percentages are 18-decimal fixed point numbers.
     // Absolute maximum fee percentages (1e18 = 100%, 1e16 = 1%).
+    uint256 private constant _MIN_REVENUE_SHARING_FEE_PERCENTAGE = 1e16; // 1%
     uint256 private constant _MAX_REVENUE_SHARING_FEE_PERCENTAGE = 50e16; // 50%
     address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
 
@@ -43,6 +44,9 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     // Balancer DAO Multisig
     address public immutable treasury;
+
+    // Can be updated by BAL governance (1e18 = 100%, 1e16 = 1%).
+    uint256 public defaultRevenueSharingFeePercentage;
 
     // Allows for a pool revenue override
     mapping(bytes32 => uint256) public revenueSharePerPool;
@@ -61,9 +65,16 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         override
         authenticate
     {
+        _require(newSwapFeePercentage >= _MIN_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_LOW);
         _require(newSwapFeePercentage <= _MAX_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
         revenueSharePerPool[poolId] = newSwapFeePercentage;
         emit PoolRevenueShareChanged(poolId, newSwapFeePercentage);
+    }
+
+    function setDefaultRevenueSharingFeePercentage(uint256 feePercentage) external override authenticate {
+        _require(feePercentage <= _MAX_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
+        defaultRevenueSharingFeePercentage = feePercentage;
+        emit DefaultRevenueSharingFeePercentageChanged(feePercentage);
     }
 
     function collectFees(bytes32 poolId) external override {
@@ -89,7 +100,11 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
             emit FeesCollected(poolId, poolOwner, 0, treasury, feeCollectorBptBalance);
         } else {
             uint256[] memory amounts = new uint256[](1);
-            (uint256 ownerAmount, uint256 treasuryAmount) = _calculateAmounts(poolId, feeCollectorBptBalance);
+
+            uint256 poolFeeOverride = revenueSharePerPool[poolId];
+            uint256 feePercentage = poolFeeOverride != 0 ? poolFeeOverride : defaultRevenueSharingFeePercentage;
+
+            (uint256 ownerAmount, uint256 treasuryAmount) = _computeAmounts(feeCollectorBptBalance, feePercentage);
 
             // owner doesn't get the tokens always
             if (ownerAmount > 0) {
@@ -105,19 +120,12 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         }
     }
 
-    function _calculateAmounts(bytes32 poolId, uint256 feeCollectorBptBalance)
+    function _computeAmounts(uint256 feeCollectorBptBalance, uint256 feePercentage)
         internal
-        view
         returns (uint256 ownerAmount, uint256 treasuryAmount)
     {
-        // Check if that pool has an override
-        uint256 revenueShareOverride = revenueSharePerPool[poolId];
-        if (revenueShareOverride > 0) {
-            ownerAmount = Math.divDown(Math.mul(feeCollectorBptBalance, revenueShareOverride), 1e18);
-            treasuryAmount = feeCollectorBptBalance.sub(ownerAmount);
-        } else {
-            treasuryAmount = feeCollectorBptBalance;
-        }
+        ownerAmount = Math.divDown(Math.mul(feeCollectorBptBalance, feePercentage), 1e18);
+        treasuryAmount = feeCollectorBptBalance.sub(ownerAmount);
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
