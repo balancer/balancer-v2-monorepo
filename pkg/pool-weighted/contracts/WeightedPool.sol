@@ -361,9 +361,16 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         // Update the postJoinExitInvariant to the value of the currentInvariant, zeroing out any protocol swap fees.
         _updatePostJoinExit(getInvariant());
 
-        // Update the athRateProduct to the value of the current rateProduct, zeroing out any protocol yield fees.
+        // If the Pool has any protocol yield fees accrued then we update the athRateProduct to zero these out.
+        // If the current rate product is less than the athRateProduct then we do not perform this update, this prevents
+        // the Pool from paying protocol fees on the same yield twice.
         if (!_isExemptFromYieldProtocolFees()) {
-            _updateATHRateProduct(_getRateProduct(_getNormalizedWeights()));
+            uint256 athRateProduct = getATHRateProduct();
+            uint256 rateProduct = _getRateProduct(_getNormalizedWeights());
+
+            if (rateProduct > athRateProduct) {
+                _updateATHRateProduct(rateProduct);
+            }
         }
     }
 
