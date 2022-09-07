@@ -108,15 +108,6 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _normalizedWeight0 = params.normalizedWeights[0];
-        _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
-        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
-        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
-        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
-        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
-
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = params.tokens[0];
         _token1 = params.tokens[1];
@@ -135,6 +126,15 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         _scalingFactor5 = numTokens > 5 ? _computeScalingFactor(params.tokens[5]) : 0;
         _scalingFactor6 = numTokens > 6 ? _computeScalingFactor(params.tokens[6]) : 0;
         _scalingFactor7 = numTokens > 7 ? _computeScalingFactor(params.tokens[7]) : 0;
+
+        _normalizedWeight0 = params.normalizedWeights[0];
+        _normalizedWeight1 = params.normalizedWeights[1];
+        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
+        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
+        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
+        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
+        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
     }
 
     function _getNormalizedWeight(IERC20 token) internal view virtual override returns (uint256) {
