@@ -345,11 +345,11 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
 
     /**
      * @notice Returns the appreciation of one BPT relative to the underlying tokens.
-     * @dev This is equivalent to `BaseWeightedPool.getRate()`, with a correction factor to the total supply.
+     * @dev The rate starts at 1 when the pool is created, and grows over time.
      * We add on the to-be-minted protocol fees to the total supply to dilute the value of the remaining BPT.
      * This prevents the Pool's rate being affected by the collection of protocol fees.
      */
-    function getRate() public view override returns (uint256) {
+    function getRate() external view returns (uint256) {
         uint256 supply = totalSupply();
         uint256 invariant = getInvariant();
         (uint256 protocolFeesToBeMinted, ) = _getPreJoinExitProtocolFees(invariant, _getNormalizedWeights(), supply);
