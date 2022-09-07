@@ -50,8 +50,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
     // The maximum value of the invariant is the maximum allowable balance in the Vault (2**112) multiplied by the
     // largest possible scaling factor (10**18 for a zero decimals token). The largest invariant is then
     // 2**112 * 10**18 ~= 2**172, which means that to save gas we can place this in BasePool's `_miscData`.
-    uint256 private constant LAST_POST_JOINEXIT_INVARIANT_OFFSET = 0;
-    uint256 private constant LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH = 192;
+    uint256 private constant _LAST_POST_JOINEXIT_INVARIANT_OFFSET = 0;
+    uint256 private constant _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH = 192;
 
     constructor(uint256 numTokens, IRateProvider[] memory rateProviders) {
         _require(numTokens <= 8, Errors.MAX_TOKENS);
@@ -93,7 +93,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @notice Returns the value of the invariant after the last join or exit operation.
      */
     function getLastPostJoinExitInvariant() public view returns (uint256) {
-        return _getMiscData().decodeUint(LAST_POST_JOINEXIT_INVARIANT_OFFSET, LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH);
+        return
+            _getMiscData().decodeUint(_LAST_POST_JOINEXIT_INVARIANT_OFFSET, _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH);
     }
 
     /**
@@ -290,8 +291,8 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         _setMiscData(
             _getMiscData().insertUint(
                 postJoinExitInvariant,
-                LAST_POST_JOINEXIT_INVARIANT_OFFSET,
-                LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH
+                _LAST_POST_JOINEXIT_INVARIANT_OFFSET,
+                _LAST_POST_JOINEXIT_INVARIANT_BIT_LENGTH
             )
         );
     }
