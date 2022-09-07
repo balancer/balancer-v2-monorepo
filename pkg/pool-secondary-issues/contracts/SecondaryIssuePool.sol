@@ -31,10 +31,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
 
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
-    uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
-
-    uint256 private immutable _scalingFactorSecurity;
-    uint256 private immutable _scalingFactorCurrency;
+    uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;    
 
     uint256 private _MAX_TOKEN_BALANCE;
 
@@ -92,11 +89,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
     uint256 stopOrderbook;
 
     //order matching related
-    bytes32 bestBid;
-    uint256 bestBidPrice = 0;
-    bytes32 bestOffer;
-    uint256 bestOfferPrice = 0;
-    uint256 bidIndex = 0;
+    bytes32 private bestBid;
+    uint256 private bestBidPrice = 0;
+    bytes32 private bestOffer;
+    uint256 private bestOfferPrice = 0;
+    uint256 private bidIndex = 0;
+    uint256 private bestUnfilledBid; 
+    uint256 private bestUnfilledOffer;
 
     //mapping a trade reference to trade details
     mapping(bytes32 => ITrade.trade) private trades;
@@ -115,6 +114,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     bytes32 status,
                     uint256 executionDate
                 );
+
+    event bestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
     event Offer(address indexed security, uint256 secondaryOffer);
 
@@ -154,10 +155,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         _bptIndex = bptIndex;
         _securityIndex = securityIndex;
         _currencyIndex = currencyIndex;
-
-        // set scaling factors
-        _scalingFactorSecurity = _computeScalingFactor(IERC20(security));
-        _scalingFactorCurrency = _computeScalingFactor(IERC20(currency));
 
         // set max total balance of securities
         _MAX_TOKEN_BALANCE = maxSecurityOffered;
@@ -501,6 +498,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                 if(orders[marketOrders[i]].order=="Buy" && orders[_ref].order=="Sell"){
                     if(orders[marketOrders[i]].price >= orders[_ref].price){
                         if(orders[marketOrders[i]].price > bestBidPrice){
+                            bestUnfilledBid = bestBidPrice;
                             bestBidPrice = orders[marketOrders[i]].price;
                             bestBid = orderRefs[i];
                             bidIndex = i;
@@ -509,7 +507,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                 }
                 else if (orders[marketOrders[i]].order=="Sell" && orders[_ref].order=="Buy"){
                     if(orders[marketOrders[i]].price <= orders[_ref].price){
-                        if(orders[marketOrders[i]].price > bestOfferPrice){
+                        if(orders[marketOrders[i]].price < bestOfferPrice){
+                            bestUnfilledOffer = bestOfferPrice;
                             bestOfferPrice = orders[marketOrders[i]].price;
                             bestOffer = orderRefs[i];
                             bidIndex = i;
@@ -541,6 +540,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     if(_trade=="market")
                         return (orders[_ref].price, qty);
                 }
+                emit bestAvailableTrades(bestUnfilledBid, bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
                 checkLimitOrders(orders[_ref].price);
@@ -571,6 +571,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
                     if(_trade=="market")
                         return (orders[_ref].price, qty);
                 }
+                emit bestAvailableTrades(bestUnfilledBid, bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
                 checkLimitOrders(orders[_ref].price);
