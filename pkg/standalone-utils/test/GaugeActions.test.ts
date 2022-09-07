@@ -125,6 +125,14 @@ describe('GaugeActions', function () {
       });
     });
 
+    context('when caller != sender and sender != relayer', () => {
+      it('reverts', async () => {
+        expect(
+          relayerLibrary.connect(userSender).gaugeDeposit(gauge.address, other.address, gauge.address, fp(1))
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
     context('when sender does not have enough BPT', () => {
       it('reverts', async () => {
         expect(
@@ -304,6 +312,14 @@ describe('GaugeActions', function () {
       it('reverts', async () => {
         expect(
           relayerLibrary.connect(userSender).gaugeWithdraw(gauge.address, userSender.address, gauge.address, fp(1))
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
+
+    context('when caller != sender and sender != relayer', () => {
+      it('reverts', async () => {
+        expect(
+          relayerLibrary.connect(userSender).gaugeWithdraw(gauge.address, other.address, gauge.address, fp(1))
         ).to.be.revertedWith('Incorrect sender');
       });
     });
