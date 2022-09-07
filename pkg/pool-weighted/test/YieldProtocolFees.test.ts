@@ -78,6 +78,10 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
 
       describe('getYieldFeeExemption', () => {
         it('returns the expected value', async () => {
+          // We force a check of this case as it would otherwise only occur once in every 2**numTokens attempts.
+          const zeroRateProviders = Array.from({ length: numTokens }, () => ZERO_ADDRESS);
+          expect(await pool.getYieldFeeExemption(zeroRateProviders)).to.be.true;
+
           for (let i = 0; i < 10; i++) {
             // Randomly create a set of rate providers which are a mix of real or zero addresses.
             const rateProviders = Array.from({ length: numTokens }, () =>
