@@ -51,14 +51,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         _require(numTokens <= 8, Errors.MAX_TOKENS);
         InputHelpers.ensureInputLengthMatch(numTokens, rateProviders.length);
 
-        // If we know that no rate providers are set then we can skip yield fees logic.
-        // If so then set `_exemptFromYieldFees` to true, otherwise leave it false.
-        bool exemptFromYieldFees;
-        for (uint256 i = 0; i < numTokens; i++) {
-            if (rateProviders[i] != IRateProvider(0)) break;
-            exemptFromYieldFees = true;
-        }
-        _exemptFromYieldFees = exemptFromYieldFees;
+        _exemptFromYieldFees = _getYieldFeeExemption(rateProviders);
 
         _rateProvider0 = rateProviders[0];
         _rateProvider1 = rateProviders[1];
@@ -68,6 +61,19 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         _rateProvider5 = numTokens > 5 ? rateProviders[5] : IRateProvider(0);
         _rateProvider6 = numTokens > 6 ? rateProviders[6] : IRateProvider(0);
         _rateProvider7 = numTokens > 7 ? rateProviders[7] : IRateProvider(0);
+    }
+
+    function _getYieldFeeExemption(IRateProvider[] memory rateProviders) internal pure returns (bool) {
+        // If we know that no rate providers are set then we can skip yield fees logic.
+        // If so then set `_exemptFromYieldFees` to true, otherwise leave it false.
+        bool exemptFromYieldFees = true;
+        for (uint256 i = 0; i < rateProviders.length; i++) {
+            if (rateProviders[i] != IRateProvider(0)) {
+                exemptFromYieldFees = false;
+                break;
+            }
+        }
+        return exemptFromYieldFees;
     }
 
     /**
