@@ -609,7 +609,9 @@ abstract contract BasePool is
      * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
      */
     function _payProtocolFees(uint256 bptAmount) internal {
-        _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        if (bptAmount > 0) {
+            _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        }
     }
 
     /**
