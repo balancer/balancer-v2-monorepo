@@ -62,9 +62,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
-     * @dev Returns the cached protocol fee percentage. If `getProtocolSwapFeeDelegation()` is false, this value is
-     * immutable for swap fee queries. Alternatively, it will track the global fee percentage set in the
-     * ProtocolFeePercentagesProvider.
+     * @notice Returns the cached protocol fee percentage.
      */
     function getProtocolFeePercentageCache(uint256 feeType) public view returns (uint256) {
         if (inRecoveryMode()) {
