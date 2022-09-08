@@ -83,8 +83,8 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
-     * @dev Can be called by anyone to update the cached fee percentages (swap fee is only updated when delegated).
-     * Updates the cache to the latest value set by governance.
+     * @notice Updates the cache to the latest value set by governance.
+     * @dev Can be called by anyone to update the cached fee percentages.
      */
     function updateProtocolFeePercentageCache() external {
         _beforeProtocolFeeCacheUpdate();
