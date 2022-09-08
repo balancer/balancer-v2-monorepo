@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 
 import { BigNumberish, bn, fp } from '../../numbers';
 import { DAY, MONTH } from '../../time';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
+import { ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
