@@ -82,6 +82,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     ) external returns (uint256) {
         return
             _getPostJoinExitProtocolFees(
+                WeightedMath._calculateInvariant(normalizedWeights, preBalances),
                 preBalances,
                 balanceDeltas,
                 normalizedWeights,

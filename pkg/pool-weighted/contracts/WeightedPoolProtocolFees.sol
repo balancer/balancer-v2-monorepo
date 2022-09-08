@@ -241,6 +241,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @dev Returns the amount of BPT to be minted to pay protocol fees on swap fees accrued during a join/exit.
      * Note that this isn't a view function. This function automatically updates `_lastPostJoinExitInvariant` to
      * ensure that proper accounting is performed to prevent charging duplicate protocol fees.
+     * @param preJoinExitInvariant - The Pool's invariant prior to the join/exit.
      * @param preBalances - The Pool's balances prior to the join/exit.
      * @param balanceDeltas - The changes to the Pool's balances due to the join/exit.
      * @param normalizedWeights - The Pool's normalized token weights.
@@ -248,14 +249,13 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
      * @param postJoinExitSupply - The Pool's total supply after the join/exit.
      */
     function _getPostJoinExitProtocolFees(
+        uint256 preJoinExitInvariant,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
         uint256 preJoinExitSupply,
         uint256 postJoinExitSupply
     ) internal returns (uint256) {
-        // We calculate `preJoinExitInvariant` now before we mutate `preBalances` into the post joinExit balances.
-        uint256 preJoinExitInvariant = WeightedMath._calculateInvariant(normalizedWeights, preBalances);
         bool isJoin = postJoinExitSupply >= preJoinExitSupply;
 
         // Compute the post balances by adding or removing the deltas.
