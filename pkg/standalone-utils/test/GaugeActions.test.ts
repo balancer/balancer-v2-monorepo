@@ -147,7 +147,7 @@ describe('GaugeActions', function () {
 
     context('when sender has enough BPT', () => {
       context('sender = senderUser, recipient = senderUser', () => {
-        sharedBeforeEach('', async () => {
+        sharedBeforeEach(async () => {
           tokenSender = userSender;
           tokenRecipient = userSender;
         });
