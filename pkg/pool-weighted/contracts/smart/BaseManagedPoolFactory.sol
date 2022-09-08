@@ -56,7 +56,6 @@ contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                         swapFeePercentage: poolParams.swapFeePercentage,
                         swapEnabledOnStart: poolParams.swapEnabledOnStart,
                         mustAllowlistLPs: poolParams.mustAllowlistLPs,
-                        protocolSwapFeePercentage: poolParams.protocolSwapFeePercentage,
                         managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
                         managementAumFeePercentage: poolParams.managementAumFeePercentage
                     }),

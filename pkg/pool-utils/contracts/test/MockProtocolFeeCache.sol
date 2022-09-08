@@ -20,10 +20,10 @@ import "./MockRecoveryModeStorage.sol";
 contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     // We make the caller the owner and make all functions owner only, letting the deployer perform all permissioned
     // actions.
-    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage)
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(msg.sender)
-        ProtocolFeeCache(protocolFeeProvider, protocolSwapFeePercentage)
+        ProtocolFeeCache(protocolFeeProvider)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
