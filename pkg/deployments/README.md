@@ -63,7 +63,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Authorizer, governance contract                         | [`20210418-authorizer`](./tasks/20210418-authorizer)                                                 |
 | Vault, main protocol contract                           | [`20210418-vault`](./tasks/20210418-vault)                                                           |
-| Weighted Pools of up to 8 tokens                        | [`20210418-weighted-pool`](./tasks/20210418-weighted-pool)                                           |
 | Rate Provider for wstETH                                | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
 | Authorizer Adaptor for extending governance             | [`20220325-authorizer-adaptor`](./tasks/20220325-authorizer-adaptor)                                 |
 | Wallet for the BAL token                                | [`20220325-bal-token-holder-factory`](./tasks/20220325-bal-token-holder-factory)                     |
@@ -94,6 +93,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
+| Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 
 ## Scripts
 
@@ -117,6 +117,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 
 | Description                                      | Task ID                                                                                             |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Weighted Pools of up to 8 tokens                 | [`20210418-weighted-pool`](./deprecated/tasks/20210418-weighted-pool)                                          |
 | Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/deprecated/20210624-stable-pool)                                   |
 | Liquidity Bootstrapping Pools of up to 4 tokens  | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
 | Meta Stable Pools with 2 tokens and price oracle | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                         |

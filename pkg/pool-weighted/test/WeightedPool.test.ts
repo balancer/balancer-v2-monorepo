@@ -173,7 +173,7 @@ describe('WeightedPool', function () {
     });
   });
 
-  describe('getRate and protocol fees', () => {
+  describe('protocol fees', () => {
     const swapFeePercentage = fp(0.1); // 10 %
     const protocolFeePercentage = fp(0.5); // 50 %
     const numTokens = 2;
@@ -198,12 +198,6 @@ describe('WeightedPool', function () {
       });
     });
 
-    context('before initialized', () => {
-      it('rate is zero', async () => {
-        await expect(pool.getRate()).to.be.revertedWith('ZERO_INVARIANT');
-      });
-    });
-
     context('once initialized', () => {
       sharedBeforeEach('initialize pool', async () => {
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
@@ -215,40 +209,14 @@ describe('WeightedPool', function () {
         await pool.init({ from: lp, recipient: lp.address, initialBalances: equalBalances });
       });
 
-      context('without protocol fees', () => {
-        it('reports correctly', async () => {
-          const totalSupply = await pool.totalSupply();
-          const invariant = await pool.estimateInvariant();
-
-          const expectedRate = fpDiv(invariant.mul(numTokens), totalSupply);
-          const rate = await pool.getRate();
-
-          expect(rate).to.be.equalWithError(expectedRate, 0.0001);
-        });
-      });
-
       context('with protocol fees', () => {
         let unmintedBPT: BigNumber;
-        let originalRate: BigNumber;
-
-        async function expectNoRateChange(action: () => Promise<void>): Promise<void> {
-          const rateBeforeAction = await pool.getRate();
-
-          await action();
-
-          const rateAfterAction = await pool.getRate();
-
-          // There's some minute diference due to rounding error
-          const rateDelta = rateAfterAction.sub(rateBeforeAction);
-          expect(rateDelta.abs()).to.be.lte(2);
-        }
 
         sharedBeforeEach('swap bpt in', async () => {
           const amount = fp(20);
           const tokenIn = tokens.first;
           const tokenOut = tokens.second;
 
-          originalRate = await pool.getRate();
           const originalInvariant = await pool.instance.getInvariant();
 
           const singleSwap = {
@@ -279,25 +247,6 @@ describe('WeightedPool', function () {
           );
         });
 
-        it('uncollected protocol fees should increase the effective supply (and lower the rate)', async () => {
-          const rate = await pool.getRate();
-
-          // We expect that the Pool has accrued fees due to the swap, which increases the BPT's rate.
-          // Check that we have a difference of at least 0.01% to discard rounding error.
-          expect(originalRate).to.be.lt(rate.mul(9999).div(10000));
-
-          const invariant = await pool.instance.getInvariant();
-          const numTokens = pool.tokens.length;
-          const totalSupply = await pool.totalSupply();
-
-          const feelessRate = fpDiv(invariant.mul(numTokens), totalSupply);
-
-          // The Pool should report a rate which is lower than it would have for the current balances where we are
-          // ignoring protocol fees.
-          // Check that we have a difference of at least 0.01% to discard rounding error.
-          expect(rate).to.be.lt(feelessRate.mul(9999).div(10000));
-        });
-
         it('the actual supply takes into account unminted protocol fees', async () => {
           const totalSupply = await pool.totalSupply();
           const expectedActualSupply = totalSupply.add(unmintedBPT);
@@ -305,30 +254,7 @@ describe('WeightedPool', function () {
           expect(await pool.getActualSupply()).to.almostEqual(expectedActualSupply, 1e-6);
         });
 
-        it('minting protocol fee BPT should not affect rate', async () => {
-          await expectNoRateChange(async () => {
-            await pool.joinAllGivenOut({ from: lp, bptOut: fp(1) });
-          });
-        });
-
         function itReactsToProtocolFeePercentageChangesCorrectly(feeType: number) {
-          it('rate does not change on protocol fee update', async () => {
-            await expectNoRateChange(async () => {
-              // Changing the fee on the providere should cause no changes as the Pool ignores the provider outside
-              // of cache updates.
-              await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-            });
-          });
-
-          it('rate does not change on protocol fee cache update', async () => {
-            await expectNoRateChange(async () => {
-              // Even though there's due protocol fees, which are a function of the protocol fee percentage, changing
-              // this value should not change the Pool's rate (to avoid manipulation).
-              await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
-              await pool.updateProtocolFeePercentageCache();
-            });
-          });
-
           it('due protocol fees are minted on protocol fee cache update', async () => {
             await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
             const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
