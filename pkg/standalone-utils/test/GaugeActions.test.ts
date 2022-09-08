@@ -517,19 +517,6 @@ describe('GaugeActions', function () {
   });
 
   describe('gaugeMint', () => {
-    sharedBeforeEach('grant mint approval to sender via relayer', async () => {
-      const { v, r, s, deadline } = await BalancerMinterAuthorization.signSetMinterApproval(
-        balMinter,
-        relayer.address,
-        true,
-        userSender
-      );
-
-      await relayer
-        .connect(userSender)
-        .multicall([encodeGaugeSetMinterApproval({ approval: true, user: userSender, deadline, v, r, s })]);
-    });
-
     sharedBeforeEach('stake BPT in gauge and mock votes in the controller', async () => {
       await lpToken.connect(userSender).approve(gauge.address, MAX_UINT256);
       await gauge.connect(userSender)['deposit(uint256)'](await lpToken.balanceOf(userSender.address));
@@ -537,13 +524,36 @@ describe('GaugeActions', function () {
     });
 
     context('when caller is approved to mint', () => {
+      let encodedGaugeSetMinterApproval: string;
+
+      sharedBeforeEach('grant mint approval to sender via relayer', async () => {
+        const { v, r, s, deadline } = await BalancerMinterAuthorization.signSetMinterApproval(
+          balMinter,
+          relayer.address,
+          true,
+          userSender
+        );
+
+        encodedGaugeSetMinterApproval = encodeGaugeSetMinterApproval({
+          approval: true,
+          user: userSender,
+          deadline,
+          v,
+          r,
+          s,
+        });
+      });
+
       // We just check the transfer and its 'from' / 'to' attributes; the actual amount depends on the gauge votes
       // which is mocked and out of scope of this test.
       context('when not using output references', () => {
         it('mints BAL to sender', async () => {
           const tx = await relayer
             .connect(userSender)
-            .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference: bn(0) })]);
+            .multicall([
+              encodedGaugeSetMinterApproval,
+              encodeGaugeMint({ gauges: [gauge.address], outputReference: bn(0) }),
+            ]);
           expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: userSender.address }, BAL.address);
         });
       });
@@ -554,14 +564,14 @@ describe('GaugeActions', function () {
         it('mints BAL to sender', async () => {
           const tx = await relayer
             .connect(userSender)
-            .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference })]);
+            .multicall([encodedGaugeSetMinterApproval, encodeGaugeMint({ gauges: [gauge.address], outputReference })]);
           expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: userSender.address }, BAL.address);
         });
 
         it('stores the output in a chained reference', async () => {
           const tx = await relayer
             .connect(userSender)
-            .multicall([encodeGaugeMint({ gauges: [gauge.address], outputReference })]);
+            .multicall([encodedGaugeSetMinterApproval, encodeGaugeMint({ gauges: [gauge.address], outputReference })]);
           const event = expectEvent.inIndirectReceipt(await tx.wait(), gauge.interface, 'Transfer');
           const transferValue = event.args._value;
           await expectChainedReferenceContents(relayer, outputReference, transferValue);
