@@ -90,9 +90,7 @@ abstract contract ComposableStablePoolProtocolFees is
             expectedProtocolOwnershipPercentage
         );
 
-        if (protocolFeeAmount > 0) {
-            _payProtocolFees(protocolFeeAmount);
-        }
+        _payProtocolFees(protocolFeeAmount);
 
         // We pay fees before a join or exit to ensure the pool is debt-free. This increases the virtual supply (making
         // it match the actual supply).
@@ -265,9 +263,7 @@ abstract contract ComposableStablePoolProtocolFees is
             getProtocolFeePercentageCache(ProtocolFeeType.SWAP)
         );
 
-        if (protocolFeeAmount > 0) {
-            _payProtocolFees(protocolFeeAmount);
-        }
+        _payProtocolFees(protocolFeeAmount);
 
         _updatePostJoinExit(currentAmp, postJoinExitInvariant);
     }

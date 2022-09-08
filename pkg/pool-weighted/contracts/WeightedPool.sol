@@ -255,9 +255,8 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             _updateATHRateProduct(athRateProduct);
         }
 
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
+        _payProtocolFees(protocolFeesToBeMinted);
+
         return (supplyBeforeFeeCollection.add(protocolFeesToBeMinted), invariant);
     }
 
@@ -278,9 +277,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             postJoinExitSupply
         );
 
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
+        _payProtocolFees(protocolFeesToBeMinted);
     }
 
     function _updatePostJoinExit(uint256 postJoinExitInvariant)
@@ -311,9 +308,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
             totalSupply()
         );
 
-        if (protocolFeesToBeMinted > 0) {
-            _payProtocolFees(protocolFeesToBeMinted);
-        }
+        _payProtocolFees(protocolFeesToBeMinted);
 
         // With the fees paid, we now store the current invariant and update the ATH rate product (if necessary),
         // marking the Pool as free of protocol debt.
