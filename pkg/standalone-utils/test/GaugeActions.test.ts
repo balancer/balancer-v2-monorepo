@@ -128,7 +128,7 @@ describe('GaugeActions', function () {
     context('when caller != sender and sender != relayer', () => {
       it('reverts', async () => {
         expect(
-          relayerLibrary.connect(userSender).gaugeDeposit(gauge.address, other.address, gauge.address, fp(1))
+          relayerLibrary.connect(other).gaugeDeposit(gauge.address, userSender.address, gauge.address, fp(1))
         ).to.be.revertedWith('Incorrect sender');
       });
     });
