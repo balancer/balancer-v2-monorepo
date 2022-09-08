@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
