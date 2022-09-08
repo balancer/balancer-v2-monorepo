@@ -249,6 +249,37 @@ describe('GaugeActions', function () {
     });
 
     itTestsDepositsAndWithdrawals();
+
+    describe('gaugeClaimRewards', () => {
+      let streamer: Contract;
+
+      sharedBeforeEach('get deployed streamer', async () => {
+        streamer = await deployedAt(
+          'v2-liquidity-mining/ChildChainStreamer',
+          await childChainGaugeFactory.getPoolStreamer(lpToken.address)
+        );
+      });
+
+      sharedBeforeEach('stake BPT in gauge', async () => {
+        await lpToken.connect(userSender).approve(gauge.address, MAX_UINT256);
+        await gauge.connect(userSender)['deposit(uint256)'](await lpToken.balanceOf(userSender.address));
+      });
+
+      sharedBeforeEach('send tokens to streamer', async () => {
+        await BAL.connect(admin).mint(streamer.address, fp(500));
+        await streamer.notify_reward_amount(BAL.address);
+      });
+
+      it('first transfers rewards to gauge', async () => {
+        const tx = await relayer.connect(userSender).multicall([encodeGaugeClaimRewards({ gauges: [gauge.address] })]);
+        expectTransferEvent(await tx.wait(), { from: streamer.address, to: gauge.address }, BAL.address);
+      });
+
+      it('then transfers rewards to sender', async () => {
+        const tx = await relayer.connect(userSender).multicall([encodeGaugeClaimRewards({ gauges: [gauge.address] })]);
+        expectTransferEvent(await tx.wait(), { from: gauge.address, to: userSender.address }, BAL.address);
+      });
+    });
   });
 
   function itTestsDepositsAndWithdrawals() {
