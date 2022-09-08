@@ -81,10 +81,6 @@ export default class StablePool extends BasePool {
     return (await this.getTokens()).tokens.indexOf(token.address);
   }
 
-  async getBalances(): Promise<BigNumber[]> {
-    return (await this.getTokens()).balances;
-  }
-
   async getDueProtocolFeeBptAmount(): Promise<BigNumber> {
     return this.instance.getDueProtocolFeeBptAmount();
   }
@@ -111,6 +107,10 @@ export default class StablePool extends BasePool {
 
   async getVirtualSupply(): Promise<BigNumber> {
     return this.instance.getVirtualSupply();
+  }
+
+  async getActualSupply(): Promise<BigNumber> {
+    return this.instance.getActualSupply();
   }
 
   async updateTokenRateCache(token: Token): Promise<ContractTransaction> {
@@ -292,14 +292,16 @@ export default class StablePool extends BasePool {
     const initialBalances = initParams.initialBalances;
     const balances = await this._dropBptItem(Array.isArray(initialBalances) ? initialBalances : [initialBalances]);
 
-    await Promise.all(
-      balances.map(async (balance, i) => {
-        const token = this.tokens.get(i);
+    if (!initParams.skipMint) {
+      await Promise.all(
+        balances.map(async (balance, i) => {
+          const token = this.tokens.get(i);
 
-        await token.mint(from, balance);
-        await token.approve(this.vault, balance, { from });
-      })
-    );
+          await token.mint(from, balance);
+          await token.approve(this.vault, balance, { from });
+        })
+      );
+    }
 
     const { tokens: allTokens } = await this.getTokens();
     const params: JoinExitStablePool = this._buildInitParams(initParams);

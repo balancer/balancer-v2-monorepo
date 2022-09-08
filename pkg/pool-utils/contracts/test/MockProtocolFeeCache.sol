@@ -28,6 +28,16 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    event FeesInBeforeHook(uint256 swap, uint256 yield, uint256 aum);
+
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        emit FeesInBeforeHook(
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP),
+            getProtocolFeePercentageCache(ProtocolFeeType.YIELD),
+            getProtocolFeePercentageCache(ProtocolFeeType.AUM)
+        );
+    }
+
     function _isOwnerOnlyAction(bytes32) internal pure override returns (bool) {
         return true;
     }

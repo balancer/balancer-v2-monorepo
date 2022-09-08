@@ -136,11 +136,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(
-        uint256[] memory, /* preBalances */
-        uint256[] memory /* normalizedWeights */
-    ) internal virtual returns (uint256) {
-        return totalSupply();
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+        internal
+        virtual
+        returns (uint256, uint256)
+    {
+        return (totalSupply(), WeightedMath._calculateInvariant(normalizedWeights, preBalances));
     }
 
     /**
@@ -152,6 +153,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * This function is free to mutate the `preBalances` array.
      */
     function _afterJoinExit(
+        uint256 preJoinExitInvariant,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -210,7 +212,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(balances, normalizedWeights);
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
@@ -221,7 +223,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(balances, amountsIn, normalizedWeights, preJoinExitSupply, preJoinExitSupply.add(bptAmountOut));
+        _afterJoinExit(
+            preJoinExitInvariant,
+            balances,
+            amountsIn,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.add(bptAmountOut)
+        );
 
         return (bptAmountOut, amountsIn);
     }
@@ -331,7 +340,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(balances, normalizedWeights);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
@@ -342,7 +351,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(balances, amountsOut, normalizedWeights, preJoinExitSupply, preJoinExitSupply.sub(bptAmountIn));
+        _afterJoinExit(
+            preJoinExitInvariant,
+            balances,
+            amountsOut,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.sub(bptAmountIn)
+        );
 
         return (bptAmountIn, amountsOut);
     }
