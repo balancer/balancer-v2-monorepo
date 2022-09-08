@@ -91,7 +91,6 @@ describe('GaugeActions', function () {
     await vault.setRelayerApproval(userSender, relayer, true);
   });
 
-  // We won't be needing the adder; we just need a staking liquidity gauge where tokens can be deposited / withdrawn.
   sharedBeforeEach('set up gauge', async () => {
     const veBalDelegation = await deploy('v2-liquidity-mining/MockVeDelegation');
 
