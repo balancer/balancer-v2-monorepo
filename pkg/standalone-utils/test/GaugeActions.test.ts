@@ -127,8 +127,10 @@ describe('GaugeActions', function () {
     context('when caller != sender and sender != relayer', () => {
       it('reverts', async () => {
         expect(
-          relayerLibrary.connect(other).gaugeDeposit(gauge.address, userSender.address, gauge.address, fp(1))
-        ).to.be.revertedWith('Incorrect sender');
+          relayer
+            .connect(other)
+            .multicall([encodeDeposit({ gauge: gauge, sender: userSender, recipient: userSender, amount: fp(1) })])
+        ).to.be.revertedWith('IncorrectSender');
       });
     });
 
@@ -145,7 +147,7 @@ describe('GaugeActions', function () {
     });
 
     context('when sender has enough BPT', () => {
-      context('sender = senderUser, recipient = senderUser', () => {
+      context('sender = user, recipient = user', () => {
         sharedBeforeEach(async () => {
           tokenSender = userSender;
           tokenRecipient = userSender;
@@ -154,8 +156,8 @@ describe('GaugeActions', function () {
         itDepositsWithEnoughTokens();
       });
 
-      context('sender = senderUser, recipient = relayer', () => {
-        sharedBeforeEach('', async () => {
+      context('sender = user, recipient = relayer', () => {
+        sharedBeforeEach(async () => {
           tokenSender = userSender;
           tokenRecipient = relayer;
         });
@@ -163,8 +165,8 @@ describe('GaugeActions', function () {
         itDepositsWithEnoughTokens();
       });
 
-      context('sender = relayer, recipient = senderUser', () => {
-        sharedBeforeEach('', async () => {
+      context('sender = relayer, recipient = user', () => {
+        sharedBeforeEach(async () => {
           await lpToken.connect(userSender).transfer(relayer.address, totalLpTokens);
           tokenSender = relayer;
           tokenRecipient = userSender;
@@ -174,7 +176,7 @@ describe('GaugeActions', function () {
       });
 
       context('sender = relayer, recipient = relayer', () => {
-        sharedBeforeEach('', async () => {
+        sharedBeforeEach(async () => {
           await lpToken.connect(userSender).transfer(relayer.address, totalLpTokens);
           tokenSender = relayer;
           tokenRecipient = relayer;
@@ -247,18 +249,16 @@ describe('GaugeActions', function () {
         receipt = await tx.wait();
       });
 
-      // Short-circuit when no tokens are deposited.
-      expectedAmount.gt(0) &&
-        it('pulls BPT tokens from sender if necessary', async () => {
-          // This transfer is skipped if token sender is relayer, but addresses are undefined outside this scope.
-          if (tokenSenderAddress != relayer.address) {
-            expectTransferEvent(
-              receipt,
-              { from: tokenSenderAddress, to: relayer.address, value: expectedAmount },
-              lpToken.address
-            );
-          }
-        });
+      it('pulls BPT tokens from sender if necessary', async () => {
+        // This transfer is skipped if token sender is relayer or if 0 tokens are expected to be transferred.
+        if (tokenSenderAddress != relayer.address && expectedAmount.gt(0)) {
+          expectTransferEvent(
+            receipt,
+            { from: tokenSenderAddress, to: relayer.address, value: expectedAmount },
+            lpToken.address
+          );
+        }
+      });
 
       it("approves gauge to use relayer's BPT funds", async () => {
         expectEvent.inIndirectReceipt(receipt, lpToken.interface, 'Approval', {
@@ -268,15 +268,16 @@ describe('GaugeActions', function () {
         });
       });
 
-      // Short-circuit when no tokens are deposited.
-      expectedAmount.gt(0) &&
-        it('emits BPT transfer event from relayer to gauge', async () => {
+      it('emits BPT transfer event from relayer to gauge if necessary', async () => {
+        // This transfer is skipped if 0 tokens are expected to be transferred.
+        if (expectedAmount.gt(0)) {
           expectTransferEvent(
             receipt,
             { from: relayer.address, to: gauge.address, value: expectedAmount },
             lpToken.address
           );
-        });
+        }
+      });
 
       it('transfers BPT tokens to gauge', async () => {
         expect(await lpToken.balanceOf(tokenSenderAddress)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
@@ -318,7 +319,9 @@ describe('GaugeActions', function () {
     context('when caller != sender and sender != relayer', () => {
       it('reverts', async () => {
         expect(
-          relayerLibrary.connect(userSender).gaugeWithdraw(gauge.address, other.address, gauge.address, fp(1))
+          relayer
+            .connect(other)
+            .multicall([encodeWithdraw({ gauge: gauge, sender: userSender, recipient: userSender, amount: fp(1) })])
         ).to.be.revertedWith('Incorrect sender');
       });
     });
@@ -336,8 +339,8 @@ describe('GaugeActions', function () {
     });
 
     context('when sender has enough gauge tokens', () => {
-      context('sender = senderUser, recipient = senderUser', () => {
-        sharedBeforeEach('', async () => {
+      context('sender = user, recipient = user', () => {
+        sharedBeforeEach(async () => {
           tokenSender = userSender;
           tokenRecipient = userSender;
         });
@@ -345,8 +348,8 @@ describe('GaugeActions', function () {
         itWithdrawsWithEnoughTokens();
       });
 
-      context('sender = senderUser, recipient = relayer', () => {
-        sharedBeforeEach('', async () => {
+      context('sender = user, recipient = relayer', () => {
+        sharedBeforeEach(async () => {
           tokenSender = userSender;
           tokenRecipient = relayer;
         });
@@ -354,8 +357,8 @@ describe('GaugeActions', function () {
         itWithdrawsWithEnoughTokens();
       });
 
-      context('sender = relayer, recipient = senderUser', () => {
-        sharedBeforeEach('', async () => {
+      context('sender = relayer, recipient = user', () => {
+        sharedBeforeEach(async () => {
           tokenSender = relayer;
           tokenRecipient = userSender;
         });
@@ -364,7 +367,7 @@ describe('GaugeActions', function () {
       });
 
       context('sender = relayer, recipient = relayer', () => {
-        sharedBeforeEach('', async () => {
+        sharedBeforeEach(async () => {
           tokenSender = relayer;
           tokenRecipient = relayer;
         });
@@ -413,7 +416,7 @@ describe('GaugeActions', function () {
         tokenRecipientAddress = TypesConverter.toAddress(tokenRecipient);
       });
 
-      // userSender has BPT, and tokenSender needs gauge tokens to start the test, so here sender is always userSender,
+      // User has BPT, and tokenSender needs gauge tokens to start the test. So here sender is always user,
       // and recipient is tokenSender.
       sharedBeforeEach('make initial deposit', async () => {
         await relayer
@@ -447,28 +450,27 @@ describe('GaugeActions', function () {
         receipt = await tx.wait();
       });
 
-      // Short-circuit when no tokens are withdrawn.
-      expectedAmount.gt(0) &&
-        it('pulls gauge tokens from sender if necessary', async () => {
-          // This transfer is skipped if token sender is relayer, but addresses are undefined outside this scope.
-          if (tokenSenderAddress != relayer.address) {
-            expectTransferEvent(
-              receipt,
-              { from: tokenSenderAddress, to: relayer.address, value: expectedAmount },
-              gauge.address
-            );
-          }
-        });
+      it('pulls gauge tokens from sender if necessary', async () => {
+        // This transfer is skipped if token sender is relayer or if 0 tokens are expected to be transferred.
+        if (tokenSenderAddress != relayer.address && expectedAmount.gt(0)) {
+          expectTransferEvent(
+            receipt,
+            { from: tokenSenderAddress, to: relayer.address, value: expectedAmount },
+            gauge.address
+          );
+        }
+      });
 
-      // Short-circuit when no tokens are withdrawn.
-      expectedAmount.gt(0) &&
-        it('emits BPT transfer event from gauge to relayer', async () => {
+      it('emits BPT transfer event from gauge to relayer if necessary', async () => {
+        // This transfer is skipped if 0 tokens are expected to be transferred.
+        if (expectedAmount.gt(0)) {
           expectTransferEvent(
             receipt,
             { from: gauge.address, to: relayer.address, value: expectedAmount },
             lpToken.address
           );
-        });
+        }
+      });
 
       it('emits withdraw event', async () => {
         expectEvent.inIndirectReceipt(receipt, gauge.interface, 'Withdraw', {
@@ -486,7 +488,7 @@ describe('GaugeActions', function () {
       });
 
       it('emits BPT transfer event from relayer to recipient if necessary', async () => {
-        // This transfer is skipped if token recipient is relayer, but addresses are undefined outside this scope.
+        // This transfer is skipped if token recipient is relayer.
         if (tokenRecipientAddress != relayer.address) {
           expectTransferEvent(
             receipt,
