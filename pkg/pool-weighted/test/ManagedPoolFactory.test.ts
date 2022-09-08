@@ -60,8 +60,7 @@ describe('ManagedPoolFactory', function () {
     canTransfer = true,
     canChangeSwapFee = true,
     swapsEnabled = true,
-    mustAllowlistLPs = false,
-    protocolSwapFeePercentage = MAX_UINT256
+    mustAllowlistLPs = false
   ): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
@@ -249,18 +248,6 @@ describe('ManagedPoolFactory', function () {
       const pool = await createPool(true, true, true, false);
 
       expect(await pool.getMustAllowlistLPs()).to.be.false;
-    });
-
-    it('pool created with protocol fees delegated', async () => {
-      const pool = await createPool(true, true, true, true);
-
-      expect(await pool.getProtocolSwapFeeDelegation()).to.be.true;
-    });
-
-    it('pool created with protocol fees disabled', async () => {
-      const pool = await createPool(true, true, true, false, fp(0));
-
-      expect(await pool.getProtocolSwapFeeDelegation()).to.be.false;
     });
   });
 });
