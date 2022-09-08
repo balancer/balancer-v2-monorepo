@@ -174,7 +174,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
-        uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
     }
@@ -199,7 +198,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             owner,
             true
         )
-        ProtocolFeeCache(protocolFeeProvider, params.protocolSwapFeePercentage)
+        ProtocolFeeCache(protocolFeeProvider)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
