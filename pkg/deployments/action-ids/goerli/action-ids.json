@@ -592,12 +592,29 @@
       }
     }
   },
-  "20220817-composable-stable-pool": {
+  "20220906-composable-stable-pool": {
     "ComposableStablePoolFactory": {
       "useAdaptor": false,
       "actionIds": {
-        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0x445c20c48f9b96ca55740724ef99344b69c84b8d615915685a34682e9e8eee41",
-        "disable()": "0xf91036389e643b1137d335ee059c1ac3dd461f61383eeb0af59026c759910958"
+        "create(string,string,address[],uint256,address[],uint256[],bool[],uint256,address)": "0x82bdfa752365d3f5126fdab4bf91428ce34d78238bbb6dcc11479dc4b2cdd194",
+        "disable()": "0x41955c8033f6cd7940ef6365ebd59154af32f4949507ebeee4a6ec0c4ee86a9d"
+      }
+    },
+    "ComposableStablePool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x0c925fce89a22e36ebd9b3c6e0262234e853d2f6",
+      "actionIds": {
+        "disableRecoveryMode()": "0xb4d3deece0ede04bab030f8d23f019a3a603d97e849e1ee1e6a58226843bb105",
+        "enableRecoveryMode()": "0x14acd584474527fd64f2d0319e73c6b85aea75f00fef393230b71b2ca64344e7",
+        "pause()": "0xaa58fe403eae929c93788a7b35d0b821be0e3d7fb1b7469ba994ab140ff8aaa0",
+        "setAssetManagerPoolConfig(address,bytes)": "0xf46c96e0536003e817b9102af0b219ac1a9c3afb2b70234d215edce7b694f0d0",
+        "setSwapFeePercentage(uint256)": "0x6c470f23b0e66e93b1358c5c49ff26bb81599d24618da6b357d0dbcb138af65c",
+        "setTokenRateCacheDuration(address,uint256)": "0x3b5d75a18af8f3a6a098229d075e6c9d526a4d4d0597adacacb74808b6092bae",
+        "startAmplificationParameterUpdate(uint256,uint256)": "0x4d3bafe842e5d8995399b89f432b92c6dfa2f2e810dd0b8d1998c51f5461dbb4",
+        "stopAmplificationParameterUpdate()": "0x40f06a635db341b3605b05dcdc9a500b297b2f51257ca302bb3daca2c8f25142",
+        "unpause()": "0x9b6f869dbf8d0c39da20c2af3c85f617c20e0b648cf1e5d42218eabd85b83529",
+        "updateProtocolFeePercentageCache()": "0x2912cd1592153135ebbc808951155de9d15270d12029160f7fef7296833556c2",
+        "updateTokenRateCache(address)": "0xfe713ec0738ce39b0b3b024d3413551c716f10d9a2769fb68c44bd609c0ae2be"
       }
     }
   },

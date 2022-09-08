@@ -346,4 +346,14 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
 
         return rateProduct;
     }
+
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(BasePool, BasePoolAuthorization)
+        returns (bool)
+    {
+        return super._isOwnerOnlyAction(actionId);
+    }
 }

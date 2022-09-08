@@ -88,11 +88,11 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol fee percentages provider                       | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 | Child Chain Gauge Reward Helper                         | [`20220812-child-chain-reward-helper`](./tasks/20220812-child-chain-reward-helper)                   |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/20220817-aave-rebalanced-linear-pool)               |
-| Composable Stable Pools                                 | [`20220817-composable-stable-pool`](./tasks/20220817-composable-stable-pool)                         |
 | Mainnet Staking Gauges V2                               | [`20220822-mainnet-gauge-factory-v2`](./tasks/20220822-mainnet-gauge-factory-v2)                     |
 | Arbitrum Root Gauges V2, for veBAL voting               | [`20220823-arbitrum-root-gauge-factory-v2`](./tasks/20220823-arbitrum-root-gauge-factory-v2)         |
 | Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
+| Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 
 ## Scripts

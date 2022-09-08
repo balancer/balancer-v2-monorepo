@@ -56,7 +56,10 @@ abstract contract ComposableStablePoolProtocolFees is
 
     /**
      * @dev Calculates due protocol fees originating from accumulated swap fees and yield of non-exempt tokens, pays
-     * them by minting BPT, and returns the updated virtual supply and current balances.
+     * them by minting BPT, and returns the actual supply and current balances.
+     *
+     * We also return the current invariant computed using the amplification factor at the last join or exit, which can
+     * be useful to skip computations in scenarios where the amplification factor is not changing.
      */
     function _payProtocolFeesBeforeJoinExit(
         uint256[] memory registeredBalances,
@@ -76,7 +79,7 @@ abstract contract ComposableStablePoolProtocolFees is
         // swap fees and yield.
         (
             uint256 expectedProtocolOwnershipPercentage,
-            uint256 totalGrowthInvariant
+            uint256 currentInvariantWithLastJoinExitAmp
         ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
@@ -91,12 +94,11 @@ abstract contract ComposableStablePoolProtocolFees is
             _payProtocolFees(protocolFeeAmount);
         }
 
-        // We pay fees before a join or exit to ensure the pool is debt-free, so that swap fee and quote calculations
-        // based on the virtual supply reflect only the current user's transaction. We have just increased the virtual
-        // supply by minting the protocol fee tokens, so those are included in the return value.
+        // We pay fees before a join or exit to ensure the pool is debt-free. This increases the virtual supply (making
+        // it match the actual supply).
         //
-        // For this addition to overflow, the actual total supply would have already overflowed.
-        return (virtualSupply + protocolFeeAmount, balances, totalGrowthInvariant);
+        // For this addition to overflow, `totalSupply` would also have already overflowed.
+        return (virtualSupply + protocolFeeAmount, balances, currentInvariantWithLastJoinExitAmp);
     }
 
     function _getProtocolPoolOwnershipPercentage(
@@ -152,6 +154,15 @@ abstract contract ComposableStablePoolProtocolFees is
         //
         // Each invariant should be larger than its precedessor. In case any rounding error results in them being
         // smaller, we adjust the subtraction to equal 0.
+
+        // Note: in the unexpected scenario where the rates of the tokens shrink over time instead of growing (i.e. if
+        // the yield is negative), the non-exempt growth invariant might actually be *smaller* than the swap fee growth
+        // invariant, and the total growth invariant might be *smaller* than the non-exempt growth invariant. Depending
+        // on the order in which swaps, joins/exits and rate changes happen, as well as their relative magnitudes, it is
+        // possible for the Pool to either pay more or less protocol fees than it should.
+        // Due to the complexity that handling all of these cases would introduce, this behavior is considered out of
+        // scope, and is expected to be handled on a case-by-case basis if the token rates were to ever decrease (which
+        // would also mean that the Pool value has dropped).
 
         uint256 swapFeeGrowthInvariantDelta = (swapFeeGrowthInvariant > lastPostJoinExitInvariant)
             ? swapFeeGrowthInvariant - lastPostJoinExitInvariant

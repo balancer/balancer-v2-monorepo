@@ -70,51 +70,51 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
     }
 
     function getRateProvider0() external view returns (IRateProvider) {
-        return _getRateProvider0();
+        return _rateProvider0;
     }
 
     function getRateProvider1() external view returns (IRateProvider) {
-        return _getRateProvider1();
+        return _rateProvider1;
     }
 
     function getRateProvider2() external view returns (IRateProvider) {
-        return _getRateProvider2();
+        return _rateProvider2;
     }
 
     function getRateProvider3() external view returns (IRateProvider) {
-        return _getRateProvider3();
+        return _rateProvider3;
     }
 
     function getRateProvider4() external view returns (IRateProvider) {
-        return _getRateProvider4();
+        return _rateProvider4;
     }
 
     function getRateProvider5() external view returns (IRateProvider) {
-        return _getRateProvider5();
+        return _rateProvider5;
     }
 
     function getScalingFactor0() external view returns (uint256) {
-        return _getScalingFactor0();
+        return _scalingFactor0;
     }
 
     function getScalingFactor1() external view returns (uint256) {
-        return _getScalingFactor1();
+        return _scalingFactor1;
     }
 
     function getScalingFactor2() external view returns (uint256) {
-        return _getScalingFactor2();
+        return _scalingFactor2;
     }
 
     function getScalingFactor3() external view returns (uint256) {
-        return _getScalingFactor3();
+        return _scalingFactor3;
     }
 
     function getScalingFactor4() external view returns (uint256) {
-        return _getScalingFactor4();
+        return _scalingFactor4;
     }
 
     function getScalingFactor5() external view returns (uint256) {
-        return _getScalingFactor5();
+        return _scalingFactor5;
     }
 
     function getRateProvider(uint256 index) external view returns (IRateProvider) {
