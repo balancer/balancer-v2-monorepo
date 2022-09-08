@@ -7,7 +7,6 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
@@ -53,19 +52,14 @@ describe('ProtocolFeeCache', () => {
   });
 
   sharedBeforeEach('deploy fee cache', async () => {
-    // The sentinel value used to designate delegated fees is MAX_UINT256
     protocolFeeCache = await deploy('MockProtocolFeeCache', {
-      args: [vault.protocolFeesProvider.address, MAX_UINT256],
+      args: [vault.protocolFeesProvider.address],
       from: admin,
     });
   });
 
   it('reverts when querying unknown protocol fees', async () => {
     await expect(protocolFeeCache.getProtocolFeePercentageCache(17)).to.be.revertedWith('UNHANDLED_FEE_TYPE');
-  });
-
-  it('indicates delegated swap fees', async () => {
-    expect(await protocolFeeCache.getProtocolSwapFeeDelegation()).to.be.true;
   });
 
   context('with recovery mode disabled', () => {
