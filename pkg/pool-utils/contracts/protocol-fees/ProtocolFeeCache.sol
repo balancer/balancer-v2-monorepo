@@ -53,43 +53,12 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolFeePercentage);
 
-    // Swap fees can be set to a fixed value at construction, or delegated to the ProtocolFeePercentagesProvider if
-    // passing the special sentinel value.
-    uint256 public constant DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL = type(uint256).max;
-
-    bool private immutable _delegatedProtocolSwapFees;
-
-    // Only valid when `_delegatedProtocolSwapFees` is false
-    uint256 private immutable _fixedProtocolSwapFeePercentage;
-
-    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 protocolSwapFeePercentage) {
-        // Protocol swap fees are delegated to the value reported by the ProtocolFeePercentagesProvider if the sentinel
-        // value is passed.
-        bool delegatedProtocolSwapFees = protocolSwapFeePercentage == DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL;
-
-        _delegatedProtocolSwapFees = delegatedProtocolSwapFees;
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider) {
         _protocolFeeProvider = protocolFeeProvider;
 
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP);
         _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD);
         _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM);
-
-        if (delegatedProtocolSwapFees) {
-            _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP);
-        } else {
-            _require(
-                protocolSwapFeePercentage <= protocolFeeProvider.getFeeTypeMaximumPercentage(ProtocolFeeType.SWAP),
-                Errors.SWAP_FEE_PERCENTAGE_TOO_HIGH
-            );
-
-            // We cannot set `_fixedProtocolSwapFeePercentage` here due to it being immutable so instead we must set it
-            // in the main function scope with a value based on whether protocol fees are delegated.
-
-            // Emit an event as we do in `_updateProtocolFeeCache` to appear the same to offchain indexers.
-            emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.SWAP, protocolSwapFeePercentage);
-        }
-
-        // As `_fixedProtocolSwapFeePercentage` is immutable we must set a value, but just set to zero if it's not used.
-        _fixedProtocolSwapFeePercentage = delegatedProtocolSwapFees ? 0 : protocolSwapFeePercentage;
     }
 
     /**
@@ -103,7 +72,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         }
 
         if (feeType == ProtocolFeeType.SWAP) {
-            return getProtocolSwapFeeDelegation() ? _cache.swapFee : _fixedProtocolSwapFeePercentage;
+            return _cache.swapFee;
         } else if (feeType == ProtocolFeeType.YIELD) {
             return _cache.yieldFee;
         } else if (feeType == ProtocolFeeType.AUM) {
@@ -120,10 +89,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     function updateProtocolFeePercentageCache() external {
         _beforeProtocolFeeCacheUpdate();
 
-        if (getProtocolSwapFeeDelegation()) {
-            _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP);
-        }
-
+        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP);
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.YIELD);
         _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.AUM);
     }
@@ -134,13 +100,6 @@ abstract contract ProtocolFeeCache is RecoveryMode {
      * needs to be paid before the fee percentages change.
      */
     function _beforeProtocolFeeCacheUpdate() internal virtual {}
-
-    /**
-     * @dev Returns whether this Pool tracks protocol swap fee changes in the IProtocolFeePercentagesProvider.
-     */
-    function getProtocolSwapFeeDelegation() public view returns (bool) {
-        return _delegatedProtocolSwapFees;
-    }
 
     function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeType) private {
         uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(feeType);
