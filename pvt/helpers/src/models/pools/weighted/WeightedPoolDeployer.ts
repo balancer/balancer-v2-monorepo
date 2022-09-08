@@ -37,7 +37,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
@@ -55,7 +54,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector
@@ -74,7 +72,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
@@ -115,7 +112,6 @@ export default {
               assetManagers: assetManagers,
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
-              protocolSwapFeePercentage: protocolSwapFeePercentage,
               managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
               aumProtocolFeesCollector: aumProtocolFeesCollector,
@@ -157,15 +153,14 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
+    // Note that we only support asset managers with the standalone deploy method.
     const {
       tokens,
       weights,
       rateProviders,
-      assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       poolType,
@@ -215,7 +210,6 @@ export default {
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
-          protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
         };
@@ -254,7 +248,6 @@ export default {
           tokens.addresses,
           weights,
           rateProviders,
-          assetManagers,
           swapFeePercentage,
           owner
         );

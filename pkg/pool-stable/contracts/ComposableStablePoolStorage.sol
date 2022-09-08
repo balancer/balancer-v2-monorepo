@@ -64,12 +64,12 @@ abstract contract ComposableStablePoolStorage is BasePool {
 
     // Rate Providers accommodate tokens with a known price ratio, such as Compound's cTokens.
 
-    IRateProvider private immutable _rateProvider0;
-    IRateProvider private immutable _rateProvider1;
-    IRateProvider private immutable _rateProvider2;
-    IRateProvider private immutable _rateProvider3;
-    IRateProvider private immutable _rateProvider4;
-    IRateProvider private immutable _rateProvider5;
+    IRateProvider internal immutable _rateProvider0;
+    IRateProvider internal immutable _rateProvider1;
+    IRateProvider internal immutable _rateProvider2;
+    IRateProvider internal immutable _rateProvider3;
+    IRateProvider internal immutable _rateProvider4;
+    IRateProvider internal immutable _rateProvider5;
 
     // This is a bitmap which allows querying whether a token at a particular index:
     // - has a rate provider associated with it.
@@ -221,30 +221,6 @@ abstract contract ComposableStablePoolStorage is BasePool {
         _revert(Errors.INVALID_TOKEN);
     }
 
-    function _getScalingFactor0() internal view returns (uint256) {
-        return _scalingFactor0;
-    }
-
-    function _getScalingFactor1() internal view returns (uint256) {
-        return _scalingFactor1;
-    }
-
-    function _getScalingFactor2() internal view returns (uint256) {
-        return _scalingFactor2;
-    }
-
-    function _getScalingFactor3() internal view returns (uint256) {
-        return _scalingFactor3;
-    }
-
-    function _getScalingFactor4() internal view returns (uint256) {
-        return _scalingFactor4;
-    }
-
-    function _getScalingFactor5() internal view returns (uint256) {
-        return _scalingFactor5;
-    }
-
     function _scalingFactor(IERC20) internal view virtual override returns (uint256) {
         // We never use a single token's scaling factor by itself, we always process the entire array at once.
         // Therefore we don't bother providing an implementation for this.
@@ -320,60 +296,39 @@ abstract contract ComposableStablePoolStorage is BasePool {
 
     // Rate Providers
 
-    function _getRateProvider0() internal view returns (IRateProvider) {
-        return _rateProvider0;
-    }
-
-    function _getRateProvider1() internal view returns (IRateProvider) {
-        return _rateProvider1;
-    }
-
-    function _getRateProvider2() internal view returns (IRateProvider) {
-        return _rateProvider2;
-    }
-
-    function _getRateProvider3() internal view returns (IRateProvider) {
-        return _rateProvider3;
-    }
-
-    function _getRateProvider4() internal view returns (IRateProvider) {
-        return _rateProvider4;
-    }
-
-    function _getRateProvider5() internal view returns (IRateProvider) {
-        return _rateProvider5;
+    function _getScalingFactor(uint256 index) internal view returns (uint256) {
+        if (index == 0) return _scalingFactor0;
+        if (index == 1) return _scalingFactor1;
+        if (index == 2) return _scalingFactor2;
+        if (index == 3) return _scalingFactor3;
+        if (index == 4) return _scalingFactor4;
+        if (index == 5) return _scalingFactor5;
+        else {
+            _revert(Errors.INVALID_TOKEN);
+        }
     }
 
     /**
      * @dev Returns the rate providers configured for each token (in the same order as registered).
      */
-    function getRateProviders() external view returns (IRateProvider[] memory providers) {
+    function getRateProviders() external view returns (IRateProvider[] memory) {
         uint256 totalTokens = _getTotalTokens();
-        providers = new IRateProvider[](totalTokens);
+        IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
-        // The Pool will always have at least 3 tokens so we always load these three rate providers.
-        providers[0] = _getRateProvider0();
-        providers[1] = _getRateProvider1();
-        providers[2] = _getRateProvider2();
+        for (uint256 i = 0; i < totalTokens; ++i) {
+            providers[i] = _getRateProvider(i);
+        }
 
-        // Before we load the remaining rate providers we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return providers;
-        providers[3] = _getRateProvider3();
-
-        if (totalTokens == 4) return providers;
-        providers[4] = _getRateProvider4();
-
-        if (totalTokens == 5) return providers;
-        providers[5] = _getRateProvider5();
+        return providers;
     }
 
     function _getRateProvider(uint256 index) internal view returns (IRateProvider) {
-        if (index == 0) return _getRateProvider0();
-        if (index == 1) return _getRateProvider1();
-        if (index == 2) return _getRateProvider2();
-        if (index == 3) return _getRateProvider3();
-        if (index == 4) return _getRateProvider4();
-        if (index == 5) return _getRateProvider5();
+        if (index == 0) return _rateProvider0;
+        if (index == 1) return _rateProvider1;
+        if (index == 2) return _rateProvider2;
+        if (index == 3) return _rateProvider3;
+        if (index == 4) return _rateProvider4;
+        if (index == 5) return _rateProvider5;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
@@ -421,29 +376,20 @@ abstract contract ComposableStablePoolStorage is BasePool {
     /**
      * @dev Returns the number of tokens in circulation.
      *
+     * WARNING: in the vast majority of cases this is not a useful value, since it does not include the debt the Pool
+     * accrued in the form of unminted BPT for the ProtocolFeesCollector. Look into `getActualSupply()` and how that's
+     * different.
+     *
      * In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in the
      * Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the regular
      * joins/exit functions, the totalSupply can change as BPT are minted for joins or burned for exits.
      */
-    function getVirtualSupply() external view returns (uint256) {
-        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
-        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
-        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
-        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
-        // remains constant.
-        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
-
-        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
-        // ONE. This addition cannot overflow due to the Vault's balance limits.
-        return _getVirtualSupply(cash + managed);
-    }
-
-    // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in the
-    // vault. So the virtualSupply (the actual supply in circulation) is defined as:
-    // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
+        // The initial amount of BPT pre-minted is _PREMINTED_TOKEN_BALANCE, and it goes entirely to the pool balance in
+        // the vault. So the virtualSupply (the amount of BPT supply in circulation) is defined as:
+        // virtualSupply = totalSupply() - _balances[_bptIndex]
         return totalSupply().sub(bptBalance);
     }
 }

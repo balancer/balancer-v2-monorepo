@@ -174,7 +174,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
-        uint256 protocolSwapFeePercentage;
         uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
     }
@@ -199,7 +198,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             owner,
             true
         )
-        ProtocolFeeCache(protocolFeeProvider, params.protocolSwapFeePercentage)
+        ProtocolFeeCache(protocolFeeProvider)
     {
         uint256 totalTokens = params.tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
@@ -1027,9 +1026,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // and the manager would get 0.1/0.75 ~=13%.
         uint256 protocolBptAmount = totalBptAmount.mulUp(protocolSwapFeePercentage.divUp(totalFeePercentage));
 
-        if (protocolBptAmount > 0) {
-            _payProtocolFees(protocolBptAmount);
-        }
+        _payProtocolFees(protocolBptAmount);
 
         // Pay the remainder in management fees
         // This goes to the controller, which needs to be able to withdraw them
@@ -1295,14 +1292,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Join/exit callbacks
 
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override returns (uint256) {
+    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override returns (uint256, uint256) {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         uint256 supplyBeforeFeeCollection = totalSupply();
         (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
-        return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
+
+        // We return a zero value invariant here. We do this for three reasons:
+        // - ManagedPool doesn't make use of the invariant returned here so there's no benefit to calculating it.
+        // - ManagedPool enters an invalid state when adding/removing tokens which causes the invariant calculation
+        //   to fail.
+        // - We're planning on reworking this before deployment anyway.
+        return (supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees), 0);
     }
 
     /**

@@ -168,6 +168,12 @@ describe('BasePool', function () {
       pool = await deployBasePool();
     });
 
+    it('skips zero value mints', async () => {
+      const tx = await pool.payProtocolFees(0);
+
+      expectEvent.notEmitted(await tx.wait(), 'Transfer');
+    });
+
     it('mints bpt to the protocol fee collector', async () => {
       const feeCollector = await pool.getProtocolFeesCollector();
 

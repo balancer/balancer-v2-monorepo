@@ -55,7 +55,9 @@ abstract contract BasePoolAuthorization is Authentication {
         }
     }
 
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual returns (bool);
+    function _isOwnerOnlyAction(bytes32) internal view virtual returns (bool) {
+        return false;
+    }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);
 }
