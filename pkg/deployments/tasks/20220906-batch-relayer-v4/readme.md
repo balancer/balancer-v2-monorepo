@@ -2,7 +2,7 @@
 
 Deployment of the fourth `BalancerRelayer` using `BatchRelayerLibrary`, for combining multiple operations (swaps, joins, etc.) in a single transaction.
 
-This new version adds support for Liquidity Gauge interactions, including staking, unstaking, minting, etc.
+This new version provides quality of life improvements, like read-only chained references and ways to read them.
 
 ## Useful Files
 
