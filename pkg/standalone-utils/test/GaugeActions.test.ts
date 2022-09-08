@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
@@ -221,22 +222,19 @@ describe('GaugeActions', function () {
       let tokenSenderAddress: string;
       let tokenRecipientAddress: string;
 
+      const lptBalances: Balances = { sender: {}, recipient: {}, gauge: {} };
+      const gaugeBalances: Balances = { sender: {}, recipient: {}, gauge: {} };
+
       sharedBeforeEach('get addresses', async () => {
         tokenSenderAddress = TypesConverter.toAddress(tokenSender);
         tokenRecipientAddress = TypesConverter.toAddress(tokenRecipient);
       });
 
       sharedBeforeEach('check initial balances and make deposit', async () => {
-        // Start: sender has all the BPT, no gauge tokens minted, recipient is clean unless it is sender.
-        expect(await lpToken.balanceOf(gauge.address)).to.be.eq(0);
-        expect(await lpToken.balanceOf(tokenSenderAddress)).to.be.eq(totalLpTokens);
-        if (tokenSenderAddress != tokenRecipientAddress) {
-          expect(await lpToken.balanceOf(tokenRecipientAddress)).to.be.eq(0);
-        }
+        lptBalances.sender.before = await lpToken.balanceOf(tokenSenderAddress);
+        lptBalances.gauge.before = await lpToken.balanceOf(gauge.address);
 
-        expect(await gauge.balanceOf(gauge.address)).to.be.eq(0);
-        expect(await gauge.balanceOf(tokenSenderAddress)).to.be.eq(0);
-        expect(await gauge.balanceOf(tokenRecipientAddress)).to.be.eq(0);
+        gaugeBalances.recipient.before = await gauge.balanceOf(tokenRecipientAddress);
 
         const tx = await relayer.connect(userSender).multicall([
           encodeDeposit({
@@ -280,8 +278,11 @@ describe('GaugeActions', function () {
       });
 
       it('transfers BPT tokens to gauge', async () => {
-        expect(await lpToken.balanceOf(tokenSenderAddress)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
-        expect(await lpToken.balanceOf(gauge.address)).to.be.eq(expectedAmount);
+        lptBalances.sender.after = await lpToken.balanceOf(tokenSenderAddress);
+        lptBalances.gauge.after = await lpToken.balanceOf(gauge.address);
+
+        expect(lptBalances.sender.after!.sub(lptBalances.sender.before!)).to.be.almostEqual(expectedAmount.mul(-1));
+        expect(lptBalances.gauge.after!.sub(lptBalances.gauge.before!)).to.be.almostEqual(expectedAmount);
       });
 
       it('emits deposit event', async () => {
@@ -292,7 +293,8 @@ describe('GaugeActions', function () {
       });
 
       it('mints gauge tokens to recipient', async () => {
-        expect(await gauge.balanceOf(tokenRecipientAddress)).to.be.eq(expectedAmount);
+        gaugeBalances.recipient.after = await gauge.balanceOf(tokenRecipientAddress);
+        expect(gaugeBalances.recipient.after!.sub(gaugeBalances.recipient.before!)).to.be.almostEqual(expectedAmount);
       });
 
       it('emits transfer event for minted gauge tokens', async () => {
@@ -411,6 +413,9 @@ describe('GaugeActions', function () {
       let tokenSenderAddress: string;
       let tokenRecipientAddress: string;
 
+      const lptBalances: Balances = { sender: {}, recipient: {}, gauge: {} };
+      const gaugeBalances: Balances = { sender: {}, recipient: {}, gauge: {} };
+
       sharedBeforeEach('get addresses', async () => {
         tokenSenderAddress = TypesConverter.toAddress(tokenSender);
         tokenRecipientAddress = TypesConverter.toAddress(tokenRecipient);
@@ -427,16 +432,11 @@ describe('GaugeActions', function () {
       });
 
       sharedBeforeEach('check initial balances and withdraw', async () => {
-        // Start: gauge has all the BPT, sender has all the gauge tokens, recipient is clean unless it is sender.
-        expect(await lpToken.balanceOf(gauge.address)).to.be.eq(totalLpTokens);
-        expect(await lpToken.balanceOf(tokenSenderAddress)).to.be.eq(0);
-        expect(await lpToken.balanceOf(tokenRecipientAddress)).to.be.eq(0);
+        lptBalances.sender.before = await lpToken.balanceOf(tokenSenderAddress);
+        lptBalances.recipient.before = await lpToken.balanceOf(tokenRecipientAddress);
+        lptBalances.gauge.before = await lpToken.balanceOf(gauge.address);
 
-        expect(await gauge.balanceOf(gauge.address)).to.be.eq(0);
-        expect(await gauge.balanceOf(tokenSenderAddress)).to.be.eq(totalLpTokens);
-        if (tokenSenderAddress != tokenRecipientAddress) {
-          expect(await gauge.balanceOf(tokenRecipientAddress)).to.be.eq(0);
-        }
+        gaugeBalances.sender.before = await gauge.balanceOf(tokenSenderAddress);
 
         const tx = await relayer.connect(userSender).multicall([
           encodeWithdraw({
@@ -480,7 +480,9 @@ describe('GaugeActions', function () {
       });
 
       it('burns gauge tokens', async () => {
-        expect(await gauge.balanceOf(tokenSenderAddress)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
+        gaugeBalances.sender.after = await gauge.balanceOf(tokenSenderAddress);
+        // Burns expectedAmount.
+        expect(gaugeBalances.sender.after!.sub(gaugeBalances.sender.before!)).to.be.almostEqual(expectedAmount.mul(-1));
       });
 
       it('emits transfer event for burned gauge tokens', async () => {
@@ -499,13 +501,17 @@ describe('GaugeActions', function () {
       });
 
       it('transfers BPT tokens to recipient', async () => {
+        lptBalances.sender.after = await lpToken.balanceOf(tokenSenderAddress);
+        lptBalances.recipient.after = await lpToken.balanceOf(tokenRecipientAddress);
+        lptBalances.gauge.after = await lpToken.balanceOf(gauge.address);
+
         if (tokenRecipientAddress == tokenSenderAddress) {
-          expect(await lpToken.balanceOf(tokenSenderAddress)).to.be.eq(expectedAmount);
+          expect(lptBalances.sender.after!.sub(lptBalances.sender.before!)).to.be.almostEqual(expectedAmount);
         } else {
-          expect(await lpToken.balanceOf(tokenSenderAddress)).to.be.eq(0);
+          expect(lptBalances.sender.after!.sub(lptBalances.sender.before!)).to.be.almostEqual(0);
         }
-        expect(await lpToken.balanceOf(tokenRecipientAddress)).to.be.eq(expectedAmount);
-        expect(await lpToken.balanceOf(gauge.address)).to.be.almostEqual(totalLpTokens.sub(expectedAmount));
+        expect(lptBalances.recipient.after!.sub(lptBalances.recipient.before!)).to.be.almostEqual(expectedAmount);
+        expect(lptBalances.gauge.after!.sub(lptBalances.gauge.before!)).to.be.almostEqual(expectedAmount.mul(-1));
       });
     }
   });
@@ -596,6 +602,21 @@ describe('GaugeActions', function () {
       expectTransferEvent(await tx.wait(), { from: gauge.address, to: userSender.address }, rewardToken.address);
     });
   });
+
+  type Balances = {
+    sender: {
+      before?: BigNumber;
+      after?: BigNumber;
+    };
+    recipient: {
+      before?: BigNumber;
+      after?: BigNumber;
+    };
+    gauge: {
+      before?: BigNumber;
+      after?: BigNumber;
+    };
+  };
 
   async function deployGauge(gaugeFactory: Contract, poolAddress: string): Promise<string> {
     const tx = await gaugeFactory.create(poolAddress, fp(1)); // No weight cap.
