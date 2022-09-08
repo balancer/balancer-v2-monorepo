@@ -478,5 +478,14 @@
         "updateTokenRateCache(address)": "0xdd87e51aeeaddb8db3f62cc664e902f1a1d33568d64f3801dc26a8b38896d576"
       }
     }
+  },
+  "20220908-weighted-pool-v2": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address)": "0x37d5bd497797736b798902e303ce7e0f11ac7e886e7836d655acd164981ac18b",
+        "disable()": "0xce80f9efd4a00ee7b33d10af79a2dff2b6ab479280ce5362f4af29578ef02140"
+      }
+    }
   }
 }

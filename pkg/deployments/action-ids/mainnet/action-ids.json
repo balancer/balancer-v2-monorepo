@@ -838,5 +838,14 @@
         "unkillGauge()": "0x076e9815202aa39577192023cfa569d6504b003183b2bc13cd0046523dfa23ea"
       }
     }
+  },
+  "20220908-weighted-pool-v2": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address)": "0xee8ef5aaf155416a3121a48124ddd4f8bf3d48a8e1ba915527b1c80b2fe83077",
+        "disable()": "0xeae3596b8b5bae060064acf8a71056c6213df46004277a4b87eef8ab5675cbb8"
+      }
+    }
   }
 }

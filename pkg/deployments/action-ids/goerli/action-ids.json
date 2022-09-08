@@ -643,5 +643,14 @@
         "withdraw(uint256,bool)": "0xfd3383566837d1fe48201add6079241ede290ac9131b6e2d44dd6fa38e636a4c"
       }
     }
+  },
+  "20220908-weighted-pool-v2": {
+    "WeightedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create(string,string,address[],uint256[],address[],uint256,address)": "0x37bdd9fd10ea417e3ee0432bc9931583470babbdfba7fb234832953f5b12c876",
+        "disable()": "0xa245b13df0295c1966c341598370ff2b6a9e83bb687351570533e2f2e01938d5"
+      }
+    }
   }
 }
