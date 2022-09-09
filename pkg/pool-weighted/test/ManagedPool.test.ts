@@ -152,9 +152,16 @@ describe('ManagedPool', function () {
   });
 
   context('when deployed from factory', () => {
+    let assetManagers: string[];
+
     sharedBeforeEach('deploy pool', async () => {
+      assetManagers = await Promise.all(
+        range(poolTokens.length).map(async () => await ethers.Wallet.createRandom().getAddress())
+      );
+
       const params = {
         tokens: poolTokens,
+        assetManagers,
         weights: poolWeights,
         vault,
         poolType: WeightedPoolType.MANAGED_POOL,
@@ -164,10 +171,10 @@ describe('ManagedPool', function () {
       pool = await WeightedPool.create(params);
     });
 
-    it('has zero asset managers', async () => {
-      await poolTokens.asyncEach(async (token) => {
+    it('has asset managers', async () => {
+      await poolTokens.asyncEach(async (token, i) => {
         const info = await pool.getTokenInfo(token);
-        expect(info.assetManager).to.eq(ZERO_ADDRESS);
+        expect(info.assetManager).to.eq(assetManagers[i]);
       });
     });
   });
