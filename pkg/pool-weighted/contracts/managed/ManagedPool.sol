@@ -972,9 +972,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // and the manager would get 0.1/0.75 ~=13%.
         uint256 protocolBptAmount = totalBptAmount.mulUp(protocolSwapFeePercentage.divUp(totalFeePercentage));
 
-        if (protocolBptAmount > 0) {
-            _payProtocolFees(protocolBptAmount);
-        }
+        _payProtocolFees(protocolBptAmount);
 
         // Pay the remainder in management fees
         // This goes to the controller, which needs to be able to withdraw them

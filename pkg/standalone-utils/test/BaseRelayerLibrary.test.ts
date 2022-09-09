@@ -11,7 +11,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { toChainedReference } from './helpers/chainedReferences';
 
 describe('BaseRelayerLibrary', function () {
@@ -292,6 +292,19 @@ describe('BaseRelayerLibrary', function () {
         it('reverts', async () => {
           await expect(relayer.connect(signer).multicall([approvalData])).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
+      });
+    });
+
+    describe('peekChainedReferenceValue', () => {
+      it('peeks chained reference', async () => {
+        const reference = toChainedReference(174);
+        const value = fp(340);
+
+        const result = await relayer.callStatic.multicall([
+          relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [reference, value]),
+          relayerLibrary.interface.encodeFunctionData('peekChainedReferenceValue', [reference]),
+        ]);
+        expect(result).to.be.deep.eq(['0x', ethers.utils.hexZeroPad(value.toHexString(), 32)]);
       });
     });
   });
