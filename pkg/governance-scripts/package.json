@@ -47,7 +47,7 @@
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.4.1",
-    "hardhat": "^2.8.3",
+    "hardhat": "^2.11.1",
     "mocha": "^8.2.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
