@@ -304,7 +304,8 @@ describe('BaseRelayerLibrary', function () {
           relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [reference, value]),
           relayerLibrary.interface.encodeFunctionData('peekChainedReferenceValue', [reference]),
         ]);
-        expect(result).to.be.deep.eq([bn(0), value]);
+        expect(result[0]).to.be.eq('0x');
+        expect(result[1]).to.be.eq(value);
       });
     });
   });
