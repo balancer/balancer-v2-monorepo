@@ -122,6 +122,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     function _computeAmounts(uint256 feeCollectorBptBalance, uint256 feePercentage)
         internal
+        pure
         returns (uint256 ownerAmount, uint256 treasuryAmount)
     {
         ownerAmount = Math.divDown(Math.mul(feeCollectorBptBalance, feePercentage), 1e18);
