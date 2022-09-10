@@ -28,7 +28,7 @@ library GradualValueChange {
         uint256 startTime,
         uint256 endTime
     ) internal view returns (uint256) {
-        uint256 pctProgress = _calculateValueChangeProgress(startTime, endTime);
+        uint256 pctProgress = calculateValueChangeProgress(startTime, endTime);
 
         return interpolateValue(startValue, endValue, pctProgress);
     }
@@ -42,8 +42,6 @@ library GradualValueChange {
 
         _require(resolvedStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
     }
-
-    // Private functions
 
     function interpolateValue(
         uint256 startValue,
@@ -66,7 +64,7 @@ library GradualValueChange {
      * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateValueChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
+    function calculateValueChangeProgress(uint256 startTime, uint256 endTime) internal view returns (uint256) {
         uint256 currentTime = block.timestamp;
 
         if (currentTime > endTime) {

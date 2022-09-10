@@ -33,6 +33,8 @@ import "../lib/WeightCompression.sol";
 
 import "../BaseWeightedPool.sol";
 
+import "./ManagedPoolTokenLib.sol";
+
 /**
  * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
  * contract (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
@@ -209,6 +211,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
+
+        // Write the scaling factors for each token into their token state.
+        // We do this before setting the weights in `_startGradualWeightChange` so we start from a empty token state.
+        for (uint256 i = 0; i < totalTokens; i++) {
+            IERC20 token = params.tokens[i];
+            _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
+        }
 
         // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
         _denormWeightSum = FixedPoint.ONE;
@@ -683,9 +692,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // pass an empty array for this parameter.
         getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
 
-        // `_encodeTokenState` performs an external call to `token` (to get its decimals). Nevertheless, this is
-        // reentrancy safe. View functions are called in a STATICCALL context, and will revert if they modify state.
-        _tokenState[token] = _encodeTokenState(token, normalizedWeight, normalizedWeight, newDenormWeightSum);
+        // `ManagedPoolTokenLib.setTokenScalingFactor` performs an external call to `token` (to get its decimals).
+        // Nevertheless, this is reentrancy safe. View functions are called in a STATICCALL context, and will revert
+        // if they modify state.
+        _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(
+            ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token),
+            normalizedWeight,
+            normalizedWeight,
+            newDenormWeightSum
+        );
         _totalTokensCache += 1;
     }
 
@@ -869,7 +884,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
-        return _readScalingFactor(_getTokenData(token));
+        return ManagedPoolTokenLib.getTokenScalingFactor(_getTokenData(token));
     }
 
     function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
@@ -879,24 +894,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         scalingFactors = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = _readScalingFactor(_tokenState[tokens[i]]);
+            scalingFactors[i] = ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[tokens[i]]);
         }
     }
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        bytes32 tokenData = _getTokenData(token);
-        uint256 startWeight = tokenData.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT);
-        uint256 endWeight = tokenData.decodeUint(_END_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT);
-
         bytes32 poolState = _getMiscData();
         uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
         uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
 
-        return
-            _normalizeWeight(
-                GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime),
-                _denormWeightSum
-            );
+        uint256 weightChangeProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
+        return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
     }
 
     // This could be simplified by simply iteratively calling _getNormalizedWeight(), but this routine is
@@ -905,23 +913,18 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
 
-        normalizedWeights = new uint256[](numTokens);
-
         bytes32 poolState = _getMiscData();
         uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
         uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
 
+        uint256 weightChangeProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
         uint256 denormWeightSum = _denormWeightSum;
-        for (uint256 i = 0; i < numTokens; i++) {
-            bytes32 tokenData = _tokenState[tokens[i]];
-            uint256 startWeight = tokenData.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(
-                64,
-                _MAX_DENORM_WEIGHT
-            );
-            uint256 endWeight = tokenData.decodeUint(_END_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT);
 
-            normalizedWeights[i] = _normalizeWeight(
-                GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime),
+        normalizedWeights = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; i++) {
+            normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(
+                _tokenState[tokens[i]],
+                weightChangeProgress,
                 denormWeightSum
             );
         }
@@ -1176,7 +1179,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = _encodeTokenState(token, startWeights[i], endWeight, denormWeightSum);
+            _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(
+                _tokenState[token],
+                startWeights[i],
+                endWeight,
+                denormWeightSum
+            );
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -1219,37 +1227,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
                 .insertUint(endTime, _FEE_END_TIME_OFFSET, 32)
                 .insertUint(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET, 62)
         );
-    }
-
-    // Factored out to avoid stack issues
-    function _encodeTokenState(
-        IERC20 token,
-        uint256 normalizedStartWeight,
-        uint256 normalizedEndWeight,
-        uint256 denormWeightSum
-    ) private view returns (bytes32) {
-        bytes32 tokenState;
-
-        // Tokens with more than 18 decimals are not supported
-        // Scaling calculations must be exact/lossless
-        // Store decimal difference instead of actual scaling factor
-        return
-            tokenState
-                .insertUint(_encodeWeight(normalizedStartWeight, denormWeightSum), _START_DENORM_WEIGHT_OFFSET, 64)
-                .insertUint(_encodeWeight(normalizedEndWeight, denormWeightSum), _END_DENORM_WEIGHT_OFFSET, 64)
-                .insertUint(uint256(18).sub(ERC20(address(token)).decimals()), _DECIMAL_DIFF_OFFSET, 5);
-    }
-
-    // Broken out because the stack was too deep
-    function _encodeWeight(uint256 weight, uint256 sum) private pure returns (uint256) {
-        return _denormalizeWeight(weight, sum).compress(64, _MAX_DENORM_WEIGHT);
-    }
-
-    // Convert a decimal difference value to the scaling factor
-    function _readScalingFactor(bytes32 tokenState) private pure returns (uint256) {
-        uint256 decimalsDifference = tokenState.decodeUint(_DECIMAL_DIFF_OFFSET, 5);
-
-        return FixedPoint.ONE * 10**decimalsDifference;
     }
 
     /**
