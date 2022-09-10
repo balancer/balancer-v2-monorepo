@@ -34,6 +34,14 @@ contract MockManagedPoolTokenLib {
         return ManagedPoolTokenLib.getTokenWeight(tokenState, pctProgress, denormWeightSum);
     }
 
+    function getTokenStartAndEndWeights(bytes32 tokenState, uint256 denormWeightSum)
+        external
+        pure
+        returns (uint256, uint256)
+    {
+        return ManagedPoolTokenLib.getTokenStartAndEndWeights(tokenState, denormWeightSum);
+    }
+
     // Setters
 
     function setTokenWeight(

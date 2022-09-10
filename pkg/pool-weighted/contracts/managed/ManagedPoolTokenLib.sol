@@ -75,6 +75,20 @@ library ManagedPoolTokenLib {
             );
     }
 
+    /**
+     * @notice Returns the token's start and end weights.
+     */
+    function getTokenStartAndEndWeights(bytes32 tokenState, uint256 denormWeightSum)
+        internal
+        pure
+        returns (uint256, uint256)
+    {
+        return (
+            _decodeWeight(tokenState.decodeUint(_START_DENORM_WEIGHT_OFFSET, _DENORM_WEIGHT_WIDTH), denormWeightSum),
+            _decodeWeight(tokenState.decodeUint(_END_DENORM_WEIGHT_OFFSET, _DENORM_WEIGHT_WIDTH), denormWeightSum)
+        );
+    }
+
     // Setters
 
     /**

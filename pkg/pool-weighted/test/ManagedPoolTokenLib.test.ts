@@ -80,7 +80,12 @@ describe('ManagedPoolTokenLib', () => {
     const DENORM_WEIGHT_WIDTH = 128;
 
     async function assertTokenWeight(
-      getter: (word: string, pctProgress: BigNumberish, denormWeightSum: BigNumberish) => Promise<BigNumber>,
+      interpolatedGetter: (
+        word: string,
+        pctProgress: BigNumberish,
+        denormWeightSum: BigNumberish
+      ) => Promise<BigNumber>,
+      endpointsGetter: (word: string, denormWeightSum: BigNumberish) => Promise<[BigNumber, BigNumber]>,
       setter: (
         word: string,
         normalizedStartWeight: BigNumberish,
@@ -98,12 +103,22 @@ describe('ManagedPoolTokenLib', () => {
       // Must not have affected unexpected bits.
       checkMaskedWord(result, word, offset, bits);
 
-      expect(await getter(result, fp(0), denormWeightSum)).to.equalWithError(normalizedStartWeight, MAX_RELATIVE_ERROR);
-      expect(await getter(result, fp(0.5), denormWeightSum)).to.equalWithError(
+      expect(await interpolatedGetter(result, fp(0), denormWeightSum)).to.equalWithError(
+        normalizedStartWeight,
+        MAX_RELATIVE_ERROR
+      );
+      expect(await interpolatedGetter(result, fp(0.5), denormWeightSum)).to.equalWithError(
         bn(normalizedStartWeight).add(normalizedEndWeight).div(2),
         MAX_RELATIVE_ERROR
       );
-      expect(await getter(result, fp(1), denormWeightSum)).to.equalWithError(normalizedEndWeight, MAX_RELATIVE_ERROR);
+      expect(await interpolatedGetter(result, fp(1), denormWeightSum)).to.equalWithError(
+        normalizedEndWeight,
+        MAX_RELATIVE_ERROR
+      );
+
+      const [startWeight, endWeight] = await endpointsGetter(result, denormWeightSum);
+      expect(startWeight).to.equalWithError(normalizedStartWeight, MAX_RELATIVE_ERROR);
+      expect(endWeight).to.equalWithError(normalizedEndWeight, MAX_RELATIVE_ERROR);
     }
 
     it('stores the token weight correctly', async () => {
@@ -115,6 +130,7 @@ describe('ManagedPoolTokenLib', () => {
 
         await assertTokenWeight(
           lib.getTokenWeight,
+          lib.getTokenStartAndEndWeights,
           lib.setTokenWeight,
           word,
           normalizedStartWeight,

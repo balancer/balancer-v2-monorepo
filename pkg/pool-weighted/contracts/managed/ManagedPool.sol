@@ -392,14 +392,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < totalTokens; i++) {
-            bytes32 state = _tokenState[tokens[i]];
-
-            startWeights[i] = _normalizeWeight(
-                state.decodeUint(_START_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT),
-                denormWeightSum
-            );
-            endWeights[i] = _normalizeWeight(
-                state.decodeUint(_END_DENORM_WEIGHT_OFFSET, 64).decompress(64, _MAX_DENORM_WEIGHT),
+            (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(
+                _tokenState[tokens[i]],
                 denormWeightSum
             );
         }
