@@ -1035,6 +1035,21 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         }
     }
 
+    // Initialize
+
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // We want to start collecting AUM fees from this point onwards.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
+    }
+
     // Join/Exit overrides
 
     function _doJoin(
@@ -1324,12 +1339,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         uint256 managementAumFeePercentage = getManagementAumFeePercentage();
 
-        // If `lastCollection` has not been set then we don't know what period over which to collect fees.
-        // We then perform an early return after initializing it so that we can collect fees next time. This
-        // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
-        // non-initialization join or exit.
-        // We also perform an early return if the AUM fee is zero, to save gas.
-        if (managementAumFeePercentage == 0 || lastCollection == 0) {
+        // Early return if the AUM fee is zero.
+        if (managementAumFeePercentage == 0) {
             return (0, 0);
         }
 
