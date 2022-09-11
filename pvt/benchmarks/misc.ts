@@ -16,6 +16,7 @@ import {
   ManagedPoolParams,
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { poolConfigs } from './config';
 
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
@@ -76,12 +77,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   if (poolName == 'WeightedPool' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
-    const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
-
-    const aumProtocolFeesCollector = await deploy('v2-standalone-utils/AumProtocolFeesCollector', {
-      args: [vault.address],
-    });
 
     switch (poolName) {
       case 'ManagedPool': {
@@ -94,10 +90,8 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
-          protocolSwapFeePercentage: MAX_UINT256,
           managementSwapFeePercentage: managementFee,
           managementAumFeePercentage: aumFee,
-          aumProtocolFeesCollector: aumProtocolFeesCollector.address,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -119,7 +113,9 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
         break;
       }
       default: {
-        params = [tokens.addresses, weights, assetManagers, swapFeePercentage];
+        const rateProviders = Array(weights.length).fill(ZERO_ADDRESS);
+
+        params = [tokens.addresses, weights, rateProviders, swapFeePercentage];
       }
     }
 
@@ -129,24 +125,36 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
     });
 
     joinUserData = WeightedPoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
-  } else if (poolName == 'StablePool') {
+  } else if (poolName == 'ComposableStablePool') {
     const amplificationParameter = bn(50);
+
+    const rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    const cacheDurations = Array(tokens.length).fill(0);
+    const protocolFeeFlags = Array(tokens.length).fill(false);
 
     pool = await deployPoolFromFactory(vault, poolName, {
       from: creator,
-      parameters: [tokens.addresses, amplificationParameter, swapFeePercentage],
+      parameters: [
+        tokens.addresses,
+        amplificationParameter,
+        rateProviders,
+        cacheDurations,
+        protocolFeeFlags,
+        swapFeePercentage,
+      ],
     });
-
-    joinUserData = StablePoolEncoder.joinInit(tokens.map(() => initialPoolBalance));
   } else {
     throw new Error(`Unhandled pool: ${poolName}`);
   }
 
   const poolId = await pool.getPoolId();
+  const { tokens: allTokens } = await vault.getPoolTokens(poolId);
+  const initialBalances = allTokens.map((t) => (t == pool.address ? 0 : initialPoolBalance));
+  joinUserData = StablePoolEncoder.joinInit(initialBalances);
 
   await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {
-    assets: tokens.addresses,
-    maxAmountsIn: tokens.map(() => initialPoolBalance), // These end up being the actual join amounts
+    assets: allTokens,
+    maxAmountsIn: Array(allTokens.length).fill(MAX_UINT256), // These end up being the actual join amounts
     fromInternalBalance: false,
     userData: joinUserData,
   });
@@ -158,13 +166,13 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 }
 
 export async function getWeightedPool(vault: Vault, tokens: TokenList, size: number, offset = 0): Promise<string> {
-  return size > 20
+  return size > poolConfigs.WEIGHTED_POOL.maxTokens
     ? deployPool(vault, tokens.subset(size, offset), 'ManagedPool')
     : deployPool(vault, tokens.subset(size, offset), 'WeightedPool');
 }
 
 export async function getStablePool(vault: Vault, tokens: TokenList, size: number, offset?: number): Promise<string> {
-  return deployPool(vault, tokens.subset(size, offset), 'StablePool');
+  return deployPool(vault, tokens.subset(size, offset), 'ComposableStablePool');
 }
 
 export function pickTokenAddresses(tokens: TokenList, size: number, offset?: number): string[] {
@@ -182,20 +190,25 @@ export async function getSigners(): Promise<{
   return { admin, creator, trader, others };
 }
 
-type PoolName = 'WeightedPool' | 'StablePool' | 'ManagedPool';
+type PoolName = 'WeightedPool' | 'ComposableStablePool' | 'ManagedPool';
 
 async function deployPoolFromFactory(
   vault: Vault,
   poolName: PoolName,
   args: { from: SignerWithAddress; parameters: Array<unknown> }
 ): Promise<Contract> {
-  const fullName = `${poolName == 'StablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
+  const fullName = `${poolName == 'ComposableStablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
+
   if (poolName == 'ManagedPool') {
-    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', { args: [vault.address] });
+    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address],
+    });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
+  } else if (poolName == 'ComposableStablePool') {
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address] });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   }
 
   // We could reuse this factory if we saved it across pool deployments

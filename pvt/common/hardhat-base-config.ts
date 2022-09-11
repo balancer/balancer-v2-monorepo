@@ -9,7 +9,7 @@ type ContractSettings = Record<
 const contractSettings: ContractSettings = {
   '@balancer-labs/v2-vault/contracts/Vault.sol': {
     version: '0.7.1',
-    runs: 1500,
+    runs: 500,
   },
   '@balancer-labs/v2-pool-weighted/contracts/LiquidityBootstrappingPoolFactory.sol': {
     version: '0.7.1',

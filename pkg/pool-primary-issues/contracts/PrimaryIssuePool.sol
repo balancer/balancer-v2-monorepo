@@ -300,7 +300,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         //returning security to be swapped out for paid in currency
         if (request.tokenIn == _currency) {
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
-            uint256 tokenInAmt = Math.sub(balances[_currencyIndex], Math.mul(balances[_securityIndex], Math.div(postPaidSecurityBalance, balances[_currencyIndex], false)));
+            uint256 tokenInAmt = Math.sub(Math.mul(balances[_securityIndex], Math.div(balances[_currencyIndex], postPaidSecurityBalance, false)), balances[_currencyIndex]);
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenInAmt);
 
             if (
@@ -326,7 +326,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         //returning currency to be paid in for security paid in
         if (request.tokenIn == _security) {
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
-            uint256 tokenInAmt = Math.sub(balances[_securityIndex], Math.mul(balances[_currencyIndex], Math.div(postPaidCurrencyBalance, balances[_securityIndex], false)));
+            uint256 tokenInAmt = Math.sub(Math.mul(balances[_currencyIndex], Math.div(balances[_securityIndex], postPaidCurrencyBalance, false)), balances[_securityIndex]);
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenInAmt);
 
             if (

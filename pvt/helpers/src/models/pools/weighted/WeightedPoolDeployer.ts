@@ -31,12 +31,12 @@ export default {
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
@@ -48,12 +48,12 @@ export default {
       vault,
       tokens,
       weights,
+      TypesConverter.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector
@@ -64,6 +64,7 @@ export default {
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
@@ -71,7 +72,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
@@ -112,12 +112,12 @@ export default {
               assetManagers: assetManagers,
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
-              protocolSwapFeePercentage: protocolSwapFeePercentage,
               managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
               aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
             vault.address,
+            vault.protocolFeesProvider.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -129,13 +129,17 @@ export default {
       default: {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
+            {
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              rateProviders: rateProviders,
+              assetManagers: assetManagers,
+              swapFeePercentage: swapFeePercentage,
+            },
             vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            assetManagers,
-            swapFeePercentage,
+            vault.protocolFeesProvider.address,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,
@@ -149,17 +153,16 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
+    // Note that we only support asset managers with the standalone deploy method.
     const {
       tokens,
       weights,
-      assetManagers,
+      rateProviders,
       swapFeePercentage,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
       poolType,
       owner,
       from,
@@ -170,7 +173,7 @@ export default {
     switch (poolType) {
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
         const tx = await factory.create(
@@ -189,7 +192,7 @@ export default {
       }
       case WeightedPoolType.MANAGED_POOL: {
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
 
@@ -207,10 +210,8 @@ export default {
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
-          protocolSwapFeePercentage: protocolSwapFeePercentage,
           managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
-          aumProtocolFeesCollector: aumProtocolFeesCollector,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -237,13 +238,16 @@ export default {
         break;
       }
       default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
+          args: [vault.address, vault.getFeesProvider().address],
+          from,
+        });
         const tx = await factory.create(
           NAME,
           SYMBOL,
           tokens.addresses,
           weights,
-          assetManagers,
+          rateProviders,
           swapFeePercentage,
           owner
         );

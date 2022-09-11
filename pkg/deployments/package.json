@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "name": "@balancer-labs/v2-deployments",
   "version": "2.3.0",
@@ -58,3 +59,65 @@
     "hardhat": "^2.8.3"
   }
 }
+=======
+{
+  "name": "@balancer-labs/v2-deployments",
+  "version": "2.3.0",
+  "description": "Addresses and ABIs of all Balancer V2 deployed contracts",
+  "license": "GPL-3.0-only",
+  "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo.git",
+    "directory": "pkg/deployments"
+  },
+  "bugs": {
+    "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.umd.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "check": "yarn check-artifacts && yarn check-deployments",
+    "check-artifacts": "hardhat check-artifacts",
+    "check-deployments": "hardhat check-deployments --network mainnet && hardhat check-deployments --network polygon && hardhat check-deployments --network arbitrum && hardhat check-deployments --network optimism && hardhat check-deployments --network goerli",
+    "check-action-ids": "hardhat check-action-ids --network mainnet && hardhat check-action-ids --network polygon && hardhat check-action-ids --network arbitrum && hardhat check-action-ids --network optimism",
+    "lint": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "prepack": "yarn build",
+    "test": "hardhat test ./**/test/*.ts",
+    "ci:prepare-config": "ts-node ci/prepare-config.ts"
+  },
+  "devDependencies": {
+    "@balancer-labs/balancer-js": "workspace:*",
+    "@balancer-labs/v2-helpers": "workspace:*",
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-etherscan": "latest",
+    "@solidity-parser/parser": "^0.14.0",
+    "@types/lodash": "^4.14.181",
+    "@types/lodash.range": "^3",
+    "@types/node": "^14.6.0",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "chalk": "^4.1.1",
+    "eslint": "^7.9.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "ethers": "^5.4.1",
+    "hardhat": "^2.8.3",
+    "hardhat-local-networks-config-plugin": "0.0.5",
+    "lodash.range": "^3.2.0",
+    "node-fetch": "^2.6.1",
+    "prettier": "^2.1.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^4.0.2"
+  },
+  "peerDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "hardhat": "^2.8.3"
+  }
+}
+>>>>>>> c3ccf89dac6f9b5fd6b8642ce84a0893998701e0

@@ -1,10 +1,11 @@
+import { ethers } from 'hardhat';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BasePoolEncoder } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
 import TypesConverter from '../../types/TypesConverter';
-import { BigNumberish, bn, fp } from '../../../numbers';
+import { BigNumberish, fpDiv, fpMul } from '../../../numbers';
 import { Account } from '../../types/types';
 import TokenList from '../../tokens/TokenList';
 import { actionId } from '../../misc/actions';
@@ -91,12 +92,12 @@ export default class BasePool {
 
   async upscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
-    return balances.map((b, i) => bn(b).mul(scalingFactors[i]).div(fp(1)));
+    return balances.map((b, i) => fpMul(b, scalingFactors[i]));
   }
 
   async downscale(balances: BigNumberish[]): Promise<BigNumberish[]> {
     const scalingFactors = await this.getScalingFactors();
-    return balances.map((b, i) => bn(b).mul(fp(1)).div(scalingFactors[i]));
+    return balances.map((b, i) => fpDiv(b, scalingFactors[i]));
   }
 
   async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
@@ -110,6 +111,10 @@ export default class BasePool {
 
   async getRate(): Promise<BigNumber> {
     return this.instance.getRate();
+  }
+
+  async getActualSupply(): Promise<BigNumber> {
+    return this.instance.getActualSupply();
   }
 
   async getTokenInfo(
@@ -164,14 +169,16 @@ export default class BasePool {
     await this.instance.unpause();
   }
 
-  async enableRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
-    await this.grantRecoveryPermissions();
+  async enableRecoveryMode(from?: SignerWithAddress): Promise<ContractTransaction> {
+    from = await this.getSigner(from);
+    await this.grantRecoveryPermissions(from);
     const pool = this.instance.connect(from);
     return await pool.enableRecoveryMode();
   }
 
-  async disableRecoveryMode(from: SignerWithAddress): Promise<ContractTransaction> {
-    await this.grantRecoveryPermissions();
+  async disableRecoveryMode(from?: SignerWithAddress): Promise<ContractTransaction> {
+    from = await this.getSigner(from);
+    await this.grantRecoveryPermissions(from);
     const pool = this.instance.connect(from);
     return await pool.disableRecoveryMode();
   }
@@ -194,9 +201,13 @@ export default class BasePool {
     await this.vault.grantPermissionsGlobally([pauseAction, unpauseAction]);
   }
 
-  private async grantRecoveryPermissions(): Promise<void> {
+  private async grantRecoveryPermissions(grantee: SignerWithAddress): Promise<void> {
     const enableRecoveryAction = await actionId(this.instance, 'enableRecoveryMode');
     const disableRecoveryAction = await actionId(this.instance, 'disableRecoveryMode');
-    await this.vault.grantPermissionsGlobally([enableRecoveryAction, disableRecoveryAction], this.vault.admin);
+    await this.vault.grantPermissionsGlobally([enableRecoveryAction, disableRecoveryAction], grantee);
+  }
+
+  private async getSigner(from?: SignerWithAddress): Promise<SignerWithAddress> {
+    return from || (await ethers.getSigners())[0];
   }
 }

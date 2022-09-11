@@ -17,13 +17,13 @@ export enum WeightedPoolType {
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
+  rateProviders?: Account[];
   assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
-  protocolSwapFeePercentage?: BigNumberish;
   managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
   aumProtocolFeesCollector?: string;
@@ -38,6 +38,7 @@ export type RawWeightedPoolDeployment = {
 export type WeightedPoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
+  rateProviders: Account[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
@@ -45,7 +46,6 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
@@ -209,8 +209,6 @@ export type ManagedPoolParams = {
   swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
 };

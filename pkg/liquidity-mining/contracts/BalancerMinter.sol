@@ -22,8 +22,9 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeMath.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EIP712.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/EOASignaturesValidator.sol";
 
-contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
+contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EOASignaturesValidator {
     using SafeMath for uint256;
 
     IERC20 private immutable _token;
@@ -35,11 +36,8 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
     // minter -> user -> can mint?
     mapping(address => mapping(address => bool)) private _allowedMinter;
 
-    // Signature replay attack prevention for each user.
-    mapping(address => uint256) internal _nextNonce;
-
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SET_MINTER_APPROVAL_TYPEHASH = keccak256(
+    bytes32 private constant _SET_MINTER_APPROVAL_TYPEHASH = keccak256(
         "SetMinterApproval(address minter,bool approval,uint256 nonce,uint256 deadline)"
     );
 
@@ -49,14 +47,6 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
         _token = tokenAdmin.getBalancerToken();
         _tokenAdmin = tokenAdmin;
         _gaugeController = gaugeController;
-    }
-
-    function getDomainSeparator() external view returns (bytes32) {
-        return _domainSeparatorV4();
-    }
-
-    function getNextNonce(address user) external view returns (uint256) {
-        return _nextNonce[user];
     }
 
     /**
@@ -152,18 +142,11 @@ contract BalancerMinter is IBalancerMinter, ReentrancyGuard, EIP712 {
         bytes32 r,
         bytes32 s
     ) external override {
-        // solhint-disable-next-line not-rely-on-time
-        require(deadline > block.timestamp, "Signature expired");
+        bytes32 structHash = keccak256(
+            abi.encode(_SET_MINTER_APPROVAL_TYPEHASH, minter, approval, getNextNonce(user), deadline)
+        );
 
-        uint256 nonce = _nextNonce[user]++;
-
-        bytes32 structHash = keccak256(abi.encode(_SET_MINTER_APPROVAL_TYPEHASH, minter, approval, nonce, deadline));
-        bytes32 digest = _hashTypedDataV4(structHash);
-
-        address recoveredAddress = ecrecover(digest, v, r, s);
-
-        // ecrecover returns the zero address on recover failure, so we need to handle that explicitly.
-        require(recoveredAddress != address(0) && recoveredAddress == user, "Invalid signature");
+        _ensureValidSignature(user, structHash, _toArraySignature(v, r, s), deadline, Errors.INVALID_SIGNATURE);
 
         _setMinterApproval(minter, user, approval);
     }

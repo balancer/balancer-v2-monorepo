@@ -7,17 +7,18 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
+import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 
 const amplFP = (n: number) => fp(n / 10 ** 9);
 
@@ -61,7 +62,7 @@ describe('UnbuttonWrapping', function () {
 
   sharedBeforeEach('set up relayer', async () => {
     // Deploy Relayer
-    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS] });
+    relayerLibrary = await deploy('MockBatchRelayerLibrary', { args: [vault.address, ZERO_ADDRESS, ZERO_ADDRESS] });
     relayer = await deployedAt('BalancerRelayer', await relayerLibrary.getEntrypoint());
 
     // Authorize Relayer for all actions
@@ -77,14 +78,6 @@ describe('UnbuttonWrapping', function () {
     // Approve relayer by sender
     await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);
   });
-
-  const CHAINED_REFERENCE_PREFIX = 'ba10';
-  function toChainedReference(key: BigNumberish): BigNumber {
-    // The full padded prefix is 66 characters long,
-    // with 64 hex characters and the 0x prefix.
-    const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
-    return BigNumber.from(paddedPrefix).add(key);
-  }
 
   function encodeApprove(token: Token, amount: BigNumberish): string {
     return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
@@ -122,16 +115,6 @@ describe('UnbuttonWrapping', function () {
 
   async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
     await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
-  }
-
-  async function expectChainedReferenceContents(ref: BigNumberish, expectedValue: BigNumberish): Promise<void> {
-    const receipt = await (
-      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [ref])])
-    ).wait();
-
-    expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
-      value: bn(expectedValue),
-    });
   }
 
   describe('primitives', () => {
@@ -211,7 +194,7 @@ describe('UnbuttonWrapping', function () {
             .connect(senderUser)
             .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          await expectChainedReferenceContents(toChainedReference(0), expectedWamplAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedWamplAmount);
         });
 
         it('wraps with chained references', async () => {
@@ -321,7 +304,7 @@ describe('UnbuttonWrapping', function () {
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           const amplAmount = await wampl.instance.wrapperToUnderlying(amount);
-          await expectChainedReferenceContents(toChainedReference(0), amplAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amplAmount);
         });
 
         it('unwraps with chained references', async () => {
@@ -363,6 +346,7 @@ describe('UnbuttonWrapping', function () {
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
+    let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
@@ -370,6 +354,7 @@ describe('UnbuttonWrapping', function () {
 
       pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
+      bptIndex = await pool.getBptIndex();
 
       await WETH.mint(senderUser, fp(2));
       await WETH.approve(vault, MAX_UINT256, { from: senderUser });
@@ -381,9 +366,15 @@ describe('UnbuttonWrapping', function () {
 
       await WETH.approve(vault, MAX_UINT256, { from: admin });
       await wampl.approve(vault, MAX_UINT256, { from: admin });
+      const { tokens: allTokens } = await pool.getTokens();
+      const wethIndex = allTokens.indexOf(WETH.address);
+
+      const initialBalances = Array.from({ length: 3 }).map((_, i) =>
+        i == bptIndex ? 0 : i == wethIndex ? fp(2) : fp(6)
+      );
 
       // Seed liquidity in pool
-      await pool.init({ initialBalances: [fp(2), fp(6)], from: admin });
+      await pool.init({ initialBalances, from: admin });
     });
 
     describe('swap', () => {
@@ -611,7 +602,7 @@ describe('UnbuttonWrapping', function () {
         poolId: string;
         sender: Account;
         recipient: Account;
-        assets: TokenList;
+        assets: string[];
         maxAmountsIn: BigNumberish[];
         userData: string;
         outputReference?: BigNumberish;
@@ -622,7 +613,7 @@ describe('UnbuttonWrapping', function () {
           TypesConverter.toAddress(params.sender),
           TypesConverter.toAddress(params.recipient),
           {
-            assets: params.assets.addresses,
+            assets: params.assets,
             maxAmountsIn: params.maxAmountsIn,
             userData: params.userData,
             fromInternalBalance: false,
@@ -638,17 +629,19 @@ describe('UnbuttonWrapping', function () {
 
       sharedBeforeEach('join the pool', async () => {
         senderWamplBalanceBefore = await wampl.balanceOf(senderUser);
+        const { tokens: allTokens } = await pool.getTokens();
+
         receipt = await (
           await relayer.connect(senderUser).multicall([
             encodeWrap(senderUser.address, relayer.address, amount, toChainedReference(0)),
             encodeApprove(wampl, MAX_UINT256),
             encodeJoin({
               poolId,
-              assets: poolTokens,
+              assets: allTokens,
               sender: relayer,
               recipient: recipientUser,
-              maxAmountsIn: poolTokens.map(() => MAX_UINT256),
-              userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
+              maxAmountsIn: Array(poolTokens.length + 1).fill(MAX_UINT256),
+              userData: StablePoolEncoder.joinExactTokensInForBPTOut(
                 poolTokens.map((token) => (token === wampl ? toChainedReference(0) : 0)),
                 0
               ),
