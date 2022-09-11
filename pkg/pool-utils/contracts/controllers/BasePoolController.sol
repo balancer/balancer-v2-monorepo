@@ -86,7 +86,7 @@ contract BasePoolController is IBasePoolController {
     // Modifiers
 
     // Add this modifier to all functions that call the underlying pool.
-    modifier withBoundPool() {
+    modifier withBoundPool {
         _ensurePoolIsBound();
         _;
     }
@@ -214,6 +214,7 @@ contract BasePoolController is IBasePoolController {
      */
     function claimOwnership() external {
         address candidate = _managerCandidate;
+
         _require(candidate == msg.sender, Errors.SENDER_NOT_ALLOWED);
 
         emit OwnershipTransferred(_manager, candidate);

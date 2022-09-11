@@ -1,23 +1,3 @@
-<<<<<<< HEAD:pkg/deployments/tasks/20220420-fee-distributor/input.ts
-import Task, { TaskMode } from '../../src/task';
-
-export type FeeDistributorDeployment = {
-  VotingEscrow: string;
-  startTime: number;
-};
-
-const VotingEscrow = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
-
-export default {
-  VotingEscrow,
-  mainnet: {
-    startTime: 1649894400, // Thursday, April 14, 2022 00:00:00 UTC
-  },
-  kovan: {
-    startTime: 1654732800000, //  Thursday, June 9, 2022 00:00:00 UTC
-  },
-};
-=======
 import Task, { TaskMode } from '../../../src/task';
 
 export type FeeDistributorDeployment = {
@@ -39,4 +19,3 @@ export default {
     startTime: 1654732800000, //  Thursday, June 9, 2022 00:00:00 UTC
   },
 };
->>>>>>> c3ccf89dac6f9b5fd6b8642ce84a0893998701e0:pkg/deployments/tasks/deprecated/20220420-fee-distributor/input.ts

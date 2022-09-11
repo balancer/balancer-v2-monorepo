@@ -1,14 +1,3 @@
-<<<<<<< HEAD:pkg/deployments/tasks/20220413-arbitrum-root-gauge-factory/readme.md
-# 2022-04-13 - Arbitrum Root Gauge Factory
-
-Deployment of the `ArbitrumRootGaugeFactory`, for stakeless gauges that bridge funds to their Arbitrum counterparts.
-
-## Useful Files
-
-- [Ethereum mainnet addresses](./output/mainnet.json)
-- [`ArbitrumRootGauge` ABI](./abi/ArbitrumRootGauge.json)
-- [`ArbitrumRootGaugeFactory` ABI](./abi/ArbitrumRootGaugeFactory.json)
-=======
 # 2022-04-13 - Arbitrum Root Gauge Factory
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
@@ -22,4 +11,3 @@ Deployment of the `ArbitrumRootGaugeFactory`, for stakeless gauges that bridge f
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [`ArbitrumRootGauge` ABI](./abi/ArbitrumRootGauge.json)
 - [`ArbitrumRootGaugeFactory` ABI](./abi/ArbitrumRootGaugeFactory.json)
->>>>>>> c3ccf89dac6f9b5fd6b8642ce84a0893998701e0:pkg/deployments/tasks/deprecated/20220413-arbitrum-root-gauge-factory/readme.md

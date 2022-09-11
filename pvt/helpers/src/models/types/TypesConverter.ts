@@ -9,13 +9,10 @@ import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
-<<<<<<< HEAD
 import { RawPrimaryPoolDeployment, PrimaryPoolDeployment } from '../pools/primary-issue/types';
 import { RawSecondaryPoolDeployment, SecondaryPoolDeployment } from '../pools/secondary-issue/types';
-import { RawStablePhantomPoolDeployment, StablePhantomPoolDeployment } from '../pools/stable-phantom/types';
-=======
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
->>>>>>> c3ccf89dac6f9b5fd6b8642ce84a0893998701e0
+
 import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
@@ -130,7 +127,6 @@ export default {
     };
   },
 
-<<<<<<< HEAD
   toPrimaryPoolDeployment(params: RawPrimaryPoolDeployment): PrimaryPoolDeployment {
     let {
       minimumPrice,
@@ -183,10 +179,7 @@ export default {
     };
   },
 
-  toStablePhantomPoolDeployment(params: RawStablePhantomPoolDeployment): StablePhantomPoolDeployment {
-=======
   toStablePoolDeployment(params: RawStablePoolDeployment): StablePoolDeployment {
->>>>>>> c3ccf89dac6f9b5fd6b8642ce84a0893998701e0
     let {
       tokens,
       rateProviders,

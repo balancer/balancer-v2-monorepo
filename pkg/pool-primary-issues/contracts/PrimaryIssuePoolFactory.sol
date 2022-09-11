@@ -7,15 +7,16 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolSplitCodeFactory.sol";
 
 import "./PrimaryIssuePool.sol";
 import "./interfaces/IPrimaryIssuePoolFactory.sol";
 
-contract PrimaryIssuePoolFactory is BasePoolSplitCodeFactory, FactoryWidePauseWindow {
-
-    constructor(IVault vault) BasePoolSplitCodeFactory(vault, type(PrimaryIssuePool).creationCode) {
+contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider) 
+        BasePoolFactory(vault, protocolFeeProvider, type(PrimaryIssuePool).creationCode)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
