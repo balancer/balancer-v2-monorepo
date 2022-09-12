@@ -62,7 +62,7 @@ describe('WeightedPool', function () {
 
         // Perform a recovery mode exit. This will reduce the invariant but this isn't tracked due to recovery mode.
         const preExitInvariant = await pool.getLastPostJoinExitInvariant();
-        await pool.recoveryModeExit({ from: lp, bptIn: fp(100) });
+        await pool.recoveryModeExit({ from: lp, bptIn: fp(10) });
         const realPostExitInvariant = await pool.estimateInvariant();
 
         // Check that the real invariant is has dropped as a result of the exit.
