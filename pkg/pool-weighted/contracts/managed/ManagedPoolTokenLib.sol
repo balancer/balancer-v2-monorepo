@@ -48,6 +48,7 @@ library ManagedPoolTokenLib {
 
     /**
      * @notice Returns the token's scaling factor.
+     * @param tokenState - The byte32 state of the token of interest.
      */
     function getTokenScalingFactor(bytes32 tokenState) internal pure returns (uint256) {
         uint256 decimalsDifference = tokenState.decodeUint(_DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH);
@@ -58,6 +59,10 @@ library ManagedPoolTokenLib {
 
     /**
      * @notice Returns the token weight interpolated some percentage between the start and end weights.
+     * @param tokenState - The byte32 state of the token of interest.
+     * @param pctProgress - A 18 decimal fixed-point value corresponding to how far to interpolate between the start
+     * and end weights. 0 represents the start weight and 1 represents the end weight (with values >1 being clipped).
+     * @param denormWeightSum - The denormalized weight sum to be used to normalize the resulting weight.
      */
     function getTokenWeight(
         bytes32 tokenState,
@@ -77,6 +82,8 @@ library ManagedPoolTokenLib {
 
     /**
      * @notice Returns the token's start and end weights.
+     * @param tokenState - The byte32 state of the token of interest.
+     * @param denormWeightSum - The denormalized weight sum to be used to normalize the resulting weights.
      */
     function getTokenStartAndEndWeights(bytes32 tokenState, uint256 denormWeightSum)
         internal
@@ -118,6 +125,10 @@ library ManagedPoolTokenLib {
     /**
      * @notice Updates a token's start and end weights.
      * @dev To be called when initiating a gradual weight change to update the two values to interpolate between.
+     * @param tokenState - The byte32 state of the token of interest.
+     * @param normalizedStartWeight - The current normalized weight of the token.
+     * @param normalizedEndWeight - The desired final normalized weight of the token.
+     * @param denormWeightSum - The denormalized weight sum to be used to denormalize the provided weights.
      */
     function setTokenWeight(
         bytes32 tokenState,
@@ -145,6 +156,8 @@ library ManagedPoolTokenLib {
      * the "raw" scaling factor on the fly.
      * We split this function off as we want to avoid unnecessary external calls. Token decimals do not change
      * so we can call this once when we add the token and then keep the value.
+     * @param tokenState - The byte32 state of the token of interest.
+     * @param token - The ERC20 token of interest.
      */
     function setTokenScalingFactor(bytes32 tokenState, IERC20 token) internal view returns (bytes32) {
         // Tokens that don't implement the `decimals` method are not supported.
