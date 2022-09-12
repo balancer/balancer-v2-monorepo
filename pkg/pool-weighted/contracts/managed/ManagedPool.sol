@@ -103,21 +103,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
     uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
-    // Store scaling factor and start/end denormalized weights for each token
-    // Mapping should be more efficient than trying to compress it further
-    // [ 123 bits |  5 bits  |  64 bits   |   64 bits    |
-    // [ unused   | decimals | end denorm | start denorm |
-    // |MSB                                           LSB|
+    // Store scaling factor and start/end denormalized weights for each token.
+    // See `ManagedPoolTokenLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
-
-    // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
-    // denormalized weight: independent of the current _denormWeightSum, which avoids having to recompute the denorm
-    // weights as the sum changes.
-    uint256 private constant _MAX_DENORM_WEIGHT = 1e22; // FP 10,000
-
-    uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
-    uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
-    uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
