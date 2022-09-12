@@ -55,8 +55,10 @@ library ManagedPoolTokenLib {
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
 
     // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
-    // denormalized weight. This maximum value is defined by the number of bits available in storage.
-    uint256 private constant _MAX_DENORM_WEIGHT = 2**_DENORM_WEIGHT_WIDTH;
+    // denormalized weight.
+    // We store the weights as values in the range [0, 2**_DENORM_WEIGHT_WIDTH) and then map these to the (larger)
+    // range [0, _MAX_DENORM_WEIGHT], trading some resolution for being able to express a wider range of weight ratios.
+    uint256 private constant _MAX_DENORM_WEIGHT = 1e22; // FP 10,000;
 
     // Getters
 
