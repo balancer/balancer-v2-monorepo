@@ -38,8 +38,8 @@ library ManagedPoolTokenLib {
     // [ unused   | decimals | end denorm | start denorm |
     // |MSB                                           LSB|
     uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
-    uint256 private constant _END_DENORM_WEIGHT_OFFSET = 64;
-    uint256 private constant _DECIMAL_DIFF_OFFSET = 128;
+    uint256 private constant _END_DENORM_WEIGHT_OFFSET = _START_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
+    uint256 private constant _DECIMAL_DIFF_OFFSET = _END_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
 
     uint256 private constant _DENORM_WEIGHT_WIDTH = 64;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
