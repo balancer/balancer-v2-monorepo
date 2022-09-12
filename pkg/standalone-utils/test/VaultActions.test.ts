@@ -24,18 +24,27 @@ import {
   setChainedReferenceContents,
   toChainedReference,
 } from './helpers/chainedReferences';
+import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
+import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 
 describe('VaultActions', function () {
   let vault: Vault;
   let tokens: TokenList;
   let relayer: Contract, relayerLibrary: Contract;
-  let admin: SignerWithAddress, sender: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, senderUser: SignerWithAddress, other: SignerWithAddress;
 
   let poolIdA: string, poolIdB: string, poolIdC: string;
   let tokensA: TokenList, tokensB: TokenList, tokensC: TokenList;
 
+  let sender: Account, recipient: Account;
+
   before('get signers', async () => {
-    [, admin, sender, other] = await ethers.getSigners();
+    [, admin, senderUser, other] = await ethers.getSigners();
+  });
+
+  before('setup common recipient', () => {
+    // All the tests use the same recipient; this is a simple abstraction to improve readability.
+    recipient = senderUser;
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -55,13 +64,13 @@ describe('VaultActions', function () {
     await vault.grantPermissionsGlobally(relayerActionIds, relayer);
 
     // Approve relayer by sender
-    await vault.setRelayerApproval(sender, relayer, true);
+    await vault.setRelayerApproval(senderUser, relayer, true);
   });
 
   sharedBeforeEach('set up pools', async () => {
     tokens = (await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'])).sort();
-    await tokens.mint({ to: sender });
-    await tokens.approve({ to: vault, from: sender });
+    await tokens.mint({ to: senderUser });
+    await tokens.approve({ to: vault, from: senderUser });
 
     // Pool A: DAI-MKR
     tokensA = new TokenList([tokens.DAI, tokens.MKR]).sort();
@@ -70,7 +79,7 @@ describe('VaultActions', function () {
       tokens: tokensA,
       vault,
     });
-    await poolA.init({ initialBalances: fp(1000), from: sender });
+    await poolA.init({ initialBalances: fp(1000), from: senderUser });
 
     poolIdA = await poolA.getPoolId();
 
@@ -81,7 +90,7 @@ describe('VaultActions', function () {
       tokens: tokensB,
       vault,
     });
-    await poolB.init({ initialBalances: fp(1000), from: sender });
+    await poolB.init({ initialBalances: fp(1000), from: senderUser });
 
     poolIdB = await poolB.getPoolId();
 
@@ -92,10 +101,14 @@ describe('VaultActions', function () {
       tokens: tokensC,
       vault,
     });
-    await poolC.init({ initialBalances: fp(1000), from: sender });
+    await poolC.init({ initialBalances: fp(1000), from: senderUser });
 
     poolIdC = await poolC.getPoolId();
   });
+
+  function encodeApprove(token: Token, amount: BigNumberish): string {
+    return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
+  }
 
   function encodeSwap(params: {
     poolId: string;
@@ -104,6 +117,8 @@ describe('VaultActions', function () {
     amount: BigNumberish;
     fromInternalBalance?: boolean;
     outputReference?: BigNumberish;
+    sender?: Account;
+    recipient?: Account;
   }): string {
     return relayerLibrary.interface.encodeFunctionData('swap', [
       {
@@ -115,8 +130,8 @@ describe('VaultActions', function () {
         userData: '0x',
       },
       {
-        sender: sender.address,
-        recipient: sender.address,
+        sender: params.sender ?? TypesConverter.toAddress(sender),
+        recipient: params.recipient ?? TypesConverter.toAddress(recipient),
         fromInternalBalance: params.fromInternalBalance ?? false,
         toInternalBalance: false,
       },
@@ -135,6 +150,8 @@ describe('VaultActions', function () {
       amount: BigNumberish;
     }>;
     outputReferences?: Dictionary<BigNumberish>;
+    sender?: Account;
+    recipient?: Account;
   }): string {
     const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
       index: tokens.findIndexBySymbol(symbol),
@@ -151,7 +168,12 @@ describe('VaultActions', function () {
         userData: '0x',
       })),
       tokens.addresses,
-      { sender: sender.address, recipient: sender.address, fromInternalBalance: false, toInternalBalance: false },
+      {
+        sender: params.sender ?? TypesConverter.toAddress(sender),
+        recipient: params.recipient ?? TypesConverter.toAddress(recipient),
+        fromInternalBalance: false,
+        toInternalBalance: false,
+      },
       new Array(tokens.length).fill(MAX_INT256),
       MAX_UINT256,
       0,
@@ -163,14 +185,16 @@ describe('VaultActions', function () {
     poolId: string;
     userData: string;
     outputReference?: BigNumberish;
+    sender?: Account;
+    recipient?: Account;
   }): Promise<string> {
     const { tokens } = await vault.getPoolTokens(params.poolId);
 
     return relayerLibrary.interface.encodeFunctionData('joinPool', [
       params.poolId,
       0,
-      sender.address,
-      sender.address,
+      params.sender ?? TypesConverter.toAddress(sender),
+      params.recipient ?? TypesConverter.toAddress(recipient),
       {
         assets: tokens,
         maxAmountsIn: new Array(tokens.length).fill(MAX_UINT256),
@@ -187,6 +211,8 @@ describe('VaultActions', function () {
     userData: string;
     toInternalBalance: boolean;
     outputReferences?: Dictionary<BigNumberish>;
+    sender?: Account;
+    recipient?: Account;
   }): Promise<string> {
     const { tokens: poolTokens } = await vault.getPoolTokens(params.poolId);
     const outputReferences = Object.entries(params.outputReferences ?? {}).map(([symbol, key]) => ({
@@ -197,8 +223,8 @@ describe('VaultActions', function () {
     return relayerLibrary.interface.encodeFunctionData('exitPool', [
       params.poolId,
       0,
-      sender.address,
-      sender.address,
+      params.sender ?? TypesConverter.toAddress(sender),
+      params.recipient ?? TypesConverter.toAddress(recipient),
       {
         assets: poolTokens,
         minAmountsOut: new Array(poolTokens.length).fill(0),
@@ -213,103 +239,158 @@ describe('VaultActions', function () {
     return poolTokens.map((token) => tokenAmounts[token.symbol] ?? 0);
   }
 
+  async function approveVaultForRelayer() {
+    return await relayer.connect(senderUser).multicall(tokens.map((token) => encodeApprove(token, MAX_UINT256)));
+  }
+
   describe('simple swap', () => {
     const amountIn = fp(2);
 
     context('when caller is not authorized', () => {
       it('reverts', async () => {
         expect(
-          relayer
-            .connect(other)
-            .multicall([encodeSwap({ poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountIn })])
-        ).to.be.revertedWith('Incorrect sender');
-      });
-    });
-
-    context('when caller is authorized', () => {
-      it('swaps with immediate amounts', async () => {
-        await expectBalanceChange(
-          () =>
-            relayer
-              .connect(sender)
-              .multicall([
-                encodeSwap({ poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountIn }),
-              ]),
-          tokens,
-          { account: sender, changes: { DAI: amountIn.mul(-1), MKR: ['near', amountIn] } }
-        );
-      });
-
-      it('stores swap output as chained reference', async () => {
-        const receipt = await (
-          await relayer.connect(sender).multicall([
+          relayer.connect(other).multicall([
             encodeSwap({
               poolId: poolIdA,
               tokenIn: tokens.DAI,
               tokenOut: tokens.MKR,
               amount: amountIn,
-              outputReference: toChainedReference(0),
+              sender: senderUser.address,
             }),
           ])
-        ).wait();
+        ).to.be.revertedWith('Incorrect sender');
+      });
+    });
 
-        const {
-          args: { amountOut },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-        await expectChainedReferenceContents(relayer, toChainedReference(0), amountOut);
+    context('when caller is authorized', () => {
+      context('sender = user', () => {
+        beforeEach(() => {
+          sender = senderUser;
+        });
+
+        itTestsSimpleSwap();
       });
 
-      it('swaps with chained references', async () => {
-        await setChainedReferenceContents(relayer, toChainedReference(0), amountIn);
+      context('sender = relayer', () => {
+        sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+          sender = relayer;
+          await tokens.DAI.transfer(relayer, amountIn, { from: senderUser });
+          await approveVaultForRelayer();
+        });
 
-        const receipt = await (
-          await relayer.connect(sender).multicall([
-            encodeSwap({
-              poolId: poolIdA,
-              tokenIn: tokens.DAI,
-              tokenOut: tokens.MKR,
-              amount: toChainedReference(0),
-            }),
-          ])
-        ).wait();
-
-        const swapEvent = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-        expect(swapEvent.args.amountIn).to.equal(amountIn);
+        itTestsSimpleSwap();
       });
 
-      it('is chainable via multicall', async () => {
-        const receipt = await (
+      function itTestsSimpleSwap() {
+        it('swaps with immediate amounts', async () => {
           await expectBalanceChange(
             () =>
-              relayer.connect(sender).multicall([
-                encodeSwap({
-                  poolId: poolIdA,
-                  tokenIn: tokens.DAI,
-                  tokenOut: tokens.MKR,
-                  amount: amountIn,
-                  outputReference: toChainedReference(0),
-                }),
-                encodeSwap({
-                  poolId: poolIdB,
-                  tokenIn: tokens.MKR,
-                  tokenOut: tokens.SNX,
-                  amount: toChainedReference(0),
-                }),
-              ]),
+              relayer
+                .connect(senderUser)
+                .multicall([
+                  encodeSwap({ poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountIn }),
+                ]),
             tokens,
-            { account: sender, changes: { DAI: amountIn.mul(-1), SNX: ['near', amountIn] } }
-          )
-        ).wait();
+            sender == recipient // if sender is recipient, all the changes happen in the same account.
+              ? {
+                  account: TypesConverter.toAddress(sender),
+                  changes: { DAI: amountIn.mul(-1), MKR: ['near', amountIn] },
+                }
+              : [
+                  {
+                    account: TypesConverter.toAddress(sender),
+                    changes: { DAI: amountIn.mul(-1) },
+                  },
+                  {
+                    account: TypesConverter.toAddress(recipient),
+                    changes: { MKR: ['near', amountIn] },
+                  },
+                ]
+          );
+        });
 
-        const {
-          args: { amountOut: amountOutA },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-        const {
-          args: { amountIn: amountInB },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdB });
+        it('stores swap output as chained reference', async () => {
+          const receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeSwap({
+                poolId: poolIdA,
+                tokenIn: tokens.DAI,
+                tokenOut: tokens.MKR,
+                amount: amountIn,
+                outputReference: toChainedReference(0),
+              }),
+            ])
+          ).wait();
 
-        expect(amountOutA).to.equal(amountInB);
-      });
+          const {
+            args: { amountOut },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amountOut);
+        });
+
+        it('swaps with chained references', async () => {
+          await setChainedReferenceContents(relayer, toChainedReference(0), amountIn);
+
+          const receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeSwap({
+                poolId: poolIdA,
+                tokenIn: tokens.DAI,
+                tokenOut: tokens.MKR,
+                amount: toChainedReference(0),
+              }),
+            ])
+          ).wait();
+
+          const swapEvent = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolIdA,
+          });
+          expect(swapEvent.args.amountIn).to.equal(amountIn);
+        });
+
+        it('is chainable via multicall', async () => {
+          const receipt = await (
+            await expectBalanceChange(
+              () =>
+                relayer.connect(senderUser).multicall([
+                  encodeSwap({
+                    poolId: poolIdA,
+                    tokenIn: tokens.DAI,
+                    tokenOut: tokens.MKR,
+                    amount: amountIn,
+                    outputReference: toChainedReference(0),
+                    recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next swap.
+                  }),
+                  encodeSwap({
+                    poolId: poolIdB,
+                    tokenIn: tokens.MKR,
+                    tokenOut: tokens.SNX,
+                    amount: toChainedReference(0),
+                  }),
+                ]),
+              tokens,
+              sender == recipient // if sender is recipient, all the changes happen in the same account.
+                ? {
+                    account: TypesConverter.toAddress(sender),
+                    changes: { DAI: amountIn.mul(-1), SNX: ['near', amountIn] },
+                  }
+                : [
+                    { account: TypesConverter.toAddress(sender), changes: { DAI: amountIn.mul(-1) } },
+                    { account: TypesConverter.toAddress(recipient), changes: { SNX: ['near', amountIn] } },
+                  ]
+            )
+          ).wait();
+
+          const {
+            args: { amountOut: amountOutA },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+          const {
+            args: { amountIn: amountInB },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdB });
+
+          expect(amountOutA).to.equal(amountInB);
+        });
+      }
     });
   });
 
@@ -319,160 +400,222 @@ describe('VaultActions', function () {
 
     context('when caller is not authorized', () => {
       it('reverts', async () => {
-        await expect(relayer.connect(other).multicall([encodeBatchSwap({ swaps: [] })])).to.be.revertedWith(
-          'Incorrect sender'
-        );
+        await expect(
+          relayer.connect(other).multicall([encodeBatchSwap({ swaps: [], sender: senderUser.address })])
+        ).to.be.revertedWith('Incorrect sender');
       });
     });
 
     context('when caller is authorized', () => {
-      it('swaps with immediate amounts', async () => {
-        await expectBalanceChange(
-          () =>
-            relayer.connect(sender).multicall([
-              encodeBatchSwap({
-                swaps: [
-                  { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
-                  { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
-                ],
-              }),
-            ]),
-          tokens,
-          {
-            account: sender,
-            changes: {
-              DAI: amountInA.mul(-1),
-              MKR: ['near', amountInA],
-              SNX: amountInC.mul(-1),
-              BAT: ['near', amountInC],
-            },
-          }
-        );
+      context('sender = user', () => {
+        beforeEach(() => {
+          sender = senderUser;
+        });
+
+        itTestsBatchSwap();
       });
 
-      it('stores absolute vault deltas as chained reference', async () => {
-        const receipt = await (
-          await relayer.connect(sender).multicall([
-            encodeBatchSwap({
-              swaps: [
-                { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
-                { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
-              ],
-              outputReferences: {
-                MKR: toChainedReference(0),
-                SNX: toChainedReference(1),
-              },
-            }),
-          ])
-        ).wait();
+      context('sender = relayer', () => {
+        sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+          sender = relayer;
+          await tokens.DAI.transfer(relayer, amountInA, { from: senderUser });
+          await tokens.SNX.transfer(relayer, amountInC, { from: senderUser });
+          await approveVaultForRelayer();
+        });
 
-        // Note that the ouput references are for MKR (an output) and for SNX (an input)
-
-        const {
-          args: { amountOut: amountOutMKR },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-
-        const {
-          args: { amountIn: amountInSNX },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdC });
-
-        await expectChainedReferenceContents(relayer, toChainedReference(0), amountOutMKR);
-
-        await expectChainedReferenceContents(relayer, toChainedReference(1), amountInSNX);
+        itTestsBatchSwap();
       });
 
-      it('swaps with chained references', async () => {
-        await setChainedReferenceContents(relayer, toChainedReference(0), amountInC);
-
-        const receipt = await (
-          await relayer.connect(sender).multicall([
-            encodeBatchSwap({
-              swaps: [
-                { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
-                {
-                  poolId: poolIdC,
-                  tokenIn: tokens.SNX,
-                  tokenOut: tokens.BAT,
-                  amount: toChainedReference(0),
-                },
-              ],
-            }),
-          ])
-        ).wait();
-
-        const swapEvent = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdC });
-        expect(swapEvent.args.amountIn).to.equal(amountInC);
-      });
-
-      it('is chainable via multicall', async () => {
-        const receipt = await (
+      function itTestsBatchSwap() {
+        it('swaps with immediate amounts', async () => {
           await expectBalanceChange(
             () =>
-              relayer.connect(sender).multicall([
+              relayer.connect(senderUser).multicall([
                 encodeBatchSwap({
                   swaps: [
                     { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
                     { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
                   ],
-                  outputReferences: {
-                    MKR: toChainedReference(0),
-                    BAT: toChainedReference(1),
-                  },
-                }),
-                encodeBatchSwap({
-                  swaps: [
-                    // Swap previously acquired MKR for SNX
-                    {
-                      poolId: poolIdB,
-                      tokenIn: tokens.MKR,
-                      tokenOut: tokens.SNX,
-                      amount: toChainedReference(0),
-                    },
-                    // Undo first SNX-BAT swap
-                    {
-                      poolId: poolIdC,
-                      tokenIn: tokens.BAT,
-                      tokenOut: tokens.SNX,
-                      amount: toChainedReference(1),
-                    },
-                  ],
                 }),
               ]),
             tokens,
-            {
-              account: sender,
-              changes: {
-                DAI: amountInA.mul(-1),
-                SNX: ['near', amountInA],
-              },
-            }
-          )
-        ).wait();
-
-        const {
-          args: { amountOut: amountOutA },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-        const {
-          args: { amountIn: amountInB },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdB });
-
-        expect(amountOutA).to.equal(amountInB);
-
-        const {
-          args: { amountOut: amountOutBAT },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-          poolId: poolIdC,
-          tokenIn: tokens.SNX.address,
-        });
-        const {
-          args: { amountIn: amountInBAT },
-        } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
-          poolId: poolIdC,
-          tokenIn: tokens.BAT.address,
+            sender == recipient
+              ? {
+                  account: TypesConverter.toAddress(sender),
+                  changes: {
+                    DAI: amountInA.mul(-1),
+                    MKR: ['near', amountInA],
+                    SNX: amountInC.mul(-1),
+                    BAT: ['near', amountInC],
+                  },
+                }
+              : [
+                  {
+                    account: TypesConverter.toAddress(sender),
+                    changes: {
+                      DAI: amountInA.mul(-1),
+                      SNX: amountInC.mul(-1),
+                    },
+                  },
+                  {
+                    account: TypesConverter.toAddress(recipient),
+                    changes: {
+                      MKR: ['near', amountInA],
+                      BAT: ['near', amountInC],
+                    },
+                  },
+                ]
+          );
         });
 
-        expect(amountOutBAT).to.equal(amountInBAT);
-      });
+        it('stores absolute vault deltas as chained reference', async () => {
+          const receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeBatchSwap({
+                swaps: [
+                  { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
+                  { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
+                ],
+                outputReferences: {
+                  MKR: toChainedReference(0),
+                  SNX: toChainedReference(1),
+                },
+              }),
+            ])
+          ).wait();
+
+          // Note that the ouput references are for MKR (an output) and for SNX (an input)
+
+          const {
+            args: { amountOut: amountOutMKR },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+
+          const {
+            args: { amountIn: amountInSNX },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdC });
+
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amountOutMKR);
+
+          await expectChainedReferenceContents(relayer, toChainedReference(1), amountInSNX);
+        });
+
+        it('swaps with chained references', async () => {
+          await setChainedReferenceContents(relayer, toChainedReference(0), amountInC);
+
+          const receipt = await (
+            await relayer.connect(senderUser).multicall([
+              encodeBatchSwap({
+                swaps: [
+                  { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
+                  {
+                    poolId: poolIdC,
+                    tokenIn: tokens.SNX,
+                    tokenOut: tokens.BAT,
+                    amount: toChainedReference(0),
+                  },
+                ],
+              }),
+            ])
+          ).wait();
+
+          const swapEvent = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolIdC,
+          });
+          expect(swapEvent.args.amountIn).to.equal(amountInC);
+        });
+
+        it('is chainable via multicall', async () => {
+          if (sender == recipient) {
+            console.log('SENDER IS RECIPIENT');
+          }
+          const receipt = await (
+            await expectBalanceChange(
+              () =>
+                relayer.connect(senderUser).multicall([
+                  encodeBatchSwap({
+                    swaps: [
+                      { poolId: poolIdA, tokenIn: tokens.DAI, tokenOut: tokens.MKR, amount: amountInA },
+                      { poolId: poolIdC, tokenIn: tokens.SNX, tokenOut: tokens.BAT, amount: amountInC },
+                    ],
+                    outputReferences: {
+                      MKR: toChainedReference(0),
+                      BAT: toChainedReference(1),
+                    },
+                    recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next swap.
+                  }),
+                  encodeBatchSwap({
+                    swaps: [
+                      // Swap previously acquired MKR for SNX
+                      {
+                        poolId: poolIdB,
+                        tokenIn: tokens.MKR,
+                        tokenOut: tokens.SNX,
+                        amount: toChainedReference(0),
+                      },
+                      // Undo first SNX-BAT swap
+                      {
+                        poolId: poolIdC,
+                        tokenIn: tokens.BAT,
+                        tokenOut: tokens.SNX,
+                        amount: toChainedReference(1),
+                      },
+                    ],
+                  }),
+                ]),
+              tokens,
+              sender == recipient
+                ? // if sender is recipient, all the changes happen in the same account.
+                  {
+                    account: TypesConverter.toAddress(sender),
+                    changes: {
+                      DAI: amountInA.mul(-1),
+                      SNX: ['near', amountInA],
+                    },
+                  }
+                : [
+                    // if recipient is not sender, the two swaps add up and the recipient ends up with more tokens.
+                    {
+                      account: TypesConverter.toAddress(sender),
+                      changes: {
+                        DAI: amountInA.mul(-1),
+                        SNX: ['near', amountInC.mul(-1)],
+                      },
+                    },
+                    {
+                      account: TypesConverter.toAddress(recipient),
+                      changes: {
+                        SNX: ['near', amountInA.add(amountInC)],
+                      },
+                    },
+                  ]
+            )
+          ).wait();
+
+          const {
+            args: { amountOut: amountOutA },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+          const {
+            args: { amountIn: amountInB },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdB });
+
+          expect(amountOutA).to.equal(amountInB);
+
+          const {
+            args: { amountOut: amountOutBAT },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolIdC,
+            tokenIn: tokens.SNX.address,
+          });
+          const {
+            args: { amountIn: amountInBAT },
+          } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', {
+            poolId: poolIdC,
+            tokenIn: tokens.BAT.address,
+          });
+
+          expect(amountOutBAT).to.equal(amountInBAT);
+        });
+      }
     });
   });
 
@@ -487,6 +630,7 @@ describe('VaultActions', function () {
             await encodeJoinPool({
               poolId: poolIdA,
               userData: '0x',
+              sender: senderUser.address,
             }),
           ])
         ).to.be.revertedWith('Incorrect sender');
@@ -495,11 +639,32 @@ describe('VaultActions', function () {
 
     context('when caller is authorized', () => {
       describe('weighted pool', () => {
+        context('sender = user', () => {
+          beforeEach(() => {
+            sender = senderUser;
+          });
+
+          itTestsJoin();
+        });
+
+        context('sender = relayer', () => {
+          sharedBeforeEach('fund relayer with tokens and approve vault', async () => {
+            sender = relayer;
+            await tokens.DAI.transfer(relayer, amountInDAI, { from: senderUser });
+            await tokens.MKR.transfer(relayer, amountInMKR, { from: senderUser });
+            await approveVaultForRelayer();
+          });
+
+          itTestsJoin();
+        });
+      });
+
+      function itTestsJoin() {
         describe('exact tokens in for bpt out', () => {
           it('joins with immediate amounts', async () => {
             await expectBalanceChange(
               async () =>
-                relayer.connect(sender).multicall([
+                relayer.connect(senderUser).multicall([
                   await encodeJoinPool({
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
@@ -510,7 +675,7 @@ describe('VaultActions', function () {
                 ]),
               tokens,
               {
-                account: sender,
+                account: TypesConverter.toAddress(sender),
                 changes: {
                   DAI: amountInDAI.mul(-1),
                   MKR: amountInMKR.mul(-1),
@@ -521,7 +686,7 @@ describe('VaultActions', function () {
 
           it('stores BPT amount out as chained reference', async () => {
             const receipt = await (
-              await relayer.connect(sender).multicall([
+              await relayer.connect(senderUser).multicall([
                 await encodeJoinPool({
                   poolId: poolIdA,
                   userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
@@ -535,7 +700,7 @@ describe('VaultActions', function () {
 
             const {
               args: { value: BPTAmountOut },
-            } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: sender.address }, getPoolAddress(poolIdA));
+            } = expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: senderUser.address }, getPoolAddress(poolIdA));
 
             await expectChainedReferenceContents(relayer, toChainedReference(0), BPTAmountOut);
           });
@@ -545,7 +710,7 @@ describe('VaultActions', function () {
 
             await expectBalanceChange(
               async () =>
-                relayer.connect(sender).multicall([
+                relayer.connect(senderUser).multicall([
                   await encodeJoinPool({
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinExactTokensInForBPTOut(
@@ -556,7 +721,7 @@ describe('VaultActions', function () {
                 ]),
               tokens,
               {
-                account: sender,
+                account: TypesConverter.toAddress(sender),
                 changes: {
                   DAI: amountInDAI.mul(-1),
                   MKR: amountInMKR.mul(-1),
@@ -569,13 +734,14 @@ describe('VaultActions', function () {
             const receipt = await (
               await expectBalanceChange(
                 () =>
-                  relayer.connect(sender).multicall([
+                  relayer.connect(senderUser).multicall([
                     encodeSwap({
                       poolId: poolIdA,
                       tokenIn: tokens.DAI,
                       tokenOut: tokens.MKR,
                       amount: amountInDAI,
                       outputReference: toChainedReference(0),
+                      recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next join.
                     }),
                     encodeJoinPool({
                       poolId: poolIdB,
@@ -586,7 +752,7 @@ describe('VaultActions', function () {
                     }),
                   ]),
                 tokens,
-                { account: sender, changes: { DAI: amountInDAI.mul(-1) } }
+                { account: TypesConverter.toAddress(sender), changes: { DAI: amountInDAI.mul(-1) } }
               )
             ).wait();
 
@@ -612,7 +778,7 @@ describe('VaultActions', function () {
 
             await expectBalanceChange(
               async () =>
-                relayer.connect(sender).multicall([
+                relayer.connect(senderUser).multicall([
                   await encodeJoinPool({
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinTokenInForExactBPTOut(bptOut, mkrIndex),
@@ -620,7 +786,7 @@ describe('VaultActions', function () {
                 ]),
               tokens,
               {
-                account: sender,
+                account: TypesConverter.toAddress(sender),
                 changes: {
                   MKR: ['near', bptOut.mul(-1)], // In a balanced pool, BPT should roughly represent the underlying tokens
                 },
@@ -635,7 +801,7 @@ describe('VaultActions', function () {
 
             await expectBalanceChange(
               async () =>
-                relayer.connect(sender).multicall([
+                relayer.connect(senderUser).multicall([
                   await encodeJoinPool({
                     poolId: poolIdA,
                     userData: WeightedPoolEncoder.joinAllTokensInForExactBPTOut(bptOut),
@@ -643,7 +809,7 @@ describe('VaultActions', function () {
                 ]),
               tokens,
               {
-                account: sender,
+                account: TypesConverter.toAddress(sender),
                 changes: {
                   // In a balanced pool, BPT should roughly represent the underlying tokens
                   DAI: ['near', bptOut.div(2).mul(-1)],
@@ -653,7 +819,7 @@ describe('VaultActions', function () {
             );
           });
         });
-      });
+      }
     });
   });
 
@@ -672,6 +838,7 @@ describe('VaultActions', function () {
               poolId: poolIdA,
               userData: '0x',
               toInternalBalance: true,
+              sender: senderUser.address,
             }),
           ])
         ).to.be.revertedWith('Incorrect sender');
@@ -680,331 +847,355 @@ describe('VaultActions', function () {
 
     context('when caller is authorized', () => {
       describe('weighted pool', () => {
-        function testExitPool(useInternalBalance: boolean): void {
-          describe('exact bpt in for tokens', () => {
-            it('exits with immediate amounts', async () => {
-              await expectBalanceChange(
-                async () =>
-                  relayer.connect(sender).multicall([
-                    await encodeExitPool({
-                      poolId: poolIdA,
-                      userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(1)),
-                      toInternalBalance: useInternalBalance,
-                    }),
-                  ]),
-                await getBPT(poolIdA),
-                {
-                  account: sender,
-                  changes: {
-                    BPT: amountInBPT.mul(-1),
-                  },
-                }
-              );
-            });
+        context('sender = user', () => {
+          beforeEach(() => {
+            sender = senderUser;
+          });
 
-            it('stores token amount out as chained reference', async () => {
-              const receipt = await (
-                await relayer.connect(sender).multicall([
-                  await encodeExitPool({
-                    poolId: poolIdA,
-                    userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
-                    toInternalBalance: useInternalBalance,
-                    outputReferences: {
-                      DAI: toChainedReference(0),
-                      MKR: toChainedReference(1),
-                    },
-                  }),
-                ])
-              ).wait();
+          itTestsExit();
+        });
 
-              let daiAmountOut = Zero;
-              let mkrAmountOut = Zero;
-              if (useInternalBalance) {
-                const daiTransfer = expectEvent.inIndirectReceipt(
-                  receipt,
-                  vault.instance.interface,
-                  'InternalBalanceChanged',
-                  {
-                    user: sender.address,
-                    token: tokens.DAI.address,
-                  }
-                );
-                const mkrTransfer = expectEvent.inIndirectReceipt(
-                  receipt,
-                  vault.instance.interface,
-                  'InternalBalanceChanged',
-                  {
-                    user: sender.address,
-                    token: tokens.MKR.address,
-                  }
-                );
+        context('sender = relayer', () => {
+          sharedBeforeEach('fund relayer with BPT and approve vault', async () => {
+            sender = relayer;
+            const BPT = (await getBPT(poolIdA)).get(0).instance;
+            BPT.connect(senderUser).transfer(TypesConverter.toAddress(sender), await BPT.balanceOf(senderUser.address));
 
-                daiAmountOut = daiTransfer.args.delta;
-                mkrAmountOut = mkrTransfer.args.delta;
-              } else {
-                const daiTransfer = expectTransferEvent(
-                  receipt,
-                  { from: vault.address, to: sender.address },
-                  tokens.DAI
-                );
-                const mkrTransfer = expectTransferEvent(
-                  receipt,
-                  { from: vault.address, to: sender.address },
-                  tokens.MKR
-                );
+            await approveVaultForRelayer();
+          });
 
-                daiAmountOut = daiTransfer.args.value;
-                mkrAmountOut = mkrTransfer.args.value;
-              }
+          itTestsExit();
+        });
 
-              await expectChainedReferenceContents(relayer, toChainedReference(0), daiAmountOut);
-              await expectChainedReferenceContents(relayer, toChainedReference(1), mkrAmountOut);
-            });
+        function itTestsExit() {
+          describe('exit to external balance', () => {
+            const toInternalBalance = false;
+            testExitPool(toInternalBalance);
+          });
 
-            it('exits with exact bpt in chained reference', async () => {
-              await setChainedReferenceContents(relayer, toChainedReference(0), amountInBPT);
+          describe('exit to internal balance', () => {
+            const toInternalBalance = true;
+            testExitPool(toInternalBalance);
+          });
 
-              await expectBalanceChange(
-                async () =>
-                  relayer.connect(sender).multicall([
-                    await encodeExitPool({
-                      poolId: poolIdA,
-                      userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(toChainedReference(0)),
-                      toInternalBalance: useInternalBalance,
-                    }),
-                  ]),
-                await getBPT(poolIdA),
-                {
-                  account: sender,
-                  changes: {
-                    BPT: amountInBPT.mul(-1),
-                  },
-                }
-              );
-            });
-
-            it('is chainable with swaps via multicall', async () => {
-              const receipt = await (
+          function testExitPool(useInternalBalance: boolean): void {
+            describe('exact bpt in for tokens', () => {
+              it('exits with immediate amounts', async () => {
                 await expectBalanceChange(
                   async () =>
-                    relayer.connect(sender).multicall([
+                    relayer.connect(senderUser).multicall([
                       await encodeExitPool({
                         poolId: poolIdA,
-                        userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                        userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(1)),
                         toInternalBalance: useInternalBalance,
-                        outputReferences: {
-                          MKR: toChainedReference(0),
-                        },
-                      }),
-                      encodeSwap({
-                        poolId: poolIdA,
-                        tokenIn: tokens.MKR,
-                        tokenOut: tokens.DAI,
-                        fromInternalBalance: useInternalBalance,
-                        amount: toChainedReference(0),
                       }),
                     ]),
                   await getBPT(poolIdA),
                   {
-                    account: sender,
+                    account: TypesConverter.toAddress(sender),
                     changes: {
                       BPT: amountInBPT.mul(-1),
                     },
                   }
-                )
-              ).wait();
-
-              const {
-                args: { deltas },
-              } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-                poolId: poolIdA,
+                );
               });
 
-              const {
-                args: { amountIn: amountInMKR },
-              } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
-
-              expect(deltas[tokensA.indexOf(tokens.MKR)].mul(-1)).to.equal(amountInMKR);
-            });
-          });
-
-          describe('exact bpt in for one token', () => {
-            it('exits with immediate amounts', async () => {
-              await expectBalanceChange(
-                async () =>
-                  relayer.connect(sender).multicall([
+              it('stores token amount out as chained reference', async () => {
+                const receipt = await (
+                  await relayer.connect(senderUser).multicall([
                     await encodeExitPool({
                       poolId: poolIdA,
-                      userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 0),
+                      userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
                       toInternalBalance: useInternalBalance,
+                      outputReferences: {
+                        DAI: toChainedReference(0),
+                        MKR: toChainedReference(1),
+                      },
                     }),
-                  ]),
-                await getBPT(poolIdA),
-                {
-                  account: sender,
-                  changes: {
-                    BPT: amountInBPT.mul(-1),
-                  },
+                  ])
+                ).wait();
+
+                let daiAmountOut = Zero;
+                let mkrAmountOut = Zero;
+                if (useInternalBalance) {
+                  const daiTransfer = expectEvent.inIndirectReceipt(
+                    receipt,
+                    vault.instance.interface,
+                    'InternalBalanceChanged',
+                    {
+                      user: TypesConverter.toAddress(recipient),
+                      token: tokens.DAI.address,
+                    }
+                  );
+                  const mkrTransfer = expectEvent.inIndirectReceipt(
+                    receipt,
+                    vault.instance.interface,
+                    'InternalBalanceChanged',
+                    {
+                      user: TypesConverter.toAddress(recipient),
+                      token: tokens.MKR.address,
+                    }
+                  );
+
+                  daiAmountOut = daiTransfer.args.delta;
+                  mkrAmountOut = mkrTransfer.args.delta;
+                } else {
+                  const daiTransfer = expectTransferEvent(
+                    receipt,
+                    { from: vault.address, to: TypesConverter.toAddress(recipient) },
+                    tokens.DAI
+                  );
+                  const mkrTransfer = expectTransferEvent(
+                    receipt,
+                    { from: vault.address, to: TypesConverter.toAddress(recipient) },
+                    tokens.MKR
+                  );
+
+                  daiAmountOut = daiTransfer.args.value;
+                  mkrAmountOut = mkrTransfer.args.value;
                 }
-              );
-            });
 
-            it('stores token amount out as chained reference', async () => {
-              const receipt = await (
-                await relayer.connect(sender).multicall([
-                  await encodeExitPool({
-                    poolId: poolIdA,
-                    userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
-                      amountInBPT,
-                      tokensA.findIndexBySymbol('MKR')
-                    ),
-                    toInternalBalance: useInternalBalance,
-                    outputReferences: {
-                      MKR: toChainedReference(0),
-                    },
-                  }),
-                ])
-              ).wait();
+                await expectChainedReferenceContents(relayer, toChainedReference(0), daiAmountOut);
+                await expectChainedReferenceContents(relayer, toChainedReference(1), mkrAmountOut);
+              });
 
-              let mkrAmountOut = Zero;
-              if (useInternalBalance) {
-                const mkrTransfer = expectEvent.inIndirectReceipt(
-                  receipt,
-                  vault.instance.interface,
-                  'InternalBalanceChanged',
+              it('exits with exact bpt in chained reference', async () => {
+                await setChainedReferenceContents(relayer, toChainedReference(0), amountInBPT);
+
+                await expectBalanceChange(
+                  async () =>
+                    relayer.connect(senderUser).multicall([
+                      await encodeExitPool({
+                        poolId: poolIdA,
+                        userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(toChainedReference(0)),
+                        toInternalBalance: useInternalBalance,
+                      }),
+                    ]),
+                  await getBPT(poolIdA),
                   {
-                    user: sender.address,
-                    token: tokens.MKR.address,
+                    account: TypesConverter.toAddress(sender),
+                    changes: {
+                      BPT: amountInBPT.mul(-1),
+                    },
                   }
                 );
+              });
 
-                mkrAmountOut = mkrTransfer.args.delta;
-              } else {
-                const mkrTransfer = expectTransferEvent(
-                  receipt,
-                  { from: vault.address, to: sender.address },
-                  tokens.MKR
-                );
+              it('is chainable with swaps via multicall', async () => {
+                const receipt = await (
+                  await expectBalanceChange(
+                    async () =>
+                      relayer.connect(senderUser).multicall([
+                        await encodeExitPool({
+                          poolId: poolIdA,
+                          userData: WeightedPoolEncoder.exitExactBPTInForTokensOut(amountInBPT),
+                          toInternalBalance: useInternalBalance,
+                          outputReferences: {
+                            MKR: toChainedReference(0),
+                          },
+                          recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next swap.
+                        }),
+                        encodeSwap({
+                          poolId: poolIdA,
+                          tokenIn: tokens.MKR,
+                          tokenOut: tokens.DAI,
+                          fromInternalBalance: useInternalBalance,
+                          amount: toChainedReference(0),
+                        }),
+                      ]),
+                    await getBPT(poolIdA),
+                    {
+                      account: TypesConverter.toAddress(sender),
+                      changes: {
+                        BPT: amountInBPT.mul(-1),
+                      },
+                    }
+                  )
+                ).wait();
 
-                mkrAmountOut = mkrTransfer.args.value;
-              }
+                const {
+                  args: { deltas },
+                } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+                  poolId: poolIdA,
+                });
 
-              await expectChainedReferenceContents(relayer, toChainedReference(0), mkrAmountOut);
+                const {
+                  args: { amountIn: amountInMKR },
+                } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+
+                expect(deltas[tokensA.indexOf(tokens.MKR)].mul(-1)).to.equal(amountInMKR);
+              });
             });
 
-            it('exits with exact bpt in chained reference', async () => {
-              await setChainedReferenceContents(relayer, toChainedReference(0), amountInBPT);
+            describe('exact bpt in for one token', () => {
+              it('exits with immediate amounts', async () => {
+                await expectBalanceChange(
+                  async () =>
+                    relayer.connect(senderUser).multicall([
+                      await encodeExitPool({
+                        poolId: poolIdA,
+                        userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(fp(1), 0),
+                        toInternalBalance: useInternalBalance,
+                      }),
+                    ]),
+                  await getBPT(poolIdA),
+                  {
+                    account: TypesConverter.toAddress(sender),
+                    changes: {
+                      BPT: amountInBPT.mul(-1),
+                    },
+                  }
+                );
+              });
 
-              await expectBalanceChange(
-                async () =>
-                  relayer.connect(sender).multicall([
+              it('stores token amount out as chained reference', async () => {
+                const receipt = await (
+                  await relayer.connect(senderUser).multicall([
                     await encodeExitPool({
                       poolId: poolIdA,
                       userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
-                        toChainedReference(0),
+                        amountInBPT,
                         tokensA.findIndexBySymbol('MKR')
                       ),
                       toInternalBalance: useInternalBalance,
+                      outputReferences: {
+                        MKR: toChainedReference(0),
+                      },
                     }),
-                  ]),
-                await getBPT(poolIdA),
-                {
-                  account: sender,
-                  changes: {
-                    BPT: amountInBPT.mul(-1),
-                  },
-                }
-              );
-            });
+                  ])
+                ).wait();
 
-            it('is chainable with swaps via multicall', async () => {
-              const receipt = await (
+                let mkrAmountOut = Zero;
+                if (useInternalBalance) {
+                  const mkrTransfer = expectEvent.inIndirectReceipt(
+                    receipt,
+                    vault.instance.interface,
+                    'InternalBalanceChanged',
+                    {
+                      user: TypesConverter.toAddress(recipient),
+                      token: tokens.MKR.address,
+                    }
+                  );
+
+                  mkrAmountOut = mkrTransfer.args.delta;
+                } else {
+                  const mkrTransfer = expectTransferEvent(
+                    receipt,
+                    { from: vault.address, to: TypesConverter.toAddress(recipient) },
+                    tokens.MKR
+                  );
+
+                  mkrAmountOut = mkrTransfer.args.value;
+                }
+
+                await expectChainedReferenceContents(relayer, toChainedReference(0), mkrAmountOut);
+              });
+
+              it('exits with exact bpt in chained reference', async () => {
+                await setChainedReferenceContents(relayer, toChainedReference(0), amountInBPT);
+
                 await expectBalanceChange(
                   async () =>
-                    relayer.connect(sender).multicall([
+                    relayer.connect(senderUser).multicall([
                       await encodeExitPool({
                         poolId: poolIdA,
                         userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
-                          amountInBPT,
+                          toChainedReference(0),
                           tokensA.findIndexBySymbol('MKR')
                         ),
                         toInternalBalance: useInternalBalance,
-                        outputReferences: {
-                          MKR: toChainedReference(0),
-                        },
-                      }),
-                      encodeSwap({
-                        poolId: poolIdA,
-                        tokenIn: tokens.MKR,
-                        tokenOut: tokens.DAI,
-                        amount: toChainedReference(0),
-                        fromInternalBalance: useInternalBalance,
                       }),
                     ]),
                   await getBPT(poolIdA),
                   {
-                    account: sender,
+                    account: TypesConverter.toAddress(sender),
                     changes: {
                       BPT: amountInBPT.mul(-1),
                     },
                   }
-                )
-              ).wait();
-
-              const {
-                args: { deltas },
-              } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
-                poolId: poolIdA,
+                );
               });
 
-              const {
-                args: { amountIn: amountInMKR },
-              } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+              it('is chainable with swaps via multicall', async () => {
+                const receipt = await (
+                  await expectBalanceChange(
+                    async () =>
+                      relayer.connect(senderUser).multicall([
+                        await encodeExitPool({
+                          poolId: poolIdA,
+                          userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(
+                            amountInBPT,
+                            tokensA.findIndexBySymbol('MKR')
+                          ),
+                          toInternalBalance: useInternalBalance,
+                          outputReferences: {
+                            MKR: toChainedReference(0),
+                          },
+                          recipient: TypesConverter.toAddress(sender), // Override default recipient to chain the output with the next swap.
+                        }),
+                        encodeSwap({
+                          poolId: poolIdA,
+                          tokenIn: tokens.MKR,
+                          tokenOut: tokens.DAI,
+                          amount: toChainedReference(0),
+                          fromInternalBalance: useInternalBalance,
+                        }),
+                      ]),
+                    await getBPT(poolIdA),
+                    {
+                      account: TypesConverter.toAddress(sender),
+                      changes: {
+                        BPT: amountInBPT.mul(-1),
+                      },
+                    }
+                  )
+                ).wait();
 
-              expect(deltas[tokensA.indexOf(tokens.MKR)].mul(-1)).to.equal(amountInMKR);
+                const {
+                  args: { deltas },
+                } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'PoolBalanceChanged', {
+                  poolId: poolIdA,
+                });
+
+                const {
+                  args: { amountIn: amountInMKR },
+                } = expectEvent.inIndirectReceipt(receipt, vault.instance.interface, 'Swap', { poolId: poolIdA });
+
+                expect(deltas[tokensA.indexOf(tokens.MKR)].mul(-1)).to.equal(amountInMKR);
+              });
             });
-          });
 
-          describe('bpt in for exact tokens out', () => {
-            const amountOutMKR = fp(1);
-            const amountOutDAI = fp(2);
+            describe('bpt in for exact tokens out', () => {
+              const amountOutMKR = fp(1);
+              const amountOutDAI = fp(2);
 
-            it('exits with immediate amounts', async () => {
-              await expectBalanceChange(
-                async () =>
-                  relayer.connect(sender).multicall([
-                    await encodeExitPool({
-                      poolId: poolIdA,
-                      userData: WeightedPoolEncoder.exitBPTInForExactTokensOut(
-                        [amountOutMKR, amountOutDAI],
-                        MAX_UINT256
-                      ),
-                      toInternalBalance: useInternalBalance,
-                    }),
-                  ]),
-                await getBPT(poolIdA),
-                {
-                  account: sender,
-                  changes: {
-                    BPT: ['lt', 0],
-                    MKR: amountOutMKR,
-                    DAI: amountOutDAI,
-                  },
-                }
-              );
+              it('exits with immediate amounts', async () => {
+                await expectBalanceChange(
+                  async () =>
+                    relayer.connect(senderUser).multicall([
+                      await encodeExitPool({
+                        poolId: poolIdA,
+                        userData: WeightedPoolEncoder.exitBPTInForExactTokensOut(
+                          [amountOutMKR, amountOutDAI],
+                          MAX_UINT256
+                        ),
+                        toInternalBalance: useInternalBalance,
+                      }),
+                    ]),
+                  await getBPT(poolIdA),
+                  {
+                    account: TypesConverter.toAddress(sender),
+                    changes: {
+                      BPT: ['lt', 0],
+                      MKR: amountOutMKR,
+                      DAI: amountOutDAI,
+                    },
+                  }
+                );
+              });
             });
-          });
+          }
         }
-
-        describe('exit to external balance', () => {
-          const toInternalBalance = false;
-          testExitPool(toInternalBalance);
-        });
-
-        describe('exit to internal balance', () => {
-          const toInternalBalance = true;
-          testExitPool(toInternalBalance);
-        });
       });
     });
   });
