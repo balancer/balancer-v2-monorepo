@@ -752,7 +752,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // all other token weights accordingly.
         // Clean up data structures and update the token count
         delete _tokenState[token];
-        _denormWeightSum -= _denormalizeWeight(tokenNormalizedWeight, _denormWeightSum);
+        _denormWeightSum -= tokenNormalizedWeight.mulUp(_denormWeightSum);
 
         _totalTokensCache = tokens.length - 1;
 
@@ -1316,21 +1316,5 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // charged to the remaining LPs for the full period. We then update the collection timestamp so that no AUM fees
         // are accrued over this period.
         _lastAumFeeCollectionTimestamp = block.timestamp;
-    }
-
-    // Functions that convert weights between internal (denormalized) and external (normalized) representations
-
-    /**
-     * @dev Converts a token weight from the internal representation (summing to denormWeightSum) to the normalized form
-     */
-    function _normalizeWeight(uint256 denormWeight, uint256 denormWeightSum) private pure returns (uint256) {
-        return denormWeight.divDown(denormWeightSum);
-    }
-
-    /**
-     * @dev Converts a token weight from normalized form to the internal representation (summing to denormWeightSum)
-     */
-    function _denormalizeWeight(uint256 weight, uint256 denormWeightSum) private pure returns (uint256) {
-        return weight.mulUp(denormWeightSum);
     }
 }
