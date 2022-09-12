@@ -30,17 +30,17 @@ library ManagedPoolStorageLib {
     // [ LP flag | swap flag | end swap fee | start swap fee | end fee time | start fee time | end wgt | start wgt ]
     // |MSB                                                                                                     LSB|
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
-    uint256 private constant _WEIGHT_END_TIME_OFFSET = 32;
-    uint256 private constant _SWAP_FEE_START_TIME_OFFSET = 64;
-    uint256 private constant _SWAP_FEE_END_TIME_OFFSET = 96;
-    uint256 private constant _SWAP_FEE_START_PERCENTAGE_OFFSET = 128;
-    uint256 private constant _SWAP_FEE_END_PERCENTAGE_OFFSET = 192;
-    uint256 private constant _SWAP_ENABLED_OFFSET = 254;
-    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 255;
+    uint256 private constant _WEIGHT_END_TIME_OFFSET = _WEIGHT_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
+    uint256 private constant _SWAP_FEE_START_TIME_OFFSET = _WEIGHT_END_TIME_OFFSET + _TIMESTAMP_WIDTH;
+    uint256 private constant _SWAP_FEE_END_TIME_OFFSET = _SWAP_FEE_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
+    uint256 private constant _SWAP_FEE_START_PCT_OFFSET = _SWAP_FEE_END_TIME_OFFSET + _TIMESTAMP_WIDTH;
+    uint256 private constant _SWAP_FEE_END_PCT_OFFSET = _SWAP_FEE_START_PCT_OFFSET + _SWAP_FEE_START_PCT_WIDTH;
+    uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_END_PCT_WIDTH;
+    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = _SWAP_ENABLED_OFFSET + 1;
 
     uint256 private constant _TIMESTAMP_WIDTH = 32;
-    uint256 private constant _SWAP_FEE_START_PERCENTAGE_WIDTH = 64;
-    uint256 private constant _SWAP_FEE_END_PERCENTAGE_WIDTH = 62;
+    uint256 private constant _SWAP_FEE_START_PCT_WIDTH = 64;
+    uint256 private constant _SWAP_FEE_END_PCT_WIDTH = 62;
 
     // Getters
 
@@ -124,8 +124,8 @@ library ManagedPoolStorageLib {
         }
         return
             miscData
-                .insertUint(startSwapFeePercentage, _SWAP_FEE_START_PERCENTAGE_OFFSET, _SWAP_FEE_START_PERCENTAGE_WIDTH)
-                .insertUint(endSwapFeePercentage, _SWAP_FEE_END_PERCENTAGE_OFFSET, _SWAP_FEE_END_PERCENTAGE_WIDTH);
+                .insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH)
+                .insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
     }
 
     // Private
@@ -147,10 +147,7 @@ library ManagedPoolStorageLib {
     {
         startTime = miscData.decodeUint(_SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
         endTime = miscData.decodeUint(_SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        startSwapFeePercentage = miscData.decodeUint(
-            _SWAP_FEE_START_PERCENTAGE_OFFSET,
-            _SWAP_FEE_START_PERCENTAGE_WIDTH
-        );
-        endSwapFeePercentage = miscData.decodeUint(_SWAP_FEE_END_PERCENTAGE_OFFSET, _SWAP_FEE_END_PERCENTAGE_WIDTH);
+        startSwapFeePercentage = miscData.decodeUint(_SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
+        endSwapFeePercentage = miscData.decodeUint(_SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
     }
 }
