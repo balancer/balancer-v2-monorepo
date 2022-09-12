@@ -565,12 +565,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _denormWeightSum = weightSumAfterAdd;
 
         // Finally, we store the new token's weight and scaling factor.
-        _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(
-            ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token),
-            normalizedWeight,
-            normalizedWeight,
-            weightSumAfterAdd
-        );
+        _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
         _totalTokensCache += 1;
 
         IERC20[] memory tokensToAdd = new IERC20[](1);

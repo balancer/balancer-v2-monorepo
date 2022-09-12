@@ -170,6 +170,25 @@ library ManagedPoolTokenLib {
             );
     }
 
+    /**
+     * @notice Initializes the token state for a new token.
+     * @dev We disallow passing separate start and end weights as a token should not be added while a weight change
+     * is ongoing.
+     * @param token - The ERC20 token of interest.
+     * @param normalizedWeight - The normalized weight of the token.
+     * @param denormWeightSum - The denormalized weight sum to be used to denormalize the provided weights.
+     */
+    function initializeTokenState(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 denormWeightSum
+    ) internal view returns (bytes32) {
+        bytes32 tokenState = bytes32(0);
+        tokenState = setTokenScalingFactor(tokenState, token);
+        tokenState = setTokenWeight(tokenState, normalizedWeight, normalizedWeight, denormWeightSum);
+        return tokenState;
+    }
+
     function _encodeWeight(uint256 normalizedWeight, uint256 denormWeightSum) private pure returns (uint256) {
         return normalizedWeight.mulUp(denormWeightSum).compress(_DENORM_WEIGHT_WIDTH, _MAX_DENORM_WEIGHT);
     }

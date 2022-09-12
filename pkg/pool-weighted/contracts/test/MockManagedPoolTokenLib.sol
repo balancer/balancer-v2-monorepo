@@ -82,4 +82,12 @@ contract MockManagedPoolTokenLib {
     function setTokenScalingFactor(bytes32 tokenState, IERC20 token) external view returns (bytes32) {
         return ManagedPoolTokenLib.setTokenScalingFactor(tokenState, token);
     }
+
+    function initializeTokenState(
+        IERC20 token,
+        uint256 normalizedWeight,
+        uint256 denormWeightSum
+    ) external view returns (bytes32) {
+        return ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, denormWeightSum);
+    }
 }
