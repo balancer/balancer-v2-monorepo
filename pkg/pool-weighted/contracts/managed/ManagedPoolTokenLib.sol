@@ -22,14 +22,26 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
 
+/**
+ * @title Managed Pool Token Library
+ * @notice Library for manipulating bitmaps used for storing token-related state in ManagedPool.
+ * @dev
+ *
+ * This library stores all token weights in a denormalized format, this allows us to add and remove tokens without
+ * having to adjust the weights of all other tokens. These denormalized weights can be converted to and from the
+ * normalized weight format expected by the Pool by dividing/multiplying by a normalization factor (commonly referred
+ * to as the `denormWeightSum`).
+ *
+ * This `denormWeightSum` is stored on a Pool level and so must be passed into this library on each call which impacts
+ * token weights. The "rules" of `denormWeightSum` as far as this library is concerned is simply that getters should
+ * receive the value of `denormWeightSum` used on the most recent call to `setTokenWeight`/`initializeTokenState`.
+ */
 library ManagedPoolTokenLib {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using WeightCompression for uint256;
 
-
     // Store scaling factor and start/end denormalized weights for each token
-    // Mapping should be more efficient than trying to compress it further
     // [ 123 bits |  5 bits  |  64 bits   |   64 bits    |
     // [ unused   | decimals | end denorm | start denorm |
     // |MSB                                           LSB|
@@ -84,6 +96,8 @@ library ManagedPoolTokenLib {
      * @notice Returns the token's start and end weights.
      * @param tokenState - The byte32 state of the token of interest.
      * @param denormWeightSum - The denormalized weight sum to be used to normalize the resulting weights.
+     * @return normalizedStartWeight - The start normalized weight of the token.
+     * @return normalizedEndWeight - The end normalized weight of the token.
      */
     function getTokenStartAndEndWeights(bytes32 tokenState, uint256 denormWeightSum)
         internal
@@ -96,6 +110,13 @@ library ManagedPoolTokenLib {
         );
     }
 
+    /**
+     * @notice Returns the token's start and end weights.
+     * @param tokenStates - A mapping from ERC20 token addresses to their token states.
+     * @param tokens - An array of ERC20 token addresses.
+     * @param denormWeightSum - The denormalized weight sum to be used to normalize returned weight.
+     * @return minimumNormalizedEndWeight - The smallest normalized end weight for the tokens provided.
+     */
     function getMinimumTokenEndWeight(
         mapping(IERC20 => bytes32) storage tokenStates,
         IERC20[] memory tokens,
