@@ -53,7 +53,7 @@ describe('ManagedPoolStorageLib', () => {
   }
 
   describe('swaps enabled', () => {
-    const SWAP_ENABLED_OFFSET = 254;
+    const SWAP_ENABLED_OFFSET = 252;
 
     it('stores the swaps enabled flag correctly', async () => {
       for (let i = 0; i < TEST_RUNS; i++) {
@@ -66,7 +66,7 @@ describe('ManagedPoolStorageLib', () => {
   });
 
   describe('lp allowlist', () => {
-    const MUST_ALLOWLIST_LPS_OFFSET = 255;
+    const MUST_ALLOWLIST_LPS_OFFSET = 253;
 
     it('stores the lp allowlist flag correctly', async () => {
       for (let i = 0; i < TEST_RUNS; i++) {

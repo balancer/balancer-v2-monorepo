@@ -22,25 +22,28 @@ import "../lib/GradualValueChange.sol";
 library ManagedPoolStorageLib {
     using WordCodec for bytes32;
 
+    /* solhint-disable max-line-length */
     // Store non-token-based values:
     // Start/end timestamps for gradual weight and swap fee updates
     // Start/end values of the swap fee
     // Flags for the LP allowlist and enabling/disabling trading
-    // [ 1 bit   |   1 bit   |    62 bits   |     64 bits    |    32 bits   |     32 bits    | 32 bits |  32 bits  ]
-    // [ LP flag | swap flag | end swap fee | start swap fee | end fee time | start fee time | end wgt | start wgt ]
-    // |MSB                                                                                                     LSB|
+    //
+    // [  2 bits |   1 bit  |   1 bit   |    62 bits   |     62 bits    |    32 bits   |     32 bits    | 32 bits |  32 bits  ]
+    // [  unused |  LP flag | swap flag | end swap fee | start swap fee | end fee time | start fee time | end wgt | start wgt ]
+    // |MSB                                                                                                                LSB|
+    /* solhint-enable max-line-length */
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
     uint256 private constant _WEIGHT_END_TIME_OFFSET = _WEIGHT_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
     uint256 private constant _SWAP_FEE_START_TIME_OFFSET = _WEIGHT_END_TIME_OFFSET + _TIMESTAMP_WIDTH;
     uint256 private constant _SWAP_FEE_END_TIME_OFFSET = _SWAP_FEE_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
     uint256 private constant _SWAP_FEE_START_PCT_OFFSET = _SWAP_FEE_END_TIME_OFFSET + _TIMESTAMP_WIDTH;
-    uint256 private constant _SWAP_FEE_END_PCT_OFFSET = _SWAP_FEE_START_PCT_OFFSET + _SWAP_FEE_START_PCT_WIDTH;
-    uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_END_PCT_WIDTH;
+    uint256 private constant _SWAP_FEE_END_PCT_OFFSET = _SWAP_FEE_START_PCT_OFFSET + _SWAP_FEE_PCT_WIDTH;
+    uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_PCT_WIDTH;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = _SWAP_ENABLED_OFFSET + 1;
 
     uint256 private constant _TIMESTAMP_WIDTH = 32;
-    uint256 private constant _SWAP_FEE_START_PCT_WIDTH = 64;
-    uint256 private constant _SWAP_FEE_END_PCT_WIDTH = 62;
+    // 2**60 ~= 1.1e18 so this is sufficient to store the full range of potential swap fees.
+    uint256 private constant _SWAP_FEE_PCT_WIDTH = 62;
 
     // Getters
 
@@ -140,30 +143,7 @@ library ManagedPoolStorageLib {
     ) internal pure returns (bytes32) {
         poolState = poolState.insertUint(startTime, _SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
         poolState = poolState.insertUint(endTime, _SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        poolState = poolState.insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
-        return poolState.insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
-    }
-
-    // Private
-
-    function _getWeightChangeFields(bytes32 poolState) private pure returns (uint256 startTime, uint256 endTime) {
-        startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
-    }
-
-    function _getSwapFeeFields(bytes32 poolState)
-        private
-        pure
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256 startSwapFeePercentage,
-            uint256 endSwapFeePercentage
-        )
-    {
-        startTime = poolState.decodeUint(_SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        endTime = poolState.decodeUint(_SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        startSwapFeePercentage = poolState.decodeUint(_SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
-        endSwapFeePercentage = poolState.decodeUint(_SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
+        poolState = poolState.insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_PCT_WIDTH);
+        return poolState.insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_PCT_WIDTH);
     }
 }
