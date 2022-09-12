@@ -1025,6 +1025,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
+        // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
+        // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
+
         return
             kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
                 ? _doExitRemoveToken(sender, balances, userData)
