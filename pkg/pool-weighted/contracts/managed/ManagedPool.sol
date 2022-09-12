@@ -990,7 +990,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // We want to start collecting AUM fees from this point onwards.
+        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
+        // so naturally charges no AUM fees.
         _lastAumFeeCollectionTimestamp = block.timestamp;
 
         return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
