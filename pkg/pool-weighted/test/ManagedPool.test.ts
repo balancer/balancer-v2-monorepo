@@ -1453,7 +1453,7 @@ describe('ManagedPool', function () {
                 });
 
                 context('with a non-zero mint amount', () => {
-                  it('mints BPT to the caller', async () => {
+                  it('mints BPT to the specified address', async () => {
                     const bptBalanceBefore = await pool.balanceOf(other.address);
 
                     const mintAmount = fp(17);

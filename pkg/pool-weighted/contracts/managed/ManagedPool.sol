@@ -541,7 +541,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @notice Adds a token to the Pool's list of tradeable tokens. This is a permissioned function.
      *
      * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
-     * token will have no balance - it is up to the controller to provide some.
+     * token will have no balance - it is up to the controller to provide some immediately after calling this function.
      *
      * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
      *
