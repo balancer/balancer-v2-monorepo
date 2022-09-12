@@ -1976,6 +1976,26 @@ describe('ManagedPool', function () {
           });
         });
       });
+
+      context('on updating the protocol fee cache', () => {
+        context('when the pool is uninitialized', () => {
+          itCollectsNoAUMFees(async () => {
+            const tx = await pool.updateProtocolFeePercentageCache();
+            return tx.wait();
+          });
+        });
+
+        context('when the pool is initialized', () => {
+          sharedBeforeEach('initialize pool', async () => {
+            await pool.init({ from: other, initialBalances });
+          });
+
+          itCollectsAUMFeesCorrectly(async () => {
+            const tx = await pool.updateProtocolFeePercentageCache();
+            return tx.wait();
+          });
+        });
+      });
     });
   });
 

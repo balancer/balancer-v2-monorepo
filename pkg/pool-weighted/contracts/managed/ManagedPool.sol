@@ -1268,6 +1268,24 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return (protocolBptAmount, managerBPTAmount);
     }
 
+    /**
+     * @dev Pays any due protocol and manager fees before updating the cached protocol fee percentages.
+     */
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        // We pay any due protocol or manager fees *before* updating the cache. This ensures that the new
+        // percentages only affect future operation of the Pool, and not past fees.
+
+        // Given that this operation is state-changing and relatively complex, we only allow it as long as the Pool is
+        // not paused.
+        _ensureNotPaused();
+
+        uint256 supplyBeforeFeeCollection = totalSupply();
+        if (supplyBeforeFeeCollection > 0) {
+            // We only need to collect AUM fees if the Pool has been initialized.
+            _collectAumManagementFees(supplyBeforeFeeCollection);
+        }
+    }
+
     // Recovery Mode
 
     function _onDisableRecoveryMode() internal override {
