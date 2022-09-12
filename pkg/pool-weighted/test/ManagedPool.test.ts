@@ -1963,23 +1963,9 @@ describe('ManagedPool', function () {
             await pool.init({ from: other, initialBalances });
           });
 
-          context('on the first attempt to collect fees', () => {
-            itCollectsNoAUMFees(async () => {
-              const tx = await pool.collectAumManagementFees(owner);
-              return tx.wait();
-            });
-          });
-
-          context('on subsequent attempts to collect fees', () => {
-            sharedBeforeEach('perform first fee collection', async () => {
-              // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
-              await pool.collectAumManagementFees(owner);
-            });
-
-            itCollectsAUMFeesCorrectly(async () => {
-              const tx = await pool.collectAumManagementFees(owner);
-              return tx.wait();
-            });
+          itCollectsAUMFeesCorrectly(async () => {
+            const tx = await pool.collectAumManagementFees(owner);
+            return tx.wait();
           });
         });
       });
@@ -1995,8 +1981,6 @@ describe('ManagedPool', function () {
         context('after pool initialization', () => {
           sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
-            // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
-            await pool.collectAumManagementFees(owner);
           });
 
           itCollectsAUMFeesCorrectly(async () => {
@@ -2010,8 +1994,6 @@ describe('ManagedPool', function () {
       context('on pool exits', () => {
         sharedBeforeEach('initialize pool', async () => {
           await pool.init({ from: other, initialBalances });
-          // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
-          await pool.collectAumManagementFees(owner);
         });
 
         itCollectsAUMFeesCorrectly(async () => {
@@ -2024,8 +2006,6 @@ describe('ManagedPool', function () {
         context('after pool initialization', () => {
           sharedBeforeEach('initialize pool', async () => {
             await pool.init({ from: other, initialBalances });
-            // AUM fees only accrue after the first collection attempt so we attempt to collect fees here.
-            await pool.collectAumManagementFees(owner);
           });
 
           itCollectsAUMFeesCorrectly(async () => {
