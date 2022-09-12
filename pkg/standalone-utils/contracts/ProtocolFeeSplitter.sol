@@ -26,6 +26,13 @@ interface Pool {
     function getOwner() external returns (address);
 }
 
+// Packed to use 1 storage slot
+// 1e18 (100% - maximum fee value) can fit in uint96
+struct RevenueShareSettings {
+    uint96 revenueSharePercentageOverride;
+    address beneficiary;
+}
+
 /**
  * @dev This contract is responsible for splitting the BPT profits collected
  * by ProtocolFeeCollector between the pool's owner and Balancers DAO treasury
@@ -48,8 +55,8 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     // Can be updated by BAL governance (1e18 = 100%, 1e16 = 1%).
     uint256 public defaultRevenueSharingFeePercentage;
 
-    // Allows for a pool revenue override
-    mapping(bytes32 => uint256) public revenueSharePerPool;
+    // poolId => PoolSettings
+    mapping(bytes32 => RevenueShareSettings) public poolSettings;
 
     constructor(IProtocolFeesCollector _protocolFeesCollector, address _treasury)
         // The ProtocolFeeSplitter is a singleton, so it simply uses its own address to disambiguate action
@@ -67,7 +74,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     {
         _require(newSwapFeePercentage >= _MIN_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_LOW);
         _require(newSwapFeePercentage <= _MAX_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
-        revenueSharePerPool[poolId] = newSwapFeePercentage;
+        poolSettings[poolId].revenueSharePercentageOverride = uint96(newSwapFeePercentage);
         emit PoolRevenueShareChanged(poolId, newSwapFeePercentage);
     }
 
@@ -75,6 +82,12 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         _require(feePercentage <= _MAX_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
         defaultRevenueSharingFeePercentage = feePercentage;
         emit DefaultRevenueSharingFeePercentageChanged(feePercentage);
+    }
+
+    function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external override {
+        _require(msg.sender == Pool(VaultHelpers.toPoolAddress(poolId)).getOwner(), Errors.SENDER_NOT_ALLOWED);
+        poolSettings[poolId].beneficiary = newBeneficiary;
+        emit PoolBeneficiaryChanged(poolId, newBeneficiary);
     }
 
     function collectFees(bytes32 poolId) external override {
@@ -91,17 +104,17 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = bpt;
 
-        address poolOwner = Pool(pool).getOwner();
+        address beneficiary = poolSettings[poolId].beneficiary;
 
-        if (poolOwner == address(0) || poolOwner == _DELEGATE_OWNER) {
+        if (beneficiary == address(0)) {
             uint256[] memory amounts = new uint256[](1);
             amounts[0] = feeCollectorBptBalance;
             protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasury);
-            emit FeesCollected(poolId, poolOwner, 0, treasury, feeCollectorBptBalance);
+            emit FeesCollected(poolId, beneficiary, 0, treasury, feeCollectorBptBalance);
         } else {
             uint256[] memory amounts = new uint256[](1);
 
-            uint256 poolFeeOverride = revenueSharePerPool[poolId];
+            uint256 poolFeeOverride = poolSettings[poolId].revenueSharePercentageOverride;
             uint256 feePercentage = poolFeeOverride != 0 ? poolFeeOverride : defaultRevenueSharingFeePercentage;
 
             (uint256 ownerAmount, uint256 treasuryAmount) = _computeAmounts(feeCollectorBptBalance, feePercentage);
@@ -110,13 +123,13 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
             if (ownerAmount > 0) {
                 // mutate array, and set the owner amount for owner withdrawal
                 amounts[0] = ownerAmount;
-                protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, poolOwner);
+                protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, beneficiary);
             }
 
             // mutate array, and set the treasury amount for treasury withdrawal
             amounts[0] = treasuryAmount;
             protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasury);
-            emit FeesCollected(poolId, poolOwner, ownerAmount, treasury, treasuryAmount);
+            emit FeesCollected(poolId, beneficiary, ownerAmount, treasury, treasuryAmount);
         }
     }
 
