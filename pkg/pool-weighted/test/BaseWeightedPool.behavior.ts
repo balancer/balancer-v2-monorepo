@@ -8,6 +8,7 @@ import { BigNumberish, bn, fp, fpMul, pct } from '@balancer-labs/v2-helpers/src/
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 export function itBehavesAsWeightedPool(
   numberOfTokens: number,
@@ -17,7 +18,7 @@ export function itBehavesAsWeightedPool(
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
-  let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress, assetManager: SignerWithAddress;
+  let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 
   let pool: WeightedPool, allTokens: TokenList, tokens: TokenList;
 
@@ -26,18 +27,17 @@ export function itBehavesAsWeightedPool(
   const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
   async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
-    const assetManagers = Array(numberOfTokens).fill(assetManager.address);
-
-    params = Object.assign(
-      {},
-      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType },
-      params
-    );
-    pool = await WeightedPool.create(params);
+    pool = await WeightedPool.create({
+      tokens,
+      weights,
+      swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      poolType,
+      ...params,
+    });
   }
 
   before('setup signers', async () => {
-    [, lp, recipient, other, assetManager] = await ethers.getSigners();
+    [, lp, recipient, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -79,10 +79,10 @@ export function itBehavesAsWeightedPool(
         expect(await pool.totalSupply()).to.be.equal(0);
       });
 
-      it('sets the asset managers', async () => {
+      it('sets the asset managers to zero', async () => {
         await tokens.asyncEach(async (token) => {
           const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(assetManager.address);
+          expect(info.assetManager).to.equal(ZERO_ADDRESS);
         });
       });
 

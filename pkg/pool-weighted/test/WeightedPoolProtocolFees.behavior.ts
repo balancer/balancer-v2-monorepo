@@ -4,6 +4,7 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -19,6 +20,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
   const numTokens = MAX_TOKENS;
 
+  let vault: Vault;
   let pool: WeightedPool;
   let tokens: TokenList;
   let rateProviders: Contract[];
@@ -36,22 +38,21 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
     const initialBalanceGrowth = bn(3);
 
     sharedBeforeEach(async () => {
+      vault = await Vault.create({ mocked: true });
       tokens = await TokenList.create(numTokens, { sorted: true, varyDecimals: true });
       rateProviders = await tokens.asyncMap(() => deploy('v2-pool-utils/MockRateProvider'));
 
+      await vault.setSwapFeePercentage(protocolFeePercentage);
+      ({ address: protocolFeesCollector } = await vault.getFeesCollector());
+
       pool = await WeightedPool.create({
+        vault,
         poolType: WeightedPoolType.WEIGHTED_POOL,
         tokens,
         weights: WEIGHTS.slice(0, numTokens),
         rateProviders,
         swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       });
-
-      ({ address: protocolFeesCollector } = await pool.vault.getFeesCollector());
-
-      // Set the percentage in the Vault and update the cache, since the pool now reads from it
-      await pool.vault.setSwapFeePercentage(protocolFeePercentage);
-      await pool.instance.updateProtocolFeePercentageCache();
     });
 
     describe('last post join/exit invariant', () => {

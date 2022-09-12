@@ -1,6 +1,6 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, fp, BigNumber, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, BigNumber } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import {
   calculateAnalyticalInvariantForTwoTokens,
@@ -421,32 +421,6 @@ describe('StableMath', function () {
                 SWAP_FEE
               );
             }
-          }
-        });
-      }
-    });
-  });
-
-  context('get rate', () => {
-    async function checkRate(balances: BigNumber[], amp: number, supply: BigNumber): Promise<void> {
-      const ampParameter = bn(amp).mul(AMP_PRECISION);
-      const actualRate = await mock.getRate(balances, ampParameter, supply);
-      const currentInvariant = calculateInvariant(balances, ampParameter);
-      const expectedRate = fp(fromFp(currentInvariant).div(fromFp(supply)));
-
-      expectEqualWithError(actualRate, expectedRate, MAX_RELATIVE_ERROR);
-    }
-
-    context('check over a range of inputs', () => {
-      for (let numTokens = 2; numTokens <= 5; numTokens++) {
-        const balances = Array.from({ length: numTokens }, () => random(250, 350)).map(fp);
-
-        // Supply if all balances were maxed; rate should be ~ 0.7 - 1.0
-        const supply = fp(350).mul(numTokens);
-
-        it(`computes the rate for ${numTokens} tokens`, async () => {
-          for (let amp = 100; amp <= 5000; amp += 100) {
-            await checkRate(balances, amp, supply);
           }
         });
       }
