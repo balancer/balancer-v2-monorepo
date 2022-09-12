@@ -46,6 +46,7 @@ library ManagedPoolStorageLib {
 
     /**
      * @notice Returns whether the Pool currently allows swaps (and by extension, non-proportional joins/exits).
+     * @param poolState - The byte32 state of the Pool.
      */
     function getSwapsEnabled(bytes32 poolState) internal pure returns (bool) {
         return poolState.decodeBool(_SWAP_ENABLED_OFFSET);
@@ -53,6 +54,7 @@ library ManagedPoolStorageLib {
 
     /**
      * @notice Returns whether addresses must be allowlisted to add liquidity to the Pool.
+     * @param poolState - The byte32 state of the Pool.
      */
     function getLPAllowlistEnabled(bytes32 poolState) internal pure returns (bool) {
         return poolState.decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
@@ -60,6 +62,7 @@ library ManagedPoolStorageLib {
 
     /**
      * @notice Returns the percentage progress through the current gradual weight change.
+     * @param poolState - The byte32 state of the Pool.
      */
     function getGradualWeightChangeProgress(bytes32 poolState) internal view returns (uint256) {
         (uint256 startTime, uint256 endTime) = _getWeightChangeFields(poolState);
@@ -71,6 +74,7 @@ library ManagedPoolStorageLib {
      * @notice Returns the current value of the swap fee percentage.
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
+     * @param poolState - The byte32 state of the Pool.
      */
     function getSwapFeePercentage(bytes32 poolState) internal view returns (uint256) {
         (
@@ -86,14 +90,30 @@ library ManagedPoolStorageLib {
 
     // Setters
 
+    /**
+     * @notice Sets the "swaps enabled" flag to `enabled`.
+     * @param poolState - The byte32 state of the Pool.
+     * @param enabled - A boolean flag for whether swaps are to be enabled.
+     */
     function setSwapsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
         return poolState.insertBool(enabled, _SWAP_ENABLED_OFFSET);
     }
 
+    /**
+     * @notice Sets the "LP allowlist enabled" flag to `enabled`.
+     * @param poolState - The byte32 state of the Pool.
+     * @param enabled - A boolean flag for whether the LP allowlist is to be enforced.
+     */
     function setLPAllowlistEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
         return poolState.insertBool(enabled, _MUST_ALLOWLIST_LPS_OFFSET);
     }
 
+    /**
+     * @notice Sets the start and end times of a gradual weight change.
+     * @param poolState - The byte32 state of the Pool.
+     * @param startTime - The timestamp at which the gradual weight change is to start.
+     * @param endTime - The timestamp at which the gradual weight change is to finish.
+     */
     function setWeightChangeData(
         bytes32 poolState,
         uint256 startTime,
@@ -103,6 +123,14 @@ library ManagedPoolStorageLib {
         return poolState.insertUint(endTime, _WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
     }
 
+    /**
+     * @notice Sets the start and end times of a gradual swap fee change.
+     * @param poolState - The byte32 state of the Pool.
+     * @param startTime - The timestamp at which the gradual swap fee change is to start.
+     * @param endTime - The timestamp at which the gradual swap fee change is to finish.
+     * @param startSwapFeePercentage - The desired swap fee value at the start of the gradual swap fee change.
+     * @param endSwapFeePercentage - The desired swap fee value at the end of the gradual swap fee change.
+     */
     function setSwapFeeData(
         bytes32 poolState,
         uint256 startTime,
