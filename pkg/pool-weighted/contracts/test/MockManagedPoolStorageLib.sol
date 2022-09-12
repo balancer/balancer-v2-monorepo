@@ -22,6 +22,10 @@ contract MockManagedPoolStorageLib {
 
     // Getters
 
+    function getRecoveryModeEnabled(bytes32 poolState) external pure returns (bool) {
+        return poolState.getRecoveryModeEnabled();
+    }
+
     function getSwapsEnabled(bytes32 miscData) external pure returns (bool) {
         return miscData.getSwapsEnabled();
     }
@@ -47,6 +51,10 @@ contract MockManagedPoolStorageLib {
     }
 
     // Setters
+
+    function setRecoveryModeEnabled(bytes32 poolState, bool enabled) external pure returns (bytes32) {
+        return poolState.setRecoveryModeEnabled(enabled);
+    }
 
     function setSwapsEnabled(bytes32 miscData, bool enabled) external pure returns (bytes32) {
         return miscData.setSwapsEnabled(enabled);

@@ -52,6 +52,19 @@ describe('ManagedPoolStorageLib', () => {
     }
   }
 
+  describe('recovery mode', () => {
+    const RECOVERY_MODE_OFFSET = 254;
+
+    it('stores the recovery mode enabled flag correctly', async () => {
+      for (let i = 0; i < TEST_RUNS; i++) {
+        const word = hexlify(randomBytes(32));
+
+        await assertBool(lib.getRecoveryModeEnabled, lib.setRecoveryModeEnabled, word, true, RECOVERY_MODE_OFFSET);
+        await assertBool(lib.getRecoveryModeEnabled, lib.setRecoveryModeEnabled, word, false, RECOVERY_MODE_OFFSET);
+      }
+    });
+  });
+
   describe('swaps enabled', () => {
     const SWAP_ENABLED_OFFSET = 252;
 
