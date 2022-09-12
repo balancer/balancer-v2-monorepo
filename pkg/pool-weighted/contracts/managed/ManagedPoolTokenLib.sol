@@ -89,6 +89,30 @@ library ManagedPoolTokenLib {
         );
     }
 
+    function getMinimumTokenEndWeight(
+        mapping(IERC20 => bytes32) storage tokenStates,
+        IERC20[] memory tokens,
+        uint256 denormWeightSum
+    ) internal view returns (uint256) {
+        uint256 numTokens = tokens.length;
+
+        // We search for the minimum encoded weight as this corresponds to the minimum normalized weight.
+        // This allows us to only decompress a single weight.
+        uint256 minimumCompressedWeight = type(uint256).max;
+        for (uint256 i = 0; i < numTokens; i++) {
+            uint256 newCompressedWeight = tokenStates[tokens[i]].decodeUint(
+                _END_DENORM_WEIGHT_OFFSET,
+                _DENORM_WEIGHT_WIDTH
+            );
+            if (newCompressedWeight < minimumCompressedWeight) {
+                minimumCompressedWeight = newCompressedWeight;
+            }
+        }
+
+        // Finally decompress and normalize the found weight
+        return _decodeWeight(minimumCompressedWeight, denormWeightSum);
+    }
+
     // Setters
 
     /**

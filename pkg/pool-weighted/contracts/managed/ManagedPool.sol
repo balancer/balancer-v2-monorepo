@@ -655,21 +655,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
         // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.
         // If any would fail this check, it would be the token with the lowest weight, so we search through all
-        // tokens to find the minimum weight. We can delay decompressing the weight until after the search.
-        uint256 minimumCompressedWeight = type(uint256).max;
-        for (uint256 i = 0; i < numTokens; i++) {
-            uint256 newCompressedWeight = _getTokenData(tokens[i]).decodeUint(_END_DENORM_WEIGHT_OFFSET, 64);
-            if (newCompressedWeight < minimumCompressedWeight) {
-                minimumCompressedWeight = newCompressedWeight;
-            }
-        }
-
-        // Now we know the minimum weight we can decompress it and check that it doesn't get pushed below the minimum.
-        _require(
-            minimumCompressedWeight.decompress(64, _MAX_DENORM_WEIGHT) >=
-                _denormalizeWeight(WeightedMath._MIN_WEIGHT, weightSumAfterAdd),
-            Errors.MIN_WEIGHT
+        // tokens to find the minimum weight and normalize it with the new value for `denormWeightSum`.
+        uint256 minimumNormalizedWeight = ManagedPoolTokenLib.getMinimumTokenEndWeight(
+            _tokenState,
+            tokens,
+            weightSumAfterAdd
         );
+        // Now we know the minimum weight we can check that it doesn't get pushed below the minimum.
+        _require(minimumNormalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         return weightSumAfterAdd;
     }
