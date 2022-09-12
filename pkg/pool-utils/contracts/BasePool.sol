@@ -22,6 +22,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -673,73 +674,6 @@ abstract contract BasePool is
 
     function getScalingFactors() external view override returns (uint256[] memory) {
         return _scalingFactors();
-    }
-
-    /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not.
-     */
-    function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        // Upscale rounding wouldn't necessarily always go in the same direction: in a swap for example the balance of
-        // token in should be rounded up, and that of token out rounded down. This is the only place where we round in
-        // the same direction for all amounts, as the impact of this rounding is expected to be minimal (and there's no
-        // rounding error unless `_scalingFactor()` is overriden).
-        return FixedPoint.mulDown(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
-     */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded down.
-     */
-    function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divDown(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     */
-    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded up.
-     */
-    function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divUp(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     */
-    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
-        }
     }
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
