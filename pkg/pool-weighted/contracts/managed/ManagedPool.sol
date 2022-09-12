@@ -23,7 +23,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
@@ -891,16 +890,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // invariantGrowthRatio = invariant after trade / invariant before trade
         //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
         //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
+        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
             _getNormalizedWeight(swapRequest.tokenIn),
-            _getNormalizedWeight(swapRequest.tokenOut)
-        );
-        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+            _getNormalizedWeight(swapRequest.tokenOut),
             FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
             FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
         );
 
-        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
         _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountOut;
@@ -922,16 +918,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // invariantGrowthRatio = invariant after trade / invariant before trade
         //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
         //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256[] memory balanceRatios = ArrayHelpers.arrayFill(
+        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
+            _getNormalizedWeight(swapRequest.tokenIn),
+            _getNormalizedWeight(swapRequest.tokenOut),
             FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
             FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
         );
-        uint256[] memory normalizedWeights = ArrayHelpers.arrayFill(
-            _getNormalizedWeight(swapRequest.tokenIn),
-            _getNormalizedWeight(swapRequest.tokenOut)
-        );
 
-        uint256 invariantGrowthRatio = WeightedMath._calculateInvariant(normalizedWeights, balanceRatios);
         _payProtocolAndManagementFees(invariantGrowthRatio);
 
         return amountIn;
