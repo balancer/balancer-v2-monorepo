@@ -17,6 +17,8 @@ pragma solidity ^0.7.0;
 import "../math/FixedPoint.sol";
 import "./InputHelpers.sol";
 
+// solhint-disable
+
 // Single Value
 
 /**
