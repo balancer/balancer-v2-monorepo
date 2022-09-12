@@ -210,6 +210,8 @@ library ManagedPoolTokenLib {
         return tokenState;
     }
 
+    // Private functions
+
     function _encodeWeight(uint256 normalizedWeight, uint256 denormWeightSum) private pure returns (uint256) {
         return normalizedWeight.mulUp(denormWeightSum).compress(_DENORM_WEIGHT_WIDTH, _MAX_DENORM_WEIGHT);
     }
