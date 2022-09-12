@@ -41,10 +41,12 @@ library ManagedPoolTokenLib {
     using FixedPoint for uint256;
     using WeightCompression for uint256;
 
-    // Store scaling factor and start/end denormalized weights for each token
-    // [ 123 bits |  5 bits  |  64 bits   |   64 bits    |
-    // [ unused   | decimals | end denorm | start denorm |
-    // |MSB                                           LSB|
+    // Store token-based values:
+    // Token scaling factor (encoded as the scaling factor's exponent / token decimals).
+    // Token start and end denormalized weights.
+    // [ 123 bits |  5 bits  |       64 bits     |       64 bits       |
+    // [  unused  | decimals | end denorm weight | start denorm weight |
+    // |MSB                                                         LSB|
     uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = _START_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
     uint256 private constant _DECIMAL_DIFF_OFFSET = _END_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
