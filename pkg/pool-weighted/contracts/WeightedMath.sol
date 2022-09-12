@@ -74,11 +74,12 @@ library WeightedMath {
     }
 
     // Two token specific implementation of `_calculateInvariant`.
-    function _calculateTwoTokenInvariant(uint256[2] memory normalizedWeights, uint256[2] memory balances)
-        internal
-        pure
-        returns (uint256 invariant)
-    {
+    function _calculateTwoTokenInvariant(
+        uint256 normalizedWeight0,
+        uint256 normalizedWeight1,
+        uint256 balance0,
+        uint256 balance1
+    ) internal pure returns (uint256 invariant) {
         /**********************************************************************************************
         // invariant               _____                                                             //
         // wi = weight index i      | |      wi                                                      //
@@ -86,7 +87,7 @@ library WeightedMath {
         // i = invariant                                                                             //
         **********************************************************************************************/
 
-        invariant = balances[0].powDown(normalizedWeights[0]).mulDown(balances[1].powDown(normalizedWeights[1]));
+        invariant = balance0.powDown(normalizedWeight0).mulDown(balance1.powDown(normalizedWeight1));
 
         _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
