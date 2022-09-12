@@ -47,22 +47,22 @@ library ManagedPoolStorageLib {
     /**
      * @notice Returns whether the Pool currently allows swaps (and by extension, non-proportional joins/exits).
      */
-    function getSwapsEnabled(bytes32 miscData) internal pure returns (bool) {
-        return miscData.decodeBool(_SWAP_ENABLED_OFFSET);
+    function getSwapsEnabled(bytes32 poolState) internal pure returns (bool) {
+        return poolState.decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
     /**
      * @notice Returns whether addresses must be allowlisted to add liquidity to the Pool.
      */
-    function getLPAllowlistEnabled(bytes32 miscData) internal pure returns (bool) {
-        return miscData.decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
+    function getLPAllowlistEnabled(bytes32 poolState) internal pure returns (bool) {
+        return poolState.decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
     }
 
     /**
      * @notice Returns the percentage progress through the current gradual weight change.
      */
-    function getGradualWeightChangeProgress(bytes32 miscData) internal view returns (uint256) {
-        (uint256 startTime, uint256 endTime) = _getWeightChangeFields(miscData);
+    function getGradualWeightChangeProgress(bytes32 poolState) internal view returns (uint256) {
+        (uint256 startTime, uint256 endTime) = _getWeightChangeFields(poolState);
 
         return GradualValueChange.calculateValueChangeProgress(startTime, endTime);
     }
@@ -72,13 +72,13 @@ library ManagedPoolStorageLib {
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
      */
-    function getSwapFeePercentage(bytes32 miscData) internal view returns (uint256) {
+    function getSwapFeePercentage(bytes32 poolState) internal view returns (uint256) {
         (
             uint256 startTime,
             uint256 endTime,
             uint256 startSwapFeePercentage,
             uint256 endSwapFeePercentage
-        ) = _getSwapFeeFields(miscData);
+        ) = _getSwapFeeFields(poolState);
 
         return
             GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
@@ -86,44 +86,44 @@ library ManagedPoolStorageLib {
 
     // Setters
 
-    function setSwapsEnabled(bytes32 miscData, bool enabled) internal pure returns (bytes32) {
-        return miscData.insertBool(enabled, _SWAP_ENABLED_OFFSET);
+    function setSwapsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+        return poolState.insertBool(enabled, _SWAP_ENABLED_OFFSET);
     }
 
-    function setLPAllowlistEnabled(bytes32 miscData, bool enabled) internal pure returns (bytes32) {
-        return miscData.insertBool(enabled, _MUST_ALLOWLIST_LPS_OFFSET);
+    function setLPAllowlistEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+        return poolState.insertBool(enabled, _MUST_ALLOWLIST_LPS_OFFSET);
     }
 
     function setWeightChangeData(
-        bytes32 miscData,
+        bytes32 poolState,
         uint256 startTime,
         uint256 endTime
     ) internal pure returns (bytes32) {
-        miscData = miscData.insertUint(startTime, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        return miscData.insertUint(endTime, _WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        poolState = poolState.insertUint(startTime, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        return poolState.insertUint(endTime, _WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
     }
 
     function setSwapFeeData(
-        bytes32 miscData,
+        bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal pure returns (bytes32) {
-        miscData = miscData.insertUint(startTime, _SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        miscData = miscData.insertUint(endTime, _SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        miscData = miscData.insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
-        return miscData.insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
+        poolState = poolState.insertUint(startTime, _SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        poolState = poolState.insertUint(endTime, _SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        poolState = poolState.insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
+        return poolState.insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
     }
 
     // Private
 
-    function _getWeightChangeFields(bytes32 miscData) private pure returns (uint256 startTime, uint256 endTime) {
-        startTime = miscData.decodeUint(_WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        endTime = miscData.decodeUint(_WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
+    function _getWeightChangeFields(bytes32 poolState) private pure returns (uint256 startTime, uint256 endTime) {
+        startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
     }
 
-    function _getSwapFeeFields(bytes32 miscData)
+    function _getSwapFeeFields(bytes32 poolState)
         private
         pure
         returns (
@@ -133,9 +133,9 @@ library ManagedPoolStorageLib {
             uint256 endSwapFeePercentage
         )
     {
-        startTime = miscData.decodeUint(_SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        endTime = miscData.decodeUint(_SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
-        startSwapFeePercentage = miscData.decodeUint(_SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
-        endSwapFeePercentage = miscData.decodeUint(_SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
+        startTime = poolState.decodeUint(_SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        endTime = poolState.decodeUint(_SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        startSwapFeePercentage = poolState.decodeUint(_SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
+        endSwapFeePercentage = poolState.decodeUint(_SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
     }
 }
