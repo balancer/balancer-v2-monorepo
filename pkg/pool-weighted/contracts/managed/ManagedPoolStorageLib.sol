@@ -99,12 +99,8 @@ library ManagedPoolStorageLib {
         uint256 startTime,
         uint256 endTime
     ) internal pure returns (bytes32) {
-        return
-            miscData.insertUint(startTime, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH).insertUint(
-                endTime,
-                _WEIGHT_END_TIME_OFFSET,
-                _TIMESTAMP_WIDTH
-            );
+        miscData = miscData.insertUint(startTime, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        return miscData.insertUint(endTime, _WEIGHT_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
     }
 
     function setSwapFeeData(
@@ -114,18 +110,10 @@ library ManagedPoolStorageLib {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal pure returns (bytes32) {
-        // Add scope to prevent "Stack too deep"
-        {
-            miscData = miscData.insertUint(startTime, _SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH).insertUint(
-                endTime,
-                _SWAP_FEE_END_TIME_OFFSET,
-                _TIMESTAMP_WIDTH
-            );
-        }
-        return
-            miscData
-                .insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH)
-                .insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
+        miscData = miscData.insertUint(startTime, _SWAP_FEE_START_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        miscData = miscData.insertUint(endTime, _SWAP_FEE_END_TIME_OFFSET, _TIMESTAMP_WIDTH);
+        miscData = miscData.insertUint(startSwapFeePercentage, _SWAP_FEE_START_PCT_OFFSET, _SWAP_FEE_START_PCT_WIDTH);
+        return miscData.insertUint(endSwapFeePercentage, _SWAP_FEE_END_PCT_OFFSET, _SWAP_FEE_END_PCT_WIDTH);
     }
 
     // Private
