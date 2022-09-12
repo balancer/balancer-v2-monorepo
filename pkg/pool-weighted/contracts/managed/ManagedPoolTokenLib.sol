@@ -27,10 +27,6 @@ library ManagedPoolTokenLib {
     using FixedPoint for uint256;
     using WeightCompression for uint256;
 
-    // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
-    // denormalized weight: independent of the current _denormWeightSum, which avoids having to recompute the denorm
-    // weights as the sum changes.
-    uint256 private constant _MAX_DENORM_WEIGHT = 1e22; // FP 10,000
 
     // Store scaling factor and start/end denormalized weights for each token
     // Mapping should be more efficient than trying to compress it further
@@ -43,6 +39,10 @@ library ManagedPoolTokenLib {
 
     uint256 private constant _DENORM_WEIGHT_WIDTH = 64;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
+
+    // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
+    // denormalized weight. This maximum value is defined by the number of bits available in storage.
+    uint256 private constant _MAX_DENORM_WEIGHT = 2**_DENORM_WEIGHT_WIDTH;
 
     // Getters
 
