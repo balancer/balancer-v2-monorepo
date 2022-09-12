@@ -525,6 +525,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.8.3
+    hardhat-ignore-warnings: ^0.1.2
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
