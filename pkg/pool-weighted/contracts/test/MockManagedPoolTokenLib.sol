@@ -20,6 +20,8 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC2
 import "../managed/ManagedPoolTokenLib.sol";
 
 contract MockManagedPoolTokenLib {
+    mapping(IERC20 => bytes32) private _tokenState;
+
     // Getters
 
     function getTokenScalingFactor(bytes32 tokenState) external pure returns (uint256) {
@@ -40,6 +42,29 @@ contract MockManagedPoolTokenLib {
         returns (uint256, uint256)
     {
         return ManagedPoolTokenLib.getTokenStartAndEndWeights(tokenState, denormWeightSum);
+    }
+
+    function getMinimumTokenEndWeight(
+        IERC20[] calldata tokens,
+        uint256[] calldata tokenWeights,
+        uint256 denormWeightSum
+    ) external returns (uint256) {
+        require(_tokenState[IERC20(0)] == 0, "Mock is dirty");
+        _tokenState[IERC20(0)] = bytes32("0x01");
+
+        // We need to build the `_tokenState` mapping before we pass it to `ManagedPoolTokenLib`.
+        for (uint256 i = 0; i < tokens.length; i++) {
+            // We pass in a zero start weight for each token.
+            // We do not want to read the start weight and this makes it obvious if this occurs.
+            _tokenState[tokens[i]] = ManagedPoolTokenLib.setTokenWeight(
+                bytes32(0),
+                0,
+                tokenWeights[i],
+                denormWeightSum
+            );
+        }
+
+        return ManagedPoolTokenLib.getMinimumTokenEndWeight(_tokenState, tokens, denormWeightSum);
     }
 
     // Setters
