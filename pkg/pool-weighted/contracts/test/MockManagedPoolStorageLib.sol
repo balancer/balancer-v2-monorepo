@@ -38,8 +38,25 @@ contract MockManagedPoolStorageLib {
         return miscData.getGradualWeightChangeProgress();
     }
 
+    function getWeightChangeFields(bytes32 miscData) external pure returns (uint256 startTime, uint256 endTime) {
+        return miscData.getWeightChangeFields();
+    }
+
     function getSwapFeePercentage(bytes32 miscData) external view returns (uint256) {
         return miscData.getSwapFeePercentage();
+    }
+
+    function getSwapFeeFields(bytes32 miscData)
+        external
+        pure
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        )
+    {
+        return miscData.getSwapFeeFields();
     }
 
     // Setters

@@ -97,18 +97,26 @@ describe('ManagedPoolStorageLib', () => {
 
     async function assertSetWeightChange(
       getter: (word: string) => Promise<BigNumber>,
+      endpointsGetter: (word: string) => Promise<[BigNumber, BigNumber]>,
       setter: (word: string, startTime: BigNumberish, endTime: BigNumberish) => Promise<string>,
       word: string,
-      startTime: BigNumberish,
-      endTime: BigNumberish
+      expectedStartTime: BigNumberish,
+      expectedEndTime: BigNumberish
     ) {
-      const result = await setter(word, startTime, endTime);
+      const result = await setter(word, expectedStartTime, expectedEndTime);
       // Must not have affected unexpected bits.
       checkMaskedWord(result, word, WEIGHT_START_TIME_OFFSET, TOTAL_WEIGHT_FIELDS_WIDTH);
 
       const now = await currentTimestamp();
 
-      expect(await getter(result)).to.equalWithError(expectedProgress(now, startTime, endTime), MAX_RELATIVE_ERROR);
+      expect(await getter(result)).to.equalWithError(
+        expectedProgress(now, expectedStartTime, expectedEndTime),
+        MAX_RELATIVE_ERROR
+      );
+
+      const [startTime, endTime] = await endpointsGetter(result);
+      expect(startTime).to.be.eq(expectedStartTime);
+      expect(endTime).to.be.eq(expectedEndTime);
     }
 
     it('stores the weight change timestamps correctly', async () => {
@@ -119,6 +127,7 @@ describe('ManagedPoolStorageLib', () => {
 
         await assertSetWeightChange(
           lib.getGradualWeightChangeProgress,
+          lib.getWeightChangeFields,
           lib.setWeightChangeData,
           word,
           startTime,
@@ -159,6 +168,7 @@ describe('ManagedPoolStorageLib', () => {
 
     async function assertSetSwapFee(
       getter: (word: string) => Promise<BigNumber>,
+      endpointsGetter: (word: string) => Promise<[BigNumber, BigNumber, BigNumber, BigNumber]>,
       setter: (
         word: string,
         startTime: BigNumberish,
@@ -167,18 +177,36 @@ describe('ManagedPoolStorageLib', () => {
         endSwapFeePercentage: BigNumberish
       ) => Promise<string>,
       word: string,
-      startTime: BigNumberish,
-      endTime: BigNumberish,
-      startSwapFeePercentage: BigNumberish,
-      endSwapFeePercentage: BigNumberish
+      expectedStartTime: BigNumberish,
+      expectedEndTime: BigNumberish,
+      expectedStartSwapFeePercentage: BigNumberish,
+      expectedEndSwapFeePercentage: BigNumberish
     ) {
-      const result = await setter(word, startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+      const result = await setter(
+        word,
+        expectedStartTime,
+        expectedEndTime,
+        expectedStartSwapFeePercentage,
+        expectedEndSwapFeePercentage
+      );
       // Must not have affected unexpected bits.
       checkMaskedWord(result, word, SWAP_FEE_START_TIME_OFFSET, TOTAL_SWAP_FEE_FIELDS_WIDTH);
 
       const now = await currentTimestamp();
-      const expectedSwapFee = getSwapFee(now, startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+      const expectedSwapFee = getSwapFee(
+        now,
+        expectedStartTime,
+        expectedEndTime,
+        expectedStartSwapFeePercentage,
+        expectedEndSwapFeePercentage
+      );
       expect(await getter(result)).to.equalWithError(expectedSwapFee, MAX_RELATIVE_ERROR);
+
+      const [startTime, endTime, startSwapFeePercentage, endSwapFeePercentage] = await endpointsGetter(result);
+      expect(startTime).to.be.eq(expectedStartTime);
+      expect(endTime).to.be.eq(expectedEndTime);
+      expect(startSwapFeePercentage).to.be.eq(expectedStartSwapFeePercentage);
+      expect(endSwapFeePercentage).to.be.eq(expectedEndSwapFeePercentage);
     }
 
     it('stores the swap fee data correctly', async () => {
@@ -191,6 +219,7 @@ describe('ManagedPoolStorageLib', () => {
 
         await assertSetSwapFee(
           lib.getSwapFeePercentage,
+          lib.getSwapFeeFields,
           lib.setSwapFeeData,
           word,
           startTime,
