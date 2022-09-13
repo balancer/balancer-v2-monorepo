@@ -14,10 +14,23 @@
 
 pragma solidity ^0.7.0;
 
-library ArrayHelpers {
-    function arrayFill(uint256 a, uint256 b) internal pure returns (uint256[] memory result) {
-        result = new uint256[](2);
-        result[0] = a;
-        result[1] = b;
+import "../lib/PoolRegistrationLib.sol";
+
+contract MockPoolRegistrationLib {
+    function registerPool(
+        IVault vault,
+        IVault.PoolSpecialization specialization,
+        IERC20[] memory tokens
+    ) external returns (bytes32) {
+        return PoolRegistrationLib.registerPool(vault, specialization, tokens);
+    }
+
+    function registerPoolWithAssetManagers(
+        IVault vault,
+        IVault.PoolSpecialization specialization,
+        IERC20[] memory tokens,
+        address[] memory assetManagers
+    ) external returns (bytes32) {
+        return PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers);
     }
 }
