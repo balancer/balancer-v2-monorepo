@@ -258,7 +258,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             uint256 endTime,
             uint256 startSwapFeePercentage,
             uint256 endSwapFeePercentage
-        ) = _getSwapFeeFields();
+        ) = ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
 
         return
             GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
@@ -274,19 +274,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      */
     function getGradualSwapFeeUpdateParams()
         external
-        view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256 startSwapFeePercentage,
-            uint256 endSwapFeePercentage
-        )
-    {
-        (startTime, endTime, startSwapFeePercentage, endSwapFeePercentage) = _getSwapFeeFields();
-    }
-
-    function _getSwapFeeFields()
-        private
         view
         returns (
             uint256 startTime,
