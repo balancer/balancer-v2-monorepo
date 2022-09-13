@@ -60,3 +60,9 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
 
   return overrides;
 };
+
+export const warnings = {
+  ignore: {
+    'contracts/test/**/*': { 'code-size': true },
+  },
+};
