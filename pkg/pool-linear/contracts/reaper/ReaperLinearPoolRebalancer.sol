@@ -24,13 +24,17 @@ import "../LinearPoolRebalancer.sol";
 contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     using Math for uint256;
 
+    uint256 private immutable _divisor;
+
     // These Rebalancers can only be deployed from a factory to work around a circular dependency: the Pool must know
     // the address of the Rebalancer in order to register it, and the Rebalancer must know the address of the Pool
     // during construction.
     constructor(IVault vault, IBalancerQueries queries)
         LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries)
     {
-        // solhint-disable-previous-line no-empty-blocks
+        IERC20 wrappedToken = ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()).getWrappedToken();
+
+        _divisor = 10**IReaperTokenVault(address(wrappedToken)).decimals();
     }
 
     function _wrapTokens(uint256 amount) internal override {
@@ -47,9 +51,7 @@ contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     }
 
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
-        IReaperTokenVault tokenVault = IReaperTokenVault(address(_wrappedToken));
-        
         // wrappedAmount * pricePerFullShare / 10^decimals
-        return wrappedAmount.mul(tokenVault.getPricePerFullShare()).divUp(10**tokenVault.decimals());
+        return wrappedAmount.mul(IReaperTokenVault(address(_wrappedToken)).getPricePerFullShare()).divUp(_divisor);
     }
 }
