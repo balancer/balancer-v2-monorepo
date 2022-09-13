@@ -26,6 +26,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
@@ -763,6 +764,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 supplyBeforeFeeCollection = totalSupply();
         if (supplyBeforeFeeCollection > 0) {
             (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
+            _lastAumFeeCollectionTimestamp = block.timestamp;
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -954,6 +956,22 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         if (managementSwapFeePercentage > 0) {
             _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
         }
+    }
+
+    // Initialize
+
+    function _onInitializePool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
+        // so naturally charges no AUM fees.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
     }
 
     // Join/Exit overrides
@@ -1158,37 +1176,26 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * This function is called automatically on joins and exits.
      */
     function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256, uint256) {
-        uint256 lastCollection = _lastAumFeeCollectionTimestamp;
-        uint256 currentTime = block.timestamp;
+        uint256 bptAmount = ProtocolAUMFees.getAumFeesBptAmount(
+            totalSupply,
+            block.timestamp,
+            _lastAumFeeCollectionTimestamp,
+            getManagementAumFeePercentage()
+        );
 
-        // If no time has passed since the last join/exit we've already collected fees so we can return early.
-        if (currentTime <= lastCollection) return (0, 0);
-
-        // Reset the collection timer to the current block
-        _lastAumFeeCollectionTimestamp = currentTime;
-
-        uint256 managementAumFeePercentage = getManagementAumFeePercentage();
-
-        // If `lastCollection` has not been set then we don't know what period over which to collect fees.
-        // We then perform an early return after initializing it so that we can collect fees next time. This
-        // means that AUM fees are not collected for any tokens the Pool is initialized with until the first
-        // non-initialization join or exit.
-        // We also perform an early return if the AUM fee is zero, to save gas.
-        if (managementAumFeePercentage == 0 || lastCollection == 0) {
+        // Early return if either:
+        // - AUM fee is disabled.
+        // - no time has passed since the last collection.
+        if (bptAmount == 0) {
             return (0, 0);
         }
 
-        // We want to collect fees so that the manager will receive `managementAumFeePercentage` percent of the Pool's
-        // AUM after a year. We compute the amount of BPT to mint for the manager that would allow it to proportionally
-        // exit the Pool and receive this fraction of the Pool's assets.
-        uint256 annualizedFee = ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, managementAumFeePercentage);
+        // As we update `_lastAumFeeCollectionTimestamp` when updating `_managementAumFeePercentage`, we only need to
+        // update `_lastAumFeeCollectionTimestamp` when non-zero AUM fees are paid. This avoids an SSTORE on zero-length
+        // collections.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
 
-        // This value is annualized: in normal operation we will collect fees regularly over the course of the year.
-        // We then multiply this value by the fraction of the year which has elapsed since we last collected fees.
-        uint256 elapsedTime = currentTime - lastCollection;
-        uint256 bptAmount = Math.divDown(Math.mul(annualizedFee, elapsedTime), 365 days);
-
-        // Compute the protocol's share of the AUM fee
+        // Split AUM fees between protocol and Pool manager.
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
         uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
@@ -1199,6 +1206,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _mintPoolTokens(getOwner(), managerBPTAmount);
 
         return (protocolBptAmount, managerBPTAmount);
+    }
+
+    /**
+     * @dev Pays any due protocol and manager fees before updating the cached protocol fee percentages.
+     */
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        // We pay any due protocol or manager fees *before* updating the cache. This ensures that the new
+        // percentages only affect future operation of the Pool, and not past fees.
+
+        // Given that this operation is state-changing and relatively complex, we only allow it as long as the Pool is
+        // not paused.
+        _ensureNotPaused();
+
+        _collectAumManagementFees(totalSupply());
     }
 
     // Recovery Mode
