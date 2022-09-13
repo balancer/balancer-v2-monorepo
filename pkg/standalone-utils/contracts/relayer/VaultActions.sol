@@ -211,7 +211,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
 
         // Exit the Pool
-        request.userData = _doExitPoolChainedReferenceReplacements(kind, request.userData);
+        request.userData = _doExitPoolChainedReferenceReplacements(poolId, kind, request.userData);
         getVault().exitPool(poolId, sender, recipient, request);
 
         // Query final balances for all tokens of interest
@@ -236,24 +236,28 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function _doExitPoolChainedReferenceReplacements(PoolKind kind, bytes memory userData)
-        private
-        returns (bytes memory)
-    {
+    function _doExitPoolChainedReferenceReplacements(
+        bytes32 poolId,
+        PoolKind kind,
+        bytes memory userData
+    ) private returns (bytes memory) {
         if (kind == PoolKind.WEIGHTED) {
-            return _doWeightedExitChainedReferenceReplacements(userData);
+            return _doWeightedExitChainedReferenceReplacements(poolId, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
     }
 
-    function _doWeightedExitChainedReferenceReplacements(bytes memory userData) private returns (bytes memory) {
+    function _doWeightedExitChainedReferenceReplacements(bytes32 poolId, bytes memory userData)
+        private
+        returns (bytes memory)
+    {
         WeightedPoolUserData.ExitKind kind = WeightedPoolUserData.exitKind(userData);
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _doWeightedExactBptInForOneTokenOutReplacements(userData);
+            return _doWeightedExactBptInForOneTokenOutReplacements(poolId, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _doWeightedExactBptInForTokensOutReplacements(userData);
+            return _doWeightedExactBptInForTokensOutReplacements(poolId, userData);
         } else {
             // All other exit kinds are 'given out' (i.e the parameter is a token amount),
             // so we don't do replacements for those.
@@ -261,11 +265,18 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function _doWeightedExactBptInForOneTokenOutReplacements(bytes memory userData) private returns (bytes memory) {
+    function _doWeightedExactBptInForOneTokenOutReplacements(bytes32 poolId, bytes memory userData)
+        private
+        returns (bytes memory)
+    {
         (uint256 bptAmountIn, uint256 tokenIndex) = WeightedPoolUserData.exactBptInForTokenOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
+        } else if (_useRelayerBalance(bptAmountIn)) {
+            // TODO(@jubeira): require sender == address(this)?
+            bptAmountIn = IERC20(VaultHelpers.toPoolAddress(poolId)).balanceOf(address(this));
             return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenIndex);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
@@ -273,15 +284,29 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         }
     }
 
-    function _doWeightedExactBptInForTokensOutReplacements(bytes memory userData) private returns (bytes memory) {
+    function _doWeightedExactBptInForTokensOutReplacements(bytes32 poolId, bytes memory userData)
+        private
+        returns (bytes memory)
+    {
         uint256 bptAmountIn = WeightedPoolUserData.exactBptInForTokensOut(userData);
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
             return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        } else if (_useRelayerBalance(bptAmountIn)) {
+            // TODO(@jubeira): require sender == address(this)?
+            bptAmountIn = IERC20(VaultHelpers.toPoolAddress(poolId)).balanceOf(address(this));
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;
         }
+    }
+
+    function _useRelayerBalance(uint256 bptAmountIn) internal pure returns (bool) {
+        // Look for 0xa11 sentinel value to use all of relayer's balance.
+        return
+            (bptAmountIn & 0xfff0000000000000000000000000000000000000000000000000000000000000) ==
+            0xa110000000000000000000000000000000000000000000000000000000000000;
     }
 }
