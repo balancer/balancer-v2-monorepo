@@ -1275,11 +1275,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // not paused.
         _ensureNotPaused();
 
-        uint256 supplyBeforeFeeCollection = totalSupply();
-        if (supplyBeforeFeeCollection > 0) {
-            // We only need to collect AUM fees if the Pool has been initialized.
-            _collectAumManagementFees(supplyBeforeFeeCollection);
-        }
+        _collectAumManagementFees(totalSupply());
     }
 
     // Recovery Mode
