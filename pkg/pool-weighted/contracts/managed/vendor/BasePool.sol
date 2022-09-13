@@ -632,23 +632,6 @@ abstract contract BasePool is
     // Scaling
 
     /**
-     * @dev Returns a scaling factor that, when multiplied to a token amount for `token`, normalizes its balance as if
-     * it had 18 decimals.
-     */
-    function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
-        if (address(token) == address(this)) {
-            return FixedPoint.ONE;
-        }
-
-        // Tokens that don't implement the `decimals` method are not supported.
-        uint256 tokenDecimals = ERC20(address(token)).decimals();
-
-        // Tokens with more than 18 decimals are not supported.
-        uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        return FixedPoint.ONE * 10**decimalsDifference;
-    }
-
-    /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
      * Pool.
      *
