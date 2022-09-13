@@ -335,9 +335,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             );
         }
 
+        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
+
+        _setMiscData(
+            _getMiscData().insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH)
+        );
+
+        // Set end swap fee to the same value to ensure that the swap fee stays at the desired value.
         _setSwapFeeData(currentTime, currentTime, swapFeePercentage);
 
-        super._setSwapFeePercentage(swapFeePercentage);
+        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     /**
@@ -1081,7 +1089,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 endSwapFeePercentage
     ) internal virtual {
         if (startSwapFeePercentage != getSwapFeePercentage()) {
-            super._setSwapFeePercentage(startSwapFeePercentage);
+            _setSwapFeePercentage(startSwapFeePercentage);
         }
 
         _setSwapFeeData(startTime, endTime, endSwapFeePercentage);
