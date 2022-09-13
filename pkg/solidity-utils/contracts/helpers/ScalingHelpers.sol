@@ -17,6 +17,8 @@ pragma solidity ^0.7.0;
 import "../math/FixedPoint.sol";
 import "./InputHelpers.sol";
 
+// solhint-disable
+
 // To simplify Pool logic, all token balances and amounts are normalized to behave as if the token had 18 decimals.
 // e.g. When comparing DAI (18 decimals) and USDC (6 decimals), 1 USDC and 1 DAI would both be represented as 1e18,
 // whereas without scaling 1 USDC would be represented as 1e6.
