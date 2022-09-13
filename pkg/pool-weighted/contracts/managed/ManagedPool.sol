@@ -852,7 +852,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountOut = WeightedMath._calcOutGivenIn(
+            currentBalanceTokenIn,
+            _getNormalizedWeight(swapRequest.tokenIn),
+            currentBalanceTokenOut,
+            _getNormalizedWeight(swapRequest.tokenOut),
+            swapRequest.amount
+        );
 
         // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
         // after the trade.
@@ -880,7 +886,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountIn = WeightedMath._calcInGivenOut(
+            currentBalanceTokenIn,
+            _getNormalizedWeight(swapRequest.tokenIn),
+            currentBalanceTokenOut,
+            _getNormalizedWeight(swapRequest.tokenOut),
+            swapRequest.amount
+        );
 
         // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
         // after the trade.
@@ -1130,7 +1142,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Join/exit callbacks
 
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override returns (uint256, uint256) {
+    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override returns (uint256) {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -1138,12 +1150,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 supplyBeforeFeeCollection = totalSupply();
         (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
 
-        // We return a zero value invariant here. We do this for three reasons:
-        // - ManagedPool doesn't make use of the invariant returned here so there's no benefit to calculating it.
-        // - ManagedPool enters an invalid state when adding/removing tokens which causes the invariant calculation
-        //   to fail.
-        // - We're planning on reworking this before deployment anyway.
-        return (supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees), 0);
+        return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
     }
 
     /**
