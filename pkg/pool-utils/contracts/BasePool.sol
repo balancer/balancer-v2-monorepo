@@ -128,8 +128,15 @@ abstract contract BasePool is
 
         _setSwapFeePercentage(swapFeePercentage);
 
+        bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
+            vault,
+            specialization,
+            tokens,
+            assetManagers
+        );
+
         // Set immutable state variables - these cannot be read from during construction
-        _poolId = PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers);
+        _poolId = poolId;
         _protocolFeesCollector = vault.getProtocolFeesCollector();
     }
 
