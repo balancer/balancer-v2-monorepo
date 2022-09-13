@@ -40,11 +40,12 @@ library ProtocolAUMFees {
 
         uint256 annualBptAmount = ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, annualAumFeePercentage);
 
-        // We want to collect fees so that after a year the Pool will have paid `annualAumFeePercentage` of it's AUM as
+        // We want to collect fees so that after a year the Pool will have paid `annualAumFeePercentage` of its AUM as
         // fees. In normal operation however, we will collect fees regularly over the course of the year so we
         // multiply `annualBptAmount` by the fraction of the year which has elapsed since we last collected fees.
         uint256 elapsedTime = currentTime - lastCollection;
 
+        // Like with all other fees, we round down, favoring LPs.
         return Math.divDown(Math.mul(annualBptAmount, elapsedTime), 365 days);
     }
 }
