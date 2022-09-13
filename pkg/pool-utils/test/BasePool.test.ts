@@ -18,11 +18,7 @@ import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress,
-    poolOwner: SignerWithAddress,
-    deployer: SignerWithAddress,
-    assetManager: SignerWithAddress,
-    other: SignerWithAddress;
+  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
@@ -34,7 +30,7 @@ describe('BasePool', function () {
   const BUFFER_PERIOD_DURATION = MONTH;
 
   before(async () => {
-    [, admin, poolOwner, deployer, assetManager, other] = await ethers.getSigners();
+    [, admin, poolOwner, deployer, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach(async () => {
@@ -85,38 +81,6 @@ describe('BasePool', function () {
       ],
     });
   }
-
-  describe('deployment', () => {
-    let assetManagers: string[];
-
-    beforeEach(() => {
-      assetManagers = [assetManager.address, ...Array(tokens.length - 1).fill(ZERO_ADDRESS)];
-    });
-
-    it('registers a pool in the vault', async () => {
-      const pool = await deployBasePool({
-        tokens,
-        assetManagers,
-      });
-      const poolId = await pool.getPoolId();
-
-      const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
-      expect(poolAddress).to.equal(pool.address);
-      expect(poolSpecialization).to.equal(PoolSpecialization.GeneralPool);
-
-      const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
-      expect(poolTokens).to.have.same.members(tokens.addresses);
-
-      poolTokens.forEach(async (token: string, i: number) => {
-        const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
-        expect(assetManager).to.equal(assetManagers[i]);
-      });
-    });
-
-    it('reverts if the tokens are not sorted', async () => {
-      await expect(deployBasePool({ tokens: tokens.addresses.reverse() })).to.be.revertedWith('UNSORTED_ARRAY');
-    });
-  });
 
   describe('authorizer', () => {
     let pool: Contract;

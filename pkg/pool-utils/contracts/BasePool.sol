@@ -27,6 +27,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
+import "./lib/PoolRegistrationLib.sol";
+
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "./RecoveryMode.sol";
@@ -124,21 +126,10 @@ abstract contract BasePool is
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
 
-        // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
-        // to make the developer experience consistent, we are requiring this condition for all the native pools.
-        // Also, since these Pools will register tokens only once, we can ensure the Pool tokens will follow the same
-        // order. We rely on this property to make Pools simpler to write, as it lets us assume that the
-        // order of token-specific parameters (such as token weights) will not change.
-        InputHelpers.ensureArrayIsSorted(tokens);
-
         _setSwapFeePercentage(swapFeePercentage);
 
-        bytes32 poolId = vault.registerPool(specialization);
-
-        vault.registerTokens(poolId, tokens, assetManagers);
-
         // Set immutable state variables - these cannot be read from during construction
-        _poolId = poolId;
+        _poolId = PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers);
         _protocolFeesCollector = vault.getProtocolFeesCollector();
     }
 
