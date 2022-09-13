@@ -25,6 +25,18 @@ describe('ProtocolAUMFees', function () {
       .div(fp(1).sub(aumFeePercentage));
   }
 
+  it('matches the example in the documentation', async () => {
+    const totalSupply = fp(1000);
+    const expectedBptAmount = fp(1.009372746935833);
+    const lastCollectionTime = random(1000, 10000);
+    const currentTime = lastCollectionTime + 7 * DAY;
+    const aumFeePercentage = fp(0.05);
+
+    expect(
+      await lib.getAumFeesBptAmount(totalSupply, currentTime, lastCollectionTime, aumFeePercentage)
+    ).to.be.almostEqual(expectedBptAmount, 0.00000001);
+  });
+
   context('when no time has passed since last collection', () => {
     const lastCollectionTime = random(1000, 10000);
     const currentTime = lastCollectionTime - 1;
@@ -41,7 +53,7 @@ describe('ProtocolAUMFees', function () {
 
   context('when time has passed since last collection', () => {
     const lastCollectionTime = random(1000, 10000);
-    const currentTime = lastCollectionTime + random(1, 365) * DAY;
+    const currentTime = lastCollectionTime + random(1, 5 * 365) * DAY;
 
     context('when AUM fee percentage is zero', () => {
       const aumFeePercentage = fp(0);
@@ -75,7 +87,7 @@ describe('ProtocolAUMFees', function () {
           const expectedBptAmount = expectedAUMFees(totalSupply, aumFeePercentage, currentTime - lastCollectionTime);
           expect(
             await lib.getAumFeesBptAmount(totalSupply, currentTime, lastCollectionTime, aumFeePercentage)
-          ).to.be.eq(expectedBptAmount);
+          ).to.be.almostEqual(expectedBptAmount, 0.00000001);
         });
       });
     });

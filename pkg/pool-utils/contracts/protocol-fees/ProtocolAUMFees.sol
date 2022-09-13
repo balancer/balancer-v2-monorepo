@@ -45,6 +45,17 @@ library ProtocolAUMFees {
         // multiply `annualBptAmount` by the fraction of the year which has elapsed since we last collected fees.
         uint256 elapsedTime = currentTime - lastCollection;
 
+        // As an example for this calculate, consider a pool with a total supply of 1000e18 BPT, AUM fees are charged
+        // at 5% yearly and it's been 7 days since the last collection of AUM fees. The expected fees are then:
+        //
+        // expected_yearly_fees = totalSupply * annualAumFeePercentage / (1 - annualAumFeePercentage)
+        //                      = 1000e18 * 0.05 / 0.95
+        //                      ~= 52.63e18 BPT
+        //
+        // fees_to_collect = expected_yearly_fees * time_since_last_collection / 1 year
+        //                 = 52.63e18 * 7 / 365
+        //                 ~= 1.009 BPT
+
         // Like with all other fees, we round down, favoring LPs.
         return Math.divDown(Math.mul(annualBptAmount, elapsedTime), 365 days);
     }
