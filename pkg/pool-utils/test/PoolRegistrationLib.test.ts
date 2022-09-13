@@ -64,13 +64,33 @@ describe('PoolRegistrationLib', function () {
   });
 
   context('when passing asset managers', () => {
-    it('registers the asset managers correctly', async () => {
-      const assetManagers = tokens.map(() => ethers.Wallet.createRandom().address);
-      const poolId = await registerPool(PoolSpecialization.GeneralPool, assetManagers);
+    context("when the token and asset managers arrays' lengths are mismatched", () => {
+      it('reverts', async () => {
+        const tooManyAssetManagers = Array.from(
+          { length: tokens.length + 1 },
+          () => ethers.Wallet.createRandom().address
+        );
 
-      await tokens.asyncEach(async (token: Token, i: number) => {
-        const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
-        expect(assetManager).to.equal(assetManagers[i]);
+        await expect(
+          lib.registerPoolWithAssetManagers(
+            vault.address,
+            PoolSpecialization.GeneralPool,
+            tokens.addresses,
+            tooManyAssetManagers
+          )
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
+    });
+
+    context("when the token and asset managers arrays' lengths match", () => {
+      it('registers the asset managers correctly', async () => {
+        const assetManagers = tokens.map(() => ethers.Wallet.createRandom().address);
+        const poolId = await registerPool(PoolSpecialization.GeneralPool, assetManagers);
+
+        await tokens.asyncEach(async (token: Token, i: number) => {
+          const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
+          expect(assetManager).to.equal(assetManagers[i]);
+        });
       });
     });
   });
