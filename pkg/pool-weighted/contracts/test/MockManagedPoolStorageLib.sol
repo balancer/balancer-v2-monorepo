@@ -34,18 +34,10 @@ contract MockManagedPoolStorageLib {
         return miscData.getLPAllowlistEnabled();
     }
 
-    /**
-     * @notice Returns the percentage progress through the current gradual weight change.
-     */
     function getGradualWeightChangeProgress(bytes32 miscData) external view returns (uint256) {
         return miscData.getGradualWeightChangeProgress();
     }
 
-    /**
-     * @notice Returns the current value of the swap fee percentage.
-     * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
-     * update is in progress.
-     */
     function getSwapFeePercentage(bytes32 miscData) external view returns (uint256) {
         return miscData.getSwapFeePercentage();
     }
