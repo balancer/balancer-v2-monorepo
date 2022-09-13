@@ -620,12 +620,11 @@ export default class WeightedPool extends BasePool {
     from: SignerWithAddress,
     token: Token,
     normalizedWeight: BigNumberish,
-    tokenAmountIn: BigNumberish,
     mintAmount: BigNumberish,
     recipient: string
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.addToken(token.address, normalizedWeight, tokenAmountIn, mintAmount, recipient);
+    return await pool.addToken(token.address, normalizedWeight, mintAmount, recipient);
   }
 
   async removeToken(

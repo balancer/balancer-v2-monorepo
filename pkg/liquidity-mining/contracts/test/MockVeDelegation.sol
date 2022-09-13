@@ -14,10 +14,16 @@
 
 pragma solidity ^0.7.0;
 
-library ArrayHelpers {
-    function arrayFill(uint256 a, uint256 b) internal pure returns (uint256[] memory result) {
-        result = new uint256[](2);
-        result[0] = a;
-        result[1] = b;
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IVeDelegation.sol";
+
+// For compatibility, we're keeping the same function names as in the original Curve code, including the mixed-case
+// naming convention.
+// solhint-disable func-name-mixedcase
+
+contract MockVeDelegation is IVeDelegation {
+    uint256 private _adjustedBalance;
+
+    function adjusted_balance_of(address) external view override returns (uint256) {
+        return _adjustedBalance;
     }
 }
