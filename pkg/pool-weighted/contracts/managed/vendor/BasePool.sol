@@ -80,7 +80,7 @@ abstract contract BasePool is
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
     // and therefore warm.
     // See `ManagedPoolStorageLib.sol` for data layout.
-    bytes32 private _miscData;
+    bytes32 private _poolState;
 
     bytes32 private immutable _poolId;
 
@@ -154,10 +154,10 @@ abstract contract BasePool is
 
     /**
      * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in `_miscData`.
+     * @dev This is stored in `_poolState`.
      */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
-        return ManagedPoolStorageLib.getSwapFeePercentage(_miscData);
+        return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
     }
 
     /**
@@ -191,14 +191,14 @@ abstract contract BasePool is
      * @notice Returns whether the pool is in Recovery Mode.
      */
     function inRecoveryMode() public view override returns (bool) {
-        return ManagedPoolStorageLib.getRecoveryModeEnabled(_miscData);
+        return ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState);
     }
 
     /**
      * @dev Sets the recoveryMode state, and emits the corresponding event.
      */
     function _setRecoveryMode(bool enabled) internal virtual override {
-        _miscData = ManagedPoolStorageLib.setRecoveryModeEnabled(_miscData, enabled);
+        _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
 
         emit RecoveryModeStateChanged(enabled);
 
@@ -262,15 +262,15 @@ abstract contract BasePool is
             super._isOwnerOnlyAction(actionId);
     }
 
-    function _getMiscData() internal view returns (bytes32) {
-        return _miscData;
+    function _getPoolState() internal view returns (bytes32) {
+        return _poolState;
     }
 
     /**
-     * @dev Inserts data into the misc data storage slot.
+     * @dev Inserts data into the pool state storage slot.
      */
-    function _setMiscData(bytes32 newData) internal {
-        _miscData = newData;
+    function _setPoolState(bytes32 newPoolState) internal {
+        _poolState = newPoolState;
     }
 
     // Join / Exit Hooks
