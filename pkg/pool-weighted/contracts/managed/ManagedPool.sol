@@ -328,8 +328,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
     function setSwapFeePercentage(uint256 swapFeePercentage) external authenticate whenNotPaused {
-        _validateSwapFeePercentage(swapFeePercentage);
-
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
@@ -346,6 +344,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal {
+        _validateSwapFeePercentage(swapFeePercentage);
+
         _setMiscData(
             _getMiscData().insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH)
         );
