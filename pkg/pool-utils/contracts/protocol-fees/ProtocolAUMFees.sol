@@ -55,6 +55,9 @@ library ProtocolAUMFees {
         // fees_to_collect = expected_yearly_fees * time_since_last_collection / 1 year
         //                 = 52.63e18 * 7 / 365
         //                 ~= 1.009 BPT
+        //
+        // Note that if we were to mint expected_yearly_fees BPT then the recipient would own 52.63e18 out of
+        // 1052.63e18 BPT. This agrees with the recipient being expected to own 5% of the Pool *after* fees are paid.
 
         // Like with all other fees, we round down, favoring LPs.
         return Math.divDown(Math.mul(annualBptAmount, elapsedTime), 365 days);
