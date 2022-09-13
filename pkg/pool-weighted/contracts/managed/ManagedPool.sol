@@ -323,6 +323,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+        _validateSwapFeePercentage(swapFeePercentage);
+
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
@@ -334,9 +336,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
                 currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
             );
         }
-
-        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _setMiscData(
             _getMiscData().insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH)
