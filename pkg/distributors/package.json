@@ -27,7 +27,7 @@
     "@balancer-labs/balancer-js": "workspace:*",
     "@balancer-labs/v2-interfaces": "workspace:*",
     "@balancer-labs/v2-solidity-utils": "workspace:*",
-    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@types/chai": "^4.2.12",
     "@types/lodash": "^4.14.161",
