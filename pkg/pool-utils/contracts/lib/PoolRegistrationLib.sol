@@ -43,6 +43,8 @@ library PoolRegistrationLib {
 
         bytes32 poolId = vault.registerPool(specialization);
 
+        // We don't need to check that tokens and assetManagers have the same length, since the Vault already performs
+        // that check.
         vault.registerTokens(poolId, tokens, assetManagers);
 
         return poolId;
