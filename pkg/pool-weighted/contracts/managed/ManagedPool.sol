@@ -297,7 +297,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getPoolState();
@@ -309,14 +314,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             );
         }
 
-        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _setSwapFeePercentage(swapFeePercentage);
+    }
+
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+        _validateSwapFeePercentage(swapFeePercentage);
 
         _setPoolState(
             ManagedPoolStorageLib.setSwapFeeData(
-                poolState,
-                currentTime,
-                currentTime,
+                _getPoolState(),
+                block.timestamp,
+                block.timestamp,
                 swapFeePercentage,
                 swapFeePercentage
             )

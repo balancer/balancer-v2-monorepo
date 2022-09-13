@@ -168,15 +168,6 @@ abstract contract BasePool is
         return _protocolFeesCollector;
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override authenticate whenNotPaused {
-        _setSwapFeePercentage(swapFeePercentage);
-    }
-
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual;
 
     function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
