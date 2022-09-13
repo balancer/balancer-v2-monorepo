@@ -327,7 +327,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external authenticate whenNotPaused {
+    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
@@ -343,7 +343,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _setSwapFeePercentage(swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal {
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal override {
         _validateSwapFeePercentage(swapFeePercentage);
 
         _setMiscData(
