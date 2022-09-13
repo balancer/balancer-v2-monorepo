@@ -19,6 +19,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "../lib/GradualValueChange.sol";
 
+/**
+ * @title Managed Pool Storage Library
+ * @notice Library for manipulating a bitmap used for commonly used Pool state in ManagedPool.
+ */
 library ManagedPoolStorageLib {
     using WordCodec for bytes32;
 
@@ -75,6 +79,8 @@ library ManagedPoolStorageLib {
     /**
      * @notice Returns the percentage progress through the current gradual weight change.
      * @param poolState - The byte32 state of the Pool.
+     * @return pctProgress - A 18 decimal fixed-point value corresponding to how far to interpolate between the start
+     * and end weights. 0 represents the start weight and 1 represents the end weight (with values >1 being clipped).
      */
     function getGradualWeightChangeProgress(bytes32 poolState) internal view returns (uint256) {
         (uint256 startTime, uint256 endTime) = _getWeightChangeFields(poolState);
