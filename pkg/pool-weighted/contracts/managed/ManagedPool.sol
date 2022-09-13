@@ -852,7 +852,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountOut = WeightedMath._calcOutGivenIn(
+            currentBalanceTokenIn,
+            _getNormalizedWeight(swapRequest.tokenIn),
+            currentBalanceTokenOut,
+            _getNormalizedWeight(swapRequest.tokenOut),
+            swapRequest.amount
+        );
 
         // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
         // after the trade.
@@ -880,7 +886,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
-        uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256 amountIn = WeightedMath._calcInGivenOut(
+            currentBalanceTokenIn,
+            _getNormalizedWeight(swapRequest.tokenIn),
+            currentBalanceTokenOut,
+            _getNormalizedWeight(swapRequest.tokenOut),
+            swapRequest.amount
+        );
 
         // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
         // after the trade.

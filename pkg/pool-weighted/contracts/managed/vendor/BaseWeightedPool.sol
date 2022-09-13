@@ -100,38 +100,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
     // Base Pool handlers
 
-    // Swap
-
-    function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal virtual override returns (uint256) {
-        return
-            WeightedMath._calcOutGivenIn(
-                currentBalanceTokenIn,
-                _getNormalizedWeight(swapRequest.tokenIn),
-                currentBalanceTokenOut,
-                _getNormalizedWeight(swapRequest.tokenOut),
-                swapRequest.amount
-            );
-    }
-
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal virtual override returns (uint256) {
-        return
-            WeightedMath._calcInGivenOut(
-                currentBalanceTokenIn,
-                _getNormalizedWeight(swapRequest.tokenIn),
-                currentBalanceTokenOut,
-                _getNormalizedWeight(swapRequest.tokenOut),
-                swapRequest.amount
-            );
-    }
-
     /**
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
