@@ -30,7 +30,7 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.so
 import "../lib/GradualValueChange.sol";
 import "../lib/WeightCompression.sol";
 
-import "../BaseWeightedPool.sol";
+import "./vendor/BaseWeightedPool.sol";
 
 import "./ManagedPoolTokenLib.sol";
 
