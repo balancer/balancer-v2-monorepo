@@ -20,12 +20,27 @@ import "../managed/ManagedPoolSwapFees.sol";
 contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
     bytes32 private _poolState;
 
-    function _getPoolState() internal view override returns (bytes32) {
-        return _poolState;
-    }
-
     function _setPoolState(bytes32 newPoolState) internal override {
         _poolState = newPoolState;
+    }
+
+    // Helpers to decode Pool state
+
+    function getSwapFeePercentage() external view returns (uint256) {
+        return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
+    }
+
+    function getGradualSwapFeeUpdateParams()
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        )
+    {
+        return ManagedPoolStorageLib.getSwapFeeFields(_poolState);
     }
 
     // Mocked Functions
@@ -43,7 +58,7 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
     }
 
     function setSwapFeePercentage(uint256 swapFeePercentage) external {
-        _setSwapFeePercentage(_getPoolState(), swapFeePercentage);
+        _setSwapFeePercentage(_poolState, swapFeePercentage);
     }
 
     function startGradualSwapFeeChange(
@@ -52,64 +67,6 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external {
-        _startGradualSwapFeeChange(_getPoolState(), startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
-    }
-
-    // Satisfying IBasePool
-
-    function onJoinPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        bytes memory
-    ) external pure override returns (uint256[] memory, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
-    }
-
-    function onExitPool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        bytes memory
-    ) external pure override returns (uint256[] memory, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
-    }
-
-    function getPoolId() external pure override returns (bytes32) {
-        revert("NOT_IMPLEMENTED");
-    }
-
-    function getScalingFactors() external pure override returns (uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
-    }
-
-    function queryJoin(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        bytes memory
-    ) external pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
-    }
-
-    function queryExit(
-        bytes32,
-        address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
-        bytes memory
-    ) external pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _startGradualSwapFeeChange(_poolState, startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 }

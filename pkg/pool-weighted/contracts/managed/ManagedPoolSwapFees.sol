@@ -15,11 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
-
 import "./ManagedPoolStorageLib.sol";
 
-abstract contract ManagedPoolSwapFees is IBasePool {
+abstract contract ManagedPoolSwapFees {
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event GradualSwapFeeUpdateScheduled(
         uint256 startTime,
@@ -46,36 +44,6 @@ abstract contract ManagedPoolSwapFees is IBasePool {
     function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
         _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
-    }
-
-    /**
-     * @notice Returns the current value of the swap fee percentage.
-     * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
-     * update is in progress.
-     */
-    function getSwapFeePercentage() public view override returns (uint256) {
-        return ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState());
-    }
-
-    /**
-     * @notice Returns the current gradual swap fee update parameters.
-     * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
-     * @return startTime - The timestamp when the swap fee update will begin.
-     * @return endTime - The timestamp when the swap fee update will end.
-     * @return startSwapFeePercentage - The starting swap fee percentage (could be different from the current value).
-     * @return endSwapFeePercentage - The final swap fee percentage, when the current timestamp >= endTime.
-     */
-    function getGradualSwapFeeUpdateParams()
-        external
-        view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256 startSwapFeePercentage,
-            uint256 endSwapFeePercentage
-        )
-    {
-        return ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
     }
 
     function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual {
@@ -120,8 +88,6 @@ abstract contract ManagedPoolSwapFees is IBasePool {
 
         emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
-
-    function _getPoolState() internal view virtual returns (bytes32);
 
     function _setPoolState(bytes32 newPoolState) internal virtual;
 }

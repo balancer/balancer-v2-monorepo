@@ -254,6 +254,36 @@ contract ManagedPool is
     }
 
     /**
+     * @notice Returns the current value of the swap fee percentage.
+     * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
+     * update is in progress.
+     */
+    function getSwapFeePercentage() public view override returns (uint256) {
+        return ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState());
+    }
+
+    /**
+     * @notice Returns the current gradual swap fee update parameters.
+     * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
+     * @return startTime - The timestamp when the swap fee update will begin.
+     * @return endTime - The timestamp when the swap fee update will end.
+     * @return startSwapFeePercentage - The starting swap fee percentage (could be different from the current value).
+     * @return endSwapFeePercentage - The final swap fee percentage, when the current timestamp >= endTime.
+     */
+    function getGradualSwapFeeUpdateParams()
+        external
+        view
+        returns (
+            uint256 startTime,
+            uint256 endTime,
+            uint256 startSwapFeePercentage,
+            uint256 endSwapFeePercentage
+        )
+    {
+        return ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
+    }
+
+    /**
      * @notice Set the swap fee percentage.
      * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
      * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
@@ -1111,10 +1141,6 @@ contract ManagedPool is
     }
 
     // Pool State
-
-    function _getPoolState() internal view override(ManagedPoolSwapFees, BasePool) returns (bytes32) {
-        return BasePool._getPoolState();
-    }
 
     function _setPoolState(bytes32 newPoolState) internal override(ManagedPoolSwapFees, BasePool) {
         return BasePool._setPoolState(newPoolState);
