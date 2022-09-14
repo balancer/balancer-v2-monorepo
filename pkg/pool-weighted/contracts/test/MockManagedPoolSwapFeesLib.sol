@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../managed/ManagedPoolSwapFees.sol";
+import "../managed/ManagedPoolSwapFeesLib.sol";
 
-contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
+contract MockManagedPoolSwapFeesLib {
     bytes32 private _poolState;
 
     // Helpers to decode Pool state
@@ -42,11 +42,11 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
     // Mocked Functions
 
     function validateSwapFeePercentage(uint256 swapFeePercentage) external pure {
-        _validateSwapFeePercentage(swapFeePercentage);
+        ManagedPoolSwapFeesLib._validateSwapFeePercentage(swapFeePercentage);
     }
 
     function setSwapFeePercentage(uint256 swapFeePercentage) external {
-        _poolState = _setSwapFeePercentage(_poolState, swapFeePercentage);
+        _poolState = ManagedPoolSwapFeesLib.setSwapFeePercentage(_poolState, swapFeePercentage);
     }
 
     function startGradualSwapFeeChange(
@@ -55,7 +55,7 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external {
-        _poolState = _startGradualSwapFeeChange(
+        _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
             _poolState,
             startTime,
             endTime,

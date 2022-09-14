@@ -33,9 +33,8 @@ import "../lib/WeightCompression.sol";
 
 import "./vendor/BaseWeightedPool.sol";
 
-import "./ManagedPoolSwapFees.sol";
-
 import "./ManagedPoolStorageLib.sol";
+import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
 
 /**
@@ -61,13 +60,7 @@ import "./ManagedPoolTokenLib.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is
-    ManagedPoolSwapFees,
-    BaseWeightedPool,
-    ProtocolFeeCache,
-    ReentrancyGuard,
-    IControlledManagedPool
-{
+contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -201,7 +194,7 @@ contract ManagedPool is
         );
 
         _setPoolState(
-            _startGradualSwapFeeChange(
+            ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
                 _getPoolState(),
                 currentTime,
                 currentTime,
@@ -302,7 +295,7 @@ contract ManagedPool is
             );
         }
 
-        _setPoolState(_setSwapFeePercentage(poolState, swapFeePercentage));
+        _setPoolState(ManagedPoolSwapFeesLib.setSwapFeePercentage(poolState, swapFeePercentage));
     }
 
     /**
@@ -415,7 +408,7 @@ contract ManagedPool is
         uint256 endSwapFeePercentage
     ) external authenticate whenNotPaused nonReentrant {
         _setPoolState(
-            _startGradualSwapFeeChange(
+            ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
                 _getPoolState(),
                 startTime,
                 endTime,

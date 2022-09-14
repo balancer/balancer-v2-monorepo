@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "./ManagedPoolStorageLib.sol";
 
-abstract contract ManagedPoolSwapFees {
+library ManagedPoolSwapFeesLib {
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event GradualSwapFeeUpdateScheduled(
         uint256 startTime,
@@ -45,7 +45,7 @@ abstract contract ManagedPoolSwapFees {
      * @return poolState - The modified Pool state with the updated swap fee data. It's the responsiblity of the caller
      * to write this to storage so this value is persisted.
      */
-    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual returns (bytes32) {
+    function setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal returns (bytes32) {
         _validateSwapFeePercentage(swapFeePercentage);
 
         emit SwapFeePercentageChanged(swapFeePercentage);
@@ -70,18 +70,18 @@ abstract contract ManagedPoolSwapFees {
      * @return poolState - The modified Pool state with the updated swap fee data. It's the responsiblity of the caller
      * to write this to storage so this value is persisted.
      */
-    function _startGradualSwapFeeChange(
+    function startGradualSwapFeeChange(
         bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) internal virtual returns (bytes32) {
+    ) internal returns (bytes32) {
         _validateSwapFeePercentage(startSwapFeePercentage);
         _validateSwapFeePercentage(endSwapFeePercentage);
 
         if (startSwapFeePercentage != ManagedPoolStorageLib.getSwapFeePercentage(poolState)) {
-            poolState = _setSwapFeePercentage(poolState, startSwapFeePercentage);
+            poolState = setSwapFeePercentage(poolState, startSwapFeePercentage);
         }
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);

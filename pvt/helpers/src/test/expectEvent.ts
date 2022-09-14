@@ -54,7 +54,8 @@ export function inIndirectReceipt(
     .map((log) => {
       try {
         return emitter.parseLog(log);
-      } catch {
+      } catch (e) {
+        console.log(e);
         return undefined;
       }
     })

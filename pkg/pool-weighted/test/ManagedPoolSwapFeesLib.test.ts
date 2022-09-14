@@ -10,10 +10,12 @@ import {
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { Interface } from '@ethersproject/abi';
 
-describe('ManagedPoolSwapFees', function () {
+describe('ManagedPoolSwapFeesLib', function () {
   let pool: Contract;
+  let libInterface: Interface;
 
   const MIN_SWAP_FEE = fp(0.000001);
   const MAX_SWAP_FEE = fp(0.8);
@@ -23,8 +25,10 @@ describe('ManagedPoolSwapFees', function () {
   const TOO_LOW_SWAP_FEE = MIN_SWAP_FEE.sub(1);
   const TOO_HIGH_SWAP_FEE = MAX_SWAP_FEE.add(1);
 
-  sharedBeforeEach('deploy MockManagedPoolSwapFees and initialize', async () => {
-    pool = await deploy('MockManagedPoolSwapFees');
+  sharedBeforeEach('deploy MockManagedPoolSwapFeesLib and initialize', async () => {
+    pool = await deploy('MockManagedPoolSwapFeesLib');
+    libInterface = new Interface((await getArtifact('ManagedPoolSwapFeesLib')).abi);
+
     await pool.setSwapFeePercentage(INITIAL_SWAP_FEE);
   });
 
@@ -53,7 +57,9 @@ describe('ManagedPoolSwapFees', function () {
 
     it('emits a SwapFeePercentageChanged event', async () => {
       const tx = await pool.setSwapFeePercentage(VALID_SWAP_FEE);
-      expectEvent.inReceipt(await tx.wait(), 'SwapFeePercentageChanged', { swapFeePercentage: VALID_SWAP_FEE });
+      expectEvent.inIndirectReceipt(await tx.wait(), libInterface, 'SwapFeePercentageChanged', {
+        swapFeePercentage: VALID_SWAP_FEE,
+      });
     });
 
     it('updates the swap fee', async () => {
@@ -143,7 +149,7 @@ describe('ManagedPoolSwapFees', function () {
         const txTimestamp = bn(await receiptTimestamp(receipt));
         const expectedStartTime = startTime.gt(txTimestamp) ? startTime : txTimestamp;
 
-        expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
+        expectEvent.inIndirectReceipt(await receipt.wait(), libInterface, 'GradualSwapFeeUpdateScheduled', {
           startTime: expectedStartTime,
           endTime: endTime,
           startSwapFeePercentage: START_SWAP_FEE,
@@ -173,7 +179,9 @@ describe('ManagedPoolSwapFees', function () {
 
         it('emits a SwapFeePercentageChanged event', async () => {
           const tx = await pool.startGradualSwapFeeChange(startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
-          expectEvent.inReceipt(await tx.wait(), 'SwapFeePercentageChanged', { swapFeePercentage: START_SWAP_FEE });
+          expectEvent.inIndirectReceipt(await tx.wait(), libInterface, 'SwapFeePercentageChanged', {
+            swapFeePercentage: START_SWAP_FEE,
+          });
         });
       });
     }

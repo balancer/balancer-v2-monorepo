@@ -26,7 +26,7 @@ import {
   pct,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -41,6 +41,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { random, range } from 'lodash';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { Interface } from 'ethers/lib/utils';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -707,6 +708,8 @@ describe('ManagedPool', function () {
   describe('update swap fee gradually', () => {
     let caller: SignerWithAddress;
 
+    let libInterface: Interface;
+
     let startTime: BigNumber, endTime: BigNumber;
     const START_DELAY = MINUTE * 10;
     const UPDATE_DURATION = DAY * 2;
@@ -714,6 +717,8 @@ describe('ManagedPool', function () {
     const END_SWAP_FEE = fp(0.01);
 
     sharedBeforeEach(async () => {
+      libInterface = new Interface((await getArtifact('ManagedPoolSwapFeesLib')).abi);
+
       const now = await currentTimestamp();
       startTime = now.add(START_DELAY);
       endTime = startTime.add(UPDATE_DURATION);
@@ -731,7 +736,7 @@ describe('ManagedPool', function () {
       it('begins a gradual swap fee update', async () => {
         const receipt = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
 
-        expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
+        expectEvent.inIndirectReceipt(await receipt.wait(), libInterface, 'GradualSwapFeeUpdateScheduled', {
           startTime: startTime,
           endTime: endTime,
           startSwapFeePercentage: START_SWAP_FEE,
