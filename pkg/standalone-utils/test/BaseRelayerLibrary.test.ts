@@ -11,7 +11,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { ANY_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { toChainedReference } from './helpers/chainedReferences';
 
 describe('BaseRelayerLibrary', function () {
@@ -84,6 +84,35 @@ describe('BaseRelayerLibrary', function () {
 
           // The reference is preserved
           await expectChainedReferenceContents(reference, 5);
+        });
+      });
+
+      context('when mixing temporary and read-only references', () => {
+        const reference = toChainedReference(key, true);
+        const readOnlyReference = toChainedReference(key, false);
+
+        it('writes the same slot (temporary write)', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 17);
+          await expectChainedReferenceContents(readOnlyReference, 17);
+        });
+
+        it('writes the same slot (read-only write)', async () => {
+          await relayerLibrary.setChainedReferenceValue(readOnlyReference, 11);
+          await expectChainedReferenceContents(reference, 11);
+        });
+
+        it('reads the same written slot', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 37);
+
+          await expectChainedReferenceContents(readOnlyReference, 37);
+          await expectChainedReferenceContents(reference, 37);
+        });
+
+        it('reads the same cleared slot', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 39);
+
+          await expectChainedReferenceContents(reference, 39);
+          await expectChainedReferenceContents(readOnlyReference, 0);
         });
       });
 
@@ -292,6 +321,19 @@ describe('BaseRelayerLibrary', function () {
         it('reverts', async () => {
           await expect(relayer.connect(signer).multicall([approvalData])).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
+      });
+    });
+
+    describe('peekChainedReferenceValue', () => {
+      it('peeks chained reference', async () => {
+        const reference = toChainedReference(174);
+        const value = fp(340);
+
+        const result = await relayer.callStatic.multicall([
+          relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [reference, value]),
+          relayerLibrary.interface.encodeFunctionData('peekChainedReferenceValue', [reference]),
+        ]);
+        expect(result).to.be.deep.eq(['0x', ethers.utils.hexZeroPad(value.toHexString(), 32)]);
       });
     });
   });
