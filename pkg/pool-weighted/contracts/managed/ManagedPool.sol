@@ -1094,8 +1094,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector))
     }
 
     function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
