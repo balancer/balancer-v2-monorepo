@@ -822,12 +822,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn);
+        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut);
+
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
-            _getNormalizedWeight(swapRequest.tokenIn),
+            tokenInWeight,
             currentBalanceTokenOut,
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenOutWeight,
             swapRequest.amount
         );
 
@@ -838,8 +841,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
         //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
         uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            _getNormalizedWeight(swapRequest.tokenIn),
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenInWeight,
+            tokenOutWeight,
             FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
             FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
         );
@@ -856,12 +859,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn);
+        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut);
+
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
-            _getNormalizedWeight(swapRequest.tokenIn),
+            tokenInWeight,
             currentBalanceTokenOut,
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenOutWeight,
             swapRequest.amount
         );
 
@@ -872,8 +878,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
         //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
         uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            _getNormalizedWeight(swapRequest.tokenIn),
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenInWeight,
+            tokenOutWeight,
             FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
             FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
         );
