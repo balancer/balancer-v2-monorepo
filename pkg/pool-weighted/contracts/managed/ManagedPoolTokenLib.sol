@@ -34,7 +34,7 @@ import "../lib/WeightCompression.sol";
  *
  * This `denormWeightSum` is stored at the Pool level, and so must be passed into this library on each call that impacts
  * token weights. Specifically, for getters that take this sum as a parameter (e.g., `getTokenWeight`), pass in the
- * value of `denormWeightSum` used on the most recent call to setTokenWeight` or `initializeTokenState`.
+ * value of `denormWeightSum` used on the most recent call to `setTokenWeight` or `initializeTokenState`.
  */
 library ManagedPoolTokenLib {
     using WordCodec for bytes32;
@@ -74,7 +74,7 @@ library ManagedPoolTokenLib {
     }
 
     /**
-     * @notice Returns the token weight as a percentage, interpolated between the starting and ending weights.
+     * @notice Returns the token weight, interpolated between the starting and ending weights.
      * @param tokenState - The byte32 state of the token of interest.
      * @param pctProgress - A 18 decimal fixed-point value corresponding to how far to interpolate between the start
      * and end weights. 0 represents the start weight and 1 represents the end weight (with values >1 being clipped).
