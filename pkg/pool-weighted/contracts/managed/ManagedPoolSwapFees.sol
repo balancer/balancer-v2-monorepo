@@ -38,6 +38,13 @@ abstract contract ManagedPoolSwapFees {
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
 
+    /**
+     * @notice Encodes a new swap fee percentage into the provided Pool state.
+     * @dev The swap fee must be within the bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE.
+     * Emits the SwapFeePercentageChanged event.
+     * @return poolState - The modified Pool state with the updated swap fee data. It's the responsiblity of the caller
+     * to write this to storage so this value is persisted.
+     */
     function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual returns (bytes32) {
         _validateSwapFeePercentage(swapFeePercentage);
 
@@ -53,6 +60,16 @@ abstract contract ManagedPoolSwapFees {
             );
     }
 
+    /**
+     * @notice Encodes a gradual swap fee update into the provided Pool state.
+     * @param startTime - The timestamp when the swap fee change will begin.
+     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
+     * @param startSwapFeePercentage - The starting value for the swap fee change.
+     * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
+     * `getSwapFeePercentage()` will return this value.
+     * @return poolState - The modified Pool state with the updated swap fee data. It's the responsiblity of the caller
+     * to write this to storage so this value is persisted.
+     */
     function _startGradualSwapFeeChange(
         bytes32 poolState,
         uint256 startTime,
