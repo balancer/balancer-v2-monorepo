@@ -101,6 +101,9 @@ abstract contract ManagedPoolSwapFees is IBasePool {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal virtual {
+        _validateSwapFeePercentage(startSwapFeePercentage);
+        _validateSwapFeePercentage(endSwapFeePercentage);
+
         if (startSwapFeePercentage != ManagedPoolStorageLib.getSwapFeePercentage(poolState)) {
             _setSwapFeePercentage(poolState, startSwapFeePercentage);
         }

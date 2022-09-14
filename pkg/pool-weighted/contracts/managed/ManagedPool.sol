@@ -390,9 +390,6 @@ contract ManagedPool is
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external authenticate whenNotPaused nonReentrant {
-        _validateSwapFeePercentage(startSwapFeePercentage);
-        _validateSwapFeePercentage(endSwapFeePercentage);
-
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
         _startGradualSwapFeeChange(_getPoolState(), startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
