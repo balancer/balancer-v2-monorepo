@@ -96,7 +96,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
-    function getNormalizedWeights() external view returns (uint256[] memory) {
+    function getNormalizedWeights() public view returns (uint256[] memory) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         return _getNormalizedWeights(tokens);
     }
@@ -188,7 +188,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     // Join
 
     function _onJoinPool(
-        bytes32 poolId,
+        bytes32,
         address sender,
         address,
         uint256[] memory balances,
@@ -197,8 +197,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
-        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
+        uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
@@ -231,7 +230,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     // Exit
 
     function _onExitPool(
-        bytes32 poolId,
+        bytes32,
         address sender,
         address,
         uint256[] memory balances,
@@ -240,8 +239,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
-        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
+        uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
