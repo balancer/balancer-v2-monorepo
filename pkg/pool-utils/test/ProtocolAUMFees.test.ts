@@ -2,7 +2,7 @@ import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 import { random } from 'lodash';
 
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, FP_100_PCT, FP_ONE, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
 
@@ -22,7 +22,7 @@ describe('ProtocolAUMFees', function () {
       .mul(timeElapsed)
       .div(365 * DAY)
       .mul(aumFeePercentage)
-      .div(fp(1).sub(aumFeePercentage));
+      .div(FP_100_PCT.sub(aumFeePercentage));
   }
 
   it('matches the example in the documentation', async () => {
@@ -56,10 +56,10 @@ describe('ProtocolAUMFees', function () {
     const currentTime = lastCollectionTime + random(1, 5 * 365) * DAY;
 
     context('when AUM fee percentage is zero', () => {
-      const aumFeePercentage = fp(0);
+      const aumFeePercentage = FP_ZERO;
 
       it('returns zero', async () => {
-        const totalSupply = fp(1);
+        const totalSupply = FP_ONE;
 
         expect(await lib.getAumFeesBptAmount(totalSupply, currentTime, lastCollectionTime, aumFeePercentage)).to.be.eq(
           fp(0)

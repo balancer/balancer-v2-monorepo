@@ -2,7 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { bn, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
@@ -74,12 +74,12 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
         expect(expectedState).to.equal(LinearPoolState.MAIN_EXCESS);
 
         const excess = scaledCash.sub(upperTarget);
-        fees = excess.mul(SWAP_FEE_PERCENTAGE).div(FP_SCALING_FACTOR);
+        fees = excess.mul(SWAP_FEE_PERCENTAGE).div(FP_ONE);
       } else if (scaledCash.lt(lowerTarget)) {
         expect(expectedState).to.equal(LinearPoolState.MAIN_LACK);
 
         const lack = lowerTarget.sub(scaledCash);
-        fees = lack.mul(SWAP_FEE_PERCENTAGE).div(FP_SCALING_FACTOR);
+        fees = lack.mul(SWAP_FEE_PERCENTAGE).div(FP_ONE);
       } else {
         expect(expectedState).to.equal(LinearPoolState.BALANCED);
 
@@ -149,7 +149,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
 
       // Assert join amount - some fees will be collected as we're going over the upper target.
       const excess = joinAmount.mul(USDC_SCALING).sub(INITIAL_UPPER_TARGET);
-      const joinCollectedFees = excess.mul(SWAP_FEE_PERCENTAGE).div(FP_SCALING_FACTOR);
+      const joinCollectedFees = excess.mul(SWAP_FEE_PERCENTAGE).div(FP_ONE);
 
       const expectedBPT = joinAmount.mul(USDC_SCALING).sub(joinCollectedFees);
       expect(await pool.balanceOf(holder.address)).to.equal(expectedBPT);

@@ -235,7 +235,9 @@ abstract contract BasePool is
      * @dev Performs any necessary actions on the disabling of Recovery Mode.
      * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forward.
      */
-    function _onDisableRecoveryMode() internal virtual {}
+    function _onDisableRecoveryMode() internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /**
      * @notice Set the asset manager parameters for the given token.
