@@ -407,7 +407,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
+        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
     }
 
     /**
@@ -798,9 +798,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // This could be simplified by simply iteratively calling _getNormalizedWeight(), but this routine is
     // called very frequently, so we are optimizing for runtime performance.
-    function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
+    function _getNormalizedWeights(IERC20[] memory tokens)
+        internal
+        view
+        override
+        returns (uint256[] memory normalizedWeights)
+    {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
         uint256 denormWeightSum = _denormWeightSum;
 
@@ -955,7 +958,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
         uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
