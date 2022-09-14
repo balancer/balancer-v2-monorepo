@@ -19,7 +19,6 @@ import {
   fpMul,
   FP_ONE,
   FP_ZERO,
-  FP_SCALING_FACTOR,
   FP_100_PCT,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -1411,7 +1410,7 @@ describe('ComposableStablePool', () => {
               expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
-            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_SCALING_FACTOR);
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_ONE);
           }
 
           sharedBeforeEach('fund lp and pool', async () => {

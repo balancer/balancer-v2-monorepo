@@ -16,9 +16,9 @@ import {
 import {
   BigNumberish,
   bn,
-  FP_SCALING_FACTOR,
   FP_100_PCT,
   FP_ZERO,
+  FP_ONE,
   fp,
   fpDiv,
   fpMul,
