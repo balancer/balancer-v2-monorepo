@@ -525,9 +525,6 @@ describe('VaultActions', function () {
         });
 
         it('is chainable via multicall', async () => {
-          if (sender == recipient) {
-            console.log('SENDER IS RECIPIENT');
-          }
           const receipt = await (
             await expectBalanceChange(
               () =>
