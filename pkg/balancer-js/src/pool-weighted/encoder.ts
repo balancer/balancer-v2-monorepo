@@ -102,13 +102,6 @@ export class ManagedPoolEncoder {
   }
 
   /**
-   * Encodes the userData parameter for adding a new token to a WeightedPool
-   * @param amountIn - the amount of the tokens to send to the pool as its initial balance
-   */
-  static joinForAddToken = (amountIn: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolJoinKind.ADD_TOKEN, amountIn]);
-
-  /**
    * Encodes the userData parameter for exiting a ManagedPool to remove a token.
    * This can only be done by the pool owner.
    */
