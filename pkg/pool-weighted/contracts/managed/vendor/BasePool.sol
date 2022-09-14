@@ -33,6 +33,8 @@ import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
 
+import "../ManagedPoolStorageLib.sol";
+
 // solhint-disable max-states-count
 
 /**
@@ -72,25 +74,11 @@ abstract contract BasePool is
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
 
-    // `_miscData` is a storage slot that can be used to store unrelated pieces of information. All pools store the
-    // recovery mode flag and swap fee percentage, but `miscData` can be extended to store more pieces of information.
-    // The most signficant bit is reserved for the recovery mode flag, and the swap fee percentage is stored in
-    // the next most significant 63 bits, leaving the remaining 192 bits free to store any other information derived
-    // pools might need.
-    //
+    // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
     // and therefore warm.
-
-    // [ recovery | swap  fee | available ]
-    // [   1 bit  |  63 bits  |  192 bits ]
-    // [ MSB                          LSB ]
-    bytes32 private _miscData;
-
-    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
-    uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 255;
-
-    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits, so 63 is more than enough.
-    uint256 internal constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
+    // See `ManagedPoolStorageLib.sol` for data layout.
+    bytes32 private _poolState;
 
     bytes32 private immutable _poolId;
 
@@ -159,10 +147,10 @@ abstract contract BasePool is
 
     /**
      * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in `_miscData`.
+     * @dev This is stored in `_poolState`.
      */
     function getSwapFeePercentage() public view virtual override returns (uint256) {
-        return _miscData.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
+        return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
     }
 
     /**
@@ -187,14 +175,14 @@ abstract contract BasePool is
      * @notice Returns whether the pool is in Recovery Mode.
      */
     function inRecoveryMode() public view override returns (bool) {
-        return _miscData.decodeBool(_RECOVERY_MODE_BIT_OFFSET);
+        return ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState);
     }
 
     /**
      * @dev Sets the recoveryMode state, and emits the corresponding event.
      */
     function _setRecoveryMode(bool enabled) internal virtual override {
-        _miscData = _miscData.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
+        _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
 
         emit RecoveryModeStateChanged(enabled);
 
@@ -258,15 +246,15 @@ abstract contract BasePool is
             super._isOwnerOnlyAction(actionId);
     }
 
-    function _getMiscData() internal view returns (bytes32) {
-        return _miscData;
+    function _getPoolState() internal view returns (bytes32) {
+        return _poolState;
     }
 
     /**
-     * @dev Inserts data into the misc data storage slot.
+     * @dev Inserts data into the pool state storage slot.
      */
-    function _setMiscData(bytes32 newData) internal {
-        _miscData = newData;
+    function _setPoolState(bytes32 newPoolState) internal {
+        _poolState = newPoolState;
     }
 
     // Join / Exit Hooks
