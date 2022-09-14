@@ -959,6 +959,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Join/Exit overrides
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
+     */
     function _doJoin(
         address sender,
         uint256[] memory balances,
@@ -978,7 +981,30 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return
+                WeightedJoinsLib.joinExactTokensInForBPTOut(
+                    balances,
+                    normalizedWeights,
+                    scalingFactors,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
+        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return
+                WeightedJoinsLib.joinTokenInForExactBPTOut(
+                    balances,
+                    normalizedWeights,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
+        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
     }
 
     function _doExit(
