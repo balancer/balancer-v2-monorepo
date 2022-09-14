@@ -323,7 +323,12 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         endSwapFeePercentage = poolState.decodeUint(_END_SWAP_FEE_PERCENTAGE_OFFSET, 62);
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
         bytes32 poolState = _getMiscData();
@@ -336,9 +341,20 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             );
         }
 
-        _setSwapFeeData(currentTime, currentTime, swapFeePercentage);
+        _setSwapFeePercentage(swapFeePercentage);
+    }
 
-        super._setSwapFeePercentage(swapFeePercentage);
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal override {
+        _validateSwapFeePercentage(swapFeePercentage);
+
+        _setMiscData(
+            _getMiscData().insertUint(swapFeePercentage, _SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH)
+        );
+
+        // Set end swap fee to the same value to ensure that the swap fee stays at the desired value.
+        _setSwapFeeData(block.timestamp, block.timestamp, swapFeePercentage);
+
+        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     /**
@@ -1099,7 +1115,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 endSwapFeePercentage
     ) internal virtual {
         if (startSwapFeePercentage != getSwapFeePercentage()) {
-            super._setSwapFeePercentage(startSwapFeePercentage);
+            _setSwapFeePercentage(startSwapFeePercentage);
         }
 
         _setSwapFeeData(startTime, endTime, endSwapFeePercentage);

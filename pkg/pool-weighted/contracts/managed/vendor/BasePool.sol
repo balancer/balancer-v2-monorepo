@@ -92,7 +92,7 @@ abstract contract BasePool is
     uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 255;
 
     // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits, so 63 is more than enough.
-    uint256 private constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
+    uint256 internal constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
 
     bytes32 private immutable _poolId;
 
@@ -180,27 +180,7 @@ abstract contract BasePool is
         return _protocolFeesCollector;
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual override authenticate whenNotPaused {
-        _setSwapFeePercentage(swapFeePercentage);
-    }
-
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
-        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
-
-        _miscData = _miscData.insertUint(
-            swapFeePercentage,
-            _SWAP_FEE_PERCENTAGE_OFFSET,
-            _SWAP_FEE_PERCENTAGE_BIT_LENGTH
-        );
-
-        emit SwapFeePercentageChanged(swapFeePercentage);
-    }
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual;
 
     function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
         return _MIN_SWAP_FEE_PERCENTAGE;
@@ -290,11 +270,10 @@ abstract contract BasePool is
     }
 
     /**
-     * @dev Inserts data into the least-significant 192 bits of the misc data storage slot.
-     * Note that the remaining 64 bits are used for the swap fee percentage and cannot be overloaded.
+     * @dev Inserts data into the misc data storage slot.
      */
     function _setMiscData(bytes32 newData) internal {
-        _miscData = _miscData.insertBits192(newData, 0);
+        _miscData = newData;
     }
 
     // Join / Exit Hooks
