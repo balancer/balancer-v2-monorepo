@@ -88,7 +88,6 @@ abstract contract BasePool is
         string memory symbol,
         IERC20[] memory tokens,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -103,8 +102,6 @@ abstract contract BasePool is
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        _setSwapFeePercentage(_poolState, swapFeePercentage);
-
         bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
             vault,
             specialization,
@@ -140,22 +137,12 @@ abstract contract BasePool is
     }
 
     /**
-     * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in `_poolState`.
-     */
-    function getSwapFeePercentage() public view virtual override returns (uint256) {
-        return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
-    }
-
-    /**
      * @notice Return the ProtocolFeesCollector contract.
      * @dev This is immutable, and retrieved from the Vault on construction. (It is also immutable in the Vault.)
      */
     function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
-
-    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual;
 
     /**
      * @notice Returns whether the pool is in Recovery Mode.
@@ -558,7 +545,7 @@ abstract contract BasePool is
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(getSwapFeePercentage().complement());
+        return amount.divUp(ManagedPoolStorageLib.getSwapFeePercentage(_poolState).complement());
     }
 
     /**
@@ -566,7 +553,7 @@ abstract contract BasePool is
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
+        uint256 feeAmount = amount.mulUp(ManagedPoolStorageLib.getSwapFeePercentage(_poolState));
         return amount.sub(feeAmount);
     }
 

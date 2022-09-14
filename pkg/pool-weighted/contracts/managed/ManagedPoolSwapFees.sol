@@ -53,7 +53,7 @@ abstract contract ManagedPoolSwapFees is IBasePool {
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
      */
-    function getSwapFeePercentage() external view override returns (uint256) {
+    function getSwapFeePercentage() public view override returns (uint256) {
         return ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState());
     }
 

@@ -42,7 +42,6 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         string memory symbol,
         IERC20[] memory tokens,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner,
@@ -61,7 +60,6 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
             symbol,
             tokens,
             assetManagers,
-            swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
@@ -234,7 +232,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
@@ -243,7 +241,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
@@ -302,7 +300,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
@@ -314,7 +312,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
                     userData
                 );
         } else {

@@ -161,7 +161,6 @@ contract ManagedPool is
             params.symbol,
             params.tokens,
             params.assetManagers,
-            params.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner,
@@ -272,13 +271,6 @@ contract ManagedPool is
         }
 
         _setSwapFeePercentage(poolState, swapFeePercentage);
-    }
-
-    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage)
-        internal
-        override(BasePool, ManagedPoolSwapFees)
-    {
-        ManagedPoolSwapFees._setSwapFeePercentage(poolState, swapFeePercentage);
     }
 
     /**
