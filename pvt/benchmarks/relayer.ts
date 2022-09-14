@@ -22,7 +22,6 @@ async function main() {
     totalGasUsed = totalGasUsed.add(await testMulticall(i));
   }
 
-  console.log(`\n# Total gas used: ${printGas(totalGasUsed)}`);
   console.log(`\n# Average gas per call: ${printGas(totalGasUsed.div(maxInputLength + 1))}`);
 }
 
