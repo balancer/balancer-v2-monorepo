@@ -29,9 +29,8 @@ export async function deploy(
   if (!from) from = (await ethers.getSigners())[0];
 
   const artifact = getArtifact(contract);
-  if (libraries !== undefined) artifact.bytecode = linkBytecode(artifact, libraries);
 
-  const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, from);
+  const factory = await ethers.getContractFactoryFromArtifact(artifact, { signer: from, libraries });
   const instance = await factory.deploy(...args);
 
   return instance.deployed();
@@ -56,28 +55,4 @@ export function getArtifact(contract: string): Artifact {
 
   const artifacts = new Artifacts(artifactsPath);
   return artifacts.readArtifactSync(contract.split('/').slice(-1)[0]);
-}
-
-// From https://github.com/nomiclabs/hardhat/issues/611#issuecomment-638891597, temporary workaround until
-// https://github.com/nomiclabs/hardhat/issues/1716 is addressed.
-function linkBytecode(artifact: Artifact, libraries: Dictionary<string>): string {
-  let bytecode = artifact.bytecode;
-
-  for (const [, fileReferences] of Object.entries(artifact.linkReferences)) {
-    for (const [libName, fixups] of Object.entries(fileReferences)) {
-      const addr = libraries[libName];
-      if (addr === undefined) {
-        continue;
-      }
-
-      for (const fixup of fixups) {
-        bytecode =
-          bytecode.substr(0, 2 + fixup.start * 2) +
-          addr.substr(2) +
-          bytecode.substr(2 + (fixup.start + fixup.length) * 2);
-      }
-    }
-  }
-
-  return bytecode;
 }

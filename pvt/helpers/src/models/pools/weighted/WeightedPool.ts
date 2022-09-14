@@ -57,7 +57,6 @@ export default class WeightedPool extends BasePool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  protocolSwapFeePercentage: BigNumberish;
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
@@ -78,7 +77,6 @@ export default class WeightedPool extends BasePool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
-    protocolSwapFeePercentage: BigNumberish,
     managementSwapFeePercentage: BigNumberish,
     managementAumFeePercentage: BigNumberish,
     aumProtocolFeesCollector: string,
@@ -92,7 +90,6 @@ export default class WeightedPool extends BasePool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
-    this.protocolSwapFeePercentage = protocolSwapFeePercentage;
     this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumProtocolFeesCollector = aumProtocolFeesCollector;
@@ -302,8 +299,8 @@ export default class WeightedPool extends BasePool {
     return this.swap(await this._buildSwapParams(SwapKind.GivenOut, params));
   }
 
-  async updateProtocolFeePercentageCache(): Promise<void> {
-    await this.instance.updateProtocolFeePercentageCache();
+  async updateProtocolFeePercentageCache(): Promise<ContractTransaction> {
+    return this.instance.updateProtocolFeePercentageCache();
   }
 
   async swap(params: MinimalSwap): Promise<SwapResult> {
@@ -623,12 +620,11 @@ export default class WeightedPool extends BasePool {
     from: SignerWithAddress,
     token: Token,
     normalizedWeight: BigNumberish,
-    tokenAmountIn: BigNumberish,
     mintAmount: BigNumberish,
     recipient: string
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return await pool.addToken(token.address, normalizedWeight, tokenAmountIn, mintAmount, recipient);
+    return await pool.addToken(token.address, normalizedWeight, mintAmount, recipient);
   }
 
   async removeToken(
