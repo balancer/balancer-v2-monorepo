@@ -447,15 +447,4 @@ library StableMath {
 
         _revert(Errors.STABLE_GET_BALANCE_DIDNT_CONVERGE);
     }
-
-    function _getRate(
-        uint256[] memory balances,
-        uint256 amp,
-        uint256 supply
-    ) internal pure returns (uint256) {
-        // When calculating the current BPT rate, we may not have paid the protocol fees, therefore
-        // the invariant should be smaller than its current value. Then, we round down overall.
-        uint256 invariant = _calculateInvariant(amp, balances);
-        return invariant.divDown(supply);
-    }
 }

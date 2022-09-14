@@ -5,7 +5,7 @@ import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { bn, fp, fpDiv, FP_ONE, FP_SCALING_FACTOR, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv, FP_ONE, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -701,7 +701,7 @@ describe('ComposableStablePoolRates', () => {
         it('adapts the scaling factors with the price rate', async () => {
           const scalingFactors = await pool.getScalingFactors();
           expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
-          expect(scalingFactors[bptIndex]).to.be.equal(FP_SCALING_FACTOR);
+          expect(scalingFactors[bptIndex]).to.be.equal(FP_ONE);
         });
       };
 

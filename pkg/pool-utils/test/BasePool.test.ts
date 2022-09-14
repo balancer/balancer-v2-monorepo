@@ -18,11 +18,7 @@ import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress,
-    poolOwner: SignerWithAddress,
-    deployer: SignerWithAddress,
-    assetManager: SignerWithAddress,
-    other: SignerWithAddress;
+  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
@@ -34,7 +30,7 @@ describe('BasePool', function () {
   const BUFFER_PERIOD_DURATION = MONTH;
 
   before(async () => {
-    [, admin, poolOwner, deployer, assetManager, other] = await ethers.getSigners();
+    [, admin, poolOwner, deployer, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach(async () => {
@@ -86,38 +82,6 @@ describe('BasePool', function () {
     });
   }
 
-  describe('deployment', () => {
-    let assetManagers: string[];
-
-    beforeEach(() => {
-      assetManagers = [assetManager.address, ...Array(tokens.length - 1).fill(ZERO_ADDRESS)];
-    });
-
-    it('registers a pool in the vault', async () => {
-      const pool = await deployBasePool({
-        tokens,
-        assetManagers,
-      });
-      const poolId = await pool.getPoolId();
-
-      const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
-      expect(poolAddress).to.equal(pool.address);
-      expect(poolSpecialization).to.equal(PoolSpecialization.GeneralPool);
-
-      const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
-      expect(poolTokens).to.have.same.members(tokens.addresses);
-
-      poolTokens.forEach(async (token: string, i: number) => {
-        const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
-        expect(assetManager).to.equal(assetManagers[i]);
-      });
-    });
-
-    it('reverts if the tokens are not sorted', async () => {
-      await expect(deployBasePool({ tokens: tokens.addresses.reverse() })).to.be.revertedWith('UNSORTED_ARRAY');
-    });
-  });
-
   describe('authorizer', () => {
     let pool: Contract;
 
@@ -166,6 +130,12 @@ describe('BasePool', function () {
 
     sharedBeforeEach(async () => {
       pool = await deployBasePool();
+    });
+
+    it('skips zero value mints', async () => {
+      const tx = await pool.payProtocolFees(0);
+
+      expectEvent.notEmitted(await tx.wait(), 'Transfer');
     });
 
     it('mints bpt to the protocol fee collector', async () => {
@@ -935,86 +905,6 @@ describe('BasePool', function () {
         await expect(
           pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
         ).to.be.revertedWith('PAUSED');
-      });
-    });
-  });
-
-  describe('scaling', () => {
-    let pool: Contract;
-
-    sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool();
-    });
-
-    describe('upscale', () => {
-      it('returns the amount multiplied by the scaling factor', async () => {
-        expect(await pool.upscale(fp(42), fp(1.6))).to.equal(fp(67.2));
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.upscale(1, 1)).to.equal(0);
-      });
-    });
-
-    describe('upscaleArray', () => {
-      it('returns the amounts multiplied by the scaling factors', async () => {
-        expect(await pool.upscaleArray([fp(42), fp(15)], [fp(1.6), fp(2)])).to.deep.equal([fp(67.2), fp(30)]);
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.upscaleArray([1], [1])).to.deep.equal([0]);
-      });
-
-      it('reverts if the arrays have different lengths', async () => {
-        await expect(pool.upscaleArray([fp(42), fp(15)], [fp(1.6)])).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-      });
-    });
-
-    describe('downscaleDown', () => {
-      it('returns the amount divided by the scaling factor', async () => {
-        expect(await pool.downscaleDown(fp(60), fp(1.6))).to.equal(fp(37.5));
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.downscaleDown(5, fp(2))).to.equal(2);
-      });
-    });
-
-    describe('downscaleDownArray', () => {
-      it('returns the amounts divided by the scaling factors', async () => {
-        expect(await pool.downscaleDownArray([fp(60), fp(30)], [fp(1.6), fp(2)])).to.deep.equal([fp(37.5), fp(15)]);
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.downscaleDownArray([5], [fp(2)])).to.deep.equal([2]);
-      });
-
-      it('reverts if the arrays have different lengths', async () => {
-        await expect(pool.downscaleDownArray([fp(42), fp(15)], [fp(1.6)])).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-      });
-    });
-
-    describe('downscaleUp', () => {
-      it('returns the amount divided by the scaling factor', async () => {
-        expect(await pool.downscaleUp(fp(60), fp(1.6))).to.equal(fp(37.5));
-      });
-
-      it('rounds up', async () => {
-        expect(await pool.downscaleUp(5, fp(2))).to.equal(3);
-      });
-    });
-
-    describe('downscaleUpArray', () => {
-      it('returns the amounts divided by the scaling factors', async () => {
-        expect(await pool.downscaleUpArray([fp(60), fp(30)], [fp(1.6), fp(2)])).to.deep.equal([fp(37.5), fp(15)]);
-      });
-
-      it('rounds up', async () => {
-        expect(await pool.downscaleUpArray([5], [fp(2)])).to.deep.equal([3]);
-      });
-
-      it('reverts if the arrays have different lengths', async () => {
-        await expect(pool.downscaleUpArray([fp(42), fp(15)], [fp(1.6)])).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
   });
