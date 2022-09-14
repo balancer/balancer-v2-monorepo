@@ -66,8 +66,6 @@ abstract contract BasePool is
     using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
-    uint256 private constant _MIN_TOKENS = 2;
-
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
     // 1e18 corresponds to 1.0, or a 100% fee
@@ -123,9 +121,6 @@ abstract contract BasePool is
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
-        _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
-
         _setSwapFeePercentage(swapFeePercentage);
 
         bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
@@ -151,8 +146,6 @@ abstract contract BasePool is
 
     function _getTotalTokens() internal view virtual returns (uint256);
 
-    function _getMaxTokens() internal pure virtual returns (uint256);
-
     /**
      * @dev Returns the minimum BPT supply. This amount is minted to the zero address during initialization, effectively
      * locking it.
@@ -160,7 +153,7 @@ abstract contract BasePool is
      * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
      * to zero) by overriding this function.
      */
-    function _getMinimumBpt() internal pure virtual returns (uint256) {
+    function _getMinimumBpt() internal pure returns (uint256) {
         return _DEFAULT_MINIMUM_BPT;
     }
 
