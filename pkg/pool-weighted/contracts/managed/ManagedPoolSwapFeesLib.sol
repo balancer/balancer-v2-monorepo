@@ -18,6 +18,10 @@ pragma experimental ABIEncoderV2;
 import "./ManagedPoolStorageLib.sol";
 
 library ManagedPoolSwapFeesLib {
+    // ManagedPool swap fees can change over time: these periods are expected to be long enough (e.g. days)
+    // that any timestamp manipulation would achieve very little.
+    // solhint-disable not-rely-on-time
+
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event GradualSwapFeeUpdateScheduled(
         uint256 startTime,
@@ -33,7 +37,7 @@ library ManagedPoolSwapFeesLib {
     // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
 
-    function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
+    function validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
@@ -46,7 +50,7 @@ library ManagedPoolSwapFeesLib {
      * to write this to storage so this value is persisted.
      */
     function setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal returns (bytes32) {
-        _validateSwapFeePercentage(swapFeePercentage);
+        validateSwapFeePercentage(swapFeePercentage);
 
         emit SwapFeePercentageChanged(swapFeePercentage);
 
@@ -77,8 +81,8 @@ library ManagedPoolSwapFeesLib {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal returns (bytes32) {
-        _validateSwapFeePercentage(startSwapFeePercentage);
-        _validateSwapFeePercentage(endSwapFeePercentage);
+        validateSwapFeePercentage(startSwapFeePercentage);
+        validateSwapFeePercentage(endSwapFeePercentage);
 
         if (startSwapFeePercentage != ManagedPoolStorageLib.getSwapFeePercentage(poolState)) {
             poolState = setSwapFeePercentage(poolState, startSwapFeePercentage);

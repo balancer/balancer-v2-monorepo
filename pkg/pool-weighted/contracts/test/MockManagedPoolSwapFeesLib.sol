@@ -42,7 +42,7 @@ contract MockManagedPoolSwapFeesLib {
     // Mocked Functions
 
     function validateSwapFeePercentage(uint256 swapFeePercentage) external pure {
-        ManagedPoolSwapFeesLib._validateSwapFeePercentage(swapFeePercentage);
+        ManagedPoolSwapFeesLib.validateSwapFeePercentage(swapFeePercentage);
     }
 
     function setSwapFeePercentage(uint256 swapFeePercentage) external {
