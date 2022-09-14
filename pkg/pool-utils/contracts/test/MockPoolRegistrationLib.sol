@@ -33,4 +33,21 @@ contract MockPoolRegistrationLib {
     ) external returns (bytes32) {
         return PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers);
     }
+
+    function registerToken(
+        IVault vault,
+        bytes32 poolId,
+        IERC20 token,
+        address assetManager
+    ) external {
+        PoolRegistrationLib.registerToken(vault, poolId, token, assetManager);
+    }
+
+    function deregisterToken(
+        IVault vault,
+        bytes32 poolId,
+        IERC20 token
+    ) external {
+        PoolRegistrationLib.deregisterToken(vault, poolId, token);
+    }
 }
