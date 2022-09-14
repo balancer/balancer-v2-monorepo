@@ -547,9 +547,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
         _totalTokensCache += 1;
 
-        IERC20[] memory tokensToAdd = new IERC20[](1);
-        tokensToAdd[0] = token;
-        getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
 
         // Note that the Pool is now in an invalid state, since one of its tokens has a balance of zero (making the
         // invariant also zero).
@@ -660,10 +658,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
         // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
         // is in this inconsistent state (except for view calls).
-
-        IERC20[] memory tokensToRemove = new IERC20[](1);
-        tokensToRemove[0] = token;
-        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
 
         // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
         // all other token weights accordingly.
