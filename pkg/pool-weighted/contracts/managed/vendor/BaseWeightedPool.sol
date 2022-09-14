@@ -216,40 +216,13 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
      * or disallow joins under certain circumstances.
      */
     function _doJoin(
-        address,
+        address sender,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-
-        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return
-                WeightedJoinsLib.joinExactTokensInForBPTOut(
-                    balances,
-                    normalizedWeights,
-                    scalingFactors,
-                    totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
-                    userData
-                );
-        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return
-                WeightedJoinsLib.joinTokenInForExactBPTOut(
-                    balances,
-                    normalizedWeights,
-                    totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
-                    userData
-                );
-        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
-        } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
-        }
-    }
+    ) internal view virtual returns (uint256, uint256[] memory);
 
     // Exit
 
