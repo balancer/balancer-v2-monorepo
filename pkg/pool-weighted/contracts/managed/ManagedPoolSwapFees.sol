@@ -33,17 +33,9 @@ abstract contract ManagedPoolSwapFees {
     // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
 
-    function _getMinSwapFeePercentage() internal pure returns (uint256) {
-        return _MIN_SWAP_FEE_PERCENTAGE;
-    }
-
-    function _getMaxSwapFeePercentage() internal pure returns (uint256) {
-        return _MAX_SWAP_FEE_PERCENTAGE;
-    }
-
     function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
-        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
 
     function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual {
