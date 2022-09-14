@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "../../lib/WeightedExitsLib.sol";
 import "../../lib/WeightedJoinsLib.sol";
 import "../../WeightedMath.sol";
 
@@ -249,77 +250,28 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
-            return _exitExactBPTInForTokenOut(balances, normalizedWeights, totalSupply, userData);
+            return
+                WeightedExitsLib.exitExactBPTInForTokenOut(
+                    balances,
+                    normalizedWeights,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _exitExactBPTInForTokensOut(balances, totalSupply, userData);
+            return WeightedExitsLib.exitExactBPTInForTokensOut(balances, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
-            return _exitBPTInForExactTokensOut(balances, normalizedWeights, scalingFactors, totalSupply, userData);
+            return
+                WeightedExitsLib.exitBPTInForExactTokensOut(
+                    balances,
+                    normalizedWeights,
+                    scalingFactors,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
-    }
-
-    function _exitExactBPTInForTokenOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256 tokenIndex) = userData.exactBptInForTokenOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
-
-        uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
-            balances[tokenIndex],
-            normalizedWeights[tokenIndex],
-            bptAmountIn,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        // We exit in a single token, so we initialize amountsOut with zeros
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        // And then assign the result to the selected token
-        amountsOut[tokenIndex] = amountOut;
-
-        return (bptAmountIn, amountsOut);
-    }
-
-    function _exitExactBPTInForTokensOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
-
-        uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
-        return (bptAmountIn, amountsOut);
-    }
-
-    function _exitBPTInForExactTokensOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256[] memory amountsOut, uint256 maxBPTAmountIn) = userData.bptInForExactTokensOut();
-        InputHelpers.ensureInputLengthMatch(amountsOut.length, balances.length);
-        _upscaleArray(amountsOut, scalingFactors);
-
-        // This is an exceptional situation in which the fee is charged on a token out instead of a token in.
-        uint256 bptAmountIn = WeightedMath._calcBptInGivenExactTokensOut(
-            balances,
-            normalizedWeights,
-            amountsOut,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-        _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
-
-        return (bptAmountIn, amountsOut);
     }
 }
