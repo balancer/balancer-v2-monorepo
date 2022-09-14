@@ -63,6 +63,8 @@ describe('ManagedPool', function () {
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
 
+  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
+
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT));
@@ -703,52 +705,31 @@ describe('ManagedPool', function () {
   });
 
   describe('update swap fee gradually', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-      };
-      pool = await WeightedPool.create(params);
+    let caller: SignerWithAddress;
+
+    let startTime: BigNumber, endTime: BigNumber;
+    const START_DELAY = MINUTE * 10;
+    const UPDATE_DURATION = DAY * 2;
+    const START_SWAP_FEE = fp(0.5);
+    const END_SWAP_FEE = fp(0.01);
+
+    sharedBeforeEach(async () => {
+      const now = await currentTimestamp();
+      startTime = now.add(START_DELAY);
+      endTime = startTime.add(UPDATE_DURATION);
     });
 
-    const UPDATE_DURATION = DAY * 2;
-    const NEW_SWAP_FEE = fp(0.1);
-
-    context('when the sender is not the owner', () => {
+    function itReverts() {
       it('reverts', async () => {
-        const now = await currentTimestamp();
-
         await expect(
-          pool.updateSwapFeeGradually(other, now, now, POOL_SWAP_FEE_PERCENTAGE, NEW_SWAP_FEE)
+          pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
-    });
+    }
 
-    context('when the sender is the owner', () => {
-      let now, startTime: BigNumber, endTime: BigNumber;
-      const START_DELAY = MINUTE * 10;
-      const START_SWAP_FEE = fp(0.5);
-      const END_SWAP_FEE = fp(0.01);
-
-      sharedBeforeEach(async () => {
-        now = await currentTimestamp();
-        startTime = now.add(START_DELAY);
-        endTime = startTime.add(UPDATE_DURATION);
-
-        // Make sure start <> end (in case it got changed above)
-        expect(POOL_SWAP_FEE_PERCENTAGE).to.not.equal(END_SWAP_FEE);
-      });
-
-      beforeEach('set sender to owner', () => {
-        sender = owner;
-      });
-
+    function itStartsAGradualFeeChange() {
       it('begins a gradual swap fee update', async () => {
-        const receipt = await pool.updateSwapFeeGradually(owner, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+        const receipt = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
 
         expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
           startTime: startTime,
@@ -756,6 +737,58 @@ describe('ManagedPool', function () {
           startSwapFeePercentage: START_SWAP_FEE,
           endSwapFeePercentage: END_SWAP_FEE,
         });
+      });
+    }
+
+    context('with an owner', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await WeightedPool.create({
+          vault,
+          tokens: poolTokens,
+          owner: owner.address,
+          poolType: WeightedPoolType.MANAGED_POOL,
+        });
+      });
+
+      context('when the sender is allowed', () => {
+        sharedBeforeEach(() => {
+          caller = owner;
+        });
+
+        itStartsAGradualFeeChange();
+      });
+
+      context('when the sender is not allowed', () => {
+        sharedBeforeEach(() => {
+          caller = other;
+        });
+
+        itReverts();
+      });
+    });
+
+    context('with a delegated owner', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await WeightedPool.create({
+          vault,
+          tokens: poolTokens,
+          owner: DELEGATE_OWNER,
+          poolType: WeightedPoolType.MANAGED_POOL,
+        });
+        caller = other;
+      });
+
+      context('when the sender is allowed', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          const updateSwapFeeGraduallyPermission = await actionId(pool.instance, 'updateSwapFeeGradually');
+          await pool.vault.grantPermissionsGlobally([updateSwapFeeGraduallyPermission], other);
+        });
+
+        itStartsAGradualFeeChange();
+      });
+
+      context('when the sender is not allowed', () => {
+        itReverts();
       });
     });
   });
