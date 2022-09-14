@@ -70,10 +70,6 @@ abstract contract BasePool is
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
-    // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
-
     // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
     // and therefore warm.
@@ -84,8 +80,6 @@ abstract contract BasePool is
 
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
     IProtocolFeesCollector private immutable _protocolFeesCollector;
-
-    event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
     constructor(
         IVault vault,
@@ -163,14 +157,6 @@ abstract contract BasePool is
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual;
 
-    function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
-        return _MIN_SWAP_FEE_PERCENTAGE;
-    }
-
-    function _getMaxSwapFeePercentage() internal pure virtual returns (uint256) {
-        return _MAX_SWAP_FEE_PERCENTAGE;
-    }
-
     /**
      * @notice Returns whether the pool is in Recovery Mode.
      */
@@ -246,14 +232,14 @@ abstract contract BasePool is
             super._isOwnerOnlyAction(actionId);
     }
 
-    function _getPoolState() internal view returns (bytes32) {
+    function _getPoolState() internal view virtual returns (bytes32) {
         return _poolState;
     }
 
     /**
      * @dev Inserts data into the pool state storage slot.
      */
-    function _setPoolState(bytes32 newPoolState) internal {
+    function _setPoolState(bytes32 newPoolState) internal virtual {
         _poolState = newPoolState;
     }
 
