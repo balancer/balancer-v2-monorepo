@@ -137,13 +137,13 @@ describe('WeightedPool', function () {
     });
 
     function itIsOwnerOnly(method: string) {
-      it(`${method} can only be called by non-delegated owners`, async () => {
+      it(`${method} requires the caller to be the owner`, async () => {
         expect(await pool.isOwnerOnlyAction(await actionId(pool, method))).to.be.true;
       });
     }
 
     function itIsNotOwnerOnly(method: string) {
-      it(`${method} can never be called by the owner`, async () => {
+      it(`${method} doesn't require the caller to be the owner`, async () => {
         expect(await pool.isOwnerOnlyAction(await actionId(pool, method))).to.be.false;
       });
     }
