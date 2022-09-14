@@ -143,13 +143,7 @@
       }
     ],
     "name": "batchSwap",
-    "outputs": [
-      {
-        "internalType": "int256[]",
-        "name": "",
-        "type": "int256[]"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -662,13 +656,7 @@
       }
     ],
     "name": "swap",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
