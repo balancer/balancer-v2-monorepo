@@ -635,7 +635,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Reverts if the token does not exist in the pool.
         uint256 tokenIndex = _findTokenIndex(tokens, token);
         uint256 tokenBalance = unscaledBalances[tokenIndex];
-        uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
+        uint256 tokenNormalizedWeight = _getNormalizedWeight(
+            token,
+            ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState())
+        );
 
         // We first perform a special exit operation, which will withdraw the entire token balance from the Vault.
         // Only the Pool itself is authorized to initiate this kind of exit.
@@ -789,8 +792,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         }
     }
 
-    function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
+    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view override returns (uint256) {
         return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
     }
 
@@ -822,8 +824,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn);
-        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
+
+        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
 
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountOut = WeightedMath._calcOutGivenIn(
@@ -859,8 +863,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn);
-        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
+
+        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
 
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountIn = WeightedMath._calcInGivenOut(

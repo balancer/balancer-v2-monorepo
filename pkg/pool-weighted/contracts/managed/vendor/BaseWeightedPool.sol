@@ -75,7 +75,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     /**
      * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
      */
-    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256);
+    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view virtual returns (uint256);
 
     /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens.
