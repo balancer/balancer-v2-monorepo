@@ -10,6 +10,7 @@ let vault: Vault;
 let relayerLibrary: Contract, relayer: Contract;
 
 const maxInputLength = 256;
+const wordBytesSize = 32;
 
 async function main() {
   ({ vault } = await setupEnvironment());
@@ -18,11 +19,12 @@ async function main() {
   let totalGasUsed = bn(0);
 
   console.log('== Measuring multicall gas usage ==\n');
-  for (let i = 0; i <= maxInputLength; i++) {
+  // We do 32-byte jumps, which is equivalent to adding a word to the array.
+  for (let i = 0; i <= maxInputLength; i += wordBytesSize) {
     totalGasUsed = totalGasUsed.add(await testMulticall(i));
   }
 
-  console.log(`\n# Average gas per call: ${printGas(totalGasUsed.div(maxInputLength + 1))}`);
+  console.log(`\n# Average gas per call: ${printGas(totalGasUsed.div(maxInputLength / wordBytesSize + 1))}`);
 }
 
 async function testMulticall(bytesLength: number): Promise<BigNumber> {
