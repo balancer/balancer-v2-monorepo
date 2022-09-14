@@ -5,7 +5,7 @@ import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -230,8 +230,8 @@ describe('ComposableStablePoolStorage', () => {
     describe('scaling factors', () => {
       describe('getScalingFactorX', () => {
         it('returns the correct scaling factor', async () => {
-          const expectedScalingFactors = tokens.map((token) => fp(1).mul(bn(10).pow(18 - token.decimals)));
-          expectedScalingFactors.splice(bptIndex, 0, fp(1));
+          const expectedScalingFactors = tokens.map((token) => FP_ONE.mul(bn(10).pow(18 - token.decimals)));
+          expectedScalingFactors.splice(bptIndex, 0, FP_ONE);
 
           // There's always 6 getters however not all of them may be used. Unused getters return zero.
           const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? bn(0));
