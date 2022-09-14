@@ -14,6 +14,7 @@ import {
   fp,
   pct,
   arrayAdd,
+  arrayFpMul,
   bnSum,
   fpDiv,
   fpMul,
