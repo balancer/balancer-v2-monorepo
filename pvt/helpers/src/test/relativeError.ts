@@ -7,8 +7,13 @@ export function expectEqualWithError(actual: BigNumberish, expected: BigNumberis
   expected = bn(expected);
   const acceptedError = pct(expected, error);
 
-  expect(actual).to.be.at.least(expected.sub(acceptedError));
-  expect(actual).to.be.at.most(expected.add(acceptedError));
+  if (actual.gte(0)) {
+    expect(actual).to.be.at.least(expected.sub(acceptedError));
+    expect(actual).to.be.at.most(expected.add(acceptedError));
+  } else {
+    expect(actual).to.be.at.most(expected.sub(acceptedError));
+    expect(actual).to.be.at.least(expected.add(acceptedError));
+  }
 }
 
 export function expectLessThanOrEqualWithError(

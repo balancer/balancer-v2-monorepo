@@ -28,11 +28,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "./lib/PoolRegistrationLib.sol";
-
-import "./BalancerPoolToken.sol";
-import "./BasePoolAuthorization.sol";
-import "./RecoveryMode.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
+import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
@@ -631,23 +630,6 @@ abstract contract BasePool is
     }
 
     // Scaling
-
-    /**
-     * @dev Returns a scaling factor that, when multiplied to a token amount for `token`, normalizes its balance as if
-     * it had 18 decimals.
-     */
-    function _computeScalingFactor(IERC20 token) internal view returns (uint256) {
-        if (address(token) == address(this)) {
-            return FixedPoint.ONE;
-        }
-
-        // Tokens that don't implement the `decimals` method are not supported.
-        uint256 tokenDecimals = ERC20(address(token)).decimals();
-
-        // Tokens with more than 18 decimals are not supported.
-        uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        return FixedPoint.ONE * 10**decimalsDifference;
-    }
 
     /**
      * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the

@@ -19,7 +19,6 @@ import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 
 import "../ComposableStablePool.sol";
 
-// solc-ignore-next-line code-size
 contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
     constructor(NewPoolParams memory params) ComposableStablePool(params) {
         // solhint-disable-previous-line no-empty-blocks
