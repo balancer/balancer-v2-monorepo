@@ -103,7 +103,7 @@ abstract contract BasePool is
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        _setSwapFeePercentage(swapFeePercentage);
+        _setSwapFeePercentage(_poolState, swapFeePercentage);
 
         bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
             vault,
@@ -155,7 +155,7 @@ abstract contract BasePool is
         return _protocolFeesCollector;
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual;
+    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual;
 
     /**
      * @notice Returns whether the pool is in Recovery Mode.

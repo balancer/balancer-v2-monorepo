@@ -201,7 +201,13 @@ contract ManagedPool is
             params.tokens
         );
 
-        _startGradualSwapFeeChange(currentTime, currentTime, params.swapFeePercentage, params.swapFeePercentage);
+        _startGradualSwapFeeChange(
+            _getPoolState(),
+            currentTime,
+            currentTime,
+            params.swapFeePercentage,
+            params.swapFeePercentage
+        );
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
         _setSwapEnabled(params.swapEnabledOnStart);
@@ -256,7 +262,8 @@ contract ManagedPool is
     function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
-        (uint256 startTime, uint256 endTime, , ) = ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
+        bytes32 poolState = _getPoolState();
+        (uint256 startTime, uint256 endTime, , ) = ManagedPoolStorageLib.getSwapFeeFields(poolState);
 
         if (currentTime < endTime) {
             _revert(
@@ -264,11 +271,14 @@ contract ManagedPool is
             );
         }
 
-        _setSwapFeePercentage(swapFeePercentage);
+        _setSwapFeePercentage(poolState, swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal override(BasePool, ManagedPoolSwapFees) {
-        ManagedPoolSwapFees._setSwapFeePercentage(swapFeePercentage);
+    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage)
+        internal
+        override(BasePool, ManagedPoolSwapFees)
+    {
+        ManagedPoolSwapFees._setSwapFeePercentage(poolState, swapFeePercentage);
     }
 
     /**
@@ -385,7 +395,7 @@ contract ManagedPool is
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+        _startGradualSwapFeeChange(_getPoolState(), startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
     /**

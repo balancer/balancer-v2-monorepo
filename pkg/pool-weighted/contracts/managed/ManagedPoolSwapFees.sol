@@ -53,7 +53,7 @@ abstract contract ManagedPoolSwapFees is IBasePool {
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
      */
-    function getSwapFeePercentage() public view override returns (uint256) {
+    function getSwapFeePercentage() external view override returns (uint256) {
         return ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState());
     }
 
@@ -78,12 +78,12 @@ abstract contract ManagedPoolSwapFees is IBasePool {
         return ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
+    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual {
         _validateSwapFeePercentage(swapFeePercentage);
 
         _setPoolState(
             ManagedPoolStorageLib.setSwapFeeData(
-                _getPoolState(),
+                poolState,
                 block.timestamp,
                 block.timestamp,
                 swapFeePercentage,
@@ -95,18 +95,19 @@ abstract contract ManagedPoolSwapFees is IBasePool {
     }
 
     function _startGradualSwapFeeChange(
+        bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal virtual {
-        if (startSwapFeePercentage != getSwapFeePercentage()) {
-            _setSwapFeePercentage(startSwapFeePercentage);
+        if (startSwapFeePercentage != ManagedPoolStorageLib.getSwapFeePercentage(poolState)) {
+            _setSwapFeePercentage(poolState, startSwapFeePercentage);
         }
 
         _setPoolState(
             ManagedPoolStorageLib.setSwapFeeData(
-                _getPoolState(),
+                poolState,
                 startTime,
                 endTime,
                 startSwapFeePercentage,
