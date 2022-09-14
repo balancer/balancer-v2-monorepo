@@ -200,12 +200,14 @@ contract ManagedPool is
             params.tokens
         );
 
-        _startGradualSwapFeeChange(
-            _getPoolState(),
-            currentTime,
-            currentTime,
-            params.swapFeePercentage,
-            params.swapFeePercentage
+        _setPoolState(
+            _startGradualSwapFeeChange(
+                _getPoolState(),
+                currentTime,
+                currentTime,
+                params.swapFeePercentage,
+                params.swapFeePercentage
+            )
         );
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
