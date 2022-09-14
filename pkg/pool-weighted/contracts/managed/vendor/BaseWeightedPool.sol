@@ -78,6 +78,14 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view virtual returns (uint256);
 
     /**
+     * @notice Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function getNormalizedWeights() public view returns (uint256[] memory) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        return _getNormalizedWeights(tokens);
+    }
+
+    /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens.
      */
     function _getNormalizedWeights(IERC20[] memory tokens) internal view virtual returns (uint256[] memory);
@@ -94,11 +102,6 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
 
         uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    function getNormalizedWeights() public view returns (uint256[] memory) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        return _getNormalizedWeights(tokens);
     }
 
     // Base Pool handlers
