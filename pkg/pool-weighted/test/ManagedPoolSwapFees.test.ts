@@ -99,6 +99,12 @@ describe('ManagedPoolSwapFees', function () {
           'MAX_SWAP_FEE_PERCENTAGE'
         );
       });
+
+      it('cannot have swap fee change finish before it starts', async () => {
+        await expect(pool.startGradualSwapFeeChange(end, start, VALID_SWAP_FEE, VALID_SWAP_FEE)).to.be.revertedWith(
+          'GRADUAL_UPDATE_TIME_TRAVEL'
+        );
+      });
     });
 
     function itStartsAGradualWeightChangeCorrectly(startTimeOffset: BigNumberish, ongoingSwapFeeChange: boolean) {
