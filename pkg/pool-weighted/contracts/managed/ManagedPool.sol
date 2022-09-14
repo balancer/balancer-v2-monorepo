@@ -1093,22 +1093,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     /**
-     * @dev Extend ownerOnly functions to include the Managed Pool control functions.
+     * @dev Enumerates all ownerOnly functions in Managed Pool.
      */
-    function _isOwnerOnlyAction(bytes32 actionId)
-        internal
-        view
-        override(
-            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
-            BasePool,
-            BasePoolAuthorization
-        )
-        returns (bool)
-    {
+    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
             (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPool.updateSwapFeeGradually.selector)) ||
             (actionId == getActionId(ManagedPool.setSwapEnabled.selector)) ||
+            (actionId == getActionId(ManagedPool.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
@@ -1116,7 +1108,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
     }
 
     function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
