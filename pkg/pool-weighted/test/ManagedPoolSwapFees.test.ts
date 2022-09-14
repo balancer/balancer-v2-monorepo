@@ -1,7 +1,14 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
-import { WEEK, DAY, MINUTE, advanceToTimestamp, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  WEEK,
+  DAY,
+  MINUTE,
+  advanceToTimestamp,
+  currentTimestamp,
+  receiptTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
@@ -94,15 +101,14 @@ describe('ManagedPoolSwapFees', function () {
       });
     });
 
-    function itStartsAGradualWeightChangeCorrectly(ongoingSwapFeeChange: boolean) {
+    function itStartsAGradualWeightChangeCorrectly(startTimeOffset: BigNumberish, ongoingSwapFeeChange: boolean) {
       let now, startTime: BigNumber, endTime: BigNumber;
-      const START_DELAY = MINUTE * 10;
       const START_SWAP_FEE = INITIAL_SWAP_FEE;
       const END_SWAP_FEE = VALID_SWAP_FEE;
 
       sharedBeforeEach('calculate gradual update parameters', async () => {
         now = await currentTimestamp();
-        startTime = now.add(START_DELAY);
+        startTime = now.add(startTimeOffset);
         endTime = startTime.add(UPDATE_DURATION);
 
         // Make sure start <> end (in case it got changed above)
@@ -110,12 +116,17 @@ describe('ManagedPoolSwapFees', function () {
       });
 
       it('updates the swap fee parameters', async () => {
-        await pool.startGradualSwapFeeChange(startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+        const tx = await pool.startGradualSwapFeeChange(startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
 
         const updateParams = await pool.getGradualSwapFeeUpdateParams();
 
-        expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
-        expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
+        // If the start time has already passed (due to multisig signer wrangling / a tx being slow to confirm),
+        // then we bring it forwards to block.timestamp to avoid reverting or causing a discontinuity in swap fees.
+        const txTimestamp = bn(await receiptTimestamp(tx.wait()));
+        const expectedStartTime = startTime.gt(txTimestamp) ? startTime : txTimestamp;
+
+        expect(updateParams.startTime).to.eq(expectedStartTime);
+        expect(updateParams.endTime).to.eq(endTime);
         expect(updateParams.startSwapFeePercentage).to.equal(START_SWAP_FEE);
         expect(updateParams.endSwapFeePercentage).to.equal(END_SWAP_FEE);
       });
@@ -123,8 +134,11 @@ describe('ManagedPoolSwapFees', function () {
       it('emits a GradualSwapFeeUpdateScheduled event', async () => {
         const receipt = await pool.startGradualSwapFeeChange(startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
 
+        const txTimestamp = bn(await receiptTimestamp(receipt));
+        const expectedStartTime = startTime.gt(txTimestamp) ? startTime : txTimestamp;
+
         expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
-          startTime: startTime,
+          startTime: expectedStartTime,
           endTime: endTime,
           startSwapFeePercentage: START_SWAP_FEE,
           endSwapFeePercentage: END_SWAP_FEE,
@@ -158,22 +172,48 @@ describe('ManagedPoolSwapFees', function () {
       });
     }
 
-    context('with no ongoing swap fee change', () => {
-      itStartsAGradualWeightChangeCorrectly(false);
-    });
+    context('when gradual update start time is the future', () => {
+      const START_TIME_OFFSET = MINUTE * 10;
 
-    context('with an ongoing swap fee change', () => {
-      sharedBeforeEach('startGradualSwapFeeChange', async () => {
-        // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
-        // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
-        // current swap fee correctly.
-        const now = await currentTimestamp();
-
-        await pool.startGradualSwapFeeChange(now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
-        await advanceToTimestamp(now.add(10));
+      context('with no ongoing swap fee change', () => {
+        itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, false);
       });
 
-      itStartsAGradualWeightChangeCorrectly(true);
+      context('with an ongoing swap fee change', () => {
+        sharedBeforeEach(async () => {
+          // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+          // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+          // current swap fee correctly.
+          const now = await currentTimestamp();
+
+          await pool.startGradualSwapFeeChange(now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
+          await advanceToTimestamp(now.add(10));
+        });
+
+        itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, true);
+      });
+    });
+
+    context('when gradual update start time is in the past', () => {
+      const START_TIME_OFFSET = -1 * MINUTE * 10;
+
+      context('with no ongoing swap fee change', () => {
+        itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, false);
+      });
+
+      context('with an ongoing swap fee change', () => {
+        sharedBeforeEach(async () => {
+          // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+          // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+          // current swap fee correctly.
+          const now = await currentTimestamp();
+
+          await pool.startGradualSwapFeeChange(now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
+          await advanceToTimestamp(now.add(10));
+        });
+
+        itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, true);
+      });
     });
   });
 });

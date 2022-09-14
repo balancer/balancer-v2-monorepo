@@ -68,6 +68,8 @@ abstract contract ManagedPoolSwapFees {
             _setSwapFeePercentage(poolState, startSwapFeePercentage);
         }
 
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
+
         _setPoolState(
             ManagedPoolStorageLib.setSwapFeeData(
                 poolState,
