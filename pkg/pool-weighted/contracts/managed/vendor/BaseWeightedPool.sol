@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "../../lib/WeightedJoinsLib.sol";
 import "../../WeightedMath.sol";
 
 import "./BaseMinimalSwapInfoPool.sol";
@@ -179,79 +180,29 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return _joinExactTokensInForBPTOut(balances, normalizedWeights, scalingFactors, totalSupply, userData);
+            return
+                WeightedJoinsLib.joinExactTokensInForBPTOut(
+                    balances,
+                    normalizedWeights,
+                    scalingFactors,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
         } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return _joinTokenInForExactBPTOut(balances, normalizedWeights, totalSupply, userData);
+            return
+                WeightedJoinsLib.joinTokenInForExactBPTOut(
+                    balances,
+                    normalizedWeights,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return _joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
+            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
-    }
-
-    function _joinExactTokensInForBPTOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256[] memory amountsIn, uint256 minBPTAmountOut) = userData.exactTokensInForBptOut();
-        InputHelpers.ensureInputLengthMatch(balances.length, amountsIn.length);
-
-        _upscaleArray(amountsIn, scalingFactors);
-
-        uint256 bptAmountOut = WeightedMath._calcBptOutGivenExactTokensIn(
-            balances,
-            normalizedWeights,
-            amountsIn,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        _require(bptAmountOut >= minBPTAmountOut, Errors.BPT_OUT_MIN_AMOUNT);
-
-        return (bptAmountOut, amountsIn);
-    }
-
-    function _joinTokenInForExactBPTOut(
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private view returns (uint256, uint256[] memory) {
-        (uint256 bptAmountOut, uint256 tokenIndex) = userData.tokenInForExactBptOut();
-        // Note that there is no maximum amountIn parameter: this is handled by `IVault.joinPool`.
-
-        _require(tokenIndex < balances.length, Errors.OUT_OF_BOUNDS);
-
-        uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
-            balances[tokenIndex],
-            normalizedWeights[tokenIndex],
-            bptAmountOut,
-            totalSupply,
-            getSwapFeePercentage()
-        );
-
-        // We join in a single token, so we initialize amountsIn with zeros
-        uint256[] memory amountsIn = new uint256[](balances.length);
-        // And then assign the result to the selected token
-        amountsIn[tokenIndex] = amountIn;
-
-        return (bptAmountOut, amountsIn);
-    }
-
-    function _joinAllTokensInForExactBPTOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        bytes memory userData
-    ) private pure returns (uint256, uint256[] memory) {
-        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
-        // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
-
-        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply);
-
-        return (bptAmountOut, amountsIn);
     }
 
     // Exit
