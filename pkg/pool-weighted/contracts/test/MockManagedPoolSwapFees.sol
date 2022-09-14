@@ -45,14 +45,6 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
 
     // Mocked Functions
 
-    function getMinSwapFeePercentage() external pure returns (uint256) {
-        return _getMinSwapFeePercentage();
-    }
-
-    function getMaxSwapFeePercentage() external pure returns (uint256) {
-        return _getMaxSwapFeePercentage();
-    }
-
     function validateSwapFeePercentage(uint256 swapFeePercentage) external pure {
         _validateSwapFeePercentage(swapFeePercentage);
     }

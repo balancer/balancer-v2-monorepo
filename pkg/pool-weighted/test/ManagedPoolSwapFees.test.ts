@@ -21,13 +21,17 @@ describe('ManagedPoolSwapFees', function () {
     await pool.setSwapFeePercentage(INITIAL_SWAP_FEE);
   });
 
-  describe('minimum and maximum swap fees', () => {
-    it('returns the expected minimum value', async () => {
-      expect(await pool.getMinSwapFeePercentage()).to.be.eq(MIN_SWAP_FEE);
+  describe('swap fee validation', () => {
+    it('rejects swap fees above maximum', async () => {
+      await expect(pool.validateSwapFeePercentage(TOO_HIGH_SWAP_FEE)).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
     });
 
-    it('returns the expected maximum value', async () => {
-      expect(await pool.getMaxSwapFeePercentage()).to.be.eq(MAX_SWAP_FEE);
+    it('rejects swap fee below minimum', async () => {
+      await expect(pool.validateSwapFeePercentage(TOO_LOW_SWAP_FEE)).to.be.revertedWith('MIN_SWAP_FEE_PERCENTAGE');
+    });
+
+    it('accepts valid swap fees', async () => {
+      await expect(pool.validateSwapFeePercentage(VALID_SWAP_FEE)).to.be.not.be.reverted;
     });
   });
 
