@@ -38,20 +38,19 @@ abstract contract ManagedPoolSwapFees {
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
 
-    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual {
+    function _setSwapFeePercentage(bytes32 poolState, uint256 swapFeePercentage) internal virtual returns (bytes32) {
         _validateSwapFeePercentage(swapFeePercentage);
 
-        _setPoolState(
+        emit SwapFeePercentageChanged(swapFeePercentage);
+
+        return
             ManagedPoolStorageLib.setSwapFeeData(
                 poolState,
                 block.timestamp,
                 block.timestamp,
                 swapFeePercentage,
                 swapFeePercentage
-            )
-        );
-
-        emit SwapFeePercentageChanged(swapFeePercentage);
+            );
     }
 
     function _startGradualSwapFeeChange(
@@ -60,28 +59,25 @@ abstract contract ManagedPoolSwapFees {
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) internal virtual {
+    ) internal virtual returns (bytes32) {
         _validateSwapFeePercentage(startSwapFeePercentage);
         _validateSwapFeePercentage(endSwapFeePercentage);
 
         if (startSwapFeePercentage != ManagedPoolStorageLib.getSwapFeePercentage(poolState)) {
-            _setSwapFeePercentage(poolState, startSwapFeePercentage);
+            poolState = _setSwapFeePercentage(poolState, startSwapFeePercentage);
         }
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _setPoolState(
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+
+        return
             ManagedPoolStorageLib.setSwapFeeData(
                 poolState,
                 startTime,
                 endTime,
                 startSwapFeePercentage,
                 endSwapFeePercentage
-            )
-        );
-
-        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+            );
     }
-
-    function _setPoolState(bytes32 newPoolState) internal virtual;
 }

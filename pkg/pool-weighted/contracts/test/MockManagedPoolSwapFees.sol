@@ -20,10 +20,6 @@ import "../managed/ManagedPoolSwapFees.sol";
 contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
     bytes32 private _poolState;
 
-    function _setPoolState(bytes32 newPoolState) internal override {
-        _poolState = newPoolState;
-    }
-
     // Helpers to decode Pool state
 
     function getSwapFeePercentage() external view returns (uint256) {
@@ -50,7 +46,7 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
     }
 
     function setSwapFeePercentage(uint256 swapFeePercentage) external {
-        _setSwapFeePercentage(_poolState, swapFeePercentage);
+        _poolState = _setSwapFeePercentage(_poolState, swapFeePercentage);
     }
 
     function startGradualSwapFeeChange(
@@ -59,6 +55,12 @@ contract MockManagedPoolSwapFees is ManagedPoolSwapFees {
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external {
-        _startGradualSwapFeeChange(_poolState, startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+        _poolState = _startGradualSwapFeeChange(
+            _poolState,
+            startTime,
+            endTime,
+            startSwapFeePercentage,
+            endSwapFeePercentage
+        );
     }
 }

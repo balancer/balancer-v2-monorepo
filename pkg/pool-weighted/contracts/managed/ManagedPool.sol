@@ -300,7 +300,7 @@ contract ManagedPool is
             );
         }
 
-        _setSwapFeePercentage(poolState, swapFeePercentage);
+        _setPoolState(_setSwapFeePercentage(poolState, swapFeePercentage));
     }
 
     /**
@@ -412,7 +412,15 @@ contract ManagedPool is
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external authenticate whenNotPaused nonReentrant {
-        _startGradualSwapFeeChange(_getPoolState(), startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+        _setPoolState(
+            _startGradualSwapFeeChange(
+                _getPoolState(),
+                startTime,
+                endTime,
+                startSwapFeePercentage,
+                endSwapFeePercentage
+            )
+        );
     }
 
     /**
@@ -1136,11 +1144,5 @@ contract ManagedPool is
         // charged to the remaining LPs for the full period. We then update the collection timestamp so that no AUM fees
         // are accrued over this period.
         _lastAumFeeCollectionTimestamp = block.timestamp;
-    }
-
-    // Pool State
-
-    function _setPoolState(bytes32 newPoolState) internal override(ManagedPoolSwapFees, BasePool) {
-        return BasePool._setPoolState(newPoolState);
     }
 }
