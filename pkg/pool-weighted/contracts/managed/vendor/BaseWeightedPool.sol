@@ -42,7 +42,6 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         string memory symbol,
         IERC20[] memory tokens,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner,
@@ -61,7 +60,6 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
             symbol,
             tokens,
             assetManagers,
-            swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner

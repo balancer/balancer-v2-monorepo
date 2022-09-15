@@ -75,8 +75,6 @@ abstract contract BasePool is
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
     IProtocolFeesCollector private immutable _protocolFeesCollector;
 
-    event SwapFeePercentageChanged(uint256 swapFeePercentage);
-
     constructor(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -84,7 +82,6 @@ abstract contract BasePool is
         string memory symbol,
         IERC20[] memory tokens,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -99,8 +96,6 @@ abstract contract BasePool is
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        _setSwapFeePercentage(swapFeePercentage);
-
         bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
             vault,
             specialization,
@@ -148,8 +143,6 @@ abstract contract BasePool is
     function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
     }
-
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual;
 
     /**
      * @dev Performs any necessary actions on the disabling of Recovery Mode.

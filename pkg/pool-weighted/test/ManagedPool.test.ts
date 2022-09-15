@@ -26,7 +26,7 @@ import {
   pct,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -41,6 +41,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { random, range } from 'lodash';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { Interface } from 'ethers/lib/utils';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -62,6 +63,8 @@ describe('ManagedPool', function () {
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
+
+  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
@@ -663,10 +666,6 @@ describe('ManagedPool', function () {
       });
     });*/
 
-    it('cannot set 100% swap fee', async () => {
-      await expect(pool.setSwapFeePercentage(owner, FP_100_PCT)).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
-    });
-
     context('with the max swap fee', () => {
       sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
         await pool.setSwapFeePercentage(owner, MAX_SWAP_FEE_PERCENTAGE);
@@ -707,106 +706,94 @@ describe('ManagedPool', function () {
   });
 
   describe('update swap fee gradually', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-      };
-      pool = await WeightedPool.create(params);
+    let caller: SignerWithAddress;
+
+    let libInterface: Interface;
+
+    let startTime: BigNumber, endTime: BigNumber;
+    const START_DELAY = MINUTE * 10;
+    const UPDATE_DURATION = DAY * 2;
+    const START_SWAP_FEE = fp(0.5);
+    const END_SWAP_FEE = fp(0.01);
+
+    sharedBeforeEach(async () => {
+      libInterface = new Interface((await getArtifact('ManagedPoolSwapFeesLib')).abi);
+
+      const now = await currentTimestamp();
+      startTime = now.add(START_DELAY);
+      endTime = startTime.add(UPDATE_DURATION);
     });
 
-    const UPDATE_DURATION = DAY * 2;
-    const NEW_SWAP_FEE = fp(0.1);
-
-    context('when the sender is not the owner', () => {
-      it('non-owners cannot update swap fee', async () => {
-        const now = await currentTimestamp();
-
+    function itReverts() {
+      it('reverts', async () => {
         await expect(
-          pool.updateSwapFeeGradually(other, now, now, POOL_SWAP_FEE_PERCENTAGE, NEW_SWAP_FEE)
+          pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE)
         ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
+    }
+
+    function itStartsAGradualFeeChange() {
+      it('begins a gradual swap fee update', async () => {
+        const receipt = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+
+        expectEvent.inIndirectReceipt(await receipt.wait(), libInterface, 'GradualSwapFeeUpdateScheduled', {
+          startTime: startTime,
+          endTime: endTime,
+          startSwapFeePercentage: START_SWAP_FEE,
+          endSwapFeePercentage: END_SWAP_FEE,
+        });
+      });
+    }
+
+    context('with an owner', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await WeightedPool.create({
+          vault,
+          tokens: poolTokens,
+          owner: owner.address,
+          poolType: WeightedPoolType.MANAGED_POOL,
+        });
+      });
+
+      context('when the sender is allowed', () => {
+        sharedBeforeEach(() => {
+          caller = owner;
+        });
+
+        itStartsAGradualFeeChange();
+      });
+
+      context('when the sender is not allowed', () => {
+        sharedBeforeEach(() => {
+          caller = other;
+        });
+
+        itReverts();
+      });
     });
 
-    context('when the sender is the owner', () => {
-      beforeEach('set sender to owner', () => {
-        sender = owner;
+    context('with a delegated owner', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await WeightedPool.create({
+          vault,
+          tokens: poolTokens,
+          owner: DELEGATE_OWNER,
+          poolType: WeightedPoolType.MANAGED_POOL,
+        });
+        caller = other;
       });
 
-      sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: sender, initialBalances });
+      context('when the sender is allowed', () => {
+        sharedBeforeEach('grant permissions', async () => {
+          const updateSwapFeeGraduallyPermission = await actionId(pool.instance, 'updateSwapFeeGradually');
+          await pool.vault.grantPermissionsGlobally([updateSwapFeeGraduallyPermission], other);
+        });
+
+        itStartsAGradualFeeChange();
       });
 
-      context('with invalid parameters', () => {
-        let now: BigNumber;
-
-        sharedBeforeEach(async () => {
-          now = await currentTimestamp();
-        });
-
-        it('fails with a swap fee too low', async () => {
-          const LOW_FEE = 0;
-
-          await expect(
-            pool.updateSwapFeeGradually(sender, now.add(100), now.add(WEEK), POOL_SWAP_FEE_PERCENTAGE, LOW_FEE)
-          ).to.be.revertedWith('MIN_SWAP_FEE_PERCENTAGE');
-        });
-
-        it('fails with a swap fee too high', async () => {
-          const HIGH_FEE = fp(2);
-
-          await expect(
-            pool.updateSwapFeeGradually(sender, now.add(100), now.add(WEEK), POOL_SWAP_FEE_PERCENTAGE, HIGH_FEE)
-          ).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
-        });
-      });
-
-      context('with valid parameters (ongoing swap fee update)', () => {
-        let now, startTime: BigNumber, endTime: BigNumber;
-        const START_DELAY = MINUTE * 10;
-        const START_SWAP_FEE = fp(0.5);
-        const END_SWAP_FEE = fp(0.01);
-
-        sharedBeforeEach('updateSwapFeeGradually', async () => {
-          now = await currentTimestamp();
-          startTime = now.add(START_DELAY);
-          endTime = startTime.add(UPDATE_DURATION);
-
-          // Make sure start <> end (in case it got changed above)
-          expect(POOL_SWAP_FEE_PERCENTAGE).to.not.equal(END_SWAP_FEE);
-
-          // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
-          // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
-          // current swap fee correctly.
-          await pool.updateSwapFeeGradually(owner, now.add(1), now.add(1), POOL_SWAP_FEE_PERCENTAGE, END_SWAP_FEE);
-          await advanceToTimestamp(now.add(2));
-        });
-
-        it('updating the swap fee emits an event', async () => {
-          const receipt = await pool.updateSwapFeeGradually(owner, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
-
-          expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
-            startTime: startTime,
-            endTime: endTime,
-            startSwapFeePercentage: START_SWAP_FEE,
-            endSwapFeePercentage: END_SWAP_FEE,
-          });
-        });
-
-        it('stores the params', async () => {
-          await pool.updateSwapFeeGradually(owner, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
-
-          const updateParams = await pool.getGradualSwapFeeUpdateParams();
-
-          expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
-          expect(updateParams.endTime).to.equalWithError(endTime, 0.001);
-          expect(updateParams.startSwapFeePercentage).to.equal(START_SWAP_FEE);
-          expect(updateParams.endSwapFeePercentage).to.equal(END_SWAP_FEE);
-        });
+      context('when the sender is not allowed', () => {
+        itReverts();
       });
     });
   });
