@@ -248,7 +248,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
      */
-    function getSwapFeePercentage() public view virtual override returns (uint256) {
+    function getSwapFeePercentage() public view override returns (uint256) {
         return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
     }
 
@@ -306,7 +306,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _setSwapFeePercentage(swapFeePercentage);
     }
 
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal override {
         _validateSwapFeePercentage(swapFeePercentage);
 
         _poolState = ManagedPoolStorageLib.setSwapFeeData(
@@ -375,7 +375,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return _MAX_MANAGED_TOKENS;
     }
 
-    function _getTotalTokens() internal view virtual override returns (uint256) {
+    function _getTotalTokens() internal view override returns (uint256) {
         return _totalTokensCache;
     }
 
@@ -768,11 +768,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return managerAUMFees;
     }
 
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+    function _scalingFactor(IERC20 token) internal view override returns (uint256) {
         return ManagedPoolTokenLib.getTokenScalingFactor(_getTokenData(token));
     }
 
-    function _scalingFactors() internal view virtual override returns (uint256[] memory scalingFactors) {
+    function _scalingFactors() internal view override returns (uint256[] memory scalingFactors) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
 
@@ -815,7 +815,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
@@ -854,7 +854,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
-    ) internal virtual override returns (uint256) {
+    ) internal override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
@@ -941,7 +941,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         address,
         uint256[] memory scalingFactors,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal override returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -1074,7 +1074,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256[] memory startWeights,
         uint256[] memory endWeights,
         IERC20[] memory tokens
-    ) internal virtual {
+    ) internal {
         uint256 normalizedSum;
 
         uint256 denormWeightSum = _denormWeightSum;
@@ -1105,7 +1105,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) internal virtual {
+    ) internal {
         if (startSwapFeePercentage != getSwapFeePercentage()) {
             _setSwapFeePercentage(startSwapFeePercentage);
         }
@@ -1140,7 +1140,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
     }
 
-    function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
+    function _getMaxSwapFeePercentage() internal pure override returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
@@ -1153,7 +1153,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Join/exit callbacks
 
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal virtual override returns (uint256) {
+    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal override returns (uint256) {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -1227,7 +1227,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     /**
      * @dev Sets the recoveryMode state, and emits the corresponding event.
      */
-    function _setRecoveryMode(bool enabled) internal virtual override {
+    function _setRecoveryMode(bool enabled) internal override {
         _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
 
         emit RecoveryModeStateChanged(enabled);
