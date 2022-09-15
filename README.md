@@ -55,6 +55,22 @@ $ yarn test
 
 You can see a sample report of a test run [here](./audits/test-report.md).
 
+### Foundry (Forge) tests
+
+To run Forge tests, first [install Foundry](https://book.getfoundry.sh/getting-started/installation). The installation steps below apply to Linux or MacOS. Follow the link for additional options.
+
+```bash
+$ curl -L https://foundry.paradigm.xyz | bash
+$ source ~/.bashrc # or open a new terminal
+$ foundryup
+```
+
+Then, to run tests in a single package, run:
+```bash
+$ cd pkg/<package> # e.g. cd pkg/v2-vault
+$ yarn test-fuzz
+```
+
 ## Security
 
 Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the [`audits`](./audits) directory.
