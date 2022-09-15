@@ -32,7 +32,7 @@ contract ManagedPoolStorageLibTest is Test {
     uint256 private constant _TIMESTAMP_WIDTH = 32;
     uint256 private constant _SWAP_FEE_PCT_WIDTH = 62;
 
-    uint256 private constant _MAX_SWAP_FEE = 1 << _SWAP_FEE_PCT_WIDTH;
+    uint256 private constant _MAX_SWAP_FEE = (1 << _SWAP_FEE_PCT_WIDTH) - 1;
 
     function clearWordAtPosition(
         bytes32 word,
@@ -157,8 +157,8 @@ contract ManagedPoolStorageLibTest is Test {
     ) public {
         vm.warp(now);
         vm.assume(startTime <= endTime);
-        vm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
-        vm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
+        vm.assume(startSwapFeePercentage <= _MAX_SWAP_FEE);
+        vm.assume(endSwapFeePercentage <= _MAX_SWAP_FEE);
 
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapFeeData(
             poolState,
