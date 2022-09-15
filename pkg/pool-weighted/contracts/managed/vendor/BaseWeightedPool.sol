@@ -277,7 +277,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
+                    getSwapFeePercentage(),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
@@ -289,7 +289,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
+                    getSwapFeePercentage(),
                     userData
                 );
         } else {

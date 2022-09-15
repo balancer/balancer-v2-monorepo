@@ -70,12 +70,6 @@ abstract contract BasePool is
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
-    // Stores commonly used Pool state.
-    // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
-    // and therefore warm.
-    // See `ManagedPoolStorageLib.sol` for data layout.
-    bytes32 private _poolState;
-
     bytes32 private immutable _poolId;
 
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
@@ -137,31 +131,17 @@ abstract contract BasePool is
     }
 
     /**
+     * @notice Return the current value of the swap fee percentage.
+     * @dev This is stored in `_poolState`.
+     */
+    function getSwapFeePercentage() public view virtual override returns (uint256);
+
+    /**
      * @notice Return the ProtocolFeesCollector contract.
      * @dev This is immutable, and retrieved from the Vault on construction. (It is also immutable in the Vault.)
      */
     function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
-    }
-
-    /**
-     * @notice Returns whether the pool is in Recovery Mode.
-     */
-    function inRecoveryMode() public view override returns (bool) {
-        return ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState);
-    }
-
-    /**
-     * @dev Sets the recoveryMode state, and emits the corresponding event.
-     */
-    function _setRecoveryMode(bool enabled) internal virtual override {
-        _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
-
-        emit RecoveryModeStateChanged(enabled);
-
-        // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
-        // We do not allow an `_onEnableRecoveryMode()` hook as this may jeopardize the ability to enable Recovery mode.
-        if (!enabled) _onDisableRecoveryMode();
     }
 
     /**
@@ -212,17 +192,6 @@ abstract contract BasePool is
      */
     function unpause() external authenticate {
         _setPaused(false);
-    }
-
-    function _getPoolState() internal view virtual returns (bytes32) {
-        return _poolState;
-    }
-
-    /**
-     * @dev Inserts data into the pool state storage slot.
-     */
-    function _setPoolState(bytes32 newPoolState) internal virtual {
-        _poolState = newPoolState;
     }
 
     // Join / Exit Hooks
@@ -545,7 +514,7 @@ abstract contract BasePool is
      */
     function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(ManagedPoolStorageLib.getSwapFeePercentage(_poolState).complement());
+        return amount.divUp(getSwapFeePercentage().complement());
     }
 
     /**
@@ -553,7 +522,7 @@ abstract contract BasePool is
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
         // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(ManagedPoolStorageLib.getSwapFeePercentage(_poolState));
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
         return amount.sub(feeAmount);
     }
 
