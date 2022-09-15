@@ -41,7 +41,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-solidity-utils forge-test -vv
+        run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz -vvv
 
   test-standalone-utils:
     runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-standalone-utils forge-test -vv
+        run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz -vvv
 
   test-vault:
     runs-on: ubuntu-latest
@@ -79,7 +79,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-vault forge-test -vv
+        run: yarn workspace @balancer-labs/v2-vault test-fuzz -vvv
 
   test-pool-utils:
     runs-on: ubuntu-latest
@@ -98,7 +98,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-utils forge-test -vv
+        run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz -vvv
 
   test-pool-weighted:
     runs-on: ubuntu-latest
@@ -117,7 +117,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-weighted forge-test -vv
+        run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz -vvv
 
   test-pool-stable:
     runs-on: ubuntu-latest
@@ -136,7 +136,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-stable forge-test -vv
+        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz -vvv
 
   test-pool-linear:
     runs-on: ubuntu-latest
@@ -155,7 +155,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-linear forge-test -vv
+        run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz -vvv
 
   test-asset-managers:
     runs-on: ubuntu-latest
@@ -174,7 +174,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run forge-test -vv
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test-fuzz -vvv
 
   test-distributors:
     runs-on: ubuntu-latest
@@ -193,7 +193,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-distributors forge-test -vv
+        run: yarn workspace @balancer-labs/v2-distributors test-fuzz -vvv
 
   test-liquidity-mining:
     runs-on: ubuntu-latest
@@ -212,7 +212,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-liquidity-mining forge-test -vv
+        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz -vvv
 
   test-governance-scripts:
     runs-on: ubuntu-latest
