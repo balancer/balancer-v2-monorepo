@@ -1,5 +1,4 @@
 import { BigNumber } from 'ethers';
-import { ethers } from 'hardhat';
 
 import { maxUint, maxInt, minInt } from './numbers';
 
@@ -28,5 +27,7 @@ export const MAX_WEIGHTED_TOKENS = 100;
 
 // This is not quite a constant, but it fits here given we also have ZERO_ADDRESS, etc.
 export function randomAddress(): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { ethers } = require('hardhat');
   return ethers.Wallet.createRandom().getAddress();
 }
