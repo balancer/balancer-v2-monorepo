@@ -77,13 +77,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     // creation gas consumption.
     uint256 private constant _MAX_MANAGED_TOKENS = 38;
 
-    // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
-    // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
-    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
-
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
