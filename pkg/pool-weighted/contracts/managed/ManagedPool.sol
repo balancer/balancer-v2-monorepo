@@ -190,8 +190,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
         _denormWeightSum = FixedPoint.ONE;
 
+        bytes32 poolState;
         uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(
+
+        poolState = _startGradualWeightChange(
+            poolState,
             currentTime,
             currentTime,
             params.normalizedWeights,
@@ -199,13 +202,16 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             params.tokens
         );
 
-        _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
-            _poolState,
+        poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
+            poolState,
             currentTime,
             currentTime,
             params.swapFeePercentage,
             params.swapFeePercentage
         );
+
+        // We write the pool state here as `_setSwapEnabled` and `_setMustAllowlistLPs` both read it from storage.
+        _poolState = poolState;
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
         _setSwapEnabled(params.swapEnabledOnStart);
@@ -407,7 +413,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
+        _poolState = _startGradualWeightChange(
+            _poolState,
+            startTime,
+            endTime,
+            _getNormalizedWeights(tokens),
+            endWeights,
+            tokens
+        );
     }
 
     /**
@@ -415,12 +428,13 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * if necessary.
      */
     function _startGradualWeightChange(
+        bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256[] memory startWeights,
         uint256[] memory endWeights,
         IERC20[] memory tokens
-    ) internal {
+    ) internal returns (bytes32) {
         uint256 normalizedSum;
 
         uint256 denormWeightSum = _denormWeightSum;
@@ -441,9 +455,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = ManagedPoolStorageLib.setWeightChangeData(_poolState, startTime, endTime);
-
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+
+        return ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
     }
 
     // Swap Enabled
