@@ -119,8 +119,8 @@ contract ManagedPoolStorageLibTest is DSTest {
         bytes32 poolState,
         uint32 startTime,
         uint32 endTime,
-        uint256 startSwapFeePercentage,
-        uint256 endSwapFeePercentage
+        uint64 startSwapFeePercentage,
+        uint64 endSwapFeePercentage,
     ) public {
         hevm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
         hevm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
@@ -156,8 +156,8 @@ contract ManagedPoolStorageLibTest is DSTest {
         bytes32 poolState,
         uint32 startTime,
         uint32 endTime,
-        uint256 startSwapFeePercentage,
-        uint256 endSwapFeePercentage,
+        uint64 startSwapFeePercentage,
+        uint64 endSwapFeePercentage,
         uint32 now
     ) public {
         hevm.warp(now);
