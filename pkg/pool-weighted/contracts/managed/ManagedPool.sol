@@ -187,22 +187,23 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
         }
 
-        // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
-        _denormWeightSum = FixedPoint.ONE;
-
-        uint256 currentTime = block.timestamp;
+        // Set the initial weights.
         _startGradualWeightChange(
-            currentTime,
-            currentTime,
+            block.timestamp,
+            block.timestamp,
             params.normalizedWeights,
             params.normalizedWeights,
             params.tokens
         );
 
+        // Weights are normalized so initialize the denormalized weight sum to ONE. The denormalized weight sum will
+        // only deviate from ONE when tokens are added or removed and are renormalized on the next weight change.
+        _denormWeightSum = FixedPoint.ONE;
+
         _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
             _poolState,
-            currentTime,
-            currentTime,
+            block.timestamp,
+            block.timestamp,
             params.swapFeePercentage,
             params.swapFeePercentage
         );
@@ -408,6 +409,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
+
+        // `_startGradualWeightChange` renormalizes the weights so we reset `_denormWeightSum` to ONE.
+        _denormWeightSum = FixedPoint.ONE;
     }
 
     /**
@@ -423,7 +427,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal {
         uint256 normalizedSum;
 
-        uint256 denormWeightSum = _denormWeightSum;
+        // As we're writing all the weights to storage again we have the opportunity to normalize them by an arbitrary
+        // value. We then can take this opportunity to reset the `_denormWeightSum` to `FixedPoint.ONE` by passing it
+        // into `ManagedPoolTokenLib.setTokenWeight`.
+        _denormWeightSum = FixedPoint.ONE;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
@@ -434,7 +441,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
                 _tokenState[token],
                 startWeights[i],
                 endWeight,
-                denormWeightSum
+                FixedPoint.ONE
             );
         }
 
