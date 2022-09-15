@@ -1,6 +1,4 @@
-import { BigNumber } from 'ethers';
-import { ethers } from 'hardhat';
-
+import { BigNumber, ethers } from 'ethers';
 import { maxUint, maxInt, minInt } from './numbers';
 
 export const MAX_UINT256: BigNumber = maxUint(256);
