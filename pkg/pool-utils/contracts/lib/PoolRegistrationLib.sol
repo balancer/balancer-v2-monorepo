@@ -49,4 +49,30 @@ library PoolRegistrationLib {
 
         return poolId;
     }
+
+    function registerToken(
+        IVault vault,
+        bytes32 poolId,
+        IERC20 token,
+        address assetManager
+    ) internal {
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = token;
+
+        address[] memory assetManagers = new address[](1);
+        assetManagers[0] = assetManager;
+
+        vault.registerTokens(poolId, tokens, assetManagers);
+    }
+
+    function deregisterToken(
+        IVault vault,
+        bytes32 poolId,
+        IERC20 token
+    ) internal {
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = token;
+
+        vault.deregisterTokens(poolId, tokens);
+    }
 }

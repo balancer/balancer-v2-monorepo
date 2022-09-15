@@ -547,9 +547,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
         _totalTokensCache += 1;
 
-        IERC20[] memory tokensToAdd = new IERC20[](1);
-        tokensToAdd[0] = token;
-        getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
 
         // Note that the Pool is now in an invalid state, since one of its tokens has a balance of zero (making the
         // invariant also zero).
@@ -660,10 +658,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
         // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
         // is in this inconsistent state (except for view calls).
-
-        IERC20[] memory tokensToRemove = new IERC20[](1);
-        tokensToRemove[0] = token;
-        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
 
         // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
         // all other token weights accordingly.
@@ -959,6 +954,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Join/Exit overrides
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
+     */
     function _doJoin(
         address sender,
         uint256[] memory balances,
@@ -978,7 +976,30 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return
+                WeightedJoinsLib.joinExactTokensInForBPTOut(
+                    balances,
+                    normalizedWeights,
+                    scalingFactors,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
+        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return
+                WeightedJoinsLib.joinTokenInForExactBPTOut(
+                    balances,
+                    normalizedWeights,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
+        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
     }
 
     function _doExit(
