@@ -187,25 +187,25 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
         }
 
-        // Initialize the denormalized weight sum to ONE. This value can only be changed by adding or removing tokens.
-        _denormWeightSum = FixedPoint.ONE;
-
         bytes32 poolState;
-        uint256 currentTime = block.timestamp;
 
         poolState = _startGradualWeightChange(
             poolState,
-            currentTime,
-            currentTime,
+            block.timestamp,
+            block.timestamp,
             params.normalizedWeights,
             params.normalizedWeights,
             params.tokens
         );
 
+        // Weights are normalized so initialize the denormalized weight sum to ONE. The denormalized weight sum will
+        // only deviate from ONE when tokens are added or removed and are renormalized on the next weight change.
+        _denormWeightSum = FixedPoint.ONE;
+
         poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
             poolState,
-            currentTime,
-            currentTime,
+            block.timestamp,
+            block.timestamp,
             params.swapFeePercentage,
             params.swapFeePercentage
         );
@@ -421,6 +421,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             endWeights,
             tokens
         );
+
+        // `_startGradualWeightChange` renormalizes the weights so we reset `_denormWeightSum` to ONE.
+        _denormWeightSum = FixedPoint.ONE;
     }
 
     /**
@@ -437,7 +440,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal returns (bytes32) {
         uint256 normalizedSum;
 
-        uint256 denormWeightSum = _denormWeightSum;
+        // As we're writing all the weights to storage again we have the opportunity to normalize them by an arbitrary
+        // value. We then can take this opportunity to reset the `_denormWeightSum` to `FixedPoint.ONE` by passing it
+        // into `ManagedPoolTokenLib.setTokenWeight`.
+        _denormWeightSum = FixedPoint.ONE;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
@@ -448,7 +454,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
                 _tokenState[token],
                 startWeights[i],
                 endWeight,
-                denormWeightSum
+                FixedPoint.ONE
             );
         }
 
@@ -688,12 +694,19 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        {
+            // Enter new scope to avoid stack-too-deep
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+            bytes32 poolState = _poolState;
+            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+
+            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+        }
 
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountOut = WeightedMath._calcOutGivenIn(
@@ -727,12 +740,19 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        {
+            // Enter new scope to avoid stack-too-deep
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+            bytes32 poolState = _poolState;
+            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+
+            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+        }
 
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountIn = WeightedMath._calcInGivenOut(
