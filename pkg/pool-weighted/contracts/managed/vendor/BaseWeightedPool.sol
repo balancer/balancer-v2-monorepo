@@ -73,29 +73,33 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     /**
      * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
      */
-    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256);
+    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view virtual returns (uint256);
+
+    /**
+     * @notice Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function getNormalizedWeights() public view returns (uint256[] memory) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        return _getNormalizedWeights(tokens);
+    }
 
     /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens.
      */
-    function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
+    function _getNormalizedWeights(IERC20[] memory tokens) internal view virtual returns (uint256[] memory);
 
     /**
      * @dev Returns the current value of the invariant.
      */
-    function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+    function getInvariant() external view returns (uint256) {
+        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors());
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    function getNormalizedWeights() external view returns (uint256[] memory) {
-        return _getNormalizedWeights();
     }
 
     // Base Pool handlers
@@ -194,7 +198,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
@@ -236,7 +240,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
