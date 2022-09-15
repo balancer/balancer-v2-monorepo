@@ -47,8 +47,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -66,8 +64,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -85,8 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -104,8 +98,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -123,8 +115,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -142,8 +132,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -161,8 +149,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -180,8 +166,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
@@ -199,8 +183,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
