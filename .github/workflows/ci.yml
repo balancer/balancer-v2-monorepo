@@ -184,7 +184,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* forge-test -vv
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run forge-test -vv
 
   test-distributors:
     runs-on: ubuntu-latest
