@@ -70,10 +70,6 @@ abstract contract BasePool is
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
-    // 1e18 corresponds to 1.0, or a 100% fee
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10% - this fits in 64 bits
-
     bytes32 private immutable _poolId;
 
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
@@ -154,14 +150,6 @@ abstract contract BasePool is
     }
 
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual;
-
-    function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
-        return _MIN_SWAP_FEE_PERCENTAGE;
-    }
-
-    function _getMaxSwapFeePercentage() internal pure virtual returns (uint256) {
-        return _MAX_SWAP_FEE_PERCENTAGE;
-    }
 
     /**
      * @dev Performs any necessary actions on the disabling of Recovery Mode.
