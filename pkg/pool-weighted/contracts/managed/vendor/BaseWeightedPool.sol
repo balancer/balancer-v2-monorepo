@@ -93,7 +93,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     /**
      * @dev Returns the current value of the invariant.
      */
-    function getInvariant() public view returns (uint256) {
+    function getInvariant() external view returns (uint256) {
         (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // Since the Pool hooks always work with upscaled balances, we manually
