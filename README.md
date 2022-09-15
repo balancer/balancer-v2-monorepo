@@ -29,6 +29,14 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v2-liquidity-mining`](./pkg/liquidity-mining): contracts that compose the liquidity mining (veBAL) system.
 - [`v2-governance-scripts`](./pkg/governance-scripts): contracts that execute complex governance actions.
 
+## Clone
+
+This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
+
+```bash
+$ git clone --recurse-submodules https://github.com/balancer-labs/balancer-v2-monorepo.git
+```
+
 ## Build and Test
 
 Before any tests can be run, the repository needs to be prepared:
