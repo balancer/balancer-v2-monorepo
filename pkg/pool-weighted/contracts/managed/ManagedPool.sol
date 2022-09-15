@@ -33,6 +33,7 @@ import "../lib/WeightCompression.sol";
 
 import "./vendor/BaseWeightedPool.sol";
 
+import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolTokenLib.sol";
 
 /**
@@ -70,6 +71,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // State variables
 
+    uint256 private constant _MIN_TOKENS = 2;
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
     uint256 private constant _MAX_MANAGED_TOKENS = 38;
@@ -82,26 +84,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
-
-    // Use the _miscData slot in BasePool
-    // The first 64 bits are reserved for the swap fee
-    //
-    // Store non-token-based values:
-    // Start/end timestamps for gradual weight and swap fee updates
-    // Start/end values of the swap fee (The MSB "start" swap fee corresponds to the reserved bits in BasePool,
-    // and cannot be written from this contract.)
-    // Flags for the LP allowlist and enabling/disabling trading
-    // [ 64 bits  |  1 bit  |   1 bit   |  62 bits | 32 bits |  32 bits  |  32 bits |  32 bits  ]
-    // [ swap fee | LP flag | swap flag | end swap | fee end | fee start | end wgt  | start wgt ]
-    // |MSB                                                                                  LSB|
-    uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
-    uint256 private constant _WEIGHT_END_TIME_OFFSET = 32;
-    uint256 private constant _FEE_START_TIME_OFFSET = 64;
-    uint256 private constant _FEE_END_TIME_OFFSET = 96;
-    uint256 private constant _END_SWAP_FEE_PERCENTAGE_OFFSET = 128;
-    uint256 private constant _SWAP_ENABLED_OFFSET = 190;
-    uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = 191;
-    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
 
     // Store scaling factor and start/end denormalized weights for each token.
     // See `ManagedPoolTokenLib.sol` for data layout.
@@ -197,6 +179,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         ProtocolFeeCache(protocolFeeProvider)
     {
         uint256 totalTokens = params.tokens.length;
+        _require(totalTokens >= _MIN_TOKENS, Errors.MIN_TOKENS);
+        _require(totalTokens <= _getMaxTokens(), Errors.MAX_TOKENS);
+
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
         _totalTokensCache = totalTokens;
@@ -238,14 +223,14 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @notice Returns whether swaps are enabled.
      */
     function getSwapEnabled() public view returns (bool) {
-        return _getMiscData().decodeBool(_SWAP_ENABLED_OFFSET);
+        return ManagedPoolStorageLib.getSwapsEnabled(_getPoolState());
     }
 
     /**
      * @notice Returns whether the allowlist for LPs is enabled.
      */
     function getMustAllowlistLPs() public view returns (bool) {
-        return _getMiscData().decodeBool(_MUST_ALLOWLIST_LPS_OFFSET);
+        return ManagedPoolStorageLib.getLPAllowlistEnabled(_getPoolState());
     }
 
     /**
@@ -283,7 +268,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             uint256 endTime,
             uint256 startSwapFeePercentage,
             uint256 endSwapFeePercentage
-        ) = _getSwapFeeFields();
+        ) = ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
 
         return
             GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
@@ -307,44 +292,42 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             uint256 endSwapFeePercentage
         )
     {
-        (startTime, endTime, startSwapFeePercentage, endSwapFeePercentage) = _getSwapFeeFields();
+        return ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
     }
 
-    function _getSwapFeeFields()
-        private
-        view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256 startSwapFeePercentage,
-            uint256 endSwapFeePercentage
-        )
-    {
-        // Load the current pool state from storage
-        bytes32 poolState = _getMiscData();
-
-        startTime = poolState.decodeUint(_FEE_START_TIME_OFFSET, 32);
-        endTime = poolState.decodeUint(_FEE_END_TIME_OFFSET, 32);
-        startSwapFeePercentage = poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, 64);
-        endSwapFeePercentage = poolState.decodeUint(_END_SWAP_FEE_PERCENTAGE_OFFSET, 62);
-    }
-
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
         // Do not allow setting if there is an ongoing fee change
         uint256 currentTime = block.timestamp;
-        bytes32 poolState = _getMiscData();
+        (uint256 startTime, uint256 endTime, , ) = ManagedPoolStorageLib.getSwapFeeFields(_getPoolState());
 
-        uint256 endTime = poolState.decodeUint(_FEE_END_TIME_OFFSET, 32);
         if (currentTime < endTime) {
-            uint256 startTime = poolState.decodeUint(_FEE_START_TIME_OFFSET, 32);
             _revert(
                 currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
             );
         }
 
-        _setSwapFeeData(currentTime, currentTime, swapFeePercentage);
+        _setSwapFeePercentage(swapFeePercentage);
+    }
 
-        super._setSwapFeePercentage(swapFeePercentage);
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual override {
+        _validateSwapFeePercentage(swapFeePercentage);
+
+        _setPoolState(
+            ManagedPoolStorageLib.setSwapFeeData(
+                _getPoolState(),
+                block.timestamp,
+                block.timestamp,
+                swapFeePercentage,
+                swapFeePercentage
+            )
+        );
+
+        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     /**
@@ -372,11 +355,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             uint256[] memory endWeights
         )
     {
-        // Load current pool state from storage
-        bytes32 poolState = _getMiscData();
-
-        startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
-        endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
+        (startTime, endTime) = ManagedPoolStorageLib.getWeightChangeFields(_getPoolState());
 
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 totalTokens = tokens.length;
@@ -402,7 +381,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return _denormWeightSum;
     }
 
-    function _getMaxTokens() internal pure virtual override returns (uint256) {
+    function _getMaxTokens() internal pure returns (uint256) {
         return _MAX_MANAGED_TOKENS;
     }
 
@@ -514,7 +493,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _setMustAllowlistLPs(bool mustAllowlistLPs) private {
-        _setMiscData(_getMiscData().insertBool(mustAllowlistLPs, _MUST_ALLOWLIST_LPS_OFFSET));
+        _setPoolState(ManagedPoolStorageLib.setLPAllowlistEnabled(_getPoolState(), mustAllowlistLPs));
 
         emit MustAllowlistLPsSet(mustAllowlistLPs);
     }
@@ -529,7 +508,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _setSwapEnabled(bool swapEnabled) private {
-        _setMiscData(_getMiscData().insertBool(swapEnabled, _SWAP_ENABLED_OFFSET));
+        _setPoolState(ManagedPoolStorageLib.setSwapsEnabled(_getPoolState(), swapEnabled));
 
         emit SwapEnabledSet(swapEnabled);
     }
@@ -574,9 +553,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
         _totalTokensCache += 1;
 
-        IERC20[] memory tokensToAdd = new IERC20[](1);
-        tokensToAdd[0] = token;
-        getVault().registerTokens(getPoolId(), tokensToAdd, new address[](1));
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
 
         // Note that the Pool is now in an invalid state, since one of its tokens has a balance of zero (making the
         // invariant also zero).
@@ -687,10 +664,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
         // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
         // is in this inconsistent state (except for view calls).
-
-        IERC20[] memory tokensToRemove = new IERC20[](1);
-        tokensToRemove[0] = token;
-        getVault().deregisterTokens(getPoolId(), tokensToRemove);
+        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
 
         // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
         // all other token weights accordingly.
@@ -711,11 +685,9 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     function _ensureNoWeightChange() private view {
         uint256 currentTime = block.timestamp;
-        bytes32 poolState = _getMiscData();
+        (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(_getPoolState());
 
-        uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
         if (currentTime < endTime) {
-            uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
             _revert(
                 currentTime < startTime
                     ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
@@ -821,11 +793,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        bytes32 poolState = _getMiscData();
-        uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
-        uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
-
-        uint256 weightChangeProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
         return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
     }
 
@@ -833,15 +801,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     // called very frequently, so we are optimizing for runtime performance.
     function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-        uint256 numTokens = tokens.length;
 
-        bytes32 poolState = _getMiscData();
-        uint256 startTime = poolState.decodeUint(_WEIGHT_START_TIME_OFFSET, 32);
-        uint256 endTime = poolState.decodeUint(_WEIGHT_END_TIME_OFFSET, 32);
-
-        uint256 weightChangeProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
         uint256 denormWeightSum = _denormWeightSum;
 
+        uint256 numTokens = tokens.length;
         normalizedWeights = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; i++) {
             normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(
@@ -861,7 +825,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
+        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
             _getNormalizedWeight(swapRequest.tokenIn),
@@ -895,7 +859,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
-        // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
+        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
             _getNormalizedWeight(swapRequest.tokenIn),
@@ -969,21 +933,38 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     // Initialize
 
     function _onInitializePool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
+        bytes32,
+        address,
+        address,
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
+
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
+        _upscaleArray(amountsIn, scalingFactors);
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
+
+        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
+        // consistent in Pools with similar compositions but different number of tokens.
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
+
         // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
         // so naturally charges no AUM fees.
         _lastAumFeeCollectionTimestamp = block.timestamp;
 
-        return super._onInitializePool(poolId, sender, recipient, scalingFactors, userData);
+        return (bptAmountOut, amountsIn);
     }
 
     // Join/Exit overrides
 
+    /**
+     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
+     */
     function _doJoin(
         address sender,
         uint256[] memory balances,
@@ -1003,7 +984,30 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-        return super._doJoin(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
+        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
+            return
+                WeightedJoinsLib.joinExactTokensInForBPTOut(
+                    balances,
+                    normalizedWeights,
+                    scalingFactors,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
+        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
+            return
+                WeightedJoinsLib.joinTokenInForExactBPTOut(
+                    balances,
+                    normalizedWeights,
+                    totalSupply,
+                    getSwapFeePercentage(),
+                    userData
+                );
+        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
+        } else {
+            _revert(Errors.UNHANDLED_JOIN_KIND);
+        }
     }
 
     function _doExit(
@@ -1089,13 +1093,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _setMiscData(
-            _getMiscData().insertUint(startTime, _WEIGHT_START_TIME_OFFSET, 32).insertUint(
-                endTime,
-                _WEIGHT_END_TIME_OFFSET,
-                32
-            )
-        );
+        _setPoolState(ManagedPoolStorageLib.setWeightChangeData(_getPoolState(), startTime, endTime));
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
@@ -1107,44 +1105,31 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 endSwapFeePercentage
     ) internal virtual {
         if (startSwapFeePercentage != getSwapFeePercentage()) {
-            super._setSwapFeePercentage(startSwapFeePercentage);
+            _setSwapFeePercentage(startSwapFeePercentage);
         }
 
-        _setSwapFeeData(startTime, endTime, endSwapFeePercentage);
+        _setPoolState(
+            ManagedPoolStorageLib.setSwapFeeData(
+                _getPoolState(),
+                startTime,
+                endTime,
+                startSwapFeePercentage,
+                endSwapFeePercentage
+            )
+        );
 
         emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
-    function _setSwapFeeData(
-        uint256 startTime,
-        uint256 endTime,
-        uint256 endSwapFeePercentage
-    ) private {
-        _setMiscData(
-            _getMiscData()
-                .insertUint(startTime, _FEE_START_TIME_OFFSET, 32)
-                .insertUint(endTime, _FEE_END_TIME_OFFSET, 32)
-                .insertUint(endSwapFeePercentage, _END_SWAP_FEE_PERCENTAGE_OFFSET, 62)
-        );
-    }
-
     /**
-     * @dev Extend ownerOnly functions to include the Managed Pool control functions.
+     * @dev Enumerates all ownerOnly functions in Managed Pool.
      */
-    function _isOwnerOnlyAction(bytes32 actionId)
-        internal
-        view
-        override(
-            // The ProtocolFeeCache module creates a small diamond that requires explicitly listing the parents here
-            BasePool,
-            BasePoolAuthorization
-        )
-        returns (bool)
-    {
+    function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
             (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPool.updateSwapFeeGradually.selector)) ||
             (actionId == getActionId(ManagedPool.setSwapEnabled.selector)) ||
+            (actionId == getActionId(ManagedPool.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
@@ -1152,7 +1137,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
     }
 
     function _getMaxSwapFeePercentage() internal pure virtual override returns (uint256) {
