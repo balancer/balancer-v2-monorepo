@@ -83,11 +83,9 @@ contract ManagedPoolStorageLibTest is Test {
         bytes32 newPoolState = ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
         assertOtherStateUnchanged(poolState, newPoolState, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH * 2);
 
-        (uint256 recoveredStartTime, uint256 recoveredEndTime) = ManagedPoolStorageLib.getWeightChangeFields(
-            newPoolState
-        );
-        assertEq(recoveredStartTime, startTime);
-        assertEq(recoveredEndTime, endTime);
+        (uint256 actualStartTime, uint256 actualEndTime) = ManagedPoolStorageLib.getWeightChangeFields(newPoolState);
+        assertEq(actualStartTime, startTime);
+        assertEq(actualEndTime, endTime);
     }
 
     function testWeightChangeProgress(
@@ -137,16 +135,16 @@ contract ManagedPoolStorageLibTest is Test {
         );
 
         (
-            uint256 recoveredStartTime,
-            uint256 recoveredEndTime,
-            uint256 recoveredStartSwapFeePercentage,
-            uint256 recoveredEndSwapFeePercentage
+            uint256 actualStartTime,
+            uint256 actualEndTime,
+            uint256 actualStartSwapFeePercentage,
+            uint256 actualEndSwapFeePercentage
         ) = ManagedPoolStorageLib.getSwapFeeFields(newPoolState);
 
-        assertEq(recoveredStartTime, startTime);
-        assertEq(recoveredEndTime, endTime);
-        assertEq(recoveredStartSwapFeePercentage, startSwapFeePercentage);
-        assertEq(recoveredEndSwapFeePercentage, endSwapFeePercentage);
+        assertEq(actualStartTime, startTime);
+        assertEq(actualEndTime, endTime);
+        assertEq(actualStartSwapFeePercentage, startSwapFeePercentage);
+        assertEq(actualEndSwapFeePercentage, endSwapFeePercentage);
     }
 
     function testSwapFeePercentage(
