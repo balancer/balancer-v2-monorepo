@@ -681,9 +681,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+        bytes32 poolState = _poolState;
+        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
 
         uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
         uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
@@ -720,9 +721,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+        bytes32 poolState = _poolState;
+        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
 
         uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
         uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
