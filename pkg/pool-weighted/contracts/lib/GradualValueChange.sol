@@ -53,10 +53,10 @@ library GradualValueChange {
 
         if (startValue > endValue) {
             uint256 delta = pctProgress.mulDown(startValue - endValue);
-            return startValue.sub(delta);
+            return startValue - delta;
         } else {
             uint256 delta = pctProgress.mulDown(endValue - startValue);
-            return startValue.add(delta);
+            return startValue + delta;
         }
     }
 
