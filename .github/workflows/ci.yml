@@ -36,6 +36,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-solidity-utils forge-test -vv
 
   test-standalone-utils:
     runs-on: ubuntu-latest
@@ -47,6 +56,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-standalone-utils forge-test -vv
 
   test-vault:
     runs-on: ubuntu-latest
@@ -58,6 +76,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-vault forge-test -vv
 
   test-pool-utils:
     runs-on: ubuntu-latest
@@ -69,6 +96,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-utils forge-test -vv
 
   test-pool-weighted:
     runs-on: ubuntu-latest
@@ -80,6 +116,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-weighted forge-test -vv
 
   test-pool-stable:
     runs-on: ubuntu-latest
@@ -91,6 +136,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-stable forge-test -vv
 
   test-pool-linear:
     runs-on: ubuntu-latest
@@ -102,6 +156,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-linear forge-test -vv
 
   test-asset-managers:
     runs-on: ubuntu-latest
@@ -113,6 +176,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* forge-test -vv
 
   test-distributors:
     runs-on: ubuntu-latest
@@ -124,6 +196,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-distributors test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-distributors forge-test -vv
 
   test-liquidity-mining:
     runs-on: ubuntu-latest
@@ -135,6 +216,15 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-liquidity-mining forge-test -vv
 
   test-governance-scripts:
     runs-on: ubuntu-latest
@@ -194,18 +284,6 @@ jobs:
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
-  foundry-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run tests
-        run: forge test -vv
 
 env:
   CI: true
