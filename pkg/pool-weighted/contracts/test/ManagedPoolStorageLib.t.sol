@@ -58,21 +58,21 @@ contract ManagedPoolStorageLibTest is Test {
         bytes32 newPoolState = ManagedPoolStorageLib.setRecoveryModeEnabled(poolState, enabled);
         assertOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_OFFSET, 1);
 
-        assertTrue(ManagedPoolStorageLib.getRecoveryModeEnabled(newPoolState) == enabled);
+        assertEq(ManagedPoolStorageLib.getRecoveryModeEnabled(newPoolState), enabled);
     }
 
     function testSwapsEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapsEnabled(poolState, enabled);
         assertOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1);
 
-        assertTrue(ManagedPoolStorageLib.getSwapsEnabled(newPoolState) == enabled);
+        assertEq(ManagedPoolStorageLib.getSwapsEnabled(newPoolState), enabled);
     }
 
     function testLPAllowlistEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setLPAllowlistEnabled(poolState, enabled);
         assertOtherStateUnchanged(poolState, newPoolState, _MUST_ALLOWLIST_LPS_OFFSET, 1);
 
-        assertTrue(ManagedPoolStorageLib.getLPAllowlistEnabled(newPoolState) == enabled);
+        assertEq(ManagedPoolStorageLib.getLPAllowlistEnabled(newPoolState), enabled);
     }
 
     function testWeightChangeFields(
