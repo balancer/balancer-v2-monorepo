@@ -187,6 +187,11 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
         }
 
+        // This bytes32 holds a lot of the core Pool state which is read on most interactions, by keeping it in a single
+        // word we can save gas from unnecessary storage reads. It inlcludes items like:
+        // - Swap fees
+        // - Weight change progress
+        // - Various feature flags
         bytes32 poolState;
 
         poolState = _startGradualWeightChange(
