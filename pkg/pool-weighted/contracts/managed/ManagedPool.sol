@@ -684,6 +684,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 tokenInWeight;
         uint256 tokenOutWeight;
         {
+            // Enter new scope to avoid stack-too-deep
+
             bytes32 poolState = _poolState;
             _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
@@ -728,6 +730,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 tokenInWeight;
         uint256 tokenOutWeight;
         {
+            // Enter new scope to avoid stack-too-deep
+
             bytes32 poolState = _poolState;
             _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
