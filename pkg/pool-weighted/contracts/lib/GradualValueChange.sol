@@ -53,10 +53,10 @@ library GradualValueChange {
 
         if (startValue > endValue) {
             uint256 delta = pctProgress.mulDown(startValue - endValue);
-            return startValue.sub(delta);
+            return startValue - delta;
         } else {
             uint256 delta = pctProgress.mulDown(endValue - startValue);
-            return startValue.add(delta);
+            return startValue + delta;
         }
     }
 
@@ -67,17 +67,17 @@ library GradualValueChange {
     function calculateValueChangeProgress(uint256 startTime, uint256 endTime) internal view returns (uint256) {
         uint256 currentTime = block.timestamp;
 
-        if (currentTime > endTime) {
+        if (currentTime >= endTime) {
             return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
+        } else if (currentTime <= startTime) {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
+        // No need for SafeMath as it was checked right above: endTime > currentTime > startTime
         uint256 totalSeconds = endTime - startTime;
         uint256 secondsElapsed = currentTime - startTime;
 
-        // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
+        // We don't need to consider zero division here as this is covered above.
+        return secondsElapsed.divDown(totalSeconds);
     }
 }
