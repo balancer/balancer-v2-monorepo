@@ -36,9 +36,6 @@ jobs:
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -50,15 +47,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -70,15 +66,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -90,15 +85,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -110,15 +104,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -130,15 +123,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -150,15 +142,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -170,15 +161,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -190,15 +180,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-distributors test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -210,15 +199,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
