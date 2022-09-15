@@ -2,9 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { ethers } from 'ethers';
 
-import { BigNumberish, bn, fp } from '../../numbers';
+import { BigNumberish, bn, fp, FP_100_PCT, FP_ZERO } from '../../numbers';
 import { DAY, MONTH } from '../../time';
-import { MAX_UINT256, ZERO_ADDRESS } from '../../constants';
+import { ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
 import { RawVaultDeployment, VaultDeployment } from '../vault/types';
@@ -38,8 +38,8 @@ export default {
     if (!admin) admin = params.from;
     if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
-    if (!maxYieldValue) maxYieldValue = fp(1);
-    if (!maxAUMValue) maxAUMValue = fp(1);
+    if (!maxYieldValue) maxYieldValue = FP_100_PCT;
+    if (!maxAUMValue) maxAUMValue = FP_100_PCT;
     return { mocked, admin, pauseWindowDuration, bufferPeriodDuration, maxYieldValue, maxAUMValue };
   },
 
@@ -64,7 +64,6 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
@@ -83,9 +82,8 @@ export default {
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
-    if (undefined == protocolSwapFeePercentage) protocolSwapFeePercentage = MAX_UINT256;
-    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = fp(0);
-    if (undefined == managementAumFeePercentage) managementAumFeePercentage = fp(0);
+    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = FP_ZERO;
+    if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
     return {
       tokens,
       weights,
@@ -96,7 +94,6 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      protocolSwapFeePercentage,
       managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,

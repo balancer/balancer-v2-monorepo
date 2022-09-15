@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -20,23 +20,20 @@ describe('ExpLog', () => {
 
     it('handles base zero', async () => {
       const base = 0;
-      const expectedResult = fp(1);
 
-      expect(await lib.pow(base, exponent)).to.be.equal(expectedResult);
+      expect(await lib.pow(base, exponent)).to.be.equal(FP_ONE);
     });
 
     it('handles base one', async () => {
       const base = 1;
-      const expectedResult = fp(1);
 
-      expect(await lib.pow(base, exponent)).to.be.equal(expectedResult);
+      expect(await lib.pow(base, exponent)).to.be.equal(FP_ONE);
     });
 
     it('handles base greater than one', async () => {
       const base = 10;
-      const expectedResult = fp(1);
 
-      expect(await lib.pow(base, exponent)).to.be.equal(expectedResult);
+      expect(await lib.pow(base, exponent)).to.be.equal(FP_ONE);
     });
   });
 
@@ -45,9 +42,8 @@ describe('ExpLog', () => {
 
     it('handles exponent zero', async () => {
       const exponent = 0;
-      const expectedResult = fp(1);
 
-      expect(await lib.pow(base, exponent)).to.be.equal(expectedResult);
+      expect(await lib.pow(base, exponent)).to.be.equal(FP_ONE);
     });
 
     it('handles exponent one', async () => {
@@ -70,23 +66,20 @@ describe('ExpLog', () => {
 
     it('handles exponent zero', async () => {
       const exponent = 0;
-      const expectedResult = fp(1);
 
-      expect(await lib.pow(base, exponent)).to.be.equal(expectedResult);
+      expect(await lib.pow(base, exponent)).to.be.equal(FP_ONE);
     });
 
     it('handles exponent one', async () => {
       const exponent = 1;
-      const expectedResult = fp(1);
 
-      expectEqualWithError(await lib.pow(base, exponent), expectedResult, 0.000000000001);
+      expectEqualWithError(await lib.pow(base, exponent), FP_ONE, 0.000000000001);
     });
 
     it('handles exponent greater than one', async () => {
       const exponent = 10;
-      const expectedResult = fp(1);
 
-      expectEqualWithError(await lib.pow(base, exponent), expectedResult, 0.000000000001);
+      expectEqualWithError(await lib.pow(base, exponent), FP_ONE, 0.000000000001);
     });
   });
 

@@ -2,7 +2,7 @@
 
 > ⚠️ **DEPRECATED: do not use** ⚠️
 >
-> This factory and associated Pools have been deprecated due to numerical issues when one of the token depegs. Use this [updated version](../../20220817-composable-stable-pool) instead.
+> This factory and associated Pools have been deprecated due to numerical issues when one of the token depegs. Use this [updated version](../../20220906-composable-stable-pool) instead.
 
 Deployment of the `StablePhantomPoolFactory`, for Meta Stable Pools with preminted BPT of up to 4 tokens.
 

@@ -22,10 +22,13 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+
+import "./lib/PoolRegistrationLib.sol";
 
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
@@ -124,18 +127,14 @@ abstract contract BasePool is
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
 
-        // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
-        // to make the developer experience consistent, we are requiring this condition for all the native pools.
-        // Also, since these Pools will register tokens only once, we can ensure the Pool tokens will follow the same
-        // order. We rely on this property to make Pools simpler to write, as it lets us assume that the
-        // order of token-specific parameters (such as token weights) will not change.
-        InputHelpers.ensureArrayIsSorted(tokens);
-
         _setSwapFeePercentage(swapFeePercentage);
 
-        bytes32 poolId = vault.registerPool(specialization);
-
-        vault.registerTokens(poolId, tokens, assetManagers);
+        bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
+            vault,
+            specialization,
+            tokens,
+            assetManagers
+        );
 
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
@@ -285,7 +284,8 @@ abstract contract BasePool is
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(this.setAssetManagerPoolConfig.selector));
+            (actionId == getActionId(this.setAssetManagerPoolConfig.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 
     function _getMiscData() internal view returns (bytes32) {
@@ -610,7 +610,9 @@ abstract contract BasePool is
      * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
      */
     function _payProtocolFees(uint256 bptAmount) internal {
-        _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        if (bptAmount > 0) {
+            _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        }
     }
 
     /**
@@ -672,73 +674,6 @@ abstract contract BasePool is
 
     function getScalingFactors() external view override returns (uint256[] memory) {
         return _scalingFactors();
-    }
-
-    /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not.
-     */
-    function _upscale(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        // Upscale rounding wouldn't necessarily always go in the same direction: in a swap for example the balance of
-        // token in should be rounded up, and that of token out rounded down. This is the only place where we round in
-        // the same direction for all amounts, as the impact of this rounding is expected to be minimal (and there's no
-        // rounding error unless `_scalingFactor()` is overriden).
-        return FixedPoint.mulDown(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_upscale`, but for an entire array. This function does not return anything, but instead *mutates*
-     * the `amounts` array.
-     */
-    function _upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded down.
-     */
-    function _downscaleDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divDown(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_downscaleDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     */
-    function _downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
-        }
-    }
-
-    /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded up.
-     */
-    function _downscaleUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
-        return FixedPoint.divUp(amount, scalingFactor);
-    }
-
-    /**
-     * @dev Same as `_downscaleUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     */
-    function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
-        uint256 length = amounts.length;
-        InputHelpers.ensureInputLengthMatch(length, scalingFactors.length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
-        }
     }
 
     function _getAuthorizer() internal view override returns (IAuthorizer) {
