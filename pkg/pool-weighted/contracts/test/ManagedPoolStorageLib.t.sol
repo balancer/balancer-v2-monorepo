@@ -120,7 +120,7 @@ contract ManagedPoolStorageLibTest is DSTest {
         uint32 startTime,
         uint32 endTime,
         uint64 startSwapFeePercentage,
-        uint64 endSwapFeePercentage,
+        uint64 endSwapFeePercentage
     ) public {
         hevm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
         hevm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
