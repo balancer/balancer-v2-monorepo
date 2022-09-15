@@ -681,13 +681,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal override returns (uint256) {
-        bytes32 poolState = _poolState;
-        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        {
+            bytes32 poolState = _poolState;
+            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
 
-        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+        }
 
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountOut = WeightedMath._calcOutGivenIn(
@@ -721,13 +725,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) internal override returns (uint256) {
-        bytes32 poolState = _poolState;
-        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        {
+            bytes32 poolState = _poolState;
+            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
 
-        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+        }
 
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountIn = WeightedMath._calcInGivenOut(
