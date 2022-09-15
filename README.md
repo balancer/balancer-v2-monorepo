@@ -57,7 +57,7 @@ You can see a sample report of a test run [here](./audits/test-report.md).
 
 ### Foundry (Forge) tests
 
-To run Forge tests, first [install Foundry](https://book.getfoundry.sh/getting-started/installation). In short:
+To run Forge tests, first [install Foundry](https://book.getfoundry.sh/getting-started/installation). The installation steps below apply to Linux or MacOS. Follow the link for additional options.
 
 ```bash
 $ curl -L https://foundry.paradigm.xyz | bash
