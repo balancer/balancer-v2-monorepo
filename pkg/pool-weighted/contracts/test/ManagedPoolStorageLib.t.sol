@@ -14,14 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import { DSTest } from "ds-test/test.sol";
-import "./Hevm.sol";
+import { Test } from "forge-std/Test.sol";
 
 import "../managed/ManagedPoolStorageLib.sol";
 
-contract ManagedPoolStorageLibTest is DSTest {
-    Hevm internal constant hevm = Hevm(HEVM_ADDRESS);
-
+contract ManagedPoolStorageLibTest is Test {
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
     uint256 private constant _WEIGHT_END_TIME_OFFSET = _WEIGHT_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
     uint256 private constant _SWAP_FEE_START_TIME_OFFSET = _WEIGHT_END_TIME_OFFSET + _TIMESTAMP_WIDTH;
@@ -99,8 +96,8 @@ contract ManagedPoolStorageLibTest is DSTest {
         uint32 endTime,
         uint32 now
     ) public {
-        hevm.warp(now);
-        hevm.assume(startTime <= endTime);
+        vm.warp(now);
+        vm.assume(startTime <= endTime);
 
         bytes32 newPoolState = ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(newPoolState);
@@ -122,8 +119,8 @@ contract ManagedPoolStorageLibTest is DSTest {
         uint64 startSwapFeePercentage,
         uint64 endSwapFeePercentage
     ) public {
-        hevm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
-        hevm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
+        vm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
+        vm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
 
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapFeeData(
             poolState,
@@ -160,10 +157,10 @@ contract ManagedPoolStorageLibTest is DSTest {
         uint64 endSwapFeePercentage,
         uint32 now
     ) public {
-        hevm.warp(now);
-        hevm.assume(startTime <= endTime);
-        hevm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
-        hevm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
+        vm.warp(now);
+        vm.assume(startTime <= endTime);
+        vm.assume(startSwapFeePercentage < _MAX_SWAP_FEE);
+        vm.assume(endSwapFeePercentage < _MAX_SWAP_FEE);
 
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapFeeData(
             poolState,
