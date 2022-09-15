@@ -440,7 +440,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.1.6
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -525,7 +525,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.1.6
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -7509,6 +7509,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"hardhat-ignore-warnings@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "hardhat-ignore-warnings@npm:0.1.6"
+  dependencies:
+    minimatch: ^5.1.0
+    node-interval-tree: ^2.0.1
+    solidity-comments: ^0.0.2
+  checksum: 730f372b6889a48cbce5cb8e8aa47413bae7ac8b0fb868d7f49353b3525c1b3695efe17f76126a438c8edb6f45b2302b7b5fa071728896641d47d977a7ca8d2f
+  languageName: node
+  linkType: hard
+
 "hardhat-local-networks-config-plugin@npm:0.0.5":
   version: 0.0.5
   resolution: "hardhat-local-networks-config-plugin@npm:0.0.5"
@@ -9664,6 +9675,15 @@ __metadata:
   dependencies:
     brace-expansion: ^2.0.1
   checksum: 6554aca25884b6c31bf42ca7c91970bb0f0c82447b99468f87809ba9ad7803fcd6dd888e58fcd592df5b1a0fd4f5e2b752656a1dbd6a9bbeb629d2c40f1f8b94
+  languageName: node
+  linkType: hard
+
+"minimatch@npm:^5.1.0":
+  version: 5.1.0
+  resolution: "minimatch@npm:5.1.0"
+  dependencies:
+    brace-expansion: ^2.0.1
+  checksum: 256a349ac67cb664204074633eb95b29fcee1529c4717fb2239c45cd621bc353c75f0ee63dd8916d788b20ad02ba18f08f1c33fefaa27d157053011ada0f0861
   languageName: node
   linkType: hard
 

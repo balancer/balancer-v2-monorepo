@@ -97,7 +97,9 @@ abstract contract ProtocolFeeCache is RecoveryMode {
      * to Pools that incur protocol debt between operations. To avoid altering the amount due retroactively, this debt
      * needs to be paid before the fee percentages change.
      */
-    function _beforeProtocolFeeCacheUpdate() internal virtual {}
+    function _beforeProtocolFeeCacheUpdate() internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeType) private {
         uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(feeType);

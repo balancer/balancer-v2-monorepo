@@ -62,9 +62,9 @@ export default class Vault {
 
   async getPoolTokenInfo(
     poolId: string,
-    token: Token
+    token: Token | string
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
-    return this.instance.getPoolTokenInfo(poolId, token.address);
+    return this.instance.getPoolTokenInfo(poolId, typeof token == 'string' ? token : token.address);
   }
 
   async updateBalances(poolId: string, balances: BigNumber[]): Promise<ContractTransaction> {

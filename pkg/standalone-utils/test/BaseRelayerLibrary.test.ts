@@ -87,6 +87,35 @@ describe('BaseRelayerLibrary', function () {
         });
       });
 
+      context('when mixing temporary and read-only references', () => {
+        const reference = toChainedReference(key, true);
+        const readOnlyReference = toChainedReference(key, false);
+
+        it('writes the same slot (temporary write)', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 17);
+          await expectChainedReferenceContents(readOnlyReference, 17);
+        });
+
+        it('writes the same slot (read-only write)', async () => {
+          await relayerLibrary.setChainedReferenceValue(readOnlyReference, 11);
+          await expectChainedReferenceContents(reference, 11);
+        });
+
+        it('reads the same written slot', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 37);
+
+          await expectChainedReferenceContents(readOnlyReference, 37);
+          await expectChainedReferenceContents(reference, 37);
+        });
+
+        it('reads the same cleared slot', async () => {
+          await relayerLibrary.setChainedReferenceValue(reference, 39);
+
+          await expectChainedReferenceContents(reference, 39);
+          await expectChainedReferenceContents(readOnlyReference, 0);
+        });
+      });
+
       async function expectChainedReferenceContents(key: BigNumberish, expectedValue: BigNumberish): Promise<void> {
         const receipt = await (await relayerLibrary.getChainedReferenceValue(key)).wait();
         expectEvent.inReceipt(receipt, 'ChainedReferenceValueRead', { value: bn(expectedValue) });

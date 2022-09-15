@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Contract, BigNumber } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, bn, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('WeightCompression', () => {
   const maxUncompressedValue = fp(10_000);
@@ -145,7 +145,7 @@ describe('WeightCompression', () => {
       });
 
       it('reverts with input value out of range', async () => {
-        await expect(lib.compress(fp(1).add(1), 16)).to.be.revertedWith('OUT_OF_BOUNDS');
+        await expect(lib.compress(FP_ONE.add(1), 16)).to.be.revertedWith('OUT_OF_BOUNDS');
       });
     });
 
@@ -162,7 +162,7 @@ describe('WeightCompression', () => {
         for (const bitLength of [2, 8, 16, 32, 64, 128, 160]) {
           const maxCompressedValue = getMaxValue(bitLength);
 
-          expect(await lib.compress(fp(1), bitLength)).to.equal(maxCompressedValue);
+          expect(await lib.compress(FP_ONE, bitLength)).to.equal(maxCompressedValue);
         }
       });
 
@@ -192,7 +192,7 @@ describe('WeightCompression', () => {
         }
 
         it('overflows with large bitLengths', async () => {
-          await expect(lib.compress(fp(1), 250)).to.be.revertedWith('MUL_OVERFLOW');
+          await expect(lib.compress(FP_ONE, 250)).to.be.revertedWith('MUL_OVERFLOW');
         });
       });
     });
@@ -228,7 +228,7 @@ describe('WeightCompression', () => {
         for (const bitLength of [2, 8, 16, 32, 64, 128, 160]) {
           const maxCompressedValue = getMaxValue(bitLength);
 
-          expect(await lib.decompress(maxCompressedValue, bitLength)).to.equal(fp(1));
+          expect(await lib.decompress(maxCompressedValue, bitLength)).to.equal(FP_ONE);
         }
       });
     });
