@@ -19,7 +19,7 @@ import {
 
 describe('AaveWrapping', function () {
   let token: Contract, aToken: Contract;
-  let senderUser: SignerWithAddress, otherUser: SignerWithAddress, admin: SignerWithAddress;
+  let user: SignerWithAddress, other: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
   let staticToken: Contract;
@@ -28,9 +28,9 @@ describe('AaveWrapping', function () {
   const totalTokens = fp(100);
 
   before('setup signer', async () => {
-    [, admin, senderUser, otherUser] = await ethers.getSigners();
+    [, admin, user, other] = await ethers.getSigners();
     // Methods under test don't take a different path based on the recipient, so a fixed one shall be used.
-    tokenRecipient = otherUser;
+    tokenRecipient = other;
   });
 
   sharedBeforeEach('deploy and tokens', async () => {
@@ -44,11 +44,11 @@ describe('AaveWrapping', function () {
   });
 
   sharedBeforeEach('mint tokens and give vault allowance', async () => {
-    await token.mint(senderUser.address, totalTokens);
-    await aToken.mint(senderUser.address, totalTokens);
+    await token.mint(user.address, totalTokens);
+    await aToken.mint(user.address, totalTokens);
 
-    await token.connect(senderUser).approve(vault.address, totalTokens);
-    await aToken.connect(senderUser).approve(vault.address, totalTokens);
+    await token.connect(user).approve(vault.address, totalTokens);
+    await aToken.connect(user).approve(vault.address, totalTokens);
   });
 
   sharedBeforeEach('set up relayer', async () => {
@@ -63,7 +63,7 @@ describe('AaveWrapping', function () {
     await vault.grantPermissionsGlobally(relayerActionIds, relayer);
 
     // Approve relayer by sender
-    await vault.setRelayerApproval(senderUser, relayer, true);
+    await vault.setRelayerApproval(user, relayer, true);
   });
 
   describe('wrapAaveDynamicToken', () => {
@@ -74,7 +74,7 @@ describe('AaveWrapping', function () {
     context('when caller != sender and sender != relayer', () => {
       it('reverts', async () => {
         await expect(
-          relayer.connect(senderUser).multicall([encodeWrap(otherUser, tokenRecipient, fp(1), fromUnderlying)])
+          relayer.connect(other).multicall([encodeWrap(user, tokenRecipient, fp(1), fromUnderlying)])
         ).to.be.revertedWith('Incorrect sender');
       });
     });
@@ -96,9 +96,9 @@ describe('AaveWrapping', function () {
     });
 
     function itWrapsWithDifferentSenders() {
-      context('sender = senderUser', () => {
+      context('sender = user', () => {
         beforeEach(() => {
-          tokenSender = senderUser;
+          tokenSender = user;
         });
 
         itWrapsWithRefsAndAmounts();
@@ -137,7 +137,7 @@ describe('AaveWrapping', function () {
       sharedBeforeEach('call wrapAaveDynamicToken', async () => {
         receipt = await (
           await relayer
-            .connect(senderUser)
+            .connect(user)
             .multicall([
               encodeWrap(tokenSender, tokenRecipient, amountOrRef, fromUnderlying, toChainedReference(referenceSlot)),
             ])
@@ -184,14 +184,14 @@ describe('AaveWrapping', function () {
     const referenceSlot = 97;
 
     sharedBeforeEach('mock token wrap', async () => {
-      await staticToken.mint(senderUser.address, totalTokens);
-      await staticToken.connect(senderUser).approve(vault.address, totalTokens);
+      await staticToken.mint(user.address, totalTokens);
+      await staticToken.connect(user).approve(vault.address, totalTokens);
     });
 
     context('when caller != sender and sender != relayer', () => {
       it('reverts', async () => {
         await expect(
-          relayer.connect(senderUser).multicall([encodeUnwrap(otherUser, tokenRecipient, fp(1), toUnderlying)])
+          relayer.connect(other).multicall([encodeUnwrap(user, tokenRecipient, fp(1), toUnderlying)])
         ).to.be.revertedWith('Incorrect sender');
       });
     });
@@ -213,9 +213,9 @@ describe('AaveWrapping', function () {
     });
 
     function itUnwrapsWithDifferentSenders() {
-      context('sender = senderUser', () => {
+      context('sender = user', () => {
         beforeEach(() => {
-          tokenSender = senderUser;
+          tokenSender = user;
         });
 
         itUnwrapsWithRefsAndAmounts();
@@ -254,7 +254,7 @@ describe('AaveWrapping', function () {
       sharedBeforeEach('call unwrapAaveDynamicToken', async () => {
         receipt = await (
           await relayer
-            .connect(senderUser)
+            .connect(user)
             .multicall([
               encodeUnwrap(tokenSender, tokenRecipient, amountOrRef, toUnderlying, toChainedReference(referenceSlot)),
             ])
