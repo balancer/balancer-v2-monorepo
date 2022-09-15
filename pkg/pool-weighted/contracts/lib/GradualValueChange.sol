@@ -73,7 +73,7 @@ library GradualValueChange {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
+        // No need for SafeMath as it was checked right above: endTime > currentTime > startTime
         uint256 totalSeconds = endTime - startTime;
         uint256 secondsElapsed = currentTime - startTime;
 
