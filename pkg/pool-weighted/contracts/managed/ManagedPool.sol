@@ -407,7 +407,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights, tokens);
+        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
     }
 
     /**
@@ -633,7 +633,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         // Reverts if the token does not exist in the pool.
         uint256 tokenIndex = _findTokenIndex(tokens, token);
         uint256 tokenBalance = unscaledBalances[tokenIndex];
-        uint256 tokenNormalizedWeight = _getNormalizedWeight(token);
+        uint256 tokenNormalizedWeight = _getNormalizedWeight(
+            token,
+            ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState())
+        );
 
         // We first perform a special exit operation, which will withdraw the entire token balance from the Vault.
         // Only the Pool itself is authorized to initiate this kind of exit.
@@ -784,16 +787,18 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         }
     }
 
-    function _getNormalizedWeight(IERC20 token) internal view override returns (uint256) {
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
+    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view override returns (uint256) {
         return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
     }
 
     // This could be simplified by simply iteratively calling _getNormalizedWeight(), but this routine is
     // called very frequently, so we are optimizing for runtime performance.
-    function _getNormalizedWeights() internal view override returns (uint256[] memory normalizedWeights) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
+    function _getNormalizedWeights(IERC20[] memory tokens)
+        internal
+        view
+        override
+        returns (uint256[] memory normalizedWeights)
+    {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
         uint256 denormWeightSum = _denormWeightSum;
 
@@ -817,12 +822,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
+
+        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
-            _getNormalizedWeight(swapRequest.tokenIn),
+            tokenInWeight,
             currentBalanceTokenOut,
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenOutWeight,
             swapRequest.amount
         );
 
@@ -833,8 +843,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
         //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
         uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            _getNormalizedWeight(swapRequest.tokenIn),
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenInWeight,
+            tokenOutWeight,
             FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
             FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
         );
@@ -851,12 +861,17 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     ) internal virtual override returns (uint256) {
         _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
 
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_getPoolState());
+
+        uint256 tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
+
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         uint256 amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
-            _getNormalizedWeight(swapRequest.tokenIn),
+            tokenInWeight,
             currentBalanceTokenOut,
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenOutWeight,
             swapRequest.amount
         );
 
@@ -867,8 +882,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
         //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
         uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            _getNormalizedWeight(swapRequest.tokenIn),
-            _getNormalizedWeight(swapRequest.tokenOut),
+            tokenInWeight,
+            tokenOutWeight,
             FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
             FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
         );
@@ -938,8 +953,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(getNormalizedWeights(), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
