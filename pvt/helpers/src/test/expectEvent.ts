@@ -55,7 +55,6 @@ export function inIndirectReceipt(
       try {
         return emitter.parseLog(log);
       } catch (e) {
-        console.log(e);
         return undefined;
       }
     })
