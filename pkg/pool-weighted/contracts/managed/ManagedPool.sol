@@ -1205,16 +1205,15 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         emit RecoveryModeStateChanged(enabled);
 
         // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
-        // We do not allow an `_onEnableRecoveryMode()` hook as this may jeopardize the ability to enable Recovery mode.
-        if (!enabled) _onDisableRecoveryMode();
-    }
-
-    function _onDisableRecoveryMode() internal override {
-        // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused and
-        // in Recovery mode for a period of time and then later returns to normal operation then AUM fees will be
-        // charged to the remaining LPs for the full period. We then update the collection timestamp so that no AUM fees
-        // are accrued over this period.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
+        // We do not perform any state updates when entering recovery mode as this may jeopardize the ability to enable
+        // Recovery mode.
+        if (!enabled) {
+            // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused
+            // and in Recovery mode for a period of time and then later returns to normal operation then AUM fees will
+            // be charged to the remaining LPs for the full period. We then update the collection timestamp so that no
+            // AUM fees are accrued over this period.
+            _lastAumFeeCollectionTimestamp = block.timestamp;
+        }
     }
 
     // Misc

@@ -132,14 +132,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     }
 
     /**
-     * @dev Performs any necessary actions on the disabling of Recovery Mode.
-     * This is usually to reset any fee collection mechanisms to ensure that they operate correctly going forward.
-     */
-    function _onDisableRecoveryMode() internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment (see `TemporarilyPausable`).
