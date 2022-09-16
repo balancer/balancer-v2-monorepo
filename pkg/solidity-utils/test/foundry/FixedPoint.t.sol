@@ -7,6 +7,16 @@ import "../../contracts/math/FixedPoint.sol";
 
 contract FixedPointTest is Test {
     function testComplement(uint256 x) external {
+        uint256 complement = FixedPoint.complement(x);
+
+        if (x < FixedPoint.ONE) {
+            assertEq(complement, FixedPoint.ONE - x);
+        } else {
+            assertEq(complement, 0);
+        }
+    }
+
+    function testComplementEquivalence(uint256 x) external {
         uint256 referenceComplement = (x < FixedPoint.ONE) ? (FixedPoint.ONE - x) : 0;
         uint256 complement = FixedPoint.complement(x);
 
