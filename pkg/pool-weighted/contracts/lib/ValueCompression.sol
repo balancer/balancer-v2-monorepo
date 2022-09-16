@@ -22,7 +22,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
  * All values are 18 decimal fixed-point numbers, so heavier compression (fewer bits)
  * results in fewer decimals.
  */
-library WeightCompression {
+library ValueCompression {
     /**
      * @dev Compress a 256 bit value into `bitLength` bits.
      * To compress a value down to n bits, you first "normalize" it over the full input range.
