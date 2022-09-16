@@ -18,7 +18,10 @@ import "../solidity-utils/openzeppelin/IERC20.sol";
 
 // Source: https://github.com/Byte-Masons/beet-strat/blob/master/contracts/ReaperVaultv1_4.sol
 // Interface definition for the ReaperTokenVault contract, a single strategy vault
-// for Reaper Farm crypts.
+// for Reaper Farm crypts. The pricePerFullShare is always represented with 18 decimals,
+// regardless of the underlying token decimals.
+// ie: If ppfs === 1e18, 1 USDC === 0.000_000_000_001_000_000 rfUSDC
+// ie: If ppfs === 1e18, 1 DAI === 1 rfDAI
 interface IReaperTokenVault is IERC20 {
     /**
      * @dev returns the address of the vault's underlying asset (mainToken)
