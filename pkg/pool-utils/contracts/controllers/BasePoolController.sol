@@ -37,10 +37,7 @@ contract BasePoolController is IBasePoolController {
     using WordCodec for bytes32;
 
     // There are three basic pool rights: one for transferring ownership, one for changing the swap fee,
-    // and the last for associating arbitrary metadata with the pool. The remaining BasePool privileged
-    // function (setAssetManagerPoolConfig) has no associated permission. It doesn't make sense to
-    // restrict that, as a fixed configuration would prevent rebalancing and potentially lead to loss
-    // of funds.
+    // and the last for associating arbitrary metadata with the pool.
     struct BasePoolRights {
         bool canTransferOwnership;
         bool canChangeSwapFee;
@@ -242,20 +239,6 @@ contract BasePoolController is IBasePoolController {
         _require(getSwapFeeController() == msg.sender, Errors.SENDER_NOT_ALLOWED);
 
         IControlledPool(pool).setSwapFeePercentage(swapFeePercentage);
-    }
-
-    /**
-     * @dev Pass a call to BasePool's setAssetManagerPoolConfig through to the underlying pool. This does not
-     * need to be permissioned: any pool with asset managers must allow the owner to configure them.
-     */
-    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
-        external
-        virtual
-        override
-        onlyManager
-        withBoundPool
-    {
-        IControlledPool(pool).setAssetManagerPoolConfig(token, poolConfig);
     }
 
     /**

@@ -67,7 +67,6 @@ describe('ManagedPool owner only actions', () => {
     'setMustAllowlistLPs',
     'setSwapEnabled',
     'setSwapFeePercentage',
-    'setAssetManagerPoolConfig',
     'updateSwapFeeGradually',
     'updateWeightsGradually',
   ];

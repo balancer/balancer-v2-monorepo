@@ -240,29 +240,6 @@ abstract contract BasePool is
     }
 
     /**
-     * @notice Set the asset manager parameters for the given token.
-     * @dev This is a permissioned function, unavailable when the pool is paused.
-     * The details of the configuration data are set by each Asset Manager. (For an example, see
-     * `RewardsAssetManager`.)
-     */
-    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig)
-        public
-        virtual
-        override
-        authenticate
-        whenNotPaused
-    {
-        _setAssetManagerPoolConfig(token, poolConfig);
-    }
-
-    function _setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) private {
-        bytes32 poolId = getPoolId();
-        (, , , address assetManager) = getVault().getPoolTokenInfo(poolId, token);
-
-        IAssetManager(assetManager).setConfig(poolId, poolConfig);
-    }
-
-    /**
      * @notice Pause the pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment (see `TemporarilyPausable`).
@@ -282,10 +259,7 @@ abstract contract BasePool is
     }
 
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return
-            (actionId == getActionId(this.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(this.setAssetManagerPoolConfig.selector)) ||
-            super._isOwnerOnlyAction(actionId);
+        return (actionId == getActionId(this.setSwapFeePercentage.selector)) || super._isOwnerOnlyAction(actionId);
     }
 
     function _getMiscData() internal view returns (bytes32) {

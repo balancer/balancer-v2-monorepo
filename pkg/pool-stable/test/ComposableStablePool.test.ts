@@ -2005,7 +2005,6 @@ describe('ComposableStablePool', () => {
 
       const expectedOwnerOnlyFunctions = [
         'setSwapFeePercentage',
-        'setAssetManagerPoolConfig',
         'startAmplificationParameterUpdate',
         'stopAmplificationParameterUpdate',
         'setTokenRateCacheDuration',
