@@ -162,8 +162,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             params.assetManagers,
             pauseWindowDuration,
             bufferPeriodDuration,
-            owner,
-            true
+            owner
         )
         ProtocolFeeCache(protocolFeeProvider)
     {
