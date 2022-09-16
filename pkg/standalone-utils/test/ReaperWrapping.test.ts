@@ -17,13 +17,13 @@ import { expectChainedReferenceContents, toChainedReference } from './helpers/ch
 
 describe('ReaperWrapping', function () {
   let dai: Token, rfDAI: Contract;
-  let user: SignerWithAddress, otherUser: SignerWithAddress, admin: SignerWithAddress;
+  let user: SignerWithAddress, admin: SignerWithAddress;
   let vault: Vault;
   let relayer: Contract, relayerLibrary: Contract;
-  let yvDaiRate = fp(1.02);
+  const yvDaiRate = fp(1.02);
 
   before('setup signers', async () => {
-    [, admin, user, otherUser] = await ethers.getSigners();
+    [, admin, user] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy Vault', async () => {
@@ -107,9 +107,7 @@ describe('ReaperWrapping', function () {
     const yvDaiForAmount = amount.mul(fp(1)).div(yvDaiRate);
 
     it('should deposit underlying tokens into a reaper vault on wrap', async () => {
-      const receipt = await (
-        await relayer.connect(user).multicall([encodeWrap(rfDAI, user, user, amount)])
-      ).wait();
+      const receipt = await (await relayer.connect(user).multicall([encodeWrap(rfDAI, user, user, amount)])).wait();
 
       expectTransferEvent(receipt, { from: user.address, to: relayer.address, value: amount }, dai);
       expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: relayer.address, value: yvDaiForAmount }, rfDAI);
@@ -125,13 +123,11 @@ describe('ReaperWrapping', function () {
 
       const balance = await rfDAI.balanceOf(relayer.address);
 
-      expect(balance).to.be.equalWithError(yvDaiForAmount , 0.00001);
+      expect(balance).to.be.equalWithError(yvDaiForAmount, 0.00001);
     });
 
     it('stores wrap output as chained reference', async () => {
-      await relayer
-        .connect(user)
-        .multicall([encodeWrap(rfDAI, user, relayer.address, amount, toChainedReference(0))]);
+      await relayer.connect(user).multicall([encodeWrap(rfDAI, user, relayer.address, amount, toChainedReference(0))]);
 
       await expectChainedReferenceContents(relayer, toChainedReference(0), yvDaiForAmount);
     });
@@ -140,28 +136,24 @@ describe('ReaperWrapping', function () {
       await setChainedReferenceContents(toChainedReference(0), amount);
 
       const receipt = await (
-        await relayer
-          .connect(user)
-          .multicall([encodeWrap(rfDAI, user, relayer.address, toChainedReference(0))])
+        await relayer.connect(user).multicall([encodeWrap(rfDAI, user, relayer.address, toChainedReference(0))])
       ).wait();
 
       expectTransferEvent(receipt, { from: user.address, to: relayer.address, value: amount }, dai);
       expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: relayer.address, value: yvDaiForAmount }, rfDAI);
     });
-  });    
+  });
 
   describe('unwrapping', () => {
     const amount = fp(1);
     const daiForAmount = amount.mul(yvDaiRate).div(fp(1));
 
     sharedBeforeEach('deposit tokens to vault', async () => {
-      await rfDAI.connect(user).deposit(daiForAmount)
+      await rfDAI.connect(user).deposit(daiForAmount);
     });
 
     it('should withdraw underlying tokens from a reaper vault on unwrap', async () => {
-      const receipt = await (
-        await relayer.connect(user).multicall([encodeUnwrap(rfDAI, user, user, amount)])
-      ).wait();
+      const receipt = await (await relayer.connect(user).multicall([encodeUnwrap(rfDAI, user, user, amount)])).wait();
 
       expectTransferEvent(receipt, { from: user.address, to: relayer.address, value: amount }, rfDAI);
       expectTransferEvent(receipt, { from: rfDAI.address, to: relayer.address, value: daiForAmount }, dai);
@@ -177,13 +169,11 @@ describe('ReaperWrapping', function () {
 
       const balance = await dai.balanceOf(relayer.address);
 
-      expect(balance).to.be.equalWithError(daiForAmount , 0.00001);
+      expect(balance).to.be.equalWithError(daiForAmount, 0.00001);
     });
 
     it('stores unwrap output as chained reference', async () => {
-      await relayer
-        .connect(user)
-        .multicall([encodeUnwrap(rfDAI, user, relayer, amount, toChainedReference(0))]);
+      await relayer.connect(user).multicall([encodeUnwrap(rfDAI, user, relayer, amount, toChainedReference(0))]);
 
       await expectChainedReferenceContents(relayer, toChainedReference(0), daiForAmount);
     });

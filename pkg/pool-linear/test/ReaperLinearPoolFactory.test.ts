@@ -31,7 +31,9 @@ describe('ReaperLinearPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
-    factory = await deploy('ReaperLinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address, queries.address] });
+    factory = await deploy('ReaperLinearPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address, queries.address],
+    });
     creationTime = await currentTimestamp();
 
     const mainToken = await Token.create('DAI');

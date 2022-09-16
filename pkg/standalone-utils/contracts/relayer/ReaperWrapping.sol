@@ -75,7 +75,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         }
 
         IERC20 underlyingToken = IERC20(vaultToken.token());
-        
+
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {

@@ -54,7 +54,7 @@ contract ReaperLinearPool is LinearPool {
         )
     {
         IReaperTokenVault tokenVault = IReaperTokenVault(address(args.wrappedToken));
-        
+
         _tokenVault = tokenVault;
 
         // Reaper vault tokens are always 18 decimal places, but are stored in the precision of the mainToken
@@ -62,7 +62,7 @@ contract ReaperLinearPool is LinearPool {
         // ie: If ppfs === 1e18, 1 DAI === 1 rfDAI
         // ie: If ppfs === 1e18, 1 WBTC === 0.000_000_000_100_000_000 rfWBTC
         // -----------
-        // Internally, the LinearPool scales all balances and rates up to 18 decimal places, meaning that 1 USDC is 
+        // Internally, the LinearPool scales all balances and rates up to 18 decimal places, meaning that 1 USDC is
         // represented as 1e18 by the LinearPool. Since the rfUSDC is already 18 decimals,
         // but in a different representation, we need to account for that in our wrappedTokenRate.
         // Since we only accept tokens with <= 18 decimals, we know the smallest this can be is 10^0 === 1

@@ -32,16 +32,16 @@ interface IReaperTokenVault is IERC20 {
      * @dev returns the price for a single Vault share (ie rf-scfUSDT). The getPricePerFullShare is always in 1e18
      */
     function getPricePerFullShare() external view returns (uint256);
-    
+
     /**
-     * @notice Deposits `_amount` `token`, issuing shares to the caller. 
+     * @notice Deposits `_amount` `token`, issuing shares to the caller.
      * If Panic is activated, deposits will not be accepted and this call will fail.
      * @param _amount The quantity of tokens to deposit.
      **/
     function deposit(uint256 _amount) external;
 
     /**
-     * @notice Withdraws the calling account's tokens from this Vault, 
+     * @notice Withdraws the calling account's tokens from this Vault,
      * redeeming amount `_shares` for an appropriate amount of tokens.
      **/
     function withdraw(uint256 _shares) external;
