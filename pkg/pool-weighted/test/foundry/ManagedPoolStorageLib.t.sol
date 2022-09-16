@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import "../managed/ManagedPoolStorageLib.sol";
+import "../../contracts/managed/ManagedPoolStorageLib.sol";
 
 contract ManagedPoolStorageLibTest is Test {
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
