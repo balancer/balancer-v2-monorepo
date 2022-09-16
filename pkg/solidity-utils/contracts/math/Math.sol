@@ -12,8 +12,11 @@ library Math {
     /**
      * @dev Returns the absolute value of a signed integer.
      */
-    function abs(int256 a) internal pure returns (uint256) {
-        return a > 0 ? uint256(a) : uint256(-a);
+    function abs(int256 a) internal pure returns (uint256 result) {
+        assembly {
+            let s := sar(255, a)
+            result := sub(xor(a, s), s)
+        }
     }
 
     /**
@@ -55,15 +58,19 @@ library Math {
     /**
      * @dev Returns the largest of two numbers of 256 bits.
      */
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a >= b ? a : b;
+    function max(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        assembly {
+            result := sub(a, mul(sub(a, b), lt(a, b)))
+        }
     }
 
     /**
      * @dev Returns the smallest of two numbers of 256 bits.
      */
-    function min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
+    function min(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        assembly {
+            result := sub(a, mul(sub(a, b), gt(a, b)))
+        }
     }
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -85,13 +92,11 @@ library Math {
         return a / b;
     }
 
-    function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
+    function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         _require(b != 0, Errors.ZERO_DIVISION);
 
-        if (a == 0) {
-            return 0;
-        } else {
-            return 1 + (a - 1) / b;
+        assembly {
+            result := mul(iszero(iszero(a)), add(1, div(sub(a, 1), b)))
         }
     }
 }

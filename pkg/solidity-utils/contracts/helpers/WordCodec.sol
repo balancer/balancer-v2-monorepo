@@ -50,12 +50,13 @@ library WordCodec {
         uint256 value,
         uint256 offset,
         uint256 bitLength
-    ) internal pure returns (bytes32) {
+    ) internal pure returns (bytes32 result) {
         _validateEncodingParams(value, offset, bitLength);
-
-        uint256 mask = (1 << bitLength) - 1;
-        bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
-        return clearedWord | bytes32(value << offset);
+        assembly {
+            let mask := sub(shl(bitLength, 1), 1)
+            let clearedWord := and(word, not(shl(offset, mask)))
+            result := or(clearedWord, shl(offset, value))
+        }
     }
 
     /**
@@ -122,8 +123,10 @@ library WordCodec {
         bytes32 word,
         uint256 offset,
         uint256 bitLength
-    ) internal pure returns (uint256) {
-        return uint256(word >> offset) & ((1 << bitLength) - 1);
+    ) internal pure returns (uint256 result) {
+        assembly {
+            result := and(shr(offset, word), sub(shl(bitLength, 1), 1))
+        }
     }
 
     /**
@@ -149,8 +152,10 @@ library WordCodec {
     /**
      * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
      */
-    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool) {
-        return (uint256(word >> offset) & _MASK_1) == 1;
+    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool result) {
+        assembly {
+            result := and(shr(offset, word), 1)
+        }
     }
 
     /**
@@ -176,9 +181,11 @@ library WordCodec {
         bytes32 word,
         bool value,
         uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_1 << offset));
-        return clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
+    ) internal pure returns (bytes32 result) {
+        assembly {
+            let clearedWord := and(word, not(shl(offset, 1)))
+            result := or(clearedWord, shl(offset, value))
+        }
     }
 
     // Helpers
