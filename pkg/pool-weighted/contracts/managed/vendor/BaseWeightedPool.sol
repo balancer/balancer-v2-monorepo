@@ -42,26 +42,17 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         string memory symbol,
         IERC20[] memory tokens,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        address owner,
-        bool mutableTokens
+        address owner
     )
         BasePool(
             vault,
-            // Given we support both of these specializations, if this Pool never registers or deregisters any tokens
-            // after construction, picking Two Token when the Pool only has two tokens is free gas savings.
-            // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
-            // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
-            tokens.length == 2 && !mutableTokens
-                ? IVault.PoolSpecialization.TWO_TOKEN
-                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             name,
             symbol,
             tokens,
             assetManagers,
-            swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
@@ -75,29 +66,33 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
     /**
      * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
      */
-    function _getNormalizedWeight(IERC20 token) internal view virtual returns (uint256);
+    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view virtual returns (uint256);
+
+    /**
+     * @notice Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function getNormalizedWeights() public view returns (uint256[] memory) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        return _getNormalizedWeights(tokens);
+    }
 
     /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens.
      */
-    function _getNormalizedWeights() internal view virtual returns (uint256[] memory);
+    function _getNormalizedWeights(IERC20[] memory tokens) internal view virtual returns (uint256[] memory);
 
     /**
      * @dev Returns the current value of the invariant.
      */
-    function getInvariant() public view returns (uint256) {
-        (, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+    function getInvariant() external view returns (uint256) {
+        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors());
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
-    }
-
-    function getNormalizedWeights() external view returns (uint256[] memory) {
-        return _getNormalizedWeights();
     }
 
     // Base Pool handlers
@@ -196,7 +191,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 
@@ -218,40 +213,13 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
      * or disallow joins under certain circumstances.
      */
     function _doJoin(
-        address,
+        address sender,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-
-        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return
-                WeightedJoinsLib.joinExactTokensInForBPTOut(
-                    balances,
-                    normalizedWeights,
-                    scalingFactors,
-                    totalSupply,
-                    getSwapFeePercentage(),
-                    userData
-                );
-        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return
-                WeightedJoinsLib.joinTokenInForExactBPTOut(
-                    balances,
-                    normalizedWeights,
-                    totalSupply,
-                    getSwapFeePercentage(),
-                    userData
-                );
-        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
-        } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
-        }
-    }
+    ) internal view virtual returns (uint256, uint256[] memory);
 
     // Exit
 
@@ -265,7 +233,7 @@ abstract contract BaseWeightedPool is IMinimalSwapInfoPool, BasePool {
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
 

@@ -30,111 +30,191 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-solidity-utils test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz -vvv
 
   test-standalone-utils:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-standalone-utils test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz -vvv
 
   test-vault:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-vault test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-vault test-fuzz -vvv
 
   test-pool-utils:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-utils test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz -vvv
 
   test-pool-weighted:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-weighted test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz -vvv
 
   test-pool-stable:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-stable test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz -vvv
 
   test-pool-linear:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-pool-linear test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz -vvv
 
   test-asset-managers:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test-fuzz -vvv
 
   test-distributors:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-distributors test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-distributors test-fuzz -vvv
 
   test-liquidity-mining:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Set up environment
         uses: ./.github/actions/setup
       - name: Compile
         run: yarn build
       - name: Test
         run: yarn workspace @balancer-labs/v2-liquidity-mining test
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run Forge tests
+        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz -vvv
 
   test-governance-scripts:
     runs-on: ubuntu-latest
