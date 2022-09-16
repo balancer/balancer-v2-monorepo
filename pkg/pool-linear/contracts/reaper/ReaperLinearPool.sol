@@ -66,7 +66,7 @@ contract ReaperLinearPool is LinearPool {
         // represented as 1e18 by the LinearPool. Since the rfUSDC is already 18 decimals,
         // but in a different representation, we need to account for that in our wrappedTokenRate.
         // Since we only accept tokens with <= 18 decimals, we know the smallest this can be is 10^0 === 1
-        _rateScaleFactor = 10**(18 - ERC20(tokenVault.token()).decimals());
+        _rateScaleFactor = 10**(SafeMath.sub(18, ERC20(tokenVault.token()).decimals()));
 
         _require(address(args.mainToken) == tokenVault.token(), Errors.TOKENS_MISMATCH);
     }
