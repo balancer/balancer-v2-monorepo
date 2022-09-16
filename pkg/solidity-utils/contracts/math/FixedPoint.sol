@@ -56,12 +56,15 @@ library FixedPoint {
         uint256 product = a * b;
         _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
+        // The traditional divUp formula is:
+        // divUp(x, y) := (x + y - 1) / y
+        // To avoid intermediate overflow in the addition, we distribute the division and get:
+        // divUp(x, y) := (x - 1) / y + 1
+        // Note that this requires x != 0, if x == 0 then the result is zero
+        //
+        // Equivalent to:
+        // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
         assembly {
-            // The traditional divUp formula is:
-            // divUp(x, y) := (x + y - 1) / y
-            // To avoid intermediate overflow in the addition, we distribute the division and get:
-            // divUp(x, y) := (x - 1) / y + 1
-            // Note that this requires x != 0, which we already tested for.
             result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
         }
     }
@@ -85,7 +88,10 @@ library FixedPoint {
         // divUp(x, y) := (x + y - 1) / y
         // To avoid intermediate overflow in the addition, we distribute the division and get:
         // divUp(x, y) := (x - 1) / y + 1
-        // Note that this requires x != 0, which we already tested for.
+        // Note that this requires x != 0, if x == 0 then the result is zero
+        //
+        // Equivalent to:
+        // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
         assembly {
             result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
         }
@@ -146,6 +152,8 @@ library FixedPoint {
      * prevents intermediate negative values.
      */
     function complement(uint256 x) internal pure returns (uint256 result) {
+        // Equivalent to:
+        // result = (x < ONE) ? (ONE - x) : 0;
         assembly {
             result := mul(lt(x, ONE), sub(ONE, x))
         }

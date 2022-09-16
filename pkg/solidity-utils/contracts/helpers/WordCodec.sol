@@ -52,6 +52,10 @@ library WordCodec {
         uint256 bitLength
     ) internal pure returns (bytes32 result) {
         _validateEncodingParams(value, offset, bitLength);
+        // Equivalent to:
+        // uint256 mask = (1 << bitLength) - 1;
+        // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
+        // result = clearedWord | bytes32(value << offset);
         assembly {
             let mask := sub(shl(bitLength, 1), 1)
             let clearedWord := and(word, not(shl(offset, mask)))
@@ -124,6 +128,8 @@ library WordCodec {
         uint256 offset,
         uint256 bitLength
     ) internal pure returns (uint256 result) {
+        // Equivalent to:
+        // result = uint256(word >> offset) & ((1 << bitLength) - 1);
         assembly {
             result := and(shr(offset, word), sub(shl(bitLength, 1), 1))
         }
@@ -144,6 +150,9 @@ library WordCodec {
         // In case the decoded value is greater than the max positive integer that can be represented with bitLength
         // bits, we know it was originally a negative integer. Therefore, we mask it to restore the sign in the 256 bit
         // representation.
+        //
+        // Equivalent to:
+        // result = value > maxInt ? (value | int256(~mask)) : value;
         assembly {
             result := or(mul(gt(value, maxInt), not(mask)), value)
         }
@@ -155,6 +164,8 @@ library WordCodec {
      * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
      */
     function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool result) {
+        // Equivalent to:
+        // result = (uint256(word >> offset) & 1) == 1;
         assembly {
             result := and(shr(offset, word), 1)
         }
@@ -184,6 +195,9 @@ library WordCodec {
         bool value,
         uint256 offset
     ) internal pure returns (bytes32 result) {
+        // Equivalent to:
+        // bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
+        // bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
         assembly {
             let clearedWord := and(word, not(shl(offset, 1)))
             result := or(clearedWord, shl(offset, value))
