@@ -101,7 +101,7 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        result = deploy('v2-pool-weighted/ManagedPoolAMMLogic', {
+        result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
               name: NAME,
@@ -235,7 +235,7 @@ export default {
           .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
-        result = deployedAt('v2-pool-weighted/ManagedPoolAMMLogic', event.args.pool);
+        result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
         break;
       }
       default: {

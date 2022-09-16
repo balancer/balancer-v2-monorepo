@@ -49,7 +49,7 @@ describe('ManagedPool owner only actions', () => {
     });
   }
 
-  const poolArtifact = getArtifact('v2-pool-weighted/ManagedPoolAMMLogic');
+  const poolArtifact = getArtifact('v2-pool-weighted/ManagedPool');
   const nonViewFunctions = poolArtifact.abi
     .filter(
       (elem) =>

@@ -19,7 +19,7 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./ManagedPoolAMMLogic.sol";
+import "./ManagedPool.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
@@ -32,7 +32,7 @@ import "./ManagedPoolAMMLogic.sol";
  */
 contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPoolAMMLogic).creationCode)
+        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }

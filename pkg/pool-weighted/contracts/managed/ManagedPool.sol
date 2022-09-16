@@ -32,7 +32,7 @@ import "./ManagedPoolSettings.sol";
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-contract ManagedPoolAMMLogic is ManagedPoolSettings, IMinimalSwapInfoPool {
+contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 

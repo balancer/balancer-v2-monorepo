@@ -15,9 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../managed/ManagedPoolAMMLogic.sol";
+import "../managed/ManagedPool.sol";
 
-contract MockManagedPool is ManagedPoolAMMLogic {
+contract MockManagedPool is ManagedPool {
     constructor(
         NewPoolParams memory params,
         IVault vault,
@@ -25,7 +25,7 @@ contract MockManagedPool is ManagedPoolAMMLogic {
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) ManagedPoolAMMLogic(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
+    ) ManagedPool(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

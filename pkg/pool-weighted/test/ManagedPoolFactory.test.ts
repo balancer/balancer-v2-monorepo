@@ -102,7 +102,7 @@ describe('ManagedPoolFactory', function () {
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
     poolControllerAddress = event.args.poolController;
 
-    return deployedAt('ManagedPoolAMMLogic', event.args.pool);
+    return deployedAt('ManagedPool', event.args.pool);
   }
 
   describe('constructor arguments', () => {
