@@ -75,7 +75,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     uint256 private constant _MIN_TOKENS = 2;
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
-    uint256 private constant _MAX_MANAGED_TOKENS = 38;
+    uint256 private constant _MAX_TOKENS = 38;
 
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
@@ -168,7 +168,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     {
         uint256 totalTokens = params.tokens.length;
         _require(totalTokens >= _MIN_TOKENS, Errors.MIN_TOKENS);
-        _require(totalTokens <= _getMaxTokens(), Errors.MAX_TOKENS);
+        _require(totalTokens <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
@@ -1041,7 +1041,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
         uint256 numTokens = tokens.length;
-        _require(numTokens + 1 <= _getMaxTokens(), Errors.MAX_TOKENS);
+        _require(numTokens + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // The growth in the total weight of the pool can be calculated by:
         //
@@ -1216,10 +1216,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
     }
 
     // Misc
-
-    function _getMaxTokens() internal pure returns (uint256) {
-        return _MAX_MANAGED_TOKENS;
-    }
 
     function _getTotalTokens() internal view override returns (uint256) {
         return _totalTokensCache;
