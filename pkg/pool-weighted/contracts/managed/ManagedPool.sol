@@ -215,6 +215,35 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
     }
 
+    // Initialize
+
+    function _onInitializePool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory scalingFactors,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
+
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
+        _upscaleArray(amountsIn, scalingFactors);
+
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(getNormalizedWeights(), amountsIn);
+
+        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
+        // consistent in Pools with similar compositions but different number of tokens.
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
+
+        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
+        // so naturally charges no AUM fees.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        return (bptAmountOut, amountsIn);
+    }
+
     // Join
 
     function _onJoinPool(

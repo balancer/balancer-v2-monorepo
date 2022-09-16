@@ -114,7 +114,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Timestamp of the most recent collection of management AUM fees.
     // Note that this is only initialized the first time fees are collected.
-    uint256 private _lastAumFeeCollectionTimestamp;
+    uint256 internal _lastAumFeeCollectionTimestamp;
 
     // Event declarations
 
@@ -771,35 +771,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         if (managementSwapFeePercentage > 0) {
             _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
         }
-    }
-
-    // Initialize
-
-    function _onInitializePool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
-
-        uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
-        _upscaleArray(amountsIn, scalingFactors);
-
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(getNormalizedWeights(), amountsIn);
-
-        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
-        // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
-
-        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
-        // so naturally charges no AUM fees.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
-
-        return (bptAmountOut, amountsIn);
     }
 
     // Add/Remove tokens
