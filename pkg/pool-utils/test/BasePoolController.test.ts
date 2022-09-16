@@ -177,28 +177,6 @@ describe('BasePoolController', function () {
         });
       });
     });
-
-    describe('set asset manager config', () => {
-      const poolConfig = {
-        targetPercentage: 3,
-        upperCriticalPercentage: 4,
-        lowerCriticalPercentage: 2,
-      };
-
-      it('lets the manager set the asset manager config', async () => {
-        await poolController
-          .connect(manager)
-          .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig));
-      });
-
-      it('reverts if non-manager sets the asset manager config', async () => {
-        await expect(
-          poolController
-            .connect(other)
-            .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig))
-        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
-      });
-    });
   });
 
   describe('pool controller permissions', () => {

@@ -8,7 +8,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describe('ManagedPool owner only actions', () => {
+describe.only('ManagedPool owner only actions', () => {
   let pool: Contract;
 
   sharedBeforeEach('deploy pool', async () => {
@@ -67,7 +67,6 @@ describe('ManagedPool owner only actions', () => {
     'setMustAllowlistLPs',
     'setSwapEnabled',
     'setSwapFeePercentage',
-    'setAssetManagerPoolConfig',
     'updateSwapFeeGradually',
     'updateWeightsGradually',
   ];

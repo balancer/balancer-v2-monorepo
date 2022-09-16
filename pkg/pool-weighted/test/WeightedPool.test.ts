@@ -157,7 +157,7 @@ describe('WeightedPool', function () {
       )
       .map((fn) => fn.name);
 
-    const expectedOwnerOnlyFunctions = ['setSwapFeePercentage', 'setAssetManagerPoolConfig'];
+    const expectedOwnerOnlyFunctions = ['setSwapFeePercentage'];
 
     const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));
 
