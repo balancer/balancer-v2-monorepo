@@ -219,7 +219,7 @@ __metadata:
     ethereumjs-util: ^7.0.10
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -260,7 +260,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     mocha: ^8.2.1
     nodemon: ^2.0.4
     prettier: ^2.1.2
@@ -313,7 +313,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -355,7 +355,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     mocha: ^8.2.1
     nodemon: ^2.0.4
     prettier: ^2.1.2
@@ -398,7 +398,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -440,7 +440,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.6
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -482,7 +482,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -525,7 +525,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.6
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -566,7 +566,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -609,7 +609,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash: ^4.17.21
     mocha: ^8.2.1
     nodemon: ^2.0.4
@@ -647,7 +647,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
     hardhat: ^2.11.1
-    hardhat-ignore-warnings: ^0.1.2
+    hardhat-ignore-warnings: ^0.2.1
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -7483,24 +7483,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hardhat-ignore-warnings@npm:^0.1.2":
-  version: 0.1.2
-  resolution: "hardhat-ignore-warnings@npm:0.1.2"
-  dependencies:
-    node-interval-tree: ^2.0.1
-    solidity-comments: ^0.0.2
-  checksum: 329b2db611d23eb7725f4dc471a377f181fdc4808e0d2ab7732aac87d6283cce50c86272535123ec1978b16c860f6fb4b34272607590f6f4b2e0c68cd561ea3c
-  languageName: node
-  linkType: hard
-
-"hardhat-ignore-warnings@npm:^0.1.6":
-  version: 0.1.6
-  resolution: "hardhat-ignore-warnings@npm:0.1.6"
+"hardhat-ignore-warnings@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "hardhat-ignore-warnings@npm:0.2.1"
   dependencies:
     minimatch: ^5.1.0
     node-interval-tree: ^2.0.1
     solidity-comments: ^0.0.2
-  checksum: 730f372b6889a48cbce5cb8e8aa47413bae7ac8b0fb868d7f49353b3525c1b3695efe17f76126a438c8edb6f45b2302b7b5fa071728896641d47d977a7ca8d2f
+  checksum: e6da6b0eb33375fa3339aad7dd618cfefdf77ba6352abbfc1f4e15ee5e3f3661da329779d3ccf0be3ed4577f68c4a614475e69c019dc0dd84fada540d9aa7a4f
   languageName: node
   linkType: hard
 

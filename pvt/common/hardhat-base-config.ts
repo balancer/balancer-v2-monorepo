@@ -64,7 +64,12 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
 };
 
 export const warnings = {
-  ignore: {
-    'contracts/test/**/*': { 'code-size': true },
+  // turn off all warnings under a directory:
+  'contracts/test/**/*': {
+    'code-size': 'off',
+  },
+  '*': {
+    'code-size': 'warn',
+    default: 'error',
   },
 };
