@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/WeightCompression.sol";
+import "../lib/ValueCompression.sol";
 
 import "../BaseWeightedPool.sol";
 
@@ -34,7 +34,7 @@ contract LiquidityBootstrappingPool is BaseWeightedPool, ReentrancyGuard {
 
     using FixedPoint for uint256;
     using WordCodec for bytes32;
-    using WeightCompression for uint256;
+    using ValueCompression for uint256;
 
     // LBPs often involve only two tokens - we support up to four since we're able to pack the entire config in a single
     // storage slot.

@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/WeightCompression.sol";
+import "../lib/ValueCompression.sol";
 
 import "./vendor/BaseWeightedPool.sol";
 
@@ -67,7 +67,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     using FixedPoint for uint256;
     using WordCodec for bytes32;
-    using WeightCompression for uint256;
+    using ValueCompression for uint256;
     using WeightedPoolUserData for bytes;
 
     // State variables

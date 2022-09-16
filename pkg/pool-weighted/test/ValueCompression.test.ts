@@ -3,12 +3,12 @@ import { Contract, BigNumber } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp, bn, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 
-describe('WeightCompression', () => {
+describe('ValueCompression', () => {
   const maxUncompressedValue = fp(10_000);
   let lib: Contract;
 
   before('deploy lib', async () => {
-    lib = await deploy('MockWeightCompression');
+    lib = await deploy('MockValueCompression');
   });
 
   function getMaxValue(bits: number): BigNumber {
