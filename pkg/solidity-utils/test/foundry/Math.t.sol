@@ -7,10 +7,8 @@ import "../../contracts/math/Math.sol";
 
 contract MathTest is Test {
     function testAbs(int256 a) external {
-        uint256 referenceAbs = a > 0 ? uint256(a) : uint256(-a);
         uint256 abs = Math.abs(a);
 
-        assertEq(abs, referenceAbs);
         if (a >= 0) {
             assertEq(int256(abs), a);
         } else {
@@ -18,23 +16,40 @@ contract MathTest is Test {
         }
     }
 
+    function testAbsEquivalence(int256 a) external {
+        uint256 abs = Math.abs(a);
+        uint256 referenceAbs = a > 0 ? uint256(a) : uint256(-a);
+
+        assertEq(abs, referenceAbs);
+    }
+
     function testMax(uint256 a, uint256 b) external {
         uint256 max = Math.max(a, b);
+
         assertGe(max, a);
         assertGe(max, b);
         assertTrue((max == a) || (max == b));
+    }
 
+    function testMaxEquivalence(uint256 a, uint256 b) external {
+        uint256 max = Math.max(a, b);
         uint256 referenceMax = (a < b) ? b : a;
+
         assertEq(max, referenceMax);
     }
 
     function testMin(uint256 a, uint256 b) external {
         uint256 min = Math.min(a, b);
+
         assertLe(min, a);
         assertLe(min, b);
         assertTrue((min == a) || (min == b));
+    }
 
+    function testMinEquivalence(uint256 a, uint256 b) external {
+        uint256 min = Math.min(a, b);
         uint256 referenceMin = (a < b) ? a : b;
+
         assertEq(min, referenceMin);
     }
 
