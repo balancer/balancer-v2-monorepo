@@ -30,5 +30,10 @@
   "workspaces": [
     "pkg/*",
     "pvt/*"
-  ]
+  ],
+  "devDependencies": {
+    "@types/prompts": "^2.0.14",
+    "commander": "^9.4.0",
+    "prompts": "^2.4.2"
+  }
 }

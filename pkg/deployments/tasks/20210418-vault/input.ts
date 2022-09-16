@@ -11,6 +11,18 @@ export type VaultDeployment = {
 const Authorizer = new Task('20210418-authorizer');
 
 export default {
+  'godwoken-testnet': {
+    Authorizer,
+    weth: '0x0000000000000000000000000000000000000000',
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
+  'godwoken-mainnet': {
+    Authorizer,
+    weth: '0x0000000000000000000000000000000000000000',
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
   goerli: {
     Authorizer,
     weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',

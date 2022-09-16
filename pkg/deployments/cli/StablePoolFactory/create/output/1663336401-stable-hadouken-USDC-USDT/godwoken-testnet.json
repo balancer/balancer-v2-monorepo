@@ -1,0 +1,25 @@
+{
+  "transaction": {
+    "hash": "0xdb2b8fe15424f51ce0f122a809ce1a44a8b79c505cb35efbec45eafe521949a3",
+    "blockNumber": null
+  },
+  "data": {
+    "StablePoolFactory": {
+      "create": {
+        "input": {
+          "name": "Hadouken 2pool",
+          "symbol": "stable-hadouken-USDC-USDT",
+          "tokens": [
+            "0x10A86c9C8CbE7cf2849bfCb0EaBE39b3bFEc91D4",
+            "0x630AcC0A29E325ce022563Df69ba7E25Eeb1e184"
+          ],
+          "amplificationParameter": "100",
+          "swapFeePercentage": "1500000000000000",
+          "delegate": "0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B"
+        },
+        "output": "0xB63439Fb03B76a15B2E20D333Fb3AD57BBe414CF"
+      }
+    }
+  },
+  "timestamp": 1663336401162
+}
