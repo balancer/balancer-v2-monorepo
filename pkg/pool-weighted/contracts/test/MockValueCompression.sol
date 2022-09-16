@@ -14,15 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "../lib/WeightCompression.sol";
+import "../lib/ValueCompression.sol";
 
-contract MockWeightCompression {
+contract MockValueCompression {
     function fullCompress(
         uint256 value,
         uint256 bitLength,
         uint256 maxUncompressedValue
     ) external pure returns (uint256) {
-        return WeightCompression.compress(value, bitLength, maxUncompressedValue);
+        return ValueCompression.compress(value, bitLength, maxUncompressedValue);
     }
 
     // Reverse a compression operation (normalized to a given value).
@@ -31,16 +31,16 @@ contract MockWeightCompression {
         uint256 bitLength,
         uint256 maxUncompressedValue
     ) external pure returns (uint256) {
-        return WeightCompression.decompress(value, bitLength, maxUncompressedValue);
+        return ValueCompression.decompress(value, bitLength, maxUncompressedValue);
     }
 
     // If no normalization value is given, assume it is 1.
     function compress(uint256 value, uint256 bitLength) external pure returns (uint256) {
-        return WeightCompression.compress(value, bitLength);
+        return ValueCompression.compress(value, bitLength);
     }
 
     // Reverse a compression operation (normalized to 1).
     function decompress(uint256 value, uint256 bitLength) external pure returns (uint256) {
-        return WeightCompression.decompress(value, bitLength);
+        return ValueCompression.decompress(value, bitLength);
     }
 }
