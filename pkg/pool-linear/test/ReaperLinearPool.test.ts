@@ -21,7 +21,7 @@ describe('ReaperLinearPool', function () {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
   before('setup', async () => {
-    [lp, owner] = await ethers.getSigners();
+    [, lp, owner] = await ethers.getSigners();
 
     funds = {
       sender: lp.address,
