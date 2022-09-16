@@ -16,6 +16,9 @@ pragma solidity ^0.7.0;
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
 
+// Source: https://github.com/Byte-Masons/beet-strat/blob/master/contracts/ReaperVaultv1_4.sol
+// Interface definition for the ReaperTokenVault contract, a single strategy vault
+// for Reaper Farm crypts.
 interface IReaperTokenVault is IERC20 {
     /**
      * @dev returns the address of the vault's underlying asset (mainToken)
