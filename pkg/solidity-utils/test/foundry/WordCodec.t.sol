@@ -7,7 +7,7 @@ import "../../contracts/helpers/WordCodec.sol";
 
 contract WordCodecTest is Test {
     function testEncodeUint255Bits(uint256 input) external {
-        vm.assume(input < (2 << (255 - 1)));
+        vm.assume(input < (1 << (255 - 1)));
 
         bytes32 data = WordCodec.encodeUint(input, 0, 255);
         uint256 decoded = WordCodec.decodeUint(data, 0, 255);
@@ -53,7 +53,7 @@ contract WordCodecTest is Test {
         )
     {
         vm.assume(bits > 0);
-        vm.assume(input < (2 << (255 - 1)));
+        vm.assume(input < (1 << (255 - 1)));
 
         input = input & ((1 << bits) - 1);
         if (bits < 255) {
