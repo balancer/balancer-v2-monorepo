@@ -188,7 +188,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         }
 
         // This bytes32 holds a lot of the core Pool state which is read on most interactions, by keeping it in a single
-        // word we can save gas from unnecessary storage reads. It inlcludes items like:
+        // word we can save gas from unnecessary storage reads. It includes items like:
         // - Swap fees
         // - Weight change progress
         // - Various feature flags
@@ -203,8 +203,8 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             params.tokens
         );
 
-        // Weights are normalized so initialize the denormalized weight sum to ONE. The denormalized weight sum will
-        // only deviate from ONE when tokens are added or removed and are renormalized on the next weight change.
+        // Weights are normalized, so initialize the denormalized weight sum to ONE. The denormalized weight sum will
+        // only deviate from ONE when tokens are added or removed, and are renormalized on the next weight change.
         _denormWeightSum = FixedPoint.ONE;
 
         poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
@@ -215,7 +215,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             params.swapFeePercentage
         );
 
-        // We write the pool state here as `_setSwapEnabled` and `_setMustAllowlistLPs` both read it from storage.
+        // We write the pool state here, as both `_setSwapEnabled` and `_setMustAllowlistLPs` read it from storage.
         _poolState = poolState;
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
@@ -399,7 +399,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
      * @dev The weights will change from their current values to the given endWeights, over startTime to endTime.
      * This is a permissioned function.
      *
-     * Since, unlike with swap fee updates, we do not generally want to allow instantanous weight changes,
+     * Since, unlike with swap fee updates, we generally do not want to allow instantaneous weight changes,
      * the weights always start from their current values. This also guarantees a smooth transition when
      * updateWeightsGradually is called during an ongoing weight change.
      * @param startTime - The timestamp when the weight change will begin.
@@ -427,7 +427,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             tokens
         );
 
-        // `_startGradualWeightChange` renormalizes the weights so we reset `_denormWeightSum` to ONE.
+        // `_startGradualWeightChange` renormalizes the weights, so we reset `_denormWeightSum` to ONE.
         _denormWeightSum = FixedPoint.ONE;
     }
 
