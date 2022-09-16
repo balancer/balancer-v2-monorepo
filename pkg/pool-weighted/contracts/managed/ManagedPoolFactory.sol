@@ -39,7 +39,7 @@ contract ManagedPoolFactory {
      * @dev Deploys a new `ManagedPool`.
      */
     function create(
-        ManagedPool.NewPoolParams memory poolParams,
+        ManagedPoolSettings.NewPoolParams memory poolParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
         ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
         uint256 minWeightChangeDuration,

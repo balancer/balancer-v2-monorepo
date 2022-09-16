@@ -25,14 +25,14 @@ import "../lib/WeightedExitsLib.sol";
 import "../lib/WeightedJoinsLib.sol";
 import "../WeightedMath.sol";
 
-import "./ManagedPool.sol";
+import "./ManagedPoolSettings.sol";
 
 /**
  * @dev Base class for WeightedPools containing swap, join and exit logic, but leaving storage and management of
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-contract ManagedPoolAMMLogic is ManagedPool, IMinimalSwapInfoPool {
+contract ManagedPoolAMMLogic is ManagedPoolSettings, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
@@ -43,7 +43,7 @@ contract ManagedPoolAMMLogic is ManagedPool, IMinimalSwapInfoPool {
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) ManagedPool(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
+    ) ManagedPoolSettings(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

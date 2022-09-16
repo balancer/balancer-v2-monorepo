@@ -60,7 +60,7 @@ import "./ManagedPoolTokenLib.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-abstract contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
+abstract contract ManagedPoolSettings is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -1032,16 +1032,16 @@ abstract contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyG
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view override returns (bool) {
         return
-            (actionId == getActionId(ManagedPool.updateWeightsGradually.selector)) ||
-            (actionId == getActionId(ManagedPool.updateSwapFeeGradually.selector)) ||
-            (actionId == getActionId(ManagedPool.setSwapEnabled.selector)) ||
-            (actionId == getActionId(ManagedPool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(ManagedPool.addAllowedAddress.selector)) ||
-            (actionId == getActionId(ManagedPool.removeAllowedAddress.selector)) ||
-            (actionId == getActionId(ManagedPool.setMustAllowlistLPs.selector)) ||
-            (actionId == getActionId(ManagedPool.addToken.selector)) ||
-            (actionId == getActionId(ManagedPool.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
-            (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector));
+            (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setSwapFeePercentage.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setManagementSwapFeePercentage.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
     }
 }
