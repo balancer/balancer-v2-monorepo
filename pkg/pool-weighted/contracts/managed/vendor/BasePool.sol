@@ -21,9 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
