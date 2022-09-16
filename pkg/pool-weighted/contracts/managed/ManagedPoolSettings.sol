@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
@@ -950,11 +949,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Scaling Factors
 
-    function _scalingFactor(IERC20 token) internal view override returns (uint256) {
+    function _scalingFactor(IERC20 token) internal view returns (uint256) {
         return ManagedPoolTokenLib.getTokenScalingFactor(_getTokenData(token));
     }
 
-    function _scalingFactors() internal view override returns (uint256[] memory scalingFactors) {
+    function getScalingFactors() external view override returns (uint256[] memory) {
+        return _scalingFactors();
+    }
+
+    function _scalingFactors() internal view returns (uint256[] memory scalingFactors) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
 

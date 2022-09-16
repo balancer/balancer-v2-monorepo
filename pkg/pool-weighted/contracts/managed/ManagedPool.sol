@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -32,7 +31,7 @@ import "./ManagedPoolSettings.sol";
  * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
  *  based on local or external logic.
  */
-contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
+contract ManagedPool is ManagedPoolSettings {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
@@ -49,13 +48,11 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
 
     // Swap Hooks
 
-    function onSwap(
+    function _onSwapMinimal(
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
-        _beforeSwapJoinExit();
-
+    ) internal override returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
@@ -85,6 +82,15 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return _addSwapFeeAmount(amountIn);
         }
+    }
+
+    function _onSwapGeneral(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) internal override returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     /*
@@ -201,6 +207,23 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
     }
 
     /**
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
+     */
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(getSwapFeePercentage().complement());
+    }
+
+    /**
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
+     */
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
+        return amount.sub(feeAmount);
+    }
+
+    /**
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
@@ -258,8 +281,6 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         uint256,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        _beforeSwapJoinExit();
-
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
@@ -341,9 +362,6 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         uint256,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        // Note that we only call this if we're not in a recovery mode exit.
-        _beforeSwapJoinExit();
-
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
