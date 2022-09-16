@@ -1249,7 +1249,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
             (actionId == getActionId(ManagedPool.addToken.selector)) ||
             (actionId == getActionId(ManagedPool.removeToken.selector)) ||
             (actionId == getActionId(ManagedPool.setManagementSwapFeePercentage.selector)) ||
-            (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector)) ||
-            (actionId == getActionId(BasePool.setAssetManagerPoolConfig.selector));
+            (actionId == getActionId(ManagedPool.setManagementAumFeePercentage.selector));
     }
 }
