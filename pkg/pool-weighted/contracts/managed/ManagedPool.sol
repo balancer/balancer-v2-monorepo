@@ -60,7 +60,7 @@ import "./ManagedPoolTokenLib.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
+abstract contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -222,6 +222,10 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
+    }
+
+    function _getPoolState() internal view returns (bytes32) {
+        return _poolState;
     }
 
     // Swap fees
@@ -693,98 +697,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
 
     // Swap overrides - revert unless swaps are enabled
 
-    function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal override returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        {
-            // Enter new scope to avoid stack-too-deep
-
-            bytes32 poolState = _poolState;
-            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
-
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-
-            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
-        }
-
-        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
-        uint256 amountOut = WeightedMath._calcOutGivenIn(
-            currentBalanceTokenIn,
-            tokenInWeight,
-            currentBalanceTokenOut,
-            tokenOutWeight,
-            swapRequest.amount
-        );
-
-        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
-        // after the trade.
-        //
-        // invariantGrowthRatio = invariant after trade / invariant before trade
-        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
-        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            tokenInWeight,
-            tokenOutWeight,
-            FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
-            FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
-        );
-
-        _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountOut;
-    }
-
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal override returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        {
-            // Enter new scope to avoid stack-too-deep
-
-            bytes32 poolState = _poolState;
-            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
-
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-
-            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
-        }
-
-        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
-        uint256 amountIn = WeightedMath._calcInGivenOut(
-            currentBalanceTokenIn,
-            tokenInWeight,
-            currentBalanceTokenOut,
-            tokenOutWeight,
-            swapRequest.amount
-        );
-
-        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
-        // after the trade.
-        //
-        // invariantGrowthRatio = invariant after trade / invariant before trade
-        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
-        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            tokenInWeight,
-            tokenOutWeight,
-            FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
-            FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
-        );
-
-        _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountIn;
-    }
-
     /**
      * @notice Returns the management swap fee percentage as an 18-decimal fixed point number.
      */
@@ -792,7 +704,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         return _managementSwapFeePercentage;
     }
 
-    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) private {
+    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) internal {
         // Calculate total BPT for the protocol and management fee
         // The management fee percentage applies to the remainder,
         // after the protocol fee has been collected.
@@ -863,119 +775,6 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         _lastAumFeeCollectionTimestamp = block.timestamp;
 
         return (bptAmountOut, amountsIn);
-    }
-
-    // Join/Exit hooks
-
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal override returns (uint256) {
-        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-        uint256 supplyBeforeFeeCollection = totalSupply();
-        (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
-
-        return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
-    }
-
-    /**
-     * @dev Dispatch code which decodes the provided userdata to perform the specified join type.
-     */
-    function _doJoin(
-        address sender,
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) internal view override returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
-        // token prices.
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-        _require(
-            getSwapEnabled() || kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
-            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
-        );
-
-        // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
-
-        if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
-            return
-                WeightedJoinsLib.joinExactTokensInForBPTOut(
-                    balances,
-                    normalizedWeights,
-                    scalingFactors,
-                    totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_poolState),
-                    userData
-                );
-        } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
-            return
-                WeightedJoinsLib.joinTokenInForExactBPTOut(
-                    balances,
-                    normalizedWeights,
-                    totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_poolState),
-                    userData
-                );
-        } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
-        } else {
-            _revert(Errors.UNHANDLED_JOIN_KIND);
-        }
-    }
-
-    function _doExit(
-        address sender,
-        uint256[] memory balances,
-        uint256[] memory normalizedWeights,
-        uint256[] memory scalingFactors,
-        uint256 totalSupply,
-        bytes memory userData
-    ) internal view override returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
-        // token prices.
-        // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
-        // perform sensible checks.
-        WeightedPoolUserData.ExitKind kind = userData.exitKind();
-        _require(
-            getSwapEnabled() ||
-                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
-                kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
-            Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
-        );
-
-        // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
-        // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
-
-        return
-            kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN
-                ? _doExitRemoveToken(sender, balances, userData)
-                : super._doExit(sender, balances, normalizedWeights, scalingFactors, totalSupply, userData);
-    }
-
-    function _doExitRemoveToken(
-        address sender,
-        uint256[] memory balances,
-        bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the contract is paused.
-
-        // This exit function can only be called by the Pool itself - the authorization logic that governs when that
-        // call can be made resides in removeToken.
-        _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
-
-        uint256 tokenIndex = userData.removeToken();
-
-        // No BPT is required to remove the token - it is up to the caller to determine under which conditions removing
-        // a token makes sense, and if e.g. burning BPT is required.
-        uint256 bptAmountIn = 0;
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        amountsOut[tokenIndex] = balances[tokenIndex];
-
-        return (bptAmountIn, amountsOut);
     }
 
     // Add/Remove tokens
