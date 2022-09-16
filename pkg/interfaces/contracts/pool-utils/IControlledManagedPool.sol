@@ -16,7 +16,9 @@ pragma solidity ^0.7.0;
 
 import "./IControlledPool.sol";
 
-interface IControlledManagedPool is IControlledPool {
+interface IControlledManagedPool {
+    function setSwapFeePercentage(uint256 swapFeePercentage) external;
+
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,

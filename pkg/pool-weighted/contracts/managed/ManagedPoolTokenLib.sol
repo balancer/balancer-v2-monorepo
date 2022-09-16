@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/WeightCompression.sol";
+import "../lib/ValueCompression.sol";
 
 /**
  * @title Managed Pool Token Library
@@ -39,7 +39,7 @@ import "../lib/WeightCompression.sol";
 library ManagedPoolTokenLib {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
-    using WeightCompression for uint256;
+    using ValueCompression for uint256;
 
     // Store token-based values:
     // Each token's scaling factor (encoded as the scaling factor's exponent / token decimals).
@@ -54,7 +54,7 @@ library ManagedPoolTokenLib {
     uint256 private constant _DENORM_WEIGHT_WIDTH = 64;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
 
-    // Denormalized weights are stored using the WeightCompression library as a percentage of the maximum absolute
+    // Denormalized weights are stored using the ValueCompression library as a percentage of the maximum absolute
     // denormalized weight.
     // We store the weights as values in the range [0, 2**_DENORM_WEIGHT_WIDTH) and then map these to the (larger)
     // range [0, _MAX_DENORM_WEIGHT], trading some resolution for being able to express a wider range of weight ratios.
