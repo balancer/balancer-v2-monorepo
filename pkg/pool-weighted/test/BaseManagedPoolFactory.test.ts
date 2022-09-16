@@ -67,7 +67,7 @@ describe('BaseManagedPoolFactory', function () {
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('ManagedPool', event.args.pool);
+    return deployedAt('ManagedPoolAMMLogic', event.args.pool);
   }
 
   describe('constructor arguments', () => {
