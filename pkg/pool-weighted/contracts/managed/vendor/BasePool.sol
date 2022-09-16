@@ -95,13 +95,21 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _protocolFeesCollector = vault.getProtocolFeesCollector();
     }
 
-    // Getters / Setters
+    // Getters
 
     /**
      * @notice Return the pool id.
      */
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
+    }
+
+    function _getAuthorizer() internal view override returns (IAuthorizer) {
+        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
+        // accounts can call permissioned functions: for example, to perform emergency pauses.
+        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under
+        // Governance control.
+        return getVault().getAuthorizer();
     }
 
     function _getTotalTokens() internal view virtual returns (uint256);
@@ -117,11 +125,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         return _DEFAULT_MINIMUM_BPT;
     }
 
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     * @dev This is stored in `_poolState`.
-     */
-    function getSwapFeePercentage() public view virtual override returns (uint256);
+    // Protocol Fees
 
     /**
      * @notice Return the ProtocolFeesCollector contract.
@@ -129,6 +133,15 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
      */
     function getProtocolFeesCollector() public view returns (IProtocolFeesCollector) {
         return _protocolFeesCollector;
+    }
+
+    /**
+     * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
+     */
+    function _payProtocolFees(uint256 bptAmount) internal {
+        if (bptAmount > 0) {
+            _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
+        }
     }
 
     /**
@@ -150,12 +163,80 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         _setPaused(false);
     }
 
+    // Swap Fees
+
+    /**
+     * @notice Return the current value of the swap fee percentage.
+     */
+    function getSwapFeePercentage() public view virtual override returns (uint256);
+
+    /**
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
+     */
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(getSwapFeePercentage().complement());
+    }
+
+    /**
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
+     */
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
+        return amount.sub(feeAmount);
+    }
+
+    // Scaling
+
+    /**
+     * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
+     * Pool.
+     *
+     * All scaling factors are fixed-point values with 18 decimals, to allow for this function to be overridden by
+     * derived contracts that need to apply further scaling, making these factors potentially non-integer.
+     *
+     * The largest 'base' scaling factor (i.e. in tokens with less than 18 decimals) is 10**18, which in fixed-point is
+     * 10**36. This value can be multiplied with a 112 bit Vault balance with no overflow by a factor of ~1e7, making
+     * even relatively 'large' factors safe to use.
+     *
+     * The 1e7 figure is the result of 2**256 / (1e18 * 1e18 * 2**112).
+     */
+    function _scalingFactor(IERC20 token) internal view virtual returns (uint256);
+
+    /**
+     * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
+     * will always pass balances in this order when calling any of the Pool hooks.
+     */
+    function _scalingFactors() internal view virtual returns (uint256[] memory);
+
+    function getScalingFactors() external view override returns (uint256[] memory) {
+        return _scalingFactors();
+    }
+
     // Join / Exit Hooks
 
     modifier onlyVault(bytes32 poolId) {
         _require(msg.sender == address(getVault()), Errors.CALLER_NOT_VAULT);
         _require(poolId == getPoolId(), Errors.INVALID_POOL_ID);
         _;
+    }
+
+    /**
+     * @dev Called at the very beginning of swaps, joins and exits, even before the scaling factors are read. Derived
+     * contracts can extend this implementation to perform any state-changing operations they might need (including e.g.
+     * updating the scaling factors),
+     *
+     * The only scenario in which this function is not called is during a recovery mode exit. This makes it safe to
+     * perform non-trivial computations or interact with external dependencies here, as recovery mode will not be
+     * affected.
+     *
+     * Since this contract does not implement swaps, derived contracts must also make sure this function is called on
+     * swap handlers.
+     */
+    function _beforeSwapJoinExit() internal virtual {
+        // All joins, exits and swaps are disabled (except recovery mode exits).
+        _ensureNotPaused();
     }
 
     /**
@@ -436,86 +517,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
-
-    /**
-     * @dev Called at the very beginning of swaps, joins and exits, even before the scaling factors are read. Derived
-     * contracts can extend this implementation to perform any state-changing operations they might need (including e.g.
-     * updating the scaling factors),
-     *
-     * The only scenario in which this function is not called is during a recovery mode exit. This makes it safe to
-     * perform non-trivial computations or interact with external dependencies here, as recovery mode will not be
-     * affected.
-     *
-     * Since this contract does not implement swaps, derived contracts must also make sure this function is called on
-     * swap handlers.
-     */
-    function _beforeSwapJoinExit() internal virtual {
-        // All joins, exits and swaps are disabled (except recovery mode exits).
-        _ensureNotPaused();
-    }
-
-    // Internal functions
-
-    /**
-     * @dev Pays protocol fees by minting `bptAmount` to the Protocol Fee Collector.
-     */
-    function _payProtocolFees(uint256 bptAmount) internal {
-        if (bptAmount > 0) {
-            _mintPoolTokens(address(getProtocolFeesCollector()), bptAmount);
-        }
-    }
-
-    /**
-     * @dev Adds swap fee amount to `amount`, returning a higher value.
-     */
-    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(getSwapFeePercentage().complement());
-    }
-
-    /**
-     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
-     */
-    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
-        return amount.sub(feeAmount);
-    }
-
-    // Scaling
-
-    /**
-     * @dev Returns the scaling factor for one of the Pool's tokens. Reverts if `token` is not a token registered by the
-     * Pool.
-     *
-     * All scaling factors are fixed-point values with 18 decimals, to allow for this function to be overridden by
-     * derived contracts that need to apply further scaling, making these factors potentially non-integer.
-     *
-     * The largest 'base' scaling factor (i.e. in tokens with less than 18 decimals) is 10**18, which in fixed-point is
-     * 10**36. This value can be multiplied with a 112 bit Vault balance with no overflow by a factor of ~1e7, making
-     * even relatively 'large' factors safe to use.
-     *
-     * The 1e7 figure is the result of 2**256 / (1e18 * 1e18 * 2**112).
-     */
-    function _scalingFactor(IERC20 token) internal view virtual returns (uint256);
-
-    /**
-     * @dev Same as `_scalingFactor()`, except for all registered tokens (in the same order as registered). The Vault
-     * will always pass balances in this order when calling any of the Pool hooks.
-     */
-    function _scalingFactors() internal view virtual returns (uint256[] memory);
-
-    function getScalingFactors() external view override returns (uint256[] memory) {
-        return _scalingFactors();
-    }
-
-    function _getAuthorizer() internal view override returns (IAuthorizer) {
-        // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
-        // accounts can call permissioned functions: for example, to perform emergency pauses.
-        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under
-        // Governance control.
-        return getVault().getAuthorizer();
-    }
 
     function _queryAction(
         bytes32 poolId,
