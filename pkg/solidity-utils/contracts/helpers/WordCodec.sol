@@ -136,7 +136,7 @@ library WordCodec {
         bytes32 word,
         uint256 offset,
         uint256 bitLength
-    ) internal pure returns (int256) {
+    ) internal pure returns (int256 result) {
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
 
@@ -144,7 +144,9 @@ library WordCodec {
         // In case the decoded value is greater than the max positive integer that can be represented with bitLength
         // bits, we know it was originally a negative integer. Therefore, we mask it to restore the sign in the 256 bit
         // representation.
-        return value > maxInt ? (value | int256(~mask)) : value;
+        assembly {
+            result := or(mul(gt(value, maxInt), not(mask)), value)
+        }
     }
 
     // Special cases

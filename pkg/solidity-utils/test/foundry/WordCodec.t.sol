@@ -29,6 +29,30 @@ contract WordCodecTest is Test {
         }
     }
 
+    function testInsertInt(
+        bytes32 word,
+        int256 value,
+        uint256 offset,
+        uint256 bitLength
+    ) external {
+        if (offset >= 256 || !(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset))) {
+            vm.expectRevert("BAL#100"); // OUT_OF_BOUNDS
+            WordCodec.insertInt(word, value, offset, bitLength);
+            return;
+        } else if (value >= 0 ? value >> (bitLength - 1) != 0 : Math.abs(value + 1) >> (bitLength - 1) != 0) {
+            vm.expectRevert("BAL#436"); // CODEC_OVERFLOW
+            WordCodec.insertInt(word, value, offset, bitLength);
+        } else {
+            uint256 mask = (1 << bitLength) - 1;
+            bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
+            bytes32 referenceInsertInt = clearedWord | bytes32((uint256(value) & mask) << offset);
+
+            bytes32 insertInt = WordCodec.insertInt(word, value, offset, bitLength);
+
+            assertEq(insertInt, referenceInsertInt);
+        }
+    }
+
     function testInsertBool(
         bytes32 word,
         bool value,
@@ -56,6 +80,22 @@ contract WordCodecTest is Test {
         uint256 decodeUint = WordCodec.decodeUint(word, offset, bitLength);
 
         assertEq(decodeUint, referenceDecodeUint);
+    }
+
+    function testDecodeInt(
+        bytes32 word,
+        uint256 offset,
+        uint256 bitLength
+    ) external {
+        vm.assume(bitLength > 0);
+        int256 maxInt = int256((1 << (bitLength - 1)) - 1);
+        uint256 mask = (1 << bitLength) - 1;
+        int256 value = int256(uint256(word >> offset) & mask);
+        int256 referenceDecodeInt = value > maxInt ? (value | int256(~mask)) : value;
+
+        int256 decodeInt = WordCodec.decodeInt(word, offset, bitLength);
+
+        assertEq(decodeInt, referenceDecodeInt);
     }
 
     function testDecodeBool(bytes32 word, uint256 offset) external {
