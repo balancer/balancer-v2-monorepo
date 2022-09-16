@@ -51,6 +51,8 @@ contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     }
 
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
+        // We round up to ensure the returned value will always be enough to get `wrappedAmount` when unwrapping.
+        // This might result in some dust being left in the Rebalancer.
         // wrappedAmount * pricePerFullShare / 10^decimals
         return wrappedAmount.mul(IReaperTokenVault(address(_wrappedToken)).getPricePerFullShare()).divUp(_divisor);
     }
