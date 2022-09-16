@@ -48,17 +48,14 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         }
 
         IERC20 underlyingToken = IERC20(vaultToken.token());
-        //determine the amount of underlying token that is present on the batch relayer prior to leaving.
-        //This should always be 0, but we want to be certain
-        uint256 tokenAmountBefore = underlyingToken.balanceOf(address(this));
 
-        //burn the rf shares and receive the underlying token
+        // Burn the rf shares and receive the underlying token.
         vaultToken.withdraw(amount);
 
-        //determine the amount of underlying returned for the shares burned
-        uint256 withdrawnAmount = underlyingToken.balanceOf(address(this)) - tokenAmountBefore;
+        // Determine the amount of underlying returned for the shares burned.
+        uint256 withdrawnAmount = underlyingToken.balanceOf(address(this));
 
-        //send the shares to the recipient
+        // Send the shares to the recipient
         underlyingToken.transfer(recipient, withdrawnAmount);
 
         if (_isChainedReference(outputReference)) {
@@ -78,6 +75,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         }
 
         IERC20 underlyingToken = IERC20(vaultToken.token());
+        
         // The wrap caller is the implicit sender of tokens, so if the goal is for the tokens
         // to be sourced from outside the relayer, we must first pull them here.
         if (sender != address(this)) {
@@ -85,20 +83,16 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlyingToken, amount);
         }
 
-        //approve the vault token to spend the amount specified in the wrap
+        // Approve the vault token to spend the amount specified in the wrap
         underlyingToken.approve(address(vaultToken), amount);
 
-        //determine the amount of shares that are present on the batch relayer prior to leaving.
-        //This should always be 0, but we want to be certain
-        uint256 sharesBefore = vaultToken.balanceOf(address(this));
-
-        //deposit the tokens into the vault
+        // Deposit the tokens into the vault
         vaultToken.deposit(amount);
 
-        //determine the amount of shares gained from depositing
-        uint256 sharesGained = vaultToken.balanceOf(address(this)) - sharesBefore;
+        // Determine the amount of shares gained from depositing
+        uint256 sharesGained = vaultToken.balanceOf(address(this));
 
-        //send the shares to the recipient
+        // Send the shares to the recipient
         vaultToken.transfer(recipient, sharesGained);
 
         if (_isChainedReference(outputReference)) {
