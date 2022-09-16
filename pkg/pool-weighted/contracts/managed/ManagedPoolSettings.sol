@@ -30,8 +30,9 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol
 
 import "../lib/GradualValueChange.sol";
 import "../lib/ValueCompression.sol";
+import "../WeightedMath.sol";
 
-import "./vendor/BaseWeightedPool.sol";
+import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolSwapFeesLib.sol";
@@ -60,7 +61,7 @@ import "./ManagedPoolTokenLib.sol";
  * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
  * protocol and management fees, allowlisting of LPs, and more.
  */
-abstract contract ManagedPoolSettings is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
+abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -154,8 +155,9 @@ abstract contract ManagedPoolSettings is BaseWeightedPool, ProtocolFeeCache, Ree
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     )
-        BaseWeightedPool(
+        BasePool(
             vault,
+            IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
             params.name,
             params.symbol,
             params.tokens,
@@ -314,18 +316,17 @@ abstract contract ManagedPoolSettings is BaseWeightedPool, ProtocolFeeCache, Ree
 
     // Token weights
 
-    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view override returns (uint256) {
+    /**
+     * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
+     */
+    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
         return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
     }
 
-    // This could be simplified by simply iteratively calling _getNormalizedWeight(), but this routine is
-    // called very frequently, so we are optimizing for runtime performance.
-    function _getNormalizedWeights(IERC20[] memory tokens)
-        internal
-        view
-        override
-        returns (uint256[] memory normalizedWeights)
-    {
+    /**
+     * @dev Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function _getNormalizedWeights(IERC20[] memory tokens) internal view returns (uint256[] memory normalizedWeights) {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
         uint256 denormWeightSum = _denormWeightSum;
 
@@ -338,6 +339,14 @@ abstract contract ManagedPoolSettings is BaseWeightedPool, ProtocolFeeCache, Ree
                 denormWeightSum
             );
         }
+    }
+
+    /**
+     * @notice Returns all normalized weights, in the same order as the Pool's tokens.
+     */
+    function getNormalizedWeights() public view returns (uint256[] memory) {
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        return _getNormalizedWeights(tokens);
     }
 
     /**
@@ -472,6 +481,22 @@ abstract contract ManagedPoolSettings is BaseWeightedPool, ProtocolFeeCache, Ree
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
 
         return ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
+    }
+
+    // Invariant
+
+    /**
+     * @dev Returns the current value of the invariant.
+     */
+    function getInvariant() external view returns (uint256) {
+        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+
+        // Since the Pool hooks always work with upscaled balances, we manually
+        // upscale here for consistency
+        _upscaleArray(balances, _scalingFactors());
+
+        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
+        return WeightedMath._calculateInvariant(normalizedWeights, balances);
     }
 
     // Swap Enabled
