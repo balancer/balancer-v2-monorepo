@@ -11,19 +11,30 @@ contract MathTest is Test {
         uint256 abs = Math.abs(a);
 
         assertEq(abs, referenceAbs);
+        if (a >= 0) {
+            assertEq(int256(abs), a);
+        } else {
+            assertEq(int256(abs), -a);
+        }
     }
 
     function testMax(uint256 a, uint256 b) external {
-        uint256 referenceMax = (a < b) ? b : a;
         uint256 max = Math.max(a, b);
+        assertGe(max, a);
+        assertGe(max, b);
+        assertTrue((max == a) || (max == b));
 
+        uint256 referenceMax = (a < b) ? b : a;
         assertEq(max, referenceMax);
     }
 
     function testMin(uint256 a, uint256 b) external {
-        uint256 referenceMin = (a < b) ? a : b;
         uint256 min = Math.min(a, b);
+        assertLe(min, a);
+        assertLe(min, b);
+        assertTrue((min == a) || (min == b));
 
+        uint256 referenceMin = (a < b) ? a : b;
         assertEq(min, referenceMin);
     }
 
