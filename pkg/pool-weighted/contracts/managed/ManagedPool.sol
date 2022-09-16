@@ -221,12 +221,12 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         bytes32,
         address,
         address,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
+        uint256[] memory scalingFactors = _scalingFactors();
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
         _upscaleArray(amountsIn, scalingFactors);
@@ -241,6 +241,9 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         // so naturally charges no AUM fees.
         _lastAumFeeCollectionTimestamp = block.timestamp;
 
+        // amountsIn are amounts entering the Pool, so we round up.
+        _downscaleUpArray(amountsIn, scalingFactors);
+
         return (bptAmountOut, amountsIn);
     }
 
@@ -253,9 +256,13 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256,
         uint256,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
+        _beforeSwapJoinExit();
+
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
+
         uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
@@ -268,6 +275,9 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
             preJoinExitSupply,
             userData
         );
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        _downscaleUpArray(amountsIn, scalingFactors);
 
         return (bptAmountOut, amountsIn);
     }
@@ -329,9 +339,14 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256,
         uint256,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
+        // Note that we only call this if we're not in a recovery mode exit.
+        _beforeSwapJoinExit();
+
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
+
         uint256[] memory normalizedWeights = getNormalizedWeights();
 
         uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
@@ -344,6 +359,9 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
             preJoinExitSupply,
             userData
         );
+
+        // amountsOut are amounts exiting the Pool, so we round down.
+        _downscaleDownArray(amountsOut, scalingFactors);
 
         return (bptAmountIn, amountsOut);
     }

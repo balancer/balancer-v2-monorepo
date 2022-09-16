@@ -254,16 +254,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
     ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         _beforeSwapJoinExit();
 
-        uint256[] memory scalingFactors = _scalingFactors();
-
         if (totalSupply() == 0) {
-            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
-                poolId,
-                sender,
-                recipient,
-                scalingFactors,
-                userData
-            );
+            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
             // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
             // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
@@ -272,12 +264,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             _mintPoolTokens(address(0), _getMinimumBpt());
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
 
-            // amountsIn are amounts entering the Pool, so we round up.
-            _downscaleUpArray(amountsIn, scalingFactors);
-
             return (amountsIn, new uint256[](balances.length));
         } else {
-            _upscaleArray(balances, scalingFactors);
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onJoinPool(
                 poolId,
                 sender,
@@ -285,16 +273,12 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 balances,
                 lastChangeBlock,
                 inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
-                scalingFactors,
                 userData
             );
 
             // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
-
-            // amountsIn are amounts entering the Pool, so we round up.
-            _downscaleUpArray(amountsIn, scalingFactors);
 
             // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
             return (amountsIn, new uint256[](balances.length));
@@ -329,12 +313,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             // a recovery mode exit.
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
-            // Note that we only call this if we're not in a recovery mode exit.
-            _beforeSwapJoinExit();
-
-            uint256[] memory scalingFactors = _scalingFactors();
-            _upscaleArray(balances, scalingFactors);
-
             (bptAmountIn, amountsOut) = _onExitPool(
                 poolId,
                 sender,
@@ -342,12 +320,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 balances,
                 lastChangeBlock,
                 inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
-                scalingFactors,
                 userData
             );
-
-            // amountsOut are amounts exiting the Pool, so we round down.
-            _downscaleDownArray(amountsOut, scalingFactors);
         }
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
@@ -390,8 +364,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             lastChangeBlock,
             protocolSwapFeePercentage,
             userData,
-            _onJoinPool,
-            _downscaleUpArray
+            _onJoinPool
         );
 
         // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
@@ -429,8 +402,7 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
             lastChangeBlock,
             protocolSwapFeePercentage,
             userData,
-            _onExitPool,
-            _downscaleDownArray
+            _onExitPool
         );
 
         // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
@@ -458,7 +430,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         bytes32 poolId,
         address sender,
         address recipient,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
@@ -486,7 +457,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
@@ -514,7 +484,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256[] memory balances,
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
 
@@ -526,10 +495,9 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, uint256[] memory, bytes memory)
+        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
             internal
-            returns (uint256, uint256[] memory) _action,
-        function(uint256[] memory, uint256[] memory) internal view _downscaleArray
+            returns (uint256, uint256[] memory) _action
     ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
         // explanation.
@@ -599,14 +567,6 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                     }
             }
         } else {
-            // This imitates the relevant parts of the bodies of onJoin and onExit. Since they're not virtual, we know
-            // that their implementations will match this regardless of what derived contracts might do.
-
-            _beforeSwapJoinExit();
-
-            uint256[] memory scalingFactors = _scalingFactors();
-            _upscaleArray(balances, scalingFactors);
-
             (uint256 bptAmount, uint256[] memory tokenAmounts) = _action(
                 poolId,
                 sender,
@@ -614,11 +574,8 @@ abstract contract BasePool is IBasePool, BasePoolAuthorization, BalancerPoolToke
                 balances,
                 lastChangeBlock,
                 protocolSwapFeePercentage,
-                scalingFactors,
                 userData
             );
-
-            _downscaleArray(tokenAmounts, scalingFactors);
 
             // solhint-disable-next-line no-inline-assembly
             assembly {
