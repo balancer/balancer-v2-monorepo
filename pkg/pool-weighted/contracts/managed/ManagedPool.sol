@@ -218,9 +218,8 @@ contract ManagedPool is ManagedPoolSettings {
      * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
-        return amount.sub(feeAmount);
+        // This returns amount - fee amount, so we round down (favoring a higher fee amount).
+        return amount.mulDown(getSwapFeePercentage().complement());
     }
 
     /**
