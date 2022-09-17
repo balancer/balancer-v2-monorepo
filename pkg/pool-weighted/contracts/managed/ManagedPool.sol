@@ -226,7 +226,7 @@ contract ManagedPool is ManagedPoolSettings {
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal returns (uint256) {
+    function _beforeJoinExit() internal returns (uint256) {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -283,14 +283,12 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
-        uint256[] memory normalizedWeights = getNormalizedWeights();
-
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        uint256 preJoinExitSupply = _beforeJoinExit();
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
             balances,
-            normalizedWeights,
+            getNormalizedWeights(),
             scalingFactors,
             preJoinExitSupply,
             userData
@@ -364,14 +362,12 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
-        uint256[] memory normalizedWeights = getNormalizedWeights();
-
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        uint256 preJoinExitSupply = _beforeJoinExit();
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
             balances,
-            normalizedWeights,
+            getNormalizedWeights(),
             scalingFactors,
             preJoinExitSupply,
             userData
