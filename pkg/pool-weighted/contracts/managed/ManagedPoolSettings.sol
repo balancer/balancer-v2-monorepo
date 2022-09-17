@@ -319,7 +319,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
      */
     function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
+        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress, _denormWeightSum);
     }
 
     /**
@@ -950,7 +950,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // Scaling Factors
 
     function _scalingFactor(IERC20 token) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenScalingFactor(_getTokenData(token));
+        return ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]);
     }
 
     function getScalingFactors() external view override returns (uint256[] memory) {
@@ -1017,13 +1017,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     function _getTotalTokens() internal view override returns (uint256) {
         return _totalTokensCache;
-    }
-
-    function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
-        tokenData = _tokenState[token];
-
-        // A valid token can't be zero (must have non-zero weights)
-        _require(tokenData != 0, Errors.INVALID_TOKEN);
     }
 
     /**
