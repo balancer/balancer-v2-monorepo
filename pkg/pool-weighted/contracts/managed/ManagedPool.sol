@@ -85,11 +85,11 @@ contract ManagedPool is ManagedPoolSettings {
     }
 
     function _onSwapGeneral(
-        SwapRequest memory request,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) internal override returns (uint256) {
+        SwapRequest memory, /*request*/
+        uint256[] memory, /* balances*/
+        uint256, /* indexIn */
+        uint256 /*indexOut */
+    ) internal pure override returns (uint256) {
         _revert(Errors.UNIMPLEMENTED);
     }
 
