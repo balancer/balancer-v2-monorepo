@@ -92,6 +92,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // See `ManagedPoolTokenLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
 
+    // Store the circuit breaker configuration for each token.
+    // See `ManagedPoolCircuitBreakerLib.sol` for data layout.
+    mapping(IERC20 => bytes32) private _circuitBreakerState;
+
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
@@ -133,6 +137,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
     event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
+    event CircuitBreakerSet(IERC20 indexed token, uint256 lowerBound, uint256 upperBound);
 
     struct NewPoolParams {
         string name;
@@ -1050,6 +1055,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // A valid token can't be zero (must have non-zero weights)
         _require(tokenData != 0, Errors.INVALID_TOKEN);
+    }
+
+    function _getCircuitBreakerData(IERC20 token) internal view returns (bytes32) {
+        return _circuitBreakerState[token];
     }
 
     /**
