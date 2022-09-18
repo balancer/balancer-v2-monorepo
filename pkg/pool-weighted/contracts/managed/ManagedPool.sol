@@ -332,9 +332,12 @@ contract ManagedPool is ManagedPoolSettings {
     ) internal view returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
         // token prices.
+
+        bytes32 poolState = _getPoolState();
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(
-            getSwapEnabled() || kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
+                kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -348,7 +351,7 @@ contract ManagedPool is ManagedPoolSettings {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
@@ -357,7 +360,7 @@ contract ManagedPool is ManagedPoolSettings {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
@@ -415,9 +418,11 @@ contract ManagedPool is ManagedPoolSettings {
         // token prices.
         // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
         // perform sensible checks.
+
+        bytes32 poolState = _getPoolState();
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
-            getSwapEnabled() ||
+            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
                 kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
@@ -432,7 +437,7 @@ contract ManagedPool is ManagedPoolSettings {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
@@ -444,7 +449,7 @@ contract ManagedPool is ManagedPoolSettings {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {

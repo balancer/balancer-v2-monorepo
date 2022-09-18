@@ -483,7 +483,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     /**
      * @notice Returns whether swaps are enabled.
      */
-    function getSwapEnabled() public view returns (bool) {
+    function getSwapEnabled() external view returns (bool) {
         return ManagedPoolStorageLib.getSwapsEnabled(_poolState);
     }
 
