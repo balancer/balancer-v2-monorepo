@@ -103,6 +103,9 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
+    /**
+     * @dev Unimplemented as ManagedPool uses the MinimalInfoSwap Pool specialization.
+     */
     function _onSwapGeneral(
         SwapRequest memory, /*request*/
         uint256[] memory, /* balances*/
