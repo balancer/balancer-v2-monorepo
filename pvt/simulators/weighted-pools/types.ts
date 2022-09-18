@@ -37,3 +37,9 @@ export type ProportionalExitResult = {
   amountsOut: number[];
   valueOut: number;
 };
+
+export type BreakerData = {
+  referencePrice: number;
+  lowerBound: number;
+  upperBound: number;
+};

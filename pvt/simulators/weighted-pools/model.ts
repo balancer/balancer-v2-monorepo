@@ -5,6 +5,7 @@ import {
   TokenInJoinResult,
   ExactOutExitResult,
   TokenOutExitResult,
+  BreakerData,
 } from './types';
 import { MAX_IN_RATIO, MAX_OUT_RATIO, MAX_INVARIANT_RATIO, MIN_INVARIANT_RATIO } from './config';
 
@@ -18,6 +19,7 @@ export default class WeightedPool {
   numTokens: number;
   prices: number[];
   indices: Record<string, number>;
+  circuitBreakers: Record<string, BreakerData>;
 
   constructor(tokens: string[], weights: number[], swapFee: number) {
     this.tokens = tokens;
@@ -28,6 +30,7 @@ export default class WeightedPool {
     this.numTokens = this.tokens.length;
     this.prices = [];
     this.indices = {};
+    this.circuitBreakers = {};
 
     for (let i = 0; i < this.numTokens; i++) {
       this.indices[this.tokens[i]] = i;
@@ -46,7 +49,7 @@ export default class WeightedPool {
     }
 
     this.prices = prices;
-    this.totalSupply = 2;
+    this.totalSupply = this.tokens.length;
 
     // Compute the balances from the weights and total liquidity
     for (let i = 0; i < prices.length; i++) {
@@ -59,7 +62,7 @@ export default class WeightedPool {
     let sum = 0;
     this.weights.map((w) => (sum += w));
 
-    if (sum != 1) {
+    if (Number(sum.toFixed(10)) != 1) {
       throw Error('Weights must sum to 1');
     }
   }
@@ -84,6 +87,101 @@ export default class WeightedPool {
     return this.swapFee;
   }
 
+  getBalance(token: string): number {
+    return this.balances[this.indexOf(token)];
+  }
+
+  getWeights(): number[] {
+    return this.weights;
+  }
+
+  getWeight(token: string): number {
+    return this.weights[this.indexOf(token)];
+  }
+
+  getBptPrice(token: string): number {
+    return (this.getTotalSupply() * this.getWeight(token)) / this.getBalance(token);
+  }
+
+  getSpotPrice(token: string, pricingToken: string, balances?: number[], weights?: number[]): number {
+    const tokenIndex = this.indexOf(token);
+    const pricingIndex = this.indexOf(pricingToken);
+    const finalBalances = balances ? balances : this.balances;
+    const finalWeights = weights ? weights : this.weights;
+
+    return (
+      finalBalances[pricingIndex] / finalWeights[pricingIndex] / (finalBalances[tokenIndex] / finalWeights[tokenIndex])
+    );
+  }
+
+  getInvariant(balances?: number[]): number {
+    let product = 1.0;
+
+    if (!balances) {
+      balances = this.balances;
+    }
+
+    for (let i = 0; i < this.tokens.length; i++) {
+      product *= this.balances[i] ** this.weights[i];
+    }
+
+    return product;
+  }
+
+  /*
+   The idea here is to compute the final balances after a "rebalancing swap". This means that the token has externally
+   changed by `priceRatio`: if < 1, this is a drop in price, which results in arbers buying cheap external tokens and
+   swapping them into the pool (in exchange for the given `pricingToken`). For instance, say the token is BAL and the
+   pricing token is ETH, and BAL is $10 and drops 20% to $8. The priceRatio would be 0.8. Arbers will sell BAL and
+   extract ETH, so the BAL balance will go up, and the pricing token balance will go down.
+   The invariants should be equal after the swap, by definition.
+
+   If the price doubled to $20, the priceRatio would be 2, and this time the BAL balance would decrease as arbers bought
+   cheap BAL from the pool, increasing the ETH balance.
+  */
+  getPostSwapBalancesGivenPriceRatio(token: string, pricingToken: string, priceRatio: number): number[] {
+    // Return the full set of balances (in case there are more than 2 tokens in the pool)
+    const result: number[] = [...this.balances];
+
+    // Get the amountIn given price
+    const tokenPrice = this.getPrice(token);
+    const pricingTokenPrice = this.getPrice(pricingToken);
+    const startingTokenBalance = this.getBalance(token);
+    // Seem to need this for 3+ token pools
+    priceRatio *= priceRatio ** (1 - (this.getWeight(token) + this.getWeight(pricingToken)));
+    let base = pricingTokenPrice / (tokenPrice * priceRatio) / this.getSpotPrice(pricingToken, token);
+    let exponent = this.getWeight(pricingToken) / this.getWeightSum();
+    const ratioIn = base ** exponent - 1;
+
+    const amountIn = startingTokenBalance * ratioIn;
+
+    result[this.indexOf(token)] = startingTokenBalance + amountIn;
+
+    // Get the amountOut given amount in
+    const startingPricingTokenBalance = this.getBalance(pricingToken);
+    base = startingTokenBalance / (startingTokenBalance + amountIn);
+    exponent = this.getWeight(token) / this.getWeight(pricingToken);
+    const ratioOut = 1 - base ** exponent;
+    const amountOut = startingPricingTokenBalance * ratioOut;
+
+    result[this.indexOf(pricingToken)] = startingPricingTokenBalance - amountOut;
+
+    // Return [token balance, pricing token balance]
+    return result;
+  }
+
+  circuitBreakerLowerBoundTripped(token: string, bptPrice: number, weight?: number): boolean {
+    const bptPriceBounds = this.getCircuitBreakerBptPriceBounds(token, weight);
+
+    return bptPriceBounds[0] == 0 ? false : Number(bptPrice.toFixed(10)) < Number(bptPriceBounds[0].toFixed(10));
+  }
+
+  circuitBreakerUpperBoundTripped(token: string, bptPrice: number, weight?: number): boolean {
+    const bptPriceBounds = this.getCircuitBreakerBptPriceBounds(token, weight);
+
+    return bptPriceBounds[1] == 0 ? false : Number(bptPrice.toFixed(10)) > Number(bptPriceBounds[1].toFixed(10));
+  }
+
   setSwapFee(swapFee: number): void {
     if (swapFee < 0.0001 || swapFee > 1) {
       throw Error('Invalid swap fee');
@@ -92,12 +190,64 @@ export default class WeightedPool {
     this.swapFee = swapFee;
   }
 
+  setWeights(newWeights: number[]): void {
+    if (newWeights.length != this.weights.length) {
+      throw Error('Input length mismatch');
+    }
+
+    this.weights = newWeights;
+  }
+
+  getWeightSum(): number {
+    let sum = 0;
+    this.weights.map((w) => (sum += w));
+
+    return sum;
+  }
+
+  setCircuitBreaker(token: string, lowerBound?: number, upperBound?: number): void {
+    this.circuitBreakers[token] = {
+      referencePrice: this.getBptPrice(token),
+      lowerBound: lowerBound ? lowerBound : 0,
+      upperBound: upperBound ? upperBound : 0,
+    };
+  }
+
+  getCircuitBreakerRatioBounds(token: string): BreakerData {
+    return this.circuitBreakers[token];
+  }
+
+  getCircuitBreakerBptPriceBounds(token: string, weight?: number): number[] {
+    const result: number[] = [];
+
+    // Return [lower, upper]
+    const breakerData = this.circuitBreakers[token];
+    if (!weight) {
+      weight = this.getWeight(token);
+    }
+
+    result[0] =
+      breakerData.lowerBound == 0
+        ? 0
+        : breakerData.referencePrice * breakerData.lowerBound ** (this.getWeightSum() - weight);
+    result[1] =
+      breakerData.upperBound == 0
+        ? 0
+        : breakerData.referencePrice * breakerData.upperBound ** (this.getWeightSum() - weight);
+
+    return result;
+  }
+
   indexOf(token: string): number {
     return this.indices[token];
   }
 
   getPrices(): number[] {
     return this.prices;
+  }
+
+  getPrice(token: string): number {
+    return this.prices[this.indexOf(token)];
   }
 
   // We are swapping amountIn of tokenIn for a computed amount of tokenOut
