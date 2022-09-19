@@ -20,16 +20,12 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
-
-import "../ManagedPoolStorageLib.sol";
 
 // solhint-disable max-states-count
 
@@ -61,7 +57,6 @@ abstract contract BasePool is
     TemporarilyPausable,
     RecoveryMode
 {
-    using FixedPoint for uint256;
     using BasePoolUserData for bytes;
 
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
