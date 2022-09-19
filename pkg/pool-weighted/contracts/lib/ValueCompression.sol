@@ -25,7 +25,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 library ValueCompression {
     /**
      * @notice Returns the maximum potential error when compressing and decompressing a value to a certain bit length.
-     * @dev During compression the range [0, maxUncompressedValue] is mapped onto the range [0, maxCompressedValue].
+     * @dev During compression, the range [0, maxUncompressedValue] is mapped onto the range [0, maxCompressedValue].
      * Each increment in compressed space then corresponds to an increment of maxUncompressedValue / maxCompressedValue
      * in uncompressed space. This granularity is the maximum error when decompressing a compressed value.
      */
