@@ -56,9 +56,8 @@ library ManagedPoolCircuitBreakerLib {
     uint256 private constant _WEIGHT_FACTOR_WIDTH = 64;
     uint256 private constant _BPT_PRICE_WIDTH = 112;
 
-    // We are compressing the ratios to 64-bit resolution, but the upper bound would normally be > 1,
-    // so we cannot use the default compression. For consistency, use the same maximum uncompressed value,
-    // even though we expect the lower bounds to be < 1.
+    // We compress the ratios into 16 bits from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
+    // For consistency, use the same maximum uncompressed value, even though we the lower bound is less than 1.
     uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // FP 10
 
     /**
@@ -146,7 +145,7 @@ library ManagedPoolCircuitBreakerLib {
                 .decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
                 .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE);
 
-            // Use these ratios to onvert raw percentage bounds to BPT price bounds.
+            // Use these ratios to convert raw percentage bounds to BPT price bounds.
             (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
                 lowerBoundPercentage,
                 upperBoundPercentage,
@@ -161,7 +160,7 @@ library ManagedPoolCircuitBreakerLib {
      * @notice Sets the reference BPT price, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param params - CircuitBreakerParams (introduced in part to address stack issues) has the following components:
+     * @param params - CircuitBreakerParams has the following components:
      * - referenceBptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
      * - currentWeightFactor: This is _denormWeightSum - currentWeight of the token.
@@ -180,9 +179,10 @@ library ManagedPoolCircuitBreakerLib {
         // the circuit breaker for the token.
         _require(params.lowerBoundPercentage <= FixedPoint.ONE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
         _require(params.upperBoundPercentage <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
-        if (params.upperBoundPercentage > 0) {
-            _require(params.upperBoundPercentage >= params.lowerBoundPercentage, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
-        }
+        _require(
+            params.upperBoundPercentage == 0 || params.upperBoundPercentage >= params.lowerBoundPercentage,
+            Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
+        );
 
         // Set the basic parameters, and chain to `_setCircuitBreakerState` for the rest.
         circuitBreakerState = circuitBreakerState
@@ -242,12 +242,7 @@ library ManagedPoolCircuitBreakerLib {
         uint256 upperBoundPercentage,
         uint256 currentWeightFactor
     ) private pure returns (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) {
-        if (lowerBoundPercentage > 0) {
-            lowerBoundRatioCache = LogExpMath.pow(lowerBoundPercentage, currentWeightFactor);
-        }
-
-        if (upperBoundPercentage > 0) {
-            upperBoundRatioCache = LogExpMath.pow(upperBoundPercentage, currentWeightFactor);
-        }
+        lowerBoundRatioCache = LogExpMath.pow(lowerBoundPercentage, currentWeightFactor);
+        upperBoundRatioCache = LogExpMath.pow(upperBoundPercentage, currentWeightFactor);
     }
 }
