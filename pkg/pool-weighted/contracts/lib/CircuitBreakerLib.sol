@@ -68,27 +68,23 @@ library CircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         internal
         pure
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
+        returns (CircuitBreakerParams memory)
     {
-        return (
-            circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH),
-            circuitBreakerState.decodeUint(_WEIGHT_FACTOR_OFFSET, _WEIGHT_FACTOR_WIDTH).decompress(
-                _WEIGHT_FACTOR_WIDTH
-            ),
-            circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
-                _BOUND_PERCENTAGE_WIDTH,
-                _MAX_BOUND_PERCENTAGE
-            ),
-            circuitBreakerState.decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
-                _BOUND_PERCENTAGE_WIDTH,
-                _MAX_BOUND_PERCENTAGE
-            )
-        );
+        return
+            CircuitBreakerParams({
+                referenceBptPrice: circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH),
+                currentWeightFactor: circuitBreakerState.decodeUint(_WEIGHT_FACTOR_OFFSET, _WEIGHT_FACTOR_WIDTH).decompress(
+                    _WEIGHT_FACTOR_WIDTH
+                ),
+                lowerBoundPercentage: circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
+                    _BOUND_PERCENTAGE_WIDTH,
+                    _MAX_BOUND_PERCENTAGE
+                ),
+                upperBoundPercentage: circuitBreakerState.decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
+                    _BOUND_PERCENTAGE_WIDTH,
+                    _MAX_BOUND_PERCENTAGE
+                )
+            });
     }
 
     /**
