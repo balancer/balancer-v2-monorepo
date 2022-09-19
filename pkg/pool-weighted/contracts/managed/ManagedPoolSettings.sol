@@ -990,10 +990,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Misc
 
-    function _getCircuitBreakerState(IERC20 token) internal view returns (bytes32) {
-        return _circuitBreakerState[token];
-    }
-
     /**
      * @dev Enumerates all ownerOnly functions in Managed Pool.
      */
