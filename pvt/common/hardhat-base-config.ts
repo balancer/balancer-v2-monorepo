@@ -1,3 +1,5 @@
+import './skipFoundryTests.ts';
+
 type ContractSettings = Record<
   string,
   {
@@ -9,21 +11,13 @@ type ContractSettings = Record<
 const contractSettings: ContractSettings = {
   '@balancer-labs/v2-vault/contracts/Vault.sol': {
     version: '0.7.1',
-    runs: 1500,
-  },
-  '@balancer-labs/v2-pool-weighted/contracts/WeightedPool2TokensFactory.sol': {
-    version: '0.7.1',
-    runs: 200,
+    runs: 500,
   },
   '@balancer-labs/v2-pool-weighted/contracts/LiquidityBootstrappingPoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
-  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePool.sol': {
-    version: '0.7.1',
-    runs: 200,
-  },
-  '@balancer-labs/v2-pool-stable/contracts/meta/MetaStablePoolFactory.sol': {
+  '@balancer-labs/v2-pool-weighted/contracts/smart/ManagedPoolFactory.sol': {
     version: '0.7.1',
     runs: 200,
   },
@@ -39,9 +33,18 @@ type SolcConfig = {
   };
 };
 
-export const compilers: [SolcConfig] = [
+export const compilers: SolcConfig[] = [
   {
     version: '0.7.1',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 9999,
+      },
+    },
+  },
+  {
+    version: '0.6.12',
     settings: {
       optimizer: {
         enabled: true,
@@ -67,4 +70,10 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
   }
 
   return overrides;
+};
+
+export const warnings = {
+  ignore: {
+    'contracts/test/**/*': { 'code-size': true },
+  },
 };

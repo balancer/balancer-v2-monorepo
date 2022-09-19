@@ -1,49 +1,17 @@
-import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
+import { BigNumber } from 'ethers';
 import { BigNumberish } from '../../../numbers';
 
+import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
 import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
-import Vault from '../../vault/Vault';
-
-export type RawStablePoolDeployment = {
-  tokens?: TokenList;
-  rateProviders?: Account[];
-  priceRateCacheDuration?: BigNumberish[];
-  amplificationParameter?: BigNumberish;
-  swapFeePercentage?: BigNumberish;
-  pauseWindowDuration?: BigNumberish;
-  bufferPeriodDuration?: BigNumberish;
-  owner?: SignerWithAddress;
-  admin?: SignerWithAddress;
-  from?: SignerWithAddress;
-  vault?: Vault;
-  fromFactory?: boolean;
-  oracleEnabled?: boolean;
-  meta?: boolean;
-};
-
-export type StablePoolDeployment = {
-  tokens: TokenList;
-  rateProviders?: Account[];
-  priceRateCacheDuration?: BigNumberish[];
-  amplificationParameter: BigNumberish;
-  swapFeePercentage: BigNumberish;
-  pauseWindowDuration: BigNumberish;
-  bufferPeriodDuration: BigNumberish;
-  oracleEnabled: boolean;
-  meta: boolean;
-  owner?: SignerWithAddress;
-  admin?: SignerWithAddress;
-  from?: SignerWithAddress;
-};
 
 export type SwapStablePool = {
-  in: number | Token;
-  out: number | Token;
+  in: Token;
+  out: Token;
   amount: BigNumberish;
+  balances?: BigNumberish[];
   recipient?: Account;
   from?: SignerWithAddress;
   lastChangeBlock?: BigNumberish;
@@ -64,6 +32,7 @@ export type InitStablePool = {
   from?: SignerWithAddress;
   recipient?: Account;
   protocolFeePercentage?: BigNumberish;
+  skipMint?: boolean;
 };
 
 export type JoinGivenInStablePool = {
@@ -135,22 +104,39 @@ export type ExitQueryResult = {
   amountsOut: BigNumber[];
 };
 
-export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
-
-export type MiscData = {
-  oracleEnabled: boolean;
-  oracleIndex: BigNumber;
-  oracleSampleCreationTimestamp: BigNumber;
-  logTotalSupply: BigNumber;
-  logInvariant: BigNumber;
+export type LastJoinExitData = {
+  lastJoinExitAmplification: BigNumber;
+  lastPostJoinExitInvariant: BigNumber;
 };
 
-export type Sample = {
-  logPairPrice: BigNumber;
-  accLogPairPrice: BigNumber;
-  logBptPrice: BigNumber;
-  accLogBptPrice: BigNumber;
-  logInvariant: BigNumber;
-  accLogInvariant: BigNumber;
-  timestamp: BigNumber;
+export type PoolQueryResult = JoinQueryResult | ExitQueryResult;
+
+export type RawStablePoolDeployment = {
+  tokens?: TokenList;
+  swapFeePercentage?: BigNumberish;
+  amplificationParameter?: BigNumberish;
+  rateProviders?: Account[];
+  tokenRateCacheDurations?: BigNumberish[];
+  exemptFromYieldProtocolFeeFlags?: boolean[];
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  owner?: SignerWithAddress;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+  vault?: Vault;
+  mockedVault?: boolean;
+};
+
+export type StablePoolDeployment = {
+  tokens: TokenList;
+  swapFeePercentage: BigNumberish;
+  amplificationParameter: BigNumberish;
+  rateProviders: Account[];
+  tokenRateCacheDurations: BigNumberish[];
+  exemptFromYieldProtocolFeeFlags: boolean[];
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  owner?: SignerWithAddress;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
 };

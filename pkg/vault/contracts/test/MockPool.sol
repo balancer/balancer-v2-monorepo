@@ -15,12 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
-import "../interfaces/IVault.sol";
-import "../interfaces/IGeneralPool.sol";
-import "../interfaces/IMinimalSwapInfoPool.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
     using FixedPoint for uint256;
@@ -39,6 +39,14 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
 
     function getPoolId() public view override returns (bytes32) {
         return _poolId;
+    }
+
+    function getSwapFeePercentage() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function getScalingFactors() external pure override returns (uint256[] memory) {
+        return new uint256[](0);
     }
 
     function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
@@ -143,5 +151,29 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             swapRequest.kind == IVault.SwapKind.GIVEN_IN
                 ? swapRequest.amount.mulDown(_multiplier)
                 : swapRequest.amount.divDown(_multiplier);
+    }
+
+    function queryJoin(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory) {
+        return (0, new uint256[](0));
+    }
+
+    function queryExit(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory) {
+        return (0, new uint256[](0));
     }
 }

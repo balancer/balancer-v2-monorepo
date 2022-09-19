@@ -1,0 +1,33 @@
+{
+  "transaction": {
+    "hash": "0xef14a8d74e43004e02cca8a7f86c13f83c3615e70e00a832c9c517c33169adf4",
+    "blockNumber": null
+  },
+  "data": {
+    "MetaStablePoolFactory": {
+      "create": {
+        "input": {
+          "name": "meta-pool-dai-hadouken-2pool",
+          "symbol": "meta-pool-dai-hadouken-2pool",
+          "tokens": [
+            "0x10A86c9C8CbE7cf2849bfCb0EaBE39b3bFEc91D4",
+            "0x630AcC0A29E325ce022563Df69ba7E25Eeb1e184"
+          ],
+          "amplificationParameter": "100",
+          "rateProviders": [
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000"
+          ],
+          "priceRateCacheDuration": [
+            "0",
+            "0"
+          ],
+          "swapFeePercentage": "1500000000000000",
+          "delegate": "0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B"
+        },
+        "output": "0x8D2d0Cd0Ff2a7E9d5f1f95C34f708E0bA96F7e7D"
+      }
+    }
+  },
+  "timestamp": 1663532187714
+}

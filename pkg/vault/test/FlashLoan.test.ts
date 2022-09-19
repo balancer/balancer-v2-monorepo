@@ -6,12 +6,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { bn, divCeil, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, divCeil, fp, fpMul, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('Flash Loans', () => {
   let admin: SignerWithAddress, minter: SignerWithAddress, feeSetter: SignerWithAddress, other: SignerWithAddress;
@@ -25,20 +26,16 @@ describe('Flash Loans', () => {
   sharedBeforeEach('deploy vault & tokens', async () => {
     const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
 
-    authorizer = await deploy('Authorizer', { args: [admin.address] });
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('Vault', { args: [authorizer.address, WETH.address, 0, 0] });
     recipient = await deploy('MockFlashLoanRecipient', { from: other, args: [vault.address] });
     feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setFlashLoanFeePercentage');
-    await authorizer.connect(admin).grantRole(action, feeSetter.address);
+    await authorizer.connect(admin).grantPermissions([action], feeSetter.address, [ANY_ADDRESS]);
 
     tokens = await TokenList.create(['DAI', 'MKR'], { from: minter, sorted: true });
     await tokens.mint({ from: minter, to: vault, amount: bn(100e18) });
-
-    // The recipient will mint the fees it pays
-    const MINTER_ROLE = ethers.utils.id('MINTER_ROLE');
-    await tokens.asyncEach((token) => token.instance.connect(minter).grantRole(MINTER_ROLE, recipient.address));
   });
 
   context('with no protocol fees', () => {
@@ -116,7 +113,7 @@ describe('Flash Loans', () => {
 
     it('the fees module receives protocol fees', async () => {
       const loan = bn(1e18);
-      const feeAmount = divCeil(loan.mul(feePercentage), FP_SCALING_FACTOR);
+      const feeAmount = divCeil(loan.mul(feePercentage), FP_100_PCT);
 
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [loan], '0x10'),
@@ -144,7 +141,7 @@ describe('Flash Loans', () => {
       await recipient.setRepayInExcess(true);
 
       // The recipient pays one extra token
-      const feeAmount = bn(1e18).mul(feePercentage).div(FP_SCALING_FACTOR).add(1);
+      const feeAmount = fpMul(bn(1e18), feePercentage).add(1);
 
       const tx: ContractTransaction = await expectBalanceChange(
         () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [bn(1e18)], '0x10'),
@@ -185,7 +182,7 @@ describe('Flash Loans', () => {
     describe('multi asset loan', () => {
       it('the Vault receives protocol fees proportional to each loan', async () => {
         const amounts = [1e18, 2e18].map(bn);
-        const feeAmounts = amounts.map((amount) => amount.mul(feePercentage).div(FP_SCALING_FACTOR));
+        const feeAmounts = amounts.map((amount) => fpMul(amount, feePercentage));
 
         await expectBalanceChange(
           () =>

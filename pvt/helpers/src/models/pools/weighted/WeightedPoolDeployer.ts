@@ -7,7 +7,16 @@ import Vault from '../../vault/Vault';
 import WeightedPool from './WeightedPool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
-import { RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from './types';
+import {
+  BasePoolRights,
+  ManagedPoolParams,
+  ManagedPoolRights,
+  RawWeightedPoolDeployment,
+  WeightedPoolDeployment,
+  WeightedPoolType,
+} from './types';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { DAY } from '@balancer-labs/v2-helpers/src/time';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -17,29 +26,37 @@ export default {
     const deployment = TypesConverter.toWeightedPoolDeployment(params);
     const vault = params?.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
     const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
+    const poolId = await pool.getPoolId();
 
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       poolType,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
     } = deployment;
 
-    const poolId = await pool.getPoolId();
     return new WeightedPool(
       pool,
       poolId,
       vault,
       tokens,
       weights,
+      TypesConverter.toAddresses(rateProviders),
       assetManagers,
       swapFeePercentage,
       poolType,
       swapEnabledOnStart,
-      managementSwapFeePercentage
+      mustAllowlistLPs,
+      managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector
     );
   },
 
@@ -47,14 +64,17 @@ export default {
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
       poolType,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
+      aumProtocolFeesCollector,
       owner,
       from,
     } = params;
@@ -62,29 +82,6 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.WEIGHTED_POOL_2TOKENS: {
-        result = deploy('v2-pool-weighted/MockWeightedPool2Tokens', {
-          args: [
-            {
-              vault: vault.address,
-              name: NAME,
-              symbol: SYMBOL,
-              token0: tokens.addresses[0],
-              token1: tokens.addresses[1],
-              normalizedWeight0: weights[0],
-              normalizedWeight1: weights[1],
-              swapFeePercentage: swapFeePercentage,
-              pauseWindowDuration: pauseWindowDuration,
-              bufferPeriodDuration: bufferPeriodDuration,
-              oracleEnabled: oracleEnabled,
-              owner: TypesConverter.toAddress(owner),
-            },
-          ],
-          from,
-          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
-        });
-        break;
-      }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         result = deploy('v2-pool-weighted/LiquidityBootstrappingPool', {
           args: [
@@ -103,23 +100,27 @@ export default {
         });
         break;
       }
-      case WeightedPoolType.INVESTMENT_POOL: {
-        result = deploy('v2-pool-weighted/InvestmentPool', {
+      case WeightedPoolType.MANAGED_POOL: {
+        result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
-              vault: vault.address,
               name: NAME,
               symbol: SYMBOL,
               tokens: tokens.addresses,
               normalizedWeights: weights,
               swapFeePercentage: swapFeePercentage,
               assetManagers: assetManagers,
-              pauseWindowDuration: pauseWindowDuration,
-              bufferPeriodDuration: bufferPeriodDuration,
-              owner: TypesConverter.toAddress(owner),
               swapEnabledOnStart: swapEnabledOnStart,
+              mustAllowlistLPs: mustAllowlistLPs,
               managementSwapFeePercentage: managementSwapFeePercentage,
+              managementAumFeePercentage: managementAumFeePercentage,
+              aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
+            vault.address,
+            vault.protocolFeesProvider.address,
+            owner,
+            pauseWindowDuration,
+            bufferPeriodDuration,
           ],
           from,
         });
@@ -128,16 +129,20 @@ export default {
       default: {
         result = deploy('v2-pool-weighted/WeightedPool', {
           args: [
+            {
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              rateProviders: rateProviders,
+              assetManagers: assetManagers,
+              swapFeePercentage: swapFeePercentage,
+            },
             vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            weights,
-            assetManagers,
-            swapFeePercentage,
+            vault.protocolFeesProvider.address,
             pauseWindowDuration,
             bufferPeriodDuration,
-            TypesConverter.toAddress(owner),
+            owner,
           ],
           from,
         });
@@ -148,14 +153,17 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
+    // Note that we only support asset managers with the standalone deploy method.
     const {
       tokens,
       weights,
+      rateProviders,
       assetManagers,
       swapFeePercentage,
-      oracleEnabled,
       swapEnabledOnStart,
+      mustAllowlistLPs,
       managementSwapFeePercentage,
+      managementAumFeePercentage,
       poolType,
       owner,
       from,
@@ -164,29 +172,9 @@ export default {
     let result: Promise<Contract>;
 
     switch (poolType) {
-      case WeightedPoolType.WEIGHTED_POOL_2TOKENS: {
-        const factory = await deploy('v2-pool-weighted/WeightedPool2TokensFactory', {
-          args: [vault.address],
-          from,
-          libraries: { QueryProcessor: await (await deploy('QueryProcessor')).address },
-        });
-        const tx = await factory.create(
-          NAME,
-          SYMBOL,
-          tokens.addresses,
-          weights,
-          swapFeePercentage,
-          oracleEnabled,
-          TypesConverter.toAddress(owner)
-        );
-        const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-        result = deployedAt('v2-pool-weighted/WeightedPool2Tokens', event.args.pool);
-        break;
-      }
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
         const tx = await factory.create(
@@ -195,7 +183,7 @@ export default {
           tokens.addresses,
           weights,
           swapFeePercentage,
-          TypesConverter.toAddress(owner),
+          owner,
           swapEnabledOnStart
         );
         const receipt = await tx.wait();
@@ -203,9 +191,56 @@ export default {
         result = deployedAt('v2-pool-weighted/LiquidityBootstrappingPool', event.args.pool);
         break;
       }
-      case WeightedPoolType.INVESTMENT_POOL: {
-        const factory = await deploy('v2-pool-weighted/InvestmentPoolFactory', {
-          args: [vault.address],
+      case WeightedPoolType.MANAGED_POOL: {
+        const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+          args: [vault.address, vault.getFeesProvider().address],
+          from,
+        });
+
+        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+          args: [baseFactory.address],
+          from,
+        });
+
+        const newPoolParams: ManagedPoolParams = {
+          name: NAME,
+          symbol: SYMBOL,
+          tokens: tokens.addresses,
+          normalizedWeights: weights,
+          assetManagers,
+          swapFeePercentage: swapFeePercentage,
+          swapEnabledOnStart: swapEnabledOnStart,
+          mustAllowlistLPs: mustAllowlistLPs,
+          managementSwapFeePercentage: managementSwapFeePercentage,
+          managementAumFeePercentage: managementAumFeePercentage,
+        };
+
+        const basePoolRights: BasePoolRights = {
+          canTransferOwnership: true,
+          canChangeSwapFee: true,
+          canUpdateMetadata: true,
+        };
+
+        const managedPoolRights: ManagedPoolRights = {
+          canChangeWeights: true,
+          canDisableSwaps: true,
+          canSetMustAllowlistLPs: true,
+          canSetCircuitBreakers: true,
+          canChangeTokens: true,
+          canChangeMgmtFees: true,
+        };
+
+        const tx = await factory
+          .connect(from || ZERO_ADDRESS)
+          .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
+        const receipt = await tx.wait();
+        const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
+        result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
+        break;
+      }
+      default: {
+        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
         const tx = await factory.create(
@@ -213,26 +248,9 @@ export default {
           SYMBOL,
           tokens.addresses,
           weights,
+          rateProviders,
           swapFeePercentage,
-          TypesConverter.toAddress(owner),
-          swapEnabledOnStart,
-          managementSwapFeePercentage
-        );
-        const receipt = await tx.wait();
-        const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-        result = deployedAt('v2-pool-weighted/InvestmentPool', event.args.pool);
-        break;
-      }
-      default: {
-        const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address], from });
-        const tx = await factory.create(
-          NAME,
-          SYMBOL,
-          tokens.addresses,
-          weights,
-          assetManagers,
-          swapFeePercentage,
-          TypesConverter.toAddress(owner)
+          owner
         );
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'PoolCreated');

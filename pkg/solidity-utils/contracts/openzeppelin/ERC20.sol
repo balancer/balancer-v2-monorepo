@@ -2,9 +2,9 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-import "./IERC20.sol";
 import "./SafeMath.sol";
 
 /**
@@ -92,10 +92,23 @@ contract ERC20 is IERC20 {
     }
 
     /**
-     * @dev See {IERC20-totalSupply}.
+     * @dev See {IERC20-totalSupply}. The total supply should only be read using this function
+     *
+     * Can be overridden by derived contracts to store the total supply in a different way (e.g. packed with other
+     * storage values).
      */
-    function totalSupply() public view override returns (uint256) {
+    function totalSupply() public view virtual override returns (uint256) {
         return _totalSupply;
+    }
+
+    /**
+     * @dev Sets a new value for the total supply. It should only be set using this function.
+     *
+     * * Can be overridden by derived contracts to store the total supply in a different way (e.g. packed with other
+     * storage values).
+     */
+    function _setTotalSupply(uint256 value) internal virtual {
+        _totalSupply = value;
     }
 
     /**
@@ -245,7 +258,7 @@ contract ERC20 is IERC20 {
     function _mint(address account, uint256 amount) internal virtual {
         _beforeTokenTransfer(address(0), account, amount);
 
-        _totalSupply = _totalSupply.add(amount);
+        _setTotalSupply(totalSupply().add(amount));
         _balances[account] = _balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
@@ -266,8 +279,8 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        _balances[account] = _balances[account].sub(amount, Errors.ERC20_BURN_EXCEEDS_ALLOWANCE);
-        _totalSupply = _totalSupply.sub(amount);
+        _balances[account] = _balances[account].sub(amount, Errors.ERC20_BURN_EXCEEDS_BALANCE);
+        _setTotalSupply(totalSupply().sub(amount));
         emit Transfer(account, address(0), amount);
     }
 
@@ -322,5 +335,7 @@ contract ERC20 is IERC20 {
         address from,
         address to,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }

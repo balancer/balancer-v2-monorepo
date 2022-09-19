@@ -20,7 +20,7 @@
   "scripts": {
     "build": "rm -rf dist/ && yarn typechain && tsc && cp temp/*.d.ts dist/ && yarn postbuild",
     "postbuild": "rm -rf temp/",
-    "typechain": "typechain --target ethers-v5 --out-dir temp/ '../deployments/tasks/*/abi/*.json' 'abi/*.json'"
+    "typechain": "typechain --target ethers-v5 --out-dir temp/ '../deployments/tasks/**/abi/*.json' 'abi/*.json'"
   },
   "devDependencies": {
     "@typechain/ethers-v5": "^7.0.1",

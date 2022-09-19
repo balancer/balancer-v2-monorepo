@@ -15,15 +15,14 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/SignaturesValidator.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
-import "./interfaces/IVault.sol";
-import "./interfaces/IAuthorizer.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ExtraCalldataEOASignaturesValidator.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
 /**
  * @dev Manages access control of Vault permissioned functions by relying on the Authorizer and signature validation.
@@ -34,7 +33,7 @@ abstract contract VaultAuthorization is
     IVault,
     ReentrancyGuard,
     Authentication,
-    SignaturesValidator,
+    ExtraCalldataEOASignaturesValidator,
     TemporarilyPausable
 {
     // Ideally, we'd store the type hashes as immutable state variables to avoid computing the hash at runtime, but
@@ -76,7 +75,7 @@ abstract contract VaultAuthorization is
     constructor(IAuthorizer authorizer)
         // The Vault is a singleton, so it simply uses its own address to disambiguate action identifiers.
         Authentication(bytes32(uint256(address(this))))
-        SignaturesValidator("Balancer V2 Vault")
+        EIP712("Balancer V2 Vault", "1")
     {
         _setAuthorizer(authorizer);
     }
@@ -121,7 +120,7 @@ abstract contract VaultAuthorization is
             // Being a relayer is not sufficient: `user` must have also approved the caller either via
             // `setRelayerApproval`, or by providing a signature appended to the calldata.
             if (!_hasApprovedRelayer(user, msg.sender)) {
-                _validateSignature(user, Errors.USER_DOESNT_ALLOW_RELAYER);
+                _validateExtraCalldataSignature(user, Errors.USER_DOESNT_ALLOW_RELAYER);
             }
         }
     }
@@ -138,7 +137,7 @@ abstract contract VaultAuthorization is
         return _authorizer.canPerform(actionId, user, address(this));
     }
 
-    function _typeHash() internal pure override returns (bytes32 hash) {
+    function _entrypointTypeHash() internal pure override returns (bytes32 hash) {
         // This is a simple switch-case statement, trivially written in Solidity by chaining else-if statements, but the
         // assembly implementation results in much denser bytecode.
         // solhint-disable-next-line no-inline-assembly

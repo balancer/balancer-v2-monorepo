@@ -15,11 +15,19 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
+
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
+    using WeightedPoolUserData for bytes;
 
     uint256 private immutable _totalTokens;
+
+    bool private _failBeforeSwapJoinExit;
+
+    event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
+    event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
 
     constructor(
         IVault vault,
@@ -46,6 +54,7 @@ contract MockBasePool is BasePool {
             owner
         )
     {
+        _failBeforeSwapJoinExit = false;
         _totalTokens = tokens.length;
     }
 
@@ -58,50 +67,64 @@ contract MockBasePool is BasePool {
     }
 
     function _onInitializePool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory scalingFactors,
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
         bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {}
+    ) internal pure override returns (uint256, uint256[] memory) {
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        uint256 bptAmountOut;
+
+        for (uint256 i = 0; i < amountsIn.length; i++) {
+            bptAmountOut += amountsIn[i];
+        }
+
+        return (bptAmountOut, amountsIn);
+    }
 
     function _onJoinPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
         uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {}
+        uint256[] memory,
+        bytes memory
+    ) internal override returns (uint256, uint256[] memory) {
+        emit InnerOnJoinPoolCalled(protocolSwapFeePercentage);
+
+        return (0, new uint256[](balances.length));
+    }
 
     function _onExitPool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        uint256[] memory currentBalances,
-        uint256 lastChangeBlock,
+        bytes32,
+        address,
+        address,
+        uint256[] memory balances,
+        uint256,
         uint256 protocolSwapFeePercentage,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    )
-        internal
-        override
-        returns (
-            uint256,
-            uint256[] memory,
-            uint256[] memory
-        )
-    {}
+        uint256[] memory,
+        bytes memory
+    ) internal override returns (uint256, uint256[] memory) {
+        emit InnerOnExitPoolCalled(protocolSwapFeePercentage);
+
+        return (0, new uint256[](balances.length));
+    }
+
+    function setFailBeforeSwapJoinExit(bool fail) external {
+        _failBeforeSwapJoinExit = fail;
+    }
+
+    function _beforeSwapJoinExit() internal override {
+        require(!_failBeforeSwapJoinExit, "FAIL_BEFORE_SWAP_JOIN_EXIT");
+        super._beforeSwapJoinExit();
+    }
+
+    function payProtocolFees(uint256 bptAmount) public {
+        _payProtocolFees(bptAmount);
+    }
 
     function _getMaxTokens() internal pure override returns (uint256) {
         return 8;
@@ -122,5 +145,17 @@ contract MockBasePool is BasePool {
         for (uint256 i = 0; i < numTokens; i++) {
             scalingFactors[i] = FixedPoint.ONE;
         }
-    }    
+    }
+
+    function doNotCallInRecovery() external view whenNotInRecoveryMode {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function notCallableInRecovery() external view {
+        _ensureNotInRecoveryMode();
+    }
+
+    function onlyCallableInRecovery() external view {
+        _ensureInRecoveryMode();
+    }
 }

@@ -56,14 +56,8 @@ contract MockWeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
-        (uint256 bptOut, ) = WeightedMath._calcBptOutGivenExactTokensIn(
-            balances,
-            normalizedWeights,
-            amountsIn,
-            bptTotalSupply,
-            swapFee
-        );
-        return bptOut;
+        return
+            WeightedMath._calcBptOutGivenExactTokensIn(balances, normalizedWeights, amountsIn, bptTotalSupply, swapFee);
     }
 
     function tokenInForExactBPTOut(
@@ -73,14 +67,14 @@ contract MockWeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
-        (uint256 amountIn, ) = WeightedMath._calcTokenInGivenExactBptOut(
-            tokenBalance,
-            tokenNormalizedWeight,
-            bptAmountOut,
-            bptTotalSupply,
-            swapFee
-        );
-        return amountIn;
+        return
+            WeightedMath._calcTokenInGivenExactBptOut(
+                tokenBalance,
+                tokenNormalizedWeight,
+                bptAmountOut,
+                bptTotalSupply,
+                swapFee
+            );
     }
 
     function exactBPTInForTokenOut(
@@ -90,14 +84,14 @@ contract MockWeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
-        (uint256 amountOut, ) = WeightedMath._calcTokenOutGivenExactBptIn(
-            tokenBalance,
-            tokenNormalizedWeight,
-            bptAmountIn,
-            bptTotalSupply,
-            swapFee
-        );
-        return amountOut;
+        return
+            WeightedMath._calcTokenOutGivenExactBptIn(
+                tokenBalance,
+                tokenNormalizedWeight,
+                bptAmountIn,
+                bptTotalSupply,
+                swapFee
+            );
     }
 
     function exactBPTInForTokensOut(
@@ -115,30 +109,13 @@ contract MockWeightedMath {
         uint256 bptTotalSupply,
         uint256 swapFee
     ) external pure returns (uint256) {
-        (uint256 bptIn, ) = WeightedMath._calcBptInGivenExactTokensOut(
-            balances,
-            normalizedWeights,
-            amountsOut,
-            bptTotalSupply,
-            swapFee
-        );
-        return bptIn;
-    }
-
-    function calculateDueTokenProtocolSwapFeeAmount(
-        uint256 balance,
-        uint256 normalizedWeight,
-        uint256 previousInvariant,
-        uint256 currentInvariant,
-        uint256 protocolSwapFeePercentage
-    ) external pure returns (uint256) {
         return
-            WeightedMath._calcDueTokenProtocolSwapFeeAmount(
-                balance,
-                normalizedWeight,
-                previousInvariant,
-                currentInvariant,
-                protocolSwapFeePercentage
+            WeightedMath._calcBptInGivenExactTokensOut(
+                balances,
+                normalizedWeights,
+                amountsOut,
+                bptTotalSupply,
+                swapFee
             );
     }
 }

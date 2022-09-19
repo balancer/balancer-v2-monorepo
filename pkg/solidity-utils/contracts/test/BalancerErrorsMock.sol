@@ -14,10 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 contract BalancerErrorsMock {
     function fail(uint256 code) external pure {
         _revert(code);
+    }
+
+    function failWithPrefix(uint256 code, bytes3 prefix) external pure {
+        _revert(code, prefix);
     }
 }

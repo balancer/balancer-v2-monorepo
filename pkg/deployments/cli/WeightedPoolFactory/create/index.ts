@@ -1,11 +1,11 @@
 import prompts from 'prompts';
 import { BigNumber } from 'ethers';
+import { network } from 'hardhat';
 
 import { Cli, Output } from '../../types';
 import create from './create';
 import { save } from '../../../src/utils';
 import { WeightedPoolFactoryCreateParameters } from './types';
-import { network } from 'hardhat';
 
 const WeghtedPoolCreateCli: Cli = async ({ environment, parentCli }) => {
   const { name } = await prompts({

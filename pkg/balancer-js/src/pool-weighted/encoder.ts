@@ -6,13 +6,14 @@ export enum WeightedPoolJoinKind {
   EXACT_TOKENS_IN_FOR_BPT_OUT,
   TOKEN_IN_FOR_EXACT_BPT_OUT,
   ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+  ADD_TOKEN,
 }
 
 export enum WeightedPoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
   EXACT_BPT_IN_FOR_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
-  MANAGEMENT_FEE_TOKENS_OUT,
+  REMOVE_TOKEN,
 }
 
 export class WeightedPoolEncoder {
@@ -92,7 +93,7 @@ export class WeightedPoolEncoder {
     );
 }
 
-export class InvestmentPoolEncoder {
+export class ManagedPoolEncoder {
   /**
    * Cannot be constructed.
    */
@@ -101,9 +102,9 @@ export class InvestmentPoolEncoder {
   }
 
   /**
-   * Encodes the userData parameter for exiting an InvestmentPool for withdrawing management fees.
+   * Encodes the userData parameter for exiting a ManagedPool to remove a token.
    * This can only be done by the pool owner.
    */
-  static exitForManagementFees = (): string =>
-    defaultAbiCoder.encode(['uint256'], [WeightedPoolExitKind.MANAGEMENT_FEE_TOKENS_OUT]);
+  static exitForRemoveToken = (tokenIndex: BigNumberish): string =>
+    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolExitKind.REMOVE_TOKEN, tokenIndex]);
 }

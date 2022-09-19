@@ -1,0 +1,324 @@
+{
+  "0xd92c40d5daec019bee17f4b61c6f29905e23bb7ef406cc751700baffc82b3a30": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeek(address,uint256,uint256,bytes32[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeek(address,uint256,uint256,bytes32[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xad0225b8f36d108a0b4b94fcefc162bb866b854df809f5745281c8694e6d37bc": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeks(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeks(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x1a71f3e5ef203c4123a068cfbe8e002a0b22fe777cc507eb928430feb1cadbcf": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksToInternalBalance(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksToInternalBalance(address,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xec1217f9c0d96fa75a9d6a62a38724780247f3de54e41e48952440369708c4d3": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksWithCallback(address,address,bytes,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "claimWeeksWithCallback(address,address,bytes,(uint256,uint256,bytes32[])[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xf75a63a20471dc46da3192be9d76e8f140a4f5507773da6d1384877662708caa": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "renounceOwnership()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "renounceOwnership()",
+      "useAdaptor": true
+    }
+  ],
+  "0x9bdc90c1a0da348c425f5a7f90163eaeec5bce689bdd65f6da637b5243714080": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "seedAllocations(uint256,bytes32,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "seedAllocations(uint256,bytes32,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xc72ba8d6ded981d8f10ffe2bc3dbec65b5d9f5af87846080a8cface849d4198d": [
+    {
+      "taskId": "20210913-bal-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "transferOwnership(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20210928-mcb-arbitrum-merkle",
+      "contractName": "MerkleRedeem",
+      "signature": "transferOwnership(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x0a5a412edef3a6979567862645360015b536a00bc877d64660ee50428fca701d": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "approveVault(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "approveVault(address,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x806b42be1e8dace97e3c3991d28436b4f20c6a9a5572135e8e881056bc0134ce": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256,uint256,(uint256,uint256)[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xa83d9af98c5b0fc2e6217ad50963dd85b59a826ef5d4ac6c5278a3918a9eb1f4": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "exitPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),(uint256,uint256)[])",
+      "useAdaptor": true
+    }
+  ],
+  "0x78e2661c66ee13fbd5b754138d0c51a09346427fbb1430471d137374fea59fe2": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "joinPool(bytes32,uint8,address,address,(address[],uint256[],bytes,bool),uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x2c8762c1c0be6c6c372c9a58b85f301c15ca91585223dea562569711c54c9f66": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[],uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x48df7ffa3264537c410a6c6b37836b7d97347d535b77e034bde6361e3dd59bb6": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "setRelayerApproval(address,bool,bytes)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "setRelayerApproval(address,bool,bytes)",
+      "useAdaptor": true
+    }
+  ],
+  "0xdaae027bc13702a169cdf7e88ea883d6d83b488511f3bd73b4f7a77b8d7dcbaf": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETH(address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETH(address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x6a0dae64c2bcb9102d86c973723b344c2584e6495a13963c31f445765cf84365": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETHAndWrap(address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "stakeETHAndWrap(address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x0b9f59abfbe97d54576bda6287e0dbfef6f7942a545b572a79e5cc121bb46fa4": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x65ffef271a6cc390fc2fec7c18ebc78a89c525f328951ec522eb5ee6f9781435": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapAaveStaticToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x80e5c15e9f03c216f25132c8ab04ea944071b7aa00d0aed67124fcbb95c34a2a": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapWstETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "unwrapWstETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x6cdedb7cbaf7676c47ff44b7938c6d7526bf54bd39f3c39d1c8e18e9aac024db": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    }
+  ],
+  "0xa50f8e9f77b8cb8499dc6299d7aff1d735a9baf30eba3e17e2e860c21cc2dc68": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "vaultPermitDAI(address,address,uint256,uint256,bool,uint8,bytes32,bytes32)",
+      "useAdaptor": true
+    }
+  ],
+  "0x49f8e6a34076295240b17ebff1f6412055cdd88e5a4a51b8ebd6d04353a1a069": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapAaveDynamicToken(address,address,address,uint256,bool,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xeec9e55fa7823a1adb86f29adb9d8019b35135e2c008113150fad69ba3ea0c10": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapStETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BatchRelayerLibrary",
+      "signature": "wrapStETH(address,address,uint256,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x21ca1986868905677ad509adaaca740c12b6bb4fee9a6d48f5e1e221b13fb1c4": [
+    {
+      "taskId": "20211203-batch-relayer",
+      "contractName": "BalancerRelayer",
+      "signature": "multicall(bytes[])",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220720-batch-relayer-v3",
+      "contractName": "BalancerRelayer",
+      "signature": "multicall(bytes[])",
+      "useAdaptor": true
+    }
+  ]
+}

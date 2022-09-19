@@ -28,23 +28,22 @@ export async function deploy(
   if (!args) args = [];
   if (!from) from = (await ethers.getSigners())[0];
 
-  const artifact = await getArtifact(contract);
-  if (libraries !== undefined) artifact.bytecode = linkBytecode(artifact, libraries);
+  const artifact = getArtifact(contract);
 
-  const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, from);
+  const factory = await ethers.getContractFactoryFromArtifact(artifact, { signer: from, libraries });
   const instance = await factory.deploy(...args);
 
-  return deployedAt(contract, instance.address);
+  return instance.deployed();
 }
 
 // Creates a contract object for a contract deployed at a known address. The `contract` argument follows the same rules
 // as in `deploy`.
 export async function deployedAt(contract: string, address: string): Promise<Contract> {
-  const artifact = await getArtifact(contract);
+  const artifact = getArtifact(contract);
   return ethers.getContractAt(artifact.abi, address);
 }
 
-export async function getArtifact(contract: string): Promise<Artifact> {
+export function getArtifact(contract: string): Artifact {
   let artifactsPath: string;
   if (!contract.includes('/')) {
     artifactsPath = path.resolve('./artifacts');
@@ -55,29 +54,5 @@ export async function getArtifact(contract: string): Promise<Artifact> {
   }
 
   const artifacts = new Artifacts(artifactsPath);
-  return artifacts.readArtifact(contract.split('/').slice(-1)[0]);
-}
-
-// From https://github.com/nomiclabs/hardhat/issues/611#issuecomment-638891597, temporary workaround until
-// https://github.com/nomiclabs/hardhat/issues/1716 is addressed.
-function linkBytecode(artifact: Artifact, libraries: Dictionary<string>): string {
-  let bytecode = artifact.bytecode;
-
-  for (const [, fileReferences] of Object.entries(artifact.linkReferences)) {
-    for (const [libName, fixups] of Object.entries(fileReferences)) {
-      const addr = libraries[libName];
-      if (addr === undefined) {
-        continue;
-      }
-
-      for (const fixup of fixups) {
-        bytecode =
-          bytecode.substr(0, 2 + fixup.start * 2) +
-          addr.substr(2) +
-          bytecode.substr(2 + (fixup.start + fixup.length) * 2);
-      }
-    }
-  }
-
-  return bytecode;
+  return artifacts.readArtifactSync(contract.split('/').slice(-1)[0]);
 }

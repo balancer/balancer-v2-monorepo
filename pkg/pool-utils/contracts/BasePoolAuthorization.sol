@@ -14,10 +14,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IAuthorizer.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 
-import "./BasePool.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 
 /**
  * @dev Base authorization layer implementation for Pools.
@@ -56,7 +55,9 @@ abstract contract BasePoolAuthorization is Authentication {
         }
     }
 
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual returns (bool);
+    function _isOwnerOnlyAction(bytes32) internal view virtual returns (bool) {
+        return false;
+    }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);
 }

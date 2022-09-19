@@ -7,6 +7,8 @@ import selectNetworkCommand from './config.command';
 
 import WeightedPoolFactoryCli from './WeightedPoolFactory/cli';
 import StablePoolFactoryCli from './StablePoolFactory/cli';
+import MetaStablePoolFactory from './MetaStablePoolFactory/cli';
+import AaveLinearPoolFactory from './AaveLinearPoolFactory/cli';
 import prompts from 'prompts';
 
 program
@@ -23,6 +25,8 @@ program
       choices: [
         { title: 'StablePoolFactory', value: 'StablePoolFactory' },
         { title: 'WeightedPoolFactory', value: 'WeightedPoolFactory' },
+        { title: 'MetaStablePoolFactory', value: 'MetaStablePoolFactory' },
+        { title: 'AaveLinearPoolFactory', value: 'AaveLinearPoolFactory' },
       ],
     });
 
@@ -30,8 +34,14 @@ program
       case 'StablePoolFactory':
         await StablePoolFactoryCli({ environment: scriptRunEnvironment });
         break;
+      case 'MetaStablePoolFactory':
+        await MetaStablePoolFactory({ environment: scriptRunEnvironment });
+        break;
       case 'WeightedPoolFactory':
         await WeightedPoolFactoryCli({ environment: scriptRunEnvironment });
+        break;
+      case 'AaveLinearPoolFactory':
+        await AaveLinearPoolFactory({ environment: scriptRunEnvironment });
         break;
     }
   });

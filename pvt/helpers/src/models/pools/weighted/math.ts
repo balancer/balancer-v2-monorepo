@@ -1,7 +1,7 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
-import { BigNumberish, bn, decimal, fp, fromFp, toFp } from '../../../numbers';
+import { BigNumberish, bn, decimal, fp, fromFp, toFp, fpMul, fpDiv, FP_ONE, FP_100_PCT } from '../../../numbers';
 
 export function calculateInvariant(fpRawBalances: BigNumberish[], fpRawWeights: BigNumberish[]): BigNumber {
   const normalizedWeights = fpRawWeights.map(fromFp);
@@ -61,7 +61,7 @@ export function calcBptOutGivenExactTokensIn(
   for (let i = 0; i < balances.length; i++) {
     let amountInWithoutFee;
 
-    if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+    if (balanceRatiosWithFee[i].gt(invariantRatioWithFees)) {
       const nonTaxableAmount = balances[i].mul(invariantRatioWithFees.sub(1));
       const taxableAmount = amountsIn[i].sub(nonTaxableAmount);
       amountInWithoutFee = nonTaxableAmount.add(taxableAmount.mul(decimal(1).sub(fromFp(fpSwapFeePercentage))));
@@ -124,10 +124,9 @@ export function calcBptInGivenExactTokensOut(
 
   let invariantRatio = decimal(1);
   for (let i = 0; i < balances.length; i++) {
-    const tokenBalancePercentageExcess =
-      weightedBalanceRatio <= balanceRatiosWithoutFee[i]
-        ? 0
-        : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
+    const tokenBalancePercentageExcess = weightedBalanceRatio.lte(balanceRatiosWithoutFee[i])
+      ? 0
+      : weightedBalanceRatio.sub(balanceRatiosWithoutFee[i]).div(decimal(1).sub(balanceRatiosWithoutFee[i]));
 
     const amountOutBeforeFee = amountsOut[i].div(decimal(1).sub(swapFeePercentage.mul(tokenBalancePercentageExcess)));
     const tokenBalanceRatio = decimal(1).sub(amountOutBeforeFee.div(balances[i]));
@@ -186,6 +185,26 @@ export function calculateOneTokenSwapFeeAmount(
   const accruedFees = balance.mul(decimal(1).sub(invariantRatio.pow(exponent)));
 
   return toFp(accruedFees);
+}
+
+export function calculateBPTSwapFeeAmount(
+  fpInvariantGrowthRatio: BigNumberish,
+  preSupply: BigNumberish,
+  postSupply: BigNumberish,
+  fpProtocolSwapFeePercentage: BigNumberish
+): BigNumber {
+  const supplyGrowthRatio = fpDiv(postSupply, preSupply);
+
+  if (bn(fpInvariantGrowthRatio).lte(supplyGrowthRatio)) {
+    return bn(0);
+  }
+  const swapFeePercentage = FP_100_PCT.sub(fpDiv(supplyGrowthRatio, fpInvariantGrowthRatio));
+  const k = fpMul(swapFeePercentage, fpProtocolSwapFeePercentage);
+
+  const numerator = bn(postSupply).mul(k);
+  const denominator = FP_ONE.sub(k);
+
+  return numerator.div(denominator);
 }
 
 export function calculateMaxOneTokenSwapFeeAmount(

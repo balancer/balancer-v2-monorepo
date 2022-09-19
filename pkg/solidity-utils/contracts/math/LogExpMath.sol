@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 /* solhint-disable */
 
@@ -105,7 +105,7 @@ library LogExpMath {
         // x^y = exp(y * ln(x)).
 
         // The ln function takes a signed value, so we need to make sure x fits in the signed 256 bit range.
-        _require(x < 2**255, Errors.X_OUT_OF_BOUNDS);
+        _require(x >> 255 == 0, Errors.X_OUT_OF_BOUNDS);
         int256 x_int256 = int256(x);
 
         // We will compute y * ln(x) in a single step. Depending on the value of x, we can either use ln or ln_36. In

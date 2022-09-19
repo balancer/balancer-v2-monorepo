@@ -7,17 +7,11 @@ async function main() {
 
   await measureDeployment('v2-pool-weighted/WeightedPool');
 
-  await measureDeployment('v2-pool-weighted/WeightedPool2TokensFactory');
-
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPool');
-
-  await measureDeployment('v2-pool-stable/StablePoolFactory');
 
   await measureDeployment('v2-pool-weighted/LiquidityBootstrappingPoolFactory');
 
-  await measureDeployment('v2-pool-stable/meta/MetaStablePool');
-
-  await measureDeployment('v2-pool-weighted/InvestmentPoolFactory');
+  await measureDeployment('v2-pool-weighted/ManagedPoolFactory');
 }
 
 async function measureDeployment(name: string) {

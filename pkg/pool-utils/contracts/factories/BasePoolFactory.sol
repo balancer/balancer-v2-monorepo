@@ -15,46 +15,76 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-vault/contracts/interfaces/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 /**
- * @dev Base contract for Pool factories.
+ * @notice Base contract for Pool factories.
  *
  * Pools are deployed from factories to allow third parties to reason about them. Unknown Pools may have arbitrary
  * logic: being able to assert that a Pool's behavior follows certain rules (those imposed by the contracts created by
  * the factory) is very powerful.
+ *
+ * @dev By using the split code mechanism, we can deploy Pools with creation code so large that a regular factory
+ * contract would not be able to store it.
+ *
+ * Since we expect to release new versions of pool types regularly - and the blockchain is forever - versioning will
+ * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
+ * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolFactory {
-    IVault private immutable _vault;
+abstract contract BasePoolFactory is IBasePoolFactory, BaseSplitCodeFactory, SingletonAuthentication {
+    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
+
     mapping(address => bool) private _isPoolFromFactory;
+    bool private _disabled;
 
     event PoolCreated(address indexed pool);
+    event FactoryDisabled();
 
-    constructor(IVault vault) {
-        _vault = vault;
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        bytes memory creationCode
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) {
+        _protocolFeeProvider = protocolFeeProvider;
     }
 
-    /**
-     * @dev Returns the Vault's address.
-     */
-    function getVault() public view returns (IVault) {
-        return _vault;
-    }
-
-    /**
-     * @dev Returns true if `pool` was created by this factory.
-     */
-    function isPoolFromFactory(address pool) external view returns (bool) {
+    function isPoolFromFactory(address pool) external view override returns (bool) {
         return _isPoolFromFactory[pool];
     }
 
-    /**
-     * @dev Registers a new created pool.
-     *
-     * Emits a `PoolCreated` event.
-     */
-    function _register(address pool) internal {
+    function isDisabled() public view override returns (bool) {
+        return _disabled;
+    }
+
+    function disable() external override authenticate {
+        _ensureEnabled();
+
+        _disabled = true;
+
+        emit FactoryDisabled();
+    }
+
+    function _ensureEnabled() internal view {
+        _require(!isDisabled(), Errors.DISABLED);
+    }
+
+    function getProtocolFeePercentagesProvider() public view returns (IProtocolFeePercentagesProvider) {
+        return _protocolFeeProvider;
+    }
+
+    function _create(bytes memory constructorArgs) internal virtual override returns (address) {
+        _ensureEnabled();
+
+        address pool = super._create(constructorArgs);
+
         _isPoolFromFactory[pool] = true;
+
         emit PoolCreated(pool);
+
+        return pool;
     }
 }

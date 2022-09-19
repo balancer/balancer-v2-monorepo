@@ -2,11 +2,10 @@ import { AsyncFunc } from 'mocha';
 import { BigNumber } from 'ethers';
 import chai, { expect } from 'chai';
 
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, bn } from '@balancer-labs/v2-helpers/src/numbers';
-
-import { BalancerErrors } from '@balancer-labs/balancer-js';
 import { NAry } from '@balancer-labs/v2-helpers/src/models/types/types';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BalancerErrors } from '@balancer-labs/balancer-js';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError, expectLessThanOrEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
 import { sharedBeforeEach } from './sharedBeforeEach';
@@ -21,8 +20,11 @@ declare global {
       zero: void;
       zeros: void;
       zeroAddress: void;
+      equalFp(value: BigNumberish): void;
       lteWithError(value: NAry<BigNumberish>, error: BigNumberish): void;
       equalWithError(value: NAry<BigNumberish>, error: BigNumberish): void;
+      almostEqual(value: NAry<BigNumberish>, error?: BigNumberish): void;
+      almostEqualFp(value: NAry<BigNumberish>, error?: BigNumberish): void;
     }
   }
 
@@ -51,6 +53,10 @@ chai.use(function (chai, utils) {
     new Assertion(this._obj).to.be.equal(ZERO_ADDRESS);
   });
 
+  Assertion.addMethod('equalFp', function (expectedValue: BigNumberish) {
+    expect(this._obj).to.be.equal(fp(expectedValue));
+  });
+
   Assertion.addMethod('equalWithError', function (expectedValue: NAry<BigNumberish>, error: BigNumberish) {
     if (Array.isArray(expectedValue)) {
       const actual: BigNumberish[] = this._obj;
@@ -66,6 +72,24 @@ chai.use(function (chai, utils) {
       actual.forEach((actual, i) => expectLessThanOrEqualWithError(actual, expectedValue[i], error));
     } else {
       expectLessThanOrEqualWithError(this._obj, expectedValue, error);
+    }
+  });
+
+  Assertion.addMethod('almostEqual', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
+    if (Array.isArray(expectedValue)) {
+      const actuals: BigNumberish[] = this._obj;
+      actuals.forEach(async (actual, i) => expectEqualWithError(actual, expectedValue[i], error));
+    } else {
+      expectEqualWithError(this._obj, expectedValue, error);
+    }
+  });
+
+  Assertion.addMethod('almostEqualFp', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
+    if (Array.isArray(expectedValue)) {
+      const actuals: BigNumberish[] = this._obj;
+      actuals.forEach(async (actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error));
+    } else {
+      expectEqualWithError(this._obj, fp(expectedValue), error);
     }
   });
 

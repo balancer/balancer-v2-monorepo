@@ -2,13 +2,13 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ManagedPoolEncoder, PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
+import { BigNumberish, bn, fp, fpMul, pct } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 export function itBehavesAsWeightedPool(
   numberOfTokens: number,
@@ -18,7 +18,7 @@ export function itBehavesAsWeightedPool(
   const WEIGHTS = [fp(30), fp(70), fp(5), fp(5)];
   const INITIAL_BALANCES = [fp(0.9), fp(1.8), fp(2.7), fp(3.6)];
 
-  let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress, assetManager: SignerWithAddress;
+  let recipient: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 
   let pool: WeightedPool, allTokens: TokenList, tokens: TokenList;
 
@@ -27,18 +27,17 @@ export function itBehavesAsWeightedPool(
   const initialBalances = INITIAL_BALANCES.slice(0, numberOfTokens);
 
   async function deployPool(params: RawWeightedPoolDeployment = {}): Promise<void> {
-    const assetManagers = Array(numberOfTokens).fill(assetManager.address);
-
-    params = Object.assign(
-      {},
-      { tokens, weights, assetManagers, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, poolType },
-      params
-    );
-    pool = await WeightedPool.create(params);
+    pool = await WeightedPool.create({
+      tokens,
+      weights,
+      swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      poolType,
+      ...params,
+    });
   }
 
   before('setup signers', async () => {
-    [, lp, recipient, other, assetManager] = await ethers.getSigners();
+    [, lp, recipient, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -80,12 +79,10 @@ export function itBehavesAsWeightedPool(
         expect(await pool.totalSupply()).to.be.equal(0);
       });
 
-      it('sets the asset managers', async () => {
+      it('sets the asset managers to zero', async () => {
         await tokens.asyncEach(async (token) => {
           const info = await pool.getTokenInfo(token);
-          expect(info.assetManager).to.equal(
-            poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? ZERO_ADDRESS : assetManager.address
-          );
+          expect(info.assetManager).to.equal(ZERO_ADDRESS);
         });
       });
 
@@ -107,20 +104,16 @@ export function itBehavesAsWeightedPool(
     });
 
     context('when the creation fails', () => {
-      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
-        it('reverts if the number of tokens and weights do not match', async () => {
-          const badWeights = weights.slice(1);
+      it('reverts if the number of tokens and weights do not match', async () => {
+        const badWeights = weights.slice(1);
 
-          await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-        });
-      }
+        await expect(deployPool({ weights: badWeights })).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
 
       it('reverts if there are repeated tokens', async () => {
         const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
 
-        const error =
-          poolType == WeightedPoolType.WEIGHTED_POOL_2TOKENS ? 'TOKEN_ALREADY_REGISTERED' : 'UNSORTED_ARRAY';
-        await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith(error);
+        await expect(deployPool({ tokens: badTokens, fromFactory: true })).to.be.revertedWith('UNSORTED_ARRAY');
       });
 
       it('reverts if the swap fee is too high', async () => {
@@ -478,11 +471,11 @@ export function itBehavesAsWeightedPool(
         expect(result.amountsOut).to.be.lteWithError(expectedAmountsOut, 0.00001);
       });
 
-      it('does not revert if paused', async () => {
+      it('reverts if paused', async () => {
         await pool.pause();
 
         const bptIn = previousBptBalance.div(2);
-        await expect(pool.multiExitGivenIn({ from: lp, bptIn })).not.to.be.reverted;
+        await expect(pool.multiExitGivenIn({ from: lp, bptIn })).to.be.revertedWith('PAUSED');
       });
     });
 
@@ -531,6 +524,26 @@ export function itBehavesAsWeightedPool(
         await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
       });
     });
+
+    context('exit remove token (managed pools)', () => {
+      it('reverts', async () => {
+        const { tokens } = await pool.getTokens();
+
+        await expect(
+          pool.vault.exitPool({
+            poolAddress: pool.address,
+            poolId: pool.poolId,
+            recipient: other.address,
+            currentBalances: new Array(tokens.length).fill(fp(10)),
+            tokens,
+            lastChangeBlock: 0,
+            protocolFeePercentage: 0,
+            data: ManagedPoolEncoder.exitForRemoveToken(0),
+            from: other,
+          })
+        ).to.be.revertedWith('UNHANDLED_EXIT_KIND');
+      });
+    });
   });
 
   describe('onSwap', () => {
@@ -562,7 +575,7 @@ export function itBehavesAsWeightedPool(
 
       it('calculates amount out', async () => {
         const amount = fp(0.1);
-        const amountWithFees = amount.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
+        const amountWithFees = fpMul(amount, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
         const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: amountWithFees });
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: amountWithFees });
@@ -572,7 +585,7 @@ export function itBehavesAsWeightedPool(
 
       it('calculates max amount out', async () => {
         const maxAmountIn = await pool.getMaxIn(1);
-        const maxAmountInWithFees = maxAmountIn.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
+        const maxAmountInWithFees = fpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
         const expectedAmountOut = await pool.estimateGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
 
         const result = await pool.swapGivenIn({ in: 1, out: 0, amount: maxAmountInWithFees });
@@ -582,21 +595,19 @@ export function itBehavesAsWeightedPool(
 
       it('reverts if token in exceeds max in ratio', async () => {
         const maxAmountIn = await pool.getMaxIn(1);
-        const maxAmountInWithFees = maxAmountIn.mul(POOL_SWAP_FEE_PERCENTAGE.add(fp(1))).div(fp(1));
+        const maxAmountInWithFees = fpMul(maxAmountIn, POOL_SWAP_FEE_PERCENTAGE.add(fp(1)));
 
         const amount = maxAmountInWithFees.add(fp(1));
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_IN_RATIO');
       });
 
-      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
-        it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+      it('reverts if token in is not in the pool', async () => {
+        await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
-      }
+      it('reverts if token out is not in the pool', async () => {
+        await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
       it('reverts if paused', async () => {
         await pool.pause();
@@ -650,15 +661,13 @@ export function itBehavesAsWeightedPool(
         await expect(pool.swapGivenOut({ in: 1, out: 0, amount })).to.be.revertedWith('MAX_OUT_RATIO');
       });
 
-      if (poolType != WeightedPoolType.WEIGHTED_POOL_2TOKENS) {
-        it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
+      it('reverts if token in is not in the pool when given out', async () => {
+        await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
-        it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
-        });
-      }
+      it('reverts if token out is not in the pool', async () => {
+        await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1 })).to.be.revertedWith('INVALID_TOKEN');
+      });
 
       it('reverts if paused', async () => {
         await pool.pause();
@@ -677,7 +686,7 @@ export function itBehavesAsWeightedPool(
     });
 
     context('without balance changes', () => {
-      it('joins and exits do not accumulate fees', async () => {
+      it('no protocol fees on joins and exits', async () => {
         let joinResult = await pool.joinGivenIn({ from: lp, amountsIn: fp(100), protocolFeePercentage });
         expect(joinResult.dueProtocolFeeAmounts).to.be.zeros;
 
@@ -701,31 +710,20 @@ export function itBehavesAsWeightedPool(
       });
     });
 
-    context('with previous swap', () => {
-      let currentBalances: BigNumber[], expectedDueProtocolFeeAmounts: BigNumber[];
+    context('with balance changes', () => {
+      let currentBalances: BigNumber[];
 
-      sharedBeforeEach('simulate doubled initial balances ', async () => {
+      sharedBeforeEach('simulate doubled initial balances', async () => {
         // 4/3 of the initial balances
         currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
       });
 
-      sharedBeforeEach('compute expected due protocol fees', async () => {
-        const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
-        const protocolFeeAmount = await pool.estimateSwapFeeAmount(
-          paidTokenIndex,
-          protocolFeePercentage,
-          currentBalances
-        );
-        expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? protocolFeeAmount : n));
-      });
-
-      it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
+      it('no protocol fees on join exact tokens in for BPT out', async () => {
         const result = await pool.joinGivenIn({ from: lp, amountsIn: fp(1), currentBalances, protocolFeePercentage });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
+      it('no protocol fees on exit exact BPT in for one token out', async () => {
         const result = await pool.singleExitGivenIn({
           from: lp,
           bptIn: fp(0.5),
@@ -734,10 +732,10 @@ export function itBehavesAsWeightedPool(
           protocolFeePercentage,
         });
 
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
+      it('no protocol fees on exit exact BPT in for all tokens out', async () => {
         const result = await pool.multiExitGivenIn({
           from: lp,
           bptIn: fp(1),
@@ -745,10 +743,10 @@ export function itBehavesAsWeightedPool(
           protocolFeePercentage,
         });
 
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
 
-      it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
+      it('no protocol fees on exit BPT In for exact tokens out', async () => {
         const result = await pool.exitGivenOut({
           from: lp,
           amountsOut: fp(1),
@@ -756,69 +754,7 @@ export function itBehavesAsWeightedPool(
           protocolFeePercentage,
         });
 
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('does not charges fee on exit if paused', async () => {
-        await pool.pause();
-
-        const exitResult = await pool.multiExitGivenIn({ from: lp, bptIn: fp(0.5), protocolFeePercentage });
-        expect(exitResult.dueProtocolFeeAmounts).to.be.zeros;
-      });
-    });
-
-    context('with swap and exceeded min invariant ratio', () => {
-      let currentBalances: BigNumber[], expectedDueProtocolFeeAmounts: BigNumber[];
-
-      sharedBeforeEach('simulate doubled initial balances ', async () => {
-        // twice the initial balances
-        currentBalances = initialBalances.map((balance) => balance.mul(2));
-      });
-
-      sharedBeforeEach('compute expected due protocol fees', async () => {
-        const paidTokenIndex = pool.weights.indexOf(pool.maxWeight);
-        const feeAmount = await pool.estimateMaxSwapFeeAmount(paidTokenIndex, protocolFeePercentage, currentBalances);
-        expectedDueProtocolFeeAmounts = ZEROS.map((n, i) => (i === paidTokenIndex ? feeAmount : n));
-      });
-
-      it('pays swap protocol fees on join exact tokens in for BPT out', async () => {
-        const result = await pool.joinGivenIn({ from: lp, amountsIn: fp(1), currentBalances, protocolFeePercentage });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('pays swap protocol fees on exit exact BPT in for one token out', async () => {
-        const result = await pool.singleExitGivenIn({
-          from: lp,
-          bptIn: fp(0.5),
-          token: 0,
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('pays swap protocol fees on exit exact BPT in for all tokens out', async () => {
-        const result = await pool.multiExitGivenIn({
-          from: lp,
-          bptIn: fp(1),
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
-      });
-
-      it('pays swap protocol fees on exit BPT In for exact tokens out', async () => {
-        const result = await pool.exitGivenOut({
-          from: lp,
-          amountsOut: fp(1),
-          currentBalances,
-          protocolFeePercentage,
-        });
-
-        expect(result.dueProtocolFeeAmounts).to.be.equalWithError(expectedDueProtocolFeeAmounts, 0.1);
+        expect(result.dueProtocolFeeAmounts).to.be.zeros;
       });
     });
   });

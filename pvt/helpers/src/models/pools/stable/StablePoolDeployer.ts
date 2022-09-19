@@ -1,13 +1,12 @@
 import { Contract } from 'ethers';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
-import * as expectEvent from '../../../test/expectEvent';
-import { deploy, deployedAt } from '../../../contract';
+import { RawStablePoolDeployment, StablePoolDeployment } from './types';
 
 import Vault from '../../vault/Vault';
-import StablePool from './StablePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
-import { RawStablePoolDeployment, StablePoolDeployment } from './types';
+import StablePool from './StablePool';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -15,80 +14,51 @@ const SYMBOL = 'BPT';
 export default {
   async deploy(params: RawStablePoolDeployment): Promise<StablePool> {
     const deployment = TypesConverter.toStablePoolDeployment(params);
-    const vault = params.vault ?? (await VaultDeployer.deploy(TypesConverter.toRawVaultDeployment(params)));
-    const pool = await (params.fromFactory ? this._deployFromFactory : this._deployStandalone)(deployment, vault);
+    const vaultParams = { ...TypesConverter.toRawVaultDeployment(params), mocked: params.mockedVault ?? false };
+    const vault = params?.vault ?? (await VaultDeployer.deploy(vaultParams));
+    const pool = await this._deployStandalone(deployment, vault);
 
-    const { owner, tokens, amplificationParameter, swapFeePercentage, meta } = deployment;
     const poolId = await pool.getPoolId();
-    return new StablePool(pool, poolId, vault, tokens, amplificationParameter, swapFeePercentage, meta, owner);
+    const bptIndex = await pool.getBptIndex();
+    const { tokens, swapFeePercentage, amplificationParameter, owner } = deployment;
+
+    return new StablePool(pool, poolId, vault, tokens, bptIndex, swapFeePercentage, amplificationParameter, owner);
   },
 
   async _deployStandalone(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
     const {
       tokens,
-      amplificationParameter,
+      rateProviders,
+      tokenRateCacheDurations,
+      exemptFromYieldProtocolFeeFlags,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      oracleEnabled,
+      amplificationParameter,
       from,
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
-    const rateProviders = params.rateProviders || [];
-    const priceRateCacheDuration = params.priceRateCacheDuration || [];
 
-    return params.meta
-      ? deploy('v2-pool-stable/MockMetaStablePool', {
-          args: [
-            {
-              vault: vault.address,
-              name: NAME,
-              symbol: SYMBOL,
-              tokens: tokens.addresses,
-              rateProviders: rateProviders.map(TypesConverter.toAddress),
-              priceRateCacheDuration,
-              amplificationParameter,
-              swapFeePercentage,
-              pauseWindowDuration,
-              bufferPeriodDuration,
-              oracleEnabled,
-              owner,
-            },
-          ],
-          from,
-          libraries: { QueryProcessor: (await deploy('QueryProcessor')).address },
-        })
-      : deploy('v2-pool-stable/StablePool', {
-          args: [
-            vault.address,
-            NAME,
-            SYMBOL,
-            tokens.addresses,
-            amplificationParameter,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner,
-          ],
-          from,
-        });
-  },
-
-  async _deployFromFactory(params: StablePoolDeployment, vault: Vault): Promise<Contract> {
-    const { tokens, amplificationParameter, swapFeePercentage, owner, from } = params;
-
-    const factory = await deploy('v2-pool-stable/StablePoolFactory', { args: [vault.address], from });
-    const tx = await factory.create(
-      NAME,
-      SYMBOL,
-      tokens.addresses,
-      amplificationParameter,
-      swapFeePercentage,
-      TypesConverter.toAddress(owner)
-    );
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('v2-pool-stable/StablePool', event.args.pool);
+    return deploy('v2-pool-stable/MockComposableStablePool', {
+      args: [
+        {
+          vault: vault.address,
+          protocolFeeProvider: vault.getFeesProvider().address,
+          name: NAME,
+          symbol: SYMBOL,
+          tokens: tokens.addresses,
+          rateProviders: TypesConverter.toAddresses(rateProviders),
+          tokenRateCacheDurations,
+          exemptFromYieldProtocolFeeFlags,
+          amplificationParameter,
+          swapFeePercentage,
+          pauseWindowDuration,
+          bufferPeriodDuration,
+          owner,
+        },
+      ],
+      from,
+    });
   },
 };

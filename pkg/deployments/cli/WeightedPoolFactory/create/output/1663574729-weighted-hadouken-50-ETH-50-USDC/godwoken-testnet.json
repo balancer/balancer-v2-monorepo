@@ -1,0 +1,28 @@
+{
+  "transaction": {
+    "hash": "0x6acaea8c73324d2977bcb90d831f08c4ed69bfdc399052adf91465971b48e323",
+    "blockNumber": null
+  },
+  "data": {
+    "WeightedPoolFactory": {
+      "create": {
+        "input": {
+          "name": "ETH/USDC",
+          "symbol": "weighted-hadouken-50-ETH-50-USDC",
+          "tokens": [
+            "0x630AcC0A29E325ce022563Df69ba7E25Eeb1e184",
+            "0xf0d66bf1260D21fE90329A7A311e84979FEB004d"
+          ],
+          "weights": [
+            "500000000000000000",
+            "500000000000000000"
+          ],
+          "swapFeePercentage": "1500000000000000",
+          "delegate": "0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B"
+        },
+        "output": "0x4331c2A71c235AD20c8F5aA0F6C2c4f7724b39fc"
+      }
+    }
+  },
+  "timestamp": 1663574729647
+}

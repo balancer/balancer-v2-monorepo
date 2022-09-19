@@ -37,12 +37,12 @@ export function calculateApproxInvariant(
       .add(ampTimesTotal.mul(sum).mul(P_D))
       .div(decimal(totalCoins).add(1).mul(inv).add(ampTimesTotal.sub(1).mul(P_D)));
 
-    // Equality with the precision of 1
-    if (inv > prevInv) {
-      if (inv.sub(prevInv).lte(1)) {
+    // converge with precision of integer 1
+    if (inv.gt(prevInv)) {
+      if (fp(inv).sub(fp(prevInv)).lte(1)) {
         break;
       }
-    } else if (prevInv.sub(inv).lte(1)) {
+    } else if (fp(prevInv).sub(fp(inv)).lte(1)) {
       break;
     }
   }
@@ -132,10 +132,11 @@ export function calcBptOutGivenExactTokensIn(
   amplificationParameter: BigNumberish,
   fpAmountsIn: BigNumberish[],
   fpBptTotalSupply: BigNumberish,
+  fpCurrentInvariant: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
+  const currentInvariant = fromFp(fpCurrentInvariant);
 
   const balances = fpBalances.map(fromFp);
   const amountsIn = fpAmountsIn.map(fromFp);
@@ -187,11 +188,9 @@ export function calcTokenInGivenExactBptOut(
   amplificationParameter: BigNumberish,
   fpBptAmountOut: BigNumberish,
   fpBptTotalSupply: BigNumberish,
+  fpCurrentInvariant: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
-  // Get current invariant
-  const fpCurrentInvariant = bn(calculateInvariant(fpBalances, amplificationParameter));
-
   // Calculate new invariant
   const newInvariant = fromFp(bn(fpBptTotalSupply).add(fpBptAmountOut))
     .div(fromFp(fpBptTotalSupply))
@@ -209,6 +208,7 @@ export function calcTokenInGivenExactBptOut(
     newInvariant,
     tokenIndex
   );
+
   const amountInWithoutFee = newBalanceTokenIndex.sub(balances[tokenIndex]);
 
   // We can now compute how much extra balance is being deposited and used in virtual swaps, and charge swap fees
@@ -228,10 +228,11 @@ export function calcBptInGivenExactTokensOut(
   amplificationParameter: BigNumberish,
   fpAmountsOut: BigNumberish[],
   fpBptTotalSupply: BigNumberish,
+  fpCurrentInvariant: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumber {
   // Get current invariant
-  const currentInvariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
+  const currentInvariant = fromFp(fpCurrentInvariant);
 
   const balances = fpBalances.map(fromFp);
   const amountsOut = fpAmountsOut.map(fromFp);
@@ -255,7 +256,7 @@ export function calcBptInGivenExactTokensOut(
     // 'token out'. This results in slightly larger price impact.
 
     let amountOutWithFee;
-    if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
+    if (invariantRatioWithoutFees.gt(balanceRatiosWithoutFee[i])) {
       const invariantRatioComplement = invariantRatioWithoutFees.gt(1)
         ? decimal(0)
         : decimal(1).sub(invariantRatioWithoutFees);
@@ -284,11 +285,9 @@ export function calcTokenOutGivenExactBptIn(
   amplificationParameter: BigNumberish,
   fpBptAmountIn: BigNumberish,
   fpBptTotalSupply: BigNumberish,
+  fpCurrentInvariant: BigNumberish,
   fpSwapFeePercentage: BigNumberish
 ): BigNumberish {
-  // Get current invariant
-  const fpCurrentInvariant = bn(calculateInvariant(fpBalances, amplificationParameter));
-
   // Calculate new invariant
   const newInvariant = fromFp(bn(fpBptTotalSupply).sub(fpBptAmountIn))
     .div(fromFp(fpBptTotalSupply))
@@ -321,17 +320,6 @@ export function calcTokenOutGivenExactBptIn(
   return fp(tokenOut);
 }
 
-export function calcTokensOutGivenExactBptIn(
-  fpBalances: BigNumberish[],
-  fpBptAmountIn: BigNumberish,
-  fpBptTotalSupply: BigNumberish
-): BigNumber[] {
-  const balances = fpBalances.map(fromFp);
-  const bptRatio = fromFp(fpBptAmountIn).div(fromFp(fpBptTotalSupply));
-  const amountsOut = balances.map((balance) => balance.mul(bptRatio));
-  return amountsOut.map(fp);
-}
-
 export function calculateOneTokenSwapFeeAmount(
   fpBalances: BigNumberish[],
   amplificationParameter: BigNumberish,
@@ -354,8 +342,9 @@ export function calculateOneTokenSwapFeeAmount(
   return toFp(balances[tokenIndex].sub(finalBalanceFeeToken));
 }
 
+// The amp factor input must be a number: *not* multiplied by the precision
 export function getTokenBalanceGivenInvariantAndAllOtherBalances(
-  amp: BigNumber,
+  amp: number,
   fpBalances: BigNumber[],
   fpInvariant: BigNumber,
   tokenIndex: number
@@ -400,31 +389,4 @@ function _getTokenBalanceGivenInvariantAndAllOtherBalances(
     .mul(-1)
     .add(b.pow(2).sub(c.mul(4)).squareRoot())
     .div(2);
-}
-
-export function calculateSpotPrice(amplificationParameter: BigNumberish, fpBalances: BigNumberish[]): BigNumber {
-  const invariant = fromFp(calculateInvariant(fpBalances, amplificationParameter));
-  const [balanceX, balanceY] = fpBalances.map(fromFp);
-
-  const a = decimal(amplificationParameter).mul(2);
-  const b = invariant.sub(invariant.mul(a));
-  const axy2 = a.mul(2).mul(balanceX).mul(balanceY);
-
-  const derivativeX = axy2.add(a.mul(balanceY).mul(balanceY)).add(b.mul(balanceY));
-  const derivativeY = axy2.add(a.mul(balanceX).mul(balanceX)).add(b.mul(balanceX));
-
-  return fp(derivativeX.div(derivativeY));
-}
-
-export function calculateBptPrice(
-  amplificationParameter: BigNumberish,
-  fpBalances: BigNumberish[],
-  fpTotalSupply: BigNumberish
-): BigNumber {
-  const [balanceX, balanceY] = fpBalances.map(fromFp);
-  const spotPrice = fromFp(calculateSpotPrice(amplificationParameter, fpBalances));
-  const totalBalanceX = balanceX.add(spotPrice.mul(balanceY));
-
-  const bptPrice = totalBalanceX.div(fromFp(fpTotalSupply));
-  return fp(bptPrice);
 }

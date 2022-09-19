@@ -15,8 +15,9 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
+
 import "./BasePool.sol";
-import "@balancer-labs/v2-vault/contracts/interfaces/IMinimalSwapInfoPool.sol";
 
 /**
  * @dev Extension of `BasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
@@ -32,23 +33,20 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) public virtual override onlyVault(request.poolId) returns (uint256) {
+    ) public override onlyVault(request.poolId) returns (uint256) {
+        _beforeSwapJoinExit();
+
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
+        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            uint256 amountInMinusSwapFees = _subtractSwapFeeAmount(request.amount);
-
-            // Process the (upscaled!) swap fee.
-            uint256 swapFee = request.amount - amountInMinusSwapFees;
-            _processSwapFeeAmount(request.tokenIn, _upscale(swapFee, scalingFactorTokenIn));
-
-            request.amount = amountInMinusSwapFees;
+            request.amount = _subtractSwapFeeAmount(request.amount);
 
             // All token amounts are upscaled.
-            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
             uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
@@ -57,8 +55,6 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-            balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
             uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
@@ -67,13 +63,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            uint256 amountInPlusSwapFees = _addSwapFeeAmount(amountIn);
-
-            // Process the (upscaled!) swap fee.
-            uint256 swapFee = amountInPlusSwapFees - amountIn;
-            _processSwapFeeAmount(request.tokenIn, _upscale(swapFee, scalingFactorTokenIn));
-
-            return amountInPlusSwapFees;
+            return _addSwapFeeAmount(amountIn);
         }
     }
 
@@ -82,7 +72,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled. The swap fee has already
+     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled. The swap fee has already
      * been deducted from `swapRequest.amount`.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
@@ -99,7 +89,7 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
      *
      * Returns the amount of tokens that will be granted to the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn` and `balanceTokenOut` are upscaled.
+     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
      * and returning it to the Vault.
@@ -109,43 +99,4 @@ abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal virtual returns (uint256);
-
-    /**
-     * @dev Called whenever a swap fee is charged. Implementations should call their parents via super, to ensure all
-     * implementations in the inheritance tree are called.
-     *
-     * Callers must call one of the three `_processSwapFeeAmount` functions when swap fees are computed,
-     * and upscale `amount`.
-     */
-    function _processSwapFeeAmount(
-        uint256, /*index*/
-        uint256 /*amount*/
-    ) internal virtual {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    function _processSwapFeeAmount(IERC20 token, uint256 amount) internal {
-        _processSwapFeeAmount(_tokenAddressToIndex(token), amount);
-    }
-
-    function _processSwapFeeAmounts(uint256[] memory amounts) internal {
-        InputHelpers.ensureInputLengthMatch(amounts.length, _getTotalTokens());
-
-        for (uint256 i = 0; i < _getTotalTokens(); ++i) {
-            _processSwapFeeAmount(i, amounts[i]);
-        }
-    }
-
-    /**
-     * @dev Returns the index of `token` in the Pool's token array (i.e. the one `vault.getPoolTokens()` would return).
-     *
-     * A trivial (and incorrect!) implementation is already provided for Pools that don't override
-     * `_processSwapFeeAmount` and skip the entire feature. However, Pools that do override `_processSwapFeeAmount`
-     * *must* override this function with a meaningful implementation.
-     */
-    function _tokenAddressToIndex(
-        IERC20 /*token*/
-    ) internal view virtual returns (uint256) {
-        return 0;
-    }
 }

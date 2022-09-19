@@ -5,41 +5,49 @@ pragma solidity ^0.7.0;
 import "../helpers/SignaturesValidator.sol";
 
 contract SignaturesValidatorMock is SignaturesValidator {
-    bytes32 internal immutable AUTH_TYPE_HASH = keccak256(
-        "Authorization(bytes calldata,address sender,uint256 nonce,uint256 deadline)"
-    );
+    event Authenticated();
 
-    event Authenticated(address user, address sender);
-    event CalldataDecoded(bytes data, uint256 deadline, uint8 v, bytes32 r, bytes32 s);
+    bytes32 public constant MOCK_AUTHENTICATE_TYPEHASH = keccak256("Authenticate(uint256 amount,uint256 nonce)");
 
-    constructor() SignaturesValidator("Balancer V2 Vault") {
+    constructor() EIP712("EOA Signatures Validator Mock", "1") {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function decodeCalldata() external {
-        _decodeCalldata();
+    function getStructHash(uint256 amount, uint256 nonce) public pure returns (bytes32) {
+        return keccak256(abi.encode(MOCK_AUTHENTICATE_TYPEHASH, amount, nonce));
     }
 
-    function authenticateCall(address user) external {
-        _validateSignature(user, Errors.INVALID_SIGNATURE);
-        _decodeCalldata();
-        emit Authenticated(user, msg.sender);
+    function getDigest(uint256 amount, uint256 nonce) public view returns (bytes32) {
+        return _hashTypedDataV4(getStructHash(amount, nonce));
     }
 
-    function anotherFunction(address user) external {
-        // do nothing
+    function authenticatedCall(
+        address user,
+        uint256 amount,
+        bytes memory signature
+    ) external {
+        _ensureValidSignature(user, getStructHash(amount, getNextNonce(user)), signature, Errors.INVALID_SIGNATURE);
+        emit Authenticated();
+    }
+
+    function authenticatedCallWithDeadline(
+        address user,
+        uint256 amount,
+        bytes memory signature,
+        uint256 deadline
+    ) external {
+        // Note that the deadline should be included in a real signing scheme - we keep it out here for simplicity.
+        _ensureValidSignature(
+            user,
+            getStructHash(amount, getNextNonce(user)),
+            signature,
+            deadline,
+            Errors.INVALID_SIGNATURE
+        );
+        emit Authenticated();
     }
 
     function increaseNonce(address user) external {
         _nextNonce[user]++;
-    }
-
-    function _decodeCalldata() internal {
-        (uint8 v, bytes32 r, bytes32 s) = _signature();
-        emit CalldataDecoded(_calldata(), _deadline(), v, r, s);
-    }
-
-    function _typeHash() internal view override returns (bytes32) {
-        return AUTH_TYPE_HASH;
     }
 }
