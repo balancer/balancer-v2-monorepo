@@ -212,3 +212,10 @@ export type ManagedPoolParams = {
   managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
 };
+
+export type CircuitBreakerParams = {
+  referenceBptPrice: BigNumber;
+  currentWeightFactor: BigNumber;
+  lowerBoundPercentage: BigNumber;
+  upperBoundPercentage: BigNumber;
+};
