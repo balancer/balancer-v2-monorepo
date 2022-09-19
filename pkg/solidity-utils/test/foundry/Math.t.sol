@@ -53,15 +53,40 @@ contract MathTest is Test {
         assertEq(min, referenceMin);
     }
 
+    function testDivDown(uint256 a, uint256 b) external {
+        if (b == 0) {
+            vm.expectRevert("BAL#004"); // ZERO_DIVISION
+            Math.divDown(a, b);
+        } else {
+            uint256 divDown = Math.divDown(a, b);
+
+            assertLe(divDown, a / b);
+            if (divDown < type(uint256).max) {
+                assertGe(divDown + 1, a / b);
+            }
+        }
+    }
+
     function testDivUp(uint256 a, uint256 b) external {
         if (b == 0) {
             vm.expectRevert("BAL#004"); // ZERO_DIVISION
             Math.divUp(a, b);
         } else {
-            uint256 referenceDivUp = a == 0 ? 0 : 1 + (a - 1) / b;
             uint256 divUp = Math.divUp(a, b);
 
-            assertEq(divUp, referenceDivUp);
+            assertGe(divUp, a / b);
+            if (divUp > 0) {
+                assertLe(divUp - 1, a / b);
+            }
         }
+    }
+
+    function testDivUpEquivalence(uint256 a, uint256 b) external {
+        vm.assume(b > 0);
+
+        uint256 referenceDivUp = a == 0 ? 0 : 1 + (a - 1) / b;
+        uint256 divUp = Math.divUp(a, b);
+
+        assertEq(divUp, referenceDivUp);
     }
 }
