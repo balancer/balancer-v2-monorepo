@@ -48,7 +48,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 deadline,
         uint256 value,
         uint256 outputReference
-    ) external payable returns (uint256) {
+    ) external payable {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         if (_isChainedReference(singleSwap.amount)) {
@@ -60,8 +60,6 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, result);
         }
-
-        return result;
     }
 
     function batchSwap(
@@ -73,7 +71,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
         uint256 deadline,
         uint256 value,
         OutputReference[] calldata outputReferences
-    ) external payable returns (int256[] memory) {
+    ) external payable {
         require(funds.sender == msg.sender || funds.sender == address(this), "Incorrect sender");
 
         for (uint256 i = 0; i < swaps.length; ++i) {
@@ -95,8 +93,6 @@ abstract contract VaultActions is IBaseRelayerLibrary {
             // parameter.
             _setChainedReferenceValue(outputReferences[i].key, Math.abs(results[outputReferences[i].index]));
         }
-
-        return results;
     }
 
     function manageUserBalance(IVault.UserBalanceOp[] calldata ops, uint256 value) external payable {

@@ -14,7 +14,7 @@ import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { defaultAbiCoder } from '@ethersproject/abi/lib/abi-coder';
 
-describeForkTest('BatchRelayerLibrary', 'mainnet', 15150000, function () {
+describeForkTest('BatchRelayerLibrary', 'mainnet', 15485000, function () {
   let task: Task;
 
   let relayer: Contract, library: Contract;
@@ -40,7 +40,7 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15150000, function () {
   }
 
   before('run task', async () => {
-    task = new Task('20220720-batch-relayer-v3', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20220916-batch-relayer-v4', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     library = await task.deployedInstance('BatchRelayerLibrary');
     relayer = await task.instanceAt('BalancerRelayer', await library.getEntrypoint());

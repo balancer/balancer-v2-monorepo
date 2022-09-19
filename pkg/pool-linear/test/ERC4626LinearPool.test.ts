@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -67,7 +67,7 @@ describe('ERC4626LinearPool', function () {
     it('returns expected value for 1:1 exchange', async () => {
       // Exchange rate is 1:1, scaled to 1e18 regardless of token decimals
       await wrappedYieldTokenInstance.setRate(bn(1e18));
-      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(FP_ONE);
 
       // Deposit one asset and check decimals on assets/shares
       await wrappedYieldTokenInstance.deposit(bn(1e6), trader.address);

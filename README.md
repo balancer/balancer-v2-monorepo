@@ -29,6 +29,14 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v2-liquidity-mining`](./pkg/liquidity-mining): contracts that compose the liquidity mining (veBAL) system.
 - [`v2-governance-scripts`](./pkg/governance-scripts): contracts that execute complex governance actions.
 
+## Clone
+
+This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
+
+```bash
+$ git clone --recurse-submodules https://github.com/balancer-labs/balancer-v2-monorepo.git
+```
+
 ## Build and Test
 
 Before any tests can be run, the repository needs to be prepared:
@@ -54,6 +62,22 @@ $ yarn test
 ```
 
 You can see a sample report of a test run [here](./audits/test-report.md).
+
+### Foundry (Forge) tests
+
+To run Forge tests, first [install Foundry](https://book.getfoundry.sh/getting-started/installation). The installation steps below apply to Linux or MacOS. Follow the link for additional options.
+
+```bash
+$ curl -L https://foundry.paradigm.xyz | bash
+$ source ~/.bashrc # or open a new terminal
+$ foundryup
+```
+
+Then, to run tests in a single package, run:
+```bash
+$ cd pkg/<package> # e.g. cd pkg/v2-vault
+$ yarn test-fuzz
+```
 
 ## Security
 

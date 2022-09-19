@@ -13,11 +13,23 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
-library ArrayHelpers {
-    function arrayFill(uint256 a, uint256 b) internal pure returns (uint256[] memory result) {
-        result = new uint256[](2);
-        result[0] = a;
-        result[1] = b;
+import "../managed/ManagedPool.sol";
+
+contract MockManagedPool is ManagedPool {
+    constructor(
+        NewPoolParams memory params,
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        address owner,
+        uint256 pauseWindowDuration,
+        uint256 bufferPeriodDuration
+    ) ManagedPool(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function isOwnerOnlyAction(bytes32 actionId) external view returns (bool) {
+        return _isOwnerOnlyAction(actionId);
     }
 }
