@@ -1,5 +1,4 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { defaultAbiCoder } from '@ethersproject/abi';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
@@ -18,8 +17,9 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import PrimaryPoolDeployer from './PrimaryIssuePoolDeployer';
 import { deployedAt } from '../../../contract';
+import BasePool from '../base/BasePool';
 
-export default class PrimaryPool {
+export default class PrimaryPool extends BasePool{
   instance: Contract;
   poolId: string;
   securityToken: Token;
@@ -31,7 +31,7 @@ export default class PrimaryPool {
   swapFeePercentage: BigNumberish;
   issueCutoffTime: BigNumberish;
   vault: Vault;
-  owner?: SignerWithAddress;
+  //owner?: SignerWithAddress;
 
   static async create(params: RawPrimaryPoolDeployment, mockedVault: boolean): Promise<PrimaryPool> {
     return PrimaryPoolDeployer.deploy(params, mockedVault);
@@ -81,6 +81,7 @@ export default class PrimaryPool {
     issueCutoffTime: BigNumberish,
     owner?: SignerWithAddress
   ) {
+    super(instance, poolId, vault, new TokenList([securityToken, currencyToken, bptToken]).sort(), swapFeePercentage, owner);
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
@@ -92,14 +93,14 @@ export default class PrimaryPool {
     this.maxSecurityOffered = maxSecurityOffered;
     this.swapFeePercentage = swapFeePercentage;
     this.issueCutoffTime = issueCutoffTime;
-    this.owner = owner;
+    //this.owner = owner;
   }
 
   get address(): string {
     return this.instance.address;
   }
 
-  get tokens(): TokenList {
+  get getPrimaryTokens(): TokenList {
     return new TokenList([this.securityToken, this.currencyToken, this.bptToken]).sort();
   }
 
@@ -124,7 +125,6 @@ export default class PrimaryPool {
 
   getTokenIndex(token: Token): number {
     const addresses = this.tokens.addresses;
-    //return addresses[0] == token.address ? 0 : 1;
     return addresses[0] == token.address ? 0 : addresses[1] == token.address ? 1 : 2;
   }
 
@@ -134,10 +134,6 @@ export default class PrimaryPool {
 
   async symbol(): Promise<string> {
     return this.instance.symbol();
-  }
-
-  async decimals(): Promise<number> {
-    return this.instance.decimals();
   }
 
   async totalSupply(): Promise<BigNumber> {

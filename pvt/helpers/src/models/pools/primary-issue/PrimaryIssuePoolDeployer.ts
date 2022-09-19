@@ -61,10 +61,10 @@ export default {
       minimumPrice,
       basePrice,
       maxSecurityOffered,
-      swapFeePercentage,
-      issueCutoffTime,
+      swapFeePercentage,      
       pauseWindowDuration,
       bufferPeriodDuration,
+      issueCutoffTime,
       from,
     } = params;
 

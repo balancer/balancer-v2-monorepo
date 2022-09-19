@@ -7,6 +7,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
+import "@balancer-labs/v2-interfaces/contracts/pool-primary/IPrimaryPool.sol";
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -19,7 +21,7 @@ import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
 import "./interfaces/IMarketMaker.sol";
 
-contract PrimaryIssuePool is BasePool, IGeneralPool {
+contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
     using PrimaryPoolUserData for bytes;
     using BokkyPooBahsDateTimeLibrary for uint256;
@@ -76,7 +78,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
             IVault.PoolSpecialization.GENERAL,
             ERC20(security).name(),
             ERC20(security).symbol(),
-            _sortTokens(IERC20(security), IERC20(currency), IERC20(this)),
+            _sortTokens(IERC20(security), IERC20(currency), this),
             new address[](_TOTAL_TOKENS),
             issueFeePercentage,
             pauseWindowDuration,
@@ -92,7 +94,7 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         (uint256 securityIndex, uint256 currencyIndex, uint256 bptIndex) = _getSortedTokenIndexes(
             IERC20(security),
             IERC20(currency),
-            IERC20(this)
+            this
         );
         _securityIndex = securityIndex;
         _currencyIndex = currencyIndex;
@@ -117,28 +119,40 @@ contract PrimaryIssuePool is BasePool, IGeneralPool {
         _balancerManager = owner;     
     }
 
-    function getSecurity() external view returns (address) {
-        return address(_security);
+    function getSecurity() external view override returns (IERC20) {
+        return _security;
     }
 
-    function getCurrency() external view returns (address) {
-        return address(_currency);
+    function getCurrency() external view override returns (IERC20) {
+        return _currency;
     }
 
-    function getMinimumPrice() external view returns(uint256) {
+    function getMinimumPrice() external view override returns(uint256) {
         return _minPrice;
     }
 
-    function getMaximumPrice() external view returns(uint256) {
+    function getMaximumPrice() external view override returns(uint256) {
         return _maxPrice;
     }
 
-    function getSecurityOffered() external view returns(uint256) {
+    function getSecurityOffered() external view override returns(uint256) {
         return _MAX_TOKEN_BALANCE;
     }
 
-    function getIssueCutoffTime() external view returns(uint256) {
+    function getIssueCutoffTime() external view override returns(uint256) {
         return _cutoffTime;
+    }
+
+    function getSecurityIndex() external view override returns (uint256) {
+        return _securityIndex;
+    }
+
+    function getCurrencyIndex() external view override returns (uint256) {
+        return _currencyIndex;
+    }
+
+    function getBptIndex() public view override returns (uint256) {
+        return _bptIndex;
     }
 
     function initialize() external {

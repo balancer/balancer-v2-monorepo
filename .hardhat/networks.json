@@ -1,13 +1,13 @@
 {
     "networks": {
-      "ropsten": {
+      "goerli": {
         "gasMultiplier": 2,
         "accounts": ["0xE06cee4f6BDFe8B0C1D77a00e9AF83B1B266f729"],
-        "url": "wss://eth-ropsten.alchemyapi.io/v2/nWinponDmrq-aZ0m9CmUVEQfqi9Z9XgA"
+        "url": "wss://goerli.infura.io/ws/v3/8151436a27dd4cdab264fa3ebf60a090"
       },
       "mainnet": {
         "accounts": ["0x12..56","0xab..cd"],
-        "url": "https://mainnet.infura.io/v3/<API_KEY>"
+        "url": "wss://mainnet.infura.io/v3/8151436a27dd4cdab264fa3ebf60a090"
       }
     },
     "defaultConfig": {

@@ -18,8 +18,9 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import SecondaryPoolDeployer from './SecondaryIssuePoolDeployer';
 import { deployedAt } from '../../../contract';
+import BasePool from '../base/BasePool';
 
-export default class SecondaryPool {
+export default class SecondaryPool extends BasePool{
   instance: Contract;
   poolId: string;
   securityToken: Token;
@@ -69,6 +70,7 @@ export default class SecondaryPool {
     swapFeePercentage: BigNumberish,
     owner?: SignerWithAddress
   ) {
+    super(instance, poolId, vault, new TokenList([securityToken, currencyToken, bptToken]).sort(), swapFeePercentage, owner);
     this.instance = instance;
     this.poolId = poolId;
     this.vault = vault;
@@ -84,7 +86,7 @@ export default class SecondaryPool {
     return this.instance.address;
   }
 
-  get tokens(): TokenList {
+  get getSecondaryTokens(): TokenList {
     return new TokenList([this.securityToken, this.currencyToken, this.bptToken]).sort();
   }
 
@@ -118,10 +120,6 @@ export default class SecondaryPool {
 
   async symbol(): Promise<string> {
     return this.instance.symbol();
-  }
-
-  async decimals(): Promise<number> {
-    return this.instance.decimals();
   }
 
   async totalSupply(): Promise<BigNumber> {

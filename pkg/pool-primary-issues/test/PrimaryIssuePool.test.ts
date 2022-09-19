@@ -60,6 +60,7 @@ describe('PrimaryPool', function () {
 
   describe('creation', () => {
     context('when the creation succeeds', () => {
+
       sharedBeforeEach('deploy pool', async () => {
         await deployPool({ securityToken, currencyToken }, false);
       });
@@ -74,7 +75,7 @@ describe('PrimaryPool', function () {
         expect(specialization).to.equal(PoolSpecialization.GeneralPool);
       });
 
-      it('registers tokens in the vault', async () => {
+      it('registers tokens and bpt in the vault', async () => {
         const { tokens, balances } = await pool.getTokens();
 
         expect(tokens).to.have.members(pool.tokens.addresses);
@@ -120,7 +121,7 @@ describe('PrimaryPool', function () {
       await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime}, false);
     });
     
-    it('initialize pool', async () => {
+    it('adds bpt to the vault', async () => {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
 
@@ -144,11 +145,11 @@ describe('PrimaryPool', function () {
 
     it('cannot be initialized twice', async () => {
       await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
+      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_PRIMARY_POOL');
     });
     
   });
-  /*
+  
   describe('swaps', () => {
     let currentBalances: BigNumber[];
     let params: math.Params;
@@ -156,6 +157,8 @@ describe('PrimaryPool', function () {
     sharedBeforeEach('deploy and initialize pool', async () => {
 
       await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, true);
+      //await pool.instance.setTotalSupply(MAX_UINT112);
+
       currentBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)));
 
       params = {
@@ -173,7 +176,7 @@ describe('PrimaryPool', function () {
         amount = fp(100);
         bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
       });
-
+      
       it('calculate bpt out', async () => {
         const result = await pool.swapGivenIn({
           in: pool.securityIndex,
@@ -181,7 +184,7 @@ describe('PrimaryPool', function () {
           amount: amount,
           balances: currentBalances,
         });
-
+        /*
         const expected = math.calcBptOutPerSecurityIn(
           amount,
           currentBalances[pool.securityIndex],
@@ -193,9 +196,9 @@ describe('PrimaryPool', function () {
         expect(result).to.be.equals(bn(expected));
 
         currentBalances[pool.securityIndex] = currentBalances[pool.securityIndex].add(amount);
-        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
+        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);*/
       });
-
+      /*
       context('when paused', () => {
         sharedBeforeEach('pause pool', async () => {
           await pool.pause();
@@ -211,9 +214,9 @@ describe('PrimaryPool', function () {
             })
           ).to.be.revertedWith('PAUSED');
         });
-      });
+      });*/
     });
-
+    /*
     context('given security out', () => {
       let amount: BigNumber;
 
@@ -300,7 +303,7 @@ describe('PrimaryPool', function () {
           ).to.be.revertedWith('PAUSED');
         });
       });
-    });
+    });*/
   });
-  */
+  
 });

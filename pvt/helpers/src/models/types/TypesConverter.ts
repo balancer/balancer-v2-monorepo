@@ -138,7 +138,7 @@ export default {
       bufferPeriodDuration,
     } = params;
 
-    if (!minimumPrice) minimumPrice = bn(0);
+    if (!minimumPrice) minimumPrice = bn(10);
     if (!basePrice) basePrice = bn(100);
     if (!maxSecurityOffered) maxSecurityOffered = bn(1000);
     if (!swapFeePercentage) swapFeePercentage = bn(1e12);
