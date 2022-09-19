@@ -116,8 +116,6 @@ abstract contract BasePool is
         return getVault().getAuthorizer();
     }
 
-    function _getTotalTokens() internal view virtual returns (uint256);
-
     /**
      * @dev Returns the minimum BPT supply. This amount is minted to the zero address during initialization, effectively
      * locking it.
@@ -326,8 +324,6 @@ abstract contract BasePool is
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256 bptOut, uint256[] memory amountsIn) {
-        InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
-
         _queryAction(
             poolId,
             sender,
@@ -364,8 +360,6 @@ abstract contract BasePool is
         uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) external override returns (uint256 bptIn, uint256[] memory amountsOut) {
-        InputHelpers.ensureInputLengthMatch(balances.length, _getTotalTokens());
-
         _queryAction(
             poolId,
             sender,
