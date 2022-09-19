@@ -29,7 +29,6 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/ValueCompression.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -47,8 +46,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
-    using WordCodec for bytes32;
-    using ValueCompression for uint256;
     using WeightedPoolUserData for bytes;
 
     // State variables
