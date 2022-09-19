@@ -66,26 +66,22 @@ library CircuitBreakerLib {
      * @dev If a bound value is zero, it means there is no circuit breaker in that direction for the given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      */
-    function getCircuitBreakerFields(bytes32 circuitBreakerState)
-        internal
-        pure
-        returns (CircuitBreakerParams memory)
-    {
+    function getCircuitBreakerFields(bytes32 circuitBreakerState) internal pure returns (CircuitBreakerParams memory) {
         return
             CircuitBreakerParams({
-                referenceBptPrice: circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH),
-                referenceWeightFactor: circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH).decompress(
-                    _REFERENCE_WEIGHT_FACTOR_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
+                referenceBptPrice: circuitBreakerState.decodeUint(
+                    _REFERENCE_BPT_PRICE_OFFSET,
+                    _REFERENCE_BPT_PRICE_WIDTH
                 ),
-                lowerBoundPercentage: circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
-                    _BOUND_PERCENTAGE_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                ),
-                upperBoundPercentage: circuitBreakerState.decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
-                    _BOUND_PERCENTAGE_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                )
+                referenceWeightFactor: circuitBreakerState
+                    .decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH)
+                    .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE),
+                lowerBoundPercentage: circuitBreakerState
+                    .decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
+                    .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
+                upperBoundPercentage: circuitBreakerState
+                    .decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
+                    .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE)
             });
     }
 
@@ -112,7 +108,10 @@ library CircuitBreakerLib {
         returns (uint256, uint256)
     {
         // Retrieve the reference bptPrice and weight factors, stored at the time the circuit breaker was set.
-        uint256 referenceBptPrice = circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH);
+        uint256 referenceBptPrice = circuitBreakerState.decodeUint(
+            _REFERENCE_BPT_PRICE_OFFSET,
+            _REFERENCE_BPT_PRICE_WIDTH
+        );
         uint256 referenceWeightFactor = circuitBreakerState
             .decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH)
             .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE);
@@ -122,14 +121,16 @@ library CircuitBreakerLib {
             // boundary expressions.
             return (
                 referenceBptPrice.mulDown(
-                    circuitBreakerState
-                        .decodeUint(_REFERENCE_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
-                        .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE)
+                    circuitBreakerState.decodeUint(_REFERENCE_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
+                        _BOUND_RATIO_WIDTH,
+                        _MAX_BOUND_PERCENTAGE
+                    )
                 ),
                 referenceBptPrice.mulUp(
-                    circuitBreakerState
-                        .decodeUint(_REFERENCE_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
-                        .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE)
+                    circuitBreakerState.decodeUint(_REFERENCE_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
+                        _BOUND_RATIO_WIDTH,
+                        _MAX_BOUND_PERCENTAGE
+                    )
                 )
             );
         } else {
@@ -182,7 +183,8 @@ library CircuitBreakerLib {
             Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
         );
 
-        // Set the basic parameters, and chain to `_setCircuitBreakerState` for the rest.
+        // Set the reference parameters: BPT price of the token, and the weight factor for the token:
+        // _denormWeightSum - weight.
         circuitBreakerState = circuitBreakerState
             .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
             .insertUint(
@@ -191,16 +193,7 @@ library CircuitBreakerLib {
             _REFERENCE_WEIGHT_FACTOR_WIDTH
         );
 
-        return _setCircuitBreakerState(circuitBreakerState, params);
-    }
-
-    // This function is only needed to address stack-too-deep issues
-    function _setCircuitBreakerState(bytes32 circuitBreakerState, CircuitBreakerParams memory params)
-        private
-        pure
-        returns (bytes32)
-    {
-        // Add the raw percentage boundaries
+        // Add the lower nad upper percentage bounds.
         circuitBreakerState = circuitBreakerState
             .insertUint(
             params.lowerBoundPercentage.compress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
@@ -213,13 +206,17 @@ library CircuitBreakerLib {
             _BOUND_PERCENTAGE_WIDTH
         );
 
-        // Precompute and store the conversion ratios; if the weights aren't changing, we can use these directly.
+        // Precompute and store the conversion ratios, used to convert percentage bounds to BPT prices.
+        // If the weight factor has not changed since the breaker was set (i.e., if there is no ongoing weight
+        // update, and no tokens have been added or removed), we can use the reference values directly, and avoid
+        // a heavy computation.
         (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
             params.lowerBoundPercentage,
             params.upperBoundPercentage,
             params.referenceWeightFactor
         );
 
+        // Finally, insert these computed reference ratios, and return the complete set of fields.
         return
             circuitBreakerState
                 .insertUint(
