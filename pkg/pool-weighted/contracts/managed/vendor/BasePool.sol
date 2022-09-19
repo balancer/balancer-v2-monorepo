@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
