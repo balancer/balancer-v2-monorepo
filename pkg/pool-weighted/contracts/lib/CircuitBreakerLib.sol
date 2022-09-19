@@ -44,12 +44,14 @@ library CircuitBreakerLib {
     // [ UB ratio | LB ratio | upper bound | lower bound | weight factor | ref price |
     // |MSB                                                                       LSB|
     uint256 private constant _REFERENCE_BPT_PRICE_OFFSET = 0;
-    uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_OFFSET = _REFERENCE_BPT_PRICE_OFFSET + _REFERENCE_BPT_PRICE_WIDTH;
-    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REFERENCE_WEIGHT_COMPLEMENT_OFFSET + _REFERENCE_WEIGHT_COMPLEMENT_WIDTH;
-    uint256 private constant _UPPER_BOUND_PCT_OFFSET = _LOWER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
+    uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_OFFSET = _REFERENCE_BPT_PRICE_OFFSET +
+        _REFERENCE_BPT_PRICE_WIDTH;
     uint256 private constant _REFERENCE_LOWER_BOUND_RATIO_OFFSET = _UPPER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
     uint256 private constant _REFERENCE_UPPER_BOUND_RATIO_OFFSET = _REFERENCE_LOWER_BOUND_RATIO_OFFSET +
         _BOUND_RATIO_WIDTH;
+    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REFERENCE_WEIGHT_COMPLEMENT_OFFSET +
+        _REFERENCE_WEIGHT_COMPLEMENT_WIDTH;
+    uint256 private constant _UPPER_BOUND_PCT_OFFSET = _LOWER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
 
     uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_WIDTH = 64;
     uint256 private constant _REFERENCE_BPT_PRICE_WIDTH = 112;
