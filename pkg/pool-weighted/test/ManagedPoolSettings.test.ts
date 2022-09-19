@@ -1921,38 +1921,6 @@ describe('ManagedPool', function () {
         });
       });
 
-      context('on pool joins', () => {
-        context('on pool initialization', () => {
-          itCollectsNoAUMFees(async () => {
-            const { receipt } = await pool.init({ from: other, recipient: other, initialBalances });
-            return receipt;
-          });
-        });
-
-        context('after pool initialization', () => {
-          sharedBeforeEach('initialize pool', async () => {
-            await pool.init({ from: other, initialBalances });
-          });
-
-          itCollectsAUMFeesCorrectly(async () => {
-            const amountsIn = initialBalances.map((x) => x.div(2));
-            const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
-            return receipt;
-          });
-        });
-      });
-
-      context('on pool exits', () => {
-        sharedBeforeEach('initialize pool', async () => {
-          await pool.init({ from: other, initialBalances });
-        });
-
-        itCollectsAUMFeesCorrectly(async () => {
-          const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
-          return receipt;
-        });
-      });
-
       context('on token removal', () => {
         context('after pool initialization', () => {
           sharedBeforeEach('initialize pool', async () => {
