@@ -74,7 +74,8 @@ library CircuitBreakerLib {
             CircuitBreakerParams({
                 referenceBptPrice: circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH),
                 referenceWeightFactor: circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH).decompress(
-                    _REFERENCE_WEIGHT_FACTOR_WIDTH
+                    _REFERENCE_WEIGHT_FACTOR_WIDTH,
+                    _MAX_BOUND_PERCENTAGE
                 ),
                 lowerBoundPercentage: circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
                     _BOUND_PERCENTAGE_WIDTH,
@@ -113,7 +114,7 @@ library CircuitBreakerLib {
         uint256 referenceBptPrice = circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH);
         uint256 referenceWeightFactor = circuitBreakerState
             .decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH)
-            .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH);
+            .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE);
 
         if (referenceWeightFactor == currentWeightFactor) {
             // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
@@ -184,7 +185,7 @@ library CircuitBreakerLib {
         circuitBreakerState = circuitBreakerState
             .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
             .insertUint(
-            params.referenceWeightFactor.compress(_REFERENCE_WEIGHT_FACTOR_WIDTH),
+            params.referenceWeightFactor.compress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE),
             _REFERENCE_WEIGHT_FACTOR_OFFSET,
             _REFERENCE_WEIGHT_FACTOR_WIDTH
         );
