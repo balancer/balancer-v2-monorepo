@@ -57,8 +57,9 @@ library CircuitBreakerLib {
     uint256 private constant _BOUND_RATIO_WIDTH = 24;
 
     // We compress the ratios into 16 bits from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
-    // For consistency, use the same maximum uncompressed value, even though we the lower bound is less than 1.
-    uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // FP 10
+    // For consistency, use the same max value to compress the lower bound as well, even though we expect it to be
+    // less than 1.
+    uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18 decimal fixed point
 
     /**
      * @notice Returns the reference BPT price, reference weight factor, and upper and lower bounds for a given token.
