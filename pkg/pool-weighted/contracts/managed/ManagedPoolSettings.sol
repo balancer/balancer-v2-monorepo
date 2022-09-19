@@ -153,8 +153,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
-        _totalTokensCache = totalTokens;
-
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
 
@@ -792,7 +790,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Finally, we store the new token's weight and scaling factor.
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
-        _totalTokensCache += 1;
 
         PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
 
@@ -916,8 +913,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         delete _tokenState[token];
         _denormWeightSum -= tokenNormalizedWeight.mulUp(_denormWeightSum);
 
-        _totalTokensCache = tokens.length - 1;
-
         if (burnAmount > 0) {
             _burnPoolTokens(msg.sender, burnAmount);
         }
@@ -994,10 +989,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     // Misc
-
-    function _getTotalTokens() internal view override returns (uint256) {
-        return _totalTokensCache;
-    }
 
     /**
      * @dev Enumerates all ownerOnly functions in Managed Pool.
