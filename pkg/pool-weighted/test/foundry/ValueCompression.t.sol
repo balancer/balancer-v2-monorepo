@@ -61,7 +61,7 @@ contract ValueCompressionTest is Test {
     }
 
     function testCompression(
-        uint64 value,
+        uint256 value,
         uint8 bitLength,
         uint256 maxUncompressedValue
     ) external {
