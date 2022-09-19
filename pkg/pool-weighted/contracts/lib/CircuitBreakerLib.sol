@@ -238,7 +238,10 @@ library CircuitBreakerLib {
         uint256 upperBoundPercentage,
         uint256 currentWeightFactor
     ) private pure returns (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) {
-        lowerBoundRatioCache = LogExpMath.pow(lowerBoundPercentage, currentWeightFactor);
-        upperBoundRatioCache = LogExpMath.pow(upperBoundPercentage, currentWeightFactor);
+        // Rounding down for the lower bound, and up for the upper bound will maximize the
+        // "operating range" - the BPT price range that will not trigger the circuit breaker -
+        // of the pool for traders.
+        lowerBoundRatioCache = LogExpMath.powDown(lowerBoundPercentage, currentWeightFactor);
+        upperBoundRatioCache = LogExpMath.powUp(upperBoundPercentage, currentWeightFactor);
     }
 }
