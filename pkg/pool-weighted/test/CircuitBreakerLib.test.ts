@@ -7,7 +7,7 @@ import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { CircuitBreakerParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
-describe('ManagedPoolCircuitBreakerLib', () => {
+describe('CircuitBreakerLib', () => {
   const BPT_PRICE = fp(0.4212);
   const WEIGHT_FACTOR = fp(0.2); // 1 - 0.8
   const MAX_BOUND = fp(10);
@@ -18,7 +18,7 @@ describe('ManagedPoolCircuitBreakerLib', () => {
   let lib: Contract;
 
   before('deploy lib', async () => {
-    lib = await deploy('MockManagedPoolCircuitBreakerLib');
+    lib = await deploy('MockCircuitBreakerLib');
   });
 
   async function assertCircuitBreakerState(

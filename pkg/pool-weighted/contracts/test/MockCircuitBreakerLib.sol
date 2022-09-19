@@ -15,15 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../managed/ManagedPoolCircuitBreakerLib.sol";
+import "../lib/CircuitBreakerLib.sol";
 
-contract MockManagedPoolCircuitBreakerLib {
+contract MockCircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         external
         pure
         returns (uint256, uint256, uint256, uint256)
     {
-            return ManagedPoolCircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
+            return CircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
     }
 
     function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightFactor)
@@ -31,13 +31,13 @@ contract MockManagedPoolCircuitBreakerLib {
         pure
         returns (uint256, uint256)
     {
-        return ManagedPoolCircuitBreakerLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeightFactor);
+        return CircuitBreakerLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeightFactor);
     }
 
     function setCircuitBreakerFields(
         bytes32 circuitBreakerState,
-        ManagedPoolCircuitBreakerLib.CircuitBreakerParams memory params
+        CircuitBreakerLib.CircuitBreakerParams memory params
     ) external pure returns (bytes32) {
-        return ManagedPoolCircuitBreakerLib.setCircuitBreakerFields(circuitBreakerState, params);
+        return CircuitBreakerLib.setCircuitBreakerFields(circuitBreakerState, params);
     }
 }

@@ -70,7 +70,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Store the circuit breaker configuration for each token.
-    // See `ManagedPoolCircuitBreakerLib.sol` for data layout.
+    // See `CircuitBreakerLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _circuitBreakerState;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool

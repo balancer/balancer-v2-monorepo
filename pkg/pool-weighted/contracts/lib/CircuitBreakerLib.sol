@@ -27,7 +27,7 @@ import "../lib/ValueCompression.sol";
  * drops more than 20% (relative to other tokens). An upper bound ratio of 2.0 means it will trip
  * if the price more than doubles.
  */
-library ManagedPoolCircuitBreakerLib {
+library CircuitBreakerLib {
     using ValueCompression for uint256;
     using FixedPoint for uint256;
     using WordCodec for bytes32;
