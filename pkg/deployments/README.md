@@ -83,7 +83,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Gauge Registrant V2, supporting new networks            | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
 | Distribution Scheduler for reward tokens on gauges      | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                    | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
-| Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
 | Swap, join and exit simulations (queries)               | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
 | Protocol fee percentages provider                       | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 | Child Chain Gauge Reward Helper                         | [`20220812-child-chain-reward-helper`](./tasks/20220812-child-chain-reward-helper)                   |
@@ -94,6 +93,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
+| Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
 
 ## Scripts
 
@@ -117,7 +117,7 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 
 | Description                                      | Task ID                                                                                             |
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Weighted Pools of up to 8 tokens                 | [`20210418-weighted-pool`](./deprecated/tasks/20210418-weighted-pool)                                          |
+| Weighted Pools of up to 8 tokens                 | [`20210418-weighted-pool`](./deprecated/tasks/20210418-weighted-pool)                               |
 | Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/deprecated/20210624-stable-pool)                                   |
 | Liquidity Bootstrapping Pools of up to 4 tokens  | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
 | Meta Stable Pools with 2 tokens and price oracle | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                         |
@@ -137,3 +137,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Arbitrum Root Gauges, for veBAL voting           | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
 | Polygon Root Gauges, for veBAL voting            | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
 | Optimism Root Gauges, for veBAL voting           | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
+| Batch Relayer V3                                 | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                         |
