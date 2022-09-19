@@ -71,108 +71,174 @@ describe('ManagedPoolSettings', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
-  function itComputesWeightsAndScalingFactors(numTokens: number): void {
-    context(`with ${numTokens} tokens`, () => {
-      describe('weights and scaling factors', () => {
-        let tokens: TokenList;
-        let poolWeights: number[];
+  describe('constructor', () => {
+    context('with invalid creation parameters', () => {
+      it('fails with < 2 tokens', async () => {
+        const params = {
+          tokens: allTokens.subset(1),
+          weights: [fp(0.3)],
+          poolType: WeightedPoolType.MANAGED_POOL,
+        };
+        await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
+      });
 
-        sharedBeforeEach('deploy pool', async () => {
-          tokens = allTokens.subset(numTokens);
-          poolWeights = WEIGHTS.slice(0, numTokens);
+      it('fails with > MAX_TOKENS tokens', async () => {
+        const params = {
+          tokens: allTokens,
+          weights: tooManyWeights,
+          poolType: WeightedPoolType.MANAGED_POOL,
+        };
+        await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
+      });
 
-          pool = await WeightedPool.create({
-            poolType: WeightedPoolType.MANAGED_POOL,
-            tokens,
-            weights: poolWeights,
-            vault,
-            swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-            managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-            managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      it('fails with mismatched tokens/weights', async () => {
+        const params = {
+          tokens: allTokens.subset(20),
+          weights: tooManyWeights,
+          poolType: WeightedPoolType.MANAGED_POOL,
+        };
+        await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
+    });
+
+    describe('with valid creation parameters', () => {
+      function itComputesWeightsAndScalingFactors(numTokens: number): void {
+        context(`with ${numTokens} tokens`, () => {
+          describe('weights and scaling factors', () => {
+            let tokens: TokenList;
+            let poolWeights: number[];
+            let assetManagers: string[];
+
+            sharedBeforeEach('deploy pool', async () => {
+              tokens = allTokens.subset(numTokens);
+              poolWeights = WEIGHTS.slice(0, numTokens);
+              assetManagers = await Promise.all(
+                range(numTokens).map(async () => await ethers.Wallet.createRandom().getAddress())
+              );
+
+              pool = await WeightedPool.create({
+                poolType: WeightedPoolType.MANAGED_POOL,
+                tokens,
+                weights: poolWeights,
+                assetManagers,
+                vault,
+                swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+                managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
+                managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+              });
+            });
+
+            it('sets token weights', async () => {
+              const expectedNormalizedWeights = toNormalizedWeights(poolWeights.map(bn));
+              const actualNormalizedWeights = await pool.getNormalizedWeights();
+
+              for (let i = 0; i < numTokens; i++) {
+                expectEqualWithError(actualNormalizedWeights[i], expectedNormalizedWeights[i], 0.0000001);
+              }
+
+              const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
+
+              expect(startTime).to.equal(endTime);
+              expect(startWeights).to.equalWithError(expectedNormalizedWeights, 0.0001);
+              expect(endWeights).to.equalWithError(expectedNormalizedWeights, 0.0001);
+            });
+
+            it('sets scaling factors', async () => {
+              const poolScalingFactors = await pool.getScalingFactors();
+              const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
+
+              expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+            });
+
+            it('sets asset managers', async () => {
+              await tokens.asyncEach(async (token, i) => {
+                const info = await pool.getTokenInfo(token);
+                expect(info.assetManager).to.eq(assetManagers[i]);
+              });
+            });
+          });
+        });
+      }
+
+      for (const numTokens of [2, 3, 17, 32, MAX_TOKENS]) {
+        itComputesWeightsAndScalingFactors(numTokens);
+      }
+
+      context('swapsEnabled', () => {
+        context('when initialized with swaps disabled', () => {
+          sharedBeforeEach('deploy pool', async () => {
+            const params = {
+              tokens: poolTokens,
+              weights: poolWeights,
+              owner: owner.address,
+              poolType: WeightedPoolType.MANAGED_POOL,
+              swapEnabledOnStart: false,
+            };
+            pool = await WeightedPool.create(params);
+          });
+
+          it('swaps show disabled on start', async () => {
+            expect(await pool.instance.getSwapEnabled()).to.be.false;
           });
         });
 
-        it('sets token weights', async () => {
-          const expectedNormalizedWeights = toNormalizedWeights(poolWeights.map(bn));
-          const actualNormalizedWeights = await pool.getNormalizedWeights();
+        context('when initialized with swaps enabled', () => {
+          sharedBeforeEach('deploy pool', async () => {
+            const params = {
+              tokens: poolTokens,
+              weights: poolWeights,
+              vault,
+              poolType: WeightedPoolType.MANAGED_POOL,
+              swapEnabledOnStart: true,
+            };
+            pool = await WeightedPool.create(params);
+          });
 
-          for (let i = 0; i < numTokens; i++) {
-            expectEqualWithError(actualNormalizedWeights[i], expectedNormalizedWeights[i], 0.0000001);
-          }
-        });
-
-        it('sets scaling factors', async () => {
-          const poolScalingFactors = await pool.getScalingFactors();
-          const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
-
-          expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
+          it('swaps show enabled on start', async () => {
+            expect(await pool.instance.getSwapEnabled()).to.be.true;
+          });
         });
       });
-    });
-  }
 
-  for (const numTokens of [2, 3, 17, 32, MAX_TOKENS]) {
-    itComputesWeightsAndScalingFactors(numTokens);
-  }
+      context('mustAllowlistLPs', () => {
+        context('when initialized with allowlist disabled', () => {
+          sharedBeforeEach('deploy pool', async () => {
+            const params = {
+              tokens: poolTokens,
+              weights: poolWeights,
+              owner: owner.address,
+              poolType: WeightedPoolType.MANAGED_POOL,
+              mustAllowlistLPs: false,
+            };
+            pool = await WeightedPool.create(params);
+          });
 
-  context('with invalid creation parameters', () => {
-    it('fails with < 2 tokens', async () => {
-      const params = {
-        tokens: allTokens.subset(1),
-        weights: [fp(0.3)],
-        poolType: WeightedPoolType.MANAGED_POOL,
-      };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
-    });
+          it('getMustAllowlistLPs() returns false', async () => {
+            expect(await pool.instance.getMustAllowlistLPs()).to.be.false;
+          });
+        });
 
-    it('fails with > MAX_TOKENS tokens', async () => {
-      const params = {
-        tokens: allTokens,
-        weights: tooManyWeights,
-        poolType: WeightedPoolType.MANAGED_POOL,
-      };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
-    });
+        context('when initialized with allowlist enabled', () => {
+          sharedBeforeEach('deploy pool', async () => {
+            const params = {
+              tokens: poolTokens,
+              weights: poolWeights,
+              vault,
+              poolType: WeightedPoolType.MANAGED_POOL,
+              mustAllowlistLPs: true,
+            };
+            pool = await WeightedPool.create(params);
+          });
 
-    it('fails with mismatched tokens/weights', async () => {
-      const params = {
-        tokens: allTokens.subset(20),
-        weights: tooManyWeights,
-        poolType: WeightedPoolType.MANAGED_POOL,
-      };
-      await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-    });
-  });
-
-  context('when deployed from factory', () => {
-    let assetManagers: string[];
-
-    sharedBeforeEach('deploy pool', async () => {
-      assetManagers = await Promise.all(
-        range(poolTokens.length).map(async () => await ethers.Wallet.createRandom().getAddress())
-      );
-
-      const params = {
-        tokens: poolTokens,
-        assetManagers,
-        weights: poolWeights,
-        vault,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        from: owner,
-        fromFactory: true,
-      };
-      pool = await WeightedPool.create(params);
-    });
-
-    it('has asset managers', async () => {
-      await poolTokens.asyncEach(async (token, i) => {
-        const info = await pool.getTokenInfo(token);
-        expect(info.assetManager).to.eq(assetManagers[i]);
+          it('getMustAllowlistLPs() returns true', async () => {
+            expect(await pool.instance.getMustAllowlistLPs()).to.be.true;
+          });
+        });
       });
     });
   });
 
-  describe('when initialized with an LP allowlist', () => {
+  context('LP allowlist', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens: poolTokens,
@@ -186,108 +252,73 @@ describe('ManagedPoolSettings', function () {
       pool = await WeightedPool.create(params);
     });
 
-    it('shows mustAllowlistLPs on and active', async () => {
-      expect(await pool.getMustAllowlistLPs()).to.be.true;
-      expect(await pool.isAllowedAddress(owner.address)).to.be.false;
-      expect(await pool.isAllowedAddress(other.address)).to.be.false;
-    });
+    context('when allowlist is active', () => {
+      context('when an address is added to the allowlist', () => {
+        sharedBeforeEach('add address to allowlist', async () => {
+          const receipt = await pool.addAllowedAddress(owner, other.address);
 
-    context('when an address is added to the allowlist', () => {
-      sharedBeforeEach('add address to allowlist', async () => {
-        const receipt = await pool.addAllowedAddress(owner, other.address);
-
-        expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressAdded', {
-          member: other.address,
-        });
-
-        await pool.init({ from: other, initialBalances });
-      });
-
-      it('the LP address is on the list', async () => {
-        expect(await pool.isAllowedAddress(other.address)).to.be.true;
-        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
-      });
-
-      it('an address cannot be added twice', async () => {
-        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_ALREADY_ALLOWLISTED');
-      });
-
-      it('the listed LP can join', async () => {
-        const startingBpt = await pool.balanceOf(other);
-
-        const { amountsIn } = await pool.joinAllGivenOut({ from: other, bptOut: startingBpt });
-
-        expect(amountsIn).to.deep.equal(initialBalances);
-      });
-
-      it('addresses not on the list cannot join', async () => {
-        const startingBpt = await pool.balanceOf(owner);
-
-        await expect(pool.joinAllGivenOut({ from: owner, bptOut: startingBpt })).to.be.revertedWith(
-          'ADDRESS_NOT_ALLOWLISTED'
-        );
-      });
-
-      it('retains the allowlist when turned off and back on', async () => {
-        // Initial state: allowlist is on, and the owner is not on it
-        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
-
-        // Open up for public LPs
-        await pool.setMustAllowlistLPs(owner, false);
-
-        // Owner is now allowed
-        expect(await pool.isAllowedAddress(owner.address)).to.be.true;
-        expect(await pool.isAllowedAddress(other.address)).to.be.true;
-
-        // Cannot remove addresses when the allowlist is disabled
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
-
-        // Turn the allowlist back on
-        await pool.setMustAllowlistLPs(owner, true);
-
-        // Owner is not allowed again
-        expect(await pool.isAllowedAddress(owner.address)).to.be.false;
-        // Other is still on the allowlist from before
-        expect(await pool.isAllowedAddress(other.address)).to.be.true;
-      });
-
-      context('when an address is removed', () => {
-        sharedBeforeEach('remove address from allowlist', async () => {
-          const receipt = await pool.removeAllowedAddress(owner, other.address);
-
-          expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressRemoved', {
+          expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressAdded', {
             member: other.address,
           });
+
+          await pool.init({ from: other, initialBalances });
         });
 
-        it('the LP address is no longer on the list', async () => {
-          expect(await pool.isAllowedAddress(other.address)).to.be.false;
+        it('the LP address is on the list', async () => {
+          expect(await pool.isAllowedAddress(other.address)).to.be.true;
           expect(await pool.isAllowedAddress(owner.address)).to.be.false;
         });
 
-        it('reverts when removing an address not on the list', async () => {
-          await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+        it('an address cannot be added twice', async () => {
+          await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_ALREADY_ALLOWLISTED');
+        });
+
+        it('retains the allowlist when turned off and back on', async () => {
+          // Initial state: allowlist is on, and the owner is not on it
+          expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+
+          // Open up for public LPs
+          await pool.setMustAllowlistLPs(owner, false);
+
+          // Owner is now allowed
+          expect(await pool.isAllowedAddress(owner.address)).to.be.true;
+          expect(await pool.isAllowedAddress(other.address)).to.be.true;
+
+          // Cannot remove addresses when the allowlist is disabled
+          await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
+
+          // Turn the allowlist back on
+          await pool.setMustAllowlistLPs(owner, true);
+
+          // Owner is not allowed again
+          expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+          // Other is still on the allowlist from before
+          expect(await pool.isAllowedAddress(other.address)).to.be.true;
+        });
+
+        context('when an address is removed', () => {
+          sharedBeforeEach('remove address from allowlist', async () => {
+            const receipt = await pool.removeAllowedAddress(owner, other.address);
+
+            expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressRemoved', {
+              member: other.address,
+            });
+          });
+
+          it('the LP address is no longer on the list', async () => {
+            expect(await pool.isAllowedAddress(other.address)).to.be.false;
+            expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+          });
+
+          it('reverts when removing an address not on the list', async () => {
+            await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+          });
         });
       });
     });
 
     context('when mustAllowlistLPs is toggled', () => {
-      sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: other, initialBalances });
-      });
-
-      it('allowlist is initially on', async () => {
-        const startingBpt = await pool.balanceOf(owner);
-
-        expect(await pool.getMustAllowlistLPs()).to.be.true;
-        await expect(pool.joinAllGivenOut({ from: owner, bptOut: startingBpt })).to.be.revertedWith(
-          'ADDRESS_NOT_ALLOWLISTED'
-        );
-      });
-
       it('allows owner to turn it off (open to public LPs)', async () => {
-        const startingBpt = await pool.balanceOf(owner);
-
         const receipt = await pool.setMustAllowlistLPs(owner, false);
         expectEvent.inReceipt(await receipt.wait(), 'MustAllowlistLPsSet', {
           mustAllowlistLPs: false,
@@ -295,9 +326,6 @@ describe('ManagedPoolSettings', function () {
 
         // Should be turned off
         expect(await pool.getMustAllowlistLPs()).to.be.false;
-
-        // And allow joins from anywhere
-        await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
 
         // Does not allow adding or removing addresses now
         await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
@@ -307,68 +335,6 @@ describe('ManagedPoolSettings', function () {
       it('reverts if non-owner tries to enable public LPs', async () => {
         await expect(pool.setMustAllowlistLPs(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
-    });
-  });
-
-  describe('with valid creation parameters', () => {
-    context('when initialized with swaps disabled', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: false,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('swaps show disabled on start', async () => {
-        expect(await pool.instance.getSwapEnabled()).to.be.false;
-      });
-    });
-
-    context('when initialized with swaps enabled', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          vault,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('swaps show enabled on start', async () => {
-        expect(await pool.instance.getSwapEnabled()).to.be.true;
-      });
-    });
-
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: false,
-      };
-      pool = await WeightedPool.create(params);
-    });
-
-    it('sets token weights', async () => {
-      const normalizedWeights = await pool.getNormalizedWeights();
-
-      // Not exactly equal due to weight compression
-      expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-    });
-
-    it('stores the initial weights as a zero duration weight change', async () => {
-      const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
-
-      expect(startTime).to.equal(endTime);
-      expect(startWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-      expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
     });
   });
 
