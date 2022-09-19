@@ -148,10 +148,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
-        // Validate and set initial fees
-        _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
+        // Management swap fee percentage
+        _managementSwapFeePercentage = params.managementSwapFeePercentage;
+        emit ManagementSwapFeePercentageChanged(params.managementSwapFeePercentage);
 
-        _setManagementAumFeePercentage(params.managementAumFeePercentage);
+        // Management AUM fee percentage
+        _require(
+            params.managementAumFeePercentage <= _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE,
+            Errors.MAX_MANAGEMENT_AUM_FEE_PERCENTAGE
+        );
+        _managementAumFeePercentage = params.managementAumFeePercentage;
+        emit ManagementAumFeePercentageChanged(params.managementAumFeePercentage);
 
         // Write the scaling factors for each token into their token state.
         // We do this before setting the weights in `_startGradualWeightChange` so we start from a empty token state.
@@ -188,14 +195,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.swapFeePercentage
         );
 
-        // We write the pool state here, as both `_setSwapEnabled` and `_setMustAllowlistLPs` read it from storage.
-        _poolState = poolState;
+        // If true, only addresses on the manager-controlled allowlist may join the pool.
+        _poolState = ManagedPoolStorageLib.setLPAllowlistEnabled(poolState, params.mustAllowlistLPs);
+        emit MustAllowlistLPsSet(params.mustAllowlistLPs);
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
-        _setSwapEnabled(params.swapEnabledOnStart);
-
-        // If true, only addresses on the manager-controlled allowlist may join the pool.
-        _setMustAllowlistLPs(params.mustAllowlistLPs);
+        _poolState = ManagedPoolStorageLib.setSwapsEnabled(poolState, params.swapEnabledOnStart);
+        emit SwapEnabledSet(params.swapEnabledOnStart);
     }
 
     function _getPoolState() internal view returns (bytes32) {
@@ -486,12 +492,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @param swapEnabled - The new value of the swap enabled flag.
      */
     function setSwapEnabled(bool swapEnabled) external override authenticate whenNotPaused {
-        _setSwapEnabled(swapEnabled);
-    }
-
-    function _setSwapEnabled(bool swapEnabled) private {
         _poolState = ManagedPoolStorageLib.setSwapsEnabled(_poolState, swapEnabled);
-
         emit SwapEnabledSet(swapEnabled);
     }
 
@@ -551,12 +552,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external override authenticate whenNotPaused {
-        _setMustAllowlistLPs(mustAllowlistLPs);
-    }
-
-    function _setMustAllowlistLPs(bool mustAllowlistLPs) private {
         _poolState = ManagedPoolStorageLib.setLPAllowlistEnabled(_poolState, mustAllowlistLPs);
-
         emit MustAllowlistLPsSet(mustAllowlistLPs);
     }
 
@@ -572,15 +568,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         authenticate
         whenNotPaused
     {
-        _setManagementSwapFeePercentage(managementSwapFeePercentage);
-    }
-
-    function _setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) private {
-        _require(
-            managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
-        );
-
         _managementSwapFeePercentage = managementSwapFeePercentage;
         emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
     }
@@ -625,10 +612,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _lastAumFeeCollectionTimestamp = block.timestamp;
         }
 
-        _setManagementAumFeePercentage(managementAumFeePercentage);
-    }
-
-    function _setManagementAumFeePercentage(uint256 managementAumFeePercentage) private {
         _require(
             managementAumFeePercentage <= _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE,
             Errors.MAX_MANAGEMENT_AUM_FEE_PERCENTAGE
