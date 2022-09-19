@@ -34,7 +34,7 @@ library CircuitBreakerLib {
 
     struct CircuitBreakerParams {
         uint256 referenceBptPrice;
-        uint256 currentWeightFactor;
+        uint256 referenceWeightFactor;
         uint256 lowerBoundPercentage;
         uint256 upperBoundPercentage;
     }
@@ -44,17 +44,17 @@ library CircuitBreakerLib {
     // [ UB ratio | LB ratio | upper bound | lower bound | weight factor | ref price |
     // |MSB                                                                       LSB|
     uint256 private constant _REFERENCE_BPT_PRICE_OFFSET = 0;
-    uint256 private constant _WEIGHT_FACTOR_OFFSET = _REFERENCE_BPT_PRICE_OFFSET + _BPT_PRICE_WIDTH;
-    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _WEIGHT_FACTOR_OFFSET + _WEIGHT_FACTOR_WIDTH;
+    uint256 private constant _REFERENCE_WEIGHT_FACTOR_OFFSET = _REFERENCE_BPT_PRICE_OFFSET + _REFERENCE_BPT_PRICE_WIDTH;
+    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REFERENCE_WEIGHT_FACTOR_OFFSET + _REFERENCE_WEIGHT_FACTOR_WIDTH;
     uint256 private constant _UPPER_BOUND_PCT_OFFSET = _LOWER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
-    uint256 private constant _LOWER_BOUND_RATIO_CACHE_OFFSET = _UPPER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
-    uint256 private constant _UPPER_BOUND_RATIO_CACHE_OFFSET = _LOWER_BOUND_RATIO_CACHE_OFFSET +
-        _BOUND_RATIO_CACHE_WIDTH;
+    uint256 private constant _REFERENCE_LOWER_BOUND_RATIO_OFFSET = _UPPER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
+    uint256 private constant _REFERENCE_UPPER_BOUND_RATIO_OFFSET = _REFERENCE_LOWER_BOUND_RATIO_OFFSET +
+        _BOUND_RATIO_WIDTH;
 
+    uint256 private constant _REFERENCE_WEIGHT_FACTOR_WIDTH = 64;
+    uint256 private constant _REFERENCE_BPT_PRICE_WIDTH = 112;
     uint256 private constant _BOUND_PERCENTAGE_WIDTH = 16;
-    uint256 private constant _BOUND_RATIO_CACHE_WIDTH = 24;
-    uint256 private constant _WEIGHT_FACTOR_WIDTH = 64;
-    uint256 private constant _BPT_PRICE_WIDTH = 112;
+    uint256 private constant _BOUND_RATIO_WIDTH = 24;
 
     // We compress the ratios into 16 bits from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
     // For consistency, use the same maximum uncompressed value, even though we the lower bound is less than 1.
@@ -72,9 +72,9 @@ library CircuitBreakerLib {
     {
         return
             CircuitBreakerParams({
-                referenceBptPrice: circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH),
-                currentWeightFactor: circuitBreakerState.decodeUint(_WEIGHT_FACTOR_OFFSET, _WEIGHT_FACTOR_WIDTH).decompress(
-                    _WEIGHT_FACTOR_WIDTH
+                referenceBptPrice: circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH),
+                referenceWeightFactor: circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH).decompress(
+                    _REFERENCE_WEIGHT_FACTOR_WIDTH
                 ),
                 lowerBoundPercentage: circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
                     _BOUND_PERCENTAGE_WIDTH,
@@ -110,10 +110,10 @@ library CircuitBreakerLib {
         returns (uint256, uint256)
     {
         // Retrieve the reference bptPrice and weight factors, stored at the time the circuit breaker was set.
-        uint256 referenceBptPrice = circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        uint256 referenceBptPrice = circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH);
         uint256 referenceWeightFactor = circuitBreakerState
-            .decodeUint(_WEIGHT_FACTOR_OFFSET, _WEIGHT_FACTOR_WIDTH)
-            .decompress(_WEIGHT_FACTOR_WIDTH);
+            .decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH)
+            .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH);
 
         if (referenceWeightFactor == currentWeightFactor) {
             // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
@@ -121,13 +121,13 @@ library CircuitBreakerLib {
             return (
                 referenceBptPrice.mulDown(
                     circuitBreakerState
-                        .decodeUint(_LOWER_BOUND_RATIO_CACHE_OFFSET, _BOUND_RATIO_CACHE_WIDTH)
-                        .decompress(_BOUND_RATIO_CACHE_WIDTH, _MAX_BOUND_PERCENTAGE)
+                        .decodeUint(_REFERENCE_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
+                        .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE)
                 ),
                 referenceBptPrice.mulUp(
                     circuitBreakerState
-                        .decodeUint(_UPPER_BOUND_RATIO_CACHE_OFFSET, _BOUND_RATIO_CACHE_WIDTH)
-                        .decompress(_BOUND_RATIO_CACHE_WIDTH, _MAX_BOUND_PERCENTAGE)
+                        .decodeUint(_REFERENCE_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
+                        .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE)
                 )
             );
         } else {
@@ -182,11 +182,11 @@ library CircuitBreakerLib {
 
         // Set the basic parameters, and chain to `_setCircuitBreakerState` for the rest.
         circuitBreakerState = circuitBreakerState
-            .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH)
+            .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
             .insertUint(
-            params.currentWeightFactor.compress(_WEIGHT_FACTOR_WIDTH),
-            _WEIGHT_FACTOR_OFFSET,
-            _WEIGHT_FACTOR_WIDTH
+            params.referenceWeightFactor.compress(_REFERENCE_WEIGHT_FACTOR_WIDTH),
+            _REFERENCE_WEIGHT_FACTOR_OFFSET,
+            _REFERENCE_WEIGHT_FACTOR_WIDTH
         );
 
         return _setCircuitBreakerState(circuitBreakerState, params);
@@ -215,20 +215,20 @@ library CircuitBreakerLib {
         (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
             params.lowerBoundPercentage,
             params.upperBoundPercentage,
-            params.currentWeightFactor
+            params.referenceWeightFactor
         );
 
         return
             circuitBreakerState
                 .insertUint(
-                lowerBoundRatioCache.compress(_BOUND_RATIO_CACHE_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _LOWER_BOUND_RATIO_CACHE_OFFSET,
-                _BOUND_RATIO_CACHE_WIDTH
+                lowerBoundRatioCache.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _REFERENCE_LOWER_BOUND_RATIO_OFFSET,
+                _BOUND_RATIO_WIDTH
             )
                 .insertUint(
-                upperBoundRatioCache.compress(_BOUND_RATIO_CACHE_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _UPPER_BOUND_RATIO_CACHE_OFFSET,
-                _BOUND_RATIO_CACHE_WIDTH
+                upperBoundRatioCache.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _REFERENCE_UPPER_BOUND_RATIO_OFFSET,
+                _BOUND_RATIO_WIDTH
             );
     }
 
@@ -241,7 +241,7 @@ library CircuitBreakerLib {
         // Rounding down for the lower bound, and up for the upper bound will maximize the
         // "operating range" - the BPT price range that will not trigger the circuit breaker -
         // of the pool for traders.
-        lowerBoundRatioCache = LogExpMath.powDown(lowerBoundPercentage, currentWeightFactor);
-        upperBoundRatioCache = LogExpMath.powUp(upperBoundPercentage, currentWeightFactor);
+        lowerBoundRatioCache = lowerBoundPercentage.powDown(currentWeightFactor);
+        upperBoundRatioCache = upperBoundPercentage.powUp(currentWeightFactor);
     }
 }

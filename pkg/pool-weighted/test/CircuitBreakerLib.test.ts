@@ -29,7 +29,7 @@ describe('CircuitBreakerLib', () => {
   ) {
     const circuitBreakerParams: CircuitBreakerParams = {
       referenceBptPrice: BPT_PRICE,
-      currentWeightFactor: WEIGHT_FACTOR,
+      referenceWeightFactor: WEIGHT_FACTOR,
       lowerBoundPercentage: lowerBoundPct,
       upperBoundPercentage: upperBoundPct,
     };
@@ -57,7 +57,7 @@ describe('CircuitBreakerLib', () => {
       await expect(
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: BPT_PRICE,
-          currentWeightFactor: WEIGHT_FACTOR,
+          referenceWeightFactor: WEIGHT_FACTOR,
           lowerBoundPercentage: fp(1).add(1),
           upperBoundPercentage: 0,
         })
@@ -68,7 +68,7 @@ describe('CircuitBreakerLib', () => {
       await expect(
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: BPT_PRICE,
-          currentWeightFactor: WEIGHT_FACTOR,
+          referenceWeightFactor: WEIGHT_FACTOR,
           lowerBoundPercentage: MAX_BOUND,
           upperBoundPercentage: 0,
         })
@@ -79,7 +79,7 @@ describe('CircuitBreakerLib', () => {
       await expect(
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: BPT_PRICE,
-          currentWeightFactor: WEIGHT_FACTOR,
+          referenceWeightFactor: WEIGHT_FACTOR,
           lowerBoundPercentage: fp(0.9),
           upperBoundPercentage: fp(0.7),
         })
@@ -106,7 +106,7 @@ describe('CircuitBreakerLib', () => {
   describe('percentage to BPT price conversion ratios', () => {
     const circuitBreakerParams: CircuitBreakerParams = {
       referenceBptPrice: BPT_PRICE,
-      currentWeightFactor: WEIGHT_FACTOR,
+      referenceWeightFactor: WEIGHT_FACTOR,
       lowerBoundPercentage: LOWER_BOUND,
       upperBoundPercentage: UPPER_BOUND,
     };
