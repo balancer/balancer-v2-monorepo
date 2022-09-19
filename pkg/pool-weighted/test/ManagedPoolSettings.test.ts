@@ -13,18 +13,7 @@ import {
   currentTimestamp,
   receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import {
-  BigNumberish,
-  bn,
-  FP_100_PCT,
-  FP_ZERO,
-  FP_ONE,
-  fp,
-  fpDiv,
-  fpMul,
-  fromFp,
-  pct,
-} from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, FP_100_PCT, FP_ZERO, FP_ONE, fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -34,16 +23,15 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ManagedPoolEncoder, toNormalizedWeights, SwapKind } from '@balancer-labs/balancer-js';
+import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { random, range } from 'lodash';
-import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { Interface } from 'ethers/lib/utils';
 
-describe('ManagedPool', function () {
+describe('ManagedPoolSettings', function () {
   let allTokens: TokenList;
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
@@ -338,10 +326,6 @@ describe('ManagedPool', function () {
       it('swaps show disabled on start', async () => {
         expect(await pool.instance.getSwapEnabled()).to.be.false;
       });
-
-      it('swaps are blocked', async () => {
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
-      });
     });
 
     context('when initialized with swaps enabled', () => {
@@ -359,49 +343,32 @@ describe('ManagedPool', function () {
       it('swaps show enabled on start', async () => {
         expect(await pool.instance.getSwapEnabled()).to.be.true;
       });
+    });
 
-      it('swaps are not blocked', async () => {
-        await pool.init({ from: other, initialBalances });
+    sharedBeforeEach('deploy pool', async () => {
+      const params = {
+        tokens: poolTokens,
+        weights: poolWeights,
+        owner: owner.address,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        swapEnabledOnStart: false,
+      };
+      pool = await WeightedPool.create(params);
+    });
 
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
-      });
+    it('sets token weights', async () => {
+      const normalizedWeights = await pool.getNormalizedWeights();
 
-      it('sets token weights', async () => {
-        const normalizedWeights = await pool.getNormalizedWeights();
+      // Not exactly equal due to weight compression
+      expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+    });
 
-        // Not exactly equal due to weight compression
-        expect(normalizedWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-      });
+    it('stores the initial weights as a zero duration weight change', async () => {
+      const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
 
-      it('stores the initial weights as a zero duration weight change', async () => {
-        const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
-
-        expect(startTime).to.equal(endTime);
-        expect(startWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-        expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
-      });
-
-      it('reverts if swap hook caller is not the vault', async () => {
-        await expect(
-          pool.instance[
-            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
-          ](
-            {
-              kind: SwapKind.GivenIn,
-              tokenIn: poolTokens.first.address,
-              tokenOut: poolTokens.second.address,
-              amount: 0,
-              poolId: await pool.getPoolId(),
-              lastChangeBlock: 0,
-              from: other.address,
-              to: other.address,
-              userData: '0x',
-            },
-            0,
-            0
-          )
-        ).to.be.revertedWith('CALLER_NOT_VAULT');
-      });
+      expect(startTime).to.equal(endTime);
+      expect(startWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
+      expect(endWeights).to.equalWithError(pool.normalizedWeights, 0.0001);
     });
   });
 
@@ -459,72 +426,6 @@ describe('ManagedPool', function () {
 
           expectEvent.inReceipt(await receipt.wait(), 'SwapEnabledSet', {
             swapEnabled: true,
-          });
-        });
-
-        context('with swaps disabled', () => {
-          sharedBeforeEach(async () => {
-            await pool.setSwapEnabled(sender, false);
-          });
-
-          context('proportional joins/exits', () => {
-            it('allows proportionate joins', async () => {
-              const startingBpt = await pool.balanceOf(sender);
-
-              const { amountsIn } = await pool.joinAllGivenOut({ from: sender, bptOut: startingBpt });
-
-              const endingBpt = await pool.balanceOf(sender);
-              expect(endingBpt).to.be.gt(startingBpt);
-              expect(amountsIn).to.deep.equal(initialBalances);
-            });
-
-            it('allows proportional exits', async () => {
-              const previousBptBalance = await pool.balanceOf(sender);
-              const bptIn = pct(previousBptBalance, 0.8);
-
-              await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
-
-              const newBptBalance = await pool.balanceOf(sender);
-              expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001);
-            });
-          });
-
-          context('disproportionate joins/exits', () => {
-            it('prevents disproportionate joins (single token)', async () => {
-              const bptOut = await pool.balanceOf(sender);
-
-              await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-
-            it('prevents disproportionate exits (single token)', async () => {
-              const previousBptBalance = await pool.balanceOf(sender);
-              const bptIn = pct(previousBptBalance, 0.5);
-
-              await expect(
-                pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
-              ).to.be.revertedWith('INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED');
-            });
-
-            it('prevents disproportionate joins (multi token)', async () => {
-              const amountsIn = [...initialBalances];
-              amountsIn[0] = 0;
-
-              await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-
-            it('prevents disproportionate exits (multi token)', async () => {
-              const amountsOut = [...initialBalances];
-              // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
-              amountsOut[0] = 0;
-
-              await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
           });
         });
       });
@@ -797,349 +698,6 @@ describe('ManagedPool', function () {
       context('when the sender is not allowed', () => {
         itReverts();
       });
-    });
-  });
-
-  describe('remove token', () => {
-    let vault: Vault;
-
-    // We are going to create a pool with more tokens than we need, and then remove some of them for each scenario.
-    // This is not the same as creating pools with fewer tokens, as removing tokens shifts the weights and makes them
-    // be denormalized internally (which we want to have happen in order to test).
-    let originalTokens: TokenList;
-    let poolTokens: TokenList;
-
-    sharedBeforeEach('deploy Vault', async () => {
-      vault = await Vault.create({ admin });
-    });
-
-    sharedBeforeEach('deploy pool', async () => {
-      const TOTAL_TOKENS = 5;
-      originalTokens = allTokens.subset(TOTAL_TOKENS);
-
-      // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
-      // deployer will normalize them.
-      const weights = range(TOTAL_TOKENS).map(() => fp(20 + random(50)));
-
-      const params = {
-        tokens: originalTokens,
-        weights,
-        owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-        vault,
-      };
-
-      pool = await WeightedPool.create(params);
-
-      await originalTokens.mint({ to: owner, amount: fp(100) });
-      await originalTokens.approve({ from: owner, to: await pool.getVault() });
-    });
-
-    context('when the pool is uninitialized', () => {
-      it('reverts', async () => {
-        await expect(pool.removeToken(owner, originalTokens.addresses[0], other.address)).to.be.revertedWith(
-          'UNINITIALIZED'
-        );
-      });
-    });
-
-    context('when the pool is initialized', () => {
-      sharedBeforeEach('initialize pool', async () => {
-        // Random non-zero balances
-        await pool.init({ from: owner, initialBalances: range(originalTokens.length).map(() => fp(10 + random(100))) });
-      });
-
-      function removeTokensDownTo(finalAmount: number) {
-        sharedBeforeEach(`removing down to ${finalAmount} tokens`, async () => {
-          const toRemove = originalTokens.length - finalAmount;
-          for (let i = 0; i < toRemove; ++i) {
-            const { tokens } = await pool.getTokens();
-            await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
-          }
-
-          poolTokens = originalTokens.subset(finalAmount);
-        });
-      }
-
-      context('on a pool with two tokens', () => {
-        removeTokensDownTo(2);
-
-        it('reverts', async () => {
-          await expect(pool.removeToken(owner, poolTokens.addresses[0], other.address)).to.be.revertedWith(
-            'MIN_TOKENS'
-          );
-        });
-      });
-
-      itRemovesTokensCorrectly(3);
-      itRemovesTokensCorrectly(4);
-
-      function itRemovesTokensCorrectly(totalTokens: number) {
-        context(`on a pool with ${totalTokens} tokens`, () => {
-          removeTokensDownTo(totalTokens);
-
-          context('when the sender is not the owner', () => {
-            beforeEach('set sender to other', () => {
-              sender = other;
-            });
-
-            it('non-owners cannot remove tokens', async () => {
-              await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
-                'SENDER_NOT_ALLOWED'
-              );
-            });
-          });
-
-          context('when the sender is the owner', () => {
-            beforeEach('set sender to owner', () => {
-              sender = owner;
-            });
-
-            it('reverts if the exit type is used on a regular vault exit', async () => {
-              await expect(
-                vault.instance.connect(owner).exitPool(await pool.getPoolId(), owner.address, other.address, {
-                  assets: poolTokens.addresses,
-                  minAmountsOut: new Array(poolTokens.length).fill(bn(0)),
-                  userData: ManagedPoolEncoder.exitForRemoveToken(0),
-                  toInternalBalance: false,
-                })
-              ).to.be.revertedWith('UNAUTHORIZED_EXIT');
-            });
-
-            it('reverts if the token is not in the pool', async () => {
-              await expect(pool.removeToken(sender, ZERO_ADDRESS, other.address)).to.be.revertedWith('INVALID_TOKEN');
-            });
-
-            context('when the pool is paused', () => {
-              sharedBeforeEach('pause pool', async () => {
-                await pool.pause();
-              });
-
-              it('reverts', async () => {
-                await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
-                  'PAUSED'
-                );
-              });
-            });
-
-            context('with a scheduled weight change', () => {
-              let startTime: BigNumber, endTime: BigNumber;
-
-              sharedBeforeEach('schedule weight change', async () => {
-                const weights = await pool.getNormalizedWeights();
-
-                startTime = (await currentTimestamp()).add(DAY);
-                endTime = startTime.add(DAY * 3);
-
-                // We need to renormalize the weights as the pool returns weights that are not exactly normalized
-                await pool.updateWeightsGradually(sender, startTime, endTime, toNormalizedWeights(weights));
-              });
-
-              it('reverts', async () => {
-                await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
-                  'CHANGE_TOKENS_PENDING_WEIGHT_CHANGE'
-                );
-              });
-
-              context('with an ongoing weight change', () => {
-                sharedBeforeEach(async () => {
-                  await advanceToTimestamp(startTime.add(SECOND));
-                });
-
-                it('reverts', async () => {
-                  await expect(pool.removeToken(sender, poolTokens.addresses[0], other.address)).to.be.revertedWith(
-                    'CHANGE_TOKENS_DURING_WEIGHT_CHANGE'
-                  );
-                });
-              });
-
-              context('after a weight change', () => {
-                sharedBeforeEach(async () => {
-                  await advanceToTimestamp(endTime.add(SECOND));
-                });
-
-                itRemovesAnyToken();
-
-                function itRemovesAnyToken() {
-                  for (let i = 0; i < 3; i++) {
-                    describe(`remove token ${i}`, () => {
-                      context('with swaps enabled', () => {
-                        sharedBeforeEach('enable swaps', async () => {
-                          await pool.setSwapEnabled(sender, true);
-                        });
-
-                        itRemovesToken(i);
-                      });
-
-                      context('with swaps disabled', () => {
-                        sharedBeforeEach('disable swaps', async () => {
-                          await pool.setSwapEnabled(sender, false);
-                        });
-
-                        itRemovesToken(i);
-                      });
-                    });
-                  }
-
-                  function itRemovesToken(tokenIndex: number) {
-                    it(`removes the token with index ${tokenIndex}`, async () => {
-                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
-
-                      const { tokens: afterRemoveTokens } = await pool.getTokens();
-                      expect(afterRemoveTokens.length).to.equal(poolTokens.length - 1);
-
-                      // We need to sort when comparing as the order may have changed
-                      expect([...afterRemoveTokens].sort()).to.deep.equal(
-                        poolTokens.addresses.filter((_, i) => i != tokenIndex).sort()
-                      );
-                    });
-
-                    it(`sends the entire token balance to the recipient`, async () => {
-                      const { balances: beforeRemoveBalances } = await pool.getTokens();
-
-                      const tokenSymbol = poolTokens.get(tokenIndex).symbol;
-                      await expectBalanceChange(
-                        () => pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address),
-                        poolTokens,
-                        [
-                          {
-                            account: other,
-                            changes: { [tokenSymbol]: beforeRemoveBalances[tokenIndex] },
-                          },
-                          {
-                            account: vault.address,
-                            changes: { [tokenSymbol]: beforeRemoveBalances[tokenIndex].mul(-1) },
-                          },
-                        ]
-                      );
-                    });
-
-                    it(`leaves all other balances unchanged`, async () => {
-                      const { tokens: beforeRemoveTokens, balances: beforeRemoveBalances } = await pool.getTokens();
-
-                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
-
-                      const { tokens: afterRemoveTokens, balances: afterRemoveBalances } = await pool.getTokens();
-
-                      afterRemoveTokens.forEach((token, index) => {
-                        const oldIndex = beforeRemoveTokens.indexOf(token);
-                        expect(afterRemoveBalances[index]).to.equal(beforeRemoveBalances[oldIndex]);
-                      });
-                    });
-
-                    it('scales weights of all other tokens', async () => {
-                      const { tokens: beforeTokens } = await pool.getTokens();
-                      const beforeWeights = await pool.getNormalizedWeights();
-
-                      const beforeTokenWeights = range(beforeTokens.length).map((i) => ({
-                        token: beforeTokens[i],
-                        weight: beforeWeights[i],
-                      }));
-
-                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
-
-                      const { tokens: afterTokens } = await pool.getTokens();
-                      const afterWeights = await pool.getNormalizedWeights();
-
-                      const afterTokenWeights = range(afterTokens.length).map((i) => ({
-                        token: afterTokens[i],
-                        weight: afterWeights[i],
-                      }));
-
-                      // In this test, we make no assumptions about the internal behavior of the pool and simply check the
-                      // observable state: the weights should roughly add up to fp(1), and their old ratios should remain
-
-                      expect(
-                        afterTokenWeights.reduce((sum, tokenData) => sum.add(tokenData.weight), bn(0))
-                      ).to.equalWithError(fp(1), 0.000001);
-
-                      afterTokenWeights.forEach((someToken) => {
-                        afterTokenWeights
-                          .filter((tk) => tk.token !== someToken.token)
-                          .forEach((otherToken) => {
-                            const someTokenBeforeIndex = beforeTokens.indexOf(someToken.token);
-                            const otherTokenBeforeIndex = beforeTokens.indexOf(otherToken.token);
-
-                            const afterWeightRatio = fpDiv(someToken.weight, otherToken.weight);
-                            const beforeWeightRatio = fpDiv(
-                              beforeTokenWeights[someTokenBeforeIndex].weight,
-                              beforeTokenWeights[otherTokenBeforeIndex].weight
-                            );
-
-                            expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
-                          });
-                      });
-                    });
-
-                    it('updates the denormalized sum correctly', async () => {
-                      const beforeWeights = await pool.getNormalizedWeights();
-                      const beforeSum = await pool.instance.getDenormalizedWeightSum();
-
-                      const expectedDenormWeightSum = beforeWeights
-                        .filter((_, i) => i !== tokenIndex)
-                        .reduce((sum, weight) => sum.add(fpMul(weight, beforeSum)), bn(0));
-
-                      await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
-
-                      expect(await pool.instance.getDenormalizedWeightSum()).to.equalWithError(
-                        expectedDenormWeightSum,
-                        0.000001
-                      );
-                    });
-
-                    it('emits an event', async () => {
-                      const { balances: beforeRemoveBalances } = await pool.getTokens();
-                      const normalizedWeights = await pool.getNormalizedWeights();
-
-                      const tx = await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address);
-
-                      expectEvent.inReceipt(await tx.wait(), 'TokenRemoved', {
-                        token: poolTokens.addresses[tokenIndex],
-                        normalizedWeight: normalizedWeights[tokenIndex],
-                        tokenAmountOut: beforeRemoveBalances[tokenIndex],
-                      });
-                    });
-
-                    it('returns the amount of tokens removed', async () => {
-                      const { balances: beforeRemoveBalances } = await pool.getTokens();
-
-                      const amount = await pool.instance
-                        .connect(sender)
-                        .callStatic.removeToken(poolTokens.addresses[tokenIndex], other.address, 0, 0);
-
-                      expect(amount).to.equal(beforeRemoveBalances[tokenIndex]);
-                    });
-
-                    context('with a non-zero burn amount', () => {
-                      it('burns BPT from the caller', async () => {
-                        const bptBalanceBefore = await pool.balanceOf(sender.address);
-
-                        const burnAmount = fp(17);
-                        await pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address, { burnAmount });
-
-                        const bptBalanceAfter = await pool.balanceOf(sender.address);
-
-                        expect(bptBalanceBefore.sub(bptBalanceAfter)).to.equal(burnAmount);
-                      });
-                    });
-
-                    it('reverts if the minimum amount out is larger than the balance', async () => {
-                      const { balances: beforeRemoveBalances } = await pool.getTokens();
-
-                      await expect(
-                        pool.removeToken(sender, poolTokens.addresses[tokenIndex], other.address, {
-                          minAmountOut: beforeRemoveBalances[tokenIndex].add(1),
-                        })
-                      ).to.be.revertedWith('EXIT_BELOW_MIN');
-                    });
-                  }
-                }
-              });
-            });
-          });
-        });
-      }
     });
   });
 
@@ -1481,245 +1039,6 @@ describe('ManagedPool', function () {
 
       itAddsTokensCorrectly(3);
       itAddsTokensCorrectly(4);
-    });
-  });
-
-  describe('BPT protocol fees', () => {
-    let protocolFeesCollector: Contract;
-    let vault: Vault;
-    const swapFeePercentage = fp(0.02);
-    const protocolFeePercentage = fp(0.5); // 50 %
-    const managementSwapFeePercentage = FP_ZERO; // Set to zero to isolate BPT fees
-    const tokenAmount = 100;
-    const poolWeights = [fp(0.8), fp(0.2)];
-    let bptFeeBalance: BigNumber;
-    let mockMath: Contract;
-    let mockFees: Contract;
-
-    let twoTokens: TokenList;
-    let localBalances: Array<BigNumber>;
-    let swapAmount: BigNumber;
-
-    sharedBeforeEach('deploy pool', async () => {
-      vault = await Vault.create({ admin });
-      await vault.setSwapFeePercentage(protocolFeePercentage, { from: admin });
-      protocolFeesCollector = await vault.getFeesCollector();
-
-      twoTokens = poolTokens.subset(2);
-      localBalances = [
-        bn(tokenAmount * 10 ** twoTokens.first.decimals),
-        bn(tokenAmount * 10 ** twoTokens.second.decimals),
-      ];
-
-      // 10% of the initial balance
-      swapAmount = localBalances[0].div(10);
-
-      // Make a 2-token pool for this purpose
-      const params = {
-        tokens: twoTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-        vault,
-        swapFeePercentage,
-        managementSwapFeePercentage,
-      };
-      pool = await WeightedPool.create(params);
-      mockMath = await deploy('MockWeightedMath');
-      mockFees = await deploy('v2-pool-utils/MockInvariantGrowthProtocolSwapFees');
-    });
-
-    sharedBeforeEach('initialize pool', async () => {
-      await poolTokens.mint({ to: owner, amount: fp(10000) });
-      await poolTokens.approve({ from: owner, to: await pool.getVault() });
-      await pool.init({ from: owner, initialBalances: localBalances });
-    });
-
-    it('protocol fees are initially zero', async () => {
-      bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-      expect(bptFeeBalance).to.equal(0);
-    });
-
-    describe('pays protocol fees on swaps', () => {
-      let upscaledBalances: Array<BigNumber>;
-      let upscaledSwapAmount: BigNumber;
-
-      sharedBeforeEach('upscale balances and amounts', async () => {
-        const scaleFactor0 = bn(10 ** (18 - twoTokens.first.decimals));
-        const scaleFactor1 = bn(10 ** (18 - twoTokens.second.decimals));
-        upscaledBalances = [localBalances[0].mul(scaleFactor0), localBalances[1].mul(scaleFactor1)];
-        upscaledSwapAmount = swapAmount.mul(scaleFactor0);
-      });
-
-      it('charges the expected protocol fee', async () => {
-        const actualProtocolFee = await protocolFeesCollector.getSwapFeePercentage();
-        expect(actualProtocolFee).to.equal(protocolFeePercentage);
-      });
-
-      context('on swap given in', () => {
-        it('pays fees on swap given in', async () => {
-          const singleSwap = {
-            poolId: await pool.getPoolId(),
-            kind: SwapKind.GivenIn,
-            assetIn: poolTokens.first.address,
-            assetOut: poolTokens.second.address,
-            amount: swapAmount,
-            userData: '0x',
-          };
-          const funds = {
-            sender: owner.address,
-            fromInternalBalance: false,
-            recipient: other.address,
-            toInternalBalance: false,
-          };
-          const limit = 0; // Minimum amount out
-          const deadline = MAX_UINT256;
-
-          const prevInvariant = await mockMath.invariant(poolWeights, upscaledBalances);
-
-          const adjustedAmountIn = fpMul(upscaledSwapAmount, fp(1).sub(swapFeePercentage));
-          const amountOut = await mockMath.outGivenIn(
-            upscaledBalances[0],
-            poolWeights[0],
-            upscaledBalances[1],
-            poolWeights[1],
-            adjustedAmountIn
-          );
-
-          const postBalances = [upscaledBalances[0].add(upscaledSwapAmount), upscaledBalances[1].sub(amountOut)];
-          const postInvariant = await mockMath.invariant(poolWeights, postBalances);
-          const totalSupply = await pool.totalSupply();
-
-          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
-            fpDiv(postInvariant, prevInvariant),
-            totalSupply,
-            totalSupply,
-            protocolFeePercentage
-          );
-
-          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-          bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-          expect(bptFeeBalance).to.equalWithError(expectedProtocolFees, 0.000001);
-        });
-      });
-
-      context('on swap given out', () => {
-        it('pays fees on swap given out', async () => {
-          const singleSwap = {
-            poolId: await pool.getPoolId(),
-            kind: SwapKind.GivenOut,
-            assetIn: poolTokens.second.address,
-            assetOut: poolTokens.first.address,
-            amount: swapAmount,
-            userData: '0x',
-          };
-          const funds = {
-            sender: owner.address,
-            fromInternalBalance: false,
-            recipient: other.address,
-            toInternalBalance: false,
-          };
-          const limit = MAX_UINT256; // Maximum amount in
-          const deadline = MAX_UINT256;
-
-          const prevInvariant = await mockMath.invariant(poolWeights, upscaledBalances);
-
-          const amountIn = await mockMath.inGivenOut(
-            upscaledBalances[1],
-            poolWeights[1],
-            upscaledBalances[0],
-            poolWeights[0],
-            upscaledSwapAmount
-          );
-
-          // Has to be a better way to do this...
-          const proportion = fp(1).sub(swapFeePercentage);
-          const adjustedAmountIn = fp(fromFp(amountIn).toNumber() / fromFp(proportion).toNumber());
-
-          const postBalances = [upscaledBalances[1].sub(upscaledSwapAmount), upscaledBalances[0].add(adjustedAmountIn)];
-          const postInvariant = await mockMath.invariant(poolWeights, postBalances);
-          const totalSupply = await pool.totalSupply();
-
-          const expectedProtocolFees = await mockFees.calculateDueProtocolFees(
-            fpDiv(postInvariant, prevInvariant),
-            totalSupply,
-            totalSupply,
-            protocolFeePercentage
-          );
-
-          await vault.instance.connect(owner).swap(singleSwap, funds, limit, deadline);
-
-          bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-          expect(bptFeeBalance).to.equalWithError(expectedProtocolFees, 0.000001);
-        });
-      });
-    });
-
-    describe('does not pay on join/exit', () => {
-      context('with balance changes', () => {
-        let currentBalances: BigNumber[];
-        let bptIn: BigNumber;
-
-        sharedBeforeEach('simulate increased initial balances', async () => {
-          // 4/3 of the initial balances
-          currentBalances = initialBalances.map((balance) => balance.mul(4).div(3));
-          bptIn = (await pool.balanceOf(owner)).div(10);
-        });
-
-        it('no protocol fees on join exact tokens in for BPT out', async () => {
-          await pool.joinGivenIn({ from: owner, amountsIn: fp(1), currentBalances });
-          bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-          expect(bptFeeBalance).to.be.zero;
-        });
-
-        it('no protocol fees on exit exact BPT in for one token out', async () => {
-          await pool.singleExitGivenIn({
-            from: owner,
-            bptIn: bptIn,
-            token: 0,
-            currentBalances,
-            protocolFeePercentage,
-          });
-
-          bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-          expect(bptFeeBalance).to.be.zero;
-        });
-
-        it('no protocol fees on exit exact BPT in for all tokens out', async () => {
-          await pool.multiExitGivenIn({
-            from: owner,
-            bptIn: bptIn,
-            currentBalances,
-            protocolFeePercentage,
-          });
-
-          bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-          expect(bptFeeBalance).to.be.zero;
-        });
-
-        it('no protocol fees on exit BPT In for exact tokens out', async () => {
-          const { balances } = await pool.getTokens();
-
-          await pool.exitGivenOut({
-            from: owner,
-            amountsOut: [balances[0].div(5), balances[1].div(5)],
-            maximumBptIn: MAX_UINT256,
-            protocolFeePercentage,
-          });
-
-          bptFeeBalance = await pool.balanceOf(protocolFeesCollector.address);
-
-          expect(bptFeeBalance).to.be.zero;
-        });
-      });
     });
   });
 
