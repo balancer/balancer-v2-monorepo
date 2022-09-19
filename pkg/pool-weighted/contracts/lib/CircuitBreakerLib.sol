@@ -34,7 +34,7 @@ library CircuitBreakerLib {
 
     struct CircuitBreakerParams {
         uint256 referenceBptPrice;
-        uint256 referenceWeightFactor;
+        uint256 referenceWeightComplement;
         uint256 lowerBoundPercentage;
         uint256 upperBoundPercentage;
     }
@@ -44,14 +44,14 @@ library CircuitBreakerLib {
     // [ UB ratio | LB ratio | upper bound | lower bound | weight factor | ref price |
     // |MSB                                                                       LSB|
     uint256 private constant _REFERENCE_BPT_PRICE_OFFSET = 0;
-    uint256 private constant _REFERENCE_WEIGHT_FACTOR_OFFSET = _REFERENCE_BPT_PRICE_OFFSET + _REFERENCE_BPT_PRICE_WIDTH;
-    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REFERENCE_WEIGHT_FACTOR_OFFSET + _REFERENCE_WEIGHT_FACTOR_WIDTH;
+    uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_OFFSET = _REFERENCE_BPT_PRICE_OFFSET + _REFERENCE_BPT_PRICE_WIDTH;
+    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REFERENCE_WEIGHT_COMPLEMENT_OFFSET + _REFERENCE_WEIGHT_COMPLEMENT_WIDTH;
     uint256 private constant _UPPER_BOUND_PCT_OFFSET = _LOWER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
     uint256 private constant _REFERENCE_LOWER_BOUND_RATIO_OFFSET = _UPPER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
     uint256 private constant _REFERENCE_UPPER_BOUND_RATIO_OFFSET = _REFERENCE_LOWER_BOUND_RATIO_OFFSET +
         _BOUND_RATIO_WIDTH;
 
-    uint256 private constant _REFERENCE_WEIGHT_FACTOR_WIDTH = 64;
+    uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_WIDTH = 64;
     uint256 private constant _REFERENCE_BPT_PRICE_WIDTH = 112;
     uint256 private constant _BOUND_PERCENTAGE_WIDTH = 16;
     uint256 private constant _BOUND_RATIO_WIDTH = 24;
@@ -73,9 +73,9 @@ library CircuitBreakerLib {
                     _REFERENCE_BPT_PRICE_OFFSET,
                     _REFERENCE_BPT_PRICE_WIDTH
                 ),
-                referenceWeightFactor: circuitBreakerState
-                    .decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH)
-                    .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE),
+                referenceWeightComplement: circuitBreakerState
+                    .decodeUint(_REFERENCE_WEIGHT_COMPLEMENT_OFFSET, _REFERENCE_WEIGHT_COMPLEMENT_WIDTH)
+                    .decompress(_REFERENCE_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
                 lowerBoundPercentage: circuitBreakerState
                     .decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
                     .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
@@ -88,7 +88,7 @@ library CircuitBreakerLib {
     /**
      * @notice Returns the dynamic upper and lower bounds for a given token, at the current weight.
      * @dev If a bound value is zero, it means there is no circuit breaker in that direction for the given token.
-     * The current boundary is given as: referenceBptPrice * (raw boundary percentage)**(currentWeightFactor).
+     * The current boundary is given as: referenceBptPrice * (raw boundary percentage)**(currentWeightComplement).
      *
      * The weight factor calculation attempts to isolate changes in the balance due to arbers responding to external
      * prices, and internal price changes from moving weights. There is a non-linear relationship between "spot" price
@@ -99,10 +99,10 @@ library CircuitBreakerLib {
      * BPT price at the time the breaker is set), such that the final boundary to be checked is simply the original
      * reference BPT price multiplied by this conversion ratio.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentWeightFactor - The combined weight of all other tokens: (_denormWeightSum - weight of this token)
+     * @param currentWeightComplement - The combined weight of all other tokens: (_denormWeightSum - token weight)
      * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
      */
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightFactor)
+    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightComplement)
         internal
         pure
         returns (uint256, uint256)
@@ -112,11 +112,11 @@ library CircuitBreakerLib {
             _REFERENCE_BPT_PRICE_OFFSET,
             _REFERENCE_BPT_PRICE_WIDTH
         );
-        uint256 referenceWeightFactor = circuitBreakerState
-            .decodeUint(_REFERENCE_WEIGHT_FACTOR_OFFSET, _REFERENCE_WEIGHT_FACTOR_WIDTH)
-            .decompress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE);
+        uint256 referenceWeightComplement = circuitBreakerState
+            .decodeUint(_REFERENCE_WEIGHT_COMPLEMENT_OFFSET, _REFERENCE_WEIGHT_COMPLEMENT_WIDTH)
+            .decompress(_REFERENCE_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE);
 
-        if (referenceWeightFactor == currentWeightFactor) {
+        if (referenceWeightComplement == currentWeightComplement) {
             // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary expressions.
             return (
@@ -148,7 +148,7 @@ library CircuitBreakerLib {
             (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
                 lowerBoundPercentage,
                 upperBoundPercentage,
-                currentWeightFactor
+                currentWeightComplement
             );
 
             return (referenceBptPrice.mulDown(lowerBoundRatioCache), referenceBptPrice.mulUp(upperBoundRatioCache));
@@ -162,7 +162,7 @@ library CircuitBreakerLib {
      * @param params - CircuitBreakerParams has the following components:
      * - referenceBptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
-     * - currentWeightFactor: This is _denormWeightSum - currentWeight of the token.
+     * - currentWeightComplement: This is _denormWeightSum - currentWeight of the token.
      * - lowerBoundPercentage: The value of the lower bound. Any operation that would cause the effective
      *   BPT Price to fall below lowerBoundRatio * referenceBptPrice should revert.
      * - upperBoundPercentage: The value of the upper bound. If non-zero, any operation that would cause the
@@ -188,9 +188,9 @@ library CircuitBreakerLib {
         circuitBreakerState = circuitBreakerState
             .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
             .insertUint(
-            params.referenceWeightFactor.compress(_REFERENCE_WEIGHT_FACTOR_WIDTH, _MAX_BOUND_PERCENTAGE),
-            _REFERENCE_WEIGHT_FACTOR_OFFSET,
-            _REFERENCE_WEIGHT_FACTOR_WIDTH
+            params.referenceWeightComplement.compress(_REFERENCE_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
+            _REFERENCE_WEIGHT_COMPLEMENT_OFFSET,
+            _REFERENCE_WEIGHT_COMPLEMENT_WIDTH
         );
 
         // Add the lower nad upper percentage bounds.
@@ -213,7 +213,7 @@ library CircuitBreakerLib {
         (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
             params.lowerBoundPercentage,
             params.upperBoundPercentage,
-            params.referenceWeightFactor
+            params.referenceWeightComplement
         );
 
         // Finally, insert these computed reference ratios, and return the complete set of fields.
@@ -235,12 +235,12 @@ library CircuitBreakerLib {
     function _getBoundaryConversionRatios(
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage,
-        uint256 currentWeightFactor
+        uint256 currentWeightComplement
     ) private pure returns (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) {
         // Rounding down for the lower bound, and up for the upper bound will maximize the
         // "operating range" - the BPT price range that will not trigger the circuit breaker -
         // of the pool for traders.
-        lowerBoundRatioCache = lowerBoundPercentage.powDown(currentWeightFactor);
-        upperBoundRatioCache = upperBoundPercentage.powUp(currentWeightFactor);
+        lowerBoundRatioCache = lowerBoundPercentage.powDown(currentWeightComplement);
+        upperBoundRatioCache = upperBoundPercentage.powUp(currentWeightComplement);
     }
 }

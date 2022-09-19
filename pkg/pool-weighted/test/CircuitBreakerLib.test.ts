@@ -9,7 +9,7 @@ import { CircuitBreakerParams } from '@balancer-labs/v2-helpers/src/models/pools
 
 describe('CircuitBreakerLib', () => {
   const BPT_PRICE = fp(0.4212);
-  const WEIGHT_FACTOR = fp(0.2); // 1 - 0.8
+  const WEIGHT_COMPLEMENT = fp(0.2); // 1 - 0.8
   const MAX_BOUND = fp(10);
   const MAX_RELATIVE_ERROR = 0.01;
   const LOWER_BOUND = fp(0.8);
@@ -29,7 +29,7 @@ describe('CircuitBreakerLib', () => {
   ) {
     const circuitBreakerParams: CircuitBreakerParams = {
       referenceBptPrice: BPT_PRICE,
-      referenceWeightFactor: WEIGHT_FACTOR,
+      referenceWeightComplement: WEIGHT_COMPLEMENT,
       lowerBoundPercentage: lowerBoundPct,
       upperBoundPercentage: upperBoundPct,
     };
@@ -37,10 +37,12 @@ describe('CircuitBreakerLib', () => {
     const data = await setter(ZERO_BYTES32, circuitBreakerParams);
 
     // Bounds set correctly.
-    const [referenceBptPrice, currentWeightFactor, lowerBoundPercentage, upperBoundPercentage] = await getter(data);
+    const [referenceBptPrice, referenceWeightComplement, lowerBoundPercentage, upperBoundPercentage] = await getter(
+      data
+    );
 
     expect(referenceBptPrice).to.equal(BPT_PRICE);
-    expect(currentWeightFactor).to.almostEqual(WEIGHT_FACTOR);
+    expect(referenceWeightComplement).to.almostEqual(WEIGHT_COMPLEMENT);
     // These are high precision random numbers, and there is compression, so it's not exact
     expect(lowerBoundPercentage).to.almostEqual(lowerBoundPct, MAX_RELATIVE_ERROR);
     expect(upperBoundPercentage).to.almostEqual(upperBoundPct, MAX_RELATIVE_ERROR);
@@ -57,7 +59,7 @@ describe('CircuitBreakerLib', () => {
       await expect(
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: BPT_PRICE,
-          referenceWeightFactor: WEIGHT_FACTOR,
+          referenceWeightComplement: WEIGHT_COMPLEMENT,
           lowerBoundPercentage: fp(1).add(1),
           upperBoundPercentage: 0,
         })
@@ -68,7 +70,7 @@ describe('CircuitBreakerLib', () => {
       await expect(
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: BPT_PRICE,
-          referenceWeightFactor: WEIGHT_FACTOR,
+          referenceWeightComplement: WEIGHT_COMPLEMENT,
           lowerBoundPercentage: MAX_BOUND,
           upperBoundPercentage: 0,
         })
@@ -79,7 +81,7 @@ describe('CircuitBreakerLib', () => {
       await expect(
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: BPT_PRICE,
-          referenceWeightFactor: WEIGHT_FACTOR,
+          referenceWeightComplement: WEIGHT_COMPLEMENT,
           lowerBoundPercentage: fp(0.9),
           upperBoundPercentage: fp(0.7),
         })
@@ -106,7 +108,7 @@ describe('CircuitBreakerLib', () => {
   describe('percentage to BPT price conversion ratios', () => {
     const circuitBreakerParams: CircuitBreakerParams = {
       referenceBptPrice: BPT_PRICE,
-      referenceWeightFactor: WEIGHT_FACTOR,
+      referenceWeightComplement: WEIGHT_COMPLEMENT,
       lowerBoundPercentage: LOWER_BOUND,
       upperBoundPercentage: UPPER_BOUND,
     };
@@ -119,12 +121,15 @@ describe('CircuitBreakerLib', () => {
 
     it('should store default reference values', async () => {
       // Pass in the same weight factor it was constructed with
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(data, WEIGHT_FACTOR);
+      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
+        data,
+        WEIGHT_COMPLEMENT
+      );
       // Messy because of fp vs decimal/number
-      const weightFactor = Number(fromFp(WEIGHT_FACTOR));
+      const weightCommplement = Number(fromFp(WEIGHT_COMPLEMENT));
 
-      const expLower = fp(Number(fromFp(LOWER_BOUND)) ** weightFactor);
-      const expHigher = fp(Number(fromFp(UPPER_BOUND)) ** weightFactor);
+      const expLower = fp(Number(fromFp(LOWER_BOUND)) ** weightCommplement);
+      const expHigher = fp(Number(fromFp(UPPER_BOUND)) ** weightCommplement);
 
       const expectedLowerBound = fpMul(BPT_PRICE, expLower);
       const expectedUpperBound = fpMul(BPT_PRICE, expHigher);
@@ -135,13 +140,16 @@ describe('CircuitBreakerLib', () => {
     });
 
     it('should compute the bounds manually when necessary', async () => {
-      const newWeightFactor = WEIGHT_FACTOR.mul(2); // e.g., 0.4
+      const newWeightComplement = WEIGHT_COMPLEMENT.mul(2); // e.g., 0.4
 
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(data, newWeightFactor);
-      const weightFactor = Number(fromFp(newWeightFactor));
+      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
+        data,
+        newWeightComplement
+      );
+      const weightComplement = Number(fromFp(newWeightComplement));
 
-      const expLower = fp(Number(fromFp(LOWER_BOUND)) ** weightFactor);
-      const expHigher = fp(Number(fromFp(UPPER_BOUND)) ** weightFactor);
+      const expLower = fp(Number(fromFp(LOWER_BOUND)) ** weightComplement);
+      const expHigher = fp(Number(fromFp(UPPER_BOUND)) ** weightComplement);
 
       const expectedLowerBound = fpMul(BPT_PRICE, expLower);
       const expectedUpperBound = fpMul(BPT_PRICE, expHigher);
