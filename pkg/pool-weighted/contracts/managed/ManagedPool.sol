@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -28,11 +27,30 @@ import "../WeightedMath.sol";
 import "./ManagedPoolSettings.sol";
 
 /**
- * @dev Base class for WeightedPools containing swap, join and exit logic, but leaving storage and management of
- * the weights to subclasses. Derived contracts can choose to make weights immutable, mutable, or even dynamic
- *  based on local or external logic.
+ * @title Managed Pool
+ * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
+ * contract (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
+ * operations, it should never be deployed with an EOA as the owner.
+ *
+ * Pool controllers can add functionality: for example, allow the effective "owner" to be transferred to another
+ * address. (The actual pool owner is still immutable, set to the pool controller contract.) Another pool owner
+ * might allow fine-grained permissioning of protected operations: perhaps a multisig can add/remove tokens, but
+ * a third-party EOA is allowed to set the swap fees.
+ *
+ * Pool controllers might also impose limits on functionality so that operations that might endanger LPs can be
+ * performed more safely. For instance, the pool by itself places no restrictions on the duration of a gradual
+ * weight change, but a pool controller might restrict this in various ways, from a simple minimum duration,
+ * to a more complex rate limit.
+ *
+ * Pool controllers can also serve as intermediate contracts to hold tokens, deploy timelocks, consult with other
+ * protocols or on-chain oracles, or bundle several operations into one transaction that re-entrancy protection
+ * would prevent initiating from the pool contract.
+ *
+ * Managed Pools and their controllers are designed to support many asset management use cases, including: large
+ * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
+ * protocol and management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
+contract ManagedPool is ManagedPoolSettings {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
@@ -49,13 +67,11 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
 
     // Swap Hooks
 
-    function onSwap(
+    function _onSwapMinimal(
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
-        _beforeSwapJoinExit();
-
+    ) internal override returns (uint256) {
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
@@ -85,6 +101,18 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return _addSwapFeeAmount(amountIn);
         }
+    }
+
+    /**
+     * @dev Unimplemented as ManagedPool uses the MinimalInfoSwap Pool specialization.
+     */
+    function _onSwapGeneral(
+        SwapRequest memory, /*request*/
+        uint256[] memory, /* balances*/
+        uint256, /* indexIn */
+        uint256 /*indexOut */
+    ) internal pure override returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     /*
@@ -201,10 +229,26 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
     }
 
     /**
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
+     */
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(getSwapFeePercentage().complement());
+    }
+
+    /**
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
+     */
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount - fee amount, so we round down (favoring a higher fee amount).
+        return amount.mulDown(getSwapFeePercentage().complement());
+    }
+
+    /**
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(uint256[] memory, uint256[] memory) internal returns (uint256) {
+    function _beforeJoinExit() internal returns (uint256) {
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -213,6 +257,38 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
 
         return supplyBeforeFeeCollection.add(protocolAUMFees + managerAUMFees);
+    }
+
+    // Initialize
+
+    function _onInitializePool(
+        bytes32,
+        address,
+        address,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        WeightedPoolUserData.JoinKind kind = userData.joinKind();
+        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
+
+        uint256[] memory scalingFactors = _scalingFactors();
+        uint256[] memory amountsIn = userData.initialAmountsIn();
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
+        _upscaleArray(amountsIn, scalingFactors);
+
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(getNormalizedWeights(), amountsIn);
+
+        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
+        // consistent in Pools with similar compositions but different number of tokens.
+        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
+
+        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
+        // so naturally charges no AUM fees.
+        _lastAumFeeCollectionTimestamp = block.timestamp;
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        _downscaleUpArray(amountsIn, scalingFactors);
+
+        return (bptAmountOut, amountsIn);
     }
 
     // Join
@@ -224,21 +300,24 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256,
         uint256,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = getNormalizedWeights();
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        uint256 preJoinExitSupply = _beforeJoinExit();
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
             balances,
-            normalizedWeights,
+            getNormalizedWeights(),
             scalingFactors,
             preJoinExitSupply,
             userData
         );
+
+        // amountsIn are amounts entering the Pool, so we round up.
+        _downscaleUpArray(amountsIn, scalingFactors);
 
         return (bptAmountOut, amountsIn);
     }
@@ -256,9 +335,12 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
     ) internal view returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
         // token prices.
+
+        bytes32 poolState = _getPoolState();
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(
-            getSwapEnabled() || kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
+            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
+                kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -272,7 +354,7 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
@@ -281,7 +363,7 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    ManagedPoolStorageLib.getSwapFeePercentage(_getPoolState()),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
@@ -300,21 +382,24 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256,
         uint256,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        uint256[] memory normalizedWeights = getNormalizedWeights();
+        uint256[] memory scalingFactors = _scalingFactors();
+        _upscaleArray(balances, scalingFactors);
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        uint256 preJoinExitSupply = _beforeJoinExit();
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
             balances,
-            normalizedWeights,
+            getNormalizedWeights(),
             scalingFactors,
             preJoinExitSupply,
             userData
         );
+
+        // amountsOut are amounts exiting the Pool, so we round down.
+        _downscaleDownArray(amountsOut, scalingFactors);
 
         return (bptAmountIn, amountsOut);
     }
@@ -336,9 +421,11 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
         // token prices.
         // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
         // perform sensible checks.
+
+        bytes32 poolState = _getPoolState();
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
-            getSwapEnabled() ||
+            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
                 kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
@@ -353,7 +440,7 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
                     balances,
                     normalizedWeights,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
@@ -365,7 +452,7 @@ contract ManagedPool is ManagedPoolSettings, IMinimalSwapInfoPool {
                     normalizedWeights,
                     scalingFactors,
                     totalSupply,
-                    getSwapFeePercentage(),
+                    ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {

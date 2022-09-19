@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { Contract } from 'ethers';
+import { Interface } from 'ethers/lib/utils';
 
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -50,25 +51,26 @@ describe('ManagedPool owner only actions', () => {
   }
 
   const poolArtifact = getArtifact('v2-pool-weighted/ManagedPool');
-  const nonViewFunctions = poolArtifact.abi
+  const poolInterface = new Interface(poolArtifact.abi);
+  const nonViewFunctions = Object.entries(poolInterface.functions)
     .filter(
-      (elem) =>
+      ([, elem]) =>
         elem.type === 'function' && (elem.stateMutability === 'payable' || elem.stateMutability === 'nonpayable')
     )
-    .map((fn) => fn.name);
+    .map(([signature]) => signature);
 
   const expectedOwnerOnlyFunctions = [
-    'addAllowedAddress',
-    'addToken',
-    'removeAllowedAddress',
-    'removeToken',
-    'setManagementAumFeePercentage',
-    'setManagementSwapFeePercentage',
-    'setMustAllowlistLPs',
-    'setSwapEnabled',
-    'setSwapFeePercentage',
-    'updateSwapFeeGradually',
-    'updateWeightsGradually',
+    'addAllowedAddress(address)',
+    'addToken(address,uint256,uint256,address)',
+    'removeAllowedAddress(address)',
+    'removeToken(address,address,uint256,uint256)',
+    'setManagementAumFeePercentage(uint256)',
+    'setManagementSwapFeePercentage(uint256)',
+    'setMustAllowlistLPs(bool)',
+    'setSwapEnabled(bool)',
+    'setSwapFeePercentage(uint256)',
+    'updateSwapFeeGradually(uint256,uint256,uint256,uint256)',
+    'updateWeightsGradually(uint256,uint256,uint256[])',
   ];
 
   const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));
