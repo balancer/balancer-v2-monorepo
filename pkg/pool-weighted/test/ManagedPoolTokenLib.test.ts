@@ -4,8 +4,8 @@ import { hexlify, randomBytes } from 'ethers/lib/utils';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish, bn, fp, negate } from '@balancer-labs/v2-helpers/src/numbers';
 import { random, range } from 'lodash';
-import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('ManagedPoolTokenLib', () => {
@@ -27,55 +27,6 @@ describe('ManagedPoolTokenLib', () => {
     const clearedWord = mask.and(word);
     expect(clearedResult).to.equal(clearedWord);
   }
-
-  describe('token scaling factor', () => {
-    const DECIMAL_DIFF_OFFSET = 128;
-    const DECIMAL_DIFF_WIDTH = 5;
-
-    async function assertTokenScalingFactor(
-      getter: (word: string) => Promise<BigNumber>,
-      setter: (word: string, value: string) => Promise<string>,
-      word: string,
-      token: Token,
-      offset: number,
-      bits: number
-    ) {
-      const result = await setter(word, token.address);
-      // Must not have affected unexpected bits.
-      checkMaskedWord(result, word, offset, bits);
-
-      // We must be able to restore the original value
-      const expectedDecimalsDiff = 18 - token.decimals;
-      const expectedScalingFactor = fp(1).mul(bn(10).pow(expectedDecimalsDiff));
-      expect(await getter(result)).to.equal(expectedScalingFactor);
-    }
-
-    context('when the token has 18 decimals or fewer', () => {
-      it('stores the token scaling factor correctly', async () => {
-        for (let decimals = 0; decimals < 18; decimals++) {
-          const word = hexlify(randomBytes(32));
-          const token = await Token.create({ decimals });
-
-          await assertTokenScalingFactor(
-            lib.getTokenScalingFactor,
-            lib.setTokenScalingFactor,
-            word,
-            token,
-            DECIMAL_DIFF_OFFSET,
-            DECIMAL_DIFF_WIDTH
-          );
-        }
-      });
-    });
-
-    context('when the token has more than 18 decimals', () => {
-      it('reverts', async () => {
-        const word = hexlify(randomBytes(32));
-        const badToken = await Token.create({ decimals: 19 });
-        await expect(lib.setTokenScalingFactor(word, badToken.address)).to.be.revertedWith('SUB_OVERFLOW');
-      });
-    });
-  });
 
   describe('token weight', () => {
     const START_DENORM_WEIGHT_OFFSET = 0;
