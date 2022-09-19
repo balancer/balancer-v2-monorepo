@@ -115,7 +115,7 @@ library ManagedPoolCircuitBreakerLib {
         returns (uint256, uint256)
     {
         // Retrieve the reference bptPrice and weight factors, stored at the time the circuit breaker was set.
-        uint256 bptPrice = circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        uint256 referenceBptPrice = circuitBreakerState.decodeUint(_REFERENCE_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
         uint256 referenceWeightFactor = circuitBreakerState
             .decodeUint(_WEIGHT_FACTOR_OFFSET, _WEIGHT_FACTOR_WIDTH)
             .decompress(_WEIGHT_FACTOR_WIDTH);
@@ -124,11 +124,15 @@ library ManagedPoolCircuitBreakerLib {
             // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary expressions.
             return (
-                bptPrice.mulDown(
-                    circuitBreakerState.decodeUint(_LOWER_BOUND_RATIO_CACHE_OFFSET, _BOUND_RATIO_CACHE_WIDTH)
+                referenceBptPrice.mulDown(
+                    circuitBreakerState
+                        .decodeUint(_LOWER_BOUND_RATIO_CACHE_OFFSET, _BOUND_RATIO_CACHE_WIDTH)
+                        .decompress(_BOUND_RATIO_CACHE_WIDTH, _MAX_BOUND_PERCENTAGE)
                 ),
-                bptPrice.mulUp(
-                    circuitBreakerState.decodeUint(_UPPER_BOUND_RATIO_CACHE_OFFSET, _BOUND_RATIO_CACHE_WIDTH)
+                referenceBptPrice.mulUp(
+                    circuitBreakerState
+                        .decodeUint(_UPPER_BOUND_RATIO_CACHE_OFFSET, _BOUND_RATIO_CACHE_WIDTH)
+                        .decompress(_BOUND_RATIO_CACHE_WIDTH, _MAX_BOUND_PERCENTAGE)
                 )
             );
         } else {
@@ -149,7 +153,7 @@ library ManagedPoolCircuitBreakerLib {
                 currentWeightFactor
             );
 
-            return (bptPrice.mulDown(lowerBoundRatioCache), bptPrice.mulUp(upperBoundRatioCache));
+            return (referenceBptPrice.mulDown(lowerBoundRatioCache), referenceBptPrice.mulUp(upperBoundRatioCache));
         }
     }
 
