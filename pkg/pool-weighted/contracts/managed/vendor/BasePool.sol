@@ -219,10 +219,12 @@ abstract contract BasePool is
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFees) {
+        uint256 bptAmountOut;
+
         _ensureNotPaused();
         if (totalSupply() == 0) {
-            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
+            (bptAmountOut, amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
 
             // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
             // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
@@ -230,10 +232,8 @@ abstract contract BasePool is
             _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
             _mintPoolTokens(address(0), _getMinimumBpt());
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
-
-            return (amountsIn, new uint256[](balances.length));
         } else {
-            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onJoinPool(
+            (bptAmountOut, amountsIn) = _onJoinPool(
                 poolId,
                 sender,
                 recipient,
@@ -246,10 +246,10 @@ abstract contract BasePool is
             // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
-
-            // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
-            return (amountsIn, new uint256[](balances.length));
         }
+
+        // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
+        dueProtocolFees = new uint256[](amountsIn.length);
     }
 
     /**
@@ -264,8 +264,7 @@ abstract contract BasePool is
         uint256 lastChangeBlock,
         uint256 protocolSwapFeePercentage,
         bytes memory userData
-    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory amountsOut;
+    ) external override onlyVault(poolId) returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFees) {
         uint256 bptAmountIn;
 
         // When a user calls `exitPool`, this is the first point of entry from the Vault.
@@ -299,7 +298,7 @@ abstract contract BasePool is
         _burnPoolTokens(sender, bptAmountIn);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
-        return (amountsOut, new uint256[](balances.length));
+        dueProtocolFees = new uint256[](amountsOut.length);
     }
 
     // Query functions
