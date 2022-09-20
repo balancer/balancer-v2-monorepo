@@ -23,7 +23,6 @@ describe('BasePool', function () {
   let tokens: TokenList;
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
-  const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -57,6 +56,7 @@ describe('BasePool', function () {
       pauseWindowDuration,
       bufferPeriodDuration,
       owner,
+      from,
     } = params;
     if (!poolTokens) poolTokens = tokens;
     if (!assetManagers) assetManagers = Array(poolTokens.length).fill(ZERO_ADDRESS);
@@ -64,9 +64,10 @@ describe('BasePool', function () {
     if (!pauseWindowDuration) pauseWindowDuration = MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
+    if (!from) from = deployer;
 
-    return deploy('MockBasePool', {
-      from: params.from,
+    return deploy('v2-pool-weighted/MockBasePool', {
+      from,
       args: [
         vault.address,
         PoolSpecialization.GeneralPool,
@@ -74,7 +75,6 @@ describe('BasePool', function () {
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
         assetManagers,
-        swapFeePercentage,
         pauseWindowDuration,
         bufferPeriodDuration,
         TypesConverter.toAddress(owner),
@@ -146,143 +146,6 @@ describe('BasePool', function () {
       const balanceAfter = await pool.balanceOf(feeCollector);
 
       expect(balanceAfter.sub(balanceBefore)).to.equal(fp(42));
-    });
-  });
-
-  describe('swap fee', () => {
-    context('initialization', () => {
-      it('has an initial swap fee', async () => {
-        const swapFeePercentage = fp(0.003);
-        const pool = await deployBasePool({ swapFeePercentage });
-
-        expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
-      });
-    });
-
-    context('set swap fee percentage', () => {
-      let pool: Contract;
-      let sender: SignerWithAddress;
-
-      function itSetsSwapFeePercentage() {
-        context('when the new swap fee percentage is within bounds', () => {
-          const newSwapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.sub(1);
-
-          it('can change the swap fee', async () => {
-            await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage);
-
-            expect(await pool.getSwapFeePercentage()).to.equal(newSwapFeePercentage);
-          });
-
-          it('emits an event', async () => {
-            const receipt = await (await pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).wait();
-
-            expectEvent.inReceipt(receipt, 'SwapFeePercentageChanged', { swapFeePercentage: newSwapFeePercentage });
-          });
-
-          context('when paused', () => {
-            sharedBeforeEach('pause pool', async () => {
-              const action = await actionId(pool, 'pause');
-              await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
-              await pool.connect(admin).pause();
-            });
-
-            it('reverts', async () => {
-              await expect(pool.connect(sender).setSwapFeePercentage(newSwapFeePercentage)).to.be.revertedWith(
-                'PAUSED'
-              );
-            });
-          });
-        });
-
-        context('when the new swap fee percentage is above the maximum', () => {
-          const swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE.add(1);
-
-          it('reverts', async () => {
-            await expect(pool.connect(sender).setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith(
-              'MAX_SWAP_FEE_PERCENTAGE'
-            );
-          });
-        });
-
-        context('when the new swap fee percentage is below the minimum', () => {
-          const swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE.sub(1);
-
-          it('reverts', async () => {
-            await expect(pool.connect(sender).setSwapFeePercentage(swapFeePercentage)).to.be.revertedWith(
-              'MIN_SWAP_FEE_PERCENTAGE'
-            );
-          });
-        });
-      }
-
-      function itRevertsWithUnallowedSender() {
-        it('reverts', async () => {
-          await expect(pool.connect(sender).setSwapFeePercentage(MIN_SWAP_FEE_PERCENTAGE)).to.be.revertedWith(
-            'SENDER_NOT_ALLOWED'
-          );
-        });
-      }
-
-      context('with a delegated owner', () => {
-        const owner = DELEGATE_OWNER;
-
-        sharedBeforeEach('deploy pool', async () => {
-          pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
-        });
-
-        beforeEach('set sender', () => {
-          sender = other;
-        });
-
-        context('when the sender has the set fee permission in the authorizer', () => {
-          sharedBeforeEach('grant permission', async () => {
-            const action = await actionId(pool, 'setSwapFeePercentage');
-            await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
-          });
-
-          itSetsSwapFeePercentage();
-        });
-
-        context('when the sender does not have the set fee permission in the authorizer', () => {
-          itRevertsWithUnallowedSender();
-        });
-      });
-
-      context('with an owner', () => {
-        let owner: SignerWithAddress;
-
-        sharedBeforeEach('deploy pool', async () => {
-          owner = poolOwner;
-          pool = await deployBasePool({ swapFeePercentage: fp(0.01), owner });
-        });
-
-        context('when the sender is the owner', () => {
-          beforeEach(() => {
-            sender = owner;
-          });
-
-          itSetsSwapFeePercentage();
-        });
-
-        context('when the sender is not the owner', () => {
-          beforeEach(() => {
-            sender = other;
-          });
-
-          context('when the sender does not have the set fee permission in the authorizer', () => {
-            itRevertsWithUnallowedSender();
-          });
-
-          context('when the sender has the set fee permission in the authorizer', () => {
-            sharedBeforeEach(async () => {
-              const action = await actionId(pool, 'setSwapFeePercentage');
-              await authorizer.connect(admin).grantPermissions([action], sender.address, [ANY_ADDRESS]);
-            });
-
-            itRevertsWithUnallowedSender();
-          });
-        });
-      });
     });
   });
 
@@ -465,39 +328,12 @@ describe('BasePool', function () {
         expect(recoveryMode).to.be.true;
       });
 
-      it('enabling recovery mode emits an event', async () => {
-        const tx = await pool.connect(sender).enableRecoveryMode();
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
-      });
-
       it('can disable recovery mode', async () => {
         await pool.connect(sender).enableRecoveryMode();
         await pool.connect(sender).disableRecoveryMode();
 
         const recoveryMode = await pool.inRecoveryMode();
         expect(recoveryMode).to.be.false;
-      });
-
-      it('disabling recovery mode emits an event', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        const tx = await pool.connect(sender).disableRecoveryMode();
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
-
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
-      });
-
-      it('reverts when calling functions in the wrong mode', async () => {
-        await expect(pool.notCallableInRecovery()).to.not.be.reverted;
-        await expect(pool.onlyCallableInRecovery()).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
-
-        await pool.connect(sender).enableRecoveryMode();
-
-        await expect(pool.doNotCallInRecovery()).to.be.revertedWith('IN_RECOVERY_MODE');
-        await expect(pool.notCallableInRecovery()).to.be.revertedWith('IN_RECOVERY_MODE');
-        await expect(pool.onlyCallableInRecovery()).to.not.be.reverted;
       });
     }
 
@@ -595,10 +431,40 @@ describe('BasePool', function () {
       let initialBalances: BigNumber[];
       let pool: Contract;
 
+      let sender: SignerWithAddress;
+      let recipient: SignerWithAddress;
+
       let normalJoin: () => Promise<ContractReceipt>;
       let normalExit: () => Promise<ContractReceipt>;
 
       const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.3);
+      const OTHER_EXIT_KIND = 1;
+      const OTHER_JOIN_KIND = 1;
+
+      before('prepare normal join and exit', () => {
+        sender = poolOwner;
+        recipient = poolOwner;
+
+        const joinRequest: JoinPoolRequest = {
+          assets: tokens.addresses,
+          maxAmountsIn: Array(tokens.length).fill(0),
+          userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+          fromInternalBalance: false,
+        };
+
+        normalJoin = async () =>
+          (await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, joinRequest)).wait();
+
+        const exitRequest: ExitPoolRequest = {
+          assets: tokens.addresses,
+          minAmountsOut: Array(tokens.length).fill(0),
+          userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+          toInternalBalance: false,
+        };
+
+        normalExit = async () =>
+          (await vault.connect(sender).exitPool(poolId, sender.address, recipient.address, exitRequest)).wait();
+      });
 
       sharedBeforeEach('deploy and initialize pool', async () => {
         initialBalances = Array(tokens.length).fill(fp(1000));
@@ -615,7 +481,7 @@ describe('BasePool', function () {
         await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
         await tokens.approve({ from: poolOwner, to: vault });
 
-        await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
+        await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request);
       });
 
       sharedBeforeEach('set a non-zero protocol swap fee percentage', async () => {
@@ -633,35 +499,9 @@ describe('BasePool', function () {
         expect(await feesCollector.getSwapFeePercentage()).to.equal(PROTOCOL_SWAP_FEE_PERCENTAGE);
       });
 
-      before('prepare normal join and exit', () => {
-        const OTHER_JOIN_KIND = 1;
-
-        const joinRequest: JoinPoolRequest = {
-          assets: tokens.addresses,
-          maxAmountsIn: Array(tokens.length).fill(0),
-          userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-          fromInternalBalance: false,
-        };
-
-        normalJoin = async () =>
-          (await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, joinRequest)).wait();
-
-        const OTHER_EXIT_KIND = 1;
-
-        const exitRequest: ExitPoolRequest = {
-          assets: tokens.addresses,
-          minAmountsOut: Array(tokens.length).fill(0),
-          userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
-          toInternalBalance: false,
-        };
-
-        normalExit = async () =>
-          (await vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, exitRequest)).wait();
-      });
-
       context('when not in recovery mode', () => {
         it('the recovery mode exit reverts', async () => {
-          const preExitBPT = await pool.balanceOf(poolOwner.address);
+          const preExitBPT = await pool.balanceOf(sender.address);
           const exitBPT = preExitBPT.div(3);
 
           const request: ExitPoolRequest = {
@@ -672,32 +512,38 @@ describe('BasePool', function () {
           };
 
           await expect(
-            vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request)
+            vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request)
           ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
         });
 
+        // TODO: refactor normal joins / exits.
         describe('normal joins', () => {
           it('do not revert', async () => {
             await expect(normalJoin()).to.not.be.reverted;
           });
 
-          it('receive the real protocol swap fee percentage value', async () => {
+          it('calls inner onJoin hook with join parameters', async () => {
             const receipt = await normalJoin();
             expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
-              protocolSwapFeePercentage: PROTOCOL_SWAP_FEE_PERCENTAGE,
+              sender: sender.address,
+              balances: initialBalances,
+              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
             });
           });
         });
 
+        // TODO: refactor normal joins / exits.
         describe('normal exits', () => {
           it('do not revert', async () => {
             await expect(normalExit()).to.not.be.reverted;
           });
 
-          it('receive the real protocol swap value fee percentage value', async () => {
+          it('calls inner onExit hook with exit parameters', async () => {
             const receipt = await normalExit();
             expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
-              protocolSwapFeePercentage: PROTOCOL_SWAP_FEE_PERCENTAGE,
+              sender: sender.address,
+              balances: initialBalances,
+              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
             });
           });
         });
@@ -714,35 +560,41 @@ describe('BasePool', function () {
           await pool.connect(admin).enableRecoveryMode();
         });
 
+        // TODO: refactor normal joins / exits.
         describe('normal joins', () => {
           it('do not revert', async () => {
             await expect(normalJoin()).to.not.be.reverted;
           });
 
-          it('receive 0 as the protocol swap fee percentage value', async () => {
+          it('calls inner onJoin hook with join parameters', async () => {
             const receipt = await normalJoin();
             expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
-              protocolSwapFeePercentage: 0,
+              sender: sender.address,
+              balances: initialBalances,
+              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
             });
           });
         });
 
+        // TODO: refactor normal joins / exits.
         describe('normal exits', () => {
           it('do not revert', async () => {
             await expect(normalExit()).to.not.be.reverted;
           });
 
-          it('receive 0 as the protocol swap fee percentage value', async () => {
+          it('calls inner onExit hook with exit parameters', async () => {
             const receipt = await normalExit();
             expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
-              protocolSwapFeePercentage: 0,
+              sender: sender.address,
+              balances: initialBalances,
+              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
             });
           });
         });
 
         function itExitsViaRecoveryModeCorrectly() {
           it('the recovery mode exit can be used', async () => {
-            const preExitBPT = await pool.balanceOf(poolOwner.address);
+            const preExitBPT = await pool.balanceOf(sender.address);
             const exitBPT = preExitBPT.div(3);
 
             const request: ExitPoolRequest = {
@@ -758,13 +610,13 @@ describe('BasePool', function () {
               {}
             );
             await expectBalanceChange(
-              () => vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request),
+              () => vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request),
               tokens,
-              { account: poolOwner, changes: expectedChanges }
+              { account: recipient, changes: expectedChanges }
             );
 
             // Exit BPT was burned
-            const afterExitBalance = await pool.balanceOf(poolOwner.address);
+            const afterExitBalance = await pool.balanceOf(sender.address);
             expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
           });
         }
@@ -782,57 +634,7 @@ describe('BasePool', function () {
 
           itExitsViaRecoveryModeCorrectly();
         });
-
-        context('when _beforeSwapJoinExit() reverts', () => {
-          sharedBeforeEach(async () => {
-            await pool.setFailBeforeSwapJoinExit(true);
-          });
-
-          it('normal joins revert', async () => {
-            await expect(normalJoin()).to.be.revertedWith('FAIL_BEFORE_SWAP_JOIN_EXIT');
-          });
-
-          it('normal exits revert', async () => {
-            await expect(normalExit()).to.be.revertedWith('FAIL_BEFORE_SWAP_JOIN_EXIT');
-          });
-
-          itExitsViaRecoveryModeCorrectly();
-        });
       });
-    });
-  });
-
-  describe('misc data', () => {
-    let pool: Contract;
-    const swapFeePercentage = fp(0.02);
-
-    sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool({ swapFeePercentage });
-    });
-
-    it('stores the swap fee pct in the most-significant 64 bits', async () => {
-      expect(await pool.getSwapFeePercentage()).to.equal(swapFeePercentage);
-
-      const swapFeeHex = swapFeePercentage.toHexString().slice(2); // remove 0x
-      const expectedMiscData = swapFeeHex.padStart(16, '0').padEnd(64, '0'); // pad first 8 bytes and fill with zeros
-
-      const miscData = await pool.getMiscData();
-      expect(miscData).to.be.equal(`0x${expectedMiscData}`);
-    });
-
-    it('can store up-to 192 bits of extra data', async () => {
-      const swapFeeHex = `0x${swapFeePercentage.toHexString().slice(2).padStart(16, '0')}`;
-
-      const assertMiscData = async (data: string): Promise<void> => {
-        await pool.setMiscData(data);
-        const expectedMiscData = `${swapFeeHex}${data.slice(18)}`; // 0x + 16 bits
-        expect(await pool.getMiscData()).to.be.equal(expectedMiscData);
-      };
-
-      for (let i = 0; i <= 64; i++) {
-        const data = `0x${'1'.repeat(i).padStart(64, '0')}`;
-        await assertMiscData(data);
-      }
     });
   });
 });
