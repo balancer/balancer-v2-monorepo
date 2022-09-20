@@ -757,6 +757,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
      * token will have no balance - it is up to the controller to provide some immediately after calling this function.
+     * Note however that regular join functions will not work while the new token has no balance: the only way to
+     * deposit an initial amount is by using an Asset Manager.
      *
      * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
      *
@@ -766,17 +768,19 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * Emits the TokenAdded event.
      *
      * @param token - The ERC20 token to be added to the Pool.
+     * @param assetManager - The Asset Manager for the token.
      * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
      * @param recipient - The address to receive the BPT minted by the Pool.
      */
     function addToken(
         IERC20 token,
+        address assetManager,
         uint256 normalizedWeight,
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
-        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
+        // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
         // Checking for the validity of the new weight would otherwise be much more complicated.
         _ensureNoWeightChange();
 
@@ -791,14 +795,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Finally, we store the new token's weight and scaling factor.
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
 
-        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
-
-        // Note that the Pool is now in an invalid state, since one of its tokens has a balance of zero (making the
-        // invariant also zero).
-
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
         }
+
+        // Once we've updated the internal state, we register the token in the Vault. This makes the Pool enter an
+        // invalid state, since one of its tokens has a balance of zero (making the invariant also zero). The Asset
+        // Manager must be used to deposit some initial balance and restore regular operation.
+        //
+        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
+        // try to register it again.
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, assetManager);
 
         emit TokenAdded(token, normalizedWeight);
     }
