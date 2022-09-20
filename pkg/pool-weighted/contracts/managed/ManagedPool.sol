@@ -301,13 +301,13 @@ contract ManagedPool is ManagedPoolSettings {
         uint256,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal virtual override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
         uint256 preJoinExitSupply = _beforeJoinExit();
 
-        (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
+        (bptAmountOut, amountsIn) = _doJoin(
             sender,
             balances,
             getNormalizedWeights(),
@@ -318,8 +318,6 @@ contract ManagedPool is ManagedPoolSettings {
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
-
-        return (bptAmountOut, amountsIn);
     }
 
     /**
@@ -383,13 +381,13 @@ contract ManagedPool is ManagedPoolSettings {
         uint256,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         uint256[] memory scalingFactors = _scalingFactors();
         _upscaleArray(balances, scalingFactors);
 
         uint256 preJoinExitSupply = _beforeJoinExit();
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
+        (bptAmountIn, amountsOut) = _doExit(
             sender,
             balances,
             getNormalizedWeights(),
@@ -400,8 +398,6 @@ contract ManagedPool is ManagedPoolSettings {
 
         // amountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
-
-        return (bptAmountIn, amountsOut);
     }
 
     /**
