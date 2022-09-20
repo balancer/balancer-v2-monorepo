@@ -516,37 +516,9 @@ describe('BasePool', function () {
           ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
         });
 
-        // TODO: refactor normal joins / exits.
-        describe('normal joins', () => {
-          it('do not revert', async () => {
-            await expect(normalJoin()).to.not.be.reverted;
-          });
+        itJoins();
 
-          it('calls inner onJoin hook with join parameters', async () => {
-            const receipt = await normalJoin();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
-              sender: sender.address,
-              balances: initialBalances,
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-            });
-          });
-        });
-
-        // TODO: refactor normal joins / exits.
-        describe('normal exits', () => {
-          it('do not revert', async () => {
-            await expect(normalExit()).to.not.be.reverted;
-          });
-
-          it('calls inner onExit hook with exit parameters', async () => {
-            const receipt = await normalExit();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
-              sender: sender.address,
-              balances: initialBalances,
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
-            });
-          });
-        });
+        itExits();
       });
 
       context('when in recovery mode', () => {
@@ -560,37 +532,9 @@ describe('BasePool', function () {
           await pool.connect(admin).enableRecoveryMode();
         });
 
-        // TODO: refactor normal joins / exits.
-        describe('normal joins', () => {
-          it('do not revert', async () => {
-            await expect(normalJoin()).to.not.be.reverted;
-          });
+        itJoins();
 
-          it('calls inner onJoin hook with join parameters', async () => {
-            const receipt = await normalJoin();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
-              sender: sender.address,
-              balances: initialBalances,
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-            });
-          });
-        });
-
-        // TODO: refactor normal joins / exits.
-        describe('normal exits', () => {
-          it('do not revert', async () => {
-            await expect(normalExit()).to.not.be.reverted;
-          });
-
-          it('calls inner onExit hook with exit parameters', async () => {
-            const receipt = await normalExit();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
-              sender: sender.address,
-              balances: initialBalances,
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
-            });
-          });
-        });
+        itExits();
 
         function itExitsViaRecoveryModeCorrectly() {
           it('the recovery mode exit can be used', async () => {
@@ -635,6 +579,40 @@ describe('BasePool', function () {
           itExitsViaRecoveryModeCorrectly();
         });
       });
+
+      function itJoins() {
+        describe('normal joins', () => {
+          it('do not revert', async () => {
+            await expect(normalJoin()).to.not.be.reverted;
+          });
+
+          it('calls inner onJoin hook with join parameters', async () => {
+            const receipt = await normalJoin();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
+              sender: sender.address,
+              balances: initialBalances,
+              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+            });
+          });
+        });
+      }
+
+      function itExits() {
+        describe('normal exits', () => {
+          it('do not revert', async () => {
+            await expect(normalExit()).to.not.be.reverted;
+          });
+
+          it('calls inner onExit hook with exit parameters', async () => {
+            const receipt = await normalExit();
+            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
+              sender: sender.address,
+              balances: initialBalances,
+              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+            });
+          });
+        });
+      }
     });
   });
 });
