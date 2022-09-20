@@ -26,7 +26,9 @@
     "test": "yarn compile && mocha --extension ts --require hardhat/register --require @balancer-labs/v2-common/setupTests --recursive",
     "test:fast": "yarn compile && mocha --extension ts --require hardhat/register --require @balancer-labs/v2-common/setupTests --recursive --parallel --exit",
     "test:watch": "nodemon --ext js,ts --watch test --watch lib --exec 'clear && yarn test --no-compile'",
-    "test-fuzz": "forge test"
+    "test-fuzz": "forge test",
+    "test-gas": "forge test --gas-report",
+    "test-snapshot": "forge snapshot"
   },
   "devDependencies": {
     "@balancer-labs/v2-common": "workspace:*",

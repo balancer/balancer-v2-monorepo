@@ -1,0 +1,3 @@
+ProtocolFeesTest:testNoPercentage(uint128) (runs: 9999, μ: 5932, ~: 5935)
+ProtocolFeesTest:testNoSupply(uint64) (runs: 9999, μ: 8822, ~: 8822)
+ProtocolFeesTest:testPostOwnershipPercentage(uint128,uint64) (runs: 9999, μ: 9871, ~: 9881)

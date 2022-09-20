@@ -6,21 +6,28 @@ import "forge-std/Test.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "../../contracts/protocol-fees/ProtocolFees.sol";
+import "../../contracts/test/MockProtocolFees.sol";
 
 contract ProtocolFeesTest is Test {
+    MockProtocolFees private _mock;
+
+    function setUp() external {
+        _mock = new MockProtocolFees();
+    }
+
     function testNoPercentage(uint128 totalSupply) external {
-        assertEq(ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, 0), 0);
+        assertEq(_mock.bptForPoolOwnershipPercentage(totalSupply, 0), 0);
     }
 
     function testNoSupply(uint64 expectedOwnershipPercentage) external {
         vm.assume(expectedOwnershipPercentage < 1e18);
-        assertEq(ProtocolFees.bptForPoolOwnershipPercentage(0, expectedOwnershipPercentage), 0);
+        assertEq(_mock.bptForPoolOwnershipPercentage(0, expectedOwnershipPercentage), 0);
     }
 
     function testPostOwnershipPercentage(uint128 totalSupply, uint64 expectedOwnershipPercentage) external {
         vm.assume(totalSupply > 1e6);
         vm.assume(expectedOwnershipPercentage < 1e18);
-        uint256 fees = ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, expectedOwnershipPercentage);
+        uint256 fees = _mock.bptForPoolOwnershipPercentage(totalSupply, expectedOwnershipPercentage);
 
         // Ownership of the fees should result in overall Pool ownership at least as large as the expected one (it may
         // be lower due to rounding errors that favor the other LPs).
