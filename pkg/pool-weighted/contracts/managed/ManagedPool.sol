@@ -182,8 +182,6 @@ contract ManagedPool is ManagedPoolSettings {
         );
 
         _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountOut;
     }
 
     /*
@@ -227,8 +225,6 @@ contract ManagedPool is ManagedPoolSettings {
         );
 
         _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountIn;
     }
 
     /**
