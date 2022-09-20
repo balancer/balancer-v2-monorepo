@@ -50,7 +50,7 @@
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.4.1",
     "hardhat": "^2.11.1",
-    "hardhat-ignore-warnings": "^0.2.1",
+    "hardhat-ignore-warnings": "^0.2.3",
     "mocha": "^8.2.1",
     "nodemon": "^2.0.4",
     "prettier": "^2.1.2",
