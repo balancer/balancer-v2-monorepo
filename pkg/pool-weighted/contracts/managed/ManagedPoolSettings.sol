@@ -780,14 +780,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // The very first thing we do is register the token in the Vault. This makes the Pool enter an invalid state,
         // since one of its tokens has a balance of zero (making the invariant also zero). After that, we can freely
         // modify the Pool state (e.g. alter weights).
+        //
+        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
+        // try to register it again.
         PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, assetManager);
 
         // We need to check that both the new weight is valid, and that it won't make any of the existing weights
         // invalid.
         uint256 weightSumAfterAdd = _validateNewWeight(normalizedWeight);
-
-        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
-        // try to register it again.
 
         // Adding the new token to the pool decreases all other normalized weights to 'make room' for the new one. This
         // is achieved efficiently by simply updating the sum of the denormalized weights.
