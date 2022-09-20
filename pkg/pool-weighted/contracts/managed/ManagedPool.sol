@@ -89,7 +89,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            // This returns amount - fee amount, so we round down (favoring a higher fee amount).
+            // We round the amount in down (favoring a higher fee amount).
             request.amount = request.amount.mulDown(swapFeeComplement);
 
             // All token amounts are upscaled.
@@ -109,7 +109,7 @@ contract ManagedPool is ManagedPoolSettings {
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+            // We round the amount in up (favoring a higher fee amount).
             return amountIn.divUp(swapFeeComplement);
         }
     }
