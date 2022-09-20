@@ -41,7 +41,7 @@ import {
   calculateSpotPrice,
   calculateBPTPrice,
 } from './math';
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '../base/BasePool';
 
@@ -619,12 +619,20 @@ export default class WeightedPool extends BasePool {
   async addToken(
     from: SignerWithAddress,
     token: Token,
+    assetManager: Account,
     normalizedWeight: BigNumberish,
-    mintAmount: BigNumberish,
-    recipient: string
+    mintAmount?: BigNumberish,
+    recipient?: string
   ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return await pool.addToken(token.address, normalizedWeight, mintAmount, recipient);
+    return this.instance
+      .connect(from)
+      .addToken(
+        token.address,
+        accountToAddress(assetManager),
+        normalizedWeight,
+        mintAmount ?? 0,
+        recipient ?? from.address
+      );
   }
 
   async removeToken(

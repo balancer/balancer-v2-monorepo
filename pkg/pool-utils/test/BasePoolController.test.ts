@@ -11,7 +11,6 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { encodeInvestmentConfig } from '@balancer-labs/v2-pool-utils/test/helpers/rebalance';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
@@ -175,28 +174,6 @@ describe('BasePoolController', function () {
 
           expect(await pool.getSwapFeePercentage()).to.equal(NEW_SWAP_FEE);
         });
-      });
-    });
-
-    describe('set asset manager config', () => {
-      const poolConfig = {
-        targetPercentage: 3,
-        upperCriticalPercentage: 4,
-        lowerCriticalPercentage: 2,
-      };
-
-      it('lets the manager set the asset manager config', async () => {
-        await poolController
-          .connect(manager)
-          .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig));
-      });
-
-      it('reverts if non-manager sets the asset manager config', async () => {
-        await expect(
-          poolController
-            .connect(other)
-            .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig))
-        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
       });
     });
   });
