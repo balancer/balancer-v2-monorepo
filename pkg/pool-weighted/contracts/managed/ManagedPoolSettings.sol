@@ -752,6 +752,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
      * token will have no balance - it is up to the controller to provide some immediately after calling this function.
+     * Note however that regular join functions will not work while the new token has no balance: the only way to
+     * deposit an initial amount is by using an Asset Manager.
      *
      * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
      *
@@ -761,7 +763,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * Emits the TokenAdded event.
      *
      * @param token - The ERC20 token to be added to the Pool.
-     * @param assetManager - The asset manager for the token.
+     * @param assetManager - The Asset Manager for the token.
      * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
      * @param recipient - The address to receive the BPT minted by the Pool.
