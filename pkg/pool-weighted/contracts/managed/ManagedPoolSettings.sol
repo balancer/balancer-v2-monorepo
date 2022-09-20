@@ -20,8 +20,8 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
@@ -29,7 +29,6 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/ValueCompression.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -39,27 +38,7 @@ import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
 
 /**
- * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
- * contract (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
- * operations, it should never be deployed with an EOA as the owner.
- *
- * Pool controllers can add functionality: for example, allow the effective "owner" to be transferred to another
- * address. (The actual pool owner is still immutable, set to the pool controller contract.) Another pool owner
- * might allow fine-grained permissioning of protected operations: perhaps a multisig can add/remove tokens, but
- * a third-party EOA is allowed to set the swap fees.
- *
- * Pool controllers might also impose limits on functionality so that operations that might endanger LPs can be
- * performed more safely. For instance, the pool by itself places no restrictions on the duration of a gradual
- * weight change, but a pool controller might restrict this in various ways, from a simple minimum duration,
- * to a more complex rate limit.
- *
- * Pool controllers can also serve as intermediate contracts to hold tokens, deploy timelocks, consult with other
- * protocols or on-chain oracles, or bundle several operations into one transaction that re-entrancy protection
- * would prevent initiating from the pool contract.
- *
- * Managed Pools and their controllers are designed to support many asset management use cases, including: large
- * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
- * protocol and management fees, allowlisting of LPs, and more.
+ * @title Managed Pool Settings
  */
 abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
@@ -67,8 +46,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
-    using WordCodec for bytes32;
-    using ValueCompression for uint256;
     using WeightedPoolUserData for bytes;
 
     // State variables
@@ -106,15 +83,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
     uint256 private _managementSwapFeePercentage;
 
-    // Store the token count locally (can change if tokens are added or removed)
-    uint256 private _totalTokensCache;
-
     // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
 
     // Timestamp of the most recent collection of management AUM fees.
     // Note that this is only initialized the first time fees are collected.
-    uint256 private _lastAumFeeCollectionTimestamp;
+    uint256 internal _lastAumFeeCollectionTimestamp;
 
     // Event declarations
 
@@ -173,8 +147,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _require(totalTokens <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
-
-        _totalTokensCache = totalTokens;
 
         // Validate and set initial fees
         _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
@@ -320,7 +292,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
      */
     function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(_getTokenData(token), weightChangeProgress, _denormWeightSum);
+        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress, _denormWeightSum);
     }
 
     /**
@@ -504,7 +476,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     /**
      * @notice Returns whether swaps are enabled.
      */
-    function getSwapEnabled() public view returns (bool) {
+    function getSwapEnabled() external view returns (bool) {
         return ManagedPoolStorageLib.getSwapsEnabled(_poolState);
     }
 
@@ -773,35 +745,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
     }
 
-    // Initialize
-
-    function _onInitializePool(
-        bytes32,
-        address,
-        address,
-        uint256[] memory scalingFactors,
-        bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
-        WeightedPoolUserData.JoinKind kind = userData.joinKind();
-        _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
-
-        uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
-        _upscaleArray(amountsIn, scalingFactors);
-
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(getNormalizedWeights(), amountsIn);
-
-        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
-        // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
-
-        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
-        // so naturally charges no AUM fees.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
-
-        return (bptAmountOut, amountsIn);
-    }
-
     // Add/Remove tokens
 
     /**
@@ -842,7 +785,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Finally, we store the new token's weight and scaling factor.
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
-        _totalTokensCache += 1;
 
         PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
 
@@ -966,8 +908,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         delete _tokenState[token];
         _denormWeightSum -= tokenNormalizedWeight.mulUp(_denormWeightSum);
 
-        _totalTokensCache = tokens.length - 1;
-
         if (burnAmount > 0) {
             _burnPoolTokens(msg.sender, burnAmount);
         }
@@ -979,11 +919,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Scaling Factors
 
-    function _scalingFactor(IERC20 token) internal view override returns (uint256) {
-        return ManagedPoolTokenLib.getTokenScalingFactor(_getTokenData(token));
+    function _scalingFactor(IERC20 token) internal view returns (uint256) {
+        return ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]);
     }
 
-    function _scalingFactors() internal view override returns (uint256[] memory scalingFactors) {
+    function getScalingFactors() external view override returns (uint256[] memory) {
+        return _scalingFactors();
+    }
+
+    function _scalingFactors() internal view returns (uint256[] memory scalingFactors) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         uint256 numTokens = tokens.length;
 
@@ -1040,17 +984,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     // Misc
-
-    function _getTotalTokens() internal view override returns (uint256) {
-        return _totalTokensCache;
-    }
-
-    function _getTokenData(IERC20 token) private view returns (bytes32 tokenData) {
-        tokenData = _tokenState[token];
-
-        // A valid token can't be zero (must have non-zero weights)
-        _require(tokenData != 0, Errors.INVALID_TOKEN);
-    }
 
     /**
      * @dev Enumerates all ownerOnly functions in Managed Pool.

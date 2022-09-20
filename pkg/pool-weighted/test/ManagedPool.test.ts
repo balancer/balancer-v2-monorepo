@@ -383,7 +383,9 @@ describe('ManagedPool', function () {
 
       it('reverts if swap hook caller is not the vault', async () => {
         await expect(
-          pool.instance.onSwap(
+          pool.instance[
+            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
+          ](
             {
               kind: SwapKind.GivenIn,
               tokenIn: poolTokens.first.address,
