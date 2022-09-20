@@ -71,7 +71,7 @@ contract ManagedPool is ManagedPoolSettings {
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal override returns (uint256) {
+    ) internal view override returns (uint256) {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
@@ -95,14 +95,7 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(
-                request,
-                balanceTokenIn,
-                balanceTokenOut,
-                tokenInWeight,
-                tokenOutWeight,
-                swapFeeComplement
-            );
+            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut, tokenInWeight, tokenOutWeight);
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -110,14 +103,7 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(
-                request,
-                balanceTokenIn,
-                balanceTokenOut,
-                tokenInWeight,
-                tokenOutWeight,
-                swapFeeComplement
-            );
+            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut, tokenInWeight, tokenOutWeight);
 
             // amountIn tokens are entering the Pool, so we round up.
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
@@ -156,9 +142,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 tokenInWeight,
-        uint256 tokenOutWeight,
-        uint256 swapFeeComplement
-    ) internal returns (uint256 amountOut) {
+        uint256 tokenOutWeight
+    ) internal pure returns (uint256 amountOut) {
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
@@ -167,21 +152,6 @@ contract ManagedPool is ManagedPoolSettings {
             tokenOutWeight,
             swapRequest.amount
         );
-
-        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
-        // after the trade.
-        //
-        // invariantGrowthRatio = invariant after trade / invariant before trade
-        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
-        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            tokenInWeight,
-            tokenOutWeight,
-            FixedPoint.ONE.add(swapRequest.amount.divUp(swapFeeComplement).divDown(currentBalanceTokenIn)),
-            FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
-        );
-
-        _payProtocolAndManagementFees(invariantGrowthRatio);
     }
 
     /*
@@ -199,9 +169,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 tokenInWeight,
-        uint256 tokenOutWeight,
-        uint256 swapFeeComplement
-    ) internal returns (uint256 amountIn) {
+        uint256 tokenOutWeight
+    ) internal pure returns (uint256 amountIn) {
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
@@ -210,21 +179,6 @@ contract ManagedPool is ManagedPoolSettings {
             tokenOutWeight,
             swapRequest.amount
         );
-
-        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
-        // after the trade.
-        //
-        // invariantGrowthRatio = invariant after trade / invariant before trade
-        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
-        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            tokenInWeight,
-            tokenOutWeight,
-            FixedPoint.ONE.add(amountIn.divUp(swapFeeComplement).divDown(currentBalanceTokenIn)),
-            FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
-        );
-
-        _payProtocolAndManagementFees(invariantGrowthRatio);
     }
 
     /**
