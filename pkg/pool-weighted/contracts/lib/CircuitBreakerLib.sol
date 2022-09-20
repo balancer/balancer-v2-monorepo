@@ -68,10 +68,10 @@ library CircuitBreakerLib {
     // Since the price bounds shift along with the token weight, in general these bound ratios would need to be
     // computed every time. However, if the weight of the token and composition of the pool have not changed since
     // the circuit breaker was set, these "cached" reference values can still be used, avoiding a heavy computation.
-    // 
+    //
     // We also store the "raw" upper and lower bounds, expressed as 18-decimal floating point percentages, for
     // human readability.
-    // 
+    //
     // [    24 bits   |    24 bits   |   16 bits   |   16 bits   |     64 bits     |    112 bits   |
     // [ ref UB ratio | ref LB ratio | upper bound | lower bound | ref weight comp | ref BPT price |
     // |MSB                                                                                     LSB|
@@ -129,7 +129,7 @@ library CircuitBreakerLib {
      * These BPT price bounds are dynamically calculated using the conversion ratios. In general:
      * lower/upper BPT price bound = referenceBptPrice * "conversion ratio". The conversion ratio is given as
      * (boundary percentage)**(currentWeightComplement).
-     * 
+     *
      * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
      * when the breaker was set. Otherwise, we need to calculate them.
      *
@@ -176,12 +176,14 @@ library CircuitBreakerLib {
             // Something has changed - either the weight of the token, or the composition of the pool, so we must
             // retrieve the raw percentage bounds and do the full calculation.
             (uint256 lowerBoundRatio, uint256 upperBoundRatio) = _getBoundaryConversionRatios(
-                circuitBreakerState
-                    .decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
-                    .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
-                circuitBreakerState
-                    .decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
-                    .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
+                circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
+                    _BOUND_PERCENTAGE_WIDTH,
+                    _MAX_BOUND_PERCENTAGE
+                ),
+                circuitBreakerState.decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
+                    _BOUND_PERCENTAGE_WIDTH,
+                    _MAX_BOUND_PERCENTAGE
+                ),
                 currentWeightComplement
             );
 
