@@ -72,13 +72,20 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal override returns (uint256) {
+        bytes32 poolState = _getPoolState();
+        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+        uint256 tokenInWeight = _getNormalizedWeight(request.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(request.tokenOut, weightChangeProgress);
+
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-
-        uint256 swapFeeComplement = getSwapFeePercentage().complement();
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
@@ -87,7 +94,14 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut, swapFeeComplement);
+            uint256 amountOut = _onSwapGivenIn(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                tokenInWeight,
+                tokenOutWeight,
+                swapFeeComplement
+            );
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -95,7 +109,14 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut, swapFeeComplement);
+            uint256 amountIn = _onSwapGivenOut(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                tokenInWeight,
+                tokenOutWeight,
+                swapFeeComplement
+            );
 
             // amountIn tokens are entering the Pool, so we round up.
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
@@ -132,22 +153,10 @@ contract ManagedPool is ManagedPoolSettings {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
+        uint256 tokenInWeight,
+        uint256 tokenOutWeight,
         uint256 swapFeeComplement
     ) internal returns (uint256 amountOut) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        {
-            // Enter new scope to avoid stack-too-deep
-
-            bytes32 poolState = _getPoolState();
-            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
-
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-
-            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
-        }
-
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
@@ -189,22 +198,10 @@ contract ManagedPool is ManagedPoolSettings {
         SwapRequest memory swapRequest,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
+        uint256 tokenInWeight,
+        uint256 tokenOutWeight,
         uint256 swapFeeComplement
     ) internal returns (uint256 amountIn) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        {
-            // Enter new scope to avoid stack-too-deep
-
-            bytes32 poolState = _getPoolState();
-            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
-
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-
-            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
-        }
-
         // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
         amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
