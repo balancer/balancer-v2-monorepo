@@ -524,26 +524,6 @@ export function itBehavesAsWeightedPool(
         await expect(pool.exitGivenOut({ from: lp, amountsOut })).to.be.revertedWith('PAUSED');
       });
     });
-
-    context('exit remove token (managed pools)', () => {
-      it('reverts', async () => {
-        const { tokens } = await pool.getTokens();
-
-        await expect(
-          pool.vault.exitPool({
-            poolAddress: pool.address,
-            poolId: pool.poolId,
-            recipient: other.address,
-            currentBalances: new Array(tokens.length).fill(fp(10)),
-            tokens,
-            lastChangeBlock: 0,
-            protocolFeePercentage: 0,
-            data: ManagedPoolEncoder.exitForRemoveToken(0),
-            from: other,
-          })
-        ).to.be.revertedWith('UNHANDLED_EXIT_KIND');
-      });
-    });
   });
 
   describe('onSwap', () => {
