@@ -33,8 +33,7 @@ contract MockWithdrawDepositAssetManager {
     ) external {
         // Tokens can be withdrawn from the Vault with a 'withdraw' operation, but that will create 'managed' balance
         // and leave the 'total' balance unchanged. We therefore have to perform two operations: one to withdraw, and
-        // another to clear the 'managed' balance (as the tokens withdrawn are about to be wrapped or unwrapped, and
-        // therefore lost to the Pool in their current format).
+        // another to clear the 'managed' balance.
         IVault.PoolBalanceOp[] memory withdrawal = new IVault.PoolBalanceOp[](2);
 
         // First, we withdraw the tokens, creating a non-zero 'managed' balance in the Pool.
@@ -59,8 +58,7 @@ contract MockWithdrawDepositAssetManager {
     ) external {
         // Tokens can be deposited to the Vault with a 'deposit' operation, but that requires a prior 'managed'
         // balance to exist. We therefore have to perform two operations: one to set the 'managed' balance (representing
-        // the new tokens that resulted from wrapping or unwrapping and which we are managing for the Pool), and
-        // another to deposit.
+        // the new tokens which we are managing for the Pool), and another to deposit.
         IVault.PoolBalanceOp[] memory deposit = new IVault.PoolBalanceOp[](2);
 
         // First, we inform the Vault of the 'managed' tokens.
