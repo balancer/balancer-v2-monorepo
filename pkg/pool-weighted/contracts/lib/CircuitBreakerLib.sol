@@ -24,26 +24,28 @@ import "../lib/ValueCompression.sol";
  * @notice Library for storing and manipulating state related to circuit breakers.
  * @dev The intent of circuit breakers is to halt trading of a given token if its value changes drastically -
  * in either direction - with respect to other tokens in the pool. For instance, a stable coin might de-peg
- * and go to zero. With no safeguards, arbitrageurs could exchange large amounts at inflated internal pool
- * prices, and drain the pool.
+ * and go to zero. With no safeguards, arbitrageurs could drain the pool by selling large amounts of the
+ * token to the pool at inflated internal prices.
  *
  * The circuit breaker mechanism establishes a "safe trading range" for each token, expressed in terms of
  * the BPT price. Both lower and upper bounds can be set, and if a trade would result in moving the BPT price
- * of any token involved in the operation outside that range, the operation reverts. Each token is independent,
- * since some might have very "tight" valid trading ranges, such as stable coins, and others would be more
- * volatile.
+ * of any token involved in the operation outside that range, the breaker is "tripped", and the operation
+ * should revert. Each token is independent, since some might have very "tight" valid trading ranges, such as
+ * stable coins, and others are more volatile.
  *
- * The BPT price of a token is defined as the amount of BPT that would be exchanged for a single token.
+ * The BPT price of a token is defined as the amount of BPT that could be redeemed for a single token.
  * For instance, in an 80/20 pool with a total supply of 1000, the 80% token accounts for 800 BPT. So each
  * token would be worth 800 / token balance. The formula is then: total supply * token weight / token balance.
  *
  * Since BPT prices are not intuitive - and there is a very non-linear relationship between "spot" prices and
- * BPT prices - circuit breakers are set using simple percentages, and these percentages are transformed into
- * BPT prices for comparison to the "reference" state of the pool when the circuit breaker was set, adjusting
- * for any changes in weights.
- *
- * Intuitively, a lower bound of 0.8 means the token can lose 20% of its value before triggering the circuit
- * breaker, and an upper bound of 3.0 means it can triple before being halted.
+ * BPT prices - circuit breakers are set using simple percentages. Intuitively, a lower bound of 0.8 means the
+ * token can lose 20% of its value before triggering the circuit breaker, and an upper bound of 3.0 means i
+ * can triple before being halted.These percentages are then transformed into BPT prices for comparison to the
+ * "reference" state of the pool when the circuit breaker was set.
+ * 
+ * Prices can change in two ways: arbitrage traders responding to external price movement can change the balances,
+ * or an ongoing gradual weight update (or change in pool composition) can change the weights. In order to isolate
+ * the balance changes due to price movement, the bounds are dynamic, adjusted for the current weight.
  */
 library CircuitBreakerLib {
     using ValueCompression for uint256;
@@ -61,7 +63,7 @@ library CircuitBreakerLib {
     // When the circuit breaker is set, store the "reference" values of parameters needed to compute the dynamic
     // BPT price bounds for validating operations.
     //
-    // The reference parameters include the BPT price, weight complement (_denormWeightSum - weight), and
+    // The reference parameters include the BPT price, weight complement (_denormWeightSum - weight), and bound
     // conversion ratios. These ratios are used to convert percentage bounds into BPT prices that can be directly
     // compared to the "runtime" BPT prices.
     //
@@ -133,10 +135,10 @@ library CircuitBreakerLib {
      * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
      * when the breaker was set. Otherwise, we need to calculate them.
      *
-     * The weight complement calculation attempts to isolate changes in the balance due to arbitrageurs responding
-     * to external prices, from internal price changes caused by an ongoing weight update, or changes to the pool
-     * composition. There is a non-linear relationship between "spot" price changes and BPT price changes. This
-     * calculation transforms one into the other.
+     * As described in the general comments above, the weight complement calculation attempts to isolate changes
+     * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
+     * ongoing weight update, or changes to the pool composition. There is a non-linear relationship between "spot"
+     * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param currentWeightComplement - The complement of this token's weight: (_denormWeightSum - token weight)
@@ -221,7 +223,7 @@ library CircuitBreakerLib {
             Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
         );
 
-        // Set the reference parameters: BPT price of the token, and the weight complement: _denormWeightSum - weight.
+        // Set the reference parameters: BPT price of the token, and the weight complement.
         circuitBreakerState = circuitBreakerState
             .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
             .insertUint(
