@@ -796,7 +796,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Once we've updated the internal state, we register the token in the Vault. This makes the Pool enter an
         // invalid state, since one of its tokens has a balance of zero (making the invariant also zero). The Asset
-        // Manager must be used to deposit some initial balancae and restore regular operation.
+        // Manager must be used to deposit some initial balance and restore regular operation.
         //
         // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
         // try to register it again.
