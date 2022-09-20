@@ -51,6 +51,10 @@ import "./ManagedPoolSettings.sol";
  * protocol and management fees, allowlisting of LPs, and more.
  */
 contract ManagedPool is ManagedPoolSettings {
+    // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
+    // that any timestamp manipulation would achieve very little.
+    // solhint-disable not-rely-on-time
+
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 

@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MONTH,
   WEEK,
@@ -12,7 +12,7 @@ import {
   currentTimestamp,
   receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpDiv, fpMul, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
