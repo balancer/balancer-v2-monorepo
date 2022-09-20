@@ -22,8 +22,6 @@ import "../managed/vendor/BasePool.sol";
 contract MockBasePool is BasePool {
     using WeightedPoolUserData for bytes;
 
-    uint256 private immutable _totalTokens;
-
     bool private _inRecoveryMode;
 
     event InnerOnInitializePoolCalled(bytes userData);
@@ -53,9 +51,7 @@ contract MockBasePool is BasePool {
             bufferPeriodDuration,
             owner
         )
-    {
-        _totalTokens = tokens.length;
-    }
+    {}
 
     function _onInitializePool(
         bytes32,
@@ -88,9 +84,7 @@ contract MockBasePool is BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal override returns (uint256) {
-
-    }
+    ) internal override returns (uint256) {}
 
     function _onJoinPool(
         bytes32,
@@ -129,11 +123,11 @@ contract MockBasePool is BasePool {
     }
 
     function getScalingFactors() external pure override returns (uint256[] memory) {
-        revert('Mock method; not implemented');
+        revert("Mock method; not implemented");
     }
 
     function getSwapFeePercentage() external pure override returns (uint256) {
-        revert('Mock method; not implemented');
+        revert("Mock method; not implemented");
     }
 
     function payProtocolFees(uint256 bptAmount) public {
