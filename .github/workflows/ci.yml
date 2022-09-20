@@ -101,6 +101,8 @@ jobs:
           version: nightly
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz -vvv
+      - name: Update Forge gas benchmarks
+        run: yarn workspace @balancer-labs/v2-pool-utils test-snapshot-gas -vvv
 
   test-pool-weighted:
     runs-on: ubuntu-latest
@@ -120,6 +122,8 @@ jobs:
           version: nightly
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz -vvv
+      - name: Update Forge gas benchmarks
+        run: yarn workspace @balancer-labs/v2-pool-weighted test-snapshot-gas -vvv
 
   test-pool-stable:
     runs-on: ubuntu-latest
