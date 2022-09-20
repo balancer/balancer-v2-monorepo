@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MONTH,
   WEEK,
@@ -1211,9 +1211,9 @@ describe('ManagedPool', function () {
       });
 
       it('reverts', async () => {
-        await expect(maxTokensPool.addToken(owner, newToken, fp(0.1), 0, other.address)).to.be.revertedWith(
-          'MAX_TOKENS'
-        );
+        await expect(
+          maxTokensPool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.1), 0, other.address)
+        ).to.be.revertedWith('MAX_TOKENS');
       });
     });
 
@@ -1230,10 +1230,13 @@ describe('ManagedPool', function () {
         });
 
         let newToken: Token;
+        let assetManger: string;
 
         sharedBeforeEach('approve new token on pool', async () => {
           newToken = allTokens.get(totalTokens);
           await newToken.approve(pool, MAX_UINT256, { from: owner });
+
+          assetManger = await randomAddress();
         });
 
         context('when the sender is not the owner', () => {
@@ -1242,7 +1245,7 @@ describe('ManagedPool', function () {
           });
 
           it('non-owners cannot add tokens', async () => {
-            await expect(pool.addToken(sender, newToken, fp(0.5), 0, other.address)).to.be.revertedWith(
+            await expect(pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address)).to.be.revertedWith(
               'SENDER_NOT_ALLOWED'
             );
           });
@@ -1256,23 +1259,23 @@ describe('ManagedPool', function () {
           it('reverts if the token is already in the pool', async () => {
             const alreadyInPoolToken = pool.tokens.get(0);
             await alreadyInPoolToken.approve(pool, MAX_UINT256, { from: owner });
-            await expect(pool.addToken(sender, alreadyInPoolToken, fp(0.5), 0, other.address)).to.be.revertedWith(
-              'TOKEN_ALREADY_REGISTERED'
-            );
+            await expect(
+              pool.addToken(sender, alreadyInPoolToken, assetManger, fp(0.5), 0, other.address)
+            ).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
           });
 
           it("reverts if the new token's weight is too high", async () => {
             const weightTooHigh = fp(1);
-            await expect(pool.addToken(owner, newToken, weightTooHigh, 0, other.address)).to.be.revertedWith(
-              'MAX_WEIGHT'
-            );
+            await expect(
+              pool.addToken(owner, newToken, assetManger, weightTooHigh, 0, other.address)
+            ).to.be.revertedWith('MAX_WEIGHT');
           });
 
           it("reverts if the new token's weight is too low", async () => {
             const weightTooLow = fp(0.005);
-            await expect(pool.addToken(owner, newToken, weightTooLow, 0, other.address)).to.be.revertedWith(
-              'MIN_WEIGHT'
-            );
+            await expect(
+              pool.addToken(owner, newToken, assetManger, weightTooLow, 0, other.address)
+            ).to.be.revertedWith('MIN_WEIGHT');
           });
 
           context('when the pool is paused', () => {
@@ -1281,7 +1284,9 @@ describe('ManagedPool', function () {
             });
 
             it('reverts', async () => {
-              await expect(pool.addToken(sender, newToken, fp(0.5), 0, other.address)).to.be.revertedWith('PAUSED');
+              await expect(pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address)).to.be.revertedWith(
+                'PAUSED'
+              );
             });
           });
 
@@ -1299,7 +1304,7 @@ describe('ManagedPool', function () {
             });
 
             it('reverts', async () => {
-              await expect(pool.addToken(sender, newToken, fp(0.5), 0, other.address)).to.be.revertedWith(
+              await expect(pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address)).to.be.revertedWith(
                 'CHANGE_TOKENS_PENDING_WEIGHT_CHANGE'
               );
             });
@@ -1310,9 +1315,9 @@ describe('ManagedPool', function () {
               });
 
               it('reverts', async () => {
-                await expect(pool.addToken(sender, newToken, fp(0.5), 0, other.address)).to.be.revertedWith(
-                  'CHANGE_TOKENS_DURING_WEIGHT_CHANGE'
-                );
+                await expect(
+                  pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address)
+                ).to.be.revertedWith('CHANGE_TOKENS_DURING_WEIGHT_CHANGE');
               });
             });
 
@@ -1326,7 +1331,7 @@ describe('ManagedPool', function () {
                   await pool.setSwapEnabled(sender, true);
                 });
 
-                itRemovesToken();
+                itAddsAToken();
               });
 
               context('with swaps disabled', () => {
@@ -1334,12 +1339,12 @@ describe('ManagedPool', function () {
                   await pool.setSwapEnabled(sender, false);
                 });
 
-                itRemovesToken();
+                itAddsAToken();
               });
 
-              function itRemovesToken() {
-                it(`adds a new token to the end of the array of tokens in the pool`, async () => {
-                  await pool.addToken(sender, newToken, fp(0.5), 0, other.address);
+              function itAddsAToken() {
+                it('adds a new token to the end of the array of tokens in the pool', async () => {
+                  await pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address);
 
                   const { tokens: afterAddTokens } = await pool.getTokens();
                   expect(afterAddTokens.length).to.equal(poolTokens.length + 1);
@@ -1348,17 +1353,17 @@ describe('ManagedPool', function () {
                   expect(afterAddTokens[afterAddTokens.length - 1]).to.be.eq(newToken.address);
                 });
 
-                it(`the new token starts with no balance`, async () => {
-                  await pool.addToken(sender, newToken, fp(0.5), 0, other.address);
+                it('the new token starts with no balance', async () => {
+                  await pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address);
 
                   const { balances } = await pool.getTokens();
                   expect(balances[balances.length - 1]).to.be.eq(0);
                 });
 
-                it(`leaves all other balances unchanged`, async () => {
+                it('leaves all other balances unchanged', async () => {
                   const { tokens: beforeAddTokens, balances: beforeAddBalances } = await pool.getTokens();
 
-                  await pool.addToken(sender, newToken, fp(0.5), 0, other.address);
+                  await pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address);
 
                   const { tokens: afterAddTokens, balances: afterAddBalances } = await pool.getTokens();
 
@@ -1368,9 +1373,17 @@ describe('ManagedPool', function () {
                   });
                 });
 
+                it(`sets the token's asset manager`, async () => {
+                  const normalizedWeight = fp(0.5);
+                  await pool.addToken(sender, newToken, assetManger, normalizedWeight, 0, other.address);
+
+                  const { assetManager: actualAssetManager } = await pool.getTokenInfo(newToken);
+                  expect(actualAssetManager).to.equal(assetManger);
+                });
+
                 it(`sets the token's weight`, async () => {
                   const normalizedWeight = fp(0.5);
-                  await pool.addToken(sender, newToken, normalizedWeight, 0, other.address);
+                  await pool.addToken(sender, newToken, assetManger, normalizedWeight, 0, other.address);
 
                   const { tokens: afterAddTokens } = await pool.getTokens();
                   const afterAddWeights = await pool.getNormalizedWeights();
@@ -1390,7 +1403,7 @@ describe('ManagedPool', function () {
                     weight: beforeWeights[i],
                   }));
 
-                  await pool.addToken(sender, newToken, fp(0.5), 0, other.address);
+                  await pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address);
 
                   const { tokens: afterTokens } = await pool.getTokens();
                   const afterWeights = await pool.getNormalizedWeights();
@@ -1431,7 +1444,7 @@ describe('ManagedPool', function () {
                   const weightSumRatio = fp(FP_ONE).div(FP_100_PCT.sub(normalizedWeight));
                   const expectedDenormWeightSum = fpMul(beforeSum, weightSumRatio);
 
-                  await pool.addToken(sender, newToken, fp(0.5), 0, other.address);
+                  await pool.addToken(sender, newToken, assetManger, fp(0.5), 0, other.address);
 
                   expect(await pool.instance.getDenormalizedWeightSum()).to.equalWithError(
                     expectedDenormWeightSum,
@@ -1441,7 +1454,7 @@ describe('ManagedPool', function () {
 
                 it('emits an event', async () => {
                   const normalizedWeight = fp(0.5);
-                  const tx = await pool.addToken(sender, newToken, normalizedWeight, 0, other.address);
+                  const tx = await pool.addToken(sender, newToken, assetManger, normalizedWeight, 0, other.address);
 
                   expectEvent.inReceipt(await tx.wait(), 'TokenAdded', {
                     token: newToken.address,
@@ -1454,7 +1467,7 @@ describe('ManagedPool', function () {
                     const bptBalanceBefore = await pool.balanceOf(other.address);
 
                     const mintAmount = fp(17);
-                    await pool.addToken(sender, newToken, fp(0.5), mintAmount, other.address);
+                    await pool.addToken(sender, newToken, assetManger, fp(0.5), mintAmount, other.address);
 
                     const bptBalanceAfter = await pool.balanceOf(other.address);
 
