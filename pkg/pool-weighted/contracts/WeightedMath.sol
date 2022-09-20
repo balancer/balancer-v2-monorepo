@@ -197,6 +197,50 @@ library WeightedMath {
         return bptOut;
     }
 
+    function _calcBptOutGivenExactTokenIn(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 amountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) internal pure returns (uint256) {
+        // BPT out, so we round down overall.
+
+        uint256 amountInWithoutFee;
+        {
+            uint256 balanceRatioWithFee = balance.add(amountIn).divDown(balance);
+            uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight).add(
+                normalizedWeight.complement()
+            );
+
+            if (balanceRatioWithFee > invariantRatioWithFees) {
+                uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
+                    ? balance.mulDown(invariantRatioWithFees - FixedPoint.ONE)
+                    : 0;
+                uint256 taxableAmount = amountIn.sub(nonTaxableAmount);
+                uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
+
+                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+            } else {
+                amountInWithoutFee = amountIn;
+                // If a token's amount in is not being charged a swap fee then it might be zero.
+                // In this case, it's clear that the sender should receive no BPT.
+                if (amountInWithoutFee == 0) {
+                    return 0;
+                }
+            }
+        }
+
+        uint256 balanceRatio = balance.add(amountInWithoutFee).divDown(balance);
+
+        uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
+
+        uint256 bptOut = (invariantRatio > FixedPoint.ONE)
+            ? bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE)
+            : 0;
+        return bptOut;
+    }
+
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
@@ -225,7 +269,7 @@ library WeightedMath {
                 amountInWithoutFee = amountsIn[i].sub(swapFee);
             } else {
                 amountInWithoutFee = amountsIn[i];
-                
+
                 // If a token's amount in is not being charged a swap fee then it might be zero (e.g. when joining a
                 // Pool with only a subset of tokens). In this case, `balanceRatio` will equal `FixedPoint.ONE`, and
                 // the `invariantRatio` will not change at all. We therefore skip to the next iteration, avoiding
