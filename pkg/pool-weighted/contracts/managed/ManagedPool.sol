@@ -412,7 +412,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) internal view virtual returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
         // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
