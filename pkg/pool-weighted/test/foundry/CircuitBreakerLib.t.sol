@@ -21,7 +21,7 @@ import "../../contracts/test/MockCircuitBreakerLib.sol";
 import "../../contracts/lib/CircuitBreakerLib.sol";
 
 contract CircuitBreakerLibTest is Test {
-    uint256 private constant _MAX_BOUND_PERCENTAGE = 2e18; // 2.0 - should be 10.0
+    uint256 private constant _MAX_BOUND_PERCENTAGE = 2e18; // 2.0 (max uncompressed is 10)
     uint256 private constant _MINIMUM_LOWER_BOUND = 1e16;   // 0.01
     uint256 private constant _MAX_WEIGHT_COMPLEMENT = 3.3e18;
 

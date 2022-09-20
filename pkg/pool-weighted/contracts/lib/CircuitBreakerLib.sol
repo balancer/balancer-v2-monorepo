@@ -42,7 +42,7 @@ import "../lib/ValueCompression.sol";
  * token can lose 20% of its value before triggering the circuit breaker, and an upper bound of 3.0 means i
  * can triple before being halted.These percentages are then transformed into BPT prices for comparison to the
  * "reference" state of the pool when the circuit breaker was set.
- * 
+ *
  * Prices can change in two ways: arbitrage traders responding to external price movement can change the balances,
  * or an ongoing gradual weight update (or change in pool composition) can change the weights. In order to isolate
  * the balance changes due to price movement, the bounds are dynamic, adjusted for the current weight.
