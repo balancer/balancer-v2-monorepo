@@ -88,14 +88,17 @@ contract ManagedPool is ManagedPoolSettings {
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            // We round the amount in down (favoring a higher fee amount).
-            request.amount = request.amount.mulDown(swapFeeComplement);
-
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut, tokenInWeight, tokenOutWeight);
+            uint256 amountOut = _onSwapGivenIn(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                tokenInWeight,
+                tokenOutWeight,
+                swapFeeComplement
+            );
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -103,14 +106,17 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut, tokenInWeight, tokenOutWeight);
+            uint256 amountIn = _onSwapGivenOut(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                tokenInWeight,
+                tokenOutWeight,
+                swapFeeComplement
+            );
 
             // amountIn tokens are entering the Pool, so we round up.
-            amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
-
-            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            // We round the amount in up (favoring a higher fee amount).
-            return amountIn.divUp(swapFeeComplement);
+            return _downscaleUp(amountIn, scalingFactorTokenIn);
         }
     }
 
@@ -131,8 +137,7 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled. The swap fee has already
-     * been deducted from `swapRequest.amount`.
+     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
      * Vault.
@@ -142,9 +147,14 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 tokenInWeight,
-        uint256 tokenOutWeight
+        uint256 tokenOutWeight,
+        uint256 swapFeeComplement
     ) internal pure returns (uint256 amountOut) {
-        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
+        // Balances (and swapRequest.amount) are already upscaled by `_onSwapMinimal()`
+
+        // We round the amount in down (favoring a higher fee amount).
+        swapRequest.amount = swapRequest.amount.mulDown(swapFeeComplement);
+
         amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
             tokenInWeight,
@@ -169,9 +179,11 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 tokenInWeight,
-        uint256 tokenOutWeight
+        uint256 tokenOutWeight,
+        uint256 swapFeeComplement
     ) internal pure returns (uint256 amountIn) {
-        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
+        // Balances (and swapRequest.amount) are already upscaled by `_onSwapMinimal()`
+
         amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
             tokenInWeight,
@@ -179,6 +191,9 @@ contract ManagedPool is ManagedPoolSettings {
             tokenOutWeight,
             swapRequest.amount
         );
+
+        // We round the amount in up (favoring a higher fee amount).
+        amountIn = amountIn.divUp(swapFeeComplement);
     }
 
     /**
