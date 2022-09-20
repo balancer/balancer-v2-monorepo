@@ -17,8 +17,15 @@ pragma solidity ^0.7.0;
 import { Test } from "forge-std/Test.sol";
 
 import "../../contracts/lib/ValueCompression.sol";
+import "../../contracts/test/MockValueCompression.sol";
 
 contract ValueCompressionTest is Test {
+    MockValueCompression private _mock;
+
+    function setUp() external {
+        _mock = new MockValueCompression();
+    }
+
     /**
      * @notice Finds the zero-based index of the first one in the binary representation of x.
      * @dev See the note on msb in the "Find First Set" Wikipedia article https://en.wikipedia.org/wiki/Find_first_set
@@ -73,14 +80,14 @@ contract ValueCompressionTest is Test {
         vm.assume(bitLength < 256 - mostSignificantBit(maxUncompressedValue));
 
         uint256 reconstructedValue = ValueCompression.decompress(
-            ValueCompression.compress(value, bitLength, maxUncompressedValue),
+            _mock.fullCompress(value, bitLength, maxUncompressedValue),
             bitLength,
             maxUncompressedValue
         );
         assertApproxEqAbs(
             reconstructedValue,
             value,
-            ValueCompression.maxCompressionError(bitLength, maxUncompressedValue)
+            _mock.maxCompressionError(bitLength, maxUncompressedValue)
         );
     }
 }

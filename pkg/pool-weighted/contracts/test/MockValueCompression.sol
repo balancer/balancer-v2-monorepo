@@ -43,4 +43,8 @@ contract MockValueCompression {
     function decompress(uint256 value, uint256 bitLength) external pure returns (uint256) {
         return ValueCompression.decompress(value, bitLength);
     }
+
+    function maxCompressionError(uint256 bitLength, uint256 maxUncompressedValue) external pure returns (uint256) {
+        return ValueCompression.maxCompressionError(bitLength, maxUncompressedValue);
+    }
 }
