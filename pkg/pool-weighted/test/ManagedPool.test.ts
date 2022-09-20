@@ -36,7 +36,7 @@ import { toNormalizedWeights, SwapKind } from '@balancer-labs/balancer-js';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-import { range, zip } from 'lodash';
+import { range } from 'lodash';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { Interface } from 'ethers/lib/utils';
 
