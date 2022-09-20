@@ -25,7 +25,6 @@ describe('BaseManagedPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
