@@ -102,7 +102,10 @@ describe('CircuitBreakerLib', () => {
   });
 
   context('when both bounds are set', () => {
-    itSetsCircuitBreakersCorrectly(fp(Math.random()), fp(random(2, true)));
+    const lowerBound = fp(Math.random());
+    const upperBound = lowerBound.add(fp(Math.random()));
+
+    itSetsCircuitBreakersCorrectly(lowerBound, upperBound);
   });
 
   describe('percentage to BPT price conversion ratios', () => {
