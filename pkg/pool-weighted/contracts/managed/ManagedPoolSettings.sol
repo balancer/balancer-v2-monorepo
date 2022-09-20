@@ -761,23 +761,33 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * Emits the TokenAdded event.
      *
      * @param token - The ERC20 token to be added to the Pool.
+     * @param assetManager - The asset manager for the token.
      * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
      * @param recipient - The address to receive the BPT minted by the Pool.
      */
     function addToken(
         IERC20 token,
+        address assetManager,
         uint256 normalizedWeight,
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
-        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
+        // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
         // Checking for the validity of the new weight would otherwise be much more complicated.
         _ensureNoWeightChange();
+
+        // The very first thing we do is register the token in the Vault. This makes the Pool enter an invalid state,
+        // since one of its tokens has a balance of zero (making the invariant also zero). After that, we can freely
+        // modify the Pool state (e.g. alter weights).
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, assetManager);
 
         // We need to check that both the new weight is valid, and that it won't make any of the existing weights
         // invalid.
         uint256 weightSumAfterAdd = _validateNewWeight(normalizedWeight);
+
+        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
+        // try to register it again.
 
         // Adding the new token to the pool decreases all other normalized weights to 'make room' for the new one. This
         // is achieved efficiently by simply updating the sum of the denormalized weights.
@@ -785,11 +795,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Finally, we store the new token's weight and scaling factor.
         _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
-
-        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, address(0));
-
-        // Note that the Pool is now in an invalid state, since one of its tokens has a balance of zero (making the
-        // invariant also zero).
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
