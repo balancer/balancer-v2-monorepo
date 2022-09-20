@@ -137,30 +137,30 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
+     * All amounts inside `request`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
      * Vault.
      */
     function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
+        SwapRequest memory request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 tokenInWeight,
         uint256 tokenOutWeight,
         uint256 swapFeeComplement
     ) internal pure returns (uint256 amountOut) {
-        // Balances (and swapRequest.amount) are already upscaled by `_onSwapMinimal()`
+        // Balances (and request.amount) are already upscaled by `_onSwapMinimal()`
 
         // We round the amount in down (favoring a higher fee amount).
-        swapRequest.amount = swapRequest.amount.mulDown(swapFeeComplement);
+        request.amount = request.amount.mulDown(swapFeeComplement);
 
         amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
             tokenInWeight,
             currentBalanceTokenOut,
             tokenOutWeight,
-            swapRequest.amount
+            request.amount
         );
     }
 
@@ -169,27 +169,27 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be granted to the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
+     * All amounts inside `request`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
      * and returning it to the Vault.
      */
     function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
+        SwapRequest memory request,
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut,
         uint256 tokenInWeight,
         uint256 tokenOutWeight,
         uint256 swapFeeComplement
     ) internal pure returns (uint256 amountIn) {
-        // Balances (and swapRequest.amount) are already upscaled by `_onSwapMinimal()`
+        // Balances (and request.amount) are already upscaled by `_onSwapMinimal()`
 
         amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
             tokenInWeight,
             currentBalanceTokenOut,
             tokenOutWeight,
-            swapRequest.amount
+            request.amount
         );
 
         // We round the amount in up (favoring a higher fee amount).
