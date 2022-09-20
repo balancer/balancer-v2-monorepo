@@ -106,7 +106,6 @@ async function deployControllerAndPool(
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts
 describe('ManagedPoolController', function () {
   const NEW_SWAP_FEE = fp(0.05);
-  const NEW_MGMT_SWAP_FEE = fp(0.78);
   const NEW_MGMT_AUM_FEE = fp(0.015);
 
   context('pool controller not initialized', () => {
