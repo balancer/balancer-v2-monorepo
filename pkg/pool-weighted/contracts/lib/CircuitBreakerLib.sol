@@ -20,12 +20,30 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "../lib/ValueCompression.sol";
 
 /**
- * @title Managed Pool Circuit Breaker Library
- * @notice Library for storing and manipulating state related to circuit breakers in ManagedPool.
- * @dev BPT price = supply / balance / weight. The lower and upper bounds are percentages.
- * For instance, a lower bound of 0.8 means the circuit breaker will trip if the token price
- * drops more than 20% (relative to other tokens). An upper bound ratio of 2.0 means it will trip
- * if the price more than doubles.
+ * @title Circuit Breaker Library
+ * @notice Library for storing and manipulating state related to circuit breakers.
+ * @dev The intent of circuit breakers is to halt trading of a given token if its value changes drastically -
+ * in either direction - with respect to other tokens in the pool. For instance, a stable coin might de-peg
+ * and go to zero. With no safeguards, arbitrageurs could exchange large amounts at inflated internal pool
+ * prices, and drain the pool.
+ *
+ * The circuit breaker mechanism establishes a "safe trading range" for each token, expressed in terms of
+ * the BPT price. Both lower and upper bounds can be set, and if a trade would result in moving the BPT price
+ * of any token involved in the operation outside that range, the operation reverts. Each token is independent,
+ * since some might have very "tight" valid trading ranges, such as stable coins, and others would be more
+ * volatile.
+ *
+ * The BPT price of a token is defined as the amount of BPT that would be exchanged for a single token.
+ * For instance, in an 80/20 pool with a total supply of 1000, the 80% token accounts for 800 BPT. So each
+ * token would be worth 800 / token balance. The formula is then: total supply * token weight / token balance.
+ *
+ * Since BPT prices are not intuitive - and there is a very non-linear relationship between "spot" prices and
+ * BPT prices - circuit breakers are set using simple percentages, and these percentages are transformed into
+ * BPT prices for comparison to the "reference" state of the pool when the circuit breaker was set, adjusting
+ * for any changes in weights.
+ *
+ * Intuitively, a lower bound of 0.8 means the token can lose 20% of its value before triggering the circuit
+ * breaker, and an upper bound of 3.0 means it can triple before being halted.
  */
 library CircuitBreakerLib {
     using ValueCompression for uint256;
@@ -40,9 +58,23 @@ library CircuitBreakerLib {
     }
 
     // Store circuit breaker information per token
-    // [  24 bits |  24 bits |   16 bits   |   16 bits   |    64 bits    |  112 bits |
-    // [ UB ratio | LB ratio | upper bound | lower bound | weight factor | ref price |
-    // |MSB                                                                       LSB|
+    // When the circuit breaker is set, store the "reference" values of parameters needed to compute the dynamic
+    // BPT price bounds for validating operations.
+    //
+    // The reference parameters include the BPT price, weight complement (_denormWeightSum - weight), and
+    // conversion ratios. These ratios are used to convert percentage bounds into BPT prices that can be directly
+    // compared to the "runtime" BPT prices.
+    //
+    // Since the price bounds shift along with the token weight, in general these bound ratios would need to be
+    // computed every time. However, if the weight of the token and composition of the pool have not changed since
+    // the circuit breaker was set, these "cached" reference values can still be used, avoiding a heavy computation.
+    // 
+    // We also store the "raw" upper and lower bounds, expressed as 18-decimal floating point percentages, for
+    // human readability.
+    // 
+    // [    24 bits   |    24 bits   |   16 bits   |   16 bits   |     64 bits     |    112 bits   |
+    // [ ref UB ratio | ref LB ratio | upper bound | lower bound | ref weight comp | ref BPT price |
+    // |MSB                                                                                     LSB|
     uint256 private constant _REFERENCE_BPT_PRICE_OFFSET = 0;
     uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_OFFSET = _REFERENCE_BPT_PRICE_OFFSET +
         _REFERENCE_BPT_PRICE_WIDTH;
@@ -58,14 +90,14 @@ library CircuitBreakerLib {
     uint256 private constant _BOUND_PERCENTAGE_WIDTH = 16;
     uint256 private constant _BOUND_RATIO_WIDTH = 24;
 
-    // We compress the ratios into 16 bits from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
-    // For consistency, use the same max value to compress the lower bound as well, even though we expect it to be
-    // less than 1.
+    // We compress the ratios from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
+    // For consistency, use the same max value to compress the lower bound, even though we expect it to be less than 1.
     uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18 decimal fixed point
 
     /**
-     * @notice Returns the reference BPT price, reference weight factor, and upper and lower bounds for a given token.
-     * @dev If a bound value is zero, it means there is no circuit breaker in that direction for the given token.
+     * @notice Returns the reference BPT price and weight complement values, and percentage bounds for a given token.
+     * @dev If an upper or lower bound value is zero, it means there is no circuit breaker in that direction for the
+     * given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      */
     function getCircuitBreakerFields(bytes32 circuitBreakerState) internal pure returns (CircuitBreakerParams memory) {
@@ -88,20 +120,26 @@ library CircuitBreakerLib {
     }
 
     /**
-     * @notice Returns the dynamic upper and lower bounds for a given token, at the current weight.
-     * @dev If a bound value is zero, it means there is no circuit breaker in that direction for the given token.
-     * The current boundary is given as: referenceBptPrice * (raw boundary percentage)**(currentWeightComplement).
+     * @notice Returns the dynamic lower and upper BPT price bounds for a given token, at the current weight.
+     * @dev The current BPT price of the token can be directly compared to these values, to determine whether
+     * the circuit breaker has tripped. If a bound is 0, it means there is no circuit breaker in that direction
+     * for this token: there might be a lower bound, but no upper bound. If the current BPT price is less than
+     * the lower bound, or greater than the non-zero upper bound, the transaction should revert.
      *
-     * The weight factor calculation attempts to isolate changes in the balance due to arbers responding to external
-     * prices, and internal price changes from moving weights. There is a non-linear relationship between "spot" price
-     * changes and BPT price changes, so this calculation transforms one into the other.
+     * These BPT price bounds are dynamically calculated using the conversion ratios. In general:
+     * lower/upper BPT price bound = referenceBptPrice * "conversion ratio". The conversion ratio is given as
+     * (boundary percentage)**(currentWeightComplement).
+     * 
+     * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
+     * when the breaker was set. Otherwise, we need to calculate them.
      *
-     * The raw thresholds are simple percentages: 0.8 means "tolerate a 20% drop in external price." To check the
-     * circuit breaker at runtime, we need to transform that into a corresponding BPT price ratio (relative to the
-     * BPT price at the time the breaker is set), such that the final boundary to be checked is simply the original
-     * reference BPT price multiplied by this conversion ratio.
+     * The weight complement calculation attempts to isolate changes in the balance due to arbitrageurs responding
+     * to external prices, from internal price changes caused by an ongoing weight update, or changes to the pool
+     * composition. There is a non-linear relationship between "spot" price changes and BPT price changes. This
+     * calculation transforms one into the other.
+     *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentWeightComplement - The combined weight of all other tokens: (_denormWeightSum - token weight)
+     * @param currentWeightComplement - The complement of this token's weight: (_denormWeightSum - token weight)
      * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
      */
     function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightComplement)
@@ -109,7 +147,6 @@ library CircuitBreakerLib {
         pure
         returns (uint256, uint256)
     {
-        // Retrieve the reference bptPrice and weight factors, stored at the time the circuit breaker was set.
         uint256 referenceBptPrice = circuitBreakerState.decodeUint(
             _REFERENCE_BPT_PRICE_OFFSET,
             _REFERENCE_BPT_PRICE_WIDTH
@@ -136,24 +173,21 @@ library CircuitBreakerLib {
                 )
             );
         } else {
-            // Something has changed - either the weight of the token, or the total weight (e.g., another token was
-            // added or removed), so we must retrieve the raw bounds and do the full calculation.
-            uint256 lowerBoundPercentage = circuitBreakerState
-                .decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
-                .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE);
-
-            uint256 upperBoundPercentage = circuitBreakerState
-                .decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
-                .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE);
-
-            // Use these ratios to convert raw percentage bounds to BPT price bounds.
-            (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
-                lowerBoundPercentage,
-                upperBoundPercentage,
+            // Something has changed - either the weight of the token, or the composition of the pool, so we must
+            // retrieve the raw percentage bounds and do the full calculation.
+            (uint256 lowerBoundRatio, uint256 upperBoundRatio) = _getBoundaryConversionRatios(
+                circuitBreakerState
+                    .decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
+                    .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
+                circuitBreakerState
+                    .decodeUint(_UPPER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
+                    .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
                 currentWeightComplement
             );
 
-            return (referenceBptPrice.mulDown(lowerBoundRatioCache), referenceBptPrice.mulUp(upperBoundRatioCache));
+            // Use these ratios to convert raw percentage bounds to BPT price bounds.
+            // To maximize the valid trading range, round the lower bound down, and the upper bound up.
+            return (referenceBptPrice.mulDown(lowerBoundRatio), referenceBptPrice.mulUp(upperBoundRatio));
         }
     }
 
