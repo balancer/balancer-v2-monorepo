@@ -72,6 +72,7 @@ export const warnings = {
   // Make all warnings cause errors, except code-size (contracts may go over the limit during development).
   '*': {
     'code-size': 'warn',
+    'shadowing-opcode': 'off',
     default: 'error',
   },
 };
