@@ -50,17 +50,7 @@ contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
-                    ManagedPoolSettings.NewPoolParams({
-                        name: poolParams.name,
-                        symbol: poolParams.symbol,
-                        tokens: poolParams.tokens,
-                        normalizedWeights: poolParams.normalizedWeights,
-                        assetManagers: poolParams.assetManagers,
-                        swapFeePercentage: poolParams.swapFeePercentage,
-                        swapEnabledOnStart: poolParams.swapEnabledOnStart,
-                        mustAllowlistLPs: poolParams.mustAllowlistLPs,
-                        managementAumFeePercentage: poolParams.managementAumFeePercentage
-                    }),
+                    poolParams,
                     getVault(),
                     getProtocolFeePercentagesProvider(),
                     owner,
