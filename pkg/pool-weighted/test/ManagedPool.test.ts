@@ -59,7 +59,6 @@ describe('ManagedPool', function () {
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
 
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
