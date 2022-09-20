@@ -192,13 +192,13 @@ library CircuitBreakerLib {
     }
 
     /**
-     * @notice Sets the reference BPT price, and upper and lower bounds for a token.
+     * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param params - CircuitBreakerParams has the following components:
      * - referenceBptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
-     * - currentWeightComplement: This is _denormWeightSum - currentWeight of the token.
+     * - referenceWeightComplement: This is _denormWeightSum - currentWeight of the token.
      * - lowerBoundPercentage: The value of the lower bound. Any operation that would cause the effective
      *   BPT Price to fall below lowerBoundRatio * referenceBptPrice should revert.
      * - upperBoundPercentage: The value of the upper bound. If non-zero, any operation that would cause the
@@ -210,8 +210,8 @@ library CircuitBreakerLib {
         returns (bytes32)
     {
         // It's theoretically not required for the lower bound to be < 1, but it wouldn't make much sense otherwise:
-        // the circuit breaker would immediately trip. Note that this explicitly allows setting both to 0, disabling
-        // the circuit breaker for the token.
+        // the circuit breaker would immediately trip. Note that this explicitly allows setting either to 0, disabling
+        // the circuit breaker for the token in that direction.
         _require(params.lowerBoundPercentage <= FixedPoint.ONE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
         _require(params.upperBoundPercentage <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
         _require(
@@ -219,8 +219,7 @@ library CircuitBreakerLib {
             Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
         );
 
-        // Set the reference parameters: BPT price of the token, and the weight factor for the token:
-        // _denormWeightSum - weight.
+        // Set the reference parameters: BPT price of the token, and the weight complement: _denormWeightSum - weight.
         circuitBreakerState = circuitBreakerState
             .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
             .insertUint(
@@ -229,7 +228,7 @@ library CircuitBreakerLib {
             _REFERENCE_WEIGHT_COMPLEMENT_WIDTH
         );
 
-        // Add the lower nad upper percentage bounds.
+        // Add the lower and upper percentage bounds.
         circuitBreakerState = circuitBreakerState
             .insertUint(
             params.lowerBoundPercentage.compress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
@@ -242,8 +241,8 @@ library CircuitBreakerLib {
             _BOUND_PERCENTAGE_WIDTH
         );
 
-        // Precompute and store the conversion ratios, used to convert percentage bounds to BPT prices.
-        // If the weight factor has not changed since the breaker was set (i.e., if there is no ongoing weight
+        // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
+        // If the weight complement has not changed since the breaker was set (i.e., if there is no ongoing weight
         // update, and no tokens have been added or removed), we can use the reference values directly, and avoid
         // a heavy computation.
         (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
