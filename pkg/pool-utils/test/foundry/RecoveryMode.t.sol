@@ -12,7 +12,8 @@ import "../../contracts/test/MockRecoveryMode.sol";
 contract RecoveryModeTest is Test {
     using FixedPoint for uint256;
 
-    uint16 private constant _TOTAL_SUPPLY = type(uint16).max;
+    uint256 private constant _TOTAL_SUPPLY = type(uint16).max;
+    uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
     uint256 private constant _MAX_TOKENS = 50;
 
     MockRecoveryMode private _mock;
@@ -21,24 +22,23 @@ contract RecoveryModeTest is Test {
         _mock = new MockRecoveryMode(address(0));
     }
 
-    function testComputeProportionalAmountsOut(uint112[] memory balances, uint16 bptAmountOut) public {
+    function testComputeProportionalAmountsOut(uint256[] memory balances, uint16 bptAmountOut) public {
       vm.assume(balances.length <= _MAX_TOKENS);
 
-      uint256[] memory amounts = new uint256[](balances.length);
       for (uint256 i = 0; i < balances.length; i++) {
-        amounts[i] = balances[i];
+        balances[i] = bound(balances[i], _DEFAULT_MINIMUM_BPT, type(uint112).max);
       }
 
       uint256[] memory amountsOut = _mock.computeProportionalAmountsOut(
-          amounts,
-          uint256(_TOTAL_SUPPLY).mulUp(FixedPoint.ONE),
-          uint256(bptAmountOut).mulUp(FixedPoint.ONE)
+          balances,
+          _TOTAL_SUPPLY,
+          bptAmountOut
       );
 
-      uint256 ratio = uint256(bptAmountOut).mulDown(FixedPoint.ONE).divDown(_TOTAL_SUPPLY);
+      uint256 ratio = uint256(bptAmountOut).divDown(_TOTAL_SUPPLY);
 
       for (uint256 i = 0; i < balances.length; i++) {
-        assertEq(amountsOut[i], amounts[i].mulDown(ratio));
+        assertEq(amountsOut[i], balances[i].mulDown(ratio));
       }
     }
 }
