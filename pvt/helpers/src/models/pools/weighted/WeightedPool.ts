@@ -41,7 +41,7 @@ import {
   calculateSpotPrice,
   calculateBPTPrice,
 } from './math';
-import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '../base/BasePool';
 
