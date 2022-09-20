@@ -97,7 +97,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     );
     event SwapEnabledSet(bool swapEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementSwapFeePercentageChanged(uint256 managementSwapFeePercentage);
     event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
     event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
@@ -114,7 +113,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
-        uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
     }
 

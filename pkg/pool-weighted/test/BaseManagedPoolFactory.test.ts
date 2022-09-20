@@ -60,7 +60,6 @@ describe('BaseManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
     };
 

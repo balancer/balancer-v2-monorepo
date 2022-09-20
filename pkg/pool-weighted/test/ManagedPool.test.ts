@@ -22,7 +22,6 @@ import {
   fp,
   fpDiv,
   fpMul,
-  fromFp,
   pct,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -62,7 +61,6 @@ describe('ManagedPool', function () {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
-  const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
 
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
@@ -99,7 +97,6 @@ describe('ManagedPool', function () {
             weights: poolWeights,
             vault,
             swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-            managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
             managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
           });
         });
@@ -1522,7 +1519,6 @@ describe('ManagedPool', function () {
 
   describe('management fees', () => {
     const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.01);
 
     sharedBeforeEach('deploy pool', async () => {
@@ -1534,7 +1530,6 @@ describe('ManagedPool', function () {
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
-        managementSwapFeePercentage,
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);
@@ -1727,7 +1722,6 @@ describe('ManagedPool', function () {
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.1);
     const maxYieldValue = fp(1);
     const maxAUMValue = fp(1);
@@ -1758,7 +1752,6 @@ describe('ManagedPool', function () {
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
-        managementSwapFeePercentage,
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);

@@ -26,7 +26,6 @@ describe('ManagedPool owner only actions', () => {
           swapFeePercentage: fp(0.05),
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
-          managementSwapFeePercentage: fp(0),
           managementAumFeePercentage: fp(0),
         },
         vault.address,
