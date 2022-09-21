@@ -70,6 +70,8 @@ contract ManagedPoolTokenLibTest is Test {
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
 
             bytes32 newTokenState = mock.setTokenScalingFactor(tokenState, token);
+            assertOtherStateUnchanged(tokenState, newTokenState, _DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH);
+
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(newTokenState);
             assertEq(tokenScalingFactor, expectedScalingFactor);
         } else {
@@ -126,6 +128,12 @@ contract ManagedPoolTokenLibTest is Test {
         ERC20 token = new TestToken("Test", "TEST", decimals);
         if (decimals <= 18) {
             bytes32 tokenState = mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
+            assertOtherStateUnchanged(
+                bytes32(0),
+                tokenState,
+                _START_DENORM_WEIGHT_OFFSET,
+                _DENORM_WEIGHT_WIDTH * 2 + _DECIMAL_DIFF_WIDTH
+            );
 
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(tokenState);
