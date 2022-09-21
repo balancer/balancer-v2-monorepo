@@ -138,18 +138,20 @@ describe('BasePool', function () {
 
       it('reverts with any pool ID', async () => {
         await expect(pool.connect(vaultSigner).onlyVaultCallable(ethers.utils.randomBytes(32))).to.be.revertedWith(
-          'BAL#500'
+          'INVALID_POOL_ID'
         );
       });
     });
 
     context('when caller is other', () => {
       it('reverts with the correct pool ID', async () => {
-        await expect(pool.connect(other).onlyVaultCallable(poolId)).to.be.revertedWith('BAL#205');
+        await expect(pool.connect(other).onlyVaultCallable(poolId)).to.be.revertedWith('CALLER_NOT_VAULT');
       });
 
       it('reverts with any pool ID', async () => {
-        await expect(pool.connect(other).onlyVaultCallable(ethers.utils.randomBytes(32))).to.be.revertedWith('BAL#205');
+        await expect(pool.connect(other).onlyVaultCallable(ethers.utils.randomBytes(32))).to.be.revertedWith(
+          'CALLER_NOT_VAULT'
+        );
       });
     });
   });
@@ -723,7 +725,7 @@ describe('BasePool', function () {
           await expect(normalSwap(singleSwap)).to.not.be.reverted;
         });
 
-        it('calls inner onMinimalSwap hook with swap parameters', async () => {
+        it('calls inner onSwapMinimal hook with swap parameters', async () => {
           const lastChangeBlock = (await vault.getPoolTokens(minimalPoolId)).lastChangeBlock;
           const receipt = await normalSwap(singleSwap);
 
@@ -765,7 +767,7 @@ describe('BasePool', function () {
           await expect(normalSwap(singleSwap)).to.not.be.reverted;
         });
 
-        it('calls inner onGeneralSwap hook with swap parameters', async () => {
+        it('calls inner onSwapGeneral hook with swap parameters', async () => {
           const lastChangeBlock = (await vault.getPoolTokens(poolId)).lastChangeBlock;
           const receipt = await normalSwap(singleSwap);
 
