@@ -29,7 +29,7 @@ describe('ManagedPoolTokenLib', () => {
   }
 
   describe('token scaling factor', () => {
-    const DECIMAL_DIFF_OFFSET = 128;
+    const DECIMAL_DIFF_OFFSET = 132;
     const DECIMAL_DIFF_WIDTH = 5;
 
     async function assertTokenScalingFactor(
@@ -79,7 +79,7 @@ describe('ManagedPoolTokenLib', () => {
 
   describe('token weight', () => {
     const START_DENORM_WEIGHT_OFFSET = 0;
-    const DENORM_WEIGHT_WIDTH = 128;
+    const DENORM_WEIGHT_WIDTH = 132;
 
     async function assertTokenWeight(
       interpolatedGetter: (
@@ -146,7 +146,7 @@ describe('ManagedPoolTokenLib', () => {
   });
 
   describe('initialize token', () => {
-    const DECIMAL_DIFF_OFFSET = 128;
+    const DECIMAL_DIFF_OFFSET = 132;
     const DECIMAL_DIFF_WIDTH = 5;
 
     async function assertTokenState(
