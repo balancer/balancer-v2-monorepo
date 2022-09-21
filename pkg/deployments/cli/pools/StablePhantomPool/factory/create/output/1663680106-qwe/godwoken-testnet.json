@@ -1,0 +1,33 @@
+{
+  "transaction": {
+    "hash": "0x738060bbab6ed2616e272441cf7a8687eedda1264edc1dcf388a4b857e2a7037",
+    "blockNumber": null
+  },
+  "data": {
+    "StablePhantomPoolFactory": {
+      "create": {
+        "input": {
+          "name": "qwe",
+          "symbol": "qwe",
+          "tokens": [
+            "0x07dDf39b2B4586fBBB62587aeb6e2D8B7fE65638",
+            "0xdf89Db15aED2201dEae56bb933b1Fe40991287B5"
+          ],
+          "rateProviders": [
+            "0x07dDf39b2B4586fBBB62587aeb6e2D8B7fE65638",
+            "0xdf89Db15aED2201dEae56bb933b1Fe40991287B5"
+          ],
+          "priceRateCacheDuration": [
+            "0",
+            "0"
+          ],
+          "amplificationParameter": "100",
+          "swapFeePercentage": "1000000000000000",
+          "owner": "0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B"
+        },
+        "output": "0xAa0D3DacdE96d8d082428c156495f7877A50F38B"
+      }
+    }
+  },
+  "timestamp": 1663680106991
+}

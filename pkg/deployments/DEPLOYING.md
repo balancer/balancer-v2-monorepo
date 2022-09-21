@@ -10,7 +10,7 @@ A task is made up of multiple components:
 
 - one or multiple build information JSON files, located in the `build-info` directory.
 - an `input.ts` file, containing information on dependencies and deployment parameters (which might differ across networks).
-- an `index.ts` file, with the instructions for the actual deployment.
+- an `cli.ts` file, with the instructions for the actual deployment.
 - the `output`, `abi` and `bytecode` directories, with JSON files containing the deployment addresses of the tasks' contracts in each network as well as additional information.
 - optional fork tests in the `test` directory.
 
@@ -22,11 +22,11 @@ As part of our development process, we frequently alter the source code of contr
 
 ## Creating Tasks
 
-A new task is created by placing a new directory named after the task ID in the `tasks`, and populating the `build-info` directory and writing appropiate `input.ts` and `index.ts` files. The `output`, `abi` and `bytecode` directories are automatically generated and populated.
+A new task is created by placing a new directory named after the task ID in the `tasks`, and populating the `build-info` directory and writing appropiate `input.ts` and `cli.ts` files. The `output`, `abi` and `bytecode` directories are automatically generated and populated.
 
 The build information should be generated on a clean commit, so that it can be verified by other parties. On the project directory, delete the `artifacts` directory and run `yarn hardhat compile` for a clean compilation. The file will be then be located at `artifacts/build-info`.
 
-Inputs and task instructions are plain TypeScript files that call appropriate functions - there's no DSL. The recommended way to write them is to copy the structure from the `input.ts` and `index.ts` files from a similar task, and then edit those as needed.
+Inputs and task instructions are plain TypeScript files that call appropriate functions - there's no DSL. The recommended way to write them is to copy the structure from the `input.ts` and `cli.ts` files from a similar task, and then edit those as needed.
 
 ### Vyper Compilation
 
@@ -40,7 +40,7 @@ There are three things to verify from a task:
 - the inputs
 - the deployment script
 
-The last two can be performed with simple manual inspection, that is, reviewing `input.ts` and `index.ts` and checking that they have sensible inputs and correct constructor arguments.
+The last two can be performed with simple manual inspection, that is, reviewing `input.ts` and `cli.ts` and checking that they have sensible inputs and correct constructor arguments.
 
 In order to check the `build-info` contents, follow these steps:
 
@@ -112,7 +112,7 @@ Further runs of the task will not attempt to redeploy contracts for which an out
 
 ## Checking Deployments
 
-The deployments package is able to verify that the addresses found in the `output` directories correspond exactly to a run of the task as described by `index.ts`, using the inputs at `input.ts` and the data from the `build-info` directory.
+The deployments package is able to verify that the addresses found in the `output` directories correspond exactly to a run of the task as described by `cli.ts`, using the inputs at `input.ts` and the data from the `build-info` directory.
 
 This can be done manually by running the `check-deployments` Hardhat task (`yarn hardhat check-deployments --network <network>`), but it is also done automatically on CI. Like deployment, [this also requires access to an RPC endpoint](#prerequisites).
 
