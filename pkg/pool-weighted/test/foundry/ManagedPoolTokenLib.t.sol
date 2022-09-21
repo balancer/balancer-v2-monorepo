@@ -19,7 +19,7 @@ import { Test } from "forge-std/Test.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
-import "../../contracts/lib/ValueCompression.sol";
+import "../../contracts/lib/GradualValueChange.sol";
 import "../../contracts/WeightedMath.sol";
 
 import "../../contracts/test/MockManagedPoolTokenLib.sol";
@@ -115,6 +115,49 @@ contract ManagedPoolTokenLibTest is Test {
         assertApproxEqRel(recoveredEndWeight, normalizedEndWeight, 1e7);
     }
 
+    function testWeightInterpolation(
+        bytes32 tokenState,
+        uint256 normalizedStartWeight,
+        uint256 normalizedEndWeight,
+        uint32 startTime,
+        uint32 endTime,
+        uint32 now,
+        uint256 denormWeightSum
+    ) external {
+        vm.warp(now);
+        vm.assume(startTime <= endTime);
+
+        normalizedStartWeight = bound(
+            normalizedStartWeight,
+            WeightedMath._MIN_WEIGHT,
+            FixedPoint.ONE - WeightedMath._MIN_WEIGHT
+        );
+        normalizedEndWeight = bound(
+            normalizedEndWeight,
+            WeightedMath._MIN_WEIGHT,
+            FixedPoint.ONE - WeightedMath._MIN_WEIGHT
+        );
+        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
+
+        bytes32 newTokenState = mock.setTokenWeight(
+            tokenState,
+            normalizedStartWeight,
+            normalizedEndWeight,
+            denormWeightSum
+        );
+
+        uint256 pctProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
+        uint256 expectedInterpolatedWeight = GradualValueChange.interpolateValue(
+            normalizedStartWeight,
+            normalizedEndWeight,
+            pctProgress
+        );
+        uint256 interpolatedWeight = mock.getTokenWeight(newTokenState, pctProgress, denormWeightSum);
+
+        // We don't expect an exact equality due to the rounding errors introduced in the denormalization process.
+        assertApproxEqRel(interpolatedWeight, expectedInterpolatedWeight, 1e7);
+    }
+
     function testInitializeToken(
         bytes32 tokenState,
         uint256 normalizedWeight,
@@ -142,7 +185,7 @@ contract ManagedPoolTokenLibTest is Test {
             (uint256 startWeight, uint256 endWeight) = mock.getTokenStartAndEndWeights(tokenState, denormWeightSum);
 
             assertEq(startWeight, endWeight);
-            assertApproxEqRel(startWeight, normalizedWeight, 1e4);
+            assertApproxEqRel(startWeight, normalizedWeight, 1e7);
         } else {
             vm.expectRevert("BAL#001"); // SUB_OVERFLOW
             mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
