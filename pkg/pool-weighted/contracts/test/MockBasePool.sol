@@ -26,6 +26,7 @@ contract MockBasePool is BasePool {
 
     event InnerOnInitializePoolCalled(bytes userData);
     event InnerOnSwapMinimalCalled(SwapRequest request, uint256 balanceTokenIn, uint256 balanceTokenOut);
+    event InnerOnSwapGeneralCalled(SwapRequest request, uint256[] balances, uint256 indexIn, uint256 indexOut);
     event InnerOnJoinPoolCalled(address sender, uint256[] balances, bytes userData);
     event InnerOnExitPoolCalled(address sender, uint256[] balances, bytes userData);
 
@@ -84,7 +85,9 @@ contract MockBasePool is BasePool {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) internal override returns (uint256) {}
+    ) internal override returns (uint256) {
+        emit InnerOnSwapGeneralCalled(request, balances, indexIn, indexOut);
+    }
 
     function _onJoinPool(
         bytes32,

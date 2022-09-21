@@ -8,9 +8,17 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+import {
+  JoinPoolRequest,
+  ExitPoolRequest,
+  PoolSpecialization,
+  WeightedPoolEncoder,
+  SingleSwap,
+  SwapKind,
+  FundManagement,
+} from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
@@ -253,6 +261,27 @@ describe('BasePool', function () {
           await pool.connect(sender).pause();
         });
 
+        it('swaps revert', async () => {
+          const singleSwap: SingleSwap = {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: tokens.get(0).instance.address,
+            assetOut: tokens.get(1).instance.address,
+            amount: 1, // Needs to be > 0
+            userData: '0x',
+          };
+
+          const funds: FundManagement = {
+            sender: poolOwner.address,
+            recipient: poolOwner.address,
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          };
+
+          // min amount: 0, deadline: max.
+          await expect(vault.connect(poolOwner).swap(singleSwap, funds, 0, MAX_UINT256)).to.be.revertedWith('PAUSED');
+        });
+
         it('joins revert', async () => {
           const OTHER_JOIN_KIND = 1;
 
@@ -488,83 +517,120 @@ describe('BasePool', function () {
         });
       });
     });
+  });
 
-    context('exit', () => {
-      const RECOVERY_MODE_EXIT_KIND = 255;
-      let poolId: string;
-      let initialBalances: BigNumber[];
-      let pool: Contract;
+  describe('swap join exit', () => {
+    const RECOVERY_MODE_EXIT_KIND = 255;
+    let poolId: string;
+    let initialBalances: BigNumber[];
+    let pool: Contract;
 
-      let sender: SignerWithAddress;
-      let recipient: SignerWithAddress;
+    let sender: SignerWithAddress;
+    let recipient: SignerWithAddress;
 
-      let normalJoin: () => Promise<ContractReceipt>;
-      let normalExit: () => Promise<ContractReceipt>;
+    let normalMinimalSwap: () => Promise<ContractReceipt>;
+    let normalGeneralSwap: () => Promise<ContractReceipt>;
+    let normalJoin: () => Promise<ContractReceipt>;
+    let normalExit: () => Promise<ContractReceipt>;
 
-      const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.3);
-      const OTHER_EXIT_KIND = 1;
-      const OTHER_JOIN_KIND = 1;
+    const PROTOCOL_SWAP_FEE_PERCENTAGE = fp(0.3);
+    const OTHER_EXIT_KIND = 1;
+    const OTHER_JOIN_KIND = 1;
 
-      before('prepare normal join and exit', () => {
-        sender = poolOwner;
-        recipient = poolOwner;
+    before('prepare normal swap, join and exit', () => {
+      sender = poolOwner;
+      recipient = poolOwner;
 
-        const joinRequest: JoinPoolRequest = {
-          assets: tokens.addresses,
-          maxAmountsIn: Array(tokens.length).fill(0),
-          userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-          fromInternalBalance: false,
-        };
+      const joinRequest: JoinPoolRequest = {
+        assets: tokens.addresses,
+        maxAmountsIn: Array(tokens.length).fill(0),
+        userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
+        fromInternalBalance: false,
+      };
 
-        normalJoin = async () =>
-          (await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, joinRequest)).wait();
+      normalJoin = async () =>
+        (await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, joinRequest)).wait();
 
-        const exitRequest: ExitPoolRequest = {
+      const exitRequest: ExitPoolRequest = {
+        assets: tokens.addresses,
+        minAmountsOut: Array(tokens.length).fill(0),
+        userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+        toInternalBalance: false,
+      };
+
+      normalExit = async () =>
+        (await vault.connect(sender).exitPool(poolId, sender.address, recipient.address, exitRequest)).wait();
+    });
+
+    sharedBeforeEach('deploy and initialize pool', async () => {
+      initialBalances = Array(tokens.length).fill(fp(1000));
+      pool = await deployBasePool({ pauseWindowDuration: MONTH });
+      poolId = await pool.getPoolId();
+
+      const request: JoinPoolRequest = {
+        assets: tokens.addresses,
+        maxAmountsIn: initialBalances,
+        userData: WeightedPoolEncoder.joinInit(initialBalances),
+        fromInternalBalance: false,
+      };
+
+      await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
+      await tokens.approve({ from: poolOwner, to: vault });
+
+      await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request);
+    });
+
+    sharedBeforeEach('set a non-zero protocol swap fee percentage', async () => {
+      const feesCollector = await deployedAt('v2-vault/ProtocolFeesCollector', await vault.getProtocolFeesCollector());
+
+      await authorizer
+        .connect(admin)
+        .grantPermissions([await actionId(feesCollector, 'setSwapFeePercentage')], admin.address, [ANY_ADDRESS]);
+
+      await feesCollector.connect(admin).setSwapFeePercentage(PROTOCOL_SWAP_FEE_PERCENTAGE);
+
+      expect(await feesCollector.getSwapFeePercentage()).to.equal(PROTOCOL_SWAP_FEE_PERCENTAGE);
+    });
+
+    context('when not in recovery mode', () => {
+      it('the recovery mode exit reverts', async () => {
+        const preExitBPT = await pool.balanceOf(sender.address);
+        const exitBPT = preExitBPT.div(3);
+
+        const request: ExitPoolRequest = {
           assets: tokens.addresses,
           minAmountsOut: Array(tokens.length).fill(0),
-          userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
+          userData: defaultAbiCoder.encode(['uint256', 'uint256'], [RECOVERY_MODE_EXIT_KIND, exitBPT]),
           toInternalBalance: false,
         };
 
-        normalExit = async () =>
-          (await vault.connect(sender).exitPool(poolId, sender.address, recipient.address, exitRequest)).wait();
+        await expect(
+          vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request)
+        ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
       });
 
-      sharedBeforeEach('deploy and initialize pool', async () => {
-        initialBalances = Array(tokens.length).fill(fp(1000));
-        pool = await deployBasePool({ pauseWindowDuration: MONTH });
-        poolId = await pool.getPoolId();
+      itJoins();
 
-        const request: JoinPoolRequest = {
-          assets: tokens.addresses,
-          maxAmountsIn: initialBalances,
-          userData: WeightedPoolEncoder.joinInit(initialBalances),
-          fromInternalBalance: false,
-        };
+      itExits();
+    });
 
-        await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
-        await tokens.approve({ from: poolOwner, to: vault });
-
-        await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request);
-      });
-
-      sharedBeforeEach('set a non-zero protocol swap fee percentage', async () => {
-        const feesCollector = await deployedAt(
-          'v2-vault/ProtocolFeesCollector',
-          await vault.getProtocolFeesCollector()
-        );
-
+    context('when in recovery mode', () => {
+      sharedBeforeEach('enable recovery mode', async () => {
+        const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
+        const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
         await authorizer
           .connect(admin)
-          .grantPermissions([await actionId(feesCollector, 'setSwapFeePercentage')], admin.address, [ANY_ADDRESS]);
+          .grantPermissions([enableRecoveryAction, disableRecoveryAction], admin.address, [ANY_ADDRESS, ANY_ADDRESS]);
 
-        await feesCollector.connect(admin).setSwapFeePercentage(PROTOCOL_SWAP_FEE_PERCENTAGE);
-
-        expect(await feesCollector.getSwapFeePercentage()).to.equal(PROTOCOL_SWAP_FEE_PERCENTAGE);
+        await pool.connect(admin).enableRecoveryMode();
       });
 
-      context('when not in recovery mode', () => {
-        it('the recovery mode exit reverts', async () => {
+      itJoins();
+
+      itExits();
+
+      function itExitsViaRecoveryModeCorrectly() {
+        it('the recovery mode exit can be used', async () => {
           const preExitBPT = await pool.balanceOf(sender.address);
           const exitBPT = preExitBPT.div(3);
 
@@ -575,108 +641,70 @@ describe('BasePool', function () {
             toInternalBalance: false,
           };
 
-          await expect(
-            vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request)
-          ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
+          // The sole BPT holder is the owner, so they own the initial balances
+          const expectedChanges = tokens.reduce(
+            (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
+            {}
+          );
+          await expectBalanceChange(
+            () => vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request),
+            tokens,
+            { account: recipient, changes: expectedChanges }
+          );
+
+          // Exit BPT was burned
+          const afterExitBalance = await pool.balanceOf(sender.address);
+          expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
         });
+      }
 
-        itJoins();
+      itExitsViaRecoveryModeCorrectly();
 
-        itExits();
-      });
-
-      context('when in recovery mode', () => {
-        sharedBeforeEach('enable recovery mode', async () => {
-          const enableRecoveryAction = await actionId(pool, 'enableRecoveryMode');
-          const disableRecoveryAction = await actionId(pool, 'disableRecoveryMode');
+      context('when paused', () => {
+        sharedBeforeEach('pause pool', async () => {
           await authorizer
             .connect(admin)
-            .grantPermissions([enableRecoveryAction, disableRecoveryAction], admin.address, [ANY_ADDRESS, ANY_ADDRESS]);
+            .grantPermissions([await actionId(pool, 'pause')], admin.address, [ANY_ADDRESS]);
 
-          await pool.connect(admin).enableRecoveryMode();
+          await pool.connect(admin).pause();
         });
-
-        itJoins();
-
-        itExits();
-
-        function itExitsViaRecoveryModeCorrectly() {
-          it('the recovery mode exit can be used', async () => {
-            const preExitBPT = await pool.balanceOf(sender.address);
-            const exitBPT = preExitBPT.div(3);
-
-            const request: ExitPoolRequest = {
-              assets: tokens.addresses,
-              minAmountsOut: Array(tokens.length).fill(0),
-              userData: defaultAbiCoder.encode(['uint256', 'uint256'], [RECOVERY_MODE_EXIT_KIND, exitBPT]),
-              toInternalBalance: false,
-            };
-
-            // The sole BPT holder is the owner, so they own the initial balances
-            const expectedChanges = tokens.reduce(
-              (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
-              {}
-            );
-            await expectBalanceChange(
-              () => vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request),
-              tokens,
-              { account: recipient, changes: expectedChanges }
-            );
-
-            // Exit BPT was burned
-            const afterExitBalance = await pool.balanceOf(sender.address);
-            expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
-          });
-        }
 
         itExitsViaRecoveryModeCorrectly();
+      });
+    });
 
-        context('when paused', () => {
-          sharedBeforeEach('pause pool', async () => {
-            await authorizer
-              .connect(admin)
-              .grantPermissions([await actionId(pool, 'pause')], admin.address, [ANY_ADDRESS]);
+    function itJoins() {
+      describe('normal joins', () => {
+        it('do not revert', async () => {
+          await expect(normalJoin()).to.not.be.reverted;
+        });
 
-            await pool.connect(admin).pause();
+        it('calls inner onJoin hook with join parameters', async () => {
+          const receipt = await normalJoin();
+          expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
+            sender: sender.address,
+            balances: initialBalances,
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
           });
-
-          itExitsViaRecoveryModeCorrectly();
         });
       });
+    }
 
-      function itJoins() {
-        describe('normal joins', () => {
-          it('do not revert', async () => {
-            await expect(normalJoin()).to.not.be.reverted;
-          });
+    function itExits() {
+      describe('normal exits', () => {
+        it('do not revert', async () => {
+          await expect(normalExit()).to.not.be.reverted;
+        });
 
-          it('calls inner onJoin hook with join parameters', async () => {
-            const receipt = await normalJoin();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnJoinPoolCalled', {
-              sender: sender.address,
-              balances: initialBalances,
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_JOIN_KIND]),
-            });
+        it('calls inner onExit hook with exit parameters', async () => {
+          const receipt = await normalExit();
+          expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
+            sender: sender.address,
+            balances: initialBalances,
+            userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
           });
         });
-      }
-
-      function itExits() {
-        describe('normal exits', () => {
-          it('do not revert', async () => {
-            await expect(normalExit()).to.not.be.reverted;
-          });
-
-          it('calls inner onExit hook with exit parameters', async () => {
-            const receipt = await normalExit();
-            expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnExitPoolCalled', {
-              sender: sender.address,
-              balances: initialBalances,
-              userData: defaultAbiCoder.encode(['uint256'], [OTHER_EXIT_KIND]),
-            });
-          });
-        });
-      }
-    });
+      });
+    }
   });
 });
