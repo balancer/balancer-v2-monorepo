@@ -106,7 +106,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
-    event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
+    event TokenRemoved(IERC20 indexed token);
 
     struct NewPoolParams {
         string name;
@@ -775,6 +775,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
+        _require(totalSupply() > 0, Errors.UNINITIALIZED);
+
         // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
         // Checking for the validity of the new weight would otherwise be much more complicated.
         _ensureNoWeightChange();
@@ -842,86 +844,70 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Removes a token from the Pool's composition, withdraws all funds from the Vault (sending them to
-     * `recipient`), and finally adjusts the weights of all other tokens.
-     *
-     * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
-     * is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
+     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
      * Emits the TokenRemoved event. This is a permissioned function.
      *
      * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
      * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
      * @param token - The ERC20 token to be removed from the Pool.
-     * @param recipient - The address to receive the Pool's balance of `token` after it is removed.
      * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
-     * @param minAmountOut - Will revert if the number of tokens transferred from the Vault is less than this value.
-     * @return The amount of tokens the Pool held, sent to `recipient`.
+     * @param sender - The address to burn BPT from.
      */
     function removeToken(
         IERC20 token,
-        address recipient,
         uint256 burnAmount,
-        uint256 minAmountOut
-    ) external authenticate nonReentrant whenNotPaused returns (uint256) {
-        // We require the pool to be initialized (shown by the total supply being nonzero) in order to remove a token,
-        // maintaining the behaviour that no exits can occur before the pool has been initialized.
-        // This prevents the AUM fee calculation being triggered before the pool contains any assets.
+        address sender
+    ) external authenticate nonReentrant whenNotPaused {
         _require(totalSupply() > 0, Errors.UNINITIALIZED);
 
         // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
+        // This is for symmetry with addToken.
         _ensureNoWeightChange();
 
-        // Exit the pool, returning the full balance of the token to the recipient
-        (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
+        // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
+        // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
+        // in a valid state and all value-changing operations will revert, we are free to modify the Pool state (e.g.
+        // alter weights).
+        // We don't need to test the zero balance since the Vault will simply revert on deregistration if this is not
+        // the case.
+
+        // Removing a token will cause for the weights of all other tokens to increase. This is fine, as there is no
+        // maximum weight. We also don't need to check that the new token exists in the Pool, as the Vault will simply
+        // revert if we try to deregister a token that is not registered.
+        // We do, however, want to check that the Pool will end up with at least two tokens. This simplifies some
+        // assumptions made elsewhere (e.g. the denormalized weight sum will always be non-zero), and doesn't greatly
+        // restrict the controller.
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
-        // Reverts if the token does not exist in the pool.
-        uint256 tokenIndex = _findTokenIndex(tokens, token);
-        uint256 tokenBalance = unscaledBalances[tokenIndex];
         uint256 tokenNormalizedWeight = _getNormalizedWeight(
             token,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
         );
 
-        // We first perform a special exit operation, which will withdraw the entire token balance from the Vault.
-        // Only the Pool itself is authorized to initiate this kind of exit.
-        uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        minAmountsOut[tokenIndex] = minAmountOut;
-
-        // Note that this exit will trigger collection of the AUM fees payable up to now.
-        getVault().exitPool(
-            getPoolId(),
-            address(this),
-            payable(recipient),
-            IVault.ExitPoolRequest({
-                assets: _asIAsset(tokens),
-                minAmountsOut: minAmountsOut,
-                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex),
-                toInternalBalance: false
-            })
-        );
-
-        // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
-        // zero). We immediately deregister the emptied-out token to restore a valid state.
-        // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
-        // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
-        // is in this inconsistent state (except for view calls).
-        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
-
-        // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
-        // all other token weights accordingly.
-        // Clean up data structures and update the token count
+        // State cleanup is simply done by removing the portion of the denormalized weight that corresponds to the token
+        // being removed, and then deleting all token-specific state.
+        _denormWeightSum -= tokenNormalizedWeight.mulDown(_denormWeightSum);
         delete _tokenState[token];
-        _denormWeightSum -= tokenNormalizedWeight.mulUp(_denormWeightSum);
 
         if (burnAmount > 0) {
-            _burnPoolTokens(msg.sender, burnAmount);
+            // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
+            // uninitialized state.
+            _require(sender != address(0), Errors.BURN_FROM_ZERO);
+            _burnPoolTokens(sender, burnAmount);
         }
 
-        emit TokenRemoved(token, tokenNormalizedWeight, tokenBalance);
+        // We can then deregister the token in the Vault. This will revert unless the token is registered and the Pool
+        // has a zero balance of it.
+        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
 
-        return tokenBalance;
+        // The Pool is now again in a valid state: by the time the zero valued token is deregistered, all internal Pool
+        // state is updated.
+
+        emit TokenRemoved(token);
     }
 
     // Scaling Factors
