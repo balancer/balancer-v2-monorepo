@@ -223,6 +223,9 @@ library WeightedMath {
                 amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
             } else {
                 amountInWithoutFee = amountsIn[i];
+                if (amountInWithoutFee == 0) {
+                    continue;
+                }
             }
 
             uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
