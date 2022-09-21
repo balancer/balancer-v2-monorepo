@@ -191,4 +191,41 @@ contract ManagedPoolTokenLibTest is Test {
             mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
         }
     }
+
+    function testGetMinimumTokenEndWeight(
+        uint256[40] memory normalizedWeightsFixed,
+        uint256 arrayLength,
+        uint256 denormWeightSum
+    ) external {
+        arrayLength = bound(arrayLength, 2, 40);
+
+        IERC20[] memory tokens = new IERC20[](arrayLength);
+        uint256[] memory normalizedWeights = new uint256[](arrayLength);
+        for (uint256 i = 0; i < arrayLength; i++) {
+            // The value of the tokens array is unimportant for testing purposes.
+            // All that we require is that each element is unique.
+            tokens[i] = IERC20(i);
+
+            normalizedWeights[i] = bound(
+                normalizedWeightsFixed[i],
+                WeightedMath._MIN_WEIGHT,
+                FixedPoint.ONE - WeightedMath._MIN_WEIGHT
+            );
+        }
+
+        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
+
+        uint256 minNormalizedWeight = type(uint256).max;
+        for (uint256 i = 0; i < arrayLength; i++) {
+            if (normalizedWeights[i] < minNormalizedWeight) {
+                minNormalizedWeight = normalizedWeights[i];
+            }
+        }
+
+        assertApproxEqRel(
+            mock.getMinimumTokenEndWeight(tokens, normalizedWeights, denormWeightSum),
+            minNormalizedWeight,
+            1e7
+        );
+    }
 }
