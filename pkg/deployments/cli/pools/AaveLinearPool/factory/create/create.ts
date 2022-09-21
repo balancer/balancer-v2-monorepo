@@ -31,6 +31,16 @@ async function create({
 
   console.log(name, symbol, mainToken, wrappedToken, upperTarget.toString(), swapFeePercentage.toString(), owner);
 
+  await AaveLinearPoolFactoryContract.callStatic.create(
+    name,
+    symbol,
+    mainToken,
+    wrappedToken,
+    upperTarget,
+    swapFeePercentage,
+    owner
+  );
+
   const transaction = await AaveLinearPoolFactoryContract.create(
     name,
     symbol,

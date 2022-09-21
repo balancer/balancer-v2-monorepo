@@ -8,6 +8,7 @@ import selectNetworkCommand from './config.command';
 
 import poolsCli from './pools/cli';
 import vaultCli from './Vault/cli';
+import staticATokenCli from './StaticAToken/cli';
 
 program
   .name('cli')
@@ -22,7 +23,8 @@ program
       message: 'Select action',
       choices: [
         { title: 'pools', value: 'pools' },
-        { title: 'vault', value: 'vault' },
+        { title: 'Vault', value: 'Vault' },
+        { title: 'StaticAToken', value: 'StaticAToken' },
       ],
     });
 
@@ -30,8 +32,11 @@ program
       case 'pools':
         await poolsCli({ environment: scriptRunEnvironment });
         break;
-      case 'vault':
+      case 'Vault':
         await vaultCli({ environment: scriptRunEnvironment });
+        break;
+      case 'StaticAToken':
+        await staticATokenCli({ environment: scriptRunEnvironment });
         break;
     }
   });

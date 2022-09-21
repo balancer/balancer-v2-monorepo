@@ -47,7 +47,9 @@ async function swapCli(vaultAddress: string, poolAddress: string) {
   const amountBN = BigNumber.from(amount);
   const allowance = await tokenInContract.allowance(deployer.address, vaultAddress);
 
-  if (allowance.gt(amountBN)) {
+  console.log(chalk.bgYellow(chalk.black('allowance')), chalk.yellow(allowance.toString()));
+
+  if (allowance.lt(amountBN)) {
     const approveTransaction = await tokenInContract.approve(vaultAddress, amountBN);
     await approveTransaction.wait(2);
   }

@@ -1,0 +1,23 @@
+{
+  "transaction": {
+    "hash": "0x50bf2eb9f010545f9e611804cc0d318a55a4ff9c802cc93e57a4f8bfaf3128f5",
+    "blockNumber": null
+  },
+  "data": {
+    "AAVELinearPoolFactory": {
+      "create": {
+        "input": {
+          "name": "Hadouken Boosted Pool (USDC)",
+          "symbol": "hb-a-USDC",
+          "mainToken": "0x630AcC0A29E325ce022563Df69ba7E25Eeb1e184",
+          "wrappedToken": "0x9C36C4a22181Be78300F0C6Ff93A96f756912410",
+          "upperTarget": "2100000000000000000000000",
+          "swapFeePercentage": "1500000000000000",
+          "owner": "0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B"
+        },
+        "output": "0x709358104Ec120f319dba47320b4eAbfb54eC6eF"
+      }
+    }
+  },
+  "timestamp": 1663777175039
+}
