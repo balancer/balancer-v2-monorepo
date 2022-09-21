@@ -216,7 +216,9 @@ library WeightedMath {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
+                uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
+                    ? balances[i].mulDown(invariantRatioWithFees - FixedPoint.ONE)
+                    : 0;
                 uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
                 uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
 
