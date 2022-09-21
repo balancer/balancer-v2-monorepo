@@ -844,8 +844,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
-     * is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
+     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
      * Emits the TokenRemoved event. This is a permissioned function.
      *
@@ -857,8 +857,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      */
     function removeToken(
         IERC20 token,
-        address sender,
-        uint256 burnAmount
+        uint256 burnAmount,
+        address sender
     ) external authenticate nonReentrant whenNotPaused {
         _require(totalSupply() > 0, Errors.UNINITIALIZED);
 

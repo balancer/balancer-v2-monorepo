@@ -558,7 +558,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
             context('with a zero burn amount', () => {
               it('burns no BPT', async () => {
                 const supplyBefore = await pool.totalSupply();
-                await pool.removeToken(owner, tokenToRemove, 0);
+                await pool.removeToken(owner, tokenToRemove, ZERO_ADDRESS, 0);
                 const supplyAfter = await pool.totalSupply();
 
                 expect(supplyAfter).to.equal(supplyBefore);
@@ -570,7 +570,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
                 const bptBalanceBefore = await pool.balanceOf(lp.address);
 
                 const burnAmount = fp(17);
-                await pool.removeToken(owner, tokenToRemove, burnAmount, lp.address);
+                await pool.removeToken(owner, tokenToRemove, lp.address, burnAmount);
 
                 const bptBalanceAfter = await pool.balanceOf(lp.address);
 
@@ -578,7 +578,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
               });
 
               it('reverts if burning from the zero address', async () => {
-                await expect(pool.removeToken(owner, tokenToRemove, 1, ZERO_ADDRESS)).to.be.revertedWith(
+                await expect(pool.removeToken(owner, tokenToRemove, ZERO_ADDRESS, 1)).to.be.revertedWith(
                   'BURN_FROM_ZERO'
                 );
               });
