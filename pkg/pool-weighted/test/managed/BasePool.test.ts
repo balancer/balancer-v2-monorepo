@@ -25,6 +25,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 import { impersonate } from '@balancer-labs/v2-deployments/src/signers';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
@@ -49,6 +50,7 @@ describe('BasePool', function () {
 
   function deployBasePool(
     params: {
+      specialization?: PoolSpecialization;
       tokens?: TokenList | string[];
       assetManagers?: string[];
       swapFeePercentage?: BigNumberish;
@@ -59,6 +61,7 @@ describe('BasePool', function () {
     } = {}
   ): Promise<Contract> {
     let {
+      specialization,
       tokens: poolTokens,
       assetManagers,
       swapFeePercentage,
@@ -67,6 +70,7 @@ describe('BasePool', function () {
       owner,
       from,
     } = params;
+    if (!specialization) specialization = PoolSpecialization.GeneralPool;
     if (!poolTokens) poolTokens = tokens;
     if (!assetManagers) assetManagers = Array(poolTokens.length).fill(ZERO_ADDRESS);
     if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
@@ -79,7 +83,7 @@ describe('BasePool', function () {
       from,
       args: [
         vault.address,
-        PoolSpecialization.GeneralPool,
+        specialization,
         'Balancer Pool Token',
         'BPT',
         Array.isArray(poolTokens) ? poolTokens : poolTokens.addresses,
@@ -521,6 +525,8 @@ describe('BasePool', function () {
 
   describe('swap join exit', () => {
     const RECOVERY_MODE_EXIT_KIND = 255;
+    let minimalPool: Contract;
+    let minimalPoolId: string;
     let poolId: string;
     let initialBalances: BigNumber[];
     let pool: Contract;
@@ -537,10 +543,70 @@ describe('BasePool', function () {
     const OTHER_EXIT_KIND = 1;
     const OTHER_JOIN_KIND = 1;
 
-    before('prepare normal swap, join and exit', () => {
+    sharedBeforeEach('deploy and initialize pool', async () => {
       sender = poolOwner;
       recipient = poolOwner;
+      const initialBalancePerToken = 1000;
 
+      initialBalances = Array(tokens.length).fill(fp(initialBalancePerToken));
+      pool = await deployBasePool({ pauseWindowDuration: MONTH });
+      poolId = await pool.getPoolId();
+
+      minimalPool = await deployBasePool({
+        pauseWindowDuration: MONTH,
+        specialization: PoolSpecialization.MinimalSwapInfoPool,
+      });
+      minimalPoolId = await minimalPool.getPoolId();
+
+      const request: JoinPoolRequest = {
+        assets: tokens.addresses,
+        maxAmountsIn: initialBalances,
+        userData: WeightedPoolEncoder.joinInit(initialBalances),
+        fromInternalBalance: false,
+      };
+
+      // We mint twice the initial pool balance to fund two pools.
+      await tokens.mint({ to: sender, amount: fp(2 * initialBalancePerToken + random(1000)) });
+      await tokens.approve({ from: sender, to: vault });
+
+      await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request);
+      await vault.connect(sender).joinPool(minimalPoolId, sender.address, recipient.address, request);
+    });
+
+    sharedBeforeEach('prepare normal swaps', () => {
+      const minimalSwap: SingleSwap = {
+        poolId: minimalPoolId,
+        kind: SwapKind.GivenIn,
+        assetIn: tokens.get(0).instance.address,
+        assetOut: tokens.get(1).instance.address,
+        amount: 1, // Needs to be > 0
+        userData: '0xdeadbeef',
+      };
+
+      const generalSwap: SingleSwap = {
+        poolId,
+        kind: SwapKind.GivenIn,
+        assetIn: tokens.get(1).instance.address,
+        assetOut: tokens.get(2).instance.address,
+        amount: 1, // Needs to be > 0
+        userData: '0xdeadbeef',
+      };
+
+      const funds: FundManagement = {
+        sender: poolOwner.address,
+        recipient: poolOwner.address,
+        fromInternalBalance: false,
+        toInternalBalance: false,
+      };
+
+      // min amount: 0, deadline: max.
+      normalMinimalSwap = async () => (await vault.connect(sender).swap(minimalSwap, funds, 0, MAX_UINT256)).wait();
+
+      // min amount: 0, deadline: max.
+      normalGeneralSwap = async () => (await vault.connect(sender).swap(generalSwap, funds, 0, MAX_UINT256)).wait();
+    });
+
+    sharedBeforeEach('prepare normal join and exit', () => {
       const joinRequest: JoinPoolRequest = {
         assets: tokens.addresses,
         maxAmountsIn: Array(tokens.length).fill(0),
@@ -560,24 +626,6 @@ describe('BasePool', function () {
 
       normalExit = async () =>
         (await vault.connect(sender).exitPool(poolId, sender.address, recipient.address, exitRequest)).wait();
-    });
-
-    sharedBeforeEach('deploy and initialize pool', async () => {
-      initialBalances = Array(tokens.length).fill(fp(1000));
-      pool = await deployBasePool({ pauseWindowDuration: MONTH });
-      poolId = await pool.getPoolId();
-
-      const request: JoinPoolRequest = {
-        assets: tokens.addresses,
-        maxAmountsIn: initialBalances,
-        userData: WeightedPoolEncoder.joinInit(initialBalances),
-        fromInternalBalance: false,
-      };
-
-      await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
-      await tokens.approve({ from: poolOwner, to: vault });
-
-      await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request);
     });
 
     sharedBeforeEach('set a non-zero protocol swap fee percentage', async () => {
@@ -609,6 +657,8 @@ describe('BasePool', function () {
         ).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
       });
 
+      itSwaps();
+
       itJoins();
 
       itExits();
@@ -624,6 +674,8 @@ describe('BasePool', function () {
 
         await pool.connect(admin).enableRecoveryMode();
       });
+
+      itSwaps();
 
       itJoins();
 
@@ -672,6 +724,67 @@ describe('BasePool', function () {
         itExitsViaRecoveryModeCorrectly();
       });
     });
+
+    function itSwaps() {
+      describe('minimal swaps', () => {
+        it('do not revert', async () => {
+          await expect(normalMinimalSwap()).to.not.be.reverted;
+        });
+
+        it('calls inner onMinimalSwap hook with swap parameters', async () => {
+          const lastChangeBlock = (await vault.getPoolTokens(minimalPoolId)).lastChangeBlock;
+          const receipt = await normalMinimalSwap();
+
+          const swapRequest = {
+            kind: SwapKind.GivenIn,
+            tokenIn: tokens.get(0).address,
+            tokenOut: tokens.get(1).address,
+            amount: bn(1),
+            poolId: minimalPoolId,
+            lastChangeBlock: lastChangeBlock,
+            from: sender.address,
+            to: recipient.address,
+            userData: '0xdeadbeef',
+          };
+
+          expectEvent.inIndirectReceipt(receipt, minimalPool.interface, 'InnerOnSwapMinimalCalled', {
+            request: Object.values(swapRequest),
+            balanceTokenIn: initialBalances[0],
+            balanceTokenOut: initialBalances[1],
+          });
+        });
+      });
+
+      describe('general swaps', () => {
+        it('do not revert', async () => {
+          await expect(normalMinimalSwap()).to.not.be.reverted;
+        });
+
+        it('calls inner onGeneralSwap hook with swap parameters', async () => {
+          const lastChangeBlock = (await vault.getPoolTokens(poolId)).lastChangeBlock;
+          const receipt = await normalGeneralSwap();
+
+          const swapRequest = {
+            kind: SwapKind.GivenIn,
+            tokenIn: tokens.get(1).address,
+            tokenOut: tokens.get(2).address,
+            amount: bn(1),
+            poolId,
+            lastChangeBlock: lastChangeBlock,
+            from: sender.address,
+            to: recipient.address,
+            userData: '0xdeadbeef',
+          };
+
+          expectEvent.inIndirectReceipt(receipt, minimalPool.interface, 'InnerOnSwapGeneralCalled', {
+            request: Object.values(swapRequest),
+            balances: initialBalances,
+            indexIn: 1,
+            indexOut: 2,
+          });
+        });
+      });
+    }
 
     function itJoins() {
       describe('normal joins', () => {
