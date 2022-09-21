@@ -1264,20 +1264,6 @@ describe('ManagedPool', function () {
         });
       });
 
-      context('on token removal', () => {
-        context('after pool initialization', () => {
-          sharedBeforeEach('initialize pool', async () => {
-            await pool.init({ from: other, initialBalances });
-          });
-
-          itCollectsAUMFeesCorrectly(async () => {
-            const { tokens } = await pool.getTokens();
-            const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
-            return tx.wait();
-          });
-        });
-      });
-
       context('on updating the protocol fee cache', () => {
         context('when the pool is uninitialized', () => {
           itCollectsNoAUMFees(async () => {
