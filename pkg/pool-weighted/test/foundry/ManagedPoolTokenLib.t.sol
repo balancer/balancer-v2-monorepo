@@ -34,7 +34,7 @@ contract ManagedPoolTokenLibTest is Test {
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
 
     uint256 private constant _MIN_DENORM_WEIGHT_SUM = 0.02e18;
-    uint256 private constant _MAX_DENORM_WEIGHT_SUM = 0.02e18;
+    uint256 private constant _MAX_DENORM_WEIGHT_SUM = 50e18;
 
     MockManagedPoolTokenLib private mock;
 
@@ -111,5 +111,33 @@ contract ManagedPoolTokenLibTest is Test {
 
         assertApproxEqRel(recoveredStartWeight, normalizedStartWeight, 1e7);
         assertApproxEqRel(recoveredEndWeight, normalizedEndWeight, 1e7);
+    }
+
+    function testInitializeToken(
+        bytes32 tokenState,
+        uint256 normalizedWeight,
+        uint8 decimals,
+        uint256 denormWeightSum
+    ) external {
+        normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
+        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
+        decimals = uint8(bound(decimals, 0, 30));
+
+        ERC20 token = new TestToken("Test", "TEST", decimals);
+        if (decimals <= 18) {
+            bytes32 tokenState = mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
+
+            uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
+            uint256 tokenScalingFactor = mock.getTokenScalingFactor(tokenState);
+            assertEq(tokenScalingFactor, expectedScalingFactor);
+
+            (uint256 startWeight, uint256 endWeight) = mock.getTokenStartAndEndWeights(tokenState, denormWeightSum);
+
+            assertEq(startWeight, endWeight);
+            assertApproxEqRel(startWeight, normalizedWeight, 1e4);
+        } else {
+            vm.expectRevert("BAL#001"); // SUB_OVERFLOW
+            mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
+        }
     }
 }
