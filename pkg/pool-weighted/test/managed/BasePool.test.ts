@@ -9,11 +9,12 @@ import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { impersonate } from '@balancer-labs/v2-deployments/src/signers';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 
@@ -82,6 +83,65 @@ describe('BasePool', function () {
     });
   }
 
+  describe('pool id', () => {
+    let pool: Contract;
+
+    sharedBeforeEach('deploy pool', async () => {
+      pool = await deployBasePool();
+    });
+
+    it('returns pool ID registered by the vault', async () => {
+      const poolId = await pool.getPoolId();
+      expect((await vault.getPool(poolId))[0]).to.be.eq(pool.address);
+    });
+  });
+
+  describe('get minimum BPT', () => {
+    let pool: Contract;
+
+    sharedBeforeEach('deploy pool', async () => {
+      pool = await deployBasePool();
+    });
+
+    it('returns minimum BPT', async () => {
+      expect(await pool.getMinimumBpt()).to.be.eq(bn(1e6));
+    });
+  });
+
+  describe('only vault modifier', () => {
+    let pool: Contract;
+    let vaultSigner: SignerWithAddress;
+    let poolId: string;
+
+    sharedBeforeEach('deploy pool', async () => {
+      pool = await deployBasePool();
+      vaultSigner = await impersonate(vault.address, fp(100));
+      poolId = await pool.getPoolId();
+    });
+
+    context('when caller is vault', () => {
+      it('does not revert with the correct pool ID', async () => {
+        await expect(pool.connect(vaultSigner).onlyVaultCallable(poolId)).to.not.be.reverted;
+      });
+
+      it('reverts with any pool ID', async () => {
+        await expect(pool.connect(vaultSigner).onlyVaultCallable(ethers.utils.randomBytes(32))).to.be.revertedWith(
+          'BAL#500'
+        );
+      });
+    });
+
+    context('when caller is other', () => {
+      it('reverts with the correct pool ID', async () => {
+        await expect(pool.connect(other).onlyVaultCallable(poolId)).to.be.revertedWith('BAL#205');
+      });
+
+      it('reverts with any pool ID', async () => {
+        await expect(pool.connect(other).onlyVaultCallable(ethers.utils.randomBytes(32))).to.be.revertedWith('BAL#205');
+      });
+    });
+  });
+
   describe('authorizer', () => {
     let pool: Contract;
 
@@ -136,6 +196,10 @@ describe('BasePool', function () {
       const tx = await pool.payProtocolFees(0);
 
       expectEvent.notEmitted(await tx.wait(), 'Transfer');
+    });
+
+    it('shares protocol fees collector with the vault', async () => {
+      expect(await pool.getProtocolFeesCollector()).to.be.eq(await vault.getProtocolFeesCollector());
     });
 
     it('mints bpt to the protocol fee collector', async () => {

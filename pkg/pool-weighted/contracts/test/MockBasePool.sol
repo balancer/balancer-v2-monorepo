@@ -137,4 +137,8 @@ contract MockBasePool is BasePool {
     function getMinimumBpt() external pure returns (uint256) {
         return _getMinimumBpt();
     }
+
+    function onlyVaultCallable(bytes32 poolId) onlyVault(poolId) public view {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 }
