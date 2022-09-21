@@ -534,8 +534,7 @@ describe('BasePool', function () {
     let sender: SignerWithAddress;
     let recipient: SignerWithAddress;
 
-    let normalMinimalSwap: () => Promise<ContractReceipt>;
-    let normalGeneralSwap: () => Promise<ContractReceipt>;
+    let normalSwap: (singleSwap: SingleSwap) => Promise<ContractReceipt>;
     let normalJoin: () => Promise<ContractReceipt>;
     let normalExit: () => Promise<ContractReceipt>;
 
@@ -574,24 +573,6 @@ describe('BasePool', function () {
     });
 
     sharedBeforeEach('prepare normal swaps', () => {
-      const minimalSwap: SingleSwap = {
-        poolId: minimalPoolId,
-        kind: SwapKind.GivenIn,
-        assetIn: tokens.get(0).instance.address,
-        assetOut: tokens.get(1).instance.address,
-        amount: 1, // Needs to be > 0
-        userData: '0xdeadbeef',
-      };
-
-      const generalSwap: SingleSwap = {
-        poolId,
-        kind: SwapKind.GivenIn,
-        assetIn: tokens.get(1).instance.address,
-        assetOut: tokens.get(2).instance.address,
-        amount: 1, // Needs to be > 0
-        userData: '0xdeadbeef',
-      };
-
       const funds: FundManagement = {
         sender: poolOwner.address,
         recipient: poolOwner.address,
@@ -600,10 +581,8 @@ describe('BasePool', function () {
       };
 
       // min amount: 0, deadline: max.
-      normalMinimalSwap = async () => (await vault.connect(sender).swap(minimalSwap, funds, 0, MAX_UINT256)).wait();
-
-      // min amount: 0, deadline: max.
-      normalGeneralSwap = async () => (await vault.connect(sender).swap(generalSwap, funds, 0, MAX_UINT256)).wait();
+      normalSwap = async (singleSwap: SingleSwap) =>
+        (await vault.connect(sender).swap(singleSwap, funds, 0, MAX_UINT256)).wait();
     });
 
     sharedBeforeEach('prepare normal join and exit', () => {
@@ -727,24 +706,37 @@ describe('BasePool', function () {
 
     function itSwaps() {
       describe('minimal swaps', () => {
+        let singleSwap: SingleSwap;
+
+        sharedBeforeEach(() => {
+          singleSwap = {
+            poolId: minimalPoolId,
+            kind: SwapKind.GivenIn,
+            assetIn: tokens.get(0).instance.address,
+            assetOut: tokens.get(1).instance.address,
+            amount: 1, // Needs to be > 0
+            userData: '0xdeadbeef',
+          };
+        });
+
         it('do not revert', async () => {
-          await expect(normalMinimalSwap()).to.not.be.reverted;
+          await expect(normalSwap(singleSwap)).to.not.be.reverted;
         });
 
         it('calls inner onMinimalSwap hook with swap parameters', async () => {
           const lastChangeBlock = (await vault.getPoolTokens(minimalPoolId)).lastChangeBlock;
-          const receipt = await normalMinimalSwap();
+          const receipt = await normalSwap(singleSwap);
 
           const swapRequest = {
-            kind: SwapKind.GivenIn,
-            tokenIn: tokens.get(0).address,
-            tokenOut: tokens.get(1).address,
-            amount: bn(1),
-            poolId: minimalPoolId,
+            kind: singleSwap.kind,
+            tokenIn: singleSwap.assetIn,
+            tokenOut: singleSwap.assetOut,
+            amount: singleSwap.amount,
+            poolId: singleSwap.poolId,
             lastChangeBlock: lastChangeBlock,
             from: sender.address,
             to: recipient.address,
-            userData: '0xdeadbeef',
+            userData: singleSwap.userData,
           };
 
           expectEvent.inIndirectReceipt(receipt, minimalPool.interface, 'InnerOnSwapMinimalCalled', {
@@ -756,24 +748,37 @@ describe('BasePool', function () {
       });
 
       describe('general swaps', () => {
+        let singleSwap: SingleSwap;
+
+        sharedBeforeEach(() => {
+          singleSwap = {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: tokens.get(1).instance.address,
+            assetOut: tokens.get(2).instance.address,
+            amount: 1, // Needs to be > 0
+            userData: '0xdeadbeef',
+          };
+        });
+
         it('do not revert', async () => {
-          await expect(normalMinimalSwap()).to.not.be.reverted;
+          await expect(normalSwap(singleSwap)).to.not.be.reverted;
         });
 
         it('calls inner onGeneralSwap hook with swap parameters', async () => {
           const lastChangeBlock = (await vault.getPoolTokens(poolId)).lastChangeBlock;
-          const receipt = await normalGeneralSwap();
+          const receipt = await normalSwap(singleSwap);
 
           const swapRequest = {
-            kind: SwapKind.GivenIn,
-            tokenIn: tokens.get(1).address,
-            tokenOut: tokens.get(2).address,
-            amount: bn(1),
-            poolId,
+            kind: singleSwap.kind,
+            tokenIn: singleSwap.assetIn,
+            tokenOut: singleSwap.assetOut,
+            amount: singleSwap.amount,
+            poolId: singleSwap.poolId,
             lastChangeBlock: lastChangeBlock,
             from: sender.address,
             to: recipient.address,
-            userData: '0xdeadbeef',
+            userData: singleSwap.userData,
           };
 
           expectEvent.inIndirectReceipt(receipt, minimalPool.interface, 'InnerOnSwapGeneralCalled', {
