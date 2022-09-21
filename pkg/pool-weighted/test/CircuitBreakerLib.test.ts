@@ -9,9 +9,9 @@ import { CircuitBreakerParams } from '@balancer-labs/v2-helpers/src/models/pools
 
 describe('CircuitBreakerLib', () => {
   const BPT_PRICE = 0.4212;
-  const MAX_BOUND = 10
+  const MAX_BOUND = 10;
   const MAX_RELATIVE_ERROR = 0.01;
-  const LOWER_BOUND = 0.8
+  const LOWER_BOUND = 0.8;
   const UPPER_BOUND = 2;
   const WEIGHT_COMPLEMENT = 0.2; // e.g., 1 - 0.8
 
@@ -50,7 +50,12 @@ describe('CircuitBreakerLib', () => {
 
   async function itSetsCircuitBreakersCorrectly(lowerBound: BigNumber, upperBound: BigNumber) {
     it('sets and retrieves the bounds', async () => {
-      await assertCircuitBreakerState(lib.getCircuitBreakerFields, lib.setCircuitBreakerFields, fp(lowerBound), fp(upperBound));
+      await assertCircuitBreakerState(
+        lib.getCircuitBreakerFields,
+        lib.setCircuitBreakerFields,
+        fp(lowerBound),
+        fp(upperBound)
+      );
     });
   }
 
@@ -141,7 +146,7 @@ describe('CircuitBreakerLib', () => {
     });
 
     it('should compute the bounds manually when necessary', async () => {
-      const newWeightComplement = WEIGHT_COMPLEMENT * (Math.random() < 0.5 ? (1 + Math.random()) : (1 - Math.random()));
+      const newWeightComplement = WEIGHT_COMPLEMENT * (Math.random() < 0.5 ? 1 + Math.random() : 1 - Math.random());
 
       const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
         data,

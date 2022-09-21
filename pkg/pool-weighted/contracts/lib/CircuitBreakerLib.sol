@@ -177,7 +177,7 @@ library CircuitBreakerLib {
         } else {
             // Something has changed - either the weight of the token, or the composition of the pool, so we must
             // retrieve the raw percentage bounds and do the full calculation.
-            (uint256 lowerBoundRatio, uint256 upperBoundRatio) = _getBoundaryConversionRatios(
+            (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
                 circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
                     _BOUND_PERCENTAGE_WIDTH,
                     _MAX_BOUND_PERCENTAGE
@@ -249,7 +249,7 @@ library CircuitBreakerLib {
         // If the weight complement has not changed since the breaker was set (i.e., if there is no ongoing weight
         // update, and no tokens have been added or removed), we can use the reference values directly, and avoid
         // a heavy computation.
-        (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = _getBoundaryConversionRatios(
+        (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) = getBoundaryConversionRatios(
             params.lowerBoundPercentage,
             params.upperBoundPercentage,
             params.referenceWeightComplement
@@ -271,11 +271,11 @@ library CircuitBreakerLib {
     }
 
     // Convert percentage bounds to BPT price bounds
-    function _getBoundaryConversionRatios(
+    function getBoundaryConversionRatios(
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage,
         uint256 currentWeightComplement
-    ) private pure returns (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) {
+    ) internal pure returns (uint256 lowerBoundRatioCache, uint256 upperBoundRatioCache) {
         // Rounding down for the lower bound, and up for the upper bound will maximize the
         // "operating range" - the BPT price range that will not trigger the circuit breaker -
         // of the pool for traders.
