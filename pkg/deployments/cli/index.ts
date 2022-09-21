@@ -8,6 +8,7 @@ import selectNetworkCommand from './config.command';
 
 import poolsCli from './pools/cli';
 import vaultCli from './Vault/cli';
+import erc20Cli from './ERC20/cli';
 import staticATokenCli from './StaticAToken/cli';
 
 program
@@ -25,6 +26,7 @@ program
         { title: 'pools', value: 'pools' },
         { title: 'Vault', value: 'Vault' },
         { title: 'StaticAToken', value: 'StaticAToken' },
+        { title: 'ERC20', value: 'ERC20' },
       ],
     });
 
@@ -37,6 +39,9 @@ program
         break;
       case 'StaticAToken':
         await staticATokenCli({ environment: scriptRunEnvironment });
+        break;
+      case 'ERC20':
+        await erc20Cli({ environment: scriptRunEnvironment });
         break;
     }
   });

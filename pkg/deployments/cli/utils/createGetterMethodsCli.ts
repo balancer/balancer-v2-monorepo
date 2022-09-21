@@ -2,15 +2,15 @@ import prompts from 'prompts';
 import chalk from 'chalk';
 import { ethers } from 'hardhat';
 
-import { CliProps } from '../../types';
+import { CliProps } from '../types';
 
-import { mapFunctionInput } from '../../utils/promptMappings';
+import { mapFunctionInput } from './promptMappings';
 
 const createGetterMethodsCli = (abi: any[]) =>
-  async function getterMethodsCli(poolAddress: string, cliProps: CliProps): Promise<any> {
+  async function getterMethodsCli(address: string, cliProps: CliProps): Promise<any> {
     const deployer = (await ethers.getSigners())[0];
 
-    const poolContract = await ethers.getContractAt(abi, poolAddress, deployer);
+    const poolContract = await ethers.getContractAt(abi, address, deployer);
 
     const { functionName } = await prompts(
       {
@@ -48,7 +48,7 @@ const createGetterMethodsCli = (abi: any[]) =>
 
     console.log(chalk.bgYellow(chalk.black(contractFunction.name)), chalk.yellow(transactionResult.toString()));
 
-    return getterMethodsCli(poolAddress, cliProps);
+    return getterMethodsCli(address, cliProps);
   };
 
 export default createGetterMethodsCli;

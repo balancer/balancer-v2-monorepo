@@ -1,0 +1,33 @@
+{
+  "transaction": {
+    "hash": "0x0a2c6db21c85c6650cf395807d72ff4227da98644bdfce2e1ebe972207974d13",
+    "blockNumber": null
+  },
+  "data": {
+    "StablePhantomPoolFactory": {
+      "create": {
+        "input": {
+          "name": "Hadouken Aave Boosted StablePool (USD)",
+          "symbol": "hb-a-USD",
+          "tokens": [
+            "0x709358104Ec120f319dba47320b4eAbfb54eC6eF",
+            "0x7e4092c6C0e0f8265d117E440F16639B04516E1E"
+          ],
+          "rateProviders": [
+            "0x709358104Ec120f319dba47320b4eAbfb54eC6eF",
+            "0x7e4092c6C0e0f8265d117E440F16639B04516E1E"
+          ],
+          "priceRateCacheDuration": [
+            "0",
+            "0"
+          ],
+          "amplificationParameter": "500",
+          "swapFeePercentage": "1000000000000000",
+          "owner": "0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B"
+        },
+        "output": "0x928D379D214dbf317D528A41BE7B9630A466B4A2"
+      }
+    }
+  },
+  "timestamp": 1663790796696
+}

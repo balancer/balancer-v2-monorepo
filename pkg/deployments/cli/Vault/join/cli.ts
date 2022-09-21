@@ -21,13 +21,19 @@ async function joinCli(vaultAddress: string, poolAddress: string) {
   const poolId = await poolContract.getPoolId();
   const { tokens } = await vaultContract.getPoolTokens(poolId);
 
+  const liquidityTokens: string[] = [];
   const liquidityAmounts: BigNumber[] = [];
+  const liquidityAmountsMaxIn: BigNumber[] = [];
+
+  const poolTokens = tokens.filter((token) => token.toLowerCase() !== poolAddress.toLowerCase());
   for (const token of tokens) {
     const { token } = await prompts({
       type: 'select',
       name: 'token',
       message: `token`,
-      choices: tokens.map((token) => ({ title: token, value: token })),
+      choices: tokens
+        .filter((token) => !liquidityTokens.includes(token))
+        .map((token) => ({ title: token, value: token })),
     });
 
     const tokenContract = ERC20__factory.connect(token, deployer);
@@ -42,21 +48,39 @@ async function joinCli(vaultAddress: string, poolAddress: string) {
       name: 'amount',
       message: `amount (${decimals})`,
     });
-    const amountBN = BigNumber.from(amount).mul(BigNumber.from(10).pow(decimals));
+    const amountBN = BigNumber.from(amount);
+
     const allowance = await tokenContract.allowance(deployer.address, vaultAddress);
 
-    if (allowance.gte(amountBN)) {
+    if (allowance.lt(amountBN)) {
       const approveTransaction = await tokenContract.approve(vaultAddress, amountBN);
       await approveTransaction.wait(2);
     }
 
+    // StablePhantomPool initial join
+    if (token === poolAddress) {
+      liquidityAmountsMaxIn.push(MAX_BIG_NUMBER);
+    } else {
+      liquidityAmountsMaxIn.push(amountBN);
+    }
+
     liquidityAmounts.push(amountBN);
+    liquidityTokens.push(token);
   }
 
   const JOIN_KIND_INIT = JoinKind.INIT;
   const initUserData = ethers.utils.defaultAbiCoder.encode(
     ['uint256', 'uint256[]'],
     [JOIN_KIND_INIT, liquidityAmounts.map((amount) => amount.toString())]
+  );
+
+  console.log(
+    chalk.bgYellow(chalk.black('liquidity')),
+    chalk.yellow(liquidityAmounts.map((amount) => amount.toString()))
+  );
+  console.log(
+    chalk.bgYellow(chalk.black('liquidity max in')),
+    chalk.yellow(liquidityAmountsMaxIn.map((amount) => amount.toString()))
   );
 
   const joinPoolRequest: {
@@ -66,16 +90,17 @@ async function joinCli(vaultAddress: string, poolAddress: string) {
     fromInternalBalance: boolean;
   } = {
     assets: tokens,
-    maxAmountsIn: liquidityAmounts,
+    maxAmountsIn: liquidityAmountsMaxIn,
     userData: initUserData,
     fromInternalBalance: false,
   };
 
+  await vaultContract.callStatic.joinPool(poolId, deployer.address, deployer.address, joinPoolRequest);
   const joinPoolTransaction = await vaultContract.joinPool(poolId, deployer.address, deployer.address, joinPoolRequest);
   await joinPoolTransaction.wait(2);
 
-  const liquidity = await poolContract.balanceOf(deployer.address);
-  console.log(chalk.bgYellow('liquidity'), chalk.yellow(liquidity.toString()));
+  const balance = await poolContract.balanceOf(deployer.address);
+  console.log(chalk.bgYellow(chalk.black('balance')), chalk.yellow(balance.toString()));
 }
 
 export default joinCli;

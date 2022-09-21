@@ -3,7 +3,7 @@ import prompts from 'prompts';
 import { Cli } from '../../types';
 
 import AaveLinearPoolFactoryCli from './factory/cli';
-import createGetterMethodsCli from '../utils/createPoolGetterMethodsCli';
+import createGetterMethodsCli from '../../utils/createGetterMethodsCli';
 
 import AaveLinearPoolAbi from './abi/AaveLinearPool.json';
 

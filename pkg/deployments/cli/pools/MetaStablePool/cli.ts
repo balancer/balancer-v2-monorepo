@@ -3,7 +3,7 @@ import prompts from 'prompts';
 import { Cli } from '../../types';
 
 import MetaStablePoolFactoryCli from './factory/cli';
-import createGetterMethodsCli from '../utils/createPoolGetterMethodsCli';
+import createGetterMethodsCli from '../../utils/createGetterMethodsCli';
 
 import MetaStablePoolAbi from './abi/MetaStablePool.json';
 
