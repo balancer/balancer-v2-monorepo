@@ -12,6 +12,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { DELEGATE_OWNER } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('StablePoolAmplification', () => {
   let owner: SignerWithAddress, admin: SignerWithAddress, other: SignerWithAddress;
@@ -21,7 +22,6 @@ describe('StablePoolAmplification', () => {
   const MAX_AMP = bn(5000);
   const AMP_PRECISION = 1e3;
   const INITIAL_AMPLIFICATION_PARAMETER = bn(200);
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   sharedBeforeEach('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();

@@ -159,6 +159,7 @@ export default class Vault {
 
   async exitPool(params: ExitPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
+
     return this.mocked
       ? vault.callExitPool(
           params.poolAddress ?? ZERO_ADDRESS,

@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS, DELEGATE_OWNER } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MONTH,
   WEEK,
@@ -60,8 +60,6 @@ describe('ManagedPool', function () {
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
-
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
@@ -1263,20 +1261,6 @@ describe('ManagedPool', function () {
         itCollectsAUMFeesCorrectly(async () => {
           const { receipt } = await pool.multiExitGivenIn({ from: other, bptIn: await pool.balanceOf(other) });
           return receipt;
-        });
-      });
-
-      context('on token removal', () => {
-        context('after pool initialization', () => {
-          sharedBeforeEach('initialize pool', async () => {
-            await pool.init({ from: other, initialBalances });
-          });
-
-          itCollectsAUMFeesCorrectly(async () => {
-            const { tokens } = await pool.getTokens();
-            const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
-            return tx.wait();
-          });
         });
       });
 

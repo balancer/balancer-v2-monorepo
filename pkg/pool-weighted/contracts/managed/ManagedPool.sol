@@ -406,7 +406,7 @@ contract ManagedPool is ManagedPoolSettings {
      * or disallow exit under certain circumstances.
      */
     function _doExit(
-        address sender,
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
@@ -415,15 +415,12 @@ contract ManagedPool is ManagedPoolSettings {
     ) internal view virtual returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
-        // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
-        // perform sensible checks.
 
         bytes32 poolState = _getPoolState();
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
-                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
-                kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
+                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -451,33 +448,8 @@ contract ManagedPool is ManagedPoolSettings {
                     ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
-        } else if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {
-            return _doExitRemoveToken(sender, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
-    }
-
-    function _doExitRemoveToken(
-        address sender,
-        uint256[] memory balances,
-        bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the contract is paused.
-
-        // This exit function can only be called by the Pool itself - the authorization logic that governs when that
-        // call can be made resides in removeToken.
-        _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
-
-        uint256 tokenIndex = userData.removeToken();
-
-        // No BPT is required to remove the token - it is up to the caller to determine under which conditions removing
-        // a token makes sense, and if e.g. burning BPT is required.
-        uint256 bptAmountIn = 0;
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        amountsOut[tokenIndex] = balances[tokenIndex];
-
-        return (bptAmountIn, amountsOut);
     }
 }
