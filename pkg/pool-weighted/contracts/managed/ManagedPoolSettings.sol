@@ -844,10 +844,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Removes a token from the Pool's composition, withdraws all funds from the Vault (sending them to
-     * `recipient`), and finally adjusts the weights of all other tokens.
-     *
-     * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
+     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
      * is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
      * Emits the TokenRemoved event. This is a permissioned function.
@@ -856,6 +853,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
      * @param token - The ERC20 token to be removed from the Pool.
      * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
+     * @param sender - The address to burn BPT from.
      */
     function removeToken(
         IERC20 token,
@@ -896,6 +894,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         delete _tokenState[token];
 
         if (burnAmount > 0) {
+            // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
+            // uninitialized state.
+            _require(sender != address(0), Errors.BURN_FROM_ZERO);
             _burnPoolTokens(sender, burnAmount);
         }
 

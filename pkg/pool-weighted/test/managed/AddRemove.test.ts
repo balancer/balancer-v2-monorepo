@@ -576,6 +576,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
                 expect(bptBalanceBefore.sub(bptBalanceAfter)).to.equal(burnAmount);
               });
+
+              it('reverts if burning from the zero address', async () => {
+                await expect(pool.removeToken(owner, tokenToRemove, 1, ZERO_ADDRESS)).to.be.revertedWith(
+                  'BURN_FROM_ZERO'
+                );
+              });
             });
           }
         });
