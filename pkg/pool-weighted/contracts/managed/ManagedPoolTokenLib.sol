@@ -20,7 +20,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/ValueCompression.sol";
 
 /**
  * @title Managed Pool Token Library
@@ -39,26 +38,24 @@ import "../lib/ValueCompression.sol";
 library ManagedPoolTokenLib {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
-    using ValueCompression for uint256;
 
     // Store token-based values:
     // Each token's scaling factor (encoded as the scaling factor's exponent / token decimals).
     // Each token's starting and ending denormalized weights.
-    // [ 123 bits |  5 bits  |       64 bits     |       64 bits       |
+    // [ 119 bits |  5 bits  |       66 bits     |       66 bits       |
     // [  unused  | decimals | end denorm weight | start denorm weight |
     // |MSB                                                         LSB|
     uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = _START_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
     uint256 private constant _DECIMAL_DIFF_OFFSET = _END_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
 
-    uint256 private constant _DENORM_WEIGHT_WIDTH = 64;
+    // The maximum allowable value for `denormWeightSum` is `50e18`, produced by the situation where a token is added
+    // to a Pool with equal weights such that all the other tokens are reduced to the minimum weight.
+    // The maximum denormalized weight of a single token is then given by the 3 token case of a 1%:1%:98% weight Pool
+    // where the 98% token has a denormalized weight of `49e18`.
+    // A 66 bit value allows storing values up to ~73e18 and so is suitable for storing all potential token weights.
+    uint256 private constant _DENORM_WEIGHT_WIDTH = 66;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
-
-    // Denormalized weights are stored using the ValueCompression library as a percentage of the maximum absolute
-    // denormalized weight.
-    // We store the weights as values in the range [0, 2**_DENORM_WEIGHT_WIDTH) and then map these to the (larger)
-    // range [0, _MAX_DENORM_WEIGHT], trading some resolution for being able to express a wider range of weight ratios.
-    uint256 private constant _MAX_DENORM_WEIGHT = 1e22; // FP 10,000;
 
     // Getters
 
@@ -128,22 +125,19 @@ library ManagedPoolTokenLib {
     ) internal view returns (uint256) {
         uint256 numTokens = tokens.length;
 
-        // We search for the minimum encoded weight, as this corresponds to the minimum normalized weight.
-        // This allows us to only decompress a single weight.
-        uint256 minimumCompressedWeight = type(uint256).max;
+        // We search for the minimum denormalized weight, as this corresponds to the minimum normalized weight.
+        // This allows us to only normalize a single weight.
+        uint256 minimumWeight = type(uint256).max;
         for (uint256 i = 0; i < numTokens; i++) {
-            uint256 newCompressedWeight = tokenStates[tokens[i]].decodeUint(
-                _END_DENORM_WEIGHT_OFFSET,
-                _DENORM_WEIGHT_WIDTH
-            );
+            uint256 newWeight = tokenStates[tokens[i]].decodeUint(_END_DENORM_WEIGHT_OFFSET, _DENORM_WEIGHT_WIDTH);
 
-            if (newCompressedWeight < minimumCompressedWeight) {
-                minimumCompressedWeight = newCompressedWeight;
+            if (newWeight < minimumWeight) {
+                minimumWeight = newWeight;
             }
         }
 
-        // Finally, decompress and normalize the minimum weight found in the previous step.
-        return _decodeWeight(minimumCompressedWeight, denormWeightSum);
+        // Finally, normalize the minimum weight found in the previous step.
+        return _decodeWeight(minimumWeight, denormWeightSum);
     }
 
     // Setters
@@ -218,10 +212,10 @@ library ManagedPoolTokenLib {
     // Private functions
 
     function _encodeWeight(uint256 normalizedWeight, uint256 denormWeightSum) private pure returns (uint256) {
-        return normalizedWeight.mulUp(denormWeightSum).compress(_DENORM_WEIGHT_WIDTH, _MAX_DENORM_WEIGHT);
+        return normalizedWeight.mulUp(denormWeightSum);
     }
 
     function _decodeWeight(uint256 denormalizedWeight, uint256 denormWeightSum) private pure returns (uint256) {
-        return denormalizedWeight.decompress(_DENORM_WEIGHT_WIDTH, _MAX_DENORM_WEIGHT).divDown(denormWeightSum);
+        return denormalizedWeight.divDown(denormWeightSum);
     }
 }
