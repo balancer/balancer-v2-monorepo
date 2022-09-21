@@ -61,9 +61,9 @@ describe('ManagedPool owner only actions', () => {
 
   const expectedOwnerOnlyFunctions = [
     'addAllowedAddress(address)',
-    'addToken(address,uint256,uint256,address)',
+    'addToken(address,address,uint256,uint256,address)',
     'removeAllowedAddress(address)',
-    'removeToken(address,address,uint256,uint256)',
+    'removeToken(address,address,uint256)',
     'setManagementAumFeePercentage(uint256)',
     'setManagementSwapFeePercentage(uint256)',
     'setMustAllowlistLPs(bool)',
