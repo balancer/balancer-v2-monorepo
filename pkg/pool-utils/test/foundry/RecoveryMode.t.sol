@@ -12,7 +12,6 @@ import "../../contracts/test/MockRecoveryMode.sol";
 contract RecoveryModeTest is Test {
     using FixedPoint for uint256;
 
-    uint256 private constant _TOTAL_SUPPLY = type(uint16).max;
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
     uint256 private constant _MAX_TOKENS = 50;
 
@@ -22,23 +21,32 @@ contract RecoveryModeTest is Test {
         _mock = new MockRecoveryMode(address(0));
     }
 
-    function testComputeProportionalAmountsOut(uint256[] memory balances, uint16 bptAmountOut) public {
-      vm.assume(balances.length <= _MAX_TOKENS);
+    function testComputeProportionalAmountsOut(
+        uint256[_MAX_TOKENS] memory fixedBalances,
+        uint256 totalTokens,
+        uint256 bptAmountIn,
+        uint112 totalSupply
+    ) public {
+        vm.assume(totalSupply > 0);
+        bptAmountIn = bound(bptAmountIn, 0, totalSupply);
 
-      for (uint256 i = 0; i < balances.length; i++) {
-        balances[i] = bound(balances[i], _DEFAULT_MINIMUM_BPT, type(uint112).max);
-      }
+        totalTokens = bound(totalTokens, 2, _MAX_TOKENS);
+        uint256[] memory balances = new uint256[](totalTokens);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            balances[i] = bound(fixedBalances[i], 1, type(uint112).max);
+        }
 
-      uint256[] memory amountsOut = _mock.computeProportionalAmountsOut(
-          balances,
-          _TOTAL_SUPPLY,
-          bptAmountOut
-      );
+        uint256[] memory amountsOut = _mock.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
+        assertEq(amountsOut.length, totalTokens);
 
-      uint256 ratio = uint256(bptAmountOut).divDown(_TOTAL_SUPPLY);
+        emit log_named_array("balances", balances);
+        emit log_named_array("amountsOut", amountsOut);
+        emit log_named_uint("totalSupply", totalSupply);
+        emit log_named_uint("bptAmountIn", bptAmountIn);
 
-      for (uint256 i = 0; i < balances.length; i++) {
-        assertEq(amountsOut[i], balances[i].mulDown(ratio));
-      }
+        uint256 poolOwnershipPercentage = bptAmountIn.divDown(totalSupply);
+        for (uint256 i = 0; i < totalTokens; i++) {
+            assertEq(amountsOut[i], balances[i].mulDown(poolOwnershipPercentage));
+        }
     }
 }
