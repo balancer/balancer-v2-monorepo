@@ -25,9 +25,9 @@ contract RecoveryModeTest is Test {
         uint256[_MAX_TOKENS] memory fixedBalances,
         uint256 totalTokens,
         uint256 bptAmountIn,
-        uint112 totalSupply
+        uint256 totalSupply
     ) public {
-        vm.assume(totalSupply > 0);
+        totalSupply = bound(totalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
         bptAmountIn = bound(bptAmountIn, 0, totalSupply);
 
         totalTokens = bound(totalTokens, 2, _MAX_TOKENS);
