@@ -20,8 +20,10 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "../managed/vendor/BasePool.sol";
 
 contract MockBasePool is BasePool {
-    uint256 public constant ON_SWAP_MINIMAL_RETURN = 109876543210;
-    uint256 public constant ON_SWAP_GENERAL_RETURN = 123456789100;
+    uint256 public constant ON_SWAP_MINIMAL_RETURN = 0xa987654321;
+    uint256 public constant ON_SWAP_GENERAL_RETURN = 0x123456789a;
+    uint256 public constant ON_JOIN_RETURN = 0xbbaa11;
+    uint256 public constant ON_EXIT_RETURN = 0x11aabb;
 
     using WeightedPoolUserData for bytes;
 
@@ -105,7 +107,11 @@ contract MockBasePool is BasePool {
     ) internal override returns (uint256, uint256[] memory) {
         emit InnerOnJoinPoolCalled(sender, balances, userData);
 
-        return (0, new uint256[](balances.length));
+        uint256[] memory amountsIn = new uint256[](balances.length);
+        for (uint256 i = 0; i < amountsIn.length; ++i) {
+            amountsIn[i] = ON_JOIN_RETURN;
+        }
+        return (0, amountsIn);
     }
 
     function _onExitPool(
@@ -119,7 +125,11 @@ contract MockBasePool is BasePool {
     ) internal override returns (uint256, uint256[] memory) {
         emit InnerOnExitPoolCalled(sender, balances, userData);
 
-        return (0, new uint256[](balances.length));
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < amountsOut.length; ++i) {
+            amountsOut[i] = ON_EXIT_RETURN;
+        }
+        return (0, amountsOut);
     }
 
     function inRecoveryMode() public view override returns (bool) {
