@@ -124,18 +124,6 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
-    /**
-     * @dev Unimplemented as ManagedPool uses the MinimalInfoSwap Pool specialization.
-     */
-    function _onSwapGeneral(
-        SwapRequest memory, /*request*/
-        uint256[] memory, /* balances*/
-        uint256, /* indexIn */
-        uint256 /*indexOut */
-    ) internal pure override returns (uint256) {
-        _revert(Errors.UNIMPLEMENTED);
-    }
-
     /*
      * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
      *
@@ -394,5 +382,19 @@ contract ManagedPool is ManagedPoolSettings {
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+    }
+
+    // Unimplemented
+
+    /**
+     * @dev Unimplemented as ManagedPool uses the MinimalInfoSwap Pool specialization.
+     */
+    function _onSwapGeneral(
+        SwapRequest memory, /*request*/
+        uint256[] memory, /* balances*/
+        uint256, /* indexIn */
+        uint256 /*indexOut */
+    ) internal pure override returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
     }
 }
