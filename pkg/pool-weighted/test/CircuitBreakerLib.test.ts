@@ -76,8 +76,8 @@ describe('CircuitBreakerLib', () => {
         lib.setCircuitBreakerFields(ZERO_BYTES32, {
           referenceBptPrice: fp(BPT_PRICE),
           referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
-          lowerBoundPercentage: fp(MAX_BOUND),
-          upperBoundPercentage: 0,
+          lowerBoundPercentage: 0,
+          upperBoundPercentage: fp(MAX_BOUND).add(1),
         })
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
