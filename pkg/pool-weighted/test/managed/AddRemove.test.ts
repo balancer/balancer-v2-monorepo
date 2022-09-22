@@ -65,12 +65,46 @@ describe('ManagedPoolSettings - add/remove token', () => {
   }
 
   describe('add token', () => {
+    let newToken: Token, secondToken: Token;
+
     it('reverts if the pool is at the maximum number of tokens', async () => {
       const { pool, poolTokens } = await createPool(MAX_TOKENS);
       const newToken = await Token.create({ decimals: random(0, 18) });
       await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10 + random(10))) });
 
       await expect(pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.1))).to.be.revertedWith('MAX_TOKENS');
+    });
+
+    it('reverts if the maxDenormWeight is exceeded', async () => {
+      const { pool, poolTokens } = await createPool(2);
+      await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10 + random(10))) });
+
+      // Setup by moving two steps forward and one step back until the maxDenormWeight is approached
+      for (let i = 0; i < 2; i++) {
+        newToken = await Token.create({ decimals: random(0, 18) });
+        secondToken = await Token.create({ decimals: random(0, 18) });
+        await pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.49));
+        await pool.addToken(owner, secondToken, ZERO_ADDRESS, fp(0.49));
+
+        await pool.removeToken(owner, newToken);
+      }
+
+      await pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.49));
+      await expect(pool.addToken(owner, secondToken, ZERO_ADDRESS, fp(0.49))).to.be.revertedWith('MAX_DENORM_WEIGHT_EXCEEDED');
+
+      // NOOP to reset weight sum; might not be exactly 1, so ensure that
+      const now = await currentTimestamp();
+      let endWeights = [...await pool.getNormalizedWeights()];
+      let weightSum = bn(0);
+      for (let i = 0; i < endWeights.length - 1; i++) {
+        weightSum = weightSum.add(endWeights[i]);
+      }
+      endWeights[endWeights.length - 1] = fp(1).sub(weightSum);
+
+      await pool.updateWeightsGradually(owner, now, now.add(1), endWeights);
+
+      // Now we can add again
+      await pool.addToken(owner, await Token.create({ decimals: random(0, 18) }), ZERO_ADDRESS, fp(0.1));
     });
 
     itAddsATokenAtTokenCount(MIN_TOKENS);

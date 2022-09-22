@@ -42,19 +42,16 @@ library ManagedPoolTokenLib {
     // Store token-based values:
     // Each token's scaling factor (encoded as the scaling factor's exponent / token decimals).
     // Each token's starting and ending denormalized weights.
-    // [ 119 bits |  5 bits  |       66 bits     |       66 bits       |
+    // [ 123 bits |  5 bits  |       64 bits     |       64 bits       |
     // [  unused  | decimals | end denorm weight | start denorm weight |
     // |MSB                                                         LSB|
     uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_DENORM_WEIGHT_OFFSET = _START_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
     uint256 private constant _DECIMAL_DIFF_OFFSET = _END_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
 
-    // The maximum allowable value for `denormWeightSum` is `50e18`, produced by the situation where a token is added
-    // to a Pool with equal weights such that all the other tokens are reduced to the minimum weight.
-    // The maximum denormalized weight of a single token is then given by the 3 token case of a 1%:1%:98% weight Pool
-    // where the 98% token has a denormalized weight of `49e18`.
-    // A 66 bit value allows storing values up to ~73e18 and so is suitable for storing all potential token weights.
-    uint256 private constant _DENORM_WEIGHT_WIDTH = 66;
+    // The maximum allowable value for `denormWeightSum` is `18e18`, which fits in 64 bits, so a 64-bit width
+    // is sufficient for storing all potential token weights.
+    uint256 private constant _DENORM_WEIGHT_WIDTH = 64;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
 
     // Getters
