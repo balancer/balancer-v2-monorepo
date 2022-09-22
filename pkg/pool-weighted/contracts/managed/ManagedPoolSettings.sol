@@ -107,7 +107,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
     event TokenRemoved(IERC20 indexed token);
-    event CircuitBreakerSet(IERC20 indexed token, uint256 lowerBound, uint256 upperBound);
 
     struct NewPoolParams {
         string name;
