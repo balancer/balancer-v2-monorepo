@@ -73,25 +73,6 @@ library WeightedMath {
         _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
 
-    // Two token specific implementation of `_calculateInvariant`.
-    function _calculateTwoTokenInvariant(
-        uint256 normalizedWeight0,
-        uint256 normalizedWeight1,
-        uint256 balance0,
-        uint256 balance1
-    ) internal pure returns (uint256 invariant) {
-        /**********************************************************************************************
-        // invariant               _____                                                             //
-        // wi = weight index i      | |      wi                                                      //
-        // bi = balance index i     | |  bi ^   = i                                                  //
-        // i = invariant                                                                             //
-        **********************************************************************************************/
-
-        invariant = balance0.powDown(normalizedWeight0).mulDown(balance1.powDown(normalizedWeight1));
-
-        _require(invariant > 0, Errors.ZERO_INVARIANT);
-    }
-
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
     function _calcOutGivenIn(
