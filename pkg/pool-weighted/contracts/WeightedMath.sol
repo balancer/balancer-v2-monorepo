@@ -216,6 +216,8 @@ library WeightedMath {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
+                // invariantRatioWithFees might be less than FixedPoint.ONE in edge scenarios due to rounding error,
+                // particularly if the weights don't exactly add up to 100%.
                 uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
                     ? balances[i].mulDown(invariantRatioWithFees - FixedPoint.ONE)
                     : 0;
