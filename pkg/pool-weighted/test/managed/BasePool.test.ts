@@ -19,7 +19,7 @@ import {
   FundManagement,
 } from '@balancer-labs/balancer-js';
 import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ANY_ADDRESS, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, DELEGATE_OWNER, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
@@ -34,7 +34,6 @@ describe('BasePool', function () {
   let tokens: TokenList;
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
