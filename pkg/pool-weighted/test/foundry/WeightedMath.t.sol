@@ -36,7 +36,8 @@ contract WeightedMathTest is Test {
 
         uint256[] memory balances = new uint256[](arrayLength);
         for (uint256 i = 0; i < arrayLength; i++) {
-            balances[i] = bound(balancesFixed[i], 1e10, type(uint96).max);
+            // Zero balances are not possible, as they make the invariant equal zero.
+            balances[i] = bound(balancesFixed[i], 1, type(uint96).max);
         }
 
         uint256 denormalizedWeightSum;
@@ -62,7 +63,7 @@ contract WeightedMathTest is Test {
         }
 
         amountIn = bound(amountIn, 0, balances[tokenIndex]);
-        bptTotalSupply = bound(bptTotalSupply, 1e10, type(uint112).max);
+        bptTotalSupply = bound(bptTotalSupply, 1e6, type(uint112).max);
         swapFeePercentage = bound(swapFeePercentage, 0, FixedPoint.ONE - 1);
 
         uint256[] memory amountsIn = new uint256[](balances.length);
