@@ -917,6 +917,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
     }
 
+    /**
+     * @notice Returns the tokens in the Pool and their current balances.
+     * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
+     * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
+     */
     function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances) {
         (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
     }
