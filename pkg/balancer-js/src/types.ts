@@ -53,6 +53,18 @@ export type BatchSwap = {
   deadline: BigNumberish;
 };
 
+export type SwapRequest = {
+  kind: SwapKind;
+  tokenIn: string;
+  tokenOut: string;
+  amount: BigNumberish;
+  poolId: string;
+  lastChangeBlock: BigNumberish;
+  from: string;
+  to: string;
+  userData: string;
+};
+
 // Joins
 
 export type JoinPoolRequest = {
