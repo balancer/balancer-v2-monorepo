@@ -12,6 +12,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import {
   JoinPoolRequest,
   ExitPoolRequest,
+  SwapRequest,
   PoolSpecialization,
   WeightedPoolEncoder,
   SingleSwap,
@@ -29,7 +30,12 @@ import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress,
+    poolOwner: SignerWithAddress,
+    deployer: SignerWithAddress,
+    other: SignerWithAddress,
+    vaultSigner: SignerWithAddress;
+
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
@@ -45,6 +51,7 @@ describe('BasePool', function () {
   sharedBeforeEach(async () => {
     authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
     vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+    vaultSigner = await impersonate(vault.address, fp(100));
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 
@@ -110,12 +117,10 @@ describe('BasePool', function () {
 
   describe('only vault modifier', () => {
     let pool: Contract;
-    let vaultSigner: SignerWithAddress;
     let poolId: string;
 
     sharedBeforeEach(async () => {
       pool = await deployBasePool();
-      vaultSigner = await impersonate(vault.address, fp(100));
       poolId = await pool.getPoolId();
     });
 
@@ -734,10 +739,11 @@ describe('BasePool', function () {
     });
 
     function itSwaps() {
-      describe('minimal swaps', () => {
-        let singleSwap: SingleSwap;
+      let singleSwap: SingleSwap;
+      let swapRequest: SwapRequest;
 
-        sharedBeforeEach(() => {
+      describe('minimal swaps', () => {
+        sharedBeforeEach('prepare swap request', async () => {
           singleSwap = {
             poolId: minimalPoolId,
             kind: SwapKind.GivenIn,
@@ -746,17 +752,9 @@ describe('BasePool', function () {
             amount: 1, // Needs to be > 0
             userData: '0xdeadbeef',
           };
-        });
 
-        it('do not revert', async () => {
-          await expect(normalSwap(singleSwap)).to.not.be.reverted;
-        });
-
-        it('calls inner onSwapMinimal hook with swap parameters', async () => {
           const lastChangeBlock = (await vault.getPoolTokens(minimalPoolId)).lastChangeBlock;
-          const receipt = await normalSwap(singleSwap);
-
-          const swapRequest = {
+          swapRequest = {
             kind: singleSwap.kind,
             tokenIn: singleSwap.assetIn,
             tokenOut: singleSwap.assetOut,
@@ -767,6 +765,14 @@ describe('BasePool', function () {
             to: recipient.address,
             userData: singleSwap.userData,
           };
+        });
+
+        it('do not revert', async () => {
+          await expect(normalSwap(singleSwap)).to.not.be.reverted;
+        });
+
+        it('calls inner onSwapMinimal hook with swap parameters', async () => {
+          const receipt = await normalSwap(singleSwap);
 
           expectEvent.inIndirectReceipt(receipt, minimalPool.interface, 'InnerOnSwapMinimalCalled', {
             request: Object.values(swapRequest),
@@ -774,12 +780,17 @@ describe('BasePool', function () {
             balanceTokenOut: initialBalances[1],
           });
         });
+
+        it('returns the output of the inner onSwapMinimal hook', async () => {
+          const onSwap =
+            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)';
+          const onSwapReturn = await minimalPool.connect(vaultSigner).callStatic[onSwap](swapRequest, 0, 0);
+          expect(onSwapReturn).to.be.eq(await minimalPool.ON_SWAP_MINIMAL_RETURN());
+        });
       });
 
       describe('general swaps', () => {
-        let singleSwap: SingleSwap;
-
-        sharedBeforeEach(() => {
+        sharedBeforeEach('prepare swap request', async () => {
           singleSwap = {
             poolId,
             kind: SwapKind.GivenIn,
@@ -788,17 +799,9 @@ describe('BasePool', function () {
             amount: 1, // Needs to be > 0
             userData: '0xdeadbeef',
           };
-        });
 
-        it('do not revert', async () => {
-          await expect(normalSwap(singleSwap)).to.not.be.reverted;
-        });
-
-        it('calls inner onSwapGeneral hook with swap parameters', async () => {
           const lastChangeBlock = (await vault.getPoolTokens(poolId)).lastChangeBlock;
-          const receipt = await normalSwap(singleSwap);
-
-          const swapRequest = {
+          swapRequest = {
             kind: singleSwap.kind,
             tokenIn: singleSwap.assetIn,
             tokenOut: singleSwap.assetOut,
@@ -809,13 +812,28 @@ describe('BasePool', function () {
             to: recipient.address,
             userData: singleSwap.userData,
           };
+        });
 
-          expectEvent.inIndirectReceipt(receipt, minimalPool.interface, 'InnerOnSwapGeneralCalled', {
+        it('do not revert', async () => {
+          await expect(normalSwap(singleSwap)).to.not.be.reverted;
+        });
+
+        it('calls inner onSwapGeneral hook with swap parameters', async () => {
+          const receipt = await normalSwap(singleSwap);
+
+          expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnSwapGeneralCalled', {
             request: Object.values(swapRequest),
             balances: initialBalances,
             indexIn: 1,
             indexOut: 2,
           });
+        });
+
+        it('returns the output of the inner onSwapGeneral hook', async () => {
+          const onSwap =
+            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)';
+          const onSwapReturn = await pool.connect(vaultSigner).callStatic[onSwap](swapRequest, [], 0, 0);
+          expect(onSwapReturn).to.be.eq(await pool.ON_SWAP_GENERAL_RETURN());
         });
       });
     }

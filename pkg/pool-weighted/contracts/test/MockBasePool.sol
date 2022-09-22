@@ -20,6 +20,9 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "../managed/vendor/BasePool.sol";
 
 contract MockBasePool is BasePool {
+    uint256 public constant ON_SWAP_MINIMAL_RETURN = 109876543210;
+    uint256 public constant ON_SWAP_GENERAL_RETURN = 123456789100;
+
     using WeightedPoolUserData for bytes;
 
     bool private _inRecoveryMode;
@@ -78,6 +81,7 @@ contract MockBasePool is BasePool {
         uint256 balanceTokenOut
     ) internal override returns (uint256) {
         emit InnerOnSwapMinimalCalled(request, balanceTokenIn, balanceTokenOut);
+        return ON_SWAP_MINIMAL_RETURN;
     }
 
     function _onSwapGeneral(
@@ -87,6 +91,7 @@ contract MockBasePool is BasePool {
         uint256 indexOut
     ) internal override returns (uint256) {
         emit InnerOnSwapGeneralCalled(request, balances, indexIn, indexOut);
+        return ON_SWAP_GENERAL_RETURN;
     }
 
     function _onJoinPool(
