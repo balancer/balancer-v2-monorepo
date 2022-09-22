@@ -690,11 +690,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
-        _require(totalSupply() > 0, Errors.UNINITIALIZED);
+        uint256 supply = totalSupply();
+        _require(supply > 0, Errors.UNINITIALIZED);
 
         // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
         // Checking for the validity of the new weight would otherwise be much more complicated.
         _ensureNoWeightChange();
+
+        // Total supply is potentially changing so we collect AUM fees.
+        _collectAumManagementFees(supply);
 
         // We need to check that both the new weight is valid, and that it won't make any of the existing weights
         // invalid.
@@ -775,11 +779,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 burnAmount,
         address sender
     ) external authenticate nonReentrant whenNotPaused {
-        _require(totalSupply() > 0, Errors.UNINITIALIZED);
+        uint256 supply = totalSupply();
+        _require(supply > 0, Errors.UNINITIALIZED);
 
         // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
         // This is for symmetry with addToken.
         _ensureNoWeightChange();
+
+        // Total supply is potentially changing so we collect AUM fees.
+        _collectAumManagementFees(supply);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
