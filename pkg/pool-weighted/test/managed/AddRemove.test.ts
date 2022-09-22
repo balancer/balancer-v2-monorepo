@@ -90,11 +90,13 @@ describe('ManagedPoolSettings - add/remove token', () => {
       }
 
       await pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.49));
-      await expect(pool.addToken(owner, secondToken, ZERO_ADDRESS, fp(0.49))).to.be.revertedWith('MAX_DENORM_WEIGHT_EXCEEDED');
+      await expect(pool.addToken(owner, secondToken, ZERO_ADDRESS, fp(0.49))).to.be.revertedWith(
+        'MAX_DENORM_WEIGHT_EXCEEDED'
+      );
 
       // NOOP to reset weight sum; might not be exactly 1, so ensure that
       const now = await currentTimestamp();
-      let endWeights = [...await pool.getNormalizedWeights()];
+      const endWeights = [...(await pool.getNormalizedWeights())];
       let weightSum = bn(0);
       for (let i = 0; i < endWeights.length - 1; i++) {
         weightSum = weightSum.add(endWeights[i]);
