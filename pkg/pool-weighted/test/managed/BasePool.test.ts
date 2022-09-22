@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import {
@@ -18,7 +18,7 @@ import {
   SwapKind,
   FundManagement,
 } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, DELEGATE_OWNER, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
@@ -74,7 +74,7 @@ describe('BasePool', function () {
     if (!poolTokens) poolTokens = tokens;
     if (!assetManagers) assetManagers = Array(poolTokens.length).fill(ZERO_ADDRESS);
     if (!swapFeePercentage) swapFeePercentage = MIN_SWAP_FEE_PERCENTAGE;
-    if (!pauseWindowDuration) pauseWindowDuration = MONTH;
+    if (!pauseWindowDuration) pauseWindowDuration = 0;
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
     if (!from) from = deployer;
@@ -105,18 +105,6 @@ describe('BasePool', function () {
     it('returns pool ID registered by the vault', async () => {
       const poolId = await pool.getPoolId();
       expect((await vault.getPool(poolId))[0]).to.be.eq(pool.address);
-    });
-  });
-
-  describe('get minimum BPT', () => {
-    let pool: Contract;
-
-    sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool();
-    });
-
-    it('returns minimum BPT', async () => {
-      expect(await pool.getMinimumBpt()).to.be.eq(bn(1e6));
     });
   });
 
@@ -228,7 +216,7 @@ describe('BasePool', function () {
   });
 
   describe('pause', () => {
-    let pool: Contract;
+    let pool: Contract, minimalPool: Contract;
     const PAUSE_WINDOW_DURATION = MONTH * 3;
     const BUFFER_PERIOD_DURATION = MONTH;
 
@@ -243,12 +231,14 @@ describe('BasePool', function () {
       });
 
       context('when paused', () => {
-        let poolId: string;
+        let poolId: string, minimalPoolId: string;
         let initialBalances: BigNumber[];
 
         sharedBeforeEach('deploy and initialize pool', async () => {
-          initialBalances = Array(tokens.length).fill(fp(1000));
+          const initialBalancePerToken = 1000;
+          initialBalances = Array(tokens.length).fill(fp(initialBalancePerToken));
           poolId = await pool.getPoolId();
+          minimalPoolId = await minimalPool.getPoolId();
 
           const request: JoinPoolRequest = {
             assets: tokens.addresses,
@@ -257,19 +247,42 @@ describe('BasePool', function () {
             fromInternalBalance: false,
           };
 
-          await tokens.mint({ to: poolOwner, amount: fp(1000 + random(1000)) });
+          await tokens.mint({ to: poolOwner, amount: fp(2 * initialBalancePerToken + random(1000)) });
           await tokens.approve({ from: poolOwner, to: vault });
 
           await vault.connect(poolOwner).joinPool(poolId, poolOwner.address, poolOwner.address, request);
+          await vault.connect(poolOwner).joinPool(minimalPoolId, poolOwner.address, poolOwner.address, request);
         });
 
         sharedBeforeEach('pause pool', async () => {
           await pool.connect(sender).pause();
+          await minimalPool.connect(sender).pause();
         });
 
-        it('swaps revert', async () => {
+        it('swaps revert in general pool', async () => {
           const singleSwap: SingleSwap = {
             poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: tokens.get(0).instance.address,
+            assetOut: tokens.get(1).instance.address,
+            amount: 1, // Needs to be > 0
+            userData: '0x',
+          };
+
+          const funds: FundManagement = {
+            sender: poolOwner.address,
+            recipient: poolOwner.address,
+            fromInternalBalance: false,
+            toInternalBalance: false,
+          };
+
+          // min amount: 0, deadline: max.
+          await expect(vault.connect(poolOwner).swap(singleSwap, funds, 0, MAX_UINT256)).to.be.revertedWith('PAUSED');
+        });
+
+        it('swaps revert in minimal pool', async () => {
+          const singleSwap: SingleSwap = {
+            poolId: minimalPoolId,
             kind: SwapKind.GivenIn,
             assetIn: tokens.get(0).instance.address,
             assetOut: tokens.get(1).instance.address,
@@ -327,7 +340,7 @@ describe('BasePool', function () {
       });
 
       it('cannot unpause after the pause window', async () => {
-        await advanceTime(PAUSE_WINDOW_DURATION + DAY);
+        await advanceTime(PAUSE_WINDOW_DURATION + 1);
         await expect(pool.connect(sender).pause()).to.be.revertedWith('PAUSE_WINDOW_EXPIRED');
       });
     }
@@ -344,6 +357,13 @@ describe('BasePool', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+
+        minimalPool = await deployBasePool({
+          specialization: PoolSpecialization.MinimalSwapInfoPool,
           pauseWindowDuration: PAUSE_WINDOW_DURATION,
           bufferPeriodDuration: BUFFER_PERIOD_DURATION,
           owner,
@@ -365,6 +385,9 @@ describe('BasePool', function () {
           await authorizer
             .connect(admin)
             .grantPermissions([pauseAction, unpauseAction], sender.address, [ANY_ADDRESS, ANY_ADDRESS]);
+          await authorizer
+            .connect(admin)
+            .grantPermissions([await actionId(minimalPool, 'pause')], sender.address, [ANY_ADDRESS]);
         });
 
         itCanPause();
@@ -377,6 +400,13 @@ describe('BasePool', function () {
       sharedBeforeEach('deploy pool', async () => {
         owner = poolOwner;
         pool = await deployBasePool({
+          pauseWindowDuration: PAUSE_WINDOW_DURATION,
+          bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+          owner,
+        });
+
+        minimalPool = await deployBasePool({
+          specialization: PoolSpecialization.MinimalSwapInfoPool,
           pauseWindowDuration: PAUSE_WINDOW_DURATION,
           bufferPeriodDuration: BUFFER_PERIOD_DURATION,
           owner,
@@ -527,14 +557,11 @@ describe('BasePool', function () {
 
   describe('swap join exit', () => {
     const RECOVERY_MODE_EXIT_KIND = 255;
-    let minimalPool: Contract;
-    let minimalPoolId: string;
-    let poolId: string;
+    let pool: Contract, minimalPool: Contract;
+    let poolId: string, minimalPoolId: string;
     let initialBalances: BigNumber[];
-    let pool: Contract;
 
-    let sender: SignerWithAddress;
-    let recipient: SignerWithAddress;
+    let sender: SignerWithAddress, recipient: SignerWithAddress;
 
     let normalSwap: (singleSwap: SingleSwap) => Promise<ContractReceipt>;
     let normalJoin: () => Promise<ContractReceipt>;
@@ -838,7 +865,9 @@ describe('BasePool', function () {
     sharedBeforeEach('set up pool and initial join request', async () => {
       sender = poolOwner;
       recipient = other;
-      pool = await deployBasePool();
+      pool = await deployBasePool({
+        pauseWindowDuration: PAUSE_WINDOW_DURATION,
+      });
       poolId = await pool.getPoolId();
 
       const initialBalancePerToken = 1000;
