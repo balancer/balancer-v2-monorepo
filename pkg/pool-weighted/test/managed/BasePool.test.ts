@@ -4,6 +4,7 @@ import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -826,5 +827,84 @@ describe('BasePool', function () {
         });
       });
     }
+  });
+
+  describe('pool initialization', () => {
+    let pool: Contract;
+    let sender: SignerWithAddress, recipient: SignerWithAddress;
+    let poolId: string, userData: string;
+    let request: JoinPoolRequest;
+    let initialBalances: Array<BigNumber>;
+
+    sharedBeforeEach('set up pool and initial join request', async () => {
+      sender = poolOwner;
+      recipient = other;
+      pool = await deployBasePool();
+      poolId = await pool.getPoolId();
+
+      const initialBalancePerToken = 1000;
+
+      await tokens.mint({ to: sender, amount: fp(initialBalancePerToken) });
+      await tokens.approve({ from: sender, to: vault });
+
+      initialBalances = Array(tokens.length).fill(fp(initialBalancePerToken));
+      userData = WeightedPoolEncoder.joinInit(initialBalances);
+      request = {
+        assets: tokens.addresses,
+        maxAmountsIn: initialBalances,
+        userData,
+        fromInternalBalance: false,
+      };
+    });
+
+    context('when paused', () => {
+      sharedBeforeEach(async () => {
+        await authorizer
+          .connect(admin)
+          .grantPermissions([await actionId(pool, 'pause')], sender.address, [ANY_ADDRESS]);
+        await pool.connect(sender).pause();
+      });
+
+      it('reverts', async () => {
+        await expect(
+          vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
+        ).to.be.revertedWith('PAUSED');
+      });
+    });
+
+    context('when not paused', () => {
+      it('calls inner initialization hook', async () => {
+        const receipt = await (
+          await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
+        ).wait();
+
+        expectEvent.inIndirectReceipt(receipt, pool.interface, 'InnerOnInitializePoolCalled', {
+          userData,
+        });
+      });
+
+      it('burns minimum bpt', async () => {
+        const receipt = await (
+          await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
+        ).wait();
+
+        expectTransferEvent(receipt, { from: ZERO_ADDRESS, to: ZERO_ADDRESS, value: await pool.getMinimumBpt() }, pool);
+      });
+
+      it('mints bpt to recipient', async () => {
+        const receipt = await (
+          await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
+        ).wait();
+
+        // total BPT is calculated by the mock initial hook; base pool mint it after substracting the minimum BPT amount.
+        const minimumBpt = await pool.getMinimumBpt();
+        const totalBptOut = initialBalances.reduce((previous, current) => previous.add(current));
+        expectTransferEvent(
+          receipt,
+          { from: ZERO_ADDRESS, to: recipient.address, value: totalBptOut.sub(minimumBpt) },
+          pool
+        );
+      });
+    });
   });
 });
