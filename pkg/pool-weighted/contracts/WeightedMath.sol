@@ -209,6 +209,11 @@ library WeightedMath {
         uint256 amountInWithoutFee;
         {
             uint256 balanceRatioWithFee = balance.add(amountIn).divDown(balance);
+
+            // The use of `normalizedWeight.complement()` assumes that the sum of all weights equals FixedPoint.ONE.
+            // This may not be the case when weights are stored in a denormalized format or during a gradual weight
+            // change due rounding errors during normalization or interpolation. This will result in a small difference
+            // between the output of this function and the equivalent `_calcBptOutGivenExactTokensIn` call.
             uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight).add(
                 normalizedWeight.complement()
             );

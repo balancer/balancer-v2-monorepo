@@ -56,11 +56,12 @@ contract WeightedMathTest is Test {
         // Note: Due to compression errors, this normalization property of weights may not always hold.
         // This causes the two forms of join to produce slightly different outputs due to
         // `WeightedMath._calcBptOutGivenExactTokenIn` assuming perfect normalization.
+        // We therefore adjust the last weight to produce a scenario in which the two functions should yield the exact.
         if (normalizedWeightSum < FixedPoint.ONE) {
             normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
         }
 
-        amountIn = bound(amountIn, 0, balances[tokenIndex] / 100);
+        amountIn = bound(amountIn, 0, balances[tokenIndex]);
         bptTotalSupply = bound(bptTotalSupply, 1e10, type(uint112).max);
         swapFeePercentage = bound(swapFeePercentage, 0, FixedPoint.ONE - 1);
 
@@ -89,10 +90,8 @@ contract WeightedMathTest is Test {
             swapFeePercentage
         );
 
-        if (joinSwap > 1e10) {
-            assertApproxEqRel(joinSwap, properJoin, 1e10);
-        } else {
-            assertApproxEqAbs(joinSwap, properJoin, 100000);
-        }
+        // As we're enforcing strict normalization we check for a strict equality here.
+        // If we relax this condition then we can only check for an approximate equality.
+        assertEq(joinSwap, properJoin);
     }
 }
