@@ -30,6 +30,7 @@ contract CircuitBreakerLibTest is Test {
 
     uint256 private constant _MAX_RELATIVE_ERROR = 1e16;
     uint256 private constant _MAX_BOUND_ERROR = 2e16;
+    uint256 private constant _MAX_BPT_PRICE = type(uint112).max;
  
     uint256 private constant _NUM_WEIGHT_TRIALS = 10;
 
@@ -53,18 +54,18 @@ contract CircuitBreakerLibTest is Test {
     }
 
     function testCircuitBreakerPrice(
-        uint128 bptPrice,
+        uint256 refBptPrice,
         uint256 weightComplement,
         uint256 lowerBound,
         uint256 upperBound
     ) public {
-        vm.assume(bptPrice < (1 << 112));
+        refBptPrice = bound(refBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         weightComplement = bound(weightComplement, _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
         lowerBound = bound(lowerBound, _MINIMUM_LOWER_BOUND, FixedPoint.ONE);
         upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
 
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
-            referenceBptPrice: bptPrice,
+            referenceBptPrice: refBptPrice,
             referenceWeightComplement: weightComplement,
             lowerBoundPercentage: lowerBound,
             upperBoundPercentage: upperBound
@@ -72,24 +73,42 @@ contract CircuitBreakerLibTest is Test {
 
         CircuitBreakerLib.CircuitBreakerParams memory result = _roundTrip(params);
 
-        assertEq(result.referenceBptPrice, bptPrice);
+        assertEq(result.referenceBptPrice, refBptPrice);
         assertApproxEqRel(result.referenceWeightComplement, weightComplement, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(result.lowerBoundPercentage, lowerBound, _MAX_BOUND_ERROR);
         assertApproxEqRel(result.upperBoundPercentage, upperBound, _MAX_BOUND_ERROR);
+
+        bytes32 initialPoolState = _mock.setCircuitBreakerFields(bytes32(0), params);
+        (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
+            _mock.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
+
+        uint256 expectedLowerBoundBptPrice = uint256(refBptPrice).mulDown(lowerBound.powDown(weightComplement));
+        uint256 expectedUpperBoundBptPrice = uint256(refBptPrice).mulDown(upperBound.powUp(weightComplement));
+
+        assertApproxEqRel(initialLowerBptPriceBoundary, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
+        assertApproxEqRel(initialUpperBptPriceBoundary, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
+
+        // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
+        (uint256 cachedLowerBptPriceBoundary, uint256 cachedUpperBptPriceBoundary) =
+            _mock.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
+
+        assertEq(cachedLowerBptPriceBoundary, initialLowerBptPriceBoundary);
+        assertEq(cachedUpperBptPriceBoundary, initialUpperBptPriceBoundary);
     }
 
     function testCircuitBreakerBounds(
-        uint64[_NUM_WEIGHT_TRIALS] memory newWeightComplements,
-        uint112 refBptPrice,
+        uint256 refBptPrice,
         uint256 initialWeightComplement,
+        uint256 newWeightComplement,
         uint256 lowerBound,
         uint256 upperBound
     ) public {
         // With refBptPrice ~ 0, rounding errors make it fail
-        vm.assume(refBptPrice > _MIN_BPT_PRICE);
+        refBptPrice = bound(refBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         lowerBound = bound(lowerBound, _MINIMUM_LOWER_BOUND, FixedPoint.ONE);
         upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
         initialWeightComplement = bound(initialWeightComplement, _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
+        newWeightComplement = bound(newWeightComplement, _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
 
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
             referenceBptPrice: refBptPrice,
@@ -100,34 +119,17 @@ contract CircuitBreakerLibTest is Test {
 
         // Set the initial state of the breaker
         bytes32 initialPoolState = _mock.setCircuitBreakerFields(bytes32(0), params);
+        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
+            _mock.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 
-        // Call with the same weight complement to get the "cached" BPT price boundaries
-        (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
-            _mock.getCurrentCircuitBreakerBounds(initialPoolState, initialWeightComplement);
-
-        for (uint256 i = 0; i < _NUM_WEIGHT_TRIALS; i++) {
-            // Try with an array of random new weight complements
-            uint256 newWeightComplement = bound(newWeightComplements[i], _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
-
-            (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
-                _mock.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
-
-            if (newWeightComplement == initialWeightComplement) {
-                // If it happens to choose the same value, it should match the initial state
-                assertEq(lowerBptPriceBoundary, initialLowerBptPriceBoundary);
-                assertEq(upperBptPriceBoundary, initialUpperBptPriceBoundary);
-            } else {
-                // Otherwise, we need to recalculate
-                _validateWithNewComplement(
-                    refBptPrice,
-                    lowerBound,
-                    upperBound,
-                    lowerBptPriceBoundary,
-                    upperBptPriceBoundary,
-                    newWeightComplement
-                );
-            }   
-        }  
+        _validateWithNewComplement(
+            refBptPrice,
+            lowerBound,
+            upperBound,
+            lowerBptPriceBoundary,
+            upperBptPriceBoundary,
+            newWeightComplement
+        );
     }
 
     // Needed to avoid stack-too-deep issues
@@ -139,21 +141,21 @@ contract CircuitBreakerLibTest is Test {
         uint256 upperBptPriceBoundary,
         uint256 newWeightComplement
     ) private {
-            (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = _mock.getBoundaryConversionRatios(
-                lowerBound,
-                upperBound,
-                newWeightComplement
-            );
-            
-            assertApproxEqRel(
-                lowerBptPriceBoundary,
-                uint256(refBptPrice).mulDown(expectedLowerBptPrice),
-                _MAX_RELATIVE_ERROR
-            );
-            assertApproxEqRel(
-                upperBptPriceBoundary,
-                uint256(refBptPrice).mulUp(expectedUpperBptPrice),
-                _MAX_RELATIVE_ERROR
-            );
+        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = _mock.getBoundaryConversionRatios(
+            lowerBound,
+            upperBound,
+            newWeightComplement
+        );
+        
+        assertApproxEqRel(
+            lowerBptPriceBoundary,
+            uint256(refBptPrice).mulDown(expectedLowerBptPrice),
+            _MAX_RELATIVE_ERROR
+        );
+        assertApproxEqRel(
+            upperBptPriceBoundary,
+            uint256(refBptPrice).mulUp(expectedUpperBptPrice),
+            _MAX_RELATIVE_ERROR
+        );
     }
 }

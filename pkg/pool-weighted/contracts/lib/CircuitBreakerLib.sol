@@ -36,11 +36,13 @@ import "../lib/ValueCompression.sol";
  * The BPT price of a token is defined as the amount of BPT that could be redeemed for a single token.
  * For instance, in an 80/20 pool with a total supply of 1000, the 80% token accounts for 800 BPT. So each
  * token would be worth 800 / token balance. The formula is then: total supply * token weight / token balance.
+ * (Note that this only applies *if* the pool is balanced (a condition that cannot be checked by the pool without
+ * accessing price oracles.)
  *
  * Since BPT prices are not intuitive - and there is a very non-linear relationship between "spot" prices and
  * BPT prices - circuit breakers are set using simple percentages. Intuitively, a lower bound of 0.8 means the
- * token can lose 20% of its value before triggering the circuit breaker, and an upper bound of 3.0 means i
- * can triple before being halted.These percentages are then transformed into BPT prices for comparison to the
+ * token can lose 20% of its value before triggering the circuit breaker, and an upper bound of 3.0 means it
+ * can triple before being halted. These percentages are then transformed into BPT prices for comparison to the
  * "reference" state of the pool when the circuit breaker was set.
  *
  * Prices can change in two ways: arbitrage traders responding to external price movement can change the balances,
@@ -74,21 +76,18 @@ library CircuitBreakerLib {
     // We also store the "raw" upper and lower bounds, expressed as 18-decimal floating point percentages, for
     // human readability.
     //
-    // [    24 bits   |    24 bits   |   16 bits   |   16 bits   |     64 bits     |    112 bits   |
-    // [ ref UB ratio | ref LB ratio | upper bound | lower bound | ref weight comp | ref BPT price |
-    // |MSB                                                                                     LSB|
-    uint256 private constant _REFERENCE_BPT_PRICE_OFFSET = 0;
-    uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_OFFSET = _REFERENCE_BPT_PRICE_OFFSET +
-        _REFERENCE_BPT_PRICE_WIDTH;
-    uint256 private constant _REFERENCE_LOWER_BOUND_RATIO_OFFSET = _UPPER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
-    uint256 private constant _REFERENCE_UPPER_BOUND_RATIO_OFFSET = _REFERENCE_LOWER_BOUND_RATIO_OFFSET +
-        _BOUND_RATIO_WIDTH;
-    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REFERENCE_WEIGHT_COMPLEMENT_OFFSET +
-        _REFERENCE_WEIGHT_COMPLEMENT_WIDTH;
+    // [    24 bits   |    24 bits   |     16 bits       |   16 bits     |      64 bits     |    112 bits   |
+    // [ ref UB ratio | ref LB ratio | upper bound pct | lower bound pct | ref weight comp. | ref BPT price |
+    // |MSB                                                                                              LSB|
+    uint256 private constant _REF_BPT_PRICE_OFFSET = 0;
+    uint256 private constant _REF_WEIGHT_COMPLEMENT_OFFSET = _REF_BPT_PRICE_OFFSET + _REF_BPT_PRICE_WIDTH;
+    uint256 private constant _LOWER_BOUND_PCT_OFFSET = _REF_WEIGHT_COMPLEMENT_OFFSET + _REF_WEIGHT_COMPLEMENT_WIDTH;
     uint256 private constant _UPPER_BOUND_PCT_OFFSET = _LOWER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
+    uint256 private constant _REF_LOWER_BOUND_RATIO_OFFSET = _UPPER_BOUND_PCT_OFFSET + _BOUND_PERCENTAGE_WIDTH;
+    uint256 private constant _REF_UPPER_BOUND_RATIO_OFFSET = _REF_LOWER_BOUND_RATIO_OFFSET + _BOUND_RATIO_WIDTH;
 
-    uint256 private constant _REFERENCE_WEIGHT_COMPLEMENT_WIDTH = 64;
-    uint256 private constant _REFERENCE_BPT_PRICE_WIDTH = 112;
+    uint256 private constant _REF_WEIGHT_COMPLEMENT_WIDTH = 64;
+    uint256 private constant _REF_BPT_PRICE_WIDTH = 112;
     uint256 private constant _BOUND_PERCENTAGE_WIDTH = 16;
     uint256 private constant _BOUND_RATIO_WIDTH = 24;
 
@@ -105,13 +104,10 @@ library CircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState) internal pure returns (CircuitBreakerParams memory) {
         return
             CircuitBreakerParams({
-                referenceBptPrice: circuitBreakerState.decodeUint(
-                    _REFERENCE_BPT_PRICE_OFFSET,
-                    _REFERENCE_BPT_PRICE_WIDTH
-                ),
+                referenceBptPrice: circuitBreakerState.decodeUint(_REF_BPT_PRICE_OFFSET, _REF_BPT_PRICE_WIDTH),
                 referenceWeightComplement: circuitBreakerState
-                    .decodeUint(_REFERENCE_WEIGHT_COMPLEMENT_OFFSET, _REFERENCE_WEIGHT_COMPLEMENT_WIDTH)
-                    .decompress(_REFERENCE_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
+                    .decodeUint(_REF_WEIGHT_COMPLEMENT_OFFSET, _REF_WEIGHT_COMPLEMENT_WIDTH)
+                    .decompress(_REF_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
                 lowerBoundPercentage: circuitBreakerState
                     .decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH)
                     .decompress(_BOUND_PERCENTAGE_WIDTH, _MAX_BOUND_PERCENTAGE),
@@ -149,26 +145,23 @@ library CircuitBreakerLib {
         pure
         returns (uint256, uint256)
     {
-        uint256 referenceBptPrice = circuitBreakerState.decodeUint(
-            _REFERENCE_BPT_PRICE_OFFSET,
-            _REFERENCE_BPT_PRICE_WIDTH
-        );
+        uint256 referenceBptPrice = circuitBreakerState.decodeUint(_REF_BPT_PRICE_OFFSET, _REF_BPT_PRICE_WIDTH);
         uint256 referenceWeightComplement = circuitBreakerState
-            .decodeUint(_REFERENCE_WEIGHT_COMPLEMENT_OFFSET, _REFERENCE_WEIGHT_COMPLEMENT_WIDTH)
-            .decompress(_REFERENCE_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE);
+            .decodeUint(_REF_WEIGHT_COMPLEMENT_OFFSET, _REF_WEIGHT_COMPLEMENT_WIDTH)
+            .decompress(_REF_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE);
 
         if (referenceWeightComplement == currentWeightComplement) {
             // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary expressions.
             return (
                 referenceBptPrice.mulDown(
-                    circuitBreakerState.decodeUint(_REFERENCE_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
+                    circuitBreakerState.decodeUint(_REF_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
                         _BOUND_RATIO_WIDTH,
                         _MAX_BOUND_PERCENTAGE
                     )
                 ),
                 referenceBptPrice.mulUp(
-                    circuitBreakerState.decodeUint(_REFERENCE_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
+                    circuitBreakerState.decodeUint(_REF_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
                         _BOUND_RATIO_WIDTH,
                         _MAX_BOUND_PERCENTAGE
                     )
@@ -225,11 +218,11 @@ library CircuitBreakerLib {
 
         // Set the reference parameters: BPT price of the token, and the weight complement.
         circuitBreakerState = circuitBreakerState
-            .insertUint(params.referenceBptPrice, _REFERENCE_BPT_PRICE_OFFSET, _REFERENCE_BPT_PRICE_WIDTH)
+            .insertUint(params.referenceBptPrice, _REF_BPT_PRICE_OFFSET, _REF_BPT_PRICE_WIDTH)
             .insertUint(
-            params.referenceWeightComplement.compress(_REFERENCE_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
-            _REFERENCE_WEIGHT_COMPLEMENT_OFFSET,
-            _REFERENCE_WEIGHT_COMPLEMENT_WIDTH
+            params.referenceWeightComplement.compress(_REF_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
+            _REF_WEIGHT_COMPLEMENT_OFFSET,
+            _REF_WEIGHT_COMPLEMENT_WIDTH
         );
 
         // Add the lower and upper percentage bounds.
@@ -260,12 +253,12 @@ library CircuitBreakerLib {
             circuitBreakerState
                 .insertUint(
                 lowerBoundRatioCache.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _REFERENCE_LOWER_BOUND_RATIO_OFFSET,
+                _REF_LOWER_BOUND_RATIO_OFFSET,
                 _BOUND_RATIO_WIDTH
             )
                 .insertUint(
                 upperBoundRatioCache.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _REFERENCE_UPPER_BOUND_RATIO_OFFSET,
+                _REF_UPPER_BOUND_RATIO_OFFSET,
                 _BOUND_RATIO_WIDTH
             );
     }
