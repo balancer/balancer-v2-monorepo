@@ -363,6 +363,45 @@ library WeightedMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
+    function _calcBptInGivenExactTokenOut(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 amountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) internal pure returns (uint256) {
+        // BPT in, so we round up overall.
+
+        uint256 balanceRatioWithoutFee = balance.sub(amountOut).divUp(balance);
+
+        uint256 invariantRatioWithoutFees = balanceRatioWithoutFee.mulUp(normalizedWeight).add(
+            normalizedWeight.complement()
+        );
+
+        uint256 amountOutWithFee;
+        if (invariantRatioWithoutFees > balanceRatioWithoutFee) {
+            // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
+            // 'token out'. This results in slightly larger price impact.
+
+            uint256 nonTaxableAmount = balance.mulDown(invariantRatioWithoutFees.complement());
+            uint256 taxableAmount = amountOut.sub(nonTaxableAmount);
+            uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
+
+            amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+        } else {
+            amountOutWithFee = amountOut;
+            if (amountOutWithFee == 0) {
+                return 0;
+            }
+        }
+
+        uint256 balanceRatio = balance.sub(amountOutWithFee).divDown(balance);
+
+        uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
+
+        return bptTotalSupply.mulUp(invariantRatio.complement());
+    }
+
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
@@ -389,6 +428,9 @@ library WeightedMath {
                 amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
             } else {
                 amountOutWithFee = amountsOut[i];
+                if (amountOutWithFee == 0) {
+                    continue;
+                }
             }
 
             uint256 balanceRatio = balances[i].sub(amountOutWithFee).divDown(balances[i]);
