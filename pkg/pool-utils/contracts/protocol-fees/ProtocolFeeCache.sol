@@ -30,11 +30,6 @@ import "../RecoveryMode.sol";
  * However, these values change so rarely that it doesn't make sense to perform the required calls to get the current
  * values in every single user interaction. Instead, we keep a local copy that can be permissionlessly updated by anyone
  * with the real value. We also pack these values together, performing a single storage read to get them all.
- *
- * When initialized with a special sentinel value, the swap fee is delegated, meaning the mutable protocol swap fee
- * cache is set to the current value stored in the ProtocolFeePercentagesProvider, and can be updated by anyone with a
- * call to `updateProtocolFeePercentageCache`. Any other value means the protocol swap fee is fixed, so it is instead
- * stored in the immutable `_fixedProtocolSwapFeePercentage`.
  */
 abstract contract ProtocolFeeCache is RecoveryMode {
     using SafeCast for uint256;
