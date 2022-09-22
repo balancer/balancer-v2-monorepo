@@ -98,7 +98,7 @@ describe('BasePool', function () {
   describe('pool id', () => {
     let pool: Contract;
 
-    sharedBeforeEach('deploy pool', async () => {
+    sharedBeforeEach(async () => {
       pool = await deployBasePool();
     });
 
@@ -113,7 +113,7 @@ describe('BasePool', function () {
     let vaultSigner: SignerWithAddress;
     let poolId: string;
 
-    sharedBeforeEach('deploy pool', async () => {
+    sharedBeforeEach(async () => {
       pool = await deployBasePool();
       vaultSigner = await impersonate(vault.address, fp(100));
       poolId = await pool.getPoolId();
@@ -147,7 +147,7 @@ describe('BasePool', function () {
   describe('authorizer', () => {
     let pool: Contract;
 
-    sharedBeforeEach('deploy pool', async () => {
+    sharedBeforeEach(async () => {
       pool = await deployBasePool();
     });
 
@@ -355,7 +355,7 @@ describe('BasePool', function () {
     context('with a delegated owner', () => {
       const owner = DELEGATE_OWNER;
 
-      sharedBeforeEach('deploy pool', async () => {
+      sharedBeforeEach('deploy pools', async () => {
         pool = await deployBasePool({
           pauseWindowDuration: PAUSE_WINDOW_DURATION,
           bufferPeriodDuration: BUFFER_PERIOD_DURATION,
@@ -397,7 +397,7 @@ describe('BasePool', function () {
     context('with an owner', () => {
       let owner: SignerWithAddress;
 
-      sharedBeforeEach('deploy pool', async () => {
+      sharedBeforeEach('deploy pools', async () => {
         owner = poolOwner;
         pool = await deployBasePool({
           pauseWindowDuration: PAUSE_WINDOW_DURATION,
@@ -431,7 +431,7 @@ describe('BasePool', function () {
         });
 
         context('when the sender has the pause permission in the authorizer', () => {
-          sharedBeforeEach(async () => {
+          sharedBeforeEach('grant permission', async () => {
             const pauseAction = await actionId(pool, 'pause');
             const unpauseAction = await actionId(pool, 'unpause');
             await authorizer
@@ -476,7 +476,7 @@ describe('BasePool', function () {
     context('with a delegated owner', () => {
       const owner = DELEGATE_OWNER;
 
-      sharedBeforeEach('deploy pool', async () => {
+      sharedBeforeEach(async () => {
         pool = await deployBasePool({
           pauseWindowDuration: PAUSE_WINDOW_DURATION,
           bufferPeriodDuration: BUFFER_PERIOD_DURATION,
@@ -511,7 +511,7 @@ describe('BasePool', function () {
     context('with an owner', () => {
       let owner: SignerWithAddress;
 
-      sharedBeforeEach('deploy pool', async () => {
+      sharedBeforeEach(async () => {
         owner = poolOwner;
         pool = await deployBasePool({
           pauseWindowDuration: PAUSE_WINDOW_DURATION,
