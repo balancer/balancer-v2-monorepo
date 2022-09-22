@@ -58,7 +58,6 @@ export default class WeightedPool extends BasePool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
 
@@ -78,7 +77,6 @@ export default class WeightedPool extends BasePool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
-    managementSwapFeePercentage: BigNumberish,
     managementAumFeePercentage: BigNumberish,
     aumProtocolFeesCollector: string,
     owner?: SignerWithAddress
@@ -91,7 +89,6 @@ export default class WeightedPool extends BasePool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
-    this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumProtocolFeesCollector = aumProtocolFeesCollector;
   }
@@ -135,10 +132,6 @@ export default class WeightedPool extends BasePool {
 
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
     return this.instance.connect(from).getSwapEnabled();
-  }
-
-  async getManagementSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getManagementSwapFeePercentage();
   }
 
   async getManagementAumFeePercentage(): Promise<BigNumber> {
@@ -539,14 +532,6 @@ export default class WeightedPool extends BasePool {
   async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setSwapFeePercentage(swapFeePercentage);
-  }
-
-  async setManagementSwapFeePercentage(
-    from: SignerWithAddress,
-    managementFee: BigNumberish
-  ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return pool.setManagementSwapFeePercentage(managementFee);
   }
 
   async setManagementAumFeePercentage(
