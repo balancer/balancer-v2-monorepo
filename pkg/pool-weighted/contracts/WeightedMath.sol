@@ -192,7 +192,7 @@ library WeightedMath {
         );
 
         uint256 bptOut = (invariantRatio > FixedPoint.ONE)
-            ? bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE))
+            ? bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE)
             : 0;
         return bptOut;
     }
