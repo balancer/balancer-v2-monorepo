@@ -17,7 +17,6 @@ pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
-import "../../contracts/test/MockCircuitBreakerLib.sol";
 import "../../contracts/lib/CircuitBreakerLib.sol";
 
 contract CircuitBreakerLibTest is Test {
@@ -34,12 +33,6 @@ contract CircuitBreakerLibTest is Test {
  
     uint256 private constant _NUM_WEIGHT_TRIALS = 10;
 
-    MockCircuitBreakerLib private _mock;
-
-    function setUp() external {
-        _mock = new MockCircuitBreakerLib();
-    }
-
     function _roundTrip(CircuitBreakerLib.CircuitBreakerParams memory params)
         private
         view
@@ -48,9 +41,9 @@ contract CircuitBreakerLibTest is Test {
         // The setter overwrites all state, so the previous state doesn't matter
         // If we find we need to set fields individually (e.g., only the bounds),
         // we could add tests that the previous state was not altered.
-        bytes32 newPoolState = _mock.setCircuitBreakerFields(bytes32(0), params);
+        bytes32 newPoolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
 
-        return _mock.getCircuitBreakerFields(newPoolState);
+        return CircuitBreakerLib.getCircuitBreakerFields(newPoolState);
     }
 
     function testCircuitBreakerPrice(
@@ -78,9 +71,9 @@ contract CircuitBreakerLibTest is Test {
         assertApproxEqRel(result.lowerBoundPercentage, lowerBound, _MAX_BOUND_ERROR);
         assertApproxEqRel(result.upperBoundPercentage, upperBound, _MAX_BOUND_ERROR);
 
-        bytes32 initialPoolState = _mock.setCircuitBreakerFields(bytes32(0), params);
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
         (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
-            _mock.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
+            CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
 
         uint256 expectedLowerBoundBptPrice = uint256(refBptPrice).mulDown(lowerBound.powDown(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(refBptPrice).mulDown(upperBound.powUp(weightComplement));
@@ -90,7 +83,7 @@ contract CircuitBreakerLibTest is Test {
 
         // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
         (uint256 cachedLowerBptPriceBoundary, uint256 cachedUpperBptPriceBoundary) =
-            _mock.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
+            CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
 
         assertEq(cachedLowerBptPriceBoundary, initialLowerBptPriceBoundary);
         assertEq(cachedUpperBptPriceBoundary, initialUpperBptPriceBoundary);
@@ -118,9 +111,9 @@ contract CircuitBreakerLibTest is Test {
         });
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = _mock.setCircuitBreakerFields(bytes32(0), params);
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
         (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
-            _mock.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
+            CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 
         _validateWithNewComplement(
             refBptPrice,
@@ -141,7 +134,7 @@ contract CircuitBreakerLibTest is Test {
         uint256 upperBptPriceBoundary,
         uint256 newWeightComplement
     ) private {
-        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = _mock.getBoundaryConversionRatios(
+        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.getBoundaryConversionRatios(
             lowerBound,
             upperBound,
             newWeightComplement
