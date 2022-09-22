@@ -706,10 +706,14 @@ describe('ManagedPoolSettings', function () {
     const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.01);
 
+    let assetManager: Contract;
+
     sharedBeforeEach('deploy pool', async () => {
+      assetManager = await deploy('MockWithdrawDepositAssetManager', { args: [vault.address] });
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
+        assetManagers: poolTokens.map(() => assetManager.address),
         owner: owner.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
@@ -854,8 +858,14 @@ describe('ManagedPoolSettings', function () {
           });
 
           itCollectsAUMFeesCorrectly(async () => {
-            const { tokens } = await pool.getTokens();
-            const tx = await pool.removeToken(owner, tokens[tokens.length - 1], other.address);
+            const { tokens, balances } = await pool.getTokens();
+            const tokenToBeRemoved = tokens[tokens.length - 1];
+            const tokenBalance = balances[tokens.length - 1];
+
+            // Before we can remove the token from the pool we have to drain its balance from the Vault.
+            await assetManager.withdrawFromPool(pool.poolId, tokenToBeRemoved, tokenBalance);
+
+            const tx = await pool.removeToken(owner, tokenToBeRemoved, other.address);
             return tx.wait();
           });
         });
