@@ -41,6 +41,7 @@ import {
   calculateSpotPrice,
   calculateBPTPrice,
 } from './math';
+
 import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '../base/BasePool';
@@ -57,7 +58,6 @@ export default class WeightedPool extends BasePool {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
 
@@ -77,7 +77,6 @@ export default class WeightedPool extends BasePool {
     poolType: WeightedPoolType,
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
-    managementSwapFeePercentage: BigNumberish,
     managementAumFeePercentage: BigNumberish,
     aumProtocolFeesCollector: string,
     owner?: SignerWithAddress
@@ -90,7 +89,6 @@ export default class WeightedPool extends BasePool {
     this.poolType = poolType;
     this.swapEnabledOnStart = swapEnabledOnStart;
     this.mustAllowlistLPs = mustAllowlistLPs;
-    this.managementSwapFeePercentage = managementSwapFeePercentage;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumProtocolFeesCollector = aumProtocolFeesCollector;
   }
@@ -134,10 +132,6 @@ export default class WeightedPool extends BasePool {
 
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
     return this.instance.connect(from).getSwapEnabled();
-  }
-
-  async getManagementSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getManagementSwapFeePercentage();
   }
 
   async getManagementAumFeePercentage(): Promise<BigNumber> {
@@ -396,13 +390,12 @@ export default class WeightedPool extends BasePool {
   async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
-
     const tx = await this.vault.exitPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: this.tokens.addresses,
+      tokens: (await this.getTokens()).tokens,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
@@ -541,14 +534,6 @@ export default class WeightedPool extends BasePool {
     return pool.setSwapFeePercentage(swapFeePercentage);
   }
 
-  async setManagementSwapFeePercentage(
-    from: SignerWithAddress,
-    managementFee: BigNumberish
-  ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return pool.setManagementSwapFeePercentage(managementFee);
-  }
-
   async setManagementAumFeePercentage(
     from: SignerWithAddress,
     managementFee: BigNumberish
@@ -637,11 +622,10 @@ export default class WeightedPool extends BasePool {
 
   async removeToken(
     from: SignerWithAddress,
-    token: string,
-    recipient: string,
-    extra: { burnAmount?: BigNumberish; minAmountOut?: BigNumberish } = {}
+    token: Token,
+    sender?: string,
+    burnAmount?: BigNumberish
   ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return await pool.removeToken(token, recipient, extra.burnAmount ?? 0, extra.minAmountOut ?? 0);
+    return this.instance.connect(from).removeToken(token.address, burnAmount ?? 0, sender ?? from.address);
   }
 }

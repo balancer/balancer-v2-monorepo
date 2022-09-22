@@ -51,6 +51,10 @@ import "./ManagedPoolSettings.sol";
  * protocol and management fees, allowlisting of LPs, and more.
  */
 contract ManagedPool is ManagedPoolSettings {
+    // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
+    // that any timestamp manipulation would achieve very little.
+    // solhint-disable not-rely-on-time
+
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
@@ -71,7 +75,16 @@ contract ManagedPool is ManagedPoolSettings {
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
-    ) internal override returns (uint256) {
+    ) internal view override returns (uint256) {
+        bytes32 poolState = _getPoolState();
+        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+        uint256 tokenInWeight = _getNormalizedWeight(request.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(request.tokenOut, weightChangeProgress);
+
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
@@ -79,13 +92,17 @@ contract ManagedPool is ManagedPoolSettings {
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            request.amount = _subtractSwapFeeAmount(request.amount);
-
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountOut = _onSwapGivenIn(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                tokenInWeight,
+                tokenOutWeight,
+                swapFeeComplement
+            );
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -93,13 +110,17 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountIn = _onSwapGivenOut(
+                request,
+                balanceTokenIn,
+                balanceTokenOut,
+                tokenInWeight,
+                tokenOutWeight,
+                swapFeeComplement
+            );
 
             // amountIn tokens are entering the Pool, so we round up.
-            amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
-
-            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return _addSwapFeeAmount(amountIn);
+            return _downscaleUp(amountIn, scalingFactorTokenIn);
         }
     }
 
@@ -120,56 +141,31 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled. The swap fee has already
-     * been deducted from `swapRequest.amount`.
+     * All amounts inside `request`, `currentBalanceTokenIn`, and `currentBalanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
      * Vault.
      */
     function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
+        SwapRequest memory request,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        {
-            // Enter new scope to avoid stack-too-deep
+        uint256 currentBalanceTokenOut,
+        uint256 tokenInWeight,
+        uint256 tokenOutWeight,
+        uint256 swapFeeComplement
+    ) internal pure returns (uint256 amountOut) {
+        // Balances (and request.amount) are already upscaled by `_onSwapMinimal()`
 
-            bytes32 poolState = _getPoolState();
-            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+        // We round the amount in down (favoring a higher fee amount).
+        request.amount = request.amount.mulDown(swapFeeComplement);
 
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-
-            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
-        }
-
-        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
-        uint256 amountOut = WeightedMath._calcOutGivenIn(
+        amountOut = WeightedMath._calcOutGivenIn(
             currentBalanceTokenIn,
             tokenInWeight,
             currentBalanceTokenOut,
             tokenOutWeight,
-            swapRequest.amount
+            request.amount
         );
-
-        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
-        // after the trade.
-        //
-        // invariantGrowthRatio = invariant after trade / invariant before trade
-        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
-        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            tokenInWeight,
-            tokenOutWeight,
-            FixedPoint.ONE.add(_addSwapFeeAmount(swapRequest.amount).divDown(currentBalanceTokenIn)),
-            FixedPoint.ONE.sub(amountOut.divDown(currentBalanceTokenOut))
-        );
-
-        _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountOut;
     }
 
     /*
@@ -177,71 +173,31 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be granted to the Pool in return.
      *
-     * All amounts inside `swapRequest`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
+     * All amounts inside `request`, `currentBalanceTokenIn`, and `currentBalanceTokenOut` are upscaled.
      *
-     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
-     * and returning it to the Vault.
+     * The return value is also considered upscaled, and will be downscaled (rounding up) before returning it to the
+     * Vault.
      */
     function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
+        SwapRequest memory request,
         uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        {
-            // Enter new scope to avoid stack-too-deep
+        uint256 currentBalanceTokenOut,
+        uint256 tokenInWeight,
+        uint256 tokenOutWeight,
+        uint256 swapFeeComplement
+    ) internal pure returns (uint256 amountIn) {
+        // Balances (and request.amount) are already upscaled by `_onSwapMinimal()`
 
-            bytes32 poolState = _getPoolState();
-            _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
-
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-
-            tokenInWeight = _getNormalizedWeight(swapRequest.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(swapRequest.tokenOut, weightChangeProgress);
-        }
-
-        // balances (and swapRequest.amount) are already upscaled by BaseWeightedPool.onSwap
-        uint256 amountIn = WeightedMath._calcInGivenOut(
+        amountIn = WeightedMath._calcInGivenOut(
             currentBalanceTokenIn,
             tokenInWeight,
             currentBalanceTokenOut,
             tokenOutWeight,
-            swapRequest.amount
+            request.amount
         );
 
-        // We can calculate the invariant growth ratio more easily using the ratios of the Pool's balances before and
-        // after the trade.
-        //
-        // invariantGrowthRatio = invariant after trade / invariant before trade
-        //                      = (x + a_in)^w1 * (y - a_out)^w2 / (x^w1 * y^w2)
-        //                      = (1 + a_in/x)^w1 * (1 - a_out/y)^w2
-        uint256 invariantGrowthRatio = WeightedMath._calculateTwoTokenInvariant(
-            tokenInWeight,
-            tokenOutWeight,
-            FixedPoint.ONE.add(_addSwapFeeAmount(amountIn).divDown(currentBalanceTokenIn)),
-            FixedPoint.ONE.sub(swapRequest.amount.divDown(currentBalanceTokenOut))
-        );
-
-        _payProtocolAndManagementFees(invariantGrowthRatio);
-
-        return amountIn;
-    }
-
-    /**
-     * @dev Adds swap fee amount to `amount`, returning a higher value.
-     */
-    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(getSwapFeePercentage().complement());
-    }
-
-    /**
-     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
-     */
-    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount - fee amount, so we round down (favoring a higher fee amount).
-        return amount.mulDown(getSwapFeePercentage().complement());
+        // We round the amount in up (favoring a higher fee amount).
+        amountIn = amountIn.divUp(swapFeeComplement);
     }
 
     /**
@@ -406,7 +362,7 @@ contract ManagedPool is ManagedPoolSettings {
      * or disallow exit under certain circumstances.
      */
     function _doExit(
-        address sender,
+        address,
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
         uint256[] memory scalingFactors,
@@ -415,15 +371,12 @@ contract ManagedPool is ManagedPoolSettings {
     ) internal view virtual returns (uint256, uint256[] memory) {
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
-        // Removing tokens is also allowed, as that action can only be performed by the manager, who is assumed to
-        // perform sensible checks.
 
         bytes32 poolState = _getPoolState();
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
-                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
-                kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
+                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
@@ -451,33 +404,8 @@ contract ManagedPool is ManagedPoolSettings {
                     ManagedPoolStorageLib.getSwapFeePercentage(poolState),
                     userData
                 );
-        } else if (kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN) {
-            return _doExitRemoveToken(sender, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
-    }
-
-    function _doExitRemoveToken(
-        address sender,
-        uint256[] memory balances,
-        bytes memory userData
-    ) private view whenNotPaused returns (uint256, uint256[] memory) {
-        // This exit function is disabled if the contract is paused.
-
-        // This exit function can only be called by the Pool itself - the authorization logic that governs when that
-        // call can be made resides in removeToken.
-        _require(sender == address(this), Errors.UNAUTHORIZED_EXIT);
-
-        uint256 tokenIndex = userData.removeToken();
-
-        // No BPT is required to remove the token - it is up to the caller to determine under which conditions removing
-        // a token makes sense, and if e.g. burning BPT is required.
-        uint256 bptAmountIn = 0;
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        amountsOut[tokenIndex] = balances[tokenIndex];
-
-        return (bptAmountIn, amountsOut);
     }
 }

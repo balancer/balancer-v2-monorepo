@@ -33,7 +33,6 @@ describe('ManagedPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const MIN_WEIGHT_CHANGE_DURATION = DAY;
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
@@ -74,7 +73,6 @@ describe('ManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
     };
 
@@ -156,10 +154,6 @@ describe('ManagedPoolFactory', function () {
 
     it('sets swap fee', async () => {
       expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
-    });
-
-    it('sets management swap fee', async () => {
-      expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
     });
 
     it('sets management aum fee', async () => {

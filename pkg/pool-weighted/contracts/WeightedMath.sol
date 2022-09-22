@@ -73,25 +73,6 @@ library WeightedMath {
         _require(invariant > 0, Errors.ZERO_INVARIANT);
     }
 
-    // Two token specific implementation of `_calculateInvariant`.
-    function _calculateTwoTokenInvariant(
-        uint256 normalizedWeight0,
-        uint256 normalizedWeight1,
-        uint256 balance0,
-        uint256 balance1
-    ) internal pure returns (uint256 invariant) {
-        /**********************************************************************************************
-        // invariant               _____                                                             //
-        // wi = weight index i      | |      wi                                                      //
-        // bi = balance index i     | |  bi ^   = i                                                  //
-        // i = invariant                                                                             //
-        **********************************************************************************************/
-
-        invariant = balance0.powDown(normalizedWeight0).mulDown(balance1.powDown(normalizedWeight1));
-
-        _require(invariant > 0, Errors.ZERO_INVARIANT);
-    }
-
     // Computes how many tokens can be taken out of a pool if `amountIn` are sent, given the
     // current balances and weights.
     function _calcOutGivenIn(
@@ -192,7 +173,7 @@ library WeightedMath {
         );
 
         uint256 bptOut = (invariantRatio > FixedPoint.ONE)
-            ? bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE))
+            ? bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE)
             : 0;
         return bptOut;
     }
@@ -216,13 +197,23 @@ library WeightedMath {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
-                uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
-                uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
-
-                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+                // invariantRatioWithFees might be less than FixedPoint.ONE in edge scenarios due to rounding error,
+                // particularly if the weights don't exactly add up to 100%.
+                uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
+                    ? balances[i].mulDown(invariantRatioWithFees - FixedPoint.ONE)
+                    : 0;
+                uint256 swapFee = amountsIn[i].sub(nonTaxableAmount).mulUp(swapFeePercentage);
+                amountInWithoutFee = amountsIn[i].sub(swapFee);
             } else {
                 amountInWithoutFee = amountsIn[i];
+
+                // If a token's amount in is not being charged a swap fee then it might be zero (e.g. when joining a
+                // Pool with only a subset of tokens). In this case, `balanceRatio` will equal `FixedPoint.ONE`, and
+                // the `invariantRatio` will not change at all. We therefore skip to the next iteration, avoiding
+                // the costly `powDown` call.
+                if (amountInWithoutFee == 0) {
+                    continue;
+                }
             }
 
             uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);

@@ -80,9 +80,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
     uint256 private _denormWeightSum;
 
-    // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
-    uint256 private _managementSwapFeePercentage;
-
     // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
 
@@ -100,13 +97,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     );
     event SwapEnabledSet(bool swapEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementSwapFeePercentageChanged(uint256 managementSwapFeePercentage);
     event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
     event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
-    event TokenRemoved(IERC20 indexed token, uint256 normalizedWeight, uint256 tokenAmountOut);
+    event TokenRemoved(IERC20 indexed token);
 
     struct NewPoolParams {
         string name;
@@ -117,7 +113,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
-        uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
     }
 
@@ -149,8 +144,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
         // Validate and set initial fees
-        _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
-
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
         // Write the scaling factors for each token into their token state.
@@ -560,31 +553,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         emit MustAllowlistLPsSet(mustAllowlistLPs);
     }
 
-    /**
-     * @notice Setter for the management swap fee percentage.
-     * @dev Attempting to collect swap fees in excess of the maximum permitted percentage will revert.
-     * Emits the ManagementSwapFeePercentageChanged event. This is a permissioned function.
-     * @param managementSwapFeePercentage - The new management swap fee percentage.
-     */
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
-        external
-        override
-        authenticate
-        whenNotPaused
-    {
-        _setManagementSwapFeePercentage(managementSwapFeePercentage);
-    }
-
-    function _setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) private {
-        _require(
-            managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
-        );
-
-        _managementSwapFeePercentage = managementSwapFeePercentage;
-        emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
-    }
-
     // AUM management fees
 
     /**
@@ -692,59 +660,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         return (protocolBptAmount, managerBPTAmount);
     }
 
-    // Swap overrides - revert unless swaps are enabled
-
-    /**
-     * @notice Returns the management swap fee percentage as an 18-decimal fixed point number.
-     */
-    function getManagementSwapFeePercentage() external view returns (uint256) {
-        return _managementSwapFeePercentage;
-    }
-
-    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) internal {
-        // Calculate total BPT for the protocol and management fee
-        // The management fee percentage applies to the remainder,
-        // after the protocol fee has been collected.
-        // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
-        uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
-
-        if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
-            return;
-        }
-
-        // Fees are bounded, so we don't need checked math
-        uint256 totalFeePercentage = protocolSwapFeePercentage +
-            (FixedPoint.ONE - protocolSwapFeePercentage).mulDown(managementSwapFeePercentage);
-
-        // No other balances are changing, so the other terms in the invariant will cancel out
-        // when computing the ratio. So this partial invariant calculation is sufficient.
-        // We pass the same value for total supply twice as we're measuring over a period in which the total supply
-        // has not changed.
-        uint256 supply = totalSupply();
-        uint256 totalBptAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
-            invariantGrowthRatio,
-            supply,
-            supply,
-            totalFeePercentage
-        );
-
-        // Calculate the portion of the total fee due the protocol
-        // If the protocol fee were 30% and the manager fee 10%, the protocol would take 30% first.
-        // Then the manager would take 10% of the remaining 70% (that is, 7%), for a total fee of 37%
-        // The protocol would then earn 0.3/0.37 ~=81% of the total fee,
-        // and the manager would get 0.1/0.75 ~=13%.
-        uint256 protocolBptAmount = totalBptAmount.mulUp(protocolSwapFeePercentage.divUp(totalFeePercentage));
-
-        _payProtocolFees(protocolBptAmount);
-
-        // Pay the remainder in management fees
-        // This goes to the controller, which needs to be able to withdraw them
-        if (managementSwapFeePercentage > 0) {
-            _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
-        }
-    }
-
     // Add/Remove tokens
 
     /**
@@ -775,6 +690,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused {
+        _require(totalSupply() > 0, Errors.UNINITIALIZED);
+
         // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
         // Checking for the validity of the new weight would otherwise be much more complicated.
         _ensureNoWeightChange();
@@ -842,86 +759,70 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Removes a token from the Pool's composition, withdraws all funds from the Vault (sending them to
-     * `recipient`), and finally adjusts the weights of all other tokens.
-     *
-     * Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token removal
-     * is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
+     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
      * Emits the TokenRemoved event. This is a permissioned function.
      *
      * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
      * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
      * @param token - The ERC20 token to be removed from the Pool.
-     * @param recipient - The address to receive the Pool's balance of `token` after it is removed.
      * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
-     * @param minAmountOut - Will revert if the number of tokens transferred from the Vault is less than this value.
-     * @return The amount of tokens the Pool held, sent to `recipient`.
+     * @param sender - The address to burn BPT from.
      */
     function removeToken(
         IERC20 token,
-        address recipient,
         uint256 burnAmount,
-        uint256 minAmountOut
-    ) external authenticate nonReentrant whenNotPaused returns (uint256) {
-        // We require the pool to be initialized (shown by the total supply being nonzero) in order to remove a token,
-        // maintaining the behaviour that no exits can occur before the pool has been initialized.
-        // This prevents the AUM fee calculation being triggered before the pool contains any assets.
+        address sender
+    ) external authenticate nonReentrant whenNotPaused {
         _require(totalSupply() > 0, Errors.UNINITIALIZED);
 
         // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
+        // This is for symmetry with addToken.
         _ensureNoWeightChange();
 
-        // Exit the pool, returning the full balance of the token to the recipient
-        (IERC20[] memory tokens, uint256[] memory unscaledBalances, ) = getVault().getPoolTokens(getPoolId());
+        // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
+        // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
+        // in a valid state and all value-changing operations will revert, we are free to modify the Pool state (e.g.
+        // alter weights).
+        // We don't need to test the zero balance since the Vault will simply revert on deregistration if this is not
+        // the case.
+
+        // Removing a token will cause for the weights of all other tokens to increase. This is fine, as there is no
+        // maximum weight. We also don't need to check that the new token exists in the Pool, as the Vault will simply
+        // revert if we try to deregister a token that is not registered.
+        // We do, however, want to check that the Pool will end up with at least two tokens. This simplifies some
+        // assumptions made elsewhere (e.g. the denormalized weight sum will always be non-zero), and doesn't greatly
+        // restrict the controller.
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
-        // Reverts if the token does not exist in the pool.
-        uint256 tokenIndex = _findTokenIndex(tokens, token);
-        uint256 tokenBalance = unscaledBalances[tokenIndex];
         uint256 tokenNormalizedWeight = _getNormalizedWeight(
             token,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
         );
 
-        // We first perform a special exit operation, which will withdraw the entire token balance from the Vault.
-        // Only the Pool itself is authorized to initiate this kind of exit.
-        uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        minAmountsOut[tokenIndex] = minAmountOut;
-
-        // Note that this exit will trigger collection of the AUM fees payable up to now.
-        getVault().exitPool(
-            getPoolId(),
-            address(this),
-            payable(recipient),
-            IVault.ExitPoolRequest({
-                assets: _asIAsset(tokens),
-                minAmountsOut: minAmountsOut,
-                userData: abi.encode(WeightedPoolUserData.ExitKind.REMOVE_TOKEN, tokenIndex),
-                toInternalBalance: false
-            })
-        );
-
-        // The Pool is now in an invalid state, since one of its tokens has a balance of zero (making the invariant also
-        // zero). We immediately deregister the emptied-out token to restore a valid state.
-        // Since all non-view Vault functions are non-reentrant, and we make no external calls between the two Vault
-        // calls (`exitPool` and `deregisterTokens`), it is impossible for any actor to interact with the Pool while it
-        // is in this inconsistent state (except for view calls).
-        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
-
-        // Now all we need to do is delete the removed token's entry and update the sum of denormalized weights to scale
-        // all other token weights accordingly.
-        // Clean up data structures and update the token count
+        // State cleanup is simply done by removing the portion of the denormalized weight that corresponds to the token
+        // being removed, and then deleting all token-specific state.
+        _denormWeightSum -= tokenNormalizedWeight.mulDown(_denormWeightSum);
         delete _tokenState[token];
-        _denormWeightSum -= tokenNormalizedWeight.mulUp(_denormWeightSum);
 
         if (burnAmount > 0) {
-            _burnPoolTokens(msg.sender, burnAmount);
+            // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
+            // uninitialized state.
+            _require(sender != address(0), Errors.BURN_FROM_ZERO);
+            _burnPoolTokens(sender, burnAmount);
         }
 
-        emit TokenRemoved(token, tokenNormalizedWeight, tokenBalance);
+        // We can then deregister the token in the Vault. This will revert unless the token is registered and the Pool
+        // has a zero balance of it.
+        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
 
-        return tokenBalance;
+        // The Pool is now again in a valid state: by the time the zero valued token is deregistered, all internal Pool
+        // state is updated.
+
+        emit TokenRemoved(token);
     }
 
     // Scaling Factors
@@ -1006,7 +907,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
     }
 }
