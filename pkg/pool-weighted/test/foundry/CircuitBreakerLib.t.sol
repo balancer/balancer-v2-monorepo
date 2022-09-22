@@ -54,7 +54,7 @@ contract CircuitBreakerLibTest is Test {
         // The setter overwrites all state, so the previous state doesn't matter
         // If we find we need to set fields individually (e.g., only the bounds),
         // we could add tests that the previous state was not altered.
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(params);
         CircuitBreakerLib.CircuitBreakerParams memory result = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
         assertEq(result.referenceBptPrice, refBptPrice);
@@ -62,7 +62,7 @@ contract CircuitBreakerLibTest is Test {
         assertApproxEqRel(result.lowerBoundPercentage, lowerBound, _MAX_BOUND_ERROR);
         assertApproxEqRel(result.upperBoundPercentage, upperBound, _MAX_BOUND_ERROR);
 
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(params);
         (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
 
@@ -102,7 +102,7 @@ contract CircuitBreakerLibTest is Test {
         });
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(params);
         (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 

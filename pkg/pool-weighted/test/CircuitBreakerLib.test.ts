@@ -3,7 +3,6 @@ import { Contract, BigNumber } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, fp, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { random } from 'lodash';
-import { ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { CircuitBreakerParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
@@ -23,7 +22,7 @@ describe('CircuitBreakerLib', () => {
 
   async function assertCircuitBreakerState(
     getter: (word: string) => Promise<BigNumber[]>,
-    setter: (tokenState: string, circuitBreakerParams: CircuitBreakerParams) => Promise<string>,
+    setter: (circuitBreakerParams: CircuitBreakerParams) => Promise<string>,
     lowerBoundPct: BigNumber,
     upperBoundPct: BigNumber
   ) {
@@ -34,7 +33,7 @@ describe('CircuitBreakerLib', () => {
       upperBoundPercentage: upperBoundPct,
     };
 
-    const data = await setter(ZERO_BYTES32, circuitBreakerParams);
+    const data = await setter(circuitBreakerParams);
 
     // Bounds set correctly.
     const [referenceBptPrice, referenceWeightComplement, lowerBoundPercentage, upperBoundPercentage] = await getter(
@@ -62,7 +61,7 @@ describe('CircuitBreakerLib', () => {
   context('when parameters are invalid', () => {
     it('reverts if the lower bound > 1', async () => {
       await expect(
-        lib.setCircuitBreakerFields(ZERO_BYTES32, {
+        lib.setCircuitBreakerFields({
           referenceBptPrice: fp(BPT_PRICE),
           referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
           lowerBoundPercentage: fp(1).add(1),
@@ -73,7 +72,7 @@ describe('CircuitBreakerLib', () => {
 
     it('reverts if the upper bound > MAX_BOUND', async () => {
       await expect(
-        lib.setCircuitBreakerFields(ZERO_BYTES32, {
+        lib.setCircuitBreakerFields({
           referenceBptPrice: fp(BPT_PRICE),
           referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
           lowerBoundPercentage: 0,
@@ -84,7 +83,7 @@ describe('CircuitBreakerLib', () => {
 
     it('reverts if the upper bound < lower_bound', async () => {
       await expect(
-        lib.setCircuitBreakerFields(ZERO_BYTES32, {
+        lib.setCircuitBreakerFields({
           referenceBptPrice: fp(BPT_PRICE),
           referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
           lowerBoundPercentage: fp(0.9),
@@ -124,7 +123,7 @@ describe('CircuitBreakerLib', () => {
     let data: string;
 
     sharedBeforeEach('set default values', async () => {
-      data = await lib.setCircuitBreakerFields(ZERO_BYTES32, circuitBreakerParams);
+      data = await lib.setCircuitBreakerFields(circuitBreakerParams);
     });
 
     it('should store default reference values', async () => {

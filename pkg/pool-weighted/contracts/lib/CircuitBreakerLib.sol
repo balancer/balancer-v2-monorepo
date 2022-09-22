@@ -154,8 +154,8 @@ library CircuitBreakerLib {
         uint256 upperBoundRatio;
 
         if (referenceWeightComplement == currentWeightComplement) {
-            // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
-            // boundary expressions.
+            // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
+            // boundary ratios.
             lowerBoundRatio = circuitBreakerState
                 .decodeUint(_REF_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
                 .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
@@ -178,7 +178,7 @@ library CircuitBreakerLib {
             );
         }
 
-        // Use these ratios to convert raw percentage bounds to BPT price bounds.
+        // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
         // To err in favor of tripping the breaker, round the lower bound up, and the upper bound down.
         return (referenceBptPrice.mulUp(lowerBoundRatio), referenceBptPrice.mulDown(upperBoundRatio));
     }
@@ -186,7 +186,6 @@ library CircuitBreakerLib {
     /**
      * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
-     * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param params - CircuitBreakerParams has the following components:
      * - referenceBptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
@@ -196,11 +195,7 @@ library CircuitBreakerLib {
      * - upperBoundPercentage: The value of the upper bound. If non-zero, any operation that would cause the
      *   effective BPT Price to rise above upperBoundRatio * referenceBptPrice should revert.
      */
-    function setCircuitBreakerFields(bytes32 circuitBreakerState, CircuitBreakerParams memory params)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function setCircuitBreakerFields(CircuitBreakerParams memory params) internal pure returns (bytes32) {
         // It's theoretically not required for the lower bound to be < 1, but it wouldn't make much sense otherwise:
         // the circuit breaker would immediately trip. Note that this explicitly allows setting either to 0, disabling
         // the circuit breaker for the token in that direction.
@@ -212,7 +207,7 @@ library CircuitBreakerLib {
         );
 
         // Set the reference parameters: BPT price of the token, and the weight complement.
-        circuitBreakerState = circuitBreakerState
+        bytes32 circuitBreakerState = bytes32(0)
             .insertUint(params.referenceBptPrice, _REF_BPT_PRICE_OFFSET, _REF_BPT_PRICE_WIDTH)
             .insertUint(
             params.referenceWeightComplement.compress(_REF_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),

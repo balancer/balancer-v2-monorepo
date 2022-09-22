@@ -34,11 +34,12 @@ contract MockCircuitBreakerLib {
         return CircuitBreakerLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeightFactor);
     }
 
-    function setCircuitBreakerFields(
-        bytes32 circuitBreakerState,
-        CircuitBreakerLib.CircuitBreakerParams memory params
-    ) external pure returns (bytes32) {
-        return CircuitBreakerLib.setCircuitBreakerFields(circuitBreakerState, params);
+    function setCircuitBreakerFields(CircuitBreakerLib.CircuitBreakerParams memory params)
+        external
+        pure
+        returns (bytes32)
+    {
+        return CircuitBreakerLib.setCircuitBreakerFields(params);
     }
 
     function getBoundaryConversionRatios(
