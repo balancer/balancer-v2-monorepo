@@ -141,7 +141,7 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be taken from the Pool in return.
      *
-     * All amounts inside `request`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
+     * All amounts inside `request`, `currentBalanceTokenIn`, and `currentBalanceTokenOut` are upscaled.
      *
      * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
      * Vault.
@@ -173,10 +173,10 @@ contract ManagedPool is ManagedPoolSettings {
      *
      * Returns the amount of tokens that will be granted to the Pool in return.
      *
-     * All amounts inside `request`, `balanceTokenIn`, and `balanceTokenOut` are upscaled.
+     * All amounts inside `request`, `currentBalanceTokenIn`, and `currentBalanceTokenOut` are upscaled.
      *
-     * The return value is also considered upscaled, and will be downscaled (rounding up) before applying the swap fee
-     * and returning it to the Vault.
+     * The return value is also considered upscaled, and will be downscaled (rounding up) before returning it to the
+     * Vault.
      */
     function _onSwapGivenOut(
         SwapRequest memory request,
