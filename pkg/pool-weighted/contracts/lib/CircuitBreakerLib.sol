@@ -150,27 +150,22 @@ library CircuitBreakerLib {
             .decodeUint(_REF_WEIGHT_COMPLEMENT_OFFSET, _REF_WEIGHT_COMPLEMENT_WIDTH)
             .decompress(_REF_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE);
 
+        uint256 lowerBoundRatio;
+        uint256 upperBoundRatio;
+
         if (referenceWeightComplement == currentWeightComplement) {
             // If the weight factor hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary expressions.
-            return (
-                referenceBptPrice.mulDown(
-                    circuitBreakerState.decodeUint(_REF_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
-                        _BOUND_RATIO_WIDTH,
-                        _MAX_BOUND_PERCENTAGE
-                    )
-                ),
-                referenceBptPrice.mulUp(
-                    circuitBreakerState.decodeUint(_REF_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
-                        _BOUND_RATIO_WIDTH,
-                        _MAX_BOUND_PERCENTAGE
-                    )
-                )
-            );
+            lowerBoundRatio = circuitBreakerState
+                .decodeUint(_REF_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
+                .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
+            upperBoundRatio = circuitBreakerState
+                .decodeUint(_REF_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
+                .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
             // Something has changed - either the weight of the token, or the composition of the pool, so we must
             // retrieve the raw percentage bounds and do the full calculation.
-            (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
+            (lowerBoundRatio, upperBoundRatio) = getBoundaryConversionRatios(
                 circuitBreakerState.decodeUint(_LOWER_BOUND_PCT_OFFSET, _BOUND_PERCENTAGE_WIDTH).decompress(
                     _BOUND_PERCENTAGE_WIDTH,
                     _MAX_BOUND_PERCENTAGE
@@ -181,11 +176,11 @@ library CircuitBreakerLib {
                 ),
                 currentWeightComplement
             );
-
-            // Use these ratios to convert raw percentage bounds to BPT price bounds.
-            // To maximize the valid trading range, round the lower bound down, and the upper bound up.
-            return (referenceBptPrice.mulDown(lowerBoundRatio), referenceBptPrice.mulUp(upperBoundRatio));
         }
+
+        // Use these ratios to convert raw percentage bounds to BPT price bounds.
+        // To err in favor of tripping the breaker, round the lower bound up, and the upper bound down.
+        return (referenceBptPrice.mulUp(lowerBoundRatio), referenceBptPrice.mulDown(upperBoundRatio));
     }
 
     /**
