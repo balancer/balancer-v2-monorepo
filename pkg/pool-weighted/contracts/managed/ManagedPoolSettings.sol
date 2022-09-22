@@ -59,6 +59,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
+    uint256 private constant _MAX_DENORM_WEIGHT_SUM = 18e18; // 18.0 in 18-decimal floating point
+
     // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
     // and therefore warm.
@@ -826,6 +828,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         //
         // We can then calculate the new denormalized weight sum by applying this ratio to the old sum.
         uint256 weightSumAfterAdd = _denormWeightSum.divDown(FixedPoint.ONE - normalizedWeight);
+        _require(weightSumAfterAdd <= _MAX_DENORM_WEIGHT_SUM, Errors.MAX_DENORM_WEIGHT_EXCEEDED);
 
         // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
         // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.

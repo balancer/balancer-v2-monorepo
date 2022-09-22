@@ -240,6 +240,7 @@ library Errors {
     uint256 internal constant SAFE_CAST_VALUE_CANT_FIT_UINT64 = 442;
     uint256 internal constant UNHANDLED_FEE_TYPE = 443;
     uint256 internal constant BURN_FROM_ZERO = 444;
+    uint256 internal constant MAX_DENORM_WEIGHT_EXCEEDED = 445;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
