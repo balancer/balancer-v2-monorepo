@@ -30,11 +30,6 @@ contract CircuitBreakerLibTest is Test {
 
     uint256 private constant _MAX_RELATIVE_ERROR = 1e16;
     uint256 private constant _MAX_BOUND_ERROR = 2e16;
-
-    uint256 private constant _DEFAULT_REFERENCE_BPT_PRICE = 0.4212e18;
-    uint256 private constant _DEFAULT_REFERENCE_WEIGHT_COMPLEMENT = 0.2e18;
-    uint256 private constant _DEFAULT_LOWER_BOUND_PERCENTAGE = 0.9e18;
-    uint256 private constant _DEFAULT_UPPER_BOUND_PERCENTAGE = 1.9e18;
  
     uint256 private constant _NUM_WEIGHT_TRIALS = 10;
 
