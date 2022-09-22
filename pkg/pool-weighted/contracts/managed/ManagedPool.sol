@@ -217,7 +217,14 @@ contract ManagedPool is ManagedPoolSettings {
 
     // Initialize
 
-    function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
+    function _onInitializePool(address sender, bytes memory userData)
+        internal
+        override
+        returns (uint256, uint256[] memory)
+    {
+        // Check allowlist for LPs, if applicable
+        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 

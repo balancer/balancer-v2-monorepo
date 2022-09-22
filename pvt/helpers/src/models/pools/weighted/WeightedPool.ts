@@ -542,14 +542,14 @@ export default class WeightedPool extends BasePool {
     return pool.setManagementAumFeePercentage(managementFee);
   }
 
-  async addAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+  async addAllowedAddress(from: SignerWithAddress, member: Account): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.addAllowedAddress(member);
+    return pool.addAllowedAddress(TypesConverter.toAddress(member));
   }
 
-  async removeAllowedAddress(from: SignerWithAddress, member: string): Promise<ContractTransaction> {
+  async removeAllowedAddress(from: SignerWithAddress, member: Account): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
-    return pool.removeAllowedAddress(member);
+    return pool.removeAllowedAddress(TypesConverter.toAddress(member));
   }
 
   async getMustAllowlistLPs(): Promise<boolean> {
