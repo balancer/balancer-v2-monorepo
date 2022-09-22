@@ -33,19 +33,6 @@ contract CircuitBreakerLibTest is Test {
  
     uint256 private constant _NUM_WEIGHT_TRIALS = 10;
 
-    function _roundTrip(CircuitBreakerLib.CircuitBreakerParams memory params)
-        private
-        view
-        returns (CircuitBreakerLib.CircuitBreakerParams memory)
-    {
-        // The setter overwrites all state, so the previous state doesn't matter
-        // If we find we need to set fields individually (e.g., only the bounds),
-        // we could add tests that the previous state was not altered.
-        bytes32 newPoolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
-
-        return CircuitBreakerLib.getCircuitBreakerFields(newPoolState);
-    }
-
     function testCircuitBreakerPrice(
         uint256 refBptPrice,
         uint256 weightComplement,
@@ -64,7 +51,11 @@ contract CircuitBreakerLibTest is Test {
             upperBoundPercentage: upperBound
         });
 
-        CircuitBreakerLib.CircuitBreakerParams memory result = _roundTrip(params);
+        // The setter overwrites all state, so the previous state doesn't matter
+        // If we find we need to set fields individually (e.g., only the bounds),
+        // we could add tests that the previous state was not altered.
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(bytes32(0), params);
+        CircuitBreakerLib.CircuitBreakerParams memory result = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
         assertEq(result.referenceBptPrice, refBptPrice);
         assertApproxEqRel(result.referenceWeightComplement, weightComplement, _MAX_RELATIVE_ERROR);
