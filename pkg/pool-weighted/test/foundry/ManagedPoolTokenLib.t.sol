@@ -36,6 +36,8 @@ contract ManagedPoolTokenLibTest is Test {
     uint256 private constant _MIN_DENORM_WEIGHT_SUM = 0.02e18;
     uint256 private constant _MAX_DENORM_WEIGHT_SUM = 50e18;
 
+    uint256 private constant _MAX_WEIGHT_REL_ERROR = 1e7; // 10^(-11)%
+
     MockManagedPoolTokenLib private mock;
 
     function setUp() external {
@@ -111,8 +113,8 @@ contract ManagedPoolTokenLibTest is Test {
             denormWeightSum
         );
 
-        assertApproxEqRel(recoveredStartWeight, normalizedStartWeight, 1e7);
-        assertApproxEqRel(recoveredEndWeight, normalizedEndWeight, 1e7);
+        assertApproxEqRel(recoveredStartWeight, normalizedStartWeight, _MAX_WEIGHT_REL_ERROR);
+        assertApproxEqRel(recoveredEndWeight, normalizedEndWeight, _MAX_WEIGHT_REL_ERROR);
     }
 
     function testWeightInterpolation(
@@ -155,7 +157,7 @@ contract ManagedPoolTokenLibTest is Test {
         uint256 interpolatedWeight = mock.getTokenWeight(newTokenState, pctProgress, denormWeightSum);
 
         // We don't expect an exact equality due to the rounding errors introduced in the denormalization process.
-        assertApproxEqRel(interpolatedWeight, expectedInterpolatedWeight, 1e7);
+        assertApproxEqRel(interpolatedWeight, expectedInterpolatedWeight, _MAX_WEIGHT_REL_ERROR);
     }
 
     function testInitializeToken(
@@ -185,7 +187,7 @@ contract ManagedPoolTokenLibTest is Test {
             (uint256 startWeight, uint256 endWeight) = mock.getTokenStartAndEndWeights(tokenState, denormWeightSum);
 
             assertEq(startWeight, endWeight);
-            assertApproxEqRel(startWeight, normalizedWeight, 1e7);
+            assertApproxEqRel(startWeight, normalizedWeight, _MAX_WEIGHT_REL_ERROR);
         } else {
             vm.expectRevert("BAL#001"); // SUB_OVERFLOW
             mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
@@ -225,7 +227,7 @@ contract ManagedPoolTokenLibTest is Test {
         assertApproxEqRel(
             mock.getMinimumTokenEndWeight(tokens, normalizedWeights, denormWeightSum),
             minNormalizedWeight,
-            1e7
+            _MAX_WEIGHT_REL_ERROR
         );
     }
 }
