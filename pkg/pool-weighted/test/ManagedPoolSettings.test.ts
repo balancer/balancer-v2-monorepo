@@ -1,23 +1,21 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { MAX_UINT256, ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MONTH,
   WEEK,
   DAY,
   MINUTE,
-  SECOND,
   advanceTime,
   advanceToTimestamp,
   currentTimestamp,
   receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import { BigNumberish, bn, FP_100_PCT, FP_ZERO, FP_ONE, fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
@@ -27,7 +25,7 @@ import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-import { random, range } from 'lodash';
+import { range } from 'lodash';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { Interface } from 'ethers/lib/utils';
 
@@ -50,7 +48,6 @@ describe('ManagedPoolSettings', function () {
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
   const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
-  const NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.8);
 
   const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
@@ -721,36 +718,6 @@ describe('ManagedPoolSettings', function () {
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);
-    });
-
-    describe('set management fee', () => {
-      context('when the sender is not the owner', () => {
-        it('non-owners cannot set the management fee', async () => {
-          await expect(
-            pool.setManagementSwapFeePercentage(other, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE)
-          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-        });
-      });
-      context('when the sender is the owner', () => {
-        it('the management fee can be set', async () => {
-          await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
-          expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
-        });
-
-        it('setting the management fee emits an event', async () => {
-          const receipt = await pool.setManagementSwapFeePercentage(owner, NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE);
-
-          expectEvent.inReceipt(await receipt.wait(), 'ManagementSwapFeePercentageChanged', {
-            managementSwapFeePercentage: NEW_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-          });
-
-          it('cannot be set above the maximum AUM fee', async () => {
-            await expect(pool.setManagementAumFeePercentage(owner, fp(0.2))).to.be.revertedWith(
-              'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE'
-            );
-          });
-        });
-      });
     });
 
     describe('management aum fee collection', () => {
