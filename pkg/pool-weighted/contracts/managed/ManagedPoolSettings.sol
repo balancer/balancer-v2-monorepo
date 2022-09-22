@@ -84,9 +84,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
     uint256 private _denormWeightSum;
 
-    // Percentage of swap fees that are allocated to the Pool owner, after protocol fees
-    uint256 private _managementSwapFeePercentage;
-
     // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
 
@@ -104,7 +101,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     );
     event SwapEnabledSet(bool swapEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementSwapFeePercentageChanged(uint256 managementSwapFeePercentage);
     event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
     event ManagementAumFeeCollected(uint256 bptAmount);
     event AllowlistAddressAdded(address indexed member);
@@ -122,7 +118,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
-        uint256 managementSwapFeePercentage;
         uint256 managementAumFeePercentage;
     }
 
@@ -154,8 +149,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
 
         // Validate and set initial fees
-        _setManagementSwapFeePercentage(params.managementSwapFeePercentage);
-
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
         // Write the scaling factors for each token into their token state.
@@ -565,31 +558,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         emit MustAllowlistLPsSet(mustAllowlistLPs);
     }
 
-    /**
-     * @notice Setter for the management swap fee percentage.
-     * @dev Attempting to collect swap fees in excess of the maximum permitted percentage will revert.
-     * Emits the ManagementSwapFeePercentageChanged event. This is a permissioned function.
-     * @param managementSwapFeePercentage - The new management swap fee percentage.
-     */
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
-        external
-        override
-        authenticate
-        whenNotPaused
-    {
-        _setManagementSwapFeePercentage(managementSwapFeePercentage);
-    }
-
-    function _setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) private {
-        _require(
-            managementSwapFeePercentage <= _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE,
-            Errors.MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE
-        );
-
-        _managementSwapFeePercentage = managementSwapFeePercentage;
-        emit ManagementSwapFeePercentageChanged(managementSwapFeePercentage);
-    }
-
     // AUM management fees
 
     /**
@@ -695,59 +663,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _mintPoolTokens(getOwner(), managerBPTAmount);
 
         return (protocolBptAmount, managerBPTAmount);
-    }
-
-    // Swap overrides - revert unless swaps are enabled
-
-    /**
-     * @notice Returns the management swap fee percentage as an 18-decimal fixed point number.
-     */
-    function getManagementSwapFeePercentage() external view returns (uint256) {
-        return _managementSwapFeePercentage;
-    }
-
-    function _payProtocolAndManagementFees(uint256 invariantGrowthRatio) internal {
-        // Calculate total BPT for the protocol and management fee
-        // The management fee percentage applies to the remainder,
-        // after the protocol fee has been collected.
-        // So totalFee = protocolFee + (1 - protocolFee) * managementFee
-        uint256 protocolSwapFeePercentage = getProtocolFeePercentageCache(ProtocolFeeType.SWAP);
-        uint256 managementSwapFeePercentage = _managementSwapFeePercentage;
-
-        if (protocolSwapFeePercentage == 0 && managementSwapFeePercentage == 0) {
-            return;
-        }
-
-        // Fees are bounded, so we don't need checked math
-        uint256 totalFeePercentage = protocolSwapFeePercentage +
-            (FixedPoint.ONE - protocolSwapFeePercentage).mulDown(managementSwapFeePercentage);
-
-        // No other balances are changing, so the other terms in the invariant will cancel out
-        // when computing the ratio. So this partial invariant calculation is sufficient.
-        // We pass the same value for total supply twice as we're measuring over a period in which the total supply
-        // has not changed.
-        uint256 supply = totalSupply();
-        uint256 totalBptAmount = InvariantGrowthProtocolSwapFees.calcDueProtocolFees(
-            invariantGrowthRatio,
-            supply,
-            supply,
-            totalFeePercentage
-        );
-
-        // Calculate the portion of the total fee due the protocol
-        // If the protocol fee were 30% and the manager fee 10%, the protocol would take 30% first.
-        // Then the manager would take 10% of the remaining 70% (that is, 7%), for a total fee of 37%
-        // The protocol would then earn 0.3/0.37 ~=81% of the total fee,
-        // and the manager would get 0.1/0.75 ~=13%.
-        uint256 protocolBptAmount = totalBptAmount.mulUp(protocolSwapFeePercentage.divUp(totalFeePercentage));
-
-        _payProtocolFees(protocolBptAmount);
-
-        // Pay the remainder in management fees
-        // This goes to the controller, which needs to be able to withdraw them
-        if (managementSwapFeePercentage > 0) {
-            _mintPoolTokens(getOwner(), totalBptAmount.sub(protocolBptAmount));
-        }
     }
 
     // Add/Remove tokens
@@ -997,7 +912,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setManagementSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
     }
 }

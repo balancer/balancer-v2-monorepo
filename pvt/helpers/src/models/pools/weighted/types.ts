@@ -24,7 +24,6 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
-  managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
   aumProtocolFeesCollector?: string;
   owner?: Account;
@@ -46,7 +45,6 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
   owner?: string;
@@ -209,7 +207,6 @@ export type ManagedPoolParams = {
   swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
 };
 
