@@ -33,7 +33,7 @@ contract CircuitBreakerLibTest is Test {
  
     uint256 private constant _NUM_WEIGHT_TRIALS = 10;
 
-    function testCircuitBreakerPrice(
+    function testReferenceParamsAndBoundRatios(
         uint256 refBptPrice,
         uint256 weightComplement,
         uint256 lowerBound,
@@ -80,7 +80,7 @@ contract CircuitBreakerLibTest is Test {
         assertEq(cachedUpperBptPriceBoundary, initialUpperBptPriceBoundary);
     }
 
-    function testCircuitBreakerBounds(
+    function testDynamicBoundRatios(
         uint256 refBptPrice,
         uint256 initialWeightComplement,
         uint256 newWeightComplement,
