@@ -603,7 +603,7 @@ export default class WeightedPool extends BasePool {
 
   async addToken(
     from: SignerWithAddress,
-    token: Token,
+    token: Token | string,
     assetManager: Account,
     normalizedWeight: BigNumberish,
     mintAmount?: BigNumberish,
@@ -612,7 +612,7 @@ export default class WeightedPool extends BasePool {
     return this.instance
       .connect(from)
       .addToken(
-        token.address,
+        TypesConverter.toAddress(token),
         accountToAddress(assetManager),
         normalizedWeight,
         mintAmount ?? 0,

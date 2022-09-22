@@ -22,6 +22,7 @@ import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/wei
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
+import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
@@ -827,6 +828,20 @@ describe('ManagedPoolSettings', function () {
 
           itCollectsAUMFeesCorrectly(async () => {
             const tx = await pool.collectAumManagementFees(owner);
+            return tx.wait();
+          });
+        });
+      });
+
+      context('on token addition', () => {
+        context('after pool initialization', () => {
+          sharedBeforeEach('initialize pool', async () => {
+            await pool.init({ from: other, initialBalances });
+          });
+
+          itCollectsAUMFeesCorrectly(async () => {
+            const token = await Token.create('NEW');
+            const tx = await pool.addToken(owner, token, ZERO_ADDRESS, fp(0.02));
             return tx.wait();
           });
         });
