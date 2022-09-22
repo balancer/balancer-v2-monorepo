@@ -966,7 +966,7 @@ describe('BasePool', function () {
         });
       });
 
-      it('burns minimum bpt', async () => {
+      it('locks the minimum bpt in the zero address', async () => {
         const receipt = await (
           await vault.connect(sender).joinPool(poolId, sender.address, recipient.address, request)
         ).wait();
