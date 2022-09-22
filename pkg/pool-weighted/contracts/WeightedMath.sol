@@ -206,7 +206,7 @@ library WeightedMath {
                 amountInWithoutFee = amountsIn[i].sub(swapFee);
             } else {
                 amountInWithoutFee = amountsIn[i];
-                
+
                 // If a token's amount in is not being charged a swap fee then it might be zero (e.g. when joining a
                 // Pool with only a subset of tokens). In this case, `balanceRatio` will equal `FixedPoint.ONE`, and
                 // the `invariantRatio` will not change at all. We therefore skip to the next iteration, avoiding
