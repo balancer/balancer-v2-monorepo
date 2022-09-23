@@ -9,9 +9,10 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { SwapKind } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -43,18 +44,21 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
+  async function deployPool(overrides: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
+    const params = {
+      vault,
+      tokens: poolTokens,
+      weights: poolWeights,
+      owner: owner.address,
+      poolType: WeightedPoolType.MANAGED_POOL,
+      ...overrides,
+    };
+    return WeightedPool.create(params);
+  }
+
   describe('when initialized with an LP allowlist', () => {
     sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        vault,
-        swapEnabledOnStart: true,
-        mustAllowlistLPs: true,
-        owner: owner.address,
-      };
-      pool = await WeightedPool.create(params);
+      pool = await deployPool({ mustAllowlistLPs: true });
     });
 
     context('when an address is added to the allowlist', () => {
@@ -112,16 +116,41 @@ describe('ManagedPool', function () {
   });
 
   describe('with valid creation parameters', () => {
+    context('pool registration', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool();
+      });
+
+      it('returns pool ID registered by the vault', async () => {
+        const poolId = await pool.getPoolId();
+        const { address: poolAddress } = await vault.getPool(poolId);
+        expect(poolAddress).to.be.eq(pool.address);
+      });
+
+      it('registers with the MinimalSwapInfo specialization', async () => {
+        const { specialization } = await vault.getPool(pool.poolId);
+        expect(specialization).to.be.eq(PoolSpecialization.MinimalSwapInfoPool);
+      });
+
+      it('registers all the expected tokens', async () => {
+        const { tokens } = await vault.getPoolTokens(pool.poolId);
+        expect(tokens).to.be.deep.eq(poolTokens.addresses);
+      });
+
+      it('registers all the expected asset managers', async () => {
+        await poolTokens.asyncEach(async (token) => {
+          const { assetManager } = await vault.getPoolTokenInfo(pool.poolId, token);
+          expect(assetManager).to.be.eq(ZERO_ADDRESS);
+        });
+      });
+    });
+
     context('when initialized with swaps disabled', () => {
       sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
+        pool = await deployPool({
+          vault: undefined,
           swapEnabledOnStart: false,
-        };
-        pool = await WeightedPool.create(params);
+        });
       });
 
       it('swaps are blocked', async () => {
@@ -131,14 +160,10 @@ describe('ManagedPool', function () {
 
     context('when initialized with swaps enabled', () => {
       sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          vault,
-          poolType: WeightedPoolType.MANAGED_POOL,
+        pool = await deployPool({
+          vault: undefined,
           swapEnabledOnStart: true,
-        };
-        pool = await WeightedPool.create(params);
+        });
       });
 
       it('swaps are not blocked', async () => {
@@ -174,15 +199,9 @@ describe('ManagedPool', function () {
   describe('permissioned actions', () => {
     describe('enable/disable swaps', () => {
       sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          vault,
-          poolType: WeightedPoolType.MANAGED_POOL,
+        pool = await deployPool({
           swapEnabledOnStart: true,
-        };
-        pool = await WeightedPool.create(params);
+        });
       });
 
       context('when the sender is the owner', () => {
@@ -267,15 +286,7 @@ describe('ManagedPool', function () {
     const MAX_SWAP_FEE_PERCENTAGE = fp(0.8);
 
     sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-      };
-      pool = await WeightedPool.create(params);
+      pool = await deployPool({ vault: undefined, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE });
       await pool.init({ from: owner, initialBalances });
     });
 
@@ -307,17 +318,7 @@ describe('ManagedPool', function () {
     const managementAumFeePercentage = fp(0.01);
 
     sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-        vault,
-        swapFeePercentage,
-        managementAumFeePercentage,
-      };
-      pool = await WeightedPool.create(params);
+      pool = await deployPool({ swapFeePercentage, managementAumFeePercentage });
     });
 
     describe('management aum fee collection', () => {
