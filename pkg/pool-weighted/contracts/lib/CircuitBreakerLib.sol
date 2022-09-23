@@ -77,9 +77,9 @@ library CircuitBreakerLib {
     // When the circuit breaker is set, store the "reference" values of parameters needed to compute the dynamic
     // BPT price bounds for validating operations.
     //
-    // The reference parameters include the BPT price, weight complement (_denormWeightSum - weight), and bound
-    // conversion ratios. These ratios are used to convert percentage bounds into BPT prices that can be directly
-    // compared to the "runtime" BPT prices.
+    // The reference parameters include the BPT price, weight complement (_denormWeightSum - weight)/_denormWeightSum,
+    // and bound conversion ratios. These ratios are used to convert percentage bounds into BPT prices that can be
+    // directly compared to the "runtime" BPT prices.
     //
     // Since the price bounds shift along with the token weight, in general these bound ratios would need to be
     // computed every time. However, if the weight of the token and composition of the pool have not changed since
@@ -176,7 +176,8 @@ library CircuitBreakerLib {
      * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentWeightComplement - The complement of this token's weight: (_denormWeightSum - token weight)
+     * @param currentWeightComplement - The complement of this token's weight, generally given by:
+     * (_denormWeightSum - token weight)/_denormWeightSum.
      * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
      */
     function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightComplement)
@@ -228,7 +229,7 @@ library CircuitBreakerLib {
      * @param params - CircuitBreakerParams has the following components:
      * - referenceBptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
-     * - referenceWeightComplement: This is _denormWeightSum - currentWeight of the token.
+     * - referenceWeightComplement: This is (_denormWeightSum - currentWeight)/_denormWeightSum of the token.
      * - lowerBoundPercentage: The value of the lower bound. Any operation that would cause the effective
      *   BPT Price to fall below lowerBoundRatio * referenceBptPrice should revert.
      * - upperBoundPercentage: The value of the upper bound. If non-zero, any operation that would cause the
