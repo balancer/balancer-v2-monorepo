@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
@@ -126,11 +127,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     )
         BasePool(
             vault,
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+            PoolRegistrationLib.registerPoolWithAssetManagers(
+                vault,
+                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+                params.tokens,
+                params.assetManagers
+            ),
             params.name,
             params.symbol,
-            params.tokens,
-            params.assetManagers,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
