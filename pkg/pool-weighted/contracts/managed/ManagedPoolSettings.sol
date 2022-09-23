@@ -72,14 +72,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
-    // We need to work with normalized weights (i.e. they should add up to 100%), but storing normalized weights
-    // would require updating all weights whenever one of them changes, for example in an add or remove token
-    // operation. Instead, we keep track of the sum of all denormalized weights, and dynamically normalize them
-    // for I/O by multiplying or dividing by the `_denormWeightSum`.
-    //
-    // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
-    uint256 private _denormWeightSum;
-
     // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
 
@@ -168,10 +160,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.normalizedWeights,
             params.tokens
         );
-
-        // Weights are normalized, so initialize the denormalized weight sum to ONE. The denormalized weight sum will
-        // only deviate from ONE when tokens are added or removed, and are renormalized on the next weight change.
-        _denormWeightSum = FixedPoint.ONE;
 
         poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
             poolState,
@@ -285,7 +273,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
      */
     function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress, _denormWeightSum);
+        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress);
     }
 
     /**
@@ -293,16 +281,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      */
     function _getNormalizedWeights(IERC20[] memory tokens) internal view returns (uint256[] memory normalizedWeights) {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 denormWeightSum = _denormWeightSum;
 
         uint256 numTokens = tokens.length;
         normalizedWeights = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; i++) {
-            normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(
-                _tokenState[tokens[i]],
-                weightChangeProgress,
-                denormWeightSum
-            );
+            normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(_tokenState[tokens[i]], weightChangeProgress);
         }
     }
 
@@ -312,15 +295,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     function getNormalizedWeights() public view returns (uint256[] memory) {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         return _getNormalizedWeights(tokens);
-    }
-
-    /**
-     * @dev Returns the current sum of denormalized weights.
-     * @dev The normalization factor, which is used to efficiently scale weights when adding and removing.
-     * tokens. This value is an internal implementation detail and typically useless from the outside.
-     */
-    function getDenormalizedWeightSum() public view returns (uint256) {
-        return _denormWeightSum;
     }
 
     /**
@@ -349,12 +323,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         startWeights = new uint256[](totalTokens);
         endWeights = new uint256[](totalTokens);
 
-        uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < totalTokens; i++) {
-            (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(
-                _tokenState[tokens[i]],
-                denormWeightSum
-            );
+            (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(_tokenState[tokens[i]]);
         }
     }
 
@@ -403,9 +373,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             endWeights,
             tokens
         );
-
-        // `_startGradualWeightChange` renormalizes the weights, so we reset `_denormWeightSum` to ONE.
-        _denormWeightSum = FixedPoint.ONE;
     }
 
     /**
@@ -422,22 +389,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     ) internal returns (bytes32) {
         uint256 normalizedSum;
 
-        // As we're writing all the weights to storage again we have the opportunity to normalize them by an arbitrary
-        // value. We then can take this opportunity to reset the `_denormWeightSum` to `FixedPoint.ONE` by passing it
-        // into `ManagedPoolTokenLib.setTokenWeight`.
-        _denormWeightSum = FixedPoint.ONE;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(
-                _tokenState[token],
-                startWeights[i],
-                endWeight,
-                FixedPoint.ONE
-            );
+            _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(_tokenState[token], startWeights[i], endWeight);
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -702,14 +660,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // We need to check that both the new weight is valid, and that it won't make any of the existing weights
         // invalid.
-        uint256 weightSumAfterAdd = _validateNewWeight(normalizedWeight);
+        _validateNewWeight(normalizedWeight);
 
         // Adding the new token to the pool decreases all other normalized weights to 'make room' for the new one. This
         // is achieved efficiently by simply updating the sum of the denormalized weights.
-        _denormWeightSum = weightSumAfterAdd;
+        // _denormWeightSum = weightSumAfterAdd;
 
         // Finally, we store the new token's weight and scaling factor.
-        _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
+        _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight);
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
@@ -726,7 +684,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         emit TokenAdded(token, normalizedWeight);
     }
 
-    function _validateNewWeight(uint256 normalizedWeight) private view returns (uint256) {
+    function _validateNewWeight(uint256 normalizedWeight) private view {
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
 
         // Sanity check that the new token will make up less than 100% of the Pool.
@@ -744,21 +702,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // As we're working with normalized weights, `totalWeight` is equal to 1.
         //
         // We can then calculate the new denormalized weight sum by applying this ratio to the old sum.
-        uint256 weightSumAfterAdd = _denormWeightSum.divDown(FixedPoint.ONE - normalizedWeight);
+        // uint256 weightSumAfterAdd = _denormWeightSum.divDown(FixedPoint.ONE - normalizedWeight);
 
         // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
         // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.
         // If any would fail this check, it would be the token with the lowest weight, so we search through all
         // tokens to find the minimum weight and normalize it with the new value for `denormWeightSum`.
-        uint256 minimumNormalizedWeight = ManagedPoolTokenLib.getMinimumTokenEndWeight(
-            _tokenState,
-            tokens,
-            weightSumAfterAdd
-        );
-        // Now we know the minimum weight we can check that it doesn't get pushed below the minimum.
-        _require(minimumNormalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        return weightSumAfterAdd;
     }
 
     /**
@@ -813,7 +762,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // State cleanup is simply done by removing the portion of the denormalized weight that corresponds to the token
         // being removed, and then deleting all token-specific state.
-        _denormWeightSum -= tokenNormalizedWeight.mulDown(_denormWeightSum);
+        // _denormWeightSum -= tokenNormalizedWeight.mulDown(_denormWeightSum);
         delete _tokenState[token];
 
         if (burnAmount > 0) {
