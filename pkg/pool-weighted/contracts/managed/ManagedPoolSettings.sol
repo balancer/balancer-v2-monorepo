@@ -927,17 +927,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * If there is an ongoing gradual weight update, they will shift up or down with the current weight.
      */
     function getCurrentCircuitBreakerBounds(IERC20 token) public view returns (uint256, uint256) {
-        bytes32 circuitBreakerState = _circuitBreakerState[token];
+        (, uint256 weightComplement) = _getNormalizedWeightAndComplement(token);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
-        uint256 denormWeightSum = _denormWeightSum;
-
-        return
-            CircuitBreakerLib.getCurrentCircuitBreakerBounds(
-                circuitBreakerState,
-                (denormWeightSum - normalizedWeight).divDown(denormWeightSum)
-            );
+        return CircuitBreakerLib.getCurrentCircuitBreakerBounds(_circuitBreakerState[token], weightComplement);
     }
 
     /**
@@ -961,14 +953,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage
     ) private {
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
-        uint256 denormWeightSum = _denormWeightSum;
+        (uint256 normalizedWeight, uint256 weightComplement) = _getNormalizedWeightAndComplement(token);
 
         // Note that `getBptPrice` will revert if the token is invalid.
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
             referenceBptPrice: getBptPrice(token, normalizedWeight),
-            referenceWeightComplement: (denormWeightSum - normalizedWeight).divDown(denormWeightSum),
+            referenceWeightComplement: weightComplement,
             lowerBoundPercentage: lowerBoundPercentage,
             upperBoundPercentage: upperBoundPercentage
         });
@@ -1000,6 +990,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
 
         return totalSupply().mulUp(normalizedWeight).divDown(tokenBalance);
+    }
+
+    // Return the weight and complement, needed for multiple calculations.
+    function _getNormalizedWeightAndComplement(IERC20 token) internal view returns(uint256, uint256) {
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
+        uint256 denormWeightSum = _denormWeightSum;
+
+        return (normalizedWeight, (denormWeightSum - normalizedWeight).divDown(denormWeightSum));
     }
 
     // Misc
