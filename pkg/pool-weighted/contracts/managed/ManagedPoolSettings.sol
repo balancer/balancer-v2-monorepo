@@ -29,6 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
+import "../lib/CircuitBreakerLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -107,6 +108,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
     event TokenRemoved(IERC20 indexed token);
+    event CircuitBreakerSet(IERC20 indexed token, uint256 lowerBoundPercentage, uint256 upperBoundPercentage);
 
     struct NewPoolParams {
         string name;
@@ -902,6 +904,106 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
     }
 
+    // Circuit Breakers
+
+    /**
+     * @notice Return the circuit breaker parameters for the given token.
+     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
+     * along with the percentage bounds. To get the current BPT price boundaries needed to check whether the
+     * circuit breaker should trip, call `getCurrentCircuitBreakerBounds`.
+     */
+    function getCircuitBreakerFields(IERC20 token)
+        external
+        view
+        returns (CircuitBreakerLib.CircuitBreakerParams memory)
+    {
+        return CircuitBreakerLib.getCircuitBreakerFields(_circuitBreakerState[token]);
+    }
+
+    /**
+     * @notice Get the current BPT price bounds for the given token.
+     * @dev The bounds are set as percentages, but retrieved as BPT prices which can be directly compared to the
+     * current BPT price. Though the percentages are fixed when the breaker is set, the BPT price bounds are dynamic.
+     * If there is an ongoing gradual weight update, they will shift up or down with the current weight.
+     */
+    function getCurrentCircuitBreakerBounds(IERC20 token) external view returns (uint256, uint256) {
+        bytes32 circuitBreakerState = _circuitBreakerState[token];
+        if (circuitBreakerState == 0) {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        uint256 tokenWeight = _getNormalizedWeight(token, weightChangeProgress);
+        uint256 denormWeightSum = _denormWeightSum;
+
+        return
+            CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+                circuitBreakerState,
+                (denormWeightSum - tokenWeight).divDown(denormWeightSum)
+            );
+    }
+
+    /**
+     * @notice Set a circuit breaker for a token.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
+     * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
+     * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
+     * more relative to the rest of the pool.
+     */
+    function setCircuitBreaker(
+        IERC20 token,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    ) external authenticate whenNotPaused {
+        _setCircuitBreaker(token, lowerBoundPercentage, upperBoundPercentage);
+    }
+
+    // Compute the reference values, then pass them along with the bounds to the library.
+    function _setCircuitBreaker(
+        IERC20 token,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    ) private {
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
+        uint256 denormWeightSum = _denormWeightSum;
+
+        // Note that `getBptPrice` will revert if the token is invalid.
+        CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
+            referenceBptPrice: getBptPrice(token, normalizedWeight),
+            referenceWeightComplement: (denormWeightSum - normalizedWeight).divDown(denormWeightSum),
+            lowerBoundPercentage: lowerBoundPercentage,
+            upperBoundPercentage: upperBoundPercentage
+        });
+
+        // The library will validate the lower/upper bounds
+        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(params);
+
+        emit CircuitBreakerSet(token, lowerBoundPercentage, upperBoundPercentage);
+    }
+
+    /**
+     * @notice Get the price of a single token in terms of BPT, given the weight.
+     * @dev Returns an 18-decimal floating point number.
+     */
+    function getBptPrice(IERC20 token, uint256 normalizedWeight) public view returns (uint256) {
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
+        uint256 tokenBalance;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == token) {
+                tokenBalance = _upscale(balances[i], ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]));
+                break;
+            }
+        }
+
+        if (tokenBalance == 0) {
+            _revert(Errors.INVALID_TOKEN);
+        }
+
+        return totalSupply().mulUp(normalizedWeight).divDown(tokenBalance);
+    }
+
     // Misc
 
     /**
@@ -918,7 +1020,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
+            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setCircuitBreaker.selector));
     }
 
     /**
