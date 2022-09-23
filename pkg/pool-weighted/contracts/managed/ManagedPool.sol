@@ -86,24 +86,19 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-        uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
-
         if (request.tokenOut == IERC20(this)) {
             // Do a joinSwap
         } else if (request.tokenIn == IERC20(this)) {
             // Do an exitSwap
         } else {
-            uint256 tokenInWeight = _getNormalizedWeight(request.tokenIn, weightChangeProgress);
-            uint256 tokenOutWeight = _getNormalizedWeight(request.tokenOut, weightChangeProgress);
             return
                 _onTokenSwap(
                     request,
                     balanceTokenIn,
                     balanceTokenOut,
-                    tokenInWeight,
-                    tokenOutWeight,
-                    swapFeePercentage.complement()
+                    poolState,
+                    _getTokenState(request.tokenIn),
+                    _getTokenState(request.tokenOut)
                 );
         }
     }
@@ -121,15 +116,24 @@ contract ManagedPool is ManagedPoolSettings {
         SwapRequest memory request,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut,
-        uint256 tokenInWeight,
-        uint256 tokenOutWeight,
-        uint256 swapFeeComplement
+        bytes32 poolState,
+        bytes32 tokenInState,
+        bytes32 tokenOutState
     ) internal view returns (uint256) {
-        uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
-        uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
 
+        // TODO: Once all weights are normalized, change to
+        // uint256 tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress)
+        // uint256 tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress)
+        uint256 tokenInWeight = _getNormalizedWeight(request.tokenIn, weightChangeProgress);
+        uint256 tokenOutWeight = _getNormalizedWeight(request.tokenOut, weightChangeProgress);
+
+        uint256 scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
+        uint256 scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.

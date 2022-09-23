@@ -195,6 +195,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         return _poolState;
     }
 
+    function _getTokenState(IERC20 token) internal view returns (bytes32) {
+        return _tokenState[token];
+    }
+
     // Swap fees
 
     /**
@@ -834,10 +838,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     // Scaling Factors
-
-    function _scalingFactor(IERC20 token) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]);
-    }
 
     function getScalingFactors() external view override returns (uint256[] memory) {
         (IERC20[] memory tokens, ) = _getPoolTokens();
