@@ -22,16 +22,13 @@ import "../../contracts/lib/CircuitBreakerLib.sol";
 contract CircuitBreakerLibTest is Test {
     using FixedPoint for uint256;
 
-    uint256 private constant _MAX_BOUND_PERCENTAGE = 2e18; // 2.0 (max uncompressed is 10)
-    uint256 private constant _MINIMUM_LOWER_BOUND = 1e17;  // 0.1
+    uint256 private constant _MINIMUM_BOUND_PERCENTAGE = 1e17;  // 0.1
+    uint256 private constant _MAX_BOUND_PERCENTAGE = 2e18; // 2.0
     uint256 private constant _MAX_WEIGHT_COMPLEMENT = 3.3e18;
     uint256 private constant _MIN_BPT_PRICE = 1e6;
 
     uint256 private constant _MAX_RELATIVE_ERROR = 1e16;
-    uint256 private constant _MAX_BOUND_ERROR = 2e16;
     uint256 private constant _MAX_BPT_PRICE = type(uint112).max;
- 
-    uint256 private constant _NUM_WEIGHT_TRIALS = 10;
 
     function testReferenceParamsAndBoundRatios(
         uint256 refBptPrice,
@@ -40,8 +37,8 @@ contract CircuitBreakerLibTest is Test {
         uint256 upperBound
     ) public {
         refBptPrice = bound(refBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
-        weightComplement = bound(weightComplement, _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
-        lowerBound = bound(lowerBound, _MINIMUM_LOWER_BOUND, FixedPoint.ONE);
+        weightComplement = bound(weightComplement, _MINIMUM_BOUND_PERCENTAGE, _MAX_WEIGHT_COMPLEMENT);
+        lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
 
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
@@ -59,8 +56,8 @@ contract CircuitBreakerLibTest is Test {
 
         assertEq(result.referenceBptPrice, refBptPrice);
         assertApproxEqRel(result.referenceWeightComplement, weightComplement, _MAX_RELATIVE_ERROR);
-        assertApproxEqRel(result.lowerBoundPercentage, lowerBound, _MAX_BOUND_ERROR);
-        assertApproxEqRel(result.upperBoundPercentage, upperBound, _MAX_BOUND_ERROR);
+        assertApproxEqRel(result.lowerBoundPercentage, lowerBound, _MAX_RELATIVE_ERROR);
+        assertApproxEqRel(result.upperBoundPercentage, upperBound, _MAX_RELATIVE_ERROR);
 
         bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(params);
         (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
@@ -89,10 +86,10 @@ contract CircuitBreakerLibTest is Test {
     ) public {
         // With refBptPrice ~ 0, rounding errors make it fail
         refBptPrice = bound(refBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
-        lowerBound = bound(lowerBound, _MINIMUM_LOWER_BOUND, FixedPoint.ONE);
+        lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
-        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
-        newWeightComplement = bound(newWeightComplement, _MINIMUM_LOWER_BOUND, _MAX_WEIGHT_COMPLEMENT);
+        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_BOUND_PERCENTAGE, _MAX_WEIGHT_COMPLEMENT);
+        newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, _MAX_WEIGHT_COMPLEMENT);
 
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
             referenceBptPrice: refBptPrice,
