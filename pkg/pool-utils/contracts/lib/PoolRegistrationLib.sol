@@ -78,7 +78,7 @@ library PoolRegistrationLib {
         IVault.PoolSpecialization specialization,
         IERC20[] memory tokens,
         address[] memory assetManagers
-    ) internal returns (bytes32) {
+    ) private returns (bytes32) {
         bytes32 poolId = vault.registerPool(specialization);
 
         // We don't need to check that tokens and assetManagers have the same length, since the Vault already performs
