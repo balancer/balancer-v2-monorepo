@@ -24,7 +24,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
@@ -117,28 +116,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 managementAumFeePercentage;
     }
 
-    constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    )
-        BasePool(
-            vault,
-            PoolRegistrationLib.registerPoolWithAssetManagers(
-                vault,
-                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                params.tokens,
-                params.assetManagers
-            ),
-            params.name,
-            params.symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
-        )
+    constructor(NewPoolParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
         ProtocolFeeCache(protocolFeeProvider)
     {
         uint256 totalTokens = params.tokens.length;
