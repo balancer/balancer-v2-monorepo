@@ -28,6 +28,7 @@ describe('ManagedPool', function () {
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
+  const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT));
   const initialBalances = Array(TOKEN_COUNT).fill(fp(1000));
