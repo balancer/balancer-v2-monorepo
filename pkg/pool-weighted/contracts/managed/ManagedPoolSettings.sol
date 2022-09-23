@@ -33,6 +33,8 @@ import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
 
+import "hardhat/console.sol";
+
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
@@ -635,79 +637,89 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * Emits the TokenAdded event.
      *
-     * @param token - The ERC20 token to be added to the Pool.
+     * @param newToken - The ERC20 token to be added to the Pool.
      * @param assetManager - The Asset Manager for the token.
-     * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
+     * @param newTokenNormalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
      * @param recipient - The address to receive the BPT minted by the Pool.
      */
     function addToken(
-        IERC20 token,
+        IERC20 newToken,
         address assetManager,
-        uint256 normalizedWeight,
+        uint256 newTokenNormalizedWeight,
         uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused {
+    ) external authenticate whenNotPaused nonReentrant {
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
-
-        // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
-        // Checking for the validity of the new weight would otherwise be much more complicated.
-        _ensureNoWeightChange();
 
         // Total supply is potentially changing so we collect AUM fees.
         _collectAumManagementFees(supply);
 
-        // We need to check that both the new weight is valid, and that it won't make any of the existing weights
-        // invalid.
-        _validateNewWeight(normalizedWeight);
+        // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
+        // change and would override an existing one, and b) any previous weight changes would be incomplete since they
+        // wouldn't include the new token.
+        _ensureNoWeightChange();
 
-        // Adding the new token to the pool decreases all other normalized weights to 'make room' for the new one. This
-        // is achieved efficiently by simply updating the sum of the denormalized weights.
-        // _denormWeightSum = weightSumAfterAdd;
+        // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
+        // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
+        // initial balance and restore regular operation.
+        //
+        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
+        // try to register it again.
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), newToken, assetManager);
 
-        // Finally, we store the new token's weight and scaling factor.
-        _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight);
+        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // since we need to:
+        //  a) initialize the state of the new token
+        //  b) adjust the weights of all other tokens
+
+        // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
+        // (and relies instead on the Vault for this), so we simply store the token-specific information.
+        _tokenState[newToken] = ManagedPoolTokenLib.initializeTokenState(newToken, newTokenNormalizedWeight);
+
+        // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
+        // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.
+        // For example, if a  0.25/0.75 Pool gets added a token with a weight of 0.80, the final weights would be
+        // 0.05/0.15/0.80, where 0.05 = 0.25 * (1 - 0.80) and 0.15 = 0.75 * (1 - 0.80).
+
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
+
+        uint256[] memory currentWeights = _getNormalizedWeights(tokens);
+
+        uint256[] memory newWeights = new uint256[](tokens.length);
+        uint256 newWeightSum = 0;
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == newToken) {
+                newWeights[i] = newTokenNormalizedWeight;
+            } else {
+                newWeights[i] = currentWeights[i].mulDown(FixedPoint.ONE.sub(newTokenNormalizedWeight));
+            }
+
+            newWeightSum = newWeightSum.add(newWeights[i]);
+        }
+
+        if (newWeightSum < FixedPoint.ONE) {
+            newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
+        }
+
+        // `_startGradualWeightChange` will perform all requierd validation on the new weights, so we don't need to
+        // worry about that here.
+        _poolState = _startGradualWeightChange(
+            _poolState,
+            block.timestamp,
+            block.timestamp,
+            newWeights,
+            newWeights,
+            tokens
+        );
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
         }
 
-        // Once we've updated the internal state, we register the token in the Vault. This makes the Pool enter an
-        // invalid state, since one of its tokens has a balance of zero (making the invariant also zero). The Asset
-        // Manager must be used to deposit some initial balance and restore regular operation.
-        //
-        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
-        // try to register it again.
-        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, assetManager);
-
-        emit TokenAdded(token, normalizedWeight);
-    }
-
-    function _validateNewWeight(uint256 normalizedWeight) private view {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        // Sanity check that the new token will make up less than 100% of the Pool.
-        _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
-        // Make sure the new token is above the minimum weight.
-        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        uint256 numTokens = tokens.length;
-        _require(numTokens + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
-
-        // The growth in the total weight of the pool can be calculated by:
-        //
-        // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
-        //
-        // As we're working with normalized weights, `totalWeight` is equal to 1.
-        //
-        // We can then calculate the new denormalized weight sum by applying this ratio to the old sum.
-        // uint256 weightSumAfterAdd = _denormWeightSum.divDown(FixedPoint.ONE - normalizedWeight);
-
-        // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
-        // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.
-        // If any would fail this check, it would be the token with the lowest weight, so we search through all
-        // tokens to find the minimum weight and normalize it with the new value for `denormWeightSum`.
+        emit TokenAdded(newToken, newTokenNormalizedWeight);
     }
 
     /**

@@ -119,9 +119,27 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             it("reverts if the new token's weight is too high", async () => {
-              const weightTooHigh = fp(1);
+              const weightTooHigh = fp(0.99);
+              // We get a MIN_WEIGHT error because the large weight causes for one of the other tokens to end up below
+              // the minimum weight. The maximum valid weight depends on the current weights.
               await expect(pool.addToken(owner, newToken, assetManager, weightTooHigh)).to.be.revertedWith(
-                'MAX_WEIGHT'
+                'MIN_WEIGHT'
+              );
+            });
+
+            it("reverts if the new token's weight is the maximum weight", async () => {
+              const invalidWeight = fp(1);
+              // We get a MIN_WEIGHT error because the large weight causes for one of the other tokens to end up below
+              // the minimum weight - there's no room for any other weight.
+              await expect(pool.addToken(owner, newToken, assetManager, invalidWeight)).to.be.revertedWith(
+                'MIN_WEIGHT'
+              );
+            });
+
+            it("reverts if the new token's weight is above the maximum weight", async () => {
+              const invalidWeight = fp(1).add(1);
+              await expect(pool.addToken(owner, newToken, assetManager, invalidWeight)).to.be.revertedWith(
+                'SUB_OVERFLOW'
               );
             });
 
@@ -236,7 +254,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
               expect(afterAddWeights[afterAddTokens.indexOf(newToken.address)]).to.equalWithError(
                 normalizedWeight,
-                0.00001
+                1e-12
               );
             });
 
@@ -262,10 +280,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
               // In this test, we make no assumptions about the internal behavior of the pool and simply check the
               // observable state: the weights should roughly add up to fp(1), and their old ratios should remain
 
-              expect(afterTokenWeights.reduce((sum, tokenData) => sum.add(tokenData.weight), bn(0))).to.equalWithError(
-                fp(1),
-                0.000001
-              );
+              expect(afterTokenWeights.reduce((sum, tokenData) => sum.add(tokenData.weight), bn(0))).to.equal(fp(1));
 
               beforeTokenWeights.forEach((someToken) => {
                 beforeTokenWeights
@@ -280,23 +295,9 @@ describe('ManagedPoolSettings - add/remove token', () => {
                       afterTokenWeights[otherTokenAfterIndex].weight
                     );
 
-                    expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
+                    expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 1e-12);
                   });
               });
-            });
-
-            it('updates the denormalized sum correctly', async () => {
-              const beforeSum = await pool.instance.getDenormalizedWeightSum();
-              const normalizedWeight = fp(0.1);
-              const weightSumRatio = fpDiv(FP_ONE, FP_ONE.sub(normalizedWeight));
-              const expectedDenormWeightSum = fpMul(beforeSum, weightSumRatio);
-
-              await pool.addToken(owner, newToken, assetManager, fp(0.1));
-
-              expect(await pool.instance.getDenormalizedWeightSum()).to.equalWithError(
-                expectedDenormWeightSum,
-                0.000001
-              );
             });
 
             it('emits an event', async () => {
