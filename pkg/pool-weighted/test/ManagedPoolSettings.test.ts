@@ -431,6 +431,7 @@ describe('ManagedPoolSettings', function () {
 
         context('with invalid parameters', () => {
           let now: BigNumber;
+          const endWeights = poolWeights.map((weight, i) => (i % 2 == 0 ? weight.add(fp(0.02)) : weight.sub(fp(0.02))));
 
           sharedBeforeEach(async () => {
             now = await currentTimestamp();
@@ -463,6 +464,22 @@ describe('ManagedPoolSettings', function () {
             await expect(
               pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
             ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
+          });
+
+          it('fails with mismatched token length', async () => {
+            const badTokens = [...poolTokens.addresses].concat(ZERO_ADDRESS);
+
+            await expect(
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), endWeights, badTokens)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with mismatched tokens', async () => {
+            const badTokens = [...poolTokens.addresses].reverse();
+
+            await expect(
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), endWeights, badTokens)
+            ).to.be.revertedWith('TOKENS_MISMATCH');
           });
         });
 
