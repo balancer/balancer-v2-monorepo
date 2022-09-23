@@ -39,6 +39,18 @@ import "../lib/ValueCompression.sol";
  * (Note that this only applies *if* the pool is balanced (a condition that cannot be checked by the pool without
  * accessing price oracles.)
  *
+ * We need to use the BPT price as the measure to ensure we account for the change relative to the rest of
+ * the pool, which could have many other tokens. The drop detected by circuit breakers is analogous to
+ * impermanent loss: it is relative to the performance of the other tokens. If the entire market tanks and
+ * all token balances go down together, the *relative* change would be zero, and the breaker would not be
+ * triggered: even though the external price might have dropped 50 or 70%. It is only the *relative* movement
+ * compared to the rest of the pool that matters.
+ *
+ * If we have tokens A, B, and C, If A drops 20% and B and C are unchanged, that's a simple 20% drop for A.
+ * However, if A is unchanged and C increases 25%, that would also be a 20% "drop" for A 1 / 1.25 = 0.8.
+ * The breaker might register a 20% drop even if both go up - if our target token lags the market. For
+ * instance, if A goes up 60% and B and C double, 1.6 / 2 = 0.8.
+ *
  * Since BPT prices are not intuitive - and there is a very non-linear relationship between "spot" prices and
  * BPT prices - circuit breakers are set using simple percentages. Intuitively, a lower bound of 0.8 means the
  * token can lose 20% of its value before triggering the circuit breaker, and an upper bound of 3.0 means it
@@ -126,7 +138,34 @@ library CircuitBreakerLib {
      *
      * These BPT price bounds are dynamically calculated using the conversion ratios. In general:
      * lower/upper BPT price bound = referenceBptPrice * "conversion ratio". The conversion ratio is given as
-     * (boundary percentage)**(currentWeightComplement).
+     * (boundaryPercentage)**(weightComplement).
+     *
+     * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
+     * (1 - 0.8)/1 = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
+     * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move
+     * together: a 20% drop in spot price would correspond to a 20% drop in BPT price.
+     *
+     * But with unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
+     * to a proportional change in spot price than a lower weight token. In the simulations, Integrations
+     * coined the term "balance inertia".
+     *
+     * If the external price drops, all else being equal, the pool would be arbed until the percent drop in spot
+     * price equaled the external price drop. Since during this process the *internal* pool price would be
+     * above market, the arbers would sell cheap tokens to our poor unwitting pool at inflated prices, raising
+     * the balance of the depreciating token, and lowering the balance of another token (WETH in this example).
+     *
+     * Using weighted math, and assuming for simplicity that the sum of all weights is 1, you can compute the
+     * amountIn ratio for the arb trade as: (1/priceRatio) ** (1 - weight). For our 0.9 ratio and a weight of
+     * 0.8, this is ~ 1.0213. So if you had 8000 tokens before, the ending balance would be 8000*1.0213 ~ 8170.
+     * Note that the higher the weight, the lower this ratio is. That means the counterparty token is going
+     * out proportionally faster than the arb token is coming in: hence the non-linear relationship between
+     * spot price and BPT price.
+     *
+     * If we call the initial balance B0, and set k = (1/priceRatio) ** (1 - weight), the post-arb balance is
+     * given by: B1 = k * B0. Since the BPTPrice0 = totalSupply*weight/B0, and BPTPrice1 = totalSupply*weight/B1,
+     * we can combine these equations to compute the BPT price ratio BPTPrice1/BPTPrice0 = 1/k; BPT1 = BPT0/k.
+     * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
+     * as above BPT1 = BPT0 * (1/k), or more simply: (reference BPT price) * (priceRatio)**(1 - weight).
      *
      * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
      * when the breaker was set. Otherwise, we need to calculate them.
