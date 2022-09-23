@@ -12,6 +12,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -53,6 +54,7 @@ describe('ManagedPool', function () {
         swapEnabledOnStart: true,
         mustAllowlistLPs: true,
         owner: owner.address,
+        aumFeeId: ProtocolFee.AUM,
       };
       pool = await WeightedPool.create(params);
     });

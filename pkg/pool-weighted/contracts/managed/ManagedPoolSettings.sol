@@ -114,6 +114,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
         uint256 managementAumFeePercentage;
+        uint256 aumFeeId;
     }
 
     constructor(
@@ -137,7 +138,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         )
         ProtocolFeeCache(
             protocolFeeProvider,
-            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, params.aumFeeId)
         )
     {
         uint256 totalTokens = params.tokens.length;
