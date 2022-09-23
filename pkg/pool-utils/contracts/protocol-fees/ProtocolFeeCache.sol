@@ -34,8 +34,6 @@ import "../RecoveryMode.sol";
 abstract contract ProtocolFeeCache is RecoveryMode {
     using SafeCast for uint256;
 
-    // Protocol fee types can be remapped at contract creation. Fee IDs store which of the IDs in the protocol fee
-    // provider shall be applied to its respective fee type (swap, yield, aum).
     uint256 public immutable swapFeeId;
     uint256 public immutable yieldFeeId;
     uint256 public immutable aumFeeId;
@@ -50,6 +48,17 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         uint64 aumFee;
     }
 
+    /**
+     * @dev Protocol fee types can be remapped at contract creation. Fee IDs store which of the IDs in the protocol fee
+     * provider shall be applied to its respective fee type (swap, yield, aum).
+     * For example, this allows using the flash loan fee stored in the provider as the swap fee.
+     */
+    struct FeeTypeIds {
+        uint256 swap;
+        uint256 yield;
+        uint256 aum;
+    }
+
     FeeTypeCache private _cache;
 
     event ProtocolFeePercentageCacheUpdated(
@@ -58,20 +67,15 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         uint256 protocolFeePercentage
     );
 
-    constructor(
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        uint256 _swapFeeId,
-        uint256 _yieldFeeId,
-        uint256 _aumFeeId
-    ) {
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, FeeTypeIds memory feeTypeIds) {
         _protocolFeeProvider = protocolFeeProvider;
-        swapFeeId = _swapFeeId;
-        yieldFeeId = _yieldFeeId;
-        aumFeeId = _aumFeeId;
+        swapFeeId = feeTypeIds.swap;
+        yieldFeeId = feeTypeIds.yield;
+        aumFeeId = feeTypeIds.aum;
 
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP, _swapFeeId);
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD, _yieldFeeId);
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM, _aumFeeId);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP, feeTypeIds.swap);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD, feeTypeIds.yield);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM, feeTypeIds.aum);
     }
 
     /**

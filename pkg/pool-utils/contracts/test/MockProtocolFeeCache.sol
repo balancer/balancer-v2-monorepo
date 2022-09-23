@@ -23,7 +23,10 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(msg.sender)
-        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            FeeTypeIds(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }

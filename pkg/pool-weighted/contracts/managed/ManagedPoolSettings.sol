@@ -135,7 +135,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             bufferPeriodDuration,
             owner
         )
-        ProtocolFeeCache(protocolFeeProvider)
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            FeeTypeIds(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+        )
     {
         uint256 totalTokens = params.tokens.length;
         _require(totalTokens >= _MIN_TOKENS, Errors.MIN_TOKENS);
