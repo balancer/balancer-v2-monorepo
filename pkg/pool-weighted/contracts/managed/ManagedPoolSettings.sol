@@ -286,10 +286,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // Token weights
 
     /**
-     * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
+     * @dev Returns the normalized weight of the token with state `tokenState`. Weights are fixed point numbers that
+     * sum to FixedPoint.ONE.
      */
-    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress, _denormWeightSum);
+    function _getNormalizedWeight(bytes32 tokenState, uint256 weightChangeProgress) internal view returns (uint256) {
+        return ManagedPoolTokenLib.getTokenWeight(tokenState, weightChangeProgress, _denormWeightSum);
     }
 
     /**
@@ -811,7 +812,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
         uint256 tokenNormalizedWeight = _getNormalizedWeight(
-            token,
+            _tokenState[token],
             ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
         );
 

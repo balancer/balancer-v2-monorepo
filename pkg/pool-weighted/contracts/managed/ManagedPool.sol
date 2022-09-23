@@ -123,8 +123,8 @@ contract ManagedPool is ManagedPoolSettings {
             // TODO: Once all weights are normalized, change to
             // uint256 tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress)
             // uint256 tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress)
-            tokenInWeight = _getNormalizedWeight(request.tokenIn, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(request.tokenOut, weightChangeProgress);
+            tokenInWeight = _getNormalizedWeight(tokenInState, weightChangeProgress);
+            tokenOutWeight = _getNormalizedWeight(tokenOutState, weightChangeProgress);
 
             scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
             scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
