@@ -120,11 +120,9 @@ contract ManagedPool is ManagedPoolSettings {
             bytes32 tokenOutState = _getTokenState(request.tokenOut);
 
             uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-            // TODO: Once all weights are normalized, change to
-            // uint256 tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress)
-            // uint256 tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress)
-            tokenInWeight = _getNormalizedWeight(tokenInState, weightChangeProgress);
-            tokenOutWeight = _getNormalizedWeight(tokenOutState, weightChangeProgress);
+            uint256 denormWeightSum = getDenormalizedWeightSum();
+            tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress, denormWeightSum);
+            tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress, denormWeightSum);
 
             scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
             scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
