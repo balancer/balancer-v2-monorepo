@@ -65,7 +65,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // See `ManagedPoolStorageLib.sol` for data layout.
     bytes32 private _poolState;
 
-    // Store scaling factor and start/end denormalized weights for each token.
+    // Store scaling factor and start/end normalized weights for each token.
     // See `ManagedPoolTokenLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
 
@@ -755,10 +755,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
-        uint256 tokenNormalizedWeight = _getNormalizedWeight(
-            token,
-            ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
-        );
+        // uint256 tokenNormalizedWeight = _getNormalizedWeight(
+        //     token,
+        //     ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
+        // );
 
         // State cleanup is simply done by removing the portion of the denormalized weight that corresponds to the token
         // being removed, and then deleting all token-specific state.
