@@ -178,6 +178,55 @@ library WeightedMath {
         return bptOut;
     }
 
+    function _calcBptOutGivenExactTokenIn(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 amountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) internal pure returns (uint256) {
+        // BPT out, so we round down overall.
+
+        uint256 amountInWithoutFee;
+        {
+            uint256 balanceRatioWithFee = balance.add(amountIn).divDown(balance);
+
+            // The use of `normalizedWeight.complement()` assumes that the sum of all weights equals FixedPoint.ONE.
+            // This may not be the case when weights are stored in a denormalized format or during a gradual weight
+            // change due rounding errors during normalization or interpolation. This will result in a small difference
+            // between the output of this function and the equivalent `_calcBptOutGivenExactTokensIn` call.
+            uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight).add(
+                normalizedWeight.complement()
+            );
+
+            if (balanceRatioWithFee > invariantRatioWithFees) {
+                uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
+                    ? balance.mulDown(invariantRatioWithFees - FixedPoint.ONE)
+                    : 0;
+                uint256 taxableAmount = amountIn.sub(nonTaxableAmount);
+                uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
+
+                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+            } else {
+                amountInWithoutFee = amountIn;
+                // If a token's amount in is not being charged a swap fee then it might be zero.
+                // In this case, it's clear that the sender should receive no BPT.
+                if (amountInWithoutFee == 0) {
+                    return 0;
+                }
+            }
+        }
+
+        uint256 balanceRatio = balance.add(amountInWithoutFee).divDown(balance);
+
+        uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
+
+        uint256 bptOut = (invariantRatio > FixedPoint.ONE)
+            ? bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE)
+            : 0;
+        return bptOut;
+    }
+
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
