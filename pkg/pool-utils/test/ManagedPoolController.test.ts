@@ -106,7 +106,6 @@ async function deployControllerAndPool(
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts
 describe('ManagedPoolController', function () {
   const NEW_SWAP_FEE = fp(0.05);
-  const NEW_MGMT_SWAP_FEE = fp(0.78);
   const NEW_MGMT_AUM_FEE = fp(0.015);
 
   context('pool controller not initialized', () => {
@@ -165,20 +164,6 @@ describe('ManagedPoolController', function () {
         await expect(poolController.connect(other).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
         );
-      });
-    });
-
-    describe('change management swap fee percentage', () => {
-      it('lets the manager set the management swap fee', async () => {
-        await poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE);
-
-        expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MGMT_SWAP_FEE);
-      });
-
-      it('reverts if non-manager sets the management fee', async () => {
-        await expect(
-          poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
-        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
       });
     });
 
@@ -322,12 +307,6 @@ describe('ManagedPoolController', function () {
       sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, true, true, false);
         await poolController.initialize(pool.address);
-      });
-
-      it('reverts if the manager tries to change the management swap fee', async () => {
-        await expect(
-          poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
-        ).to.be.revertedWith('FEATURE_DISABLED');
       });
 
       it('reverts if the manager tries to change the management AUM fee', async () => {

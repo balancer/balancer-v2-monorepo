@@ -35,7 +35,5 @@ interface IControlledManagedPool {
 
     function collectAumManagementFees() external returns (uint256);
 
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external;
-
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external returns (uint256);
 }
