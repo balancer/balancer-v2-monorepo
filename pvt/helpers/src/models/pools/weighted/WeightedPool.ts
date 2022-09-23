@@ -28,6 +28,7 @@ import {
   GradualWeightUpdateParams,
   GradualSwapFeeUpdateParams,
   WeightedPoolType,
+  CircuitBreakerParams,
 } from './types';
 import {
   calculateInvariant,
@@ -591,6 +592,16 @@ export default class WeightedPool extends BasePool {
     return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
   }
 
+  async setCircuitBreaker(
+    from: SignerWithAddress,
+    token: Token | string,
+    lowerBound: BigNumber,
+    upperBound: BigNumber
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.setCircuitBreaker(TypesConverter.toAddress(token), lowerBound, upperBound);
+  }
+
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualWeightUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualWeightUpdateParams();
@@ -599,6 +610,14 @@ export default class WeightedPool extends BasePool {
   async getGradualSwapFeeUpdateParams(from?: SignerWithAddress): Promise<GradualSwapFeeUpdateParams> {
     const pool = from ? this.instance.connect(from) : this.instance;
     return await pool.getGradualSwapFeeUpdateParams();
+  }
+
+  async getCircuitBreakerFields(token: Token | string): Promise<CircuitBreakerParams> {
+    return await this.instance.getCircuitBreakerFields(TypesConverter.toAddress(token));
+  }
+
+  async getCurrentCircuitBreakerBounds(token: Token | string): Promise<BigNumber[]> {
+    return await this.instance.getCurrentCircuitBreakerBounds(TypesConverter.toAddress(token));
   }
 
   async addToken(

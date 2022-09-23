@@ -926,20 +926,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * current BPT price. Though the percentages are fixed when the breaker is set, the BPT price bounds are dynamic.
      * If there is an ongoing gradual weight update, they will shift up or down with the current weight.
      */
-    function getCurrentCircuitBreakerBounds(IERC20 token) external view returns (uint256, uint256) {
+    function getCurrentCircuitBreakerBounds(IERC20 token) public view returns (uint256, uint256) {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
-        if (circuitBreakerState == 0) {
-            _revert(Errors.INVALID_TOKEN);
-        }
 
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 tokenWeight = _getNormalizedWeight(token, weightChangeProgress);
+        uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
         uint256 denormWeightSum = _denormWeightSum;
 
         return
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(
                 circuitBreakerState,
-                (denormWeightSum - tokenWeight).divDown(denormWeightSum)
+                (denormWeightSum - normalizedWeight).divDown(denormWeightSum)
             );
     }
 
@@ -984,7 +981,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     /**
      * @notice Get the price of a single token in terms of BPT, given the weight.
-     * @dev Returns an 18-decimal floating point number.
+     * @dev Returns an 18-decimal floating point number. Could be internal, but might be generally useful
+     * externally.
      */
     function getBptPrice(IERC20 token, uint256 normalizedWeight) public view returns (uint256) {
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
