@@ -59,12 +59,7 @@ contract MockBasePool is BasePool {
         )
     {}
 
-    function _onInitializePool(
-        bytes32,
-        address,
-        address,
-        bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
         emit InnerOnInitializePoolCalled(userData);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
@@ -97,12 +92,8 @@ contract MockBasePool is BasePool {
     }
 
     function _onJoinPool(
-        bytes32,
         address sender,
-        address,
         uint256[] memory balances,
-        uint256,
-        uint256,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
         emit InnerOnJoinPoolCalled(sender, balances, userData);
@@ -115,12 +106,8 @@ contract MockBasePool is BasePool {
     }
 
     function _onExitPool(
-        bytes32,
         address sender,
-        address,
         uint256[] memory balances,
-        uint256,
-        uint256,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
         emit InnerOnExitPoolCalled(sender, balances, userData);
@@ -156,7 +143,7 @@ contract MockBasePool is BasePool {
         return _getMinimumBpt();
     }
 
-    function onlyVaultCallable(bytes32 poolId) onlyVault(poolId) public view {
+    function onlyVaultCallable(bytes32 poolId) public view onlyVault(poolId) {
         // solhint-disable-previous-line no-empty-blocks
     }
 }

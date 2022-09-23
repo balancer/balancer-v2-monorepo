@@ -217,12 +217,7 @@ contract ManagedPool is ManagedPoolSettings {
 
     // Initialize
 
-    function _onInitializePool(
-        bytes32,
-        address,
-        address,
-        bytes memory userData
-    ) internal override returns (uint256, uint256[] memory) {
+    function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
@@ -250,12 +245,8 @@ contract ManagedPool is ManagedPoolSettings {
     // Join
 
     function _onJoinPool(
-        bytes32,
         address sender,
-        address,
         uint256[] memory balances,
-        uint256,
-        uint256,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         uint256[] memory scalingFactors = _scalingFactors();
@@ -330,12 +321,8 @@ contract ManagedPool is ManagedPoolSettings {
     // Exit
 
     function _onExitPool(
-        bytes32,
         address sender,
-        address,
         uint256[] memory balances,
-        uint256,
-        uint256,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         uint256[] memory scalingFactors = _scalingFactors();
