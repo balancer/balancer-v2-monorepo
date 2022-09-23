@@ -64,7 +64,6 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       poolType,
@@ -82,7 +81,6 @@ export default {
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
-    if (undefined == managementSwapFeePercentage) managementSwapFeePercentage = FP_ZERO;
     if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
     return {
       tokens,
@@ -94,7 +92,6 @@ export default {
       bufferPeriodDuration,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       owner: this.toAddress(params.owner),

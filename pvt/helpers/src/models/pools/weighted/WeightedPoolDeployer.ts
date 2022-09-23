@@ -37,7 +37,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
     } = deployment;
@@ -54,7 +53,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector
     );
@@ -72,7 +70,6 @@ export default {
       poolType,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       owner,
@@ -112,7 +109,6 @@ export default {
               assetManagers: assetManagers,
               swapEnabledOnStart: swapEnabledOnStart,
               mustAllowlistLPs: mustAllowlistLPs,
-              managementSwapFeePercentage: managementSwapFeePercentage,
               managementAumFeePercentage: managementAumFeePercentage,
               aumProtocolFeesCollector: aumProtocolFeesCollector,
             },
@@ -162,7 +158,6 @@ export default {
       swapFeePercentage,
       swapEnabledOnStart,
       mustAllowlistLPs,
-      managementSwapFeePercentage,
       managementAumFeePercentage,
       poolType,
       owner,
@@ -211,7 +206,6 @@ export default {
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
-          managementSwapFeePercentage: managementSwapFeePercentage,
           managementAumFeePercentage: managementAumFeePercentage,
         };
 

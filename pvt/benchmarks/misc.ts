@@ -68,7 +68,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   });
 
   const swapFeePercentage = fp(0.02); // 2%
-  const managementFee = fp(0.5); // 50%
   const aumFee = 0;
 
   let pool: Contract;
@@ -90,7 +89,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
-          managementSwapFeePercentage: managementFee,
           managementAumFeePercentage: aumFee,
         };
 

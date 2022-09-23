@@ -210,20 +210,6 @@ contract ManagedPoolController is BasePoolController {
     }
 
     /**
-     * @dev Pass a call to ManagedPool's setManagementSwapFeePercentage through to the underlying pool.
-     */
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
-        external
-        virtual
-        onlyManager
-        withBoundPool
-    {
-        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
-
-        IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
-    }
-
-    /**
      * @dev Pass a call to ManagedPool's setManagementAumFeePercentage through to the underlying pool.
      */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
