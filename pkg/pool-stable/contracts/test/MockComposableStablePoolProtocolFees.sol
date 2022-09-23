@@ -44,7 +44,7 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         )
         ProtocolFeeCache(
             protocolFeeProvider,
-            FeeTypeIds(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
         )
         BasePool(
             vault,

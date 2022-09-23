@@ -47,7 +47,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         )
         ProtocolFeeCache(
             protocolFeeProvider,
-            FeeTypeIds(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
         )
         WeightedPoolProtocolFees(tokens.length, rateProviders)
     {

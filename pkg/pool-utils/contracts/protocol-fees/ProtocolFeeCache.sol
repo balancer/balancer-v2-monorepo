@@ -53,7 +53,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
      * provider shall be applied to its respective fee type (swap, yield, aum).
      * For example, this allows using the flash loan fee stored in the provider as the swap fee.
      */
-    struct FeeTypeIds {
+    struct ProviderFeeIDs {
         uint256 swap;
         uint256 yield;
         uint256 aum;
@@ -63,19 +63,19 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     event ProtocolFeePercentageCacheUpdated(
         uint256 indexed feeType,
-        uint256 indexed feeId,
+        uint256 indexed providerFeeId,
         uint256 protocolFeePercentage
     );
 
-    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, FeeTypeIds memory feeTypeIds) {
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs) {
         _protocolFeeProvider = protocolFeeProvider;
-        swapFeeId = feeTypeIds.swap;
-        yieldFeeId = feeTypeIds.yield;
-        aumFeeId = feeTypeIds.aum;
+        swapFeeId = providerFeeIDs.swap;
+        yieldFeeId = providerFeeIDs.yield;
+        aumFeeId = providerFeeIDs.aum;
 
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP, feeTypeIds.swap);
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD, feeTypeIds.yield);
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM, feeTypeIds.aum);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP, providerFeeIDs.swap);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD, providerFeeIDs.yield);
+        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM, providerFeeIDs.aum);
     }
 
     /**
@@ -121,9 +121,9 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     function _updateProtocolFeeCache(
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 feeType,
-        uint256 feeId
+        uint256 providerFeeId
     ) private {
-        uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(feeId);
+        uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(providerFeeId);
 
         if (feeType == ProtocolFeeType.SWAP) {
             _cache.swapFee = currentValue.toUint64();
@@ -135,6 +135,6 @@ abstract contract ProtocolFeeCache is RecoveryMode {
             _revert(Errors.UNHANDLED_FEE_TYPE);
         }
 
-        emit ProtocolFeePercentageCacheUpdated(feeType, feeId, currentValue);
+        emit ProtocolFeePercentageCacheUpdated(feeType, providerFeeId, currentValue);
     }
 }
