@@ -574,9 +574,19 @@ export default class WeightedPool extends BasePool {
     from: SignerWithAddress,
     startTime: BigNumberish,
     endTime: BigNumberish,
-    endWeights: BigNumberish[]
+    endWeights: BigNumberish[],
+    tokens?: string[]
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
+
+    if (this.poolType == WeightedPoolType.MANAGED_POOL) {
+      if (!tokens) {
+        tokens = (await this.getTokens()).tokens;
+      }
+
+      return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
+    }
+
     return await pool.updateWeightsGradually(startTime, endTime, endWeights);
   }
 
