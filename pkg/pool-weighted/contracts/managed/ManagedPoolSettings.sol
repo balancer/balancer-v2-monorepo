@@ -993,7 +993,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     // Return the weight and complement, needed for multiple calculations.
-    function _getNormalizedWeightAndComplement(IERC20 token) internal view returns(uint256, uint256) {
+    function _getNormalizedWeightAndComplement(IERC20 token) internal view returns (uint256, uint256) {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
         uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
         uint256 denormWeightSum = _denormWeightSum;
