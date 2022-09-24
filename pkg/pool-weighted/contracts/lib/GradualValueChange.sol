@@ -48,8 +48,8 @@ library GradualValueChange {
         uint256 endValue,
         uint256 pctProgress
     ) internal pure returns (uint256) {
-        if (pctProgress == 0 || startValue == endValue) return startValue;
-        if (pctProgress >= FixedPoint.ONE) return endValue;
+        if (pctProgress >= FixedPoint.ONE || startValue == endValue) return endValue;
+        if (pctProgress == 0) return startValue;
 
         if (startValue > endValue) {
             uint256 delta = pctProgress.mulDown(startValue - endValue);
