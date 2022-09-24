@@ -109,7 +109,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut,
         bytes32 poolState
-    ) internal view returns (uint256 swapOutput) {
+    ) internal view returns (uint256) {
         uint256 tokenInWeight;
         uint256 tokenOutWeight;
         uint256 scalingFactorTokenIn;
@@ -140,7 +140,7 @@ contract ManagedPool is ManagedPoolSettings {
             // We round the amount in down (favoring a higher fee amount).
             request.amount = request.amount.mulDown(swapFeeComplement);
 
-            swapOutput = WeightedMath._calcOutGivenIn(
+            uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
                 tokenInWeight,
                 balanceTokenOut,
@@ -149,12 +149,12 @@ contract ManagedPool is ManagedPoolSettings {
             );
 
             // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(swapOutput, scalingFactorTokenOut);
+            return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            swapOutput = WeightedMath._calcInGivenOut(
+            uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
                 tokenInWeight,
                 balanceTokenOut,
@@ -163,10 +163,10 @@ contract ManagedPool is ManagedPoolSettings {
             );
 
             // We round the amount in up (favoring a higher fee amount).
-            swapOutput = swapOutput.divUp(swapFeeComplement);
+            amountIn = amountIn.divUp(swapFeeComplement);
 
             // amountIn tokens are entering the Pool, so we round up.
-            return _downscaleUp(swapOutput, scalingFactorTokenIn);
+            return _downscaleUp(amountIn, scalingFactorTokenIn);
         }
     }
 
