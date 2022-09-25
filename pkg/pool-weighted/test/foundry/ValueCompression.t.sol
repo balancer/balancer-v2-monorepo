@@ -67,7 +67,7 @@ contract ValueCompressionTest is Test {
     ) external {
         vm.assume(maxUncompressedValue > 0);
         vm.assume(value <= maxUncompressedValue);
-        vm.assume(bitLength >= 2 && bitLength <= 255);
+        vm.assume(bitLength > 1);
 
         // Prevent internal overflows
         vm.assume(bitLength < 256 - mostSignificantBit(maxUncompressedValue));
