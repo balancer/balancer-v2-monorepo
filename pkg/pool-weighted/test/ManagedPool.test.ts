@@ -2,8 +2,8 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
-import { DAY, advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, fp, FP_ONE, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { DAY, advanceTime, receiptTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
@@ -72,6 +72,63 @@ describe('ManagedPool', function () {
 
       it('swaps are not blocked', async () => {
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
+      });
+    });
+  });
+
+  describe('initialization', () => {
+    function deployPool(mustAllowlistLPs: boolean): Promise<WeightedPool> {
+      return WeightedPool.create({
+        tokens: poolTokens,
+        weights: poolWeights,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        vault,
+        swapEnabledOnStart: true,
+        mustAllowlistLPs,
+        owner: owner.address,
+      });
+    }
+
+    function itInitializesThePoolCorrectly() {
+      it('initializes the pool', async () => {
+        await pool.init({ from: other, initialBalances });
+
+        expect(await pool.totalSupply()).to.be.gt(0);
+      });
+
+      it('sets the first AUM fee collection timestamp', async () => {
+        const receipt = await pool.init({ from: other, initialBalances });
+
+        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(await receiptTimestamp(receipt));
+      });
+    }
+
+    context('LP allowlist', () => {
+      context('when LP allowlist is enabled', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployPool(true);
+        });
+
+        context('when initial LP is allowlisted', () => {
+          sharedBeforeEach('allowlist LP', async () => {
+            await pool.addAllowedAddress(owner, other);
+          });
+
+          itInitializesThePoolCorrectly();
+        });
+
+        context('when initial LP is not allowlisted', () => {
+          it('reverts', async () => {
+            await expect(pool.init({ from: other, initialBalances })).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+          });
+        });
+      });
+
+      context('when LP allowlist is disabled', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployPool(false);
+        });
+        itInitializesThePoolCorrectly();
       });
     });
   });

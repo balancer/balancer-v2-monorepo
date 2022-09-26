@@ -22,6 +22,9 @@ import "../../contracts/WeightedMath.sol";
 contract WeightedMathTest is Test {
     using FixedPoint for uint256;
 
+    // Match the minimum supply defined in `BasePool`.
+    uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
+
     function testJoinSwaps(
         uint256[20] memory balancesFixed,
         uint256[20] memory normalizedWeightsFixed,
@@ -57,13 +60,16 @@ contract WeightedMathTest is Test {
         // Note: Due to compression errors, this normalization property of weights may not always hold.
         // This causes the two forms of join to produce slightly different outputs due to
         // `WeightedMath._calcBptOutGivenExactTokenIn` assuming perfect normalization.
-        // We therefore adjust the last weight to produce a scenario in which the two functions should yield the exact.
+        // We therefore adjust the last weight to produce a scenario in which the two functions should match exactly.
         if (normalizedWeightSum < FixedPoint.ONE) {
             normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
         }
 
         amountIn = bound(amountIn, 0, balances[tokenIndex]);
-        bptTotalSupply = bound(bptTotalSupply, 1e6, type(uint112).max);
+        // The Vault constrains all balances (including BPT) to 112 bits.
+        bptTotalSupply = bound(bptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        // `_calcTokenInGivenExactBptOut` and other functions divide by the complement of swapFeePercentage,
+        // so a value of exactly 1 would revert with ZERO_DIVISION.
         swapFeePercentage = bound(swapFeePercentage, 0, FixedPoint.ONE - 1);
 
         uint256[] memory amountsIn = new uint256[](balances.length);
