@@ -662,6 +662,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
+        // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
+        // which will check the entire set of weights for correctness.
         _tokenState[tokenToAdd] = ManagedPoolTokenLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
 
         // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
@@ -756,7 +758,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
         // since we need to:
-        //  a) delete the state of the remoevd token
+        //  a) delete the state of the removed token
         //  b) adjust the weights of all other tokens
 
         // Deleting the old token is straightforward. The Pool itself doesn't track how many or which tokens it uses
