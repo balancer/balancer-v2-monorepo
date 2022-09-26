@@ -53,6 +53,10 @@ contract ManagedPool is ManagedPoolSettings {
     using FixedPoint for uint256;
     using WeightedPoolUserData for bytes;
 
+    // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
+    // We are preminting half of that value (rounded up).
+    uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
+
     constructor(
         NewPoolParams memory params,
         IVault vault,
@@ -63,7 +67,7 @@ contract ManagedPool is ManagedPoolSettings {
     )
         BasePool(
             vault,
-            PoolRegistrationLib.registerPoolWithAssetManagers(
+            PoolRegistrationLib.registerComposablePool(
                 vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
                 params.tokens,
@@ -78,6 +82,21 @@ contract ManagedPool is ManagedPoolSettings {
         ManagedPoolSettings(params, protocolFeeProvider)
     {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    // Virtual Supply
+
+    /**
+     * @notice Returns the number of tokens in circulation.
+     * @dev In other pools, this would be the same as `totalSupply`, but since this pool pre-mints BPT and holds it in
+     * the Vault as a token, we need to subtract the Vault's balance to get the total "circulating supply". Both the
+     * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
+     * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
+     * mode exit function, the totalSupply can change as BPT are burned.
+     */
+    function _getVirtualSupply() internal view override returns (uint256) {
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+        return totalSupply() - (cash + managed);
     }
 
     // Swap Hooks
@@ -229,6 +248,21 @@ contract ManagedPool is ManagedPoolSettings {
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
 
+        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
+        // supply, and have the Vault pull those tokens from the sender as part of the join.
+        // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
+        // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
+        //
+        // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
+        // all accounts.
+        uint256 initialBpt = _PREMINTED_TOKEN_BALANCE.sub(bptAmountOut);
+        _mintPoolTokens(sender, initialBpt);
+
+        // The Vault expects an array of amounts which includes BPT (which always sits in the first position).
+        // We then add an extra element to the beginning of the array and set it to `initialBpt`
+        amountsIn = _prependZeroElement(amountsIn);
+        amountsIn[0] = initialBpt;
+
         return (bptAmountOut, amountsIn);
     }
 
@@ -239,12 +273,21 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory balances,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
+        // The Vault passes an array of balances which includes the pool's BPT (This always sits in the first position).
+        // We want to separate this from the other balances before continuing with the join.
+        uint256 virtualSupply = totalSupply().sub(balances[0]);
+        assembly {
+            // Drop BPT from balances array
+            mstore(add(balances, 32), sub(mload(balances), 1))
+            balances := add(balances, 32)
+        }
+
         (IERC20[] memory tokens, ) = _getPoolTokens();
 
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        uint256 preJoinExitSupply = _beforeJoinExit(totalSupply());
+        uint256 preJoinExitSupply = _beforeJoinExit(virtualSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
             sender,
@@ -257,6 +300,9 @@ contract ManagedPool is ManagedPoolSettings {
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
+
+        // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
+        amountsIn = _prependZeroElement(amountsIn);
     }
 
     /**
@@ -317,12 +363,21 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory balances,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        // The Vault passes an array of balances which includes the pool's BPT (This always sits in the first position).
+        // We want to separate this from the other balances before continuing with the exit.
+        uint256 virtualSupply = totalSupply().sub(balances[0]);
+        assembly {
+            // Drop BPT from balances array
+            mstore(add(balances, 32), sub(mload(balances), 1))
+            balances := add(balances, 32)
+        }
+
         (IERC20[] memory tokens, ) = _getPoolTokens();
 
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        uint256 preJoinExitSupply = _beforeJoinExit(totalSupply());
+        uint256 preJoinExitSupply = _beforeJoinExit(virtualSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
             sender,
@@ -335,6 +390,9 @@ contract ManagedPool is ManagedPoolSettings {
 
         // amountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
+
+        // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
+        amountsOut = _prependZeroElement(amountsOut);
     }
 
     /**
@@ -387,6 +445,33 @@ contract ManagedPool is ManagedPoolSettings {
                 );
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
+        }
+    }
+
+    /**
+     * @notice Returns the tokens in the Pool and their current balances.
+     * @dev This function drops the BPT token and its balance from the returned arrays as these values are unused by
+     * internal functions outside of the swap/join/exit hooks.
+     */
+    function _getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
+        (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
+            getPoolId()
+        );
+
+        assembly {
+            // Drop BPT from tokens array
+            mstore(add(registeredTokens, 32), sub(mload(registeredTokens), 1))
+            tokens := add(registeredTokens, 32)
+            // Drop BPT from balances array
+            mstore(add(registeredBalances, 32), sub(mload(registeredBalances), 1))
+            balances := add(registeredBalances, 32)
+        }
+    }
+
+    function _prependZeroElement(uint256[] memory array) private pure returns (uint256[] memory prependedArray) {
+        prependedArray = new uint256[](array.length + 1);
+        for (uint256 i = 0; i < array.length; i++) {
+            prependedArray[i + 1] = array[i];
         }
     }
 
