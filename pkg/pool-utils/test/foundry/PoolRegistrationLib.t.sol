@@ -14,7 +14,7 @@ contract PoolRegistrationLibTest is Test {
         _vault = new Vault(IAuthorizer(0), IWETH(0), 0, 0);
     }
 
-    function testPositionZeroTokenFixed(uint8[10] memory tokenIds) external {
+    function testPositionZeroTokenFixed(uint8[40] memory tokenIds) external {
         IERC20 bpt = IERC20(address(this));
 
         IERC20[] memory tokens = new IERC20[](10);
