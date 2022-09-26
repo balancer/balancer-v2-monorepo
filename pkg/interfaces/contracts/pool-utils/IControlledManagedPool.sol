@@ -22,6 +22,7 @@ interface IControlledManagedPool {
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
+        IERC20[] calldata tokens,
         uint256[] calldata endWeights
     ) external;
 

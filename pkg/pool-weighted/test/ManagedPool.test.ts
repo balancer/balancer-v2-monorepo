@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
-import { DAY, advanceTime } from '@balancer-labs/v2-helpers/src/time';
+import { DAY, advanceTime, receiptTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -43,6 +43,63 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
+  describe('initialization', () => {
+    function deployPool(mustAllowlistLPs: boolean): Promise<WeightedPool> {
+      return WeightedPool.create({
+        tokens: poolTokens,
+        weights: poolWeights,
+        poolType: WeightedPoolType.MANAGED_POOL,
+        vault,
+        swapEnabledOnStart: true,
+        mustAllowlistLPs,
+        owner: owner.address,
+      });
+    }
+
+    function itInitializesThePoolCorrectly() {
+      it('initializes the pool', async () => {
+        await pool.init({ from: other, initialBalances });
+
+        expect(await pool.totalSupply()).to.be.gt(0);
+      });
+
+      it('sets the first AUM fee collection timestamp', async () => {
+        const receipt = await pool.init({ from: other, initialBalances });
+
+        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(await receiptTimestamp(receipt));
+      });
+    }
+
+    context('LP allowlist', () => {
+      context('when LP allowlist is enabled', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployPool(true);
+        });
+
+        context('when initial LP is allowlisted', () => {
+          sharedBeforeEach('allowlist LP', async () => {
+            await pool.addAllowedAddress(owner, other);
+          });
+
+          itInitializesThePoolCorrectly();
+        });
+
+        context('when initial LP is not allowlisted', () => {
+          it('reverts', async () => {
+            await expect(pool.init({ from: other, initialBalances })).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+          });
+        });
+      });
+
+      context('when LP allowlist is disabled', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await deployPool(false);
+        });
+        itInitializesThePoolCorrectly();
+      });
+    });
+  });
+
   describe('when initialized with an LP allowlist', () => {
     sharedBeforeEach('deploy pool', async () => {
       const params = {
@@ -59,7 +116,7 @@ describe('ManagedPool', function () {
 
     context('when an address is added to the allowlist', () => {
       sharedBeforeEach('add address to allowlist', async () => {
-        const receipt = await pool.addAllowedAddress(owner, other.address);
+        const receipt = await pool.addAllowedAddress(owner, other);
 
         expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressAdded', {
           member: other.address,
@@ -87,7 +144,8 @@ describe('ManagedPool', function () {
 
     context('when mustAllowlistLPs is toggled', () => {
       sharedBeforeEach('initialize pool', async () => {
-        await pool.init({ from: other, initialBalances });
+        await pool.addAllowedAddress(owner, owner);
+        await pool.init({ from: owner, initialBalances });
       });
 
       it('allows owner to turn it off (open to public LPs)', async () => {
