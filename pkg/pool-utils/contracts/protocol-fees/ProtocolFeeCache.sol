@@ -49,9 +49,12 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
-     * @dev Protocol fee types can be remapped at contract creation. Fee IDs store which of the IDs in the protocol fee
+     * @dev Protocol fee types can be set at contract creation. Fee IDs store which of the IDs in the protocol fee
      * provider shall be applied to its respective fee type (swap, yield, aum).
-     * For example, this allows using the flash loan fee stored in the provider as the swap fee.
+     * This is because some Pools may have different protocol fee values for the same type of underlying operation:
+     * for example, Stable Pools might have a different swap protocol fee than Weighted Pools.
+     * This module does not check at all that the chosen fee types have any sort of relation with the operation they're
+     * assigned to: it is possible to e.g. set a Pool's swap protocol fee to equal the flash loan protocol fee.
      */
     struct ProviderFeeIDs {
         uint256 swap;
