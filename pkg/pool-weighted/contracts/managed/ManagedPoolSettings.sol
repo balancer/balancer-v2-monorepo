@@ -762,10 +762,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Deleting the old token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
         // its weight however, since we'll need it later.
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        // We've ensured that the most recent weight change is complete.
         uint256 tokenToRemoveWeight = ManagedPoolTokenLib.getTokenWeight(
             _tokenState[tokenToRemove],
-            weightChangeProgress
+            FixedPoint.ONE
         );
         delete _tokenState[tokenToRemove];
 
