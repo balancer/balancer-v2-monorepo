@@ -470,22 +470,39 @@ describe('BasePool', function () {
         expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
       });
 
-      it('can disable recovery mode', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        await pool.connect(sender).disableRecoveryMode();
+      context('when recovery mode is enabled', () => {
+        sharedBeforeEach('enable recovery mode', async () => {
+          await pool.connect(sender).enableRecoveryMode();
+        });
 
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
+        it('can disable recovery mode', async () => {
+          await pool.connect(sender).disableRecoveryMode();
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
+
+        it('cannot enable recovery mode again', async () => {
+          await expect(pool.connect(sender).enableRecoveryMode()).to.be.revertedWith('IN_RECOVERY_MODE');
+        });
+
+        it('disabling recovery mode emits an event', async () => {
+          const tx = await pool.connect(sender).disableRecoveryMode();
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
       });
 
-      it('disabling recovery mode emits an event', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        const tx = await pool.connect(sender).disableRecoveryMode();
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+      context('when recovery mode is disabled', () => {
+        it('cannot be disabled again', async () => {
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
 
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
+          await expect(pool.connect(sender).disableRecoveryMode()).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
+        });
       });
 
       it('reverts when calling functions in the wrong mode', async () => {
