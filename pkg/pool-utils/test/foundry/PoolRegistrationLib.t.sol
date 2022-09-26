@@ -19,6 +19,8 @@ contract PoolRegistrationLibTest is Test {
 
         IERC20[] memory tokens = new IERC20[](10);
         for (uint256 i = 0; i < tokens.length; i++) {
+            // We don't actually care about the token addresses, we just need unique identifiers so we can register and
+            // deregister the "tokens". We can then just cast the values from 1 to 10 into addresses.
             tokens[i] = IERC20(i + 1);
         }
         address[] memory assetManagers = new address[](10);
