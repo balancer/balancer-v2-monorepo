@@ -89,4 +89,26 @@ contract MathTest is Test {
 
         assertEq(divUp, referenceDivUp);
     }
+
+    function testMulDivDownEquivalence(
+        uint256 a,
+        uint256 b,
+        uint256 c
+    ) external {
+        vm.assume(a == 0 || (a * b) / a == b);
+        vm.assume(c > 0);
+
+        assertEq(Math.mulDivDown(a, b, c), Math.divDown(Math.mul(a, b), c));
+    }
+
+    function testMulDivUpEquivalence(
+        uint256 a,
+        uint256 b,
+        uint256 c
+    ) external {
+        vm.assume(a == 0 || (a * b) / a == b);
+        vm.assume(c > 0);
+
+        assertEq(Math.mulDivUp(a, b, c), Math.divUp(Math.mul(a, b), c));
+    }
 }
