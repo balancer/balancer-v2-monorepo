@@ -23,8 +23,10 @@ contract CircuitBreakerLibTest is Test {
     using FixedPoint for uint256;
 
     uint256 private constant _MINIMUM_BOUND_PERCENTAGE = 1e17;  // 0.1
+    // The weight complement (1 - w) is bounded by the min/max token weights
+    uint256 private constant _MINIMUM_TOKEN_WEIGHT = 1e16; // 0.01 (1%)
+    uint256 private constant _MAXIMUM_TOKEN_WEIGHT = 99e16; // 0.99 (99%)
     uint256 private constant _MAX_BOUND_PERCENTAGE = 2e18; // 2.0
-    uint256 private constant _MAX_WEIGHT_COMPLEMENT = 3.3e18;
     uint256 private constant _MIN_BPT_PRICE = 1e6;
 
     uint256 private constant _MAX_RELATIVE_ERROR = 1e16;
@@ -37,7 +39,7 @@ contract CircuitBreakerLibTest is Test {
         uint256 upperBound
     ) public {
         bptPrice = bound(bptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
-        weightComplement = bound(weightComplement, _MINIMUM_BOUND_PERCENTAGE, _MAX_WEIGHT_COMPLEMENT);
+        weightComplement = bound(weightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
 
@@ -55,7 +57,7 @@ contract CircuitBreakerLibTest is Test {
         CircuitBreakerLib.CircuitBreakerParams memory result = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
         assertEq(result.bptPrice, bptPrice);
-        assertApproxEqRel(result.weightComplement, weightComplement, _MAX_RELATIVE_ERROR);
+        assertEq(result.weightComplement, weightComplement);
         assertApproxEqRel(result.lowerBound, lowerBound, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(result.upperBound, upperBound, _MAX_RELATIVE_ERROR);
 
@@ -88,8 +90,8 @@ contract CircuitBreakerLibTest is Test {
         initialBptPrice = bound(initialBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
-        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_BOUND_PERCENTAGE, _MAX_WEIGHT_COMPLEMENT);
-        newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, _MAX_WEIGHT_COMPLEMENT);
+        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
             bptPrice: initialBptPrice,

@@ -75,7 +75,8 @@ library CircuitBreakerLib {
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
-    // and the current weight complement (_denormWeightSum - weight)/_denormWeightSum).
+    // and the current weight complement (1 - weight). Since this value is bounded by 1e18, which fits in ~60 bits,
+    // there is no need for compression.
     //
     // We then compute and store the current BPT price, and the lower and upper bound conversion ratios, used to
     // convert the percentage bounds into BPT prices that can be directly compared to the "runtime" BPT prices.
@@ -113,9 +114,7 @@ library CircuitBreakerLib {
         return
             CircuitBreakerParams({
                 bptPrice: circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH),
-                weightComplement: circuitBreakerState
-                    .decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH)
-                    .decompress(_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
+                weightComplement: circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH),
                 lowerBound: circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
                     _BOUND_WIDTH,
                     _MAX_BOUND_PERCENTAGE
@@ -139,7 +138,7 @@ library CircuitBreakerLib {
      * (boundaryPercentage)**(weightComplement).
      *
      * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
-     * (1 - 0.8)/1 = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
+     * (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
      * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move
      * together: a 20% drop in spot price would correspond to a 20% drop in BPT price.
      *
@@ -174,8 +173,7 @@ library CircuitBreakerLib {
      * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentWeightComplement - The complement of this token's weight, generally given by:
-     * (_denormWeightSum - token weight)/_denormWeightSum.
+     * @param currentWeightComplement - The complement of this token's weight, generally given by (1 - weight).
      * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
      */
     function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightComplement)
@@ -184,9 +182,7 @@ library CircuitBreakerLib {
         returns (uint256, uint256)
     {
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        uint256 weightComplement = circuitBreakerState
-            .decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH)
-            .decompress(_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE);
+        uint256 weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
 
         uint256 lowerBoundRatio;
         uint256 upperBoundRatio;
@@ -229,7 +225,7 @@ library CircuitBreakerLib {
      * @param params - CircuitBreakerParams has the following components:
      * - bptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
-     * - weightComplement: This is (_denormWeightSum - currentWeight)/_denormWeightSum of the token
+     * - weightComplement: This is (1 - currentWeight).
      * - lowerBound: The value of the lower bound, expressed as a percentage.
      * - upperBound: The value of the upper bound, expressed as a percentage.
      */
@@ -247,11 +243,7 @@ library CircuitBreakerLib {
         // Set the reference parameters: BPT price of the token, and the weight complement.
         bytes32 circuitBreakerState = bytes32(0)
             .insertUint(params.bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH)
-            .insertUint(
-            params.weightComplement.compress(_WEIGHT_COMPLEMENT_WIDTH, _MAX_BOUND_PERCENTAGE),
-            _WEIGHT_COMPLEMENT_OFFSET,
-            _WEIGHT_COMPLEMENT_WIDTH
-        );
+            .insertUint(params.weightComplement, _WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
 
         // Add the lower and upper percentage bounds.
         circuitBreakerState = circuitBreakerState
