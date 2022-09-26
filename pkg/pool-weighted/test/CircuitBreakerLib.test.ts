@@ -39,7 +39,7 @@ describe('CircuitBreakerLib', () => {
     const [bptPrice, weightComplement, lowerBound, upperBound] = await getter(data);
 
     expect(bptPrice).to.equal(fp(BPT_PRICE));
-    expect(weightComplement).to.almostEqual(fp(WEIGHT_COMPLEMENT));
+    expect(weightComplement).to.equal(fp(WEIGHT_COMPLEMENT));
     // These are high precision random numbers, and there is compression, so it's not exact
     expect(lowerBound).to.almostEqual(lowerBoundPct, MAX_RELATIVE_ERROR);
     expect(upperBound).to.almostEqual(upperBoundPct, MAX_RELATIVE_ERROR);
