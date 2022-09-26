@@ -20,6 +20,8 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+
 import "../lib/WeightedExitsLib.sol";
 import "../lib/WeightedJoinsLib.sol";
 import "../WeightedMath.sol";
@@ -66,12 +68,35 @@ contract ManagedPool is ManagedPoolSettings {
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) ManagedPoolSettings(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
+    )
+        BasePool(
+            vault,
+            PoolRegistrationLib.registerPoolWithAssetManagers(
+                vault,
+                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+                params.tokens,
+                params.assetManagers
+            ),
+            params.name,
+            params.symbol,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+        ManagedPoolSettings(params, protocolFeeProvider)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     // Swap Hooks
 
+    /**
+     * @dev Dispatch code for all kinds of swaps. Depending on the tokens involved this could result in a join, exit or
+     * a standard swap between two token in the Pool.
+     *
+     * The return value is expected to be downscaled (appropriately rounded based on the swap type) ready to be passed
+     * to the Vault.
+     */
     function _onSwapMinimal(
         SwapRequest memory request,
         uint256 balanceTokenIn,
@@ -80,14 +105,49 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-        uint256 tokenInWeight = _getNormalizedWeight(request.tokenIn, weightChangeProgress);
-        uint256 tokenOutWeight = _getNormalizedWeight(request.tokenOut, weightChangeProgress);
+        if (request.tokenOut == IERC20(this)) {
+            // Do a joinSwap
+        } else if (request.tokenIn == IERC20(this)) {
+            // Do an exitSwap
+        } else {
+            return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
+        }
+    }
 
-        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+    /*
+     * @dev Called when a swap with the Pool occurs, where neither of the tokens involved are the BPT of the Pool.
+     *
+     * This function is responsible for upscaling any amounts received, in particular `balanceTokenIn`,
+     * `balanceTokenOut` and `request.amount`.
+     *
+     * The return value is expected to be downscaled (appropriately rounded based on the swap type) ready to be passed
+     * to the Vault.
+     */
+    function _onTokenSwap(
+        SwapRequest memory request,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut,
+        bytes32 poolState
+    ) internal view returns (uint256) {
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        uint256 scalingFactorTokenIn;
+        uint256 scalingFactorTokenOut;
+        uint256 swapFeeComplement;
+        {
+            bytes32 tokenInState = _getTokenState(request.tokenIn);
+            bytes32 tokenOutState = _getTokenState(request.tokenOut);
 
-        uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
-        uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
+            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+            uint256 denormWeightSum = getDenormalizedWeightSum();
+            tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress, denormWeightSum);
+            tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress, denormWeightSum);
+
+            scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
+            scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
+
+            swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+        }
 
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
@@ -96,13 +156,15 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(
-                request,
+            // We round the amount in down (favoring a higher fee amount).
+            request.amount = request.amount.mulDown(swapFeeComplement);
+
+            uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                balanceTokenOut,
                 tokenInWeight,
+                balanceTokenOut,
                 tokenOutWeight,
-                swapFeeComplement
+                request.amount
             );
 
             // amountOut tokens are exiting the Pool, so we round down.
@@ -111,94 +173,20 @@ contract ManagedPool is ManagedPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(
-                request,
+            uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                balanceTokenOut,
                 tokenInWeight,
+                balanceTokenOut,
                 tokenOutWeight,
-                swapFeeComplement
+                request.amount
             );
+
+            // We round the amount in up (favoring a higher fee amount).
+            amountIn = amountIn.divUp(swapFeeComplement);
 
             // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountIn, scalingFactorTokenIn);
         }
-    }
-
-    /**
-     * @dev Unimplemented as ManagedPool uses the MinimalInfoSwap Pool specialization.
-     */
-    function _onSwapGeneral(
-        SwapRequest memory, /*request*/
-        uint256[] memory, /* balances*/
-        uint256, /* indexIn */
-        uint256 /*indexOut */
-    ) internal pure override returns (uint256) {
-        _revert(Errors.UNIMPLEMENTED);
-    }
-
-    /*
-     * @dev Called when a swap with the Pool occurs, where the amount of tokens entering the Pool is known.
-     *
-     * Returns the amount of tokens that will be taken from the Pool in return.
-     *
-     * All amounts inside `request`, `currentBalanceTokenIn`, and `currentBalanceTokenOut` are upscaled.
-     *
-     * The return value is also considered upscaled, and will be downscaled (rounding down) before returning it to the
-     * Vault.
-     */
-    function _onSwapGivenIn(
-        SwapRequest memory request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 tokenInWeight,
-        uint256 tokenOutWeight,
-        uint256 swapFeeComplement
-    ) internal pure returns (uint256 amountOut) {
-        // Balances (and request.amount) are already upscaled by `_onSwapMinimal()`
-
-        // We round the amount in down (favoring a higher fee amount).
-        request.amount = request.amount.mulDown(swapFeeComplement);
-
-        amountOut = WeightedMath._calcOutGivenIn(
-            currentBalanceTokenIn,
-            tokenInWeight,
-            currentBalanceTokenOut,
-            tokenOutWeight,
-            request.amount
-        );
-    }
-
-    /*
-     * @dev Called when a swap with the Pool occurs, where the amount of tokens exiting the Pool is known.
-     *
-     * Returns the amount of tokens that will be granted to the Pool in return.
-     *
-     * All amounts inside `request`, `currentBalanceTokenIn`, and `currentBalanceTokenOut` are upscaled.
-     *
-     * The return value is also considered upscaled, and will be downscaled (rounding up) before returning it to the
-     * Vault.
-     */
-    function _onSwapGivenOut(
-        SwapRequest memory request,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut,
-        uint256 tokenInWeight,
-        uint256 tokenOutWeight,
-        uint256 swapFeeComplement
-    ) internal pure returns (uint256 amountIn) {
-        // Balances (and request.amount) are already upscaled by `_onSwapMinimal()`
-
-        amountIn = WeightedMath._calcInGivenOut(
-            currentBalanceTokenIn,
-            tokenInWeight,
-            currentBalanceTokenOut,
-            tokenOutWeight,
-            request.amount
-        );
-
-        // We round the amount in up (favoring a higher fee amount).
-        amountIn = amountIn.divUp(swapFeeComplement);
     }
 
     /**
@@ -408,5 +396,19 @@ contract ManagedPool is ManagedPoolSettings {
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+    }
+
+    // Unimplemented
+
+    /**
+     * @dev Unimplemented as ManagedPool uses the MinimalInfoSwap Pool specialization.
+     */
+    function _onSwapGeneral(
+        SwapRequest memory, /*request*/
+        uint256[] memory, /* balances*/
+        uint256, /* indexIn */
+        uint256 /*indexOut */
+    ) internal pure override returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
     }
 }

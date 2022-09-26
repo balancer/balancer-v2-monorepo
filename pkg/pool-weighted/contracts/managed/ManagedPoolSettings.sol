@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
@@ -116,25 +117,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 managementAumFeePercentage;
     }
 
-    constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    )
-        BasePool(
-            vault,
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-            params.name,
-            params.symbol,
-            params.tokens,
-            params.assetManagers,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
-        )
+    constructor(NewPoolParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
         ProtocolFeeCache(protocolFeeProvider)
     {
         uint256 totalTokens = params.tokens.length;
@@ -193,6 +176,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     function _getPoolState() internal view returns (bytes32) {
         return _poolState;
+    }
+
+    function _getTokenState(IERC20 token) internal view returns (bytes32) {
+        return _tokenState[token];
     }
 
     // Swap fees
@@ -280,13 +267,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     // Token weights
-
-    /**
-     * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
-     */
-    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress, _denormWeightSum);
-    }
 
     /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens.
@@ -811,9 +791,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length > 2, Errors.MIN_TOKENS);
 
-        uint256 tokenNormalizedWeight = _getNormalizedWeight(
-            token,
-            ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
+        uint256 tokenNormalizedWeight = ManagedPoolTokenLib.getTokenWeight(
+            _tokenState[token],
+            ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState),
+            _denormWeightSum
         );
 
         // State cleanup is simply done by removing the portion of the denormalized weight that corresponds to the token
@@ -839,10 +820,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     // Scaling Factors
-
-    function _scalingFactor(IERC20 token) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]);
-    }
 
     function getScalingFactors() external view override returns (uint256[] memory) {
         (IERC20[] memory tokens, ) = _getPoolTokens();
