@@ -390,6 +390,8 @@ library WeightedMath {
             amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
         } else {
             amountOutWithFee = amountOut;
+            // If a token's amount out is not being charged a swap fee then it might be zero.
+            // In this case, it's clear that the sender should not send any BPT.
             if (amountOutWithFee == 0) {
                 return 0;
             }
@@ -428,6 +430,10 @@ library WeightedMath {
                 amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
             } else {
                 amountOutWithFee = amountsOut[i];
+                // If a token's amount out is not being charged a swap fee then it might be zero (e.g. when exiting a
+                // Pool with only a subset of tokens). In this case, `balanceRatio` will equal `FixedPoint.ONE`, and
+                // the `invariantRatio` will not change at all. We therefore skip to the next iteration, avoiding
+                // the costly `powDown` call.
                 if (amountOutWithFee == 0) {
                     continue;
                 }
