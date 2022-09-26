@@ -27,24 +27,22 @@ describe('CircuitBreakerLib', () => {
     upperBoundPct: BigNumber
   ) {
     const circuitBreakerParams: CircuitBreakerParams = {
-      referenceBptPrice: fp(BPT_PRICE),
-      referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
-      lowerBoundPercentage: lowerBoundPct,
-      upperBoundPercentage: upperBoundPct,
+      bptPrice: fp(BPT_PRICE),
+      weightComplement: fp(WEIGHT_COMPLEMENT),
+      lowerBound: lowerBoundPct,
+      upperBound: upperBoundPct,
     };
 
     const data = await setter(circuitBreakerParams);
 
     // Bounds set correctly.
-    const [referenceBptPrice, referenceWeightComplement, lowerBoundPercentage, upperBoundPercentage] = await getter(
-      data
-    );
+    const [bptPrice, weightComplement, lowerBound, upperBound] = await getter(data);
 
-    expect(referenceBptPrice).to.equal(fp(BPT_PRICE));
-    expect(referenceWeightComplement).to.almostEqual(fp(WEIGHT_COMPLEMENT));
+    expect(bptPrice).to.equal(fp(BPT_PRICE));
+    expect(weightComplement).to.almostEqual(fp(WEIGHT_COMPLEMENT));
     // These are high precision random numbers, and there is compression, so it's not exact
-    expect(lowerBoundPercentage).to.almostEqual(lowerBoundPct, MAX_RELATIVE_ERROR);
-    expect(upperBoundPercentage).to.almostEqual(upperBoundPct, MAX_RELATIVE_ERROR);
+    expect(lowerBound).to.almostEqual(lowerBoundPct, MAX_RELATIVE_ERROR);
+    expect(upperBound).to.almostEqual(upperBoundPct, MAX_RELATIVE_ERROR);
   }
 
   async function itSetsCircuitBreakersCorrectly(lowerBound: BigNumber, upperBound: BigNumber) {
@@ -62,10 +60,10 @@ describe('CircuitBreakerLib', () => {
     it('reverts if the lower bound > 1', async () => {
       await expect(
         lib.setCircuitBreakerFields({
-          referenceBptPrice: fp(BPT_PRICE),
-          referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
-          lowerBoundPercentage: fp(1).add(1),
-          upperBoundPercentage: 0,
+          bptPrice: fp(BPT_PRICE),
+          weightComplement: fp(WEIGHT_COMPLEMENT),
+          lowerBound: fp(1).add(1),
+          upperBound: 0,
         })
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
@@ -73,10 +71,10 @@ describe('CircuitBreakerLib', () => {
     it('reverts if the upper bound > MAX_BOUND', async () => {
       await expect(
         lib.setCircuitBreakerFields({
-          referenceBptPrice: fp(BPT_PRICE),
-          referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
-          lowerBoundPercentage: 0,
-          upperBoundPercentage: fp(MAX_BOUND).add(1),
+          bptPrice: fp(BPT_PRICE),
+          weightComplement: fp(WEIGHT_COMPLEMENT),
+          lowerBound: 0,
+          upperBound: fp(MAX_BOUND).add(1),
         })
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
@@ -84,10 +82,10 @@ describe('CircuitBreakerLib', () => {
     it('reverts if the upper bound < lower_bound', async () => {
       await expect(
         lib.setCircuitBreakerFields({
-          referenceBptPrice: fp(BPT_PRICE),
-          referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
-          lowerBoundPercentage: fp(0.9),
-          upperBoundPercentage: fp(0.7),
+          bptPrice: fp(BPT_PRICE),
+          weightComplement: fp(WEIGHT_COMPLEMENT),
+          lowerBound: fp(0.9),
+          upperBound: fp(0.7),
         })
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
@@ -114,10 +112,10 @@ describe('CircuitBreakerLib', () => {
 
   describe('percentage to BPT price conversion ratios', () => {
     const circuitBreakerParams: CircuitBreakerParams = {
-      referenceBptPrice: fp(BPT_PRICE),
-      referenceWeightComplement: fp(WEIGHT_COMPLEMENT),
-      lowerBoundPercentage: fp(LOWER_BOUND),
-      upperBoundPercentage: fp(UPPER_BOUND),
+      bptPrice: fp(BPT_PRICE),
+      weightComplement: fp(WEIGHT_COMPLEMENT),
+      lowerBound: fp(LOWER_BOUND),
+      upperBound: fp(UPPER_BOUND),
     };
 
     let data: string;

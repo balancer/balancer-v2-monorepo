@@ -211,8 +211,8 @@ export type ManagedPoolParams = {
 };
 
 export type CircuitBreakerParams = {
-  referenceBptPrice: BigNumber;
-  referenceWeightComplement: BigNumber;
-  lowerBoundPercentage: BigNumber;
-  upperBoundPercentage: BigNumber;
+  bptPrice: BigNumber;
+  weightComplement: BigNumber;
+  lowerBound: BigNumber;
+  upperBound: BigNumber;
 };
