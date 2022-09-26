@@ -652,6 +652,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // try to register it again.
         PoolRegistrationLib.registerToken(getVault(), getPoolId(), tokenToAdd, assetManager);
 
+        // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
+        // opportunity to check we have not added too many tokens.
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
@@ -753,6 +755,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // the case, or if the token is not currently registered.
         PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), tokenToRemove);
 
+        // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
+        // good opportunity to check we didn't end up with too few tokens.
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
         _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
