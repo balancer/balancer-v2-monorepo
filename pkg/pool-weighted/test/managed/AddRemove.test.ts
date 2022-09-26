@@ -7,7 +7,7 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { bn, fp, fpDiv, fpMul, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceToTimestamp, currentTimestamp, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
@@ -372,7 +372,6 @@ describe('ManagedPoolSettings - add/remove token', () => {
     it('remove token (example from comments)', async () => {
       // Pool with 5/15/80% weights.
       const { pool, poolTokens } = await createPool(3, [fp(0.05), fp(0.15), fp(0.8)]);
-      const newToken = await Token.create({ decimals: random(0, 18) });
       await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10)) });
 
       // Remove the 80% token
@@ -403,11 +402,9 @@ describe('ManagedPoolSettings - add/remove token', () => {
         });
 
         let tokenToRemove: Token;
-        let tokenToRemoveIndex: number;
 
         sharedBeforeEach('select token to remove', async () => {
           tokenToRemove = poolTokens.get(random(0, poolTokenCount - 1));
-          tokenToRemoveIndex = poolTokens.indexOf(tokenToRemove);
         });
 
         it('reverts if the pool is uninitialized', async () => {
