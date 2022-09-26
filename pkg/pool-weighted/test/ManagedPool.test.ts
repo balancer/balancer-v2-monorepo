@@ -189,7 +189,7 @@ describe('ManagedPool', function () {
         await pool.setSwapEnabled(owner, false);
       });
 
-      context('proportional joins/exits', () => {
+      context('proportional joins', () => {
         it('allows proportionate joins', async () => {
           const startingBpt = await pool.balanceOf(other);
 
@@ -201,7 +201,7 @@ describe('ManagedPool', function () {
         });
       });
 
-      context('disproportionate joins/exits', () => {
+      context('disproportionate joins', () => {
         it('prevents disproportionate joins (single token)', async () => {
           const bptOut = await pool.balanceOf(other);
 
