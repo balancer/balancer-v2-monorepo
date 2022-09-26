@@ -284,6 +284,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
+     * @dev Returns the normalized weight of a single token.
+     */
+    function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+
+        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress);
+    }
+
+    /**
      * @notice Returns the current gradual weight change update parameters.
      * @dev The current weights can be retrieved via `getNormalizedWeights()`.
      * @return startTime - The timestamp when the weight update will begin.
@@ -911,9 +920,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * If there is an ongoing gradual weight update, they will shift up or down with the current weight.
      */
     function getCurrentCircuitBreakerBounds(IERC20 token) public view returns (uint256, uint256) {
-        (, uint256 weightComplement) = _getNormalizedWeightAndComplement(token);
-
-        return CircuitBreakerLib.getCurrentCircuitBreakerBounds(_circuitBreakerState[token], weightComplement);
+        return
+            CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+                _circuitBreakerState[token],
+                _getNormalizedWeight(token).complement()
+            );
     }
 
     /**
@@ -937,12 +948,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage
     ) private {
-        (uint256 normalizedWeight, uint256 weightComplement) = _getNormalizedWeightAndComplement(token);
+        uint256 normalizedWeight = _getNormalizedWeight(token);
 
         // Note that `getBptPrice` will revert if the token is invalid.
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
             bptPrice: getBptPrice(token, normalizedWeight),
-            weightComplement: weightComplement,
+            weightComplement: normalizedWeight.complement(),
             lowerBound: lowerBoundPercentage,
             upperBound: upperBoundPercentage
         });
@@ -974,19 +985,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
 
         return totalSupply().mulUp(normalizedWeight).divDown(tokenBalance);
-    }
-
-    // Return the weight and complement, needed for multiple calculations.
-    function _getNormalizedWeightAndComplement(IERC20 token) internal view returns (uint256, uint256) {
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 denormWeightSum = _denormWeightSum;
-        uint256 normalizedWeight = ManagedPoolTokenLib.getTokenWeight(
-            _tokenState[token],
-            weightChangeProgress,
-            denormWeightSum
-        );
-
-        return (normalizedWeight, (denormWeightSum - normalizedWeight).divDown(denormWeightSum));
     }
 
     // Misc

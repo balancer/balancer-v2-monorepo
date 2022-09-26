@@ -622,7 +622,7 @@ describe('ManagedPoolSettings', function () {
             expect(circuitBreakerParams.lowerBound).to.equalWithError(LOWER_BOUND, 0.001);
             expect(circuitBreakerParams.upperBound).to.equalWithError(UPPER_BOUND, 0.001);
             expect(circuitBreakerParams.bptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
-            expect(circuitBreakerParams.weightComplement).to.equalWithError(expectedWeightComplement, 0.001);
+            expect(circuitBreakerParams.weightComplement).to.equal(expectedWeightComplement);
           });
         });
 
