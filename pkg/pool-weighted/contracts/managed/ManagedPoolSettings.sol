@@ -387,17 +387,22 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * updateWeightsGradually is called during an ongoing weight change.
      * @param startTime - The timestamp when the weight change will begin.
      * @param endTime - The timestamp when the weight change will end (can be >= startTime).
+     * @param tokens - The tokens associated with the target weights (must match the current pool tokens).
      * @param endWeights - The target weights. If the current timestamp >= endTime, `getNormalizedWeights()`
      * will return these values.
      */
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
+        IERC20[] memory tokens,
         uint256[] memory endWeights
     ) external override authenticate whenNotPaused nonReentrant {
-        (IERC20[] memory tokens, ) = _getPoolTokens();
+        (IERC20[] memory actualTokens, ) = _getPoolTokens();
+        InputHelpers.ensureInputLengthMatch(tokens.length, actualTokens.length, endWeights.length);
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, endWeights.length);
+        for (uint256 i = 0; i < actualTokens.length; ++i) {
+            _require(actualTokens[i] == tokens[i], Errors.TOKENS_MISMATCH);
+        }
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
