@@ -133,17 +133,23 @@ contract WeightedMathTest is Test {
             normalizedWeightSum += normalizedWeights[i];
         }
 
-        // Note: Due to compression errors, this normalization property of weights may not always hold.
-        // This causes the two forms of exit to produce slightly different outputs due to
-        // `WeightedMath._calcBptInGivenExactTokenOut` assuming perfect normalization.
-        // We therefore adjust the last weight to produce a scenario in which the two functions should yield the exact.
+        // Note: Due to compression errors, this normalization property of weights may not always hold. This causes the
+        // two forms of exit to produce slightly different outputs due to `WeightedMath._calcBptInGivenExactTokenOut`
+        // assuming perfect normalization.
+        // We therefore adjust the last weight to produce a scenario in which the two functions should yield the same
+        // exact result.
         if (normalizedWeightSum < FixedPoint.ONE) {
             normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
         }
 
-        amountOut = bound(amountOut, 0, balances[tokenIndex] / 100);
-        bptTotalSupply = bound(bptTotalSupply, 1e10, type(uint112).max);
-        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
+        amountOut = bound(amountOut, 0, balances[tokenIndex]);
+        bptTotalSupply = bound(bptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        swapFeePercentage = bound(swapFeePercentage, 0, 0.99e18);
+
+        // This exit type is special in that fees are charged on the amount out. This creates scenarios in which the
+        // total amount out (including fees) exceeds the Pool's balance, which will lead to reverts. We reject any runs
+        // that result in this edge case.
+        vm.assume(amountOut.divUp(FixedPoint.ONE - swapFeePercentage) <= balances[tokenIndex]);
 
         uint256[] memory amountsOut = new uint256[](balances.length);
         amountsOut[tokenIndex] = amountOut;
