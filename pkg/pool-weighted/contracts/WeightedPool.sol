@@ -91,7 +91,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         )
         ProtocolFeeCache(
             protocolFeeProvider,
-            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
         WeightedPoolProtocolFees(params.tokens.length, params.rateProviders)
     {

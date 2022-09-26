@@ -138,7 +138,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         )
         ProtocolFeeCache(
             protocolFeeProvider,
-            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, params.aumFeeId)
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: params.aumFeeId })
         )
     {
         uint256 totalTokens = params.tokens.length;

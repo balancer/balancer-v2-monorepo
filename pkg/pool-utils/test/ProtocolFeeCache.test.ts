@@ -95,9 +95,9 @@ describe('ProtocolFeeCache', () => {
     });
 
     it('stores fee type id mappings correctly', async () => {
-      expect(await protocolFeeCache.swapFeeId()).to.be.eq(providerFeeIds.swap);
-      expect(await protocolFeeCache.yieldFeeId()).to.be.eq(providerFeeIds.yield);
-      expect(await protocolFeeCache.aumFeeId()).to.be.eq(providerFeeIds.aum);
+      expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.SWAP)).to.be.eq(providerFeeIds.swap);
+      expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.YIELD)).to.be.eq(providerFeeIds.yield);
+      expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.AUM)).to.be.eq(providerFeeIds.aum);
     });
 
     context('with recovery mode disabled', () => {
@@ -107,7 +107,7 @@ describe('ProtocolFeeCache', () => {
           let providerFeeId: BigNumber;
 
           sharedBeforeEach('get the original fee value', async () => {
-            providerFeeId = await cacheTypeToProviderFeeId(cacheFeeType);
+            providerFeeId = await protocolFeeCache.getProviderFeeId(cacheFeeType);
             originalValue = await vault.protocolFeesProvider.getFeeTypePercentage(providerFeeId);
           });
 
@@ -153,24 +153,11 @@ describe('ProtocolFeeCache', () => {
 
               expectEvent.inReceipt(await receipt.wait(), 'ProtocolFeePercentageCacheUpdated', {
                 feeType: cacheFeeType,
-                providerFeeId,
                 protocolFeePercentage: NEW_VALUE,
               });
             });
           });
         });
-      }
-
-      async function cacheTypeToProviderFeeId(feeType: number): Promise<BigNumber> {
-        if (feeType == ProtocolFee.SWAP) {
-          return protocolFeeCache.swapFeeId();
-        } else if (feeType == ProtocolFee.YIELD) {
-          return protocolFeeCache.yieldFeeId();
-        } else if (feeType == ProtocolFee.AUM) {
-          return protocolFeeCache.aumFeeId();
-        } else {
-          throw Error('Cache fee type not supported');
-        }
       }
 
       itReturnsAndUpdatesProtocolFeePercentages(ProtocolFee.YIELD);

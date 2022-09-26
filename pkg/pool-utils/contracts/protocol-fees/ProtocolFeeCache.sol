@@ -34,11 +34,10 @@ import "../RecoveryMode.sol";
 abstract contract ProtocolFeeCache is RecoveryMode {
     using SafeCast for uint256;
 
-    uint256 public immutable swapFeeId;
-    uint256 public immutable yieldFeeId;
-    uint256 public immutable aumFeeId;
-
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
+    uint256 private immutable _swapFeeId;
+    uint256 private immutable _yieldFeeId;
+    uint256 private immutable _aumFeeId;
 
     // Protocol Fee Percentages can never be larger than 100% (1e18), which fits in ~59 bits, so using 64 for each type
     // is sufficient.
@@ -64,21 +63,17 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     FeeTypeCache private _cache;
 
-    event ProtocolFeePercentageCacheUpdated(
-        uint256 indexed feeType,
-        uint256 indexed providerFeeId,
-        uint256 protocolFeePercentage
-    );
+    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolFeePercentage);
 
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs) {
         _protocolFeeProvider = protocolFeeProvider;
-        swapFeeId = providerFeeIDs.swap;
-        yieldFeeId = providerFeeIDs.yield;
-        aumFeeId = providerFeeIDs.aum;
+        _swapFeeId = providerFeeIDs.swap;
+        _yieldFeeId = providerFeeIDs.yield;
+        _aumFeeId = providerFeeIDs.aum;
 
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.SWAP, providerFeeIDs.swap);
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.YIELD, providerFeeIDs.yield);
-        _updateProtocolFeeCache(protocolFeeProvider, ProtocolFeeType.AUM, providerFeeIDs.aum);
+        _updateSwapProtocolFeeCache(protocolFeeProvider, providerFeeIDs.swap);
+        _updateYieldProtocolFeeCache(protocolFeeProvider, providerFeeIDs.yield);
+        _updateAumProtocolFeeCache(protocolFeeProvider, providerFeeIDs.aum);
     }
 
     /**
@@ -101,15 +96,30 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     }
 
     /**
+     * @notice Returns the provider fee ID for the given fee type.
+     */
+    function getProviderFeeId(uint256 feeType) public view returns (uint256) {
+        if (feeType == ProtocolFeeType.SWAP) {
+            return _swapFeeId;
+        } else if (feeType == ProtocolFeeType.YIELD) {
+            return _yieldFeeId;
+        } else if (feeType == ProtocolFeeType.AUM) {
+            return _aumFeeId;
+        } else {
+            _revert(Errors.UNHANDLED_FEE_TYPE);
+        }
+    }
+
+    /**
      * @notice Updates the cache to the latest value set by governance.
      * @dev Can be called by anyone to update the cached fee percentages.
      */
     function updateProtocolFeePercentageCache() external {
         _beforeProtocolFeeCacheUpdate();
 
-        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.SWAP, swapFeeId);
-        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.YIELD, yieldFeeId);
-        _updateProtocolFeeCache(_protocolFeeProvider, ProtocolFeeType.AUM, aumFeeId);
+        _updateSwapProtocolFeeCache(_protocolFeeProvider, _swapFeeId);
+        _updateYieldProtocolFeeCache(_protocolFeeProvider, _yieldFeeId);
+        _updateAumProtocolFeeCache(_protocolFeeProvider, _aumFeeId);
     }
 
     /**
@@ -121,23 +131,21 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _updateProtocolFeeCache(
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        uint256 feeType,
-        uint256 providerFeeId
-    ) private {
-        uint256 currentValue = protocolFeeProvider.getFeeTypePercentage(providerFeeId);
+    function _updateSwapProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeId) private {
+        uint256 swapFee = protocolFeeProvider.getFeeTypePercentage(feeId);
+        _cache.swapFee = swapFee.toUint64();
+        emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.SWAP, swapFee);
+    }
 
-        if (feeType == ProtocolFeeType.SWAP) {
-            _cache.swapFee = currentValue.toUint64();
-        } else if (feeType == ProtocolFeeType.YIELD) {
-            _cache.yieldFee = currentValue.toUint64();
-        } else if (feeType == ProtocolFeeType.AUM) {
-            _cache.aumFee = currentValue.toUint64();
-        } else {
-            _revert(Errors.UNHANDLED_FEE_TYPE);
-        }
+    function _updateYieldProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeId) private {
+        uint256 yieldFee = protocolFeeProvider.getFeeTypePercentage(feeId);
+        _cache.yieldFee = yieldFee.toUint64();
+        emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.YIELD, yieldFee);
+    }
 
-        emit ProtocolFeePercentageCacheUpdated(feeType, providerFeeId, currentValue);
+    function _updateAumProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeId) private {
+        uint256 aumFee = protocolFeeProvider.getFeeTypePercentage(feeId);
+        _cache.aumFee = aumFee.toUint64();
+        emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.AUM, aumFee);
     }
 }
