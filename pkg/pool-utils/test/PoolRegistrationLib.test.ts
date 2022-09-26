@@ -163,6 +163,16 @@ describe('PoolRegistrationLib', function () {
       ).to.be.revertedWith('UNSORTED_ARRAY');
     });
 
+    it("reverts if the pool's BPT is included as one of the tokens", async () => {
+      const tokensWithBPT = [lib.address, ...tokens.addresses];
+      tokensWithBPT.sort();
+      const assetManagersWithBPT = [ZERO_ADDRESS, ...assetManagers];
+
+      await expect(
+        lib.registerComposablePool(vault.address, PoolSpecialization.GeneralPool, tokensWithBPT, assetManagersWithBPT)
+      ).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
+    });
+
     context("when the token and asset managers arrays' lengths are mismatched", () => {
       it('reverts', async () => {
         const tooManyAssetManagers = Array.from(
