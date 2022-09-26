@@ -222,12 +222,14 @@ contract ManagedPool is ManagedPoolSettings {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
-        uint256[] memory scalingFactors = _scalingFactors();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256[] memory amountsIn = userData.initialAmountsIn();
-        InputHelpers.ensureInputLengthMatch(amountsIn.length, scalingFactors.length);
+        InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
+
+        uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(getNormalizedWeights(), amountsIn);
+        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
@@ -250,7 +252,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory balances,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
-        uint256[] memory scalingFactors = _scalingFactors();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
+
+        uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
         uint256 preJoinExitSupply = _beforeJoinExit();
@@ -258,7 +262,7 @@ contract ManagedPool is ManagedPoolSettings {
         (bptAmountOut, amountsIn) = _doJoin(
             sender,
             balances,
-            getNormalizedWeights(),
+            _getNormalizedWeights(tokens),
             scalingFactors,
             preJoinExitSupply,
             userData
@@ -326,7 +330,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory balances,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        uint256[] memory scalingFactors = _scalingFactors();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
+
+        uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
         uint256 preJoinExitSupply = _beforeJoinExit();
@@ -334,7 +340,7 @@ contract ManagedPool is ManagedPoolSettings {
         (bptAmountIn, amountsOut) = _doExit(
             sender,
             balances,
-            getNormalizedWeights(),
+            _getNormalizedWeights(tokens),
             scalingFactors,
             preJoinExitSupply,
             userData
