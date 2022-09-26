@@ -63,6 +63,12 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * after factory deployment, Recovery Mode can always be enabled.
      */
     function enableRecoveryMode() external override authenticate {
+        // Unlike when recovery mode is disabled, derived contracts should *not* do anything when it is enabled.
+        // We do not want to make any calls that could fail and prevent the pool from entering recovery mode.
+        // Accordingly, this should have no effect, but for consistency with `disableRecoveryMode`, revert if
+        // recovery mode was already enabled.
+        _ensureNotInRecoveryMode();
+
         _setRecoveryMode(true);
     }
 
@@ -72,6 +78,11 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
      * necessary.
      */
     function disableRecoveryMode() external override authenticate {
+        // Some derived contracts respond to disabling recovery mode with state changes (e.g., related to protocol fees,
+        // or otherwise ensuring that enabling and disabling recovery mode has no ill effects on LPs). When called
+        // outside of recovery mode, these state changes might lead to unexpected behavior.
+        _ensureInRecoveryMode();
+
         _setRecoveryMode(false);
     }
 
