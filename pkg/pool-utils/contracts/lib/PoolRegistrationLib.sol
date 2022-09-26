@@ -59,6 +59,10 @@ library PoolRegistrationLib {
 
         IERC20[] memory composableTokens = new IERC20[](tokens.length + 1);
         // We insert the Pool's BPT address into the first position.
+        // This allows us to know the position of the BPT token in the tokens array without explicitly tracking it.
+        // When deregistering a token, the token at the end of the array is moved into the index of the deregistered
+        // token, changing its index. By placing BPT at the beginning of the tokens array we can be sure that its index
+        // will never change unless it is deregistered itself (something which composable pools must prevent anyway).
         composableTokens[0] = IERC20(address(this));
         for (uint256 i = 0; i < tokens.length; i++) {
             composableTokens[i + 1] = tokens[i];
