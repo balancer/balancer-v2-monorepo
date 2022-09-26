@@ -74,28 +74,6 @@ describe('ManagedPool', function () {
       it('swaps are not blocked', async () => {
         await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
-
-      it('reverts if swap hook caller is not the vault', async () => {
-        await expect(
-          pool.instance[
-            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
-          ](
-            {
-              kind: SwapKind.GivenIn,
-              tokenIn: poolTokens.first.address,
-              tokenOut: poolTokens.second.address,
-              amount: 0,
-              poolId: await pool.getPoolId(),
-              lastChangeBlock: 0,
-              from: other.address,
-              to: other.address,
-              userData: '0x',
-            },
-            0,
-            0
-          )
-        ).to.be.revertedWith('CALLER_NOT_VAULT');
-      });
     });
   });
 
