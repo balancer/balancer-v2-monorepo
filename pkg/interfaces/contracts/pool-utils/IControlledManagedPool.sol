@@ -21,7 +21,8 @@ interface IControlledManagedPool {
         uint256 startTime,
         uint256 endTime,
         uint256 startSwapFeePercentage,
-        uint256 endSwapFeePercentage) external;
+        uint256 endSwapFeePercentage
+    ) external;
 
     function updateWeightsGradually(
         uint256 startTime,
