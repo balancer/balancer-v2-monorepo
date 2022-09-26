@@ -228,30 +228,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
-        // Do not allow setting if there is an ongoing fee change
-        uint256 currentTime = block.timestamp;
-        bytes32 poolState = _poolState;
-        (uint256 startTime, uint256 endTime, , ) = ManagedPoolStorageLib.getSwapFeeFields(poolState);
-
-        if (currentTime < endTime) {
-            _revert(
-                currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
-            );
-        }
-
-        _poolState = ManagedPoolSwapFeesLib.setSwapFeePercentage(poolState, swapFeePercentage);
-    }
-
-    /**
      * @notice Schedule a gradual swap fee update.
      * @dev The swap fee will change from the given starting value (which may or may not be the current
-     * value) to the given ending fee percentage, over startTime to endTime. Calling this with a starting
-     * value avoids requiring an explicit external `setSwapFeePercentage` call.
+     * value) to the given ending fee percentage, over startTime to endTime.
      *
      * Note that calling this with a starting swap fee different from the current value will immediately change the
      * current swap fee to `startSwapFeePercentage` (including emitting the SwapFeePercentageChanged event),
@@ -269,7 +248,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) external authenticate whenNotPaused nonReentrant {
+    ) external override authenticate whenNotPaused nonReentrant {
         _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
             _poolState,
             startTime,
@@ -913,7 +892,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||

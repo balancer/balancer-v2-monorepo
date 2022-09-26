@@ -45,6 +45,7 @@ import {
 import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '../base/BasePool';
+import assert from 'assert';
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
@@ -530,6 +531,7 @@ export default class WeightedPool extends BasePool {
   }
 
   async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    assert(this.poolType != WeightedPoolType.MANAGED_POOL, 'Not available in managed pool');
     const pool = this.instance.connect(from);
     return pool.setSwapFeePercentage(swapFeePercentage);
   }
@@ -597,6 +599,7 @@ export default class WeightedPool extends BasePool {
     startSwapFeePercentage: BigNumberish,
     endSwapFeePercentage: BigNumberish
   ): Promise<ContractTransaction> {
+    assert(this.poolType == WeightedPoolType.MANAGED_POOL, 'Only available in managed pool');
     const pool = this.instance.connect(from);
     return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
   }

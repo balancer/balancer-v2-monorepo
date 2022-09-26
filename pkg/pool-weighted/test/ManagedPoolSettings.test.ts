@@ -8,9 +8,9 @@ import {
   DAY,
   MINUTE,
   advanceTime,
-  advanceToTimestamp,
   currentTimestamp,
   receiptTimestamp,
+  setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -542,7 +542,9 @@ describe('ManagedPoolSettings', function () {
 
     context('with a 100% swap fee', () => {
       sharedBeforeEach('set swap fee to 100%', async () => {
-        await pool.setSwapFeePercentage(owner, fp(1));
+        const blockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(blockTimestamp);
+        await pool.updateSwapFeeGradually(owner, blockTimestamp, blockTimestamp, fp(1), fp(1));
       });
 
       it('reverts on joinSwap', async () => {
@@ -552,39 +554,21 @@ describe('ManagedPoolSettings', function () {
 
     context('with the max swap fee', () => {
       sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
-        await pool.setSwapFeePercentage(owner, MAX_SWAP_FEE_PERCENTAGE);
+        // In practice, a separate contract would call `updateSwapFeeGradually` using `block.timestamp` both as start
+        // and endTime to make the change immediately.
+        const blockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(blockTimestamp);
+        await pool.updateSwapFeeGradually(
+          owner,
+          blockTimestamp,
+          blockTimestamp,
+          MAX_SWAP_FEE_PERCENTAGE,
+          MAX_SWAP_FEE_PERCENTAGE
+        );
       });
 
       it('allows (unfavorable) joinSwap', async () => {
         await expect(pool.joinGivenOut({ recipient: owner, bptOut: fp(1), token: 0 })).to.not.be.reverted;
-      });
-    });
-
-    context('when there is an ongoing gradual change', () => {
-      let now, startTime: BigNumber, endTime: BigNumber;
-      const START_DELAY = MINUTE * 10;
-      const UPDATE_DURATION = DAY * 2;
-      const NEW_SWAP_FEE = fp(0.1);
-
-      sharedBeforeEach('start gradual swap fee update', async () => {
-        now = await currentTimestamp();
-        startTime = now.add(START_DELAY);
-        endTime = startTime.add(UPDATE_DURATION);
-
-        await pool.updateSwapFeeGradually(owner, startTime, endTime, POOL_SWAP_FEE_PERCENTAGE, NEW_SWAP_FEE);
-      });
-
-      it('fails when gradual change is set to start in the future', async () => {
-        await expect(pool.setSwapFeePercentage(owner, NEW_SWAP_FEE)).to.be.revertedWith(
-          'SET_SWAP_FEE_PENDING_FEE_CHANGE'
-        );
-      });
-
-      it('fails when gradual change is in progress', async () => {
-        advanceToTimestamp(startTime.add(1));
-        await expect(pool.setSwapFeePercentage(owner, NEW_SWAP_FEE)).to.be.revertedWith(
-          'SET_SWAP_FEE_DURING_FEE_CHANGE'
-        );
       });
     });
   });
