@@ -496,6 +496,27 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         emit MustAllowlistLPsSet(mustAllowlistLPs);
     }
 
+    // Actual Supply
+
+    function getActualSupply() external view returns (uint256) {
+        return _getActualSupply(totalSupply());
+    }
+
+    function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
+        if (inRecoveryMode()) {
+            // If we're in recovery mode then we bypass any fee logic and perform an early return.
+            return virtualSupply;
+        }
+
+        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+            virtualSupply,
+            block.timestamp,
+            _lastAumFeeCollectionTimestamp,
+            getManagementAumFeePercentage()
+        );
+        return virtualSupply.add(aumFeesAmount);
+    }
+
     // AUM management fees
 
     /**

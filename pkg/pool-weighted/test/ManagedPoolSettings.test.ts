@@ -660,6 +660,8 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('recovery mode', () => {
+    const managementAumFeePercentage = fp(0.01);
+
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens: poolTokens,
@@ -667,12 +669,35 @@ describe('ManagedPoolSettings', function () {
         owner: owner.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
+        managementAumFeePercentage,
         vault,
       };
       pool = await WeightedPool.create(params);
       await pool.init({ from: other, initialBalances });
 
       await pool.collectAumManagementFees(owner);
+    });
+
+    context('when entering recovery mode', () => {
+      it('sets the actual supply equal to the total supply', async () => {
+        // Advance time so that AUM fees are accrued.
+        await advanceTime(365 * DAY);
+
+        const totalSupplyBefore = await pool.totalSupply();
+        const actualSupplyBefore = await pool.getActualSupply();
+
+        // The total supply which doesn't consider yet-to-be-minted fees should be lower.
+        // Check that we have a difference of at least 0.01% to discard rounding error.
+        expect(totalSupplyBefore).to.be.lt(actualSupplyBefore.mul(9999).div(10000));
+
+        await pool.enableRecoveryMode();
+
+        const totalSupplyAfter = await pool.totalSupply();
+        expect(totalSupplyAfter).to.be.eq(totalSupplyBefore);
+
+        const actualSupplyAfter = await pool.getActualSupply();
+        expect(actualSupplyAfter).to.equalWithError(totalSupplyAfter, 0.0001);
+      });
     });
 
     context('when leaving recovery mode', () => {
@@ -770,6 +795,22 @@ describe('ManagedPoolSettings', function () {
           expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
             bptAmount: actualManagementFeeBpt,
           });
+        });
+
+        it('syncs the total supply to the actual supply', async () => {
+          const totalSupplyBefore = await pool.totalSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(totalSupplyBefore, managementAumFeePercentage, timeElapsed);
+
+          const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt);
+          const actualSupplyBefore = await pool.getActualSupply();
+          expect(actualSupplyBefore).to.be.equalWithError(expectedActualSupply, 0.0001);
+
+          await collectAUMFees();
+
+          const totalSupplyAfter = await pool.totalSupply();
+          const actualSupplyAfter = await pool.getActualSupply();
+          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, 0.0001);
+          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore, 0.0001);
         });
       }
 
