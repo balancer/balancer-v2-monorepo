@@ -103,19 +103,6 @@ describe('BasePool', function () {
     });
   }
 
-  describe('pool id', () => {
-    let pool: Contract;
-
-    sharedBeforeEach(async () => {
-      pool = await deployBasePool();
-    });
-
-    it('returns pool ID registered by the vault', async () => {
-      const poolId = await pool.getPoolId();
-      expect((await vault.getPool(poolId))[0]).to.be.eq(pool.address);
-    });
-  });
-
   describe('only vault modifier', () => {
     let pool: Contract;
     let poolId: string;
