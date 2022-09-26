@@ -34,8 +34,6 @@ import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
 
-import "hardhat/console.sol";
-
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
