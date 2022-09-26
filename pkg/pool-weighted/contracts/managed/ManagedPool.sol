@@ -31,19 +31,11 @@ import "./ManagedPoolSettings.sol";
 /**
  * @title Managed Pool
  * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a contract
- * sometimes called a controller (as the owner, containing any specific business logic). Since the pool
- * itself permits "dangerous" operations, it should never be deployed with an EOA as the owner.
+ * (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
+ * operations, it should never be deployed with an EOA as the owner.
  *
- * Pool owners can add functionality: for example, allow the effective "owner" (sometimes called a manager),
- * to be transferred to another address. (The underlying pool owner is still immutable, set to the address
- * of the contract it was deployed with.) Another pool owner might allow fine-grained permissioning of
- * protected operations: perhaps a multisig can add/remove tokens, but a third-party EOA is allowed to set
- * the swap fees.
- *
- * Pool owners might also impose limits on functionality so that operations that might endanger LPs can be
- * performed more safely. For instance, the pool by itself places no restrictions on the duration of a gradual
- * weight change, but a pool owner might restrict this in various ways, from a simple minimum duration,
- * to a more complex rate limit.
+ * The owner contract can impose arbitrary access control schemes on its permissions: it might allow a multisig
+ * to add or remove tokens, and let an EOA set the swap fees.
  *
  * Pool owners can also serve as intermediate contracts to hold tokens, deploy timelocks, consult with
  * other protocols or on-chain oracles, or bundle several operations into one transaction that re-entrancy
@@ -105,6 +97,7 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
+        // solhint-disable no-empty-blocks
         if (request.tokenOut == IERC20(this)) {
             // Do a joinSwap
         } else if (request.tokenIn == IERC20(this)) {
@@ -112,6 +105,7 @@ contract ManagedPool is ManagedPoolSettings {
         } else {
             return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
         }
+        // solhint-enable no-empty-blocks
     }
 
     /*

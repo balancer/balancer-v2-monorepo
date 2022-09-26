@@ -23,12 +23,11 @@ import "./ManagedPool.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
- * with a particular contract as the owner, often called a controller. This contract might have a
- * privileged or admin account to perform permissioned actions: this account is often called the
- * pool manager.
+ * with a particular contract as the owner. This contract might have a privileged or admin account
+ * to perform permissioned actions: this account is often called the pool manager.
  *
  * This factory should NOT be used directly to deploy ManagedPools owned by EOAs. ManagedPools
- * controlled by EOAs would be very dangerous for LPs. There are no restrictions on what the owner
+ * owned by EOAs would be very dangerous for LPs. There are no restrictions on what the owner
  * can do, so a malicious owner could easily manipulate prices and drain the pool.
  *
  * In this design, other client-specific factories will deploy a contract, then call this factory
