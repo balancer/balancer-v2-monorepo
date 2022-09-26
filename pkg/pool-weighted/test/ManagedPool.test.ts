@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
+import { BigNumberish, bn, fp, FP_ONE, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import {
   DAY,
   advanceTime,
@@ -9,15 +10,15 @@ import {
   currentTimestamp,
   setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import { BigNumberish, bn, fp, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { SwapKind } from '@balancer-labs/balancer-js';
+import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -37,7 +38,6 @@ describe('ManagedPool', function () {
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT));
   const initialBalances = Array(TOKEN_COUNT).fill(fp(1000));
-  let sender: SignerWithAddress;
 
   sharedBeforeEach('deploy tokens and AUMProtocolFeeCollector', async () => {
     allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true, varyDecimals: true });
@@ -49,19 +49,78 @@ describe('ManagedPool', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
-  describe('initialization', () => {
-    function deployPool(mustAllowlistLPs: boolean): Promise<WeightedPool> {
-      return WeightedPool.create({
-        tokens: poolTokens,
-        weights: poolWeights,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        vault,
-        swapEnabledOnStart: true,
-        mustAllowlistLPs,
-        owner: owner.address,
-      });
-    }
+  async function deployPool(overrides: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
+    const params = {
+      vault,
+      tokens: poolTokens,
+      weights: poolWeights,
+      owner: owner.address,
+      poolType: WeightedPoolType.MANAGED_POOL,
+      ...overrides,
+    };
+    return WeightedPool.create(params);
+  }
 
+  describe('construction', () => {
+    context('pool registration', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool();
+      });
+
+      it('returns pool ID registered by the vault', async () => {
+        const poolId = await pool.getPoolId();
+        const { address: poolAddress } = await vault.getPool(poolId);
+        expect(poolAddress).to.be.eq(pool.address);
+      });
+
+      it('registers with the MinimalSwapInfo specialization', async () => {
+        const { specialization } = await vault.getPool(pool.poolId);
+        expect(specialization).to.be.eq(PoolSpecialization.MinimalSwapInfoPool);
+      });
+
+      it('registers all the expected tokens', async () => {
+        const { tokens } = await vault.getPoolTokens(pool.poolId);
+        expect(tokens).to.be.deep.eq(poolTokens.addresses);
+      });
+
+      it('registers all the expected asset managers', async () => {
+        await poolTokens.asyncEach(async (token) => {
+          const { assetManager } = await vault.getPoolTokenInfo(pool.poolId, token);
+          expect(assetManager).to.be.eq(ZERO_ADDRESS);
+        });
+      });
+    });
+  });
+
+  describe('swap', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      pool = await deployPool({ vault: undefined, swapEnabledOnStart: true });
+
+      await pool.init({ from: other, initialBalances });
+    });
+
+    context('when swaps are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await pool.setSwapEnabled(owner, false);
+      });
+
+      it('it reverts', async () => {
+        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
+      });
+    });
+
+    context('when swaps are enabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await pool.setSwapEnabled(owner, true);
+      });
+
+      it('swaps are not blocked', async () => {
+        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
+      });
+    });
+  });
+
+  describe('initialization', () => {
     function itInitializesThePoolCorrectly() {
       it('initializes the pool', async () => {
         await pool.init({ from: other, initialBalances });
@@ -70,7 +129,7 @@ describe('ManagedPool', function () {
       });
 
       it('sets the first AUM fee collection timestamp', async () => {
-        const receipt = await pool.init({ from: other, initialBalances });
+        const { receipt } = await pool.init({ from: other, initialBalances });
 
         expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(await receiptTimestamp(receipt));
       });
@@ -79,7 +138,7 @@ describe('ManagedPool', function () {
     context('LP allowlist', () => {
       context('when LP allowlist is enabled', () => {
         sharedBeforeEach('deploy pool', async () => {
-          pool = await deployPool(true);
+          pool = await deployPool({ mustAllowlistLPs: true });
         });
 
         context('when initial LP is allowlisted', () => {
@@ -99,229 +158,146 @@ describe('ManagedPool', function () {
 
       context('when LP allowlist is disabled', () => {
         sharedBeforeEach('deploy pool', async () => {
-          pool = await deployPool(false);
+          pool = await deployPool({ mustAllowlistLPs: false });
         });
         itInitializesThePoolCorrectly();
       });
     });
   });
 
-  describe('when initialized with an LP allowlist', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        vault,
-        swapEnabledOnStart: true,
-        mustAllowlistLPs: true,
-        owner: owner.address,
-      };
-      pool = await WeightedPool.create(params);
-    });
+  describe('joinPool', () => {
+    context('when LP allowlist is enabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool();
+        await pool.init({ from: other, initialBalances });
 
-    context('when an address is added to the allowlist', () => {
-      sharedBeforeEach('add address to allowlist', async () => {
-        const receipt = await pool.addAllowedAddress(owner, other);
+        await pool.setMustAllowlistLPs(owner, true);
+      });
 
-        expectEvent.inReceipt(await receipt.wait(), 'AllowlistAddressAdded', {
-          member: other.address,
+      context('when LP is on the allowlist', () => {
+        sharedBeforeEach('add address to allowlist', async () => {
+          await pool.addAllowedAddress(owner, other.address);
         });
 
+        it('the listed LP can join', async () => {
+          await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
+
+          expect(await pool.balanceOf(other)).to.be.gt(0);
+        });
+      });
+
+      context('when LP is not on the allowlist', () => {
+        it('it reverts', async () => {
+          await expect(pool.joinAllGivenOut({ from: other, bptOut: FP_ONE })).to.be.revertedWith(
+            'ADDRESS_NOT_ALLOWLISTED'
+          );
+        });
+      });
+    });
+
+    context('when swaps are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool({ swapEnabledOnStart: false });
         await pool.init({ from: other, initialBalances });
       });
 
-      it('the listed LP can join', async () => {
-        const startingBpt = await pool.balanceOf(other);
+      context('proportional joins', () => {
+        it('allows proportionate joins', async () => {
+          const startingBpt = await pool.balanceOf(other);
 
-        const { amountsIn } = await pool.joinAllGivenOut({ from: other, bptOut: startingBpt });
+          const { amountsIn } = await pool.joinAllGivenOut({ from: other, bptOut: startingBpt });
 
-        expect(amountsIn).to.deep.equal(initialBalances);
+          const endingBpt = await pool.balanceOf(other);
+          expect(endingBpt).to.be.gt(startingBpt);
+          expect(amountsIn).to.deep.equal(initialBalances);
+        });
       });
 
-      it('addresses not on the list cannot join', async () => {
-        const startingBpt = await pool.balanceOf(owner);
+      context('disproportionate joins', () => {
+        it('prevents disproportionate joins (single token)', async () => {
+          const bptOut = await pool.balanceOf(other);
 
-        await expect(pool.joinAllGivenOut({ from: owner, bptOut: startingBpt })).to.be.revertedWith(
-          'ADDRESS_NOT_ALLOWLISTED'
-        );
-      });
-    });
-
-    context('when mustAllowlistLPs is toggled', () => {
-      sharedBeforeEach('initialize pool', async () => {
-        await pool.addAllowedAddress(owner, owner);
-        await pool.init({ from: owner, initialBalances });
-      });
-
-      it('allows owner to turn it off (open to public LPs)', async () => {
-        const startingBpt = await pool.balanceOf(owner);
-
-        const receipt = await pool.setMustAllowlistLPs(owner, false);
-        expectEvent.inReceipt(await receipt.wait(), 'MustAllowlistLPsSet', {
-          mustAllowlistLPs: false,
+          await expect(pool.joinGivenOut({ from: other, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
+            'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+          );
         });
 
-        // Should be turned off
-        expect(await pool.getMustAllowlistLPs()).to.be.false;
+        it('prevents disproportionate joins (multi token)', async () => {
+          const amountsIn = [...initialBalances];
+          amountsIn[0] = 0;
 
-        // And allow joins from anywhere
-        await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.not.be.reverted;
-
-        // Does not allow adding or removing addresses now
-        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
+          await expect(pool.joinGivenIn({ from: other, amountsIn })).to.be.revertedWith(
+            'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+          );
+        });
       });
     });
   });
 
-  describe('with valid creation parameters', () => {
-    context('when initialized with swaps disabled', () => {
+  describe('exitPool', () => {
+    context('when LP allowlist is enabled', () => {
       sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
+        pool = await deployPool();
+        await pool.init({ from: other, initialBalances });
+
+        await pool.setMustAllowlistLPs(owner, true);
+      });
+
+      context('when LP is on the allowlist', () => {
+        sharedBeforeEach('add address to allowlist', async () => {
+          await pool.addAllowedAddress(owner, other.address);
+        });
+
+        it('the listed LP can exit', async () => {
+          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
+        });
+      });
+
+      context('when LP is not on the allowlist', () => {
+        it('the listed LP can exit', async () => {
+          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
+        });
+      });
+    });
+
+    context('when swaps are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool({
           swapEnabledOnStart: false,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('swaps are blocked', async () => {
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
-      });
-    });
-
-    context('when initialized with swaps enabled', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          vault,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
-        };
-        pool = await WeightedPool.create(params);
-      });
-
-      it('swaps are not blocked', async () => {
+        });
         await pool.init({ from: other, initialBalances });
-
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
       });
 
-      it('reverts if swap hook caller is not the vault', async () => {
-        await expect(
-          pool.instance[
-            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)'
-          ](
-            {
-              kind: SwapKind.GivenIn,
-              tokenIn: poolTokens.first.address,
-              tokenOut: poolTokens.second.address,
-              amount: 0,
-              poolId: await pool.getPoolId(),
-              lastChangeBlock: 0,
-              from: other.address,
-              to: other.address,
-              userData: '0x',
-            },
-            0,
-            0
-          )
-        ).to.be.revertedWith('CALLER_NOT_VAULT');
-      });
-    });
-  });
+      context('proportional exits', () => {
+        it('allows proportional exits', async () => {
+          const previousBptBalance = await pool.balanceOf(other);
+          const bptIn = pct(previousBptBalance, 0.8);
 
-  describe('permissioned actions', () => {
-    describe('enable/disable swaps', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          owner: owner.address,
-          vault,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
-        };
-        pool = await WeightedPool.create(params);
+          await expect(pool.multiExitGivenIn({ from: other, bptIn })).to.not.be.reverted;
+
+          const newBptBalance = await pool.balanceOf(other);
+          expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001);
+        });
       });
 
-      context('when the sender is the owner', () => {
-        beforeEach('set sender to owner', () => {
-          sender = owner;
+      context('disproportionate exits', () => {
+        it('prevents disproportionate exits (single token)', async () => {
+          const previousBptBalance = await pool.balanceOf(other);
+          const bptIn = pct(previousBptBalance, 0.5);
+
+          await expect(pool.singleExitGivenIn({ from: other, bptIn, token: poolTokens.get(0) })).to.be.revertedWith(
+            'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+          );
         });
 
-        sharedBeforeEach('initialize pool', async () => {
-          await pool.init({ from: sender, initialBalances });
-        });
+        it('prevents disproportionate exits (multi token)', async () => {
+          const amountsOut = [...initialBalances];
+          // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
+          amountsOut[0] = 0;
 
-        context('with swaps disabled', () => {
-          sharedBeforeEach(async () => {
-            await pool.setSwapEnabled(sender, false);
-          });
-
-          context('proportional joins/exits', () => {
-            it('allows proportionate joins', async () => {
-              const startingBpt = await pool.balanceOf(sender);
-
-              const { amountsIn } = await pool.joinAllGivenOut({ from: sender, bptOut: startingBpt });
-
-              const endingBpt = await pool.balanceOf(sender);
-              expect(endingBpt).to.be.gt(startingBpt);
-              expect(amountsIn).to.deep.equal(initialBalances);
-            });
-
-            it('allows proportional exits', async () => {
-              const previousBptBalance = await pool.balanceOf(sender);
-              const bptIn = pct(previousBptBalance, 0.8);
-
-              await expect(pool.multiExitGivenIn({ from: sender, bptIn })).to.not.be.reverted;
-
-              const newBptBalance = await pool.balanceOf(sender);
-              expect(newBptBalance).to.equalWithError(pct(previousBptBalance, 0.2), 0.001);
-            });
-          });
-
-          context('disproportionate joins/exits', () => {
-            it('prevents disproportionate joins (single token)', async () => {
-              const bptOut = await pool.balanceOf(sender);
-
-              await expect(pool.joinGivenOut({ from: sender, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-
-            it('prevents disproportionate exits (single token)', async () => {
-              const previousBptBalance = await pool.balanceOf(sender);
-              const bptIn = pct(previousBptBalance, 0.5);
-
-              await expect(
-                pool.singleExitGivenIn({ from: sender, bptIn, token: poolTokens.get(0) })
-              ).to.be.revertedWith('INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED');
-            });
-
-            it('prevents disproportionate joins (multi token)', async () => {
-              const amountsIn = [...initialBalances];
-              amountsIn[0] = 0;
-
-              await expect(pool.joinGivenIn({ from: sender, amountsIn })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-
-            it('prevents disproportionate exits (multi token)', async () => {
-              const amountsOut = [...initialBalances];
-              // Make it disproportionate (though it will fail with this exit type even if it's technically proportionate)
-              amountsOut[0] = 0;
-
-              await expect(pool.exitGivenOut({ from: sender, amountsOut })).to.be.revertedWith(
-                'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
-              );
-            });
-          });
+          await expect(pool.exitGivenOut({ from: other, amountsOut })).to.be.revertedWith(
+            'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
+          );
         });
       });
     });
@@ -331,15 +307,7 @@ describe('ManagedPool', function () {
     const MAX_SWAP_FEE_PERCENTAGE = fp(0.8);
 
     sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-      };
-      pool = await WeightedPool.create(params);
+      pool = await deployPool({ vault: undefined, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE });
       await pool.init({ from: owner, initialBalances });
     });
 
@@ -383,17 +351,7 @@ describe('ManagedPool', function () {
     const managementAumFeePercentage = fp(0.01);
 
     sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-        vault,
-        swapFeePercentage,
-        managementAumFeePercentage,
-      };
-      pool = await WeightedPool.create(params);
+      pool = await deployPool({ swapFeePercentage, managementAumFeePercentage });
     });
 
     describe('management aum fee collection', () => {
