@@ -99,7 +99,7 @@ contract ComposableStablePool is
         ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(
             params.protocolFeeProvider,
-            ProviderFeeIDs(ProtocolFeeType.SWAP, ProtocolFeeType.YIELD, ProtocolFeeType.AUM)
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
     {
         // solhint-disable-previous-line no-empty-blocks
