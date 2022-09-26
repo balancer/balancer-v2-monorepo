@@ -609,7 +609,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @notice Adds a token to the Pool's list of tradeable tokens. This is a permissioned function.
      *
      * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
-     * token will have no balance - it is up to the controller to provide some immediately after calling this function.
+     * token will have no balance - it is up to the owner to provide some immediately after calling this function.
      * Note however that regular join functions will not work while the new token has no balance: the only way to
      * deposit an initial amount is by using an Asset Manager.
      *
@@ -763,10 +763,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
         // its weight however, since we'll need it later.
         // We've ensured that the most recent weight change is complete.
-        uint256 tokenToRemoveWeight = ManagedPoolTokenLib.getTokenWeight(
-            _tokenState[tokenToRemove],
-            FixedPoint.ONE
-        );
+        uint256 tokenToRemoveWeight = ManagedPoolTokenLib.getTokenWeight(_tokenState[tokenToRemove], FixedPoint.ONE);
         delete _tokenState[tokenToRemove];
 
         // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add

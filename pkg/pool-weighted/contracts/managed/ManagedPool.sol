@@ -30,27 +30,20 @@ import "./ManagedPoolSettings.sol";
 
 /**
  * @title Managed Pool
- * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a pool controller
- * contract (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
+ * @dev Weighted Pool with mutable tokens and weights, designed to be used in conjunction with a contract
+ * (as the owner, containing any specific business logic). Since the pool itself permits "dangerous"
  * operations, it should never be deployed with an EOA as the owner.
  *
- * Pool controllers can add functionality: for example, allow the effective "owner" to be transferred to another
- * address. (The actual pool owner is still immutable, set to the pool controller contract.) Another pool owner
- * might allow fine-grained permissioning of protected operations: perhaps a multisig can add/remove tokens, but
- * a third-party EOA is allowed to set the swap fees.
+ * The owner contract can impose arbitrary access control schemes on its permissions: it might allow a multisig
+ * to add or remove tokens, and let an EOA set the swap fees.
  *
- * Pool controllers might also impose limits on functionality so that operations that might endanger LPs can be
- * performed more safely. For instance, the pool by itself places no restrictions on the duration of a gradual
- * weight change, but a pool controller might restrict this in various ways, from a simple minimum duration,
- * to a more complex rate limit.
+ * Pool owners can also serve as intermediate contracts to hold tokens, deploy timelocks, consult with
+ * other protocols or on-chain oracles, or bundle several operations into one transaction that re-entrancy
+ * protection would prevent initiating from the pool contract.
  *
- * Pool controllers can also serve as intermediate contracts to hold tokens, deploy timelocks, consult with other
- * protocols or on-chain oracles, or bundle several operations into one transaction that re-entrancy protection
- * would prevent initiating from the pool contract.
- *
- * Managed Pools and their controllers are designed to support many asset management use cases, including: large
- * token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of
- * protocol and management fees, allowlisting of LPs, and more.
+ * Managed Pools are designed to support many asset management use cases, including: large token counts,
+ * rebalancing through token changes, gradual weight or fee updates, fine-grained control of protocol and
+ * management fees, allowlisting of LPs, and more.
  */
 contract ManagedPool is ManagedPoolSettings {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
@@ -104,6 +97,7 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
+        // solhint-disable no-empty-blocks
         if (request.tokenOut == IERC20(this)) {
             // Do a joinSwap
         } else if (request.tokenIn == IERC20(this)) {
@@ -111,6 +105,7 @@ contract ManagedPool is ManagedPoolSettings {
         } else {
             return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
         }
+        // solhint-enable no-empty-blocks
     }
 
     /*
