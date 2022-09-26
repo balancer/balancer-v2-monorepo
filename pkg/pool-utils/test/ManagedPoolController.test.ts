@@ -206,17 +206,23 @@ describe('ManagedPoolController', function () {
     });
 
     describe('update weights gradually', () => {
+      let tokens: string[];
+
+      sharedBeforeEach('get tokens', async () => {
+        tokens = (await pool.getTokens()).tokens;
+      });
+
       it('lets the manager update weights gradually', async () => {
         const now = await currentTimestamp();
 
-        await poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS);
+        await poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), tokens, END_WEIGHTS);
       });
 
       it('reverts if non-manager updates weights gradually', async () => {
         const now = await currentTimestamp();
 
         await expect(
-          poolController.connect(other).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS)
+          poolController.connect(other).updateWeightsGradually(now, now.add(LONG_UPDATE), tokens, END_WEIGHTS)
         ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
       });
 
@@ -224,7 +230,7 @@ describe('ManagedPoolController', function () {
         const now = await currentTimestamp();
 
         await expect(
-          poolController.connect(manager).updateWeightsGradually(now, now.add(SHORT_UPDATE), END_WEIGHTS)
+          poolController.connect(manager).updateWeightsGradually(now, now.add(SHORT_UPDATE), tokens, END_WEIGHTS)
         ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
       });
     });
@@ -274,9 +280,10 @@ describe('ManagedPoolController', function () {
 
       it('reverts if the manager updates weights', async () => {
         const now = await currentTimestamp();
+        const { tokens } = await pool.getTokens();
 
         await expect(
-          poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS)
+          poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), tokens, END_WEIGHTS)
         ).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
