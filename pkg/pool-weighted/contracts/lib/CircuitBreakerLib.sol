@@ -110,20 +110,21 @@ library CircuitBreakerLib {
      * given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      */
-    function getCircuitBreakerFields(bytes32 circuitBreakerState) internal pure returns (CircuitBreakerParams memory) {
-        return
-            CircuitBreakerParams({
-                bptPrice: circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH),
-                weightComplement: circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH),
-                lowerBound: circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-                    _BOUND_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                ),
-                upperBound: circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-                    _BOUND_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                )
-            });
+    function getCircuitBreakerFields(bytes32 circuitBreakerState)
+        internal
+        pure
+        returns (CircuitBreakerParams memory params)
+    {
+        params.bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        params.weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
+        params.lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
+            _BOUND_WIDTH,
+            _MAX_BOUND_PERCENTAGE
+        );
+        params.upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
+            _BOUND_WIDTH,
+            _MAX_BOUND_PERCENTAGE
+        );
     }
 
     /**
@@ -133,44 +134,50 @@ library CircuitBreakerLib {
      * for this token: there might be a lower bound, but no upper bound. If the current BPT price is less than
      * the lower bound, or greater than the non-zero upper bound, the transaction should revert.
      *
-     * These BPT price bounds are dynamically calculated using the conversion ratios. In general:
-     * lower/upper BPT price bound = bptPrice * "conversion ratio". The conversion ratio is given as
-     * (boundaryPercentage)**(weightComplement).
+     * These BPT price bounds are dynamically calculated using the bound ratios. In general, the lower/upper
+     * BPT price bound = bptPrice * "upper/lower bound ratio". The bound ratios are used to convert the
+     * user-provided bounds (expressed as percentages) to BPT prices, at the current weight, and are given as:
+     * (bound)**(weightComplement).
      *
-     * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
-     * (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
-     * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move
-     * together: a 20% drop in spot price would correspond to a 20% drop in BPT price.
+     * For instance, given an 80/20 pool with a 90% lower bound, the weight complement of the higher-weight
+     * token would be (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be:
+     * (0.9 ** 0.2) ~ 0.9791.
      *
-     * But with unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
-     * to a proportional change in spot price than a lower weight token. In the simulations, Integrations
-     * coined the term "balance inertia".
+     * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move together:
+     * a 20% drop in spot price would correspond to a 20% drop in BPT price. But with unequal weights (assuming a
+     * balanced pool), the balance of a higher-weight token will respond less to a proportional change in spot
+     * price than a lower weight token. Integrations coined the term "balance inertia" for this phenomenon.
      *
      * If the external price drops, all else being equal, the pool would be arbed until the percent drop in spot
      * price equaled the external price drop. Since during this process the *internal* pool price would be
-     * above market, the arbers would sell cheap tokens to our poor unwitting pool at inflated prices, raising
-     * the balance of the depreciating token, and lowering the balance of another token (WETH in this example).
+     * above market, the arbers would sell cheap tokens to our unwitting pool at inflated prices, raising
+     * the balance of the depreciating token, and lowering the balances of one or more other tokens.
      *
-     * Using weighted math, and assuming for simplicity that the sum of all weights is 1, you can compute the
-     * amountIn ratio for the arb trade as: (1/priceRatio) ** (1 - weight). For our 0.9 ratio and a weight of
-     * 0.8, this is ~ 1.0213. So if you had 8000 tokens before, the ending balance would be 8000*1.0213 ~ 8170.
+     * Using weighted math, you can compute the amountIn ratio for the arb trade as:
+     * (1 / priceRatio) ** (1 - weight). For our 0.9 ratio and a weight of 0.8, this is ~ 1.0213.
+     * So if you had 8000 tokens before, the ending balance would be 8000*1.0213 ~ 8170.
+     *
      * Note that the higher the weight, the lower this ratio is. That means the counterparty token is going
      * out proportionally faster than the arb token is coming in: hence the non-linear relationship between
      * spot price and BPT price.
      *
-     * If we call the initial balance B0, and set k = (1/priceRatio) ** (1 - weight), the post-arb balance is
-     * given by: B1 = k * B0. Since the BPTPrice0 = totalSupply*weight/B0, and BPTPrice1 = totalSupply*weight/B1,
-     * we can combine these equations to compute the BPT price ratio BPTPrice1/BPTPrice0 = 1/k; BPT1 = BPT0/k.
+     * If we call the initial balance at t0 B(t0), and set k = (1 / priceRatio) ** (1 - weight), the post-arb
+     * balance at t1 is given by: B(t1) = k * B(t0). Since the BPTPrice(t0) = totalSupply * weight / B(t0),
+     * and BPTPrice(t1) = totalSupply * weight / B(t1) - we are assuming no joins/exits or weight changes
+     * for this example, so that the totalSupply and weight remain constant  - we can combine these equations
+     * to compute the BPT price ratio BPTPrice(t1) / BPTPrice(t0) = 1/k; so BPT(t1) = BPT(t0) / k.
+     *
      * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
-     * as above BPT1 = BPT0 * (1/k), or more simply: (reference BPT price) * (priceRatio)**(1 - weight).
+     * as above BPT(t1) = BPT(t0) * (1/k), or more simply: (BPT price) * (priceRatio) ** (1 - weight).
      *
-     * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
-     * when the breaker was set. Otherwise, we need to calculate them.
+     * If the value of the weight complement has not changed, we can use the precomputed conversion ratios stored
+     * when the breaker was set. Otherwise, we need to calculate them again.
      *
-     * As described in the general comments above, the weight complement calculation attempts to isolate changes
-     * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
-     * ongoing weight update, or changes to the pool composition. There is a non-linear relationship between "spot"
-     * price changes and BPT price changes. This calculation transforms one into the other.
+     * As described in the general comments above, the bound ratios are dependent on the weight. This attempts
+     * to isolate changes in the balance due to arbitrageurs responding to external prices, from internal price
+     * changes caused by an ongoing weight update (or changes to the pool composition). There is a non-linear
+     * relationship between "spot" price changes and BPT price changes. This calculation transforms one into
+     * the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param currentWeightComplement - The complement of this token's weight, generally given by (1 - weight).
