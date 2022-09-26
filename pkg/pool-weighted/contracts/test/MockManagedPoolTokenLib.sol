@@ -28,43 +28,12 @@ contract MockManagedPoolTokenLib {
         return ManagedPoolTokenLib.getTokenScalingFactor(tokenState);
     }
 
-    function getTokenWeight(
-        bytes32 tokenState,
-        uint256 pctProgress,
-        uint256 denormWeightSum
-    ) external pure returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(tokenState, pctProgress, denormWeightSum);
+    function getTokenWeight(bytes32 tokenState, uint256 pctProgress) external pure returns (uint256) {
+        return ManagedPoolTokenLib.getTokenWeight(tokenState, pctProgress);
     }
 
-    function getTokenStartAndEndWeights(bytes32 tokenState, uint256 denormWeightSum)
-        external
-        pure
-        returns (uint256, uint256)
-    {
-        return ManagedPoolTokenLib.getTokenStartAndEndWeights(tokenState, denormWeightSum);
-    }
-
-    function getMinimumTokenEndWeight(
-        IERC20[] calldata tokens,
-        uint256[] calldata tokenWeights,
-        uint256 denormWeightSum
-    ) external returns (uint256) {
-        require(_tokenState[IERC20(0)] == 0, "Mock is dirty");
-        _tokenState[IERC20(0)] = bytes32("0x01");
-
-        // We need to build the `_tokenState` mapping before we pass it to `ManagedPoolTokenLib`.
-        for (uint256 i = 0; i < tokens.length; i++) {
-            // We pass in a zero start weight for each token.
-            // We do not want to read the start weight and this makes it obvious if this occurs.
-            _tokenState[tokens[i]] = ManagedPoolTokenLib.setTokenWeight(
-                bytes32(0),
-                0,
-                tokenWeights[i],
-                denormWeightSum
-            );
-        }
-
-        return ManagedPoolTokenLib.getMinimumTokenEndWeight(_tokenState, tokens, denormWeightSum);
+    function getTokenStartAndEndWeights(bytes32 tokenState) external pure returns (uint256, uint256) {
+        return ManagedPoolTokenLib.getTokenStartAndEndWeights(tokenState);
     }
 
     // Setters
@@ -72,22 +41,16 @@ contract MockManagedPoolTokenLib {
     function setTokenWeight(
         bytes32 tokenState,
         uint256 normalizedStartWeight,
-        uint256 normalizedEndWeight,
-        uint256 denormWeightSum
+        uint256 normalizedEndWeight
     ) external pure returns (bytes32) {
-        return
-            ManagedPoolTokenLib.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight, denormWeightSum);
+        return ManagedPoolTokenLib.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
     }
 
     function setTokenScalingFactor(bytes32 tokenState, IERC20 token) external view returns (bytes32) {
         return ManagedPoolTokenLib.setTokenScalingFactor(tokenState, token);
     }
 
-    function initializeTokenState(
-        IERC20 token,
-        uint256 normalizedWeight,
-        uint256 denormWeightSum
-    ) external view returns (bytes32) {
-        return ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, denormWeightSum);
+    function initializeTokenState(IERC20 token, uint256 normalizedWeight) external view returns (bytes32) {
+        return ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight);
     }
 }

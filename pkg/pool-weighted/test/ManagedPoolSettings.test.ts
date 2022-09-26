@@ -137,8 +137,8 @@ describe('ManagedPoolSettings', function () {
               const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
 
               expect(startTime).to.equal(endTime);
-              expect(startWeights).to.equalWithError(expectedNormalizedWeights, 0.0001);
-              expect(endWeights).to.equalWithError(expectedNormalizedWeights, 0.0001);
+              expect(startWeights).to.deep.equal(expectedNormalizedWeights);
+              expect(endWeights).to.deep.equal(expectedNormalizedWeights);
             });
 
             it('sets scaling factors', async () => {
@@ -458,7 +458,8 @@ describe('ManagedPoolSettings', function () {
             ).to.be.revertedWith('MIN_WEIGHT');
           });
 
-          it('fails with invalid normalized end weights', async () => {
+          it('fails with denormalized end weights', async () => {
+            // These don't add up to fp(1)
             const badWeights = Array(poolWeights.length).fill(fp(0.6));
 
             await expect(
