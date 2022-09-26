@@ -939,10 +939,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // Note that `getBptPrice` will revert if the token is invalid.
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
-            referenceBptPrice: getBptPrice(token, normalizedWeight),
-            referenceWeightComplement: weightComplement,
-            lowerBoundPercentage: lowerBoundPercentage,
-            upperBoundPercentage: upperBoundPercentage
+            bptPrice: getBptPrice(token, normalizedWeight),
+            weightComplement: weightComplement,
+            lowerBound: lowerBoundPercentage,
+            upperBound: upperBoundPercentage
         });
 
         // The library will validate the lower/upper bounds
@@ -977,8 +977,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // Return the weight and complement, needed for multiple calculations.
     function _getNormalizedWeightAndComplement(IERC20 token) internal view returns (uint256, uint256) {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 normalizedWeight = _getNormalizedWeight(token, weightChangeProgress);
         uint256 denormWeightSum = _denormWeightSum;
+        uint256 normalizedWeight = ManagedPoolTokenLib.getTokenWeight(
+            _tokenState[token],
+            weightChangeProgress,
+            denormWeightSum
+        );
 
         return (normalizedWeight, (denormWeightSum - normalizedWeight).divDown(denormWeightSum));
     }
