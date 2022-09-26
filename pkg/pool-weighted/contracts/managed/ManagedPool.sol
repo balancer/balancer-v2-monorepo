@@ -20,6 +20,8 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+
 import "../lib/WeightedExitsLib.sol";
 import "../lib/WeightedJoinsLib.sol";
 import "../WeightedMath.sol";
@@ -65,7 +67,23 @@ contract ManagedPool is ManagedPoolSettings {
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
-    ) ManagedPoolSettings(params, vault, protocolFeeProvider, owner, pauseWindowDuration, bufferPeriodDuration) {
+    )
+        BasePool(
+            vault,
+            PoolRegistrationLib.registerPoolWithAssetManagers(
+                vault,
+                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+                params.tokens,
+                params.assetManagers
+            ),
+            params.name,
+            params.symbol,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+            owner
+        )
+        ManagedPoolSettings(params, protocolFeeProvider)
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
