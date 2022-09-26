@@ -24,6 +24,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
@@ -110,25 +111,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 managementAumFeePercentage;
     }
 
-    constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
-    )
-        BasePool(
-            vault,
-            IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-            params.name,
-            params.symbol,
-            params.tokens,
-            params.assetManagers,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
-        )
+    constructor(NewPoolParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
         ProtocolFeeCache(protocolFeeProvider)
     {
         uint256 totalTokens = params.tokens.length;
@@ -183,6 +166,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     function _getPoolState() internal view returns (bytes32) {
         return _poolState;
+    }
+
+    function _getTokenState(IERC20 token) internal view returns (bytes32) {
+        return _tokenState[token];
     }
 
     // Swap fees
@@ -272,13 +259,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // Token weights
 
     /**
-     * @dev Returns the normalized weight of `token`. Weights are fixed point numbers that sum to FixedPoint.ONE.
-     */
-    function _getNormalizedWeight(IERC20 token, uint256 weightChangeProgress) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress);
-    }
-
-    /**
      * @dev Returns all normalized weights, in the same order as the Pool's tokens.
      */
     function _getNormalizedWeights(IERC20[] memory tokens) internal view returns (uint256[] memory normalizedWeights) {
@@ -294,8 +274,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     /**
      * @notice Returns all normalized weights, in the same order as the Pool's tokens.
      */
-    function getNormalizedWeights() public view returns (uint256[] memory) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+    function getNormalizedWeights() external view returns (uint256[] memory) {
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         return _getNormalizedWeights(tokens);
     }
 
@@ -319,7 +299,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     {
         (startTime, endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256 totalTokens = tokens.length;
 
         startWeights = new uint256[](totalTokens);
@@ -353,17 +333,22 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * updateWeightsGradually is called during an ongoing weight change.
      * @param startTime - The timestamp when the weight change will begin.
      * @param endTime - The timestamp when the weight change will end (can be >= startTime).
+     * @param tokens - The tokens associated with the target weights (must match the current pool tokens).
      * @param endWeights - The target weights. If the current timestamp >= endTime, `getNormalizedWeights()`
      * will return these values.
      */
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
+        IERC20[] memory tokens,
         uint256[] memory endWeights
     ) external override authenticate whenNotPaused nonReentrant {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory actualTokens, ) = _getPoolTokens();
+        InputHelpers.ensureInputLengthMatch(tokens.length, actualTokens.length, endWeights.length);
 
-        InputHelpers.ensureInputLengthMatch(tokens.length, endWeights.length);
+        for (uint256 i = 0; i < actualTokens.length; ++i) {
+            _require(actualTokens[i] == tokens[i], Errors.TOKENS_MISMATCH);
+        }
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
@@ -414,11 +399,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Returns the current value of the invariant.
      */
     function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances, ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
 
         // Since the Pool hooks always work with upscaled balances, we manually
         // upscale here for consistency
-        _upscaleArray(balances, _scalingFactors());
+        _upscaleArray(balances, _scalingFactors(tokens));
 
         uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
         return WeightedMath._calculateInvariant(normalizedWeights, balances);
@@ -779,8 +764,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Deleting the old token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
         // its weight however, since we'll need it later.
-        uint256 progress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 tokenToRemoveWeight = _getNormalizedWeight(tokenToRemove, progress);
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+        uint256 tokenToRemoveWeight = ManagedPoolTokenLib.getTokenWeight(
+            _tokenState[tokenToRemove],
+            weightChangeProgress
+        );
         delete _tokenState[tokenToRemove];
 
         // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add
@@ -834,18 +822,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Scaling Factors
 
-    function _scalingFactor(IERC20 token) internal view returns (uint256) {
-        return ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]);
-    }
-
     function getScalingFactors() external view override returns (uint256[] memory) {
-        return _scalingFactors();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
+        return _scalingFactors(tokens);
     }
 
-    function _scalingFactors() internal view returns (uint256[] memory scalingFactors) {
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+    function _scalingFactors(IERC20[] memory tokens) internal view returns (uint256[] memory scalingFactors) {
         uint256 numTokens = tokens.length;
-
         scalingFactors = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; i++) {
@@ -915,5 +898,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
+    }
+
+    /**
+     * @notice Returns the tokens in the Pool and their current balances.
+     * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
+     * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
+     */
+    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances) {
+        (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
     }
 }
