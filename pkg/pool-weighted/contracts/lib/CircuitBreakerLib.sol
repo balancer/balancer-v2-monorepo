@@ -174,21 +174,22 @@ library CircuitBreakerLib {
      * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentWeightComplement - The complement of this token's weight, generally given by (1 - weight).
+     * @param weightComplement - The complement of this token's weight, generally given by (1 - weight).
      * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
      */
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightComplement)
+    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 weightComplement)
         internal
         pure
         returns (uint256, uint256)
     {
+        // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        uint256 weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
+        uint256 initialWeightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
 
         uint256 lowerBoundRatio;
         uint256 upperBoundRatio;
 
-        if (weightComplement == currentWeightComplement) {
+        if (initialWeightComplement == weightComplement) {
             // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary ratios.
             lowerBoundRatio = circuitBreakerState.decodeUint(_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
@@ -211,7 +212,7 @@ library CircuitBreakerLib {
                     _BOUND_WIDTH,
                     _MAX_BOUND_PERCENTAGE
                 ),
-                currentWeightComplement
+                weightComplement
             );
         }
 
@@ -260,9 +261,8 @@ library CircuitBreakerLib {
         );
 
         // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
-        // If the weight complement has not changed since the breaker was set (i.e., if there is no ongoing weight
-        // update, and no tokens have been added or removed), we can use the precomputed values directly, and avoid
-        // a heavy computation.
+        // If the weight complement has not changed since the breaker was set, we can use the precomputed values
+        // directly, and avoid a heavy computation.
         (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
             params.lowerBound,
             params.upperBound,
