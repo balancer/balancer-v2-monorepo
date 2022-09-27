@@ -182,6 +182,36 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         return totalSupply();
     }
 
+    // Actual Supply
+
+    /**
+     * @notice Returns the effective BPT supply.
+     *
+     * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
+     * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
+     *  they will effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() external view returns (uint256) {
+        return _getActualSupply(_getVirtualSupply());
+    }
+
+    function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
+        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
+            // If we're in recovery mode then we bypass any fee logic and perform an early return.
+            return virtualSupply;
+        }
+
+        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+            virtualSupply,
+            block.timestamp,
+            _lastAumFeeCollectionTimestamp,
+            getManagementAumFeePercentage()
+        );
+        return virtualSupply.add(aumFeesAmount);
+    }
+
     // Swap fees
 
     /**
