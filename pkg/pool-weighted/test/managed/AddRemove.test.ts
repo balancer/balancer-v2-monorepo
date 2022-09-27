@@ -289,7 +289,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
               expect(afterAddWeights[afterAddTokens.indexOf(newToken.address)]).to.equalWithError(
                 normalizedWeight,
-                1e-16
+                1e-14
               );
             });
 
