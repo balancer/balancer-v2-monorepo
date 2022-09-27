@@ -133,8 +133,11 @@ describe('PoolRegistrationLib', function () {
     });
 
     it('registers the pool with the correct specialization', async () => {
-      // Composable pools cannot use the TwoTokenPool specialization as they must have at least 3 tokens.
-      const specializations: (keyof typeof PoolSpecialization)[] = ['GeneralPool', 'MinimalSwapInfoPool'];
+      const specializations: (keyof typeof PoolSpecialization)[] = [
+        'GeneralPool',
+        'MinimalSwapInfoPool',
+        'TwoTokenPool',
+      ];
       for (const specialization of specializations) {
         const poolId = await registerPool(PoolSpecialization[specialization]);
         const { specialization: poolSpecialization } = await vault.getPool(poolId);
