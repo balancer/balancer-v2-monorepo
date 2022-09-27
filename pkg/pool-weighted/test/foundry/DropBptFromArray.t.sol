@@ -52,7 +52,7 @@ contract DropBptFromArrayTest is Test {
 
         emit log_named_array("Actual balances without BPT", balances);
 
-        assertEq(tokens.length, expectedTokensWithoutBpt.length);
+        assertEq(balances.length, expectedBalancesWithoutBpt.length);
         for (uint256 i = 0; i < expectedBalancesWithoutBpt.length; i++) {
             assertEq(address(balances[i]), address(expectedBalancesWithoutBpt[i]));
         }
