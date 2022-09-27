@@ -32,7 +32,7 @@ contract CircuitBreakerLibTest is Test {
     uint256 private constant _MAX_RELATIVE_ERROR = 1e16;
     uint256 private constant _MAX_BPT_PRICE = type(uint112).max;
 
-    function testReferenceParamsAndBoundRatios(
+    function testReferenceParams(
         uint256 bptPrice,
         uint256 weightComplement,
         uint256 lowerBound,
@@ -57,8 +57,28 @@ contract CircuitBreakerLibTest is Test {
         assertEq(result.weightComplement, weightComplement);
         assertApproxEqRel(result.lowerBound, lowerBound, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(result.upperBound, upperBound, _MAX_RELATIVE_ERROR);
+    }
+
+    function testReferenceBoundRatios(
+        uint256 bptPrice,
+        uint256 weightComplement,
+        uint256 lowerBound,
+        uint256 upperBound
+    ) public {
+        bptPrice = bound(bptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
+        weightComplement = bound(weightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
+        upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
+
+        CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
+            bptPrice: bptPrice,
+            weightComplement: weightComplement,
+            lowerBound: lowerBound,
+            upperBound: upperBound
+        });
 
         bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(params);
+
         (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
 
@@ -83,10 +103,9 @@ contract CircuitBreakerLibTest is Test {
         uint256 lowerBound,
         uint256 upperBound
     ) public {
-        // With refBptPrice ~ 0, rounding errors make it fail
         initialBptPrice = bound(initialBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
-        upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
+        upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
         initialWeightComplement = bound(initialWeightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
