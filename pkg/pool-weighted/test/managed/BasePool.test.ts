@@ -103,19 +103,6 @@ describe('BasePool', function () {
     });
   }
 
-  describe('pool id', () => {
-    let pool: Contract;
-
-    sharedBeforeEach(async () => {
-      pool = await deployBasePool();
-    });
-
-    it('returns pool ID registered by the vault', async () => {
-      const poolId = await pool.getPoolId();
-      expect((await vault.getPool(poolId))[0]).to.be.eq(pool.address);
-    });
-  });
-
   describe('only vault modifier', () => {
     let pool: Contract;
     let poolId: string;
@@ -804,6 +791,12 @@ describe('BasePool', function () {
           const onSwapReturn = await minimalPool.connect(vaultSigner).callStatic[onSwap](swapRequest, 0, 0);
           expect(onSwapReturn).to.be.eq(await minimalPool.ON_SWAP_MINIMAL_RETURN());
         });
+
+        it('reverts if swap hook caller is not the vault', async () => {
+          const onSwap =
+            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256,uint256)';
+          await expect(minimalPool.connect(other)[onSwap](swapRequest, 0, 0)).to.be.revertedWith('CALLER_NOT_VAULT');
+        });
       });
 
       describe('general swaps', () => {
@@ -851,6 +844,14 @@ describe('BasePool', function () {
             'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)';
           const onSwapReturn = await pool.connect(vaultSigner).callStatic[onSwap](swapRequest, [], 0, 0);
           expect(onSwapReturn).to.be.eq(await pool.ON_SWAP_GENERAL_RETURN());
+        });
+
+        it('reverts if swap hook caller is not the vault', async () => {
+          const onSwap =
+            'onSwap((uint8,address,address,uint256,bytes32,uint256,address,address,bytes),uint256[],uint256,uint256)';
+          await expect(minimalPool.connect(other)[onSwap](swapRequest, [], 0, 0)).to.be.revertedWith(
+            'CALLER_NOT_VAULT'
+          );
         });
       });
     }

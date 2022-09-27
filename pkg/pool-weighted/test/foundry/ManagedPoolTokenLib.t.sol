@@ -23,20 +23,14 @@ import "../../contracts/lib/GradualValueChange.sol";
 import "../../contracts/WeightedMath.sol";
 
 import "../../contracts/test/MockManagedPoolTokenLib.sol";
-import "../../contracts/managed/ManagedPoolTokenLib.sol";
 
 contract ManagedPoolTokenLibTest is Test {
-    uint256 private constant _START_DENORM_WEIGHT_OFFSET = 0;
-    uint256 private constant _END_DENORM_WEIGHT_OFFSET = _START_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
-    uint256 private constant _DECIMAL_DIFF_OFFSET = _END_DENORM_WEIGHT_OFFSET + _DENORM_WEIGHT_WIDTH;
+    uint256 private constant _START_NORM_WEIGHT_OFFSET = 0;
+    uint256 private constant _END_NORM_WEIGHT_OFFSET = _START_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
+    uint256 private constant _DECIMAL_DIFF_OFFSET = _END_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
 
-    uint256 private constant _DENORM_WEIGHT_WIDTH = 64;
+    uint256 private constant _NORM_WEIGHT_WIDTH = 64;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
-
-    uint256 private constant _MIN_DENORM_WEIGHT_SUM = 0.02e18;
-    uint256 private constant _MAX_DENORM_WEIGHT_SUM = 50e18;
-
-    uint256 private constant _MAX_WEIGHT_REL_ERROR = 1e7; // 10^(-11)%
 
     MockManagedPoolTokenLib private mock;
 
@@ -48,7 +42,7 @@ contract ManagedPoolTokenLibTest is Test {
         bytes32 word,
         uint256 offset,
         uint256 bitLength
-    ) internal returns (bytes32 clearedWord) {
+    ) internal pure returns (bytes32 clearedWord) {
         uint256 mask = (1 << bitLength) - 1;
         clearedWord = bytes32(uint256(word) & ~(mask << offset));
     }
@@ -85,8 +79,7 @@ contract ManagedPoolTokenLibTest is Test {
     function testWeightChangeFields(
         bytes32 tokenState,
         uint256 normalizedStartWeight,
-        uint256 normalizedEndWeight,
-        uint256 denormWeightSum
+        uint256 normalizedEndWeight
     ) external {
         normalizedStartWeight = bound(
             normalizedStartWeight,
@@ -98,23 +91,15 @@ contract ManagedPoolTokenLibTest is Test {
             WeightedMath._MIN_WEIGHT,
             FixedPoint.ONE - WeightedMath._MIN_WEIGHT
         );
-        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
 
-        bytes32 newTokenState = mock.setTokenWeight(
-            tokenState,
-            normalizedStartWeight,
-            normalizedEndWeight,
-            denormWeightSum
-        );
-        assertOtherStateUnchanged(tokenState, newTokenState, _START_DENORM_WEIGHT_OFFSET, _DENORM_WEIGHT_WIDTH * 2);
+        bytes32 newTokenState = mock.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
 
-        (uint256 recoveredStartWeight, uint256 recoveredEndWeight) = mock.getTokenStartAndEndWeights(
-            newTokenState,
-            denormWeightSum
-        );
+        assertOtherStateUnchanged(tokenState, newTokenState, _START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH * 2);
 
-        assertApproxEqRel(recoveredStartWeight, normalizedStartWeight, _MAX_WEIGHT_REL_ERROR);
-        assertApproxEqRel(recoveredEndWeight, normalizedEndWeight, _MAX_WEIGHT_REL_ERROR);
+        (uint256 recoveredStartWeight, uint256 recoveredEndWeight) = mock.getTokenStartAndEndWeights(newTokenState);
+
+        assertEq(recoveredStartWeight, normalizedStartWeight);
+        assertEq(recoveredEndWeight, normalizedEndWeight);
     }
 
     function testWeightInterpolation(
@@ -123,10 +108,9 @@ contract ManagedPoolTokenLibTest is Test {
         uint256 normalizedEndWeight,
         uint32 startTime,
         uint32 endTime,
-        uint32 now,
-        uint256 denormWeightSum
+        uint32 currentTime
     ) external {
-        vm.warp(now);
+        vm.warp(currentTime);
         vm.assume(startTime <= endTime);
 
         normalizedStartWeight = bound(
@@ -139,14 +123,8 @@ contract ManagedPoolTokenLibTest is Test {
             WeightedMath._MIN_WEIGHT,
             FixedPoint.ONE - WeightedMath._MIN_WEIGHT
         );
-        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
 
-        bytes32 newTokenState = mock.setTokenWeight(
-            tokenState,
-            normalizedStartWeight,
-            normalizedEndWeight,
-            denormWeightSum
-        );
+        bytes32 newTokenState = mock.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
 
         uint256 pctProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
         uint256 expectedInterpolatedWeight = GradualValueChange.interpolateValue(
@@ -154,80 +132,37 @@ contract ManagedPoolTokenLibTest is Test {
             normalizedEndWeight,
             pctProgress
         );
-        uint256 interpolatedWeight = mock.getTokenWeight(newTokenState, pctProgress, denormWeightSum);
+        uint256 interpolatedWeight = mock.getTokenWeight(newTokenState, pctProgress);
 
-        // We don't expect an exact equality due to the rounding errors introduced in the denormalization process.
-        assertApproxEqRel(interpolatedWeight, expectedInterpolatedWeight, _MAX_WEIGHT_REL_ERROR);
+        // We don't expect an exact equality due to the rounding errors in the interpolation.
+        assertApproxEqAbs(interpolatedWeight, expectedInterpolatedWeight, 1);
     }
 
-    function testInitializeToken(
-        bytes32 tokenState,
-        uint256 normalizedWeight,
-        uint8 decimals,
-        uint256 denormWeightSum
-    ) external {
+    function testInitializeToken(uint256 normalizedWeight, uint8 decimals) external {
         normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
-        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
         decimals = uint8(bound(decimals, 0, 30));
 
         ERC20 token = new TestToken("Test", "TEST", decimals);
         if (decimals <= 18) {
-            bytes32 tokenState = mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
+            bytes32 tokenState = mock.initializeTokenState(token, normalizedWeight);
             assertOtherStateUnchanged(
                 bytes32(0),
                 tokenState,
-                _START_DENORM_WEIGHT_OFFSET,
-                _DENORM_WEIGHT_WIDTH * 2 + _DECIMAL_DIFF_WIDTH
+                _START_NORM_WEIGHT_OFFSET,
+                _NORM_WEIGHT_WIDTH * 2 + _DECIMAL_DIFF_WIDTH
             );
 
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(tokenState);
             assertEq(tokenScalingFactor, expectedScalingFactor);
 
-            (uint256 startWeight, uint256 endWeight) = mock.getTokenStartAndEndWeights(tokenState, denormWeightSum);
+            (uint256 startWeight, uint256 endWeight) = mock.getTokenStartAndEndWeights(tokenState);
 
             assertEq(startWeight, endWeight);
-            assertApproxEqRel(startWeight, normalizedWeight, _MAX_WEIGHT_REL_ERROR);
+            assertEq(startWeight, normalizedWeight);
         } else {
             vm.expectRevert("BAL#001"); // SUB_OVERFLOW
-            mock.initializeTokenState(token, normalizedWeight, denormWeightSum);
+            mock.initializeTokenState(token, normalizedWeight);
         }
-    }
-
-    function testGetMinimumTokenEndWeight(
-        uint256[40] memory normalizedWeightsFixed,
-        uint256 arrayLength,
-        uint256 denormWeightSum
-    ) external {
-        arrayLength = bound(arrayLength, 2, 40);
-
-        IERC20[] memory tokens = new IERC20[](arrayLength);
-        uint256[] memory normalizedWeights = new uint256[](arrayLength);
-        for (uint256 i = 0; i < arrayLength; i++) {
-            // The value of the tokens array is unimportant for testing purposes.
-            // All that we require is that each element is unique.
-            tokens[i] = IERC20(i);
-
-            normalizedWeights[i] = bound(
-                normalizedWeightsFixed[i],
-                WeightedMath._MIN_WEIGHT,
-                FixedPoint.ONE - WeightedMath._MIN_WEIGHT
-            );
-        }
-
-        denormWeightSum = bound(denormWeightSum, _MIN_DENORM_WEIGHT_SUM, _MAX_DENORM_WEIGHT_SUM);
-
-        uint256 minNormalizedWeight = type(uint256).max;
-        for (uint256 i = 0; i < arrayLength; i++) {
-            if (normalizedWeights[i] < minNormalizedWeight) {
-                minNormalizedWeight = normalizedWeights[i];
-            }
-        }
-
-        assertApproxEqRel(
-            mock.getMinimumTokenEndWeight(tokens, normalizedWeights, denormWeightSum),
-            minNormalizedWeight,
-            _MAX_WEIGHT_REL_ERROR
-        );
     }
 }

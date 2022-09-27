@@ -114,7 +114,7 @@ describe('BaseManagedPoolFactory', function () {
     });
 
     it('sets the pool owner', async () => {
-      // Would not do this! The owner for real pools should be a pool controller
+      // Would not do this! The owner for real pools should be a contract, never an EOA.
       expect(await pool.getOwner()).to.equal(manager.address);
     });
 

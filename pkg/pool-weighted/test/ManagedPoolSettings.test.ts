@@ -137,8 +137,8 @@ describe('ManagedPoolSettings', function () {
               const { startTime, endTime, startWeights, endWeights } = await pool.getGradualWeightUpdateParams();
 
               expect(startTime).to.equal(endTime);
-              expect(startWeights).to.equalWithError(expectedNormalizedWeights, 0.0001);
-              expect(endWeights).to.equalWithError(expectedNormalizedWeights, 0.0001);
+              expect(startWeights).to.deep.equal(expectedNormalizedWeights);
+              expect(endWeights).to.deep.equal(expectedNormalizedWeights);
             });
 
             it('sets scaling factors', async () => {
@@ -459,6 +459,7 @@ describe('ManagedPoolSettings', function () {
 
         context('with invalid parameters', () => {
           let now: BigNumber;
+          const endWeights = poolWeights.map((weight, i) => (i % 2 == 0 ? weight.add(fp(0.02)) : weight.sub(fp(0.02))));
 
           sharedBeforeEach(async () => {
             now = await currentTimestamp();
@@ -485,12 +486,29 @@ describe('ManagedPoolSettings', function () {
             ).to.be.revertedWith('MIN_WEIGHT');
           });
 
-          it('fails with invalid normalized end weights', async () => {
+          it('fails with denormalized end weights', async () => {
+            // These don't add up to fp(1)
             const badWeights = Array(poolWeights.length).fill(fp(0.6));
 
             await expect(
               pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), badWeights)
             ).to.be.revertedWith('NORMALIZED_WEIGHT_INVARIANT');
+          });
+
+          it('fails with mismatched token length', async () => {
+            const badTokens = [...poolTokens.addresses].concat(ZERO_ADDRESS);
+
+            await expect(
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), endWeights, badTokens)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with mismatched tokens', async () => {
+            const badTokens = [...poolTokens.addresses].reverse();
+
+            await expect(
+              pool.updateWeightsGradually(sender, now.add(100), now.add(WEEK), endWeights, badTokens)
+            ).to.be.revertedWith('TOKENS_MISMATCH');
           });
         });
 
@@ -534,8 +552,6 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('update swap fee', () => {
-    const MAX_SWAP_FEE_PERCENTAGE = fp(0.8);
-
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens: poolTokens,
@@ -547,28 +563,6 @@ describe('ManagedPoolSettings', function () {
       };
       pool = await WeightedPool.create(params);
       await pool.init({ from: owner, initialBalances });
-    });
-
-    /* Test that would cause joinSwap to fail at 100% fee, if allowed:
-
-    context('with a 100% swap fee', () => {
-      sharedBeforeEach('set swap fee to 100%', async () => {
-        await pool.setSwapFeePercentage(owner, fp(1));
-      });
-
-      it('reverts on joinSwap', async () => {
-        await expect(pool.joinGivenOut({ recipient: owner, bptOut: fp(1), token: 0 })).to.be.revertedWith('ZERO_DIVISION');
-      });
-    });*/
-
-    context('with the max swap fee', () => {
-      sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
-        await pool.setSwapFeePercentage(owner, MAX_SWAP_FEE_PERCENTAGE);
-      });
-
-      it('allows (unfavorable) joinSwap', async () => {
-        await expect(pool.joinGivenOut({ recipient: owner, bptOut: fp(1), token: 0 })).to.not.be.reverted;
-      });
     });
 
     context('when there is an ongoing gradual change', () => {
