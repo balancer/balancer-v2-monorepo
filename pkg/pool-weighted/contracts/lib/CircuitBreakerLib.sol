@@ -110,20 +110,21 @@ library CircuitBreakerLib {
      * given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      */
-    function getCircuitBreakerFields(bytes32 circuitBreakerState) internal pure returns (CircuitBreakerParams memory) {
-        return
-            CircuitBreakerParams({
-                bptPrice: circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH),
-                weightComplement: circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH),
-                lowerBound: circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-                    _BOUND_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                ),
-                upperBound: circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-                    _BOUND_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                )
-            });
+    function getCircuitBreakerFields(bytes32 circuitBreakerState)
+        internal
+        pure
+        returns (CircuitBreakerParams memory params)
+    {
+        params.bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        params.weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
+        params.lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
+            _BOUND_WIDTH,
+            _MAX_BOUND_PERCENTAGE
+        );
+        params.upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
+            _BOUND_WIDTH,
+            _MAX_BOUND_PERCENTAGE
+        );
     }
 
     /**
