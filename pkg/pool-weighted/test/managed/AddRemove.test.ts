@@ -138,6 +138,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
               );
             });
 
+            it('reverts if the token to add is the BPT itself', async () => {
+              await expect(pool.addToken(owner, pool.address, assetManager, fp(0.1))).to.be.revertedWith(
+                'ADD_OR_REMOVE_BPT'
+              );
+            });
+
             it("reverts if the new token's weight is too high", async () => {
               const weightTooHigh = fp(0.99);
               // We get a MIN_WEIGHT error because the large weight causes for one of the other tokens to end up below
@@ -433,6 +439,10 @@ describe('ManagedPoolSettings - add/remove token', () => {
             it('reverts if the token is not in the pool', async () => {
               const otherToken = await Token.create({ decimals: random(0, 18) });
               await expect(pool.removeToken(owner, otherToken)).to.be.revertedWith('TOKEN_NOT_REGISTERED');
+            });
+
+            it('reverts if the token to remove is the BPT itself', async () => {
+              await expect(pool.removeToken(owner, pool.address)).to.be.revertedWith('ADD_OR_REMOVE_BPT');
             });
 
             it('reverts if the pool is paused', async () => {

@@ -636,6 +636,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
 
+        // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToAdd != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
+
         // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
         // change and would override an existing one, and b) any previous weight changes would be incomplete since they
         // wouldn't include the new token.
@@ -737,6 +741,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     ) external authenticate nonReentrant whenNotPaused {
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+
+        // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToRemove != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
         // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
