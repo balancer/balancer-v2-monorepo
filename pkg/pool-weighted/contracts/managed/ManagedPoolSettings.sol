@@ -654,7 +654,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
         // opportunity to check we have not added too many tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -757,7 +757,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
         // good opportunity to check we didn't end up with too few tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
