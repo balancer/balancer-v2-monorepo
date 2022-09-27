@@ -346,12 +346,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             context('with a zero mint amount', () => {
-              it('mints no BPT', async () => {
-                const supplyBefore = await pool.totalSupply();
-                await pool.addToken(owner, newToken, assetManager, fp(0.1), 0);
-                const supplyAfter = await pool.totalSupply();
+              it('mints no BPT to the recipient', async () => {
+                const balanceBefore = await pool.balanceOf(other);
+                await pool.addToken(owner, newToken, assetManager, fp(0.1), 0, other.address);
+                const balanceAfter = await pool.balanceOf(other);
 
-                expect(supplyAfter).to.equal(supplyBefore);
+                expect(balanceAfter).to.equal(balanceBefore);
               });
             });
 
@@ -618,12 +618,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             context('with a zero burn amount', () => {
-              it('burns no BPT', async () => {
-                const supplyBefore = await pool.totalSupply();
-                await pool.removeToken(owner, tokenToRemove, ZERO_ADDRESS, 0);
-                const supplyAfter = await pool.totalSupply();
+              it('burns no BPT from the sender', async () => {
+                const balanceBefore = await pool.balanceOf(lp);
+                await pool.removeToken(owner, tokenToRemove, lp.address, 0);
+                const balanceAfter = await pool.balanceOf(lp);
 
-                expect(supplyAfter).to.equal(supplyBefore);
+                expect(balanceAfter).to.equal(balanceBefore);
               });
             });
 
