@@ -633,8 +633,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused nonReentrant {
+        // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to mint is zero.
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
 
         // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
@@ -644,9 +648,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // change and would override an existing one, and b) any previous weight changes would be incomplete since they
         // wouldn't include the new token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
         // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
@@ -739,8 +740,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 burnAmount,
         address sender
     ) external authenticate nonReentrant whenNotPaused {
+        // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to burn is zero.
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
 
         // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
@@ -750,9 +755,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
         // they would include the removed token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not

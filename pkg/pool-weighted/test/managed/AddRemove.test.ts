@@ -15,22 +15,24 @@ import { BigNumber, Contract } from 'ethers';
 import { ethers } from 'hardhat';
 import { random, range } from 'lodash';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('ManagedPoolSettings - add/remove token', () => {
   let vault: Vault;
   let assetManager: Contract;
   let allTokens: TokenList;
-  let owner: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, owner: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, owner, lp, other] = await ethers.getSigners();
+    [, admin, owner, lp, other] = await ethers.getSigners();
   });
 
   const MIN_TOKENS = 2;
   const MAX_TOKENS = 38;
 
   sharedBeforeEach('deploy vault', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
+    await vault.setFeeTypePercentage(ProtocolFee.AUM, fp(0.2)); // Non-zero so that some protocol AUM fees are charged
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -63,6 +65,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
       assetManagers: Array(numberOfTokens).fill(assetManager.address),
       swapEnabledOnStart: true,
       vault,
+      managementAumFeePercentage: fp(0.1), // Non-zero so that some protocol AUM fees are charged
     });
 
     return { pool, poolTokens };
@@ -363,6 +366,18 @@ describe('ManagedPoolSettings - add/remove token', () => {
                 expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(mintAmount);
               });
             });
+
+            it('collects aum fees', async () => {
+              const tx = await pool.addToken(owner, newToken, assetManager, fp(0.1));
+
+              expectEvent.inReceipt(await tx.wait(), 'Transfer', { from: ZERO_ADDRESS, to: await pool.getOwner() });
+              expectEvent.inReceipt(await tx.wait(), 'Transfer', {
+                from: ZERO_ADDRESS,
+                to: (await vault.getFeesCollector()).address,
+              });
+
+              expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
+            });
           }
         });
       });
@@ -627,6 +642,18 @@ describe('ManagedPoolSettings - add/remove token', () => {
                   'BURN_FROM_ZERO'
                 );
               });
+            });
+
+            it('collects aum fees', async () => {
+              const tx = await pool.removeToken(owner, tokenToRemove);
+
+              expectEvent.inReceipt(await tx.wait(), 'Transfer', { from: ZERO_ADDRESS, to: await pool.getOwner() });
+              expectEvent.inReceipt(await tx.wait(), 'Transfer', {
+                from: ZERO_ADDRESS,
+                to: (await vault.getFeesCollector()).address,
+              });
+
+              expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
             });
           }
         });
