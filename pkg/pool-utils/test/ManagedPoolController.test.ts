@@ -154,15 +154,15 @@ describe('ManagedPoolController', function () {
     });
 
     describe('set swap fee percentage', () => {
-      it('lets the manager set the swap fee', async () => {
-        await poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE);
-
-        expect(await pool.getSwapFeePercentage()).to.equal(NEW_SWAP_FEE);
+      it('does not let the manager set the swap fee', async () => {
+        await expect(poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
+          'UNHANDLED_BY_MANAGED_POOL'
+        );
       });
 
       it('reverts if non-manager sets the swap fee', async () => {
         await expect(poolController.connect(other).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
+          'CALLER_IS_NOT_OWNER'
         );
       });
     });

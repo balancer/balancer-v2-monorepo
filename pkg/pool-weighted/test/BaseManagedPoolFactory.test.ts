@@ -103,10 +103,6 @@ describe('BaseManagedPoolFactory', function () {
       });
     });
 
-    it('sets swap fee', async () => {
-      expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
-    });
-
     it('sets management aum fee', async () => {
       expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
     });
