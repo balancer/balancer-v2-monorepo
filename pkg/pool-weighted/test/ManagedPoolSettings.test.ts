@@ -718,7 +718,7 @@ describe('ManagedPoolSettings', function () {
 
   describe('management fees', () => {
     const swapFeePercentage = fp(0.02);
-    const managementAumFeePercentage = fp(0.01);
+    const managementAumFeePercentage = fp(0.1);
 
     let assetManager: Contract;
 

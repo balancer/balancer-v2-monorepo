@@ -330,7 +330,7 @@ describe('ManagedPool', function () {
 
   describe('management fees', () => {
     const swapFeePercentage = fp(0.02);
-    const managementAumFeePercentage = fp(0.01);
+    const managementAumFeePercentage = fp(0.1);
 
     sharedBeforeEach('deploy pool', async () => {
       pool = await deployPool({ swapFeePercentage, managementAumFeePercentage });
