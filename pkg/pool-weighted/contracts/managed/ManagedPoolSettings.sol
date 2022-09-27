@@ -170,6 +170,36 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         return _tokenState[token];
     }
 
+    // Actual Supply
+
+    /**
+     * @notice Returns the effective BPT supply.
+     *
+     * @dev The Pool owes debt to the Protocol in the form of unminted BPT, which will be minted immediately before the
+     * next join or exit. We need to take these into account since, even if they don't yet exist, they will
+     * effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() external view returns (uint256) {
+        return _getActualSupply(totalSupply());
+    }
+
+    function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
+        if (inRecoveryMode()) {
+            // If we're in recovery mode then we bypass any fee logic and perform an early return.
+            return virtualSupply;
+        }
+
+        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+            virtualSupply,
+            block.timestamp,
+            _lastAumFeeCollectionTimestamp,
+            getManagementAumFeePercentage()
+        );
+        return virtualSupply.add(aumFeesAmount);
+    }
+
     // Swap fees
 
     /**
@@ -494,27 +524,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _poolState = ManagedPoolStorageLib.setLPAllowlistEnabled(_poolState, mustAllowlistLPs);
 
         emit MustAllowlistLPsSet(mustAllowlistLPs);
-    }
-
-    // Actual Supply
-
-    function getActualSupply() external view returns (uint256) {
-        return _getActualSupply(totalSupply());
-    }
-
-    function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
-        if (inRecoveryMode()) {
-            // If we're in recovery mode then we bypass any fee logic and perform an early return.
-            return virtualSupply;
-        }
-
-        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
-            virtualSupply,
-            block.timestamp,
-            _lastAumFeeCollectionTimestamp,
-            getManagementAumFeePercentage()
-        );
-        return virtualSupply.add(aumFeesAmount);
     }
 
     // AUM management fees
