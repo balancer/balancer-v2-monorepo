@@ -8,13 +8,12 @@ import {
   DAY,
   MINUTE,
   advanceTime,
-  advanceToTimestamp,
   currentTimestamp,
   receiptTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
@@ -28,7 +27,6 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { range } from 'lodash';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
-import { Interface } from 'ethers/lib/utils';
 
 describe('ManagedPoolSettings', function () {
   let allTokens: TokenList;
@@ -519,53 +517,8 @@ describe('ManagedPoolSettings', function () {
     });
   });
 
-  describe('update swap fee', () => {
-    sharedBeforeEach('deploy pool', async () => {
-      const params = {
-        tokens: poolTokens,
-        weights: poolWeights,
-        owner: owner.address,
-        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-        poolType: WeightedPoolType.MANAGED_POOL,
-        swapEnabledOnStart: true,
-      };
-      pool = await WeightedPool.create(params);
-      await pool.init({ from: owner, initialBalances });
-    });
-
-    context('when there is an ongoing gradual change', () => {
-      let now, startTime: BigNumber, endTime: BigNumber;
-      const START_DELAY = MINUTE * 10;
-      const UPDATE_DURATION = DAY * 2;
-      const NEW_SWAP_FEE = fp(0.1);
-
-      sharedBeforeEach('start gradual swap fee update', async () => {
-        now = await currentTimestamp();
-        startTime = now.add(START_DELAY);
-        endTime = startTime.add(UPDATE_DURATION);
-
-        await pool.updateSwapFeeGradually(owner, startTime, endTime, POOL_SWAP_FEE_PERCENTAGE, NEW_SWAP_FEE);
-      });
-
-      it('fails when gradual change is set to start in the future', async () => {
-        await expect(pool.setSwapFeePercentage(owner, NEW_SWAP_FEE)).to.be.revertedWith(
-          'SET_SWAP_FEE_PENDING_FEE_CHANGE'
-        );
-      });
-
-      it('fails when gradual change is in progress', async () => {
-        advanceToTimestamp(startTime.add(1));
-        await expect(pool.setSwapFeePercentage(owner, NEW_SWAP_FEE)).to.be.revertedWith(
-          'SET_SWAP_FEE_DURING_FEE_CHANGE'
-        );
-      });
-    });
-  });
-
   describe('update swap fee gradually', () => {
     let caller: SignerWithAddress;
-
-    let libInterface: Interface;
 
     let startTime: BigNumber, endTime: BigNumber;
     const START_DELAY = MINUTE * 10;
@@ -574,8 +527,6 @@ describe('ManagedPoolSettings', function () {
     const END_SWAP_FEE = fp(0.01);
 
     sharedBeforeEach(async () => {
-      libInterface = new Interface((await getArtifact('ManagedPoolSwapFeesLib')).abi);
-
       const now = await currentTimestamp();
       startTime = now.add(START_DELAY);
       endTime = startTime.add(UPDATE_DURATION);
@@ -593,7 +544,7 @@ describe('ManagedPoolSettings', function () {
       it('begins a gradual swap fee update', async () => {
         const receipt = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
 
-        expectEvent.inIndirectReceipt(await receipt.wait(), libInterface, 'GradualSwapFeeUpdateScheduled', {
+        expectEvent.inReceipt(await receipt.wait(), 'GradualSwapFeeUpdateScheduled', {
           startTime: startTime,
           endTime: endTime,
           startSwapFeePercentage: START_SWAP_FEE,
