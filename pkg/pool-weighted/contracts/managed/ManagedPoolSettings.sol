@@ -35,7 +35,6 @@ import "../WeightedMath.sol";
 import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
-import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
 
 /**
@@ -60,6 +59,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+
+    // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
+    // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
+    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
+
     // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
     // and therefore warm.
@@ -81,6 +87,16 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     uint256 internal _lastAumFeeCollectionTimestamp;
 
     // Event declarations
+
+    // ManagedPool swap fees can change over time: these periods are expected to be long enough (e.g. days)
+    // that any timestamp manipulation would achieve very little.
+    // solhint-disable not-rely-on-time
+    event GradualSwapFeeUpdateScheduled(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    );
 
     event GradualWeightUpdateScheduled(
         uint256 startTime,
@@ -144,7 +160,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.tokens
         );
 
-        poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
+        poolState = _startGradualSwapFeeChange(
             poolState,
             block.timestamp,
             block.timestamp,
@@ -224,13 +240,52 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external override authenticate whenNotPaused nonReentrant {
-        _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
+        _poolState = _startGradualSwapFeeChange(
             _poolState,
             startTime,
             endTime,
             startSwapFeePercentage,
             endSwapFeePercentage
         );
+    }
+
+    function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+    }
+
+    /**
+     * @notice Encodes a gradual swap fee update into the provided Pool state.
+     * @param startTime - The timestamp when the swap fee change will begin.
+     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
+     * @param startSwapFeePercentage - The starting value for the swap fee change.
+     * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
+     * `getSwapFeePercentage()` will return this value.
+     * @return poolState - The modified Pool state with the updated swap fee data. It's the responsiblity of the caller
+     * to write this to storage so this value is persisted.
+     */
+    function _startGradualSwapFeeChange(
+        bytes32 poolState,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    ) internal returns (bytes32) {
+        _validateSwapFeePercentage(startSwapFeePercentage);
+        _validateSwapFeePercentage(endSwapFeePercentage);
+
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
+
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+
+        return
+            ManagedPoolStorageLib.setSwapFeeData(
+                poolState,
+                startTime,
+                endTime,
+                startSwapFeePercentage,
+                endSwapFeePercentage
+            );
     }
 
     // Token weights
