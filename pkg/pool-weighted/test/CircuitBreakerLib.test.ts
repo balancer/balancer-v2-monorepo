@@ -85,7 +85,7 @@ describe('CircuitBreakerLib', () => {
           bptPrice: fp(BPT_PRICE),
           weightComplement: fp(WEIGHT_COMPLEMENT),
           lowerBound: fp(0.9),
-          upperBound: fp(0.7),
+          upperBound: fp(0.9).sub(1),
         })
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
