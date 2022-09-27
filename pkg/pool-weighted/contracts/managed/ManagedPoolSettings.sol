@@ -35,7 +35,6 @@ import "../WeightedMath.sol";
 import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
-import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
 
 /**
@@ -55,6 +54,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
     uint256 private constant _MAX_TOKENS = 38;
+
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+
+    // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
+    // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
+    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
 
     uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
 
@@ -87,6 +93,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         uint256[] startWeights,
         uint256[] endWeights
+    );
+    event GradualSwapFeeUpdateScheduled(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
     );
     event SwapEnabledSet(bool swapEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
@@ -144,7 +156,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.tokens
         );
 
-        poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
+        poolState = _startGradualSwapFeeChange(
             poolState,
             block.timestamp,
             block.timestamp,
@@ -245,26 +257,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
-        // Do not allow setting if there is an ongoing fee change
-        uint256 currentTime = block.timestamp;
-        bytes32 poolState = _poolState;
-        (uint256 startTime, uint256 endTime, , ) = ManagedPoolStorageLib.getSwapFeeFields(poolState);
-
-        if (currentTime < endTime) {
-            _revert(
-                currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
-            );
-        }
-
-        _poolState = ManagedPoolSwapFeesLib.setSwapFeePercentage(poolState, swapFeePercentage);
-    }
-
-    /**
      * @notice Schedule a gradual swap fee update.
      * @dev The swap fee will change from the given starting value (which may or may not be the current
      * value) to the given ending fee percentage, over startTime to endTime. Calling this with a starting
@@ -287,13 +279,36 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external authenticate whenNotPaused nonReentrant {
-        _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
-            _poolState,
-            startTime,
-            endTime,
-            startSwapFeePercentage,
-            endSwapFeePercentage
-        );
+        _startGradualSwapFeeChange(_poolState, startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+    }
+
+    function _startGradualSwapFeeChange(
+        bytes32 poolState,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    ) internal returns (bytes32) {
+        validateSwapFeePercentage(startSwapFeePercentage);
+        validateSwapFeePercentage(endSwapFeePercentage);
+
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
+
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+
+        _poolState =
+            ManagedPoolStorageLib.setSwapFeeData(
+                poolState,
+                startTime,
+                endTime,
+                startSwapFeePercentage,
+                endSwapFeePercentage
+            );
+    }
+
+    function validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
 
     // Token weights
@@ -944,7 +959,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
