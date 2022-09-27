@@ -285,7 +285,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
               expect(afterAddWeights[afterAddTokens.indexOf(newToken.address)]).to.equalWithError(
                 normalizedWeight,
-                1e-12
+                1e-16
               );
             });
 
@@ -326,7 +326,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
                       afterTokenWeights[otherTokenAfterIndex].weight
                     );
 
-                    expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 1e-12);
+                    expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 1e-16);
                   });
               });
             });
