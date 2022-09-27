@@ -121,25 +121,6 @@ contract CircuitBreakerLibTest is Test {
         (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 
-        _validateWithNewComplement(
-            initialBptPrice,
-            lowerBound,
-            upperBound,
-            lowerBptPriceBoundary,
-            upperBptPriceBoundary,
-            newWeightComplement
-        );
-    }
-
-    // Needed to avoid stack-too-deep issues
-    function _validateWithNewComplement(
-        uint256 refBptPrice,
-        uint256 lowerBound,
-        uint256 upperBound,
-        uint256 lowerBptPriceBoundary,
-        uint256 upperBptPriceBoundary,
-        uint256 newWeightComplement
-    ) private {
         (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.getBoundaryConversionRatios(
             lowerBound,
             upperBound,
@@ -148,12 +129,12 @@ contract CircuitBreakerLibTest is Test {
         
         assertApproxEqRel(
             lowerBptPriceBoundary,
-            uint256(refBptPrice).mulDown(expectedLowerBptPrice),
+            uint256(initialBptPrice).mulDown(expectedLowerBptPrice),
             _MAX_RELATIVE_ERROR
         );
         assertApproxEqRel(
             upperBptPriceBoundary,
-            uint256(refBptPrice).mulUp(expectedUpperBptPrice),
+            uint256(initialBptPrice).mulUp(expectedUpperBptPrice),
             _MAX_RELATIVE_ERROR
         );
     }
