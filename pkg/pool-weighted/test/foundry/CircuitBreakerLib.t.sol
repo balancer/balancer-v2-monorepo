@@ -65,8 +65,8 @@ contract CircuitBreakerLibTest is Test {
         (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
 
-        uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powDown(weightComplement));
-        uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powUp(weightComplement));
+        uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
+        uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
         assertApproxEqRel(initialLowerBptPriceBoundary, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(initialUpperBptPriceBoundary, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);

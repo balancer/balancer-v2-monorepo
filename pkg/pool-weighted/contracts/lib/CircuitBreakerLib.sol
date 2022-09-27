@@ -290,10 +290,8 @@ library CircuitBreakerLib {
         uint256 upperBound,
         uint256 currentWeightComplement
     ) internal pure returns (uint256 lowerBoundRatio, uint256 upperBoundRatio) {
-        // Rounding down for the lower bound, and up for the upper bound will maximize the
-        // "operating range" - the BPT price range that will not trigger the circuit breaker -
-        // of the pool for traders.
-        lowerBoundRatio = lowerBound.powDown(currentWeightComplement);
-        upperBoundRatio = upperBound.powUp(currentWeightComplement);
+        // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
+        lowerBoundRatio = lowerBound.powUp(currentWeightComplement);
+        upperBoundRatio = upperBound.powDown(currentWeightComplement);
     }
 }
