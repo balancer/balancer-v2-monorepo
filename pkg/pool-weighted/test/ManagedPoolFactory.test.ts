@@ -132,7 +132,7 @@ describe('ManagedPoolFactory', function () {
       const poolId = await pool.getPoolId();
       const poolTokens = await vault.getPoolTokens(poolId);
 
-      expect(poolTokens.tokens).to.have.members(tokens.addresses);
+      expect(poolTokens.tokens).to.deep.eq([pool.address, ...tokens.addresses]);
       expect(poolTokens.balances).to.be.zeros;
     });
 

@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
-import { BigNumberish, bn, fp, FP_ONE, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, FP_ONE, FP_ZERO, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import { DAY, advanceTime, receiptTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -74,7 +74,7 @@ describe('ManagedPool', function () {
 
       it('registers all the expected tokens', async () => {
         const { tokens } = await vault.getPoolTokens(pool.poolId);
-        expect(tokens).to.be.deep.eq(poolTokens.addresses);
+        expect(tokens).to.be.deep.eq([pool.address, ...poolTokens.addresses]);
       });
 
       it('registers all the expected asset managers', async () => {
@@ -203,7 +203,7 @@ describe('ManagedPool', function () {
 
           const endingBpt = await pool.balanceOf(other);
           expect(endingBpt).to.be.gt(startingBpt);
-          expect(amountsIn).to.deep.equal(initialBalances);
+          expect(amountsIn).to.deep.equal([FP_ZERO, ...initialBalances]);
         });
       });
 
