@@ -50,9 +50,6 @@ contract CircuitBreakerLibTest is Test {
             upperBound: upperBound
         });
 
-        // The setter overwrites all state, so the previous state doesn't matter
-        // If we find we need to set fields individually (e.g., only the bounds),
-        // we could add tests that the previous state was not altered.
         bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(params);
         CircuitBreakerLib.CircuitBreakerParams memory result = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
