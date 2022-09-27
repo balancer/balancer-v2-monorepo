@@ -186,7 +186,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
-        if (inRecoveryMode()) {
+        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
             // If we're in recovery mode then we bypass any fee logic and perform an early return.
             return virtualSupply;
         }
