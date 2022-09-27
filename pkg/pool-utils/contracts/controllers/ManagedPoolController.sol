@@ -210,6 +210,10 @@ contract ManagedPoolController is BasePoolController {
         IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
     }
 
+    function setSwapFeePercentage(uint256) external virtual override onlyManager withBoundPool {
+        _revert(Errors.UNHANDLED_BY_MANAGED_POOL);
+    }
+
     /**
      * @dev Pass a call to ManagedPool's setManagementAumFeePercentage through to the underlying pool.
      */
