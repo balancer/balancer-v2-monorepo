@@ -243,12 +243,14 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
           function itAddsATokenWithNoErrors() {
             it('adds a new token to the end of the array of tokens in the pool', async () => {
+              const { tokens: beforeAddTokens } = await pool.getTokens();
+
               await pool.addToken(owner, newToken, assetManager, fp(0.1));
 
               const { tokens: afterAddTokens } = await pool.getTokens();
-              expect(afterAddTokens.length).to.equal(poolTokens.length + 1);
+              expect(afterAddTokens.length).to.equal(beforeAddTokens.length + 1);
 
-              expect(afterAddTokens.slice(0, -1)).to.deep.equal(poolTokens.addresses);
+              expect(afterAddTokens.slice(0, -1)).to.deep.equal(beforeAddTokens);
               expect(afterAddTokens[afterAddTokens.length - 1]).to.be.eq(newToken.address);
             });
 
@@ -287,10 +289,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
               const { tokens: afterAddTokens } = await pool.getTokens();
               const afterAddWeights = await pool.getNormalizedWeights();
 
-              expect(afterAddWeights[afterAddTokens.indexOf(newToken.address)]).to.equalWithError(
-                normalizedWeight,
-                1e-14
-              );
+              const newTokenWeightIndex = afterAddTokens.indexOf(newToken.address);
+              expect(afterAddWeights[newTokenWeightIndex]).to.equalWithError(normalizedWeight, 1e-14);
             });
 
             it('scales weights of all other tokens', async () => {
@@ -540,14 +540,16 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
           function itRemovesATokenWithNoErrors() {
             it('removes the token', async () => {
+              const { tokens: beforeRemoveTokens } = await pool.getTokens();
+
               await pool.removeToken(owner, tokenToRemove);
 
               const { tokens: afterRemoveTokens } = await pool.getTokens();
-              expect(afterRemoveTokens.length).to.equal(poolTokens.length - 1);
+              expect(afterRemoveTokens.length).to.equal(beforeRemoveTokens.length - 1);
 
               // We need to sort when comparing as the order may have changed
               expect([...afterRemoveTokens].sort()).to.deep.equal(
-                poolTokens.addresses.filter((address) => address != tokenToRemove.address).sort()
+                beforeRemoveTokens.filter((address) => address != tokenToRemove.address).sort()
               );
             });
 
