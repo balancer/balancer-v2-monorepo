@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MONTH,
   WEEK,
@@ -58,10 +58,7 @@ describe('ManagedPoolSettings', function () {
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
-
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
@@ -132,7 +129,6 @@ describe('ManagedPoolSettings', function () {
                 assetManagers,
                 vault,
                 swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-                managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
                 managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
               });
             });
@@ -875,6 +871,8 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('recovery mode', () => {
+    const managementAumFeePercentage = fp(0.01);
+
     sharedBeforeEach('deploy pool', async () => {
       const params = {
         tokens: poolTokens,
@@ -882,12 +880,35 @@ describe('ManagedPoolSettings', function () {
         owner: owner.address,
         poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
+        managementAumFeePercentage,
         vault,
       };
       pool = await WeightedPool.create(params);
       await pool.init({ from: other, initialBalances });
 
       await pool.collectAumManagementFees(owner);
+    });
+
+    context('when entering recovery mode', () => {
+      it('sets the actual supply equal to the total supply', async () => {
+        // Advance time so that AUM fees are accrued.
+        await advanceTime(365 * DAY);
+
+        const totalSupplyBefore = await pool.totalSupply();
+        const actualSupplyBefore = await pool.getActualSupply();
+
+        // The total supply which doesn't consider yet-to-be-minted fees should be lower.
+        // Check that we have a difference of at least 0.01% to discard rounding error.
+        expect(totalSupplyBefore).to.be.lt(actualSupplyBefore.mul(9999).div(10000));
+
+        await pool.enableRecoveryMode();
+
+        const totalSupplyAfter = await pool.totalSupply();
+        expect(totalSupplyAfter).to.be.eq(totalSupplyBefore);
+
+        const actualSupplyAfter = await pool.getActualSupply();
+        expect(actualSupplyAfter).to.equalWithError(totalSupplyAfter, 0.0001);
+      });
     });
 
     context('when leaving recovery mode', () => {
@@ -912,8 +933,7 @@ describe('ManagedPoolSettings', function () {
 
   describe('management fees', () => {
     const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
-    const managementAumFeePercentage = fp(0.01);
+    const managementAumFeePercentage = fp(0.1);
 
     let assetManager: Contract;
 
@@ -928,7 +948,6 @@ describe('ManagedPoolSettings', function () {
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
-        managementSwapFeePercentage,
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);
@@ -986,6 +1005,33 @@ describe('ManagedPoolSettings', function () {
             bptAmount: actualManagementFeeBpt,
           });
         });
+
+        it('reports the expected actual supply', async () => {
+          const totalSupplyBefore = await pool.totalSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(totalSupplyBefore, managementAumFeePercentage, timeElapsed);
+
+          const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt);
+          const actualSupply = await pool.getActualSupply();
+          expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
+        });
+
+        it('does not affect the actual supply', async () => {
+          const actualSupplyBefore = await pool.getActualSupply();
+
+          await collectAUMFees();
+
+          const actualSupplyAfter = await pool.getActualSupply();
+          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, 1e-6);
+        });
+
+        it('syncs the total supply to the actual supply', async () => {
+          const actualSupplyBefore = await pool.getActualSupply();
+
+          await collectAUMFees();
+
+          const totalSupplyAfter = await pool.totalSupply();
+          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore, 1e-6);
+        });
       }
 
       function itCollectsAUMFeesCorrectly(collectAUMFees: () => Promise<ContractReceipt>) {
@@ -1023,7 +1069,7 @@ describe('ManagedPoolSettings', function () {
       }
 
       sharedBeforeEach('mint tokens', async () => {
-        await poolTokens.mint({ to: other, amount: fp(10000) });
+        await poolTokens.mint({ to: other, amount: fp(100) });
         await poolTokens.approve({ from: other, to: await pool.getVault() });
       });
 
@@ -1109,7 +1155,6 @@ describe('ManagedPoolSettings', function () {
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.1);
     const maxYieldValue = fp(1);
     const maxAUMValue = fp(1);
@@ -1140,7 +1185,6 @@ describe('ManagedPoolSettings', function () {
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
-        managementSwapFeePercentage,
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);
