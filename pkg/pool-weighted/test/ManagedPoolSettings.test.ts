@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import {
   MONTH,
   WEEK,
@@ -46,10 +46,7 @@ describe('ManagedPoolSettings', function () {
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.7);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
-
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const WEIGHTS = range(10000, 10000 + MAX_TOKENS); // These will be normalized to weights that are close to each other, but different
 
@@ -120,7 +117,6 @@ describe('ManagedPoolSettings', function () {
                 assetManagers,
                 vault,
                 swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-                managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
                 managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
               });
             });
@@ -653,7 +649,6 @@ describe('ManagedPoolSettings', function () {
 
   describe('management fees', () => {
     const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.01);
 
     let assetManager: Contract;
@@ -669,7 +664,6 @@ describe('ManagedPoolSettings', function () {
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
-        managementSwapFeePercentage,
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);
@@ -850,7 +844,6 @@ describe('ManagedPoolSettings', function () {
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
-    const managementSwapFeePercentage = fp(0.8);
     const managementAumFeePercentage = fp(0.1);
     const maxYieldValue = fp(1);
     const maxAUMValue = fp(1);
@@ -881,7 +874,6 @@ describe('ManagedPoolSettings', function () {
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
-        managementSwapFeePercentage,
         managementAumFeePercentage,
       };
       pool = await WeightedPool.create(params);
