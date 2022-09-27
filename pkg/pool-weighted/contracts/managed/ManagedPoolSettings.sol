@@ -175,9 +175,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     /**
      * @notice Returns the effective BPT supply.
      *
-     * @dev The Pool owes debt to the Protocol in the form of unminted BPT, which will be minted immediately before the
-     * next join or exit. We need to take these into account since, even if they don't yet exist, they will
-     * effectively be included in any Pool operation that involves BPT.
+     * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
+     * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
+     *  they will effectively be included in any Pool operation that involves BPT.
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
