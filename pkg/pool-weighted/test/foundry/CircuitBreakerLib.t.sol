@@ -77,23 +77,17 @@ contract CircuitBreakerLibTest is Test {
             upperBound: upperBound
         });
 
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(params);
-
-        (uint256 initialLowerBptPriceBoundary, uint256 initialUpperBptPriceBoundary) =
-            CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
-
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
-        assertApproxEqRel(initialLowerBptPriceBoundary, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
-        assertApproxEqRel(initialUpperBptPriceBoundary, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(params);
 
         // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
-        (uint256 cachedLowerBptPriceBoundary, uint256 cachedUpperBptPriceBoundary) =
-            CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, weightComplement);
+        (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) =
+            CircuitBreakerLib.getCurrentCircuitBreakerBounds(poolState, weightComplement);
 
-        assertEq(cachedLowerBptPriceBoundary, initialLowerBptPriceBoundary);
-        assertEq(cachedUpperBptPriceBoundary, initialUpperBptPriceBoundary);
+        assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
+        assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
     }
 
     function testDynamicBoundRatios(

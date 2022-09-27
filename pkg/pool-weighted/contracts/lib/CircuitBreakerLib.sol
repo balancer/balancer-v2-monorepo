@@ -184,7 +184,10 @@ library CircuitBreakerLib {
     {
         // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        uint256 initialWeightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
+        uint256 initialWeightComplement = circuitBreakerState.decodeUint(
+            _WEIGHT_COMPLEMENT_OFFSET,
+            _WEIGHT_COMPLEMENT_WIDTH
+        );
 
         uint256 lowerBoundRatio;
         uint256 upperBoundRatio;
