@@ -289,14 +289,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) internal returns (bytes32) {
-        validateSwapFeePercentage(startSwapFeePercentage);
-        validateSwapFeePercentage(endSwapFeePercentage);
+        _validateSwapFeePercentage(startSwapFeePercentage);
+        _validateSwapFeePercentage(endSwapFeePercentage);
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
         emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
 
-        _poolState =
+        return
             ManagedPoolStorageLib.setSwapFeeData(
                 poolState,
                 startTime,
@@ -306,7 +306,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             );
     }
 
-    function validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
+    function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
         _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
         _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
     }
