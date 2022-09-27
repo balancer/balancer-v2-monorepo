@@ -66,20 +66,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // See `ManagedPoolStorageLib.sol` for data layout.
     bytes32 private _poolState;
 
-    // Store scaling factor and start/end denormalized weights for each token.
+    // Store scaling factor and start/end normalized weights for each token.
     // See `ManagedPoolTokenLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
-
-    // We need to work with normalized weights (i.e. they should add up to 100%), but storing normalized weights
-    // would require updating all weights whenever one of them changes, for example in an add or remove token
-    // operation. Instead, we keep track of the sum of all denormalized weights, and dynamically normalize them
-    // for I/O by multiplying or dividing by the `_denormWeightSum`.
-    //
-    // In this contract, "weights" mean normalized weights, and "denormWeights" refer to how they are stored internally.
-    uint256 private _denormWeightSum;
 
     // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
     uint256 private _managementAumFeePercentage;
@@ -151,10 +143,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.normalizedWeights,
             params.tokens
         );
-
-        // Weights are normalized, so initialize the denormalized weight sum to ONE. The denormalized weight sum will
-        // only deviate from ONE when tokens are added or removed, and are renormalized on the next weight change.
-        _denormWeightSum = FixedPoint.ONE;
 
         poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
             poolState,
@@ -273,16 +261,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      */
     function _getNormalizedWeights(IERC20[] memory tokens) internal view returns (uint256[] memory normalizedWeights) {
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-        uint256 denormWeightSum = _denormWeightSum;
 
         uint256 numTokens = tokens.length;
         normalizedWeights = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; i++) {
-            normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(
-                _tokenState[tokens[i]],
-                weightChangeProgress,
-                denormWeightSum
-            );
+            normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(_tokenState[tokens[i]], weightChangeProgress);
         }
     }
 
@@ -292,15 +275,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     function getNormalizedWeights() external view returns (uint256[] memory) {
         (IERC20[] memory tokens, ) = _getPoolTokens();
         return _getNormalizedWeights(tokens);
-    }
-
-    /**
-     * @dev Returns the current sum of denormalized weights.
-     * @dev The normalization factor, which is used to efficiently scale weights when adding and removing.
-     * tokens. This value is an internal implementation detail and typically useless from the outside.
-     */
-    function getDenormalizedWeightSum() public view returns (uint256) {
-        return _denormWeightSum;
     }
 
     /**
@@ -329,12 +303,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         startWeights = new uint256[](totalTokens);
         endWeights = new uint256[](totalTokens);
 
-        uint256 denormWeightSum = _denormWeightSum;
         for (uint256 i = 0; i < totalTokens; i++) {
-            (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(
-                _tokenState[tokens[i]],
-                denormWeightSum
-            );
+            (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(_tokenState[tokens[i]]);
         }
     }
 
@@ -388,9 +358,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             endWeights,
             tokens
         );
-
-        // `_startGradualWeightChange` renormalizes the weights, so we reset `_denormWeightSum` to ONE.
-        _denormWeightSum = FixedPoint.ONE;
     }
 
     /**
@@ -407,22 +374,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     ) internal returns (bytes32) {
         uint256 normalizedSum;
 
-        // As we're writing all the weights to storage again we have the opportunity to normalize them by an arbitrary
-        // value. We then can take this opportunity to reset the `_denormWeightSum` to `FixedPoint.ONE` by passing it
-        // into `ManagedPoolTokenLib.setTokenWeight`.
-        _denormWeightSum = FixedPoint.ONE;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(
-                _tokenState[token],
-                startWeights[i],
-                endWeight,
-                FixedPoint.ONE
-            );
+            _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(_tokenState[token], startWeights[i], endWeight);
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -651,7 +609,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @notice Adds a token to the Pool's list of tradeable tokens. This is a permissioned function.
      *
      * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
-     * token will have no balance - it is up to the controller to provide some immediately after calling this function.
+     * token will have no balance - it is up to the owner to provide some immediately after calling this function.
      * Note however that regular join functions will not work while the new token has no balance: the only way to
      * deposit an initial amount is by using an Asset Manager.
      *
@@ -662,88 +620,101 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * Emits the TokenAdded event.
      *
-     * @param token - The ERC20 token to be added to the Pool.
+     * @param tokenToAdd - The ERC20 token to be added to the Pool.
      * @param assetManager - The Asset Manager for the token.
-     * @param normalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
+     * @param tokenToAddNormalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
      * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
      * @param recipient - The address to receive the BPT minted by the Pool.
      */
     function addToken(
-        IERC20 token,
+        IERC20 tokenToAdd,
         address assetManager,
-        uint256 normalizedWeight,
+        uint256 tokenToAddNormalizedWeight,
         uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused {
+    ) external authenticate whenNotPaused nonReentrant {
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
 
-        // To reduce the complexity of weight interactions, tokens cannot be added during or before a weight change.
-        // Checking for the validity of the new weight would otherwise be much more complicated.
+        // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
+        // change and would override an existing one, and b) any previous weight changes would be incomplete since they
+        // wouldn't include the new token.
         _ensureNoWeightChange();
 
-        // Total supply is potentially changing so we collect AUM fees.
+        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
         _collectAumManagementFees(supply);
 
-        // We need to check that both the new weight is valid, and that it won't make any of the existing weights
-        // invalid.
-        uint256 weightSumAfterAdd = _validateNewWeight(normalizedWeight);
+        // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
+        // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
+        // initial balance and restore regular operation.
+        //
+        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
+        // try to register it again.
+        PoolRegistrationLib.registerToken(getVault(), getPoolId(), tokenToAdd, assetManager);
 
-        // Adding the new token to the pool decreases all other normalized weights to 'make room' for the new one. This
-        // is achieved efficiently by simply updating the sum of the denormalized weights.
-        _denormWeightSum = weightSumAfterAdd;
+        // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
+        // opportunity to check we have not added too many tokens.
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
-        // Finally, we store the new token's weight and scaling factor.
-        _tokenState[token] = ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight, weightSumAfterAdd);
+        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // since we need to:
+        //  a) initialize the state of the new token
+        //  b) adjust the weights of all other tokens
+
+        // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
+        // (and relies instead on the Vault for this), so we simply store the new token-specific information.
+        // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
+        // which will check the entire set of weights for correctness.
+        _tokenState[tokenToAdd] = ManagedPoolTokenLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
+
+        // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
+        // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.
+        // For example, if a  0.25/0.75 Pool gets added a token with a weight of 0.80, the final weights would be
+        // 0.05/0.15/0.80, where 0.05 = 0.25 * (1 - 0.80) and 0.15 = 0.75 * (1 - 0.80).
+        uint256[] memory currentWeights = _getNormalizedWeights(tokens);
+        uint256[] memory newWeights = new uint256[](tokens.length);
+        uint256 newWeightSum = 0;
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == tokenToAdd) {
+                newWeights[i] = tokenToAddNormalizedWeight;
+            } else {
+                newWeights[i] = currentWeights[i].mulDown(FixedPoint.ONE.sub(tokenToAddNormalizedWeight));
+            }
+
+            newWeightSum = newWeightSum.add(newWeights[i]);
+        }
+
+        // It is possible that the new weights don't add up to 100% due to rounding errors - the sum might be slightly
+        // smaller since we round the weights down. In that case, we adjust the last weight so that the sum is exact.
+        //
+        // This error is negligible, since the error introduced in the weight of the last token equals the number of
+        // tokens in the worst case (as each weight can be off by one at most), and the minimum weight is 1e16, meaning
+        // there's ~15 orders of magnitude between the smallest weight and the error. It is important however that the
+        // weights do add up to 100% exactly, as that property is relied on in some parts of the WeightedMath
+        // computations.
+        if (newWeightSum != FixedPoint.ONE) {
+            newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
+        }
+
+        // `_startGradualWeightChange` will perform all requierd validation on the new weights, including minimum
+        // weights, sum, etc., so we don't need to worry about that ourselves.
+        // Note that this call will set the weight for `tokenToAdd`, which we've already done - that'll just be a no-op.
+        _poolState = _startGradualWeightChange(
+            _poolState,
+            block.timestamp,
+            block.timestamp,
+            newWeights,
+            newWeights,
+            tokens
+        );
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
         }
 
-        // Once we've updated the internal state, we register the token in the Vault. This makes the Pool enter an
-        // invalid state, since one of its tokens has a balance of zero (making the invariant also zero). The Asset
-        // Manager must be used to deposit some initial balance and restore regular operation.
-        //
-        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
-        // try to register it again.
-        PoolRegistrationLib.registerToken(getVault(), getPoolId(), token, assetManager);
-
-        emit TokenAdded(token, normalizedWeight);
-    }
-
-    function _validateNewWeight(uint256 normalizedWeight) private view returns (uint256) {
-        (IERC20[] memory tokens, ) = _getPoolTokens();
-
-        // Sanity check that the new token will make up less than 100% of the Pool.
-        _require(normalizedWeight < FixedPoint.ONE, Errors.MAX_WEIGHT);
-        // Make sure the new token is above the minimum weight.
-        _require(normalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        uint256 numTokens = tokens.length;
-        _require(numTokens + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
-
-        // The growth in the total weight of the pool can be calculated by:
-        //
-        // weightSumRatio = totalWeight / (totalWeight - newTokenWeight)
-        //
-        // As we're working with normalized weights, `totalWeight` is equal to 1.
-        //
-        // We can then calculate the new denormalized weight sum by applying this ratio to the old sum.
-        uint256 weightSumAfterAdd = _denormWeightSum.divDown(FixedPoint.ONE - normalizedWeight);
-
-        // We want to check if adding this new token results in any tokens falling below the minimum weight limit.
-        // Adding a new token could cause one of the other tokens to be pushed below the minimum weight.
-        // If any would fail this check, it would be the token with the lowest weight, so we search through all
-        // tokens to find the minimum weight and normalize it with the new value for `denormWeightSum`.
-        uint256 minimumNormalizedWeight = ManagedPoolTokenLib.getMinimumTokenEndWeight(
-            _tokenState,
-            tokens,
-            weightSumAfterAdd
-        );
-        // Now we know the minimum weight we can check that it doesn't get pushed below the minimum.
-        _require(minimumNormalizedWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-        return weightSumAfterAdd;
+        emit TokenAdded(tokenToAdd, tokenToAddNormalizedWeight);
     }
 
     /**
@@ -755,52 +726,87 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
      * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
-     * @param token - The ERC20 token to be removed from the Pool.
+     * @param tokenToRemove - The ERC20 token to be removed from the Pool.
      * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
      * @param sender - The address to burn BPT from.
      */
     function removeToken(
-        IERC20 token,
+        IERC20 tokenToRemove,
         uint256 burnAmount,
         address sender
     ) external authenticate nonReentrant whenNotPaused {
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
 
-        // To reduce the complexity of weight interactions, tokens cannot be removed during or before a weight change.
-        // This is for symmetry with addToken.
+        // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
+        // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
+        // they would include the removed token.
         _ensureNoWeightChange();
 
-        // Total supply is potentially changing so we collect AUM fees.
+        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
         _collectAumManagementFees(supply);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
         // in a valid state and all value-changing operations will revert, we are free to modify the Pool state (e.g.
         // alter weights).
+        //
         // We don't need to test the zero balance since the Vault will simply revert on deregistration if this is not
-        // the case.
+        // the case, or if the token is not currently registered.
+        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), tokenToRemove);
 
-        // Removing a token will cause for the weights of all other tokens to increase. This is fine, as there is no
-        // maximum weight. We also don't need to check that the new token exists in the Pool, as the Vault will simply
-        // revert if we try to deregister a token that is not registered.
-        // We do, however, want to check that the Pool will end up with at least two tokens. This simplifies some
-        // assumptions made elsewhere (e.g. the denormalized weight sum will always be non-zero), and doesn't greatly
-        // restrict the controller.
+        // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
+        // good opportunity to check we didn't end up with too few tokens.
+        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
-        (IERC20[] memory tokens, ) = _getPoolTokens();
-        _require(tokens.length > 2, Errors.MIN_TOKENS);
+        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // since we need to:
+        //  a) delete the state of the removed token
+        //  b) adjust the weights of all other tokens
 
-        uint256 tokenNormalizedWeight = ManagedPoolTokenLib.getTokenWeight(
-            _tokenState[token],
-            ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState),
-            _denormWeightSum
+        // Deleting the old token is straightforward. The Pool itself doesn't track how many or which tokens it uses
+        // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
+        // its weight however, since we'll need it later.
+        // We've ensured that the most recent weight change is complete.
+        uint256 tokenToRemoveWeight = ManagedPoolTokenLib.getTokenWeight(_tokenState[tokenToRemove], FixedPoint.ONE);
+        delete _tokenState[tokenToRemove];
+
+        // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add
+        // up to 100%. This is achieved by dividing them by a factor of `1 - old token weight`.
+        // For example, if a  0.05/0.15/0.80 Pool has its 80% token removed, the final weights would be 0.25/0.75, where
+        // 0.25 = 0.05 / (1 - 0.80) and 0.75 = 0.15 / (1 - 0.80).
+        uint256[] memory currentWeights = _getNormalizedWeights(tokens);
+        uint256[] memory newWeights = new uint256[](tokens.length);
+        uint256 newWeightSum = 0;
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            newWeights[i] = currentWeights[i].divDown(FixedPoint.ONE.sub(tokenToRemoveWeight));
+            newWeightSum = newWeightSum.add(newWeights[i]);
+        }
+
+        // It is possible that the new weights don't add up to 100% due to rounding errors - the sum might be slightly
+        // smaller since we round the weights down. In that case, we adjust the last weight so that the sum is exact.
+        //
+        // This error is negligible, since the error introduced in the weight of the last token equals the number of
+        // tokens in the worst case (as each weight can be off by one at most), and the minimum weight is 1e16, meaning
+        // there's ~15 orders of magnitude between the smallest weight and the error. It is important however that the
+        // weights do add up to 100% exactly, as that property is relied on in some parts of the WeightedMath
+        // computations.
+        if (newWeightSum != FixedPoint.ONE) {
+            newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
+        }
+
+        // `_startGradualWeightChange` will perform all requierd validation on the new weights, including minimum
+        // weights, sum, etc., so we don't need to worry about that ourselves.
+        _poolState = _startGradualWeightChange(
+            _poolState,
+            block.timestamp,
+            block.timestamp,
+            newWeights,
+            newWeights,
+            tokens
         );
-
-        // State cleanup is simply done by removing the portion of the denormalized weight that corresponds to the token
-        // being removed, and then deleting all token-specific state.
-        _denormWeightSum -= tokenNormalizedWeight.mulDown(_denormWeightSum);
-        delete _tokenState[token];
 
         if (burnAmount > 0) {
             // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
@@ -809,14 +815,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _burnPoolTokens(sender, burnAmount);
         }
 
-        // We can then deregister the token in the Vault. This will revert unless the token is registered and the Pool
-        // has a zero balance of it.
-        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), token);
-
         // The Pool is now again in a valid state: by the time the zero valued token is deregistered, all internal Pool
         // state is updated.
 
-        emit TokenRemoved(token);
+        emit TokenRemoved(tokenToRemove);
     }
 
     // Scaling Factors
