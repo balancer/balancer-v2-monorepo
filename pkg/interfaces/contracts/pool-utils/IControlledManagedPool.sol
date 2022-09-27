@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "./IControlledPool.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IControlledManagedPool {
     function updateSwapFeeGradually(
