@@ -389,26 +389,49 @@ describe('ManagedPool', function () {
           });
         });
 
-        it('syncs the total supply to the actual supply', async () => {
+        it('reports the expected actual supply', async () => {
           // As we're performing a join or exit here we need to account for the change in the BPT total supply due to
           // the join/exit. We do this by tracking the user's balance.
           const balanceBefore = await pool.balanceOf(other);
           const totalSupplyBefore = await pool.totalSupply();
           const expectedManagementFeeBpt = expectedAUMFees(totalSupplyBefore, managementAumFeePercentage, timeElapsed);
 
-          const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt);
+          const balanceAfter = await pool.balanceOf(other);
+          const joinExitDelta = balanceAfter.sub(balanceBefore);
+
+          const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt).add(joinExitDelta);
+          const actualSupply = await pool.getActualSupply();
+          expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
+        });
+
+        it('does not affect the actual supply', async () => {
+          // As we're performing a join or exit here we need to account for the change in the BPT total supply due to
+          // the join/exit. We do this by tracking the user's balance.
+          const balanceBefore = await pool.balanceOf(other);
           const actualSupplyBefore = await pool.getActualSupply();
-          expect(actualSupplyBefore).to.be.equalWithError(expectedActualSupply, 0.0001);
 
           await collectAUMFees();
 
           const balanceAfter = await pool.balanceOf(other);
-          const totalSupplyAfter = await pool.totalSupply();
-          const actualSupplyAfter = await pool.getActualSupply();
-
           const joinExitDelta = balanceAfter.sub(balanceBefore);
-          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore.add(joinExitDelta), 0.0001);
-          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore.add(joinExitDelta), 0.0001);
+
+          const actualSupplyAfter = await pool.getActualSupply();
+          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore.add(joinExitDelta), 1e-5);
+        });
+
+        it('syncs the total supply to the actual supply', async () => {
+          // As we're performing a join or exit here we need to account for the change in the BPT total supply due to
+          // the join/exit. We do this by tracking the user's balance.
+          const balanceBefore = await pool.balanceOf(other);
+          const actualSupplyBefore = await pool.getActualSupply();
+
+          await collectAUMFees();
+
+          const balanceAfter = await pool.balanceOf(other);
+          const joinExitDelta = balanceAfter.sub(balanceBefore);
+
+          const totalSupplyAfter = await pool.totalSupply();
+          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore.add(joinExitDelta), 1e-5);
         });
       }
 
@@ -465,8 +488,7 @@ describe('ManagedPool', function () {
           });
 
           itCollectsAUMFeesCorrectly(async () => {
-            const amountsIn = initialBalances.map((x) => x.div(2));
-            const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
+            const { receipt } = await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
             return receipt;
           });
         });

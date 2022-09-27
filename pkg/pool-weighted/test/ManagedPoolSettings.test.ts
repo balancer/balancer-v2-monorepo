@@ -791,20 +791,31 @@ describe('ManagedPoolSettings', function () {
           });
         });
 
-        it('syncs the total supply to the actual supply', async () => {
+        it('reports the expected actual supply', async () => {
           const totalSupplyBefore = await pool.totalSupply();
           const expectedManagementFeeBpt = expectedAUMFees(totalSupplyBefore, managementAumFeePercentage, timeElapsed);
 
           const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt);
+          const actualSupply = await pool.getActualSupply();
+          expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
+        });
+
+        it('does not affect the actual supply', async () => {
           const actualSupplyBefore = await pool.getActualSupply();
-          expect(actualSupplyBefore).to.be.equalWithError(expectedActualSupply, 0.0001);
+
+          await collectAUMFees();
+
+          const actualSupplyAfter = await pool.getActualSupply();
+          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, 1e-6);
+        });
+
+        it('syncs the total supply to the actual supply', async () => {
+          const actualSupplyBefore = await pool.getActualSupply();
 
           await collectAUMFees();
 
           const totalSupplyAfter = await pool.totalSupply();
-          const actualSupplyAfter = await pool.getActualSupply();
-          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, 0.0001);
-          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore, 0.0001);
+          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore, 1e-6);
         });
       }
 
@@ -843,7 +854,7 @@ describe('ManagedPoolSettings', function () {
       }
 
       sharedBeforeEach('mint tokens', async () => {
-        await poolTokens.mint({ to: other, amount: fp(10000) });
+        await poolTokens.mint({ to: other, amount: fp(100) });
         await poolTokens.approve({ from: other, to: await pool.getVault() });
       });
 
