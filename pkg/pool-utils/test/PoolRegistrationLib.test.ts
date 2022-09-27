@@ -35,6 +35,12 @@ describe('PoolRegistrationLib', function () {
     return event.args.poolId;
   }
 
+  async function registerComposablePool(specialization: PoolSpecialization, assetManagers: string[]): Promise<string> {
+    const tx = await lib.registerComposablePool(vault.address, specialization, tokens.addresses, assetManagers);
+    const event = expectEvent.inIndirectReceipt(await tx.wait(), vault.interface, 'PoolRegistered');
+    return event.args.poolId;
+  }
+
   describe('registerPool', () => {
     it('registers the pool in the vault', async () => {
       const poolId = await registerPool(PoolSpecialization.GeneralPool);
@@ -107,6 +113,98 @@ describe('PoolRegistrationLib', function () {
         await tokens.asyncEach(async (token: Token) => {
           const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
           expect(assetManager).to.equal(ZERO_ADDRESS);
+        });
+      });
+    });
+  });
+
+  describe('registerComposablePool', () => {
+    let assetManagers: string[];
+
+    sharedBeforeEach(async () => {
+      assetManagers = Array.from({ length: tokens.length }, () => ethers.Wallet.createRandom().address);
+    });
+
+    it('registers the pool in the vault', async () => {
+      const poolId = await registerComposablePool(PoolSpecialization.GeneralPool, assetManagers);
+
+      const { address: poolAddress } = await vault.getPool(poolId);
+      expect(poolAddress).to.equal(lib.address);
+    });
+
+    it('registers the pool with the correct specialization', async () => {
+      const specializations: (keyof typeof PoolSpecialization)[] = [
+        'GeneralPool',
+        'MinimalSwapInfoPool',
+        'TwoTokenPool',
+      ];
+      for (const specialization of specializations) {
+        const poolId = await registerPool(PoolSpecialization[specialization]);
+        const { specialization: poolSpecialization } = await vault.getPool(poolId);
+        expect(poolSpecialization).to.equal(PoolSpecialization[specialization]);
+      }
+    });
+
+    it('registers the tokens correctly', async () => {
+      const poolId = await registerComposablePool(PoolSpecialization.GeneralPool, assetManagers);
+      const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
+
+      // The library mock is fulfilling the role of the Pool in this test.
+      const composableTokens = [lib.address, ...tokens.addresses];
+
+      expect(poolTokens).to.deep.eq(composableTokens);
+    });
+
+    it('reverts if the tokens are not sorted', async () => {
+      await expect(
+        lib.registerComposablePool(
+          vault.address,
+          PoolSpecialization.GeneralPool,
+          tokens.addresses.reverse(),
+          assetManagers
+        )
+      ).to.be.revertedWith('UNSORTED_ARRAY');
+    });
+
+    it("reverts if the pool's BPT is included as one of the tokens", async () => {
+      const tokensWithBPT = [lib.address, ...tokens.addresses];
+      tokensWithBPT.sort();
+      const assetManagersWithBPT = [ZERO_ADDRESS, ...assetManagers];
+
+      await expect(
+        lib.registerComposablePool(vault.address, PoolSpecialization.GeneralPool, tokensWithBPT, assetManagersWithBPT)
+      ).to.be.revertedWith('TOKEN_ALREADY_REGISTERED');
+    });
+
+    context("when the token and asset managers arrays' lengths are mismatched", () => {
+      it('reverts', async () => {
+        const tooManyAssetManagers = Array.from(
+          { length: tokens.length + 1 },
+          () => ethers.Wallet.createRandom().address
+        );
+
+        await expect(
+          lib.registerComposablePool(
+            vault.address,
+            PoolSpecialization.GeneralPool,
+            tokens.addresses,
+            tooManyAssetManagers
+          )
+        ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+      });
+    });
+
+    context("when the token and asset managers arrays' lengths match", () => {
+      it('registers the asset managers correctly', async () => {
+        const poolId = await registerComposablePool(PoolSpecialization.GeneralPool, assetManagers);
+
+        // Check the asset manager of the BPT token separately.`
+        const { assetManager: bptAssetManager } = await vault.getPoolTokenInfo(poolId, lib.address);
+        expect(bptAssetManager).to.equal(ZERO_ADDRESS);
+
+        await tokens.asyncEach(async (token: Token, i: number) => {
+          const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
+          expect(assetManager).to.equal(assetManagers[i]);
         });
       });
     });

@@ -633,16 +633,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused nonReentrant {
+        // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to mint is zero.
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
+
+        // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToAdd != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
         // change and would override an existing one, and b) any previous weight changes would be incomplete since they
         // wouldn't include the new token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
         // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
@@ -654,7 +659,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
         // opportunity to check we have not added too many tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -735,16 +740,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 burnAmount,
         address sender
     ) external authenticate nonReentrant whenNotPaused {
+        // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to burn is zero.
         uint256 supply = totalSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
+
+        // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToRemove != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
         // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
         // they would include the removed token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
@@ -757,7 +767,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
         // good opportunity to check we didn't end up with too few tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
