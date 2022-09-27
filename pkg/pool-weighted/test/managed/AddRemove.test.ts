@@ -16,6 +16,7 @@ import { ethers } from 'hardhat';
 import { random, range } from 'lodash';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 describe('ManagedPoolSettings - add/remove token', () => {
   let vault: Vault;
@@ -370,11 +371,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             it('collects aum fees', async () => {
               const tx = await pool.addToken(owner, newToken, assetManager, fp(0.1));
 
-              expectEvent.inReceipt(await tx.wait(), 'Transfer', { from: ZERO_ADDRESS, to: await pool.getOwner() });
-              expectEvent.inReceipt(await tx.wait(), 'Transfer', {
-                from: ZERO_ADDRESS,
-                to: (await vault.getFeesCollector()).address,
-              });
+              expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: await pool.getOwner() }, pool);
+              expectTransferEvent(
+                await tx.wait(),
+                { from: ZERO_ADDRESS, to: (await vault.getFeesCollector()).address },
+                pool
+              );
 
               expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
             });
@@ -647,11 +649,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             it('collects aum fees', async () => {
               const tx = await pool.removeToken(owner, tokenToRemove);
 
-              expectEvent.inReceipt(await tx.wait(), 'Transfer', { from: ZERO_ADDRESS, to: await pool.getOwner() });
-              expectEvent.inReceipt(await tx.wait(), 'Transfer', {
-                from: ZERO_ADDRESS,
-                to: (await vault.getFeesCollector()).address,
-              });
+              expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: await pool.getOwner() }, pool);
+              expectTransferEvent(
+                await tx.wait(),
+                { from: ZERO_ADDRESS, to: (await vault.getFeesCollector()).address },
+                pool
+              );
 
               expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
             });
