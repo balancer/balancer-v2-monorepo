@@ -34,6 +34,15 @@ contract MockPoolRegistrationLib {
         return PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers);
     }
 
+    function registerComposablePool(
+        IVault vault,
+        IVault.PoolSpecialization specialization,
+        IERC20[] memory tokens,
+        address[] memory assetManagers
+    ) external returns (bytes32) {
+        return PoolRegistrationLib.registerComposablePool(vault, specialization, tokens, assetManagers);
+    }
+
     function registerToken(
         IVault vault,
         bytes32 poolId,
