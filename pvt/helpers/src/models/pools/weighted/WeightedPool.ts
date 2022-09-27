@@ -585,7 +585,7 @@ export default class WeightedPool extends BasePool {
     if (this.poolType == WeightedPoolType.MANAGED_POOL) {
       if (!tokens) {
         const { tokens: registeredTokens } = await this.getTokens();
-        tokens = registeredTokens;
+        tokens = registeredTokens.slice(1);
       }
 
       return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
