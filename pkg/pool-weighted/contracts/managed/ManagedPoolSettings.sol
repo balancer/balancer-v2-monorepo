@@ -170,6 +170,18 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         return _tokenState[token];
     }
 
+    // Virtual Supply
+
+    /**
+     * @notice Returns the number of tokens in circulation.
+     * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
+     * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
+     * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
+     */
+    function _getVirtualSupply() internal view virtual returns (uint256) {
+        return totalSupply();
+    }
+
     // Swap fees
 
     /**
@@ -530,7 +542,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
         // To prevent this, we perform a collection before updating the fee percentage.
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
-        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
             _lastAumFeeCollectionTimestamp = block.timestamp;
@@ -559,7 +571,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
         (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
@@ -636,7 +648,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to mint is zero.
-        uint256 supply = totalSupply();
+        uint256 supply = _getVirtualSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
         _collectAumManagementFees(supply);
 
@@ -743,7 +755,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to burn is zero.
-        uint256 supply = totalSupply();
+        uint256 supply = _getVirtualSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
         _collectAumManagementFees(supply);
 
@@ -860,7 +872,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // not paused.
         _ensureNotPaused();
 
-        _collectAumManagementFees(totalSupply());
+        _collectAumManagementFees(_getVirtualSupply());
     }
 
     // Recovery Mode
