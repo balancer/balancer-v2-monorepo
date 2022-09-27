@@ -169,8 +169,13 @@ describe('ManagedPoolSettings - add/remove token', () => {
               );
             });
 
-            it("reverts if the new token's weight is too low", async () => {
-              const weightTooLow = fp(0.005);
+            it("reverts if the new token's weight is below the minimum weight", async () => {
+              // It'd typically be sufficient to pass the minimum weight minus one, that won't always cause a revert.
+              // The Pool manually increases the weight of the last token (which will be the newly added one) so that
+              // the weight sum equals 100%. Without this adjustment, it might be off due to rounding error, with each
+              // token in the Pool introducing a potential error of 1e-18 (i.e. they're off-by-one). We therefore
+              // account for that and pass the largest weight that always reverts due to being too low.
+              const weightTooLow = fp(0.01).sub(poolTokenCount + 1);
               await expect(pool.addToken(owner, newToken, assetManager, weightTooLow)).to.be.revertedWith('MIN_WEIGHT');
             });
 
