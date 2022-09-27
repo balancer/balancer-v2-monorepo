@@ -41,7 +41,7 @@ contract CircuitBreakerLibTest is Test {
         bptPrice = bound(bptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         weightComplement = bound(weightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
-        upperBound = bound(upperBound, FixedPoint.ONE, _MAX_BOUND_PERCENTAGE);
+        upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
         CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
             bptPrice: bptPrice,
