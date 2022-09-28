@@ -43,20 +43,14 @@ contract CircuitBreakerLibTest is Test {
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
-        CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
-            bptPrice: bptPrice,
-            weightComplement: weightComplement,
-            lowerBound: lowerBound,
-            upperBound: upperBound
-        });
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(bptPrice, weightComplement, lowerBound, upperBound);
+        (uint256 actualBptPrice, uint256 actualWeightComplement, uint256 actualLowerBound, uint256 actualUpperBound)
+            = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(params);
-        CircuitBreakerLib.CircuitBreakerParams memory result = CircuitBreakerLib.getCircuitBreakerFields(poolState);
-
-        assertEq(result.bptPrice, bptPrice);
-        assertEq(result.weightComplement, weightComplement);
-        assertApproxEqRel(result.lowerBound, lowerBound, _MAX_RELATIVE_ERROR);
-        assertApproxEqRel(result.upperBound, upperBound, _MAX_RELATIVE_ERROR);
+        assertEq(actualBptPrice, bptPrice);
+        assertEq(actualWeightComplement, weightComplement);
+        assertApproxEqRel(actualLowerBound, lowerBound, _MAX_RELATIVE_ERROR);
+        assertApproxEqRel(actualUpperBound, upperBound, _MAX_RELATIVE_ERROR);
     }
 
     function testReferenceBoundRatios(
@@ -70,17 +64,10 @@ contract CircuitBreakerLibTest is Test {
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
-        CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
-            bptPrice: bptPrice,
-            weightComplement: weightComplement,
-            lowerBound: lowerBound,
-            upperBound: upperBound
-        });
-
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(params);
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(bptPrice, weightComplement, lowerBound, upperBound);
 
         // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
         (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) =
@@ -103,15 +90,8 @@ contract CircuitBreakerLibTest is Test {
         initialWeightComplement = bound(initialWeightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
-        CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
-            bptPrice: initialBptPrice,
-            weightComplement: initialWeightComplement,
-            lowerBound: lowerBound,
-            upperBound: upperBound
-        });
-
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(params);
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(initialBptPrice, initialWeightComplement, lowerBound, upperBound);
         (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
             CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 

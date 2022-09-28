@@ -209,10 +209,3 @@ export type ManagedPoolParams = {
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
 };
-
-export type CircuitBreakerParams = {
-  bptPrice: BigNumber;
-  weightComplement: BigNumber;
-  lowerBound: BigNumber;
-  upperBound: BigNumber;
-};
