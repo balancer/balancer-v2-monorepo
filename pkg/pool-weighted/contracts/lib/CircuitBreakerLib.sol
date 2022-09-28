@@ -100,9 +100,19 @@ library CircuitBreakerLib {
     uint256 private constant _BOUND_WIDTH = 16;
     uint256 private constant _BOUND_RATIO_WIDTH = 32;
 
-    // We compress the ratios from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
-    // For consistency, use the same max value to compress the lower bound, even though we expect it to be less than 1.
+    // We allow the  bounds to range over two orders of magnitude: 0.1 - 10. The maximum upper bound is set to 10.0
+    // in 18-decimal floating point, since this fits in 64 bits, and can be shifted down to 16 bit precision without
+    // much loss. Since compression would lose a lot of precision for values close to 0, we also constrain the lower
+    // bound to a minimum value > 0.
+    //
+    // Since the bound ratios are (bound percentage)**(weightComplement), and weights are stored normalized, the maximum
+    // weight complement is 1 - minimumWeight, which is 0.99 ~ 1. Therefore the ratio bounds are likewise constrained to
+    // 10**1 ~ 10. So we can use this as the maximum value of both the percentage and ratio values.
     uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18 decimal fixed point
+
+    // Since we know the bounds fit into 64 bits, simply shifting them down to fit in 16 bits is not only faster than
+    // the compression and decompression operations, but generally less lossy.
+    uint256 private constant _BOUND_SHIFT_BITS = 64 - _BOUND_WIDTH;
 
     /**
      * @notice Returns the BPT price and weight complement values, and lower and upper bounds for a given token.
@@ -117,14 +127,9 @@ library CircuitBreakerLib {
     {
         params.bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
         params.weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
-        params.lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-            _BOUND_WIDTH,
-            _MAX_BOUND_PERCENTAGE
-        );
-        params.upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-            _BOUND_WIDTH,
-            _MAX_BOUND_PERCENTAGE
-        );
+        // Decompress the bounds by shifting left.
+        params.lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
+        params.upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
     }
 
     /**
@@ -205,16 +210,10 @@ library CircuitBreakerLib {
             );
         } else {
             // Something has changed - either the weight of the token, or the composition of the pool, so we must
-            // retrieve the raw percentage bounds and do the full calculation.
+            // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
             (lowerBoundRatio, upperBoundRatio) = getBoundaryConversionRatios(
-                circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-                    _BOUND_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                ),
-                circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH).decompress(
-                    _BOUND_WIDTH,
-                    _MAX_BOUND_PERCENTAGE
-                ),
+                circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
+                circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
                 weightComplement
             );
         }
@@ -250,15 +249,15 @@ library CircuitBreakerLib {
             .insertUint(params.bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH)
             .insertUint(params.weightComplement, _WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
 
-        // Add the lower and upper percentage bounds.
+        // Add the lower and upper percentage bounds. Compress by shifting right.
         circuitBreakerState = circuitBreakerState
             .insertUint(
-            params.lowerBound.compress(_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE),
+            params.lowerBound >> _BOUND_SHIFT_BITS,
             _LOWER_BOUND_OFFSET,
             _BOUND_WIDTH
         )
             .insertUint(
-            params.upperBound.compress(_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE),
+            params.upperBound >> _BOUND_SHIFT_BITS,
             _UPPER_BOUND_OFFSET,
             _BOUND_WIDTH
         );
@@ -291,10 +290,10 @@ library CircuitBreakerLib {
     function getBoundaryConversionRatios(
         uint256 lowerBound,
         uint256 upperBound,
-        uint256 currentWeightComplement
+        uint256 weightComplement
     ) internal pure returns (uint256 lowerBoundRatio, uint256 upperBoundRatio) {
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        lowerBoundRatio = lowerBound.powUp(currentWeightComplement);
-        upperBoundRatio = upperBound.powDown(currentWeightComplement);
+        lowerBoundRatio = lowerBound.powUp(weightComplement);
+        upperBoundRatio = upperBound.powDown(weightComplement);
     }
 }
