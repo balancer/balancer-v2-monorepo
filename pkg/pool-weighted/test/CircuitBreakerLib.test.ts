@@ -147,6 +147,17 @@ describe('CircuitBreakerLib', () => {
   }
 
   context('when parameters are invalid', () => {
+    it('reverts if the lower bound < 0.1', async () => {
+      await expect(
+        lib.setCircuitBreakerFields({
+          bptPrice: fp(BPT_PRICE),
+          weightComplement: fp(WEIGHT_COMPLEMENT),
+          lowerBound: fp(MIN_BOUND).sub(1),
+          upperBound: 0,
+        })
+      ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
+    });
+
     it('reverts if the lower bound > 1', async () => {
       await expect(
         lib.setCircuitBreakerFields({
