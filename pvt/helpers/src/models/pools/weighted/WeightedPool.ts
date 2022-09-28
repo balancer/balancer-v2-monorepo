@@ -538,7 +538,9 @@ export default class WeightedPool extends BasePool {
   }
 
   async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
-    assert(!this._isManagedPool(), 'Not available in managed pool');
+         if (this._isManagedPool()) {
+           throw new Error('Not available in managed pool');
+        }
     const pool = this.instance.connect(from);
     return pool.setSwapFeePercentage(swapFeePercentage);
   }
