@@ -17,7 +17,6 @@ import {
 } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
-import assert from 'assert';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -126,7 +125,7 @@ export default {
       }
       case WeightedPoolType.MOCK_MANAGED_POOL: {
         if (mockContractName == undefined) {
-           throw new Error('Mock contract name required to deploy mock base pool');
+          throw new Error('Mock contract name required to deploy mock base pool');
         }
         result = deploy(mockContractName, {
           args: [
