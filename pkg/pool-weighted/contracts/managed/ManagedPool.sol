@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "../lib/WeightedExitsLib.sol";
@@ -260,7 +261,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         // The Vault expects an array of amounts which includes BPT (which always sits in the first position).
         // We then add an extra element to the beginning of the array and set it to `initialBpt`
-        amountsIn = _prependZeroElement(amountsIn);
+        amountsIn = ComposablePoolLib.prependZeroElement(amountsIn);
         amountsIn[0] = initialBpt;
 
         return (bptAmountOut, amountsIn);
@@ -275,15 +276,10 @@ contract ManagedPool is ManagedPoolSettings {
     ) internal virtual override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         // The Vault passes an array of balances which includes the pool's BPT (This always sits in the first position).
         // We want to separate this from the other balances before continuing with the join.
-        uint256 virtualSupply = totalSupply().sub(balances[0]);
-        assembly {
-            // Drop BPT from balances array
-            mstore(add(balances, 32), sub(mload(balances), 1))
-            balances := add(balances, 32)
-        }
+        uint256 virtualSupply;
+        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
-
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
@@ -302,7 +298,7 @@ contract ManagedPool is ManagedPoolSettings {
         _downscaleUpArray(amountsIn, scalingFactors);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
-        amountsIn = _prependZeroElement(amountsIn);
+        amountsIn = ComposablePoolLib.prependZeroElement(amountsIn);
     }
 
     /**
@@ -365,12 +361,8 @@ contract ManagedPool is ManagedPoolSettings {
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // The Vault passes an array of balances which includes the pool's BPT (This always sits in the first position).
         // We want to separate this from the other balances before continuing with the exit.
-        uint256 virtualSupply = totalSupply().sub(balances[0]);
-        assembly {
-            // Drop BPT from balances array
-            mstore(add(balances, 32), sub(mload(balances), 1))
-            balances := add(balances, 32)
-        }
+        uint256 virtualSupply;
+        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
 
@@ -392,7 +384,7 @@ contract ManagedPool is ManagedPoolSettings {
         _downscaleDownArray(amountsOut, scalingFactors);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
-        amountsOut = _prependZeroElement(amountsOut);
+        amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
     }
 
     /**
@@ -453,26 +445,12 @@ contract ManagedPool is ManagedPoolSettings {
      * @dev This function drops the BPT token and its balance from the returned arrays as these values are unused by
      * internal functions outside of the swap/join/exit hooks.
      */
-    function _getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
+    function _getPoolTokens() internal view override returns (IERC20[] memory, uint256[] memory) {
         (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
             getPoolId()
         );
 
-        assembly {
-            // Drop BPT from tokens array
-            mstore(add(registeredTokens, 32), sub(mload(registeredTokens), 1))
-            tokens := add(registeredTokens, 32)
-            // Drop BPT from balances array
-            mstore(add(registeredBalances, 32), sub(mload(registeredBalances), 1))
-            balances := add(registeredBalances, 32)
-        }
-    }
-
-    function _prependZeroElement(uint256[] memory array) private pure returns (uint256[] memory prependedArray) {
-        prependedArray = new uint256[](array.length + 1);
-        for (uint256 i = 0; i < array.length; i++) {
-            prependedArray[i + 1] = array[i];
-        }
+        return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
     }
 
     // Unimplemented
