@@ -295,8 +295,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
-
         _poolState = ManagedPoolStorageLib.setSwapFeeData(
             _poolState,
             startTime,
@@ -304,6 +302,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             startSwapFeePercentage,
             endSwapFeePercentage
         );
+
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
     // Token weights
@@ -430,9 +430,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-
         _poolState = ManagedPoolStorageLib.setWeightChangeData(_poolState, startTime, endTime);
+
+        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
     // Invariant
