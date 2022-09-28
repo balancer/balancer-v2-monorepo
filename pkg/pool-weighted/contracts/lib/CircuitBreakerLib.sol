@@ -22,7 +22,7 @@ import "../lib/ValueCompression.sol";
  * @title Circuit Breaker Library
  * @notice Library for storing and manipulating state related to circuit breakers.
  * @dev The intent of circuit breakers is to halt trading of a given token if its value changes drastically -
- * in either direction - with respect to other tokens in the pool. For instance, a stable coin might de-peg
+ * in either direction - with respect to other tokens in the pool. For instance, a stablecoin might de-peg
  * and go to zero. With no safeguards, arbitrageurs could drain the pool by selling large amounts of the
  * token to the pool at inflated internal prices.
  *
@@ -30,7 +30,7 @@ import "../lib/ValueCompression.sol";
  * the BPT price. Both lower and upper bounds can be set, and if a trade would result in moving the BPT price
  * of any token involved in the operation outside that range, the breaker is "tripped", and the operation
  * should revert. Each token is independent, since some might have very "tight" valid trading ranges, such as
- * stable coins, and others are more volatile.
+ * stablecoins, and others are more volatile.
  *
  * The BPT price of a token is defined as the amount of BPT that could be redeemed for a single token.
  * For instance, in an 80/20 pool with a total supply of 1000, the 80% token accounts for 800 BPT. So each
@@ -77,7 +77,7 @@ library CircuitBreakerLib {
     // computed every time. However, if the weight of the token and composition of the pool have not changed since
     // the circuit breaker was set, these stored values can still be used, avoiding a heavy computation.
     //
-    // [      32 bits      |      32 bits      |   96 bits |   64 bits    |   16 bits   |   16 bits   |
+    // [      32 bits      |      32 bits      |  96 bits  |   64 bits    |   16 bits   |   16 bits   |
     // [ upper bound ratio | lower bound ratio | BPT price | weight comp. | upper bound | lower bound |
     // |MSB                                                                                        LSB|
     uint256 private constant _LOWER_BOUND_OFFSET = 0;
@@ -92,7 +92,7 @@ library CircuitBreakerLib {
     uint256 private constant _BOUND_WIDTH = 16;
     uint256 private constant _BOUND_RATIO_WIDTH = 32;
 
-    // We allow the  bounds to range over two orders of magnitude: 0.1 - 10. The maximum upper bound is set to 10.0
+    // We allow the bounds to range over two orders of magnitude: 0.1 - 10. The maximum upper bound is set to 10.0
     // in 18-decimal floating point, since this fits in 64 bits, and can be shifted down to 16 bit precision without
     // much loss. Since compression would lose a lot of precision for values close to 0, we also constrain the lower
     // bound to a minimum value > 0.
@@ -254,7 +254,7 @@ library CircuitBreakerLib {
     /**
      * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
-     * @param bptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
+     * @param bptPrice: The BPT price of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
      * @param weightComplement: This is (1 - currentWeight).
      * @param lowerBound: The value of the lower bound, expressed as a percentage.
