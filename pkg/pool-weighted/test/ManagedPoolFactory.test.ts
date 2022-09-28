@@ -124,7 +124,7 @@ describe('ManagedPoolFactory', function () {
       expect(await factory.isPoolFromFactory(assetManager.address)).to.be.false;
     });
 
-    it('sets the pool controller', async () => {
+    it('sets the pool owner', async () => {
       expect(await pool.getOwner()).to.equal(poolControllerAddress);
     });
 

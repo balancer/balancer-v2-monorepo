@@ -12,6 +12,7 @@ export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
+  MOCK_MANAGED_POOL,
 }
 
 export type RawWeightedPoolDeployment = {
@@ -32,6 +33,7 @@ export type RawWeightedPoolDeployment = {
   vault?: Vault;
   fromFactory?: boolean;
   poolType?: WeightedPoolType;
+  mockContractName?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -50,6 +52,7 @@ export type WeightedPoolDeployment = {
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
+  mockContractName?: string;
 };
 
 export type SwapWeightedPool = {

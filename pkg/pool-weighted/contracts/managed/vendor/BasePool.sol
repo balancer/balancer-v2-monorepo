@@ -22,7 +22,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
@@ -68,11 +67,9 @@ abstract contract BasePool is
 
     constructor(
         IVault vault,
-        IVault.PoolSpecialization specialization,
+        bytes32 poolId,
         string memory name,
         string memory symbol,
-        IERC20[] memory tokens,
-        address[] memory assetManagers,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -87,13 +84,6 @@ abstract contract BasePool is
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
-            vault,
-            specialization,
-            tokens,
-            assetManagers
-        );
-
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
         _protocolFeesCollector = vault.getProtocolFeesCollector();
@@ -111,8 +101,8 @@ abstract contract BasePool is
     function _getAuthorizer() internal view override returns (IAuthorizer) {
         // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
         // accounts can call permissioned functions: for example, to perform emergency pauses.
-        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under
-        // Governance control.
+        // If the owner is delegated, then *all* permissioned functions, including `updateSwapFeeGradually`, will be
+        // under Governance control.
         return getVault().getAuthorizer();
     }
 

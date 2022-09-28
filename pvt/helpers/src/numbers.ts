@@ -131,3 +131,8 @@ function parseScientific(num: string): string {
 
   return numberSign < 0 ? '-' + num : num;
 }
+
+export function randomFromInterval(min: number, max: number): number {
+  // min and max included
+  return Math.random() * (max - min) + min;
+}

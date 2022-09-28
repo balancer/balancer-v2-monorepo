@@ -32,4 +32,8 @@ contract MockManagedPool is ManagedPool {
     function isOwnerOnlyAction(bytes32 actionId) external view returns (bool) {
         return _isOwnerOnlyAction(actionId);
     }
+
+    function validateSwapFeePercentage(uint256 swapFeePercentage) external pure {
+        _validateSwapFeePercentage(swapFeePercentage);
+    }
 }

@@ -7,30 +7,33 @@ import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/We
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { bn, fp, fpDiv, fpMul, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceToTimestamp, currentTimestamp, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { ethers } from 'hardhat';
 import { random, range } from 'lodash';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
 describe('ManagedPoolSettings - add/remove token', () => {
   let vault: Vault;
   let assetManager: Contract;
   let allTokens: TokenList;
-  let owner: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
+  let admin: SignerWithAddress, owner: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
-    [, owner, lp, other] = await ethers.getSigners();
+    [, admin, owner, lp, other] = await ethers.getSigners();
   });
 
   const MIN_TOKENS = 2;
   const MAX_TOKENS = 38;
 
   sharedBeforeEach('deploy vault', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
+    await vault.setFeeTypePercentage(ProtocolFee.AUM, fp(0.2)); // Non-zero so that some protocol AUM fees are charged
   });
 
   sharedBeforeEach('deploy tokens', async () => {
@@ -44,12 +47,16 @@ describe('ManagedPoolSettings - add/remove token', () => {
     assetManager = await deploy('MockWithdrawDepositAssetManager', { args: [vault.address] });
   });
 
-  async function createPool(numberOfTokens: number): Promise<{ pool: WeightedPool; poolTokens: TokenList }> {
+  async function createPool(
+    numberOfTokens: number,
+    weights?: Array<BigNumber>
+  ): Promise<{ pool: WeightedPool; poolTokens: TokenList }> {
     const poolTokens = allTokens.subset(numberOfTokens);
-
-    // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
-    // deployer will normalize them.
-    const weights = range(numberOfTokens).map(() => fp(20 + random(50)));
+    if (weights == undefined) {
+      // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
+      // deployer will normalize them.
+      weights = range(numberOfTokens).map(() => fp(20 + random(50)));
+    }
 
     const pool = await WeightedPool.create({
       tokens: poolTokens,
@@ -59,6 +66,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
       assetManagers: Array(numberOfTokens).fill(assetManager.address),
       swapEnabledOnStart: true,
       vault,
+      managementAumFeePercentage: fp(0.1), // Non-zero so that some protocol AUM fees are charged
     });
 
     return { pool, poolTokens };
@@ -71,6 +79,22 @@ describe('ManagedPoolSettings - add/remove token', () => {
       await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10 + random(10))) });
 
       await expect(pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.1))).to.be.revertedWith('MAX_TOKENS');
+    });
+
+    it('add token (example from comments)', async () => {
+      // Pool with 25/75% weights.
+      const { pool, poolTokens } = await createPool(2, [fp(0.25), fp(0.75)]);
+      const newToken = await Token.create({ decimals: random(0, 18) });
+      await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10)) });
+
+      // Add a token at 80%
+      await pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.8));
+
+      const afterWeights = await pool.getNormalizedWeights();
+      // The final weights should be 5/15/80%.
+      expect(afterWeights[0]).to.equal(fp(0.05));
+      expect(afterWeights[1]).to.equal(fp(0.15));
+      expect(afterWeights[2]).to.equal(fp(0.8));
     });
 
     itAddsATokenAtTokenCount(MIN_TOKENS);
@@ -118,15 +142,44 @@ describe('ManagedPoolSettings - add/remove token', () => {
               );
             });
 
-            it("reverts if the new token's weight is too high", async () => {
-              const weightTooHigh = fp(1);
-              await expect(pool.addToken(owner, newToken, assetManager, weightTooHigh)).to.be.revertedWith(
-                'MAX_WEIGHT'
+            it('reverts if the token to add is the BPT itself', async () => {
+              await expect(pool.addToken(owner, pool.address, assetManager, fp(0.1))).to.be.revertedWith(
+                'ADD_OR_REMOVE_BPT'
               );
             });
 
-            it("reverts if the new token's weight is too low", async () => {
-              const weightTooLow = fp(0.005);
+            it("reverts if the new token's weight is too high", async () => {
+              const weightTooHigh = fp(0.99);
+              // We get a MIN_WEIGHT error because the large weight causes for one of the other tokens to end up below
+              // the minimum weight. The maximum valid weight depends on the current weights.
+              await expect(pool.addToken(owner, newToken, assetManager, weightTooHigh)).to.be.revertedWith(
+                'MIN_WEIGHT'
+              );
+            });
+
+            it("reverts if the new token's weight is the maximum weight", async () => {
+              const invalidWeight = fp(1);
+              // We get a MIN_WEIGHT error because the large weight causes for one of the other tokens to end up below
+              // the minimum weight - there's no room for any other weight.
+              await expect(pool.addToken(owner, newToken, assetManager, invalidWeight)).to.be.revertedWith(
+                'MIN_WEIGHT'
+              );
+            });
+
+            it("reverts if the new token's weight is above the maximum weight", async () => {
+              const invalidWeight = fp(1).add(1);
+              await expect(pool.addToken(owner, newToken, assetManager, invalidWeight)).to.be.revertedWith(
+                'SUB_OVERFLOW'
+              );
+            });
+
+            it("reverts if the new token's weight is below the minimum weight", async () => {
+              // It'd typically be sufficient to pass the minimum weight minus one, that won't always cause a revert.
+              // The Pool manually increases the weight of the last token (which will be the newly added one) so that
+              // the weight sum equals 100%. Without this adjustment, it might be off due to rounding error, with each
+              // token in the Pool introducing a potential error of 1e-18 (i.e. they're off-by-one). We therefore
+              // account for that and pass the largest weight that always reverts due to being too low.
+              const weightTooLow = fp(0.01).sub(poolTokenCount + 1);
               await expect(pool.addToken(owner, newToken, assetManager, weightTooLow)).to.be.revertedWith('MIN_WEIGHT');
             });
 
@@ -190,12 +243,14 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
           function itAddsATokenWithNoErrors() {
             it('adds a new token to the end of the array of tokens in the pool', async () => {
+              const { tokens: beforeAddTokens } = await pool.getTokens();
+
               await pool.addToken(owner, newToken, assetManager, fp(0.1));
 
               const { tokens: afterAddTokens } = await pool.getTokens();
-              expect(afterAddTokens.length).to.equal(poolTokens.length + 1);
+              expect(afterAddTokens.length).to.equal(beforeAddTokens.length + 1);
 
-              expect(afterAddTokens.slice(0, -1)).to.deep.equal(poolTokens.addresses);
+              expect(afterAddTokens.slice(0, -1)).to.deep.equal(beforeAddTokens);
               expect(afterAddTokens[afterAddTokens.length - 1]).to.be.eq(newToken.address);
             });
 
@@ -234,10 +289,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
               const { tokens: afterAddTokens } = await pool.getTokens();
               const afterAddWeights = await pool.getNormalizedWeights();
 
-              expect(afterAddWeights[afterAddTokens.indexOf(newToken.address)]).to.equalWithError(
-                normalizedWeight,
-                0.00001
-              );
+              const newTokenWeightIndex = afterAddTokens.indexOf(newToken.address);
+              expect(afterAddWeights[newTokenWeightIndex]).to.equalWithError(normalizedWeight, 1e-14);
             });
 
             it('scales weights of all other tokens', async () => {
@@ -262,10 +315,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
               // In this test, we make no assumptions about the internal behavior of the pool and simply check the
               // observable state: the weights should roughly add up to fp(1), and their old ratios should remain
 
-              expect(afterTokenWeights.reduce((sum, tokenData) => sum.add(tokenData.weight), bn(0))).to.equalWithError(
-                fp(1),
-                0.000001
-              );
+              expect(afterTokenWeights.reduce((sum, tokenData) => sum.add(tokenData.weight), bn(0))).to.equal(fp(1));
 
               beforeTokenWeights.forEach((someToken) => {
                 beforeTokenWeights
@@ -280,23 +330,9 @@ describe('ManagedPoolSettings - add/remove token', () => {
                       afterTokenWeights[otherTokenAfterIndex].weight
                     );
 
-                    expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 0.000001);
+                    expect(afterWeightRatio).to.equalWithError(beforeWeightRatio, 1e-16);
                   });
               });
-            });
-
-            it('updates the denormalized sum correctly', async () => {
-              const beforeSum = await pool.instance.getDenormalizedWeightSum();
-              const normalizedWeight = fp(0.1);
-              const weightSumRatio = fpDiv(FP_ONE, FP_ONE.sub(normalizedWeight));
-              const expectedDenormWeightSum = fpMul(beforeSum, weightSumRatio);
-
-              await pool.addToken(owner, newToken, assetManager, fp(0.1));
-
-              expect(await pool.instance.getDenormalizedWeightSum()).to.equalWithError(
-                expectedDenormWeightSum,
-                0.000001
-              );
             });
 
             it('emits an event', async () => {
@@ -310,12 +346,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             context('with a zero mint amount', () => {
-              it('mints no BPT', async () => {
-                const supplyBefore = await pool.totalSupply();
-                await pool.addToken(owner, newToken, assetManager, fp(0.1), 0);
-                const supplyAfter = await pool.totalSupply();
+              it('mints no BPT to the recipient', async () => {
+                const balanceBefore = await pool.balanceOf(other);
+                await pool.addToken(owner, newToken, assetManager, fp(0.1), 0, other.address);
+                const balanceAfter = await pool.balanceOf(other);
 
-                expect(supplyAfter).to.equal(supplyBefore);
+                expect(balanceAfter).to.equal(balanceBefore);
               });
             });
 
@@ -331,6 +367,19 @@ describe('ManagedPoolSettings - add/remove token', () => {
                 expect(bptBalanceAfter.sub(bptBalanceBefore)).to.equal(mintAmount);
               });
             });
+
+            it('collects aum fees', async () => {
+              const tx = await pool.addToken(owner, newToken, assetManager, fp(0.1));
+
+              expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: await pool.getOwner() }, pool);
+              expectTransferEvent(
+                await tx.wait(),
+                { from: ZERO_ADDRESS, to: (await vault.getFeesCollector()).address },
+                pool
+              );
+
+              expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
+            });
           }
         });
       });
@@ -342,7 +391,28 @@ describe('ManagedPoolSettings - add/remove token', () => {
       const { pool, poolTokens } = await createPool(MIN_TOKENS);
       await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10 + random(10))) });
 
-      await expect(pool.removeToken(owner, poolTokens.first, ZERO_ADDRESS)).to.be.revertedWith('MIN_TOKENS');
+      const tokenToRemove = poolTokens.first;
+      const { cash } = await pool.vault.getPoolTokenInfo(pool.poolId, tokenToRemove.address);
+      await assetManager.withdrawFromPool(pool.poolId, tokenToRemove.address, cash);
+      await expect(pool.removeToken(owner, tokenToRemove.address, ZERO_ADDRESS)).to.be.revertedWith('MIN_TOKENS');
+    });
+
+    it('remove token (example from comments)', async () => {
+      // Pool with 5/15/80% weights.
+      const { pool, poolTokens } = await createPool(3, [fp(0.05), fp(0.15), fp(0.8)]);
+      await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10)) });
+
+      // Remove the 80% token
+      const tokenToRemove = poolTokens.get(poolTokens.length - 1);
+      const { cash } = await pool.vault.getPoolTokenInfo(pool.poolId, tokenToRemove.address);
+      await assetManager.withdrawFromPool(pool.poolId, tokenToRemove.address, cash);
+
+      await pool.removeToken(owner, tokenToRemove.address);
+
+      const afterWeights = await pool.getNormalizedWeights();
+      // The final weights should be 25/75%.
+      expect(afterWeights[0]).to.equal(fp(0.25));
+      expect(afterWeights[1]).to.equal(fp(0.75));
     });
 
     itRemovesATokenAtTokenCount(MIN_TOKENS + 1);
@@ -360,11 +430,9 @@ describe('ManagedPoolSettings - add/remove token', () => {
         });
 
         let tokenToRemove: Token;
-        let tokenToRemoveIndex: number;
 
         sharedBeforeEach('select token to remove', async () => {
           tokenToRemove = poolTokens.get(random(0, poolTokenCount - 1));
-          tokenToRemoveIndex = poolTokens.indexOf(tokenToRemove);
         });
 
         it('reverts if the pool is uninitialized', async () => {
@@ -377,6 +445,14 @@ describe('ManagedPoolSettings - add/remove token', () => {
             await pool.init({ from: lp, initialBalances: range(poolTokens.length).map(() => fp(10 + random(10))) });
           });
 
+          sharedBeforeEach('withdraw all tokens', async () => {
+            // Tokens can only be fully withdrawn via the asset manager. This assumes there's no managed balance.
+            const { cash, managed } = await pool.vault.getPoolTokenInfo(pool.poolId, tokenToRemove);
+            expect(managed).to.equal(0);
+
+            await assetManager.withdrawFromPool(pool.poolId, tokenToRemove.address, cash);
+          });
+
           describe('failure modes', () => {
             it('reverts when not called by the owner', async () => {
               await expect(pool.removeToken(other, tokenToRemove)).to.be.revertedWith('SENDER_NOT_ALLOWED');
@@ -385,6 +461,10 @@ describe('ManagedPoolSettings - add/remove token', () => {
             it('reverts if the token is not in the pool', async () => {
               const otherToken = await Token.create({ decimals: random(0, 18) });
               await expect(pool.removeToken(owner, otherToken)).to.be.revertedWith('TOKEN_NOT_REGISTERED');
+            });
+
+            it('reverts if the token to remove is the BPT itself', async () => {
+              await expect(pool.removeToken(owner, pool.address)).to.be.revertedWith('ADD_OR_REMOVE_BPT');
             });
 
             it('reverts if the pool is paused', async () => {
@@ -429,6 +509,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             it('reverts if all tokens have not been withdrawn', async () => {
+              // We've already withdrawn all tokens in this test, so we simply deposit some to generate a non-zero
+              // balance (as if the tokens had not been removed).
+              const amount = 42;
+              await tokenToRemove.transfer(assetManager.address, amount, { from: lp });
+              await assetManager.depositToPool(pool.poolId, tokenToRemove.address, amount);
+
               const { cash, managed } = await pool.vault.getPoolTokenInfo(pool.poolId, tokenToRemove);
               expect(cash.add(managed)).to.be.gt(0);
 
@@ -453,23 +539,17 @@ describe('ManagedPoolSettings - add/remove token', () => {
           });
 
           function itRemovesATokenWithNoErrors() {
-            sharedBeforeEach('withdraw all tokens', async () => {
-              // Tokens can only be fully withdrawn via the asset manager. This assumes there's no managed balance.
-              const { cash, managed } = await pool.vault.getPoolTokenInfo(pool.poolId, tokenToRemove);
-              expect(managed).to.equal(0);
-
-              await assetManager.withdrawFromPool(pool.poolId, tokenToRemove.address, cash);
-            });
-
             it('removes the token', async () => {
+              const { tokens: beforeRemoveTokens } = await pool.getTokens();
+
               await pool.removeToken(owner, tokenToRemove);
 
               const { tokens: afterRemoveTokens } = await pool.getTokens();
-              expect(afterRemoveTokens.length).to.equal(poolTokens.length - 1);
+              expect(afterRemoveTokens.length).to.equal(beforeRemoveTokens.length - 1);
 
               // We need to sort when comparing as the order may have changed
               expect([...afterRemoveTokens].sort()).to.deep.equal(
-                poolTokens.addresses.filter((address) => address != tokenToRemove.address).sort()
+                beforeRemoveTokens.filter((address) => address != tokenToRemove.address).sort()
               );
             });
 
@@ -531,22 +611,6 @@ describe('ManagedPoolSettings - add/remove token', () => {
               });
             });
 
-            it('updates the denormalized sum correctly', async () => {
-              const beforeWeights = await pool.getNormalizedWeights();
-              const beforeSum = await pool.instance.getDenormalizedWeightSum();
-
-              const expectedDenormWeightSum = beforeWeights
-                .filter((_, i) => i !== tokenToRemoveIndex)
-                .reduce((sum, weight) => sum.add(fpMul(weight, beforeSum)), bn(0));
-
-              await pool.removeToken(owner, tokenToRemove);
-
-              expect(await pool.instance.getDenormalizedWeightSum()).to.equalWithError(
-                expectedDenormWeightSum,
-                0.000001
-              );
-            });
-
             it('emits an event', async () => {
               const tx = await pool.removeToken(owner, tokenToRemove);
 
@@ -556,12 +620,12 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             context('with a zero burn amount', () => {
-              it('burns no BPT', async () => {
-                const supplyBefore = await pool.totalSupply();
-                await pool.removeToken(owner, tokenToRemove, ZERO_ADDRESS, 0);
-                const supplyAfter = await pool.totalSupply();
+              it('burns no BPT from the sender', async () => {
+                const balanceBefore = await pool.balanceOf(lp);
+                await pool.removeToken(owner, tokenToRemove, lp.address, 0);
+                const balanceAfter = await pool.balanceOf(lp);
 
-                expect(supplyAfter).to.equal(supplyBefore);
+                expect(balanceAfter).to.equal(balanceBefore);
               });
             });
 
@@ -582,6 +646,19 @@ describe('ManagedPoolSettings - add/remove token', () => {
                   'BURN_FROM_ZERO'
                 );
               });
+            });
+
+            it('collects aum fees', async () => {
+              const tx = await pool.removeToken(owner, tokenToRemove);
+
+              expectTransferEvent(await tx.wait(), { from: ZERO_ADDRESS, to: await pool.getOwner() }, pool);
+              expectTransferEvent(
+                await tx.wait(),
+                { from: ZERO_ADDRESS, to: (await vault.getFeesCollector()).address },
+                pool
+              );
+
+              expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
             });
           }
         });

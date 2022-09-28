@@ -45,6 +45,7 @@ import {
 import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '../base/BasePool';
+import assert from 'assert';
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
@@ -364,20 +365,21 @@ export default class WeightedPool extends BasePool {
   async join(params: JoinExitWeightedPool): Promise<JoinResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens } = await this.getTokens();
 
-    const tx = this.vault.joinPool({
+    const tx = await this.vault.joinPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: this.tokens.addresses,
+      tokens,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
 
-    const receipt = await (await tx).wait();
+    const receipt = await tx.wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
     return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
   }
@@ -390,19 +392,21 @@ export default class WeightedPool extends BasePool {
   async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+    const { tokens } = await this.getTokens();
+
     const tx = await this.vault.exitPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
       currentBalances,
-      tokens: (await this.getTokens()).tokens,
+      tokens,
       lastChangeBlock: params.lastChangeBlock ?? 0,
       protocolFeePercentage: params.protocolFeePercentage ?? 0,
       data: params.data ?? '0x',
       from: params.from,
     });
 
-    const receipt = await (await tx).wait();
+    const receipt = await tx.wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
     return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees, receipt };
   }
@@ -524,12 +528,19 @@ export default class WeightedPool extends BasePool {
     };
   }
 
+  private _isManagedPool() {
+    return this.poolType == WeightedPoolType.MANAGED_POOL || this.poolType == WeightedPoolType.MOCK_MANAGED_POOL;
+  }
+
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setSwapEnabled(swapEnabled);
   }
 
   async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    if (this._isManagedPool()) {
+      throw new Error('Not available in managed pool');
+    }
     const pool = this.instance.connect(from);
     return pool.setSwapFeePercentage(swapFeePercentage);
   }
@@ -579,9 +590,10 @@ export default class WeightedPool extends BasePool {
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
 
-    if (this.poolType == WeightedPoolType.MANAGED_POOL) {
+    if (this._isManagedPool()) {
       if (!tokens) {
-        tokens = (await this.getTokens()).tokens;
+        const { tokens: registeredTokens } = await this.getTokens();
+        tokens = registeredTokens;
       }
 
       return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
@@ -597,6 +609,7 @@ export default class WeightedPool extends BasePool {
     startSwapFeePercentage: BigNumberish,
     endSwapFeePercentage: BigNumberish
   ): Promise<ContractTransaction> {
+    assert(this._isManagedPool(), 'Only available in managed pool');
     const pool = this.instance.connect(from);
     return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
   }
