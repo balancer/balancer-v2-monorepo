@@ -66,7 +66,6 @@ describe('ManagedPool owner only actions', () => {
     'setManagementAumFeePercentage(uint256)',
     'setMustAllowlistLPs(bool)',
     'setSwapEnabled(bool)',
-    'setSwapFeePercentage(uint256)',
     'updateSwapFeeGradually(uint256,uint256,uint256,uint256)',
     'updateWeightsGradually(uint256,uint256,address[],uint256[])',
     'setCircuitBreaker(address,uint256,uint256)',

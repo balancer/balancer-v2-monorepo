@@ -22,7 +22,7 @@ import "../lib/ValueCompression.sol";
  * @title Circuit Breaker Library
  * @notice Library for storing and manipulating state related to circuit breakers.
  * @dev The intent of circuit breakers is to halt trading of a given token if its value changes drastically -
- * in either direction - with respect to other tokens in the pool. For instance, a stable coin might de-peg
+ * in either direction - with respect to other tokens in the pool. For instance, a stablecoin might de-peg
  * and go to zero. With no safeguards, arbitrageurs could drain the pool by selling large amounts of the
  * token to the pool at inflated internal prices.
  *
@@ -30,7 +30,7 @@ import "../lib/ValueCompression.sol";
  * the BPT price. Both lower and upper bounds can be set, and if a trade would result in moving the BPT price
  * of any token involved in the operation outside that range, the breaker is "tripped", and the operation
  * should revert. Each token is independent, since some might have very "tight" valid trading ranges, such as
- * stable coins, and others are more volatile.
+ * stablecoins, and others are more volatile.
  *
  * The BPT price of a token is defined as the amount of BPT that could be redeemed for a single token.
  * For instance, in an 80/20 pool with a total supply of 1000, the 80% token accounts for 800 BPT. So each
@@ -77,7 +77,7 @@ library CircuitBreakerLib {
     // computed every time. However, if the weight of the token and composition of the pool have not changed since
     // the circuit breaker was set, these stored values can still be used, avoiding a heavy computation.
     //
-    // [      32 bits      |      32 bits      |   96 bits |   64 bits    |   16 bits   |   16 bits   |
+    // [      32 bits      |      32 bits      |  96 bits  |   64 bits    |   16 bits   |   16 bits   |
     // [ upper bound ratio | lower bound ratio | BPT price | weight comp. | upper bound | lower bound |
     // |MSB                                                                                        LSB|
     uint256 private constant _LOWER_BOUND_OFFSET = 0;
@@ -92,7 +92,7 @@ library CircuitBreakerLib {
     uint256 private constant _BOUND_WIDTH = 16;
     uint256 private constant _BOUND_RATIO_WIDTH = 32;
 
-    // We allow the  bounds to range over two orders of magnitude: 0.1 - 10. The maximum upper bound is set to 10.0
+    // We allow the bounds to range over two orders of magnitude: 0.1 - 10. The maximum upper bound is set to 10.0
     // in 18-decimal floating point, since this fits in 64 bits, and can be shifted down to 16 bit precision without
     // much loss. Since compression would lose a lot of precision for values close to 0, we also constrain the lower
     // bound to a minimum value > 0.
@@ -138,50 +138,44 @@ library CircuitBreakerLib {
      * for this token: there might be a lower bound, but no upper bound. If the current BPT price is less than
      * the lower bound, or greater than the non-zero upper bound, the transaction should revert.
      *
-     * These BPT price bounds are dynamically calculated using the bound ratios. In general, the lower/upper
-     * BPT price bound = bptPrice * "upper/lower bound ratio". The bound ratios are used to convert the
-     * user-provided bounds (expressed as percentages) to BPT prices, at the current weight, and are given as:
-     * (bound)**(weightComplement).
+     * These BPT price bounds are dynamically calculated using the conversion ratios. In general:
+     * lower/upper BPT price bound = bptPrice * "conversion ratio". The conversion ratio is given as
+     * (boundaryPercentage)**(weightComplement).
      *
-     * For instance, given an 80/20 pool with a 90% lower bound, the weight complement of the higher-weight
-     * token would be (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be:
-     * (0.9 ** 0.2) ~ 0.9791.
+     * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
+     * (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
+     * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move
+     * together: a 20% drop in spot price would correspond to a 20% drop in BPT price.
      *
-     * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move together:
-     * a 20% drop in spot price would correspond to a 20% drop in BPT price. But with unequal weights (assuming a
-     * balanced pool), the balance of a higher-weight token will respond less to a proportional change in spot
-     * price than a lower weight token. Integrations coined the term "balance inertia" for this phenomenon.
+     * But with unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
+     * to a proportional change in spot price than a lower weight token. In the simulations, Integrations
+     * coined the term "balance inertia".
      *
      * If the external price drops, all else being equal, the pool would be arbed until the percent drop in spot
      * price equaled the external price drop. Since during this process the *internal* pool price would be
-     * above market, the arbers would sell cheap tokens to our unwitting pool at inflated prices, raising
-     * the balance of the depreciating token, and lowering the balances of one or more other tokens.
+     * above market, the arbers would sell cheap tokens to our poor unwitting pool at inflated prices, raising
+     * the balance of the depreciating token, and lowering the balance of another token (WETH in this example).
      *
-     * Using weighted math, you can compute the amountIn ratio for the arb trade as:
-     * (1 / priceRatio) ** (1 - weight). For our 0.9 ratio and a weight of 0.8, this is ~ 1.0213.
-     * So if you had 8000 tokens before, the ending balance would be 8000*1.0213 ~ 8170.
-     *
+     * Using weighted math, and assuming for simplicity that the sum of all weights is 1, you can compute the
+     * amountIn ratio for the arb trade as: (1/priceRatio) ** (1 - weight). For our 0.9 ratio and a weight of
+     * 0.8, this is ~ 1.0213. So if you had 8000 tokens before, the ending balance would be 8000*1.0213 ~ 8170.
      * Note that the higher the weight, the lower this ratio is. That means the counterparty token is going
      * out proportionally faster than the arb token is coming in: hence the non-linear relationship between
      * spot price and BPT price.
      *
-     * If we call the initial balance at t0 B(t0), and set k = (1 / priceRatio) ** (1 - weight), the post-arb
-     * balance at t1 is given by: B(t1) = k * B(t0). Since the BPTPrice(t0) = totalSupply * weight / B(t0),
-     * and BPTPrice(t1) = totalSupply * weight / B(t1) - we are assuming no joins/exits or weight changes
-     * for this example, so that the totalSupply and weight remain constant  - we can combine these equations
-     * to compute the BPT price ratio BPTPrice(t1) / BPTPrice(t0) = 1/k; so BPT(t1) = BPT(t0) / k.
-     *
+     * If we call the initial balance B0, and set k = (1/priceRatio) ** (1 - weight), the post-arb balance is
+     * given by: B1 = k * B0. Since the BPTPrice0 = totalSupply*weight/B0, and BPTPrice1 = totalSupply*weight/B1,
+     * we can combine these equations to compute the BPT price ratio BPTPrice1/BPTPrice0 = 1/k; BPT1 = BPT0/k.
      * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
-     * as above BPT(t1) = BPT(t0) * (1/k), or more simply: (BPT price) * (priceRatio) ** (1 - weight).
+     * as above BPT1 = BPT0 * (1/k), or more simply: (reference BPT price) * (priceRatio)**(1 - weight).
      *
-     * If the value of the weight complement has not changed, we can use the precomputed conversion ratios stored
-     * when the breaker was set. Otherwise, we need to calculate them again.
+     * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
+     * when the breaker was set. Otherwise, we need to calculate them.
      *
-     * As described in the general comments above, the bound ratios are dependent on the weight. This attempts
-     * to isolate changes in the balance due to arbitrageurs responding to external prices, from internal price
-     * changes caused by an ongoing weight update (or changes to the pool composition). There is a non-linear
-     * relationship between "spot" price changes and BPT price changes. This calculation transforms one into
-     * the other.
+     * As described in the general comments above, the weight complement calculation attempts to isolate changes
+     * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
+     * ongoing weight update, or changes to the pool composition. There is a non-linear relationship between "spot"
+     * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param weightComplement - The complement of this token's weight, generally given by (1 - weight).
@@ -260,7 +254,7 @@ library CircuitBreakerLib {
     /**
      * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
-     * @param bptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
+     * @param bptPrice: The BPT price of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
      * @param weightComplement: This is (1 - currentWeight).
      * @param lowerBound: The value of the lower bound, expressed as a percentage.
