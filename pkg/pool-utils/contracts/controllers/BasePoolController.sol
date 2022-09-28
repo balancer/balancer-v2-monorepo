@@ -232,16 +232,6 @@ contract BasePoolController is IBasePoolController {
     }
 
     /**
-     * @dev Pass a call to BasePool's setSwapFeePercentage through to the underlying pool, if allowed.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external virtual override withBoundPool {
-        _require(canChangeSwapFee(), Errors.FEATURE_DISABLED);
-        _require(getSwapFeeController() == msg.sender, Errors.SENDER_NOT_ALLOWED);
-
-        IControlledPool(pool).setSwapFeePercentage(swapFeePercentage);
-    }
-
-    /**
      * @dev Getter for the optional metadata.
      */
     function getMetadata() public view returns (bytes memory) {

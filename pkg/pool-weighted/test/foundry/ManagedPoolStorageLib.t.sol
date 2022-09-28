@@ -92,20 +92,20 @@ contract ManagedPoolStorageLibTest is Test {
         bytes32 poolState,
         uint32 startTime,
         uint32 endTime,
-        uint32 now
+        uint32 currentTime
     ) public {
-        vm.warp(now);
+        vm.warp(currentTime);
         vm.assume(startTime <= endTime);
 
         bytes32 newPoolState = ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(newPoolState);
 
-        if (now >= endTime) {
+        if (currentTime >= endTime) {
             assertEq(weightChangeProgress, FixedPoint.ONE);
-        } else if (now <= startTime) {
+        } else if (currentTime <= startTime) {
             assertEq(weightChangeProgress, 0);
         } else {
-            uint256 expectedWeightChangeProgress = FixedPoint.divDown(now - startTime, endTime - startTime);
+            uint256 expectedWeightChangeProgress = FixedPoint.divDown(currentTime - startTime, endTime - startTime);
             assertEq(weightChangeProgress, expectedWeightChangeProgress);
         }
     }
@@ -153,9 +153,9 @@ contract ManagedPoolStorageLibTest is Test {
         uint32 endTime,
         uint64 startSwapFeePercentage,
         uint64 endSwapFeePercentage,
-        uint32 now
+        uint32 currentTime
     ) public {
-        vm.warp(now);
+        vm.warp(currentTime);
         vm.assume(startTime <= endTime);
         vm.assume(startSwapFeePercentage <= _MAX_SWAP_FEE);
         vm.assume(endSwapFeePercentage <= _MAX_SWAP_FEE);
@@ -169,12 +169,12 @@ contract ManagedPoolStorageLibTest is Test {
         );
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(newPoolState);
 
-        if (now >= endTime) {
+        if (currentTime >= endTime) {
             assertEq(swapFeePercentage, endSwapFeePercentage);
-        } else if (now <= startTime) {
+        } else if (currentTime <= startTime) {
             assertEq(swapFeePercentage, startSwapFeePercentage);
         } else {
-            uint256 expectedSwapFeeChangeProgress = FixedPoint.divDown(now - startTime, endTime - startTime);
+            uint256 expectedSwapFeeChangeProgress = FixedPoint.divDown(currentTime - startTime, endTime - startTime);
             if (endSwapFeePercentage >= startSwapFeePercentage) {
                 uint256 delta = FixedPoint.mulDown(
                     endSwapFeePercentage - startSwapFeePercentage,

@@ -101,4 +101,83 @@ contract WeightedMathTest is Test {
         // If we relax this condition then we can only check for an approximate equality.
         assertEq(joinSwap, properJoin);
     }
+
+    function testExitSwaps(
+        uint256[20] memory balancesFixed,
+        uint256[20] memory normalizedWeightsFixed,
+        uint256 arrayLength,
+        uint256 tokenIndex,
+        uint256 amountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) external {
+        arrayLength = bound(arrayLength, 2, 20);
+        tokenIndex = bound(tokenIndex, 0, arrayLength - 1);
+
+        uint256[] memory balances = new uint256[](arrayLength);
+        for (uint256 i = 0; i < arrayLength; i++) {
+            balances[i] = bound(balancesFixed[i], 1e10, type(uint96).max);
+        }
+
+        uint256 denormalizedWeightSum;
+        for (uint256 i = 0; i < arrayLength; i++) {
+            normalizedWeightsFixed[i] = bound(normalizedWeightsFixed[i], 1, type(uint64).max);
+            denormalizedWeightSum += normalizedWeightsFixed[i];
+        }
+
+        uint256[] memory normalizedWeights = new uint256[](arrayLength);
+        uint256 normalizedWeightSum;
+        for (uint256 i = 0; i < arrayLength; i++) {
+            normalizedWeights[i] = normalizedWeightsFixed[i].divDown(denormalizedWeightSum);
+            vm.assume(normalizedWeights[i] >= WeightedMath._MIN_WEIGHT);
+            normalizedWeightSum += normalizedWeights[i];
+        }
+
+        // Note: Due to compression errors, this normalization property of weights may not always hold. This causes the
+        // two forms of exit to produce slightly different outputs due to `WeightedMath._calcBptInGivenExactTokenOut`
+        // assuming perfect normalization.
+        // We therefore adjust the last weight to produce a scenario in which the two functions should yield the same
+        // exact result.
+        if (normalizedWeightSum < FixedPoint.ONE) {
+            normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
+        }
+
+        amountOut = bound(amountOut, 0, balances[tokenIndex]);
+        bptTotalSupply = bound(bptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        swapFeePercentage = bound(swapFeePercentage, 0, 0.99e18);
+
+        // This exit type is special in that fees are charged on the amount out. This creates scenarios in which the
+        // total amount out (including fees) exceeds the Pool's balance, which will lead to reverts. We reject any runs
+        // that result in this edge case.
+        vm.assume(amountOut.divUp(FixedPoint.ONE - swapFeePercentage) <= balances[tokenIndex]);
+
+        uint256[] memory amountsOut = new uint256[](balances.length);
+        amountsOut[tokenIndex] = amountOut;
+
+        emit log_named_array("balances", balances);
+        emit log_named_array("normalizedWeights", normalizedWeights);
+        emit log_named_array("amountsOut", amountsOut);
+        emit log_named_uint("bptTotalSupply", bptTotalSupply);
+        emit log_named_uint("swapFeePercentage", swapFeePercentage);
+
+        uint256 properExit = WeightedMath._calcBptInGivenExactTokensOut(
+            balances,
+            normalizedWeights,
+            amountsOut,
+            bptTotalSupply,
+            swapFeePercentage
+        );
+
+        uint256 exitSwap = WeightedMath._calcBptInGivenExactTokenOut(
+            balances[tokenIndex],
+            normalizedWeights[tokenIndex],
+            amountsOut[tokenIndex],
+            bptTotalSupply,
+            swapFeePercentage
+        );
+
+        // As we're enforcing strict normalization we check for a strict equality here.
+        // If we relax this condition then we can only check for an approximate equality.
+        assertEq(exitSwap, properExit);
+    }
 }
