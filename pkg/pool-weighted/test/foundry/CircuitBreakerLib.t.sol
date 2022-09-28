@@ -162,6 +162,7 @@ contract CircuitBreakerLibTest is Test {
 
         // This is expensive so we refresh the cached bound ratios using the new weight complement.
         bytes32 updatedPoolState = CircuitBreakerLib.updateBoundRatios(initialPoolState, newWeightComplement);
+
         uint256 cachedCost = gasleft();
         (uint256 newCachedLowerBptPriceBoundary, uint256 newCachedUpperBptPriceBoundary) = CircuitBreakerLib
             .getCurrentCircuitBreakerBounds(updatedPoolState, newWeightComplement);
