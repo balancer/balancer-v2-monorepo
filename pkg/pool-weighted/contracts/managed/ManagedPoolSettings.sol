@@ -88,9 +88,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Event declarations
 
-    // ManagedPool swap fees can change over time: these periods are expected to be long enough (e.g. days)
-    // that any timestamp manipulation would achieve very little.
-    // solhint-disable not-rely-on-time
     event GradualSwapFeeUpdateScheduled(
         uint256 startTime,
         uint256 endTime,
