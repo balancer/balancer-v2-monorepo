@@ -8,7 +8,6 @@ import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
 import Vault from '../../vault/Vault';
 
-
 export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   LIQUIDITY_BOOTSTRAPPING_POOL,
