@@ -142,15 +142,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
         }
 
-        // This bytes32 holds a lot of the core Pool state which is read on most interactions, by keeping it in a single
-        // word we can save gas from unnecessary storage reads. It includes items like:
-        // - Swap fees
-        // - Weight change progress
-        // - Various feature flags
-        bytes32 poolState;
-
-        poolState = _startGradualWeightChange(
-            poolState,
+        // We write the pool state here, as both `_setSwapEnabled` and `_setMustAllowlistLPs` read it from storage.
+        _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
             params.normalizedWeights,
@@ -158,16 +151,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.tokens
         );
 
-        poolState = _startGradualSwapFeeChange(
-            poolState,
+        _startGradualSwapFeeChange(
             block.timestamp,
             block.timestamp,
             params.swapFeePercentage,
             params.swapFeePercentage
         );
-
-        // We write the pool state here, as both `_setSwapEnabled` and `_setMustAllowlistLPs` read it from storage.
-        _poolState = poolState;
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
         _setSwapEnabled(params.swapEnabledOnStart);
@@ -280,13 +269,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external override authenticate whenNotPaused nonReentrant {
-        _poolState = _startGradualSwapFeeChange(
-            _poolState,
-            startTime,
-            endTime,
-            startSwapFeePercentage,
-            endSwapFeePercentage
-        );
+        _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
     function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
@@ -295,22 +278,19 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Encodes a gradual swap fee update into the provided Pool state.
+     * @notice Encodes a gradual swap fee update into the Pool state in storage.
      * @param startTime - The timestamp when the swap fee change will begin.
      * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
      * @param startSwapFeePercentage - The starting value for the swap fee change.
      * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
      * `getSwapFeePercentage()` will return this value.
-     * @return poolState - The modified Pool state with the updated swap fee data. It's the responsiblity of the caller
-     * to write this to storage so this value is persisted.
      */
     function _startGradualSwapFeeChange(
-        bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) internal returns (bytes32) {
+    ) internal {
         _validateSwapFeePercentage(startSwapFeePercentage);
         _validateSwapFeePercentage(endSwapFeePercentage);
 
@@ -318,14 +298,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
 
-        return
-            ManagedPoolStorageLib.setSwapFeeData(
-                poolState,
-                startTime,
-                endTime,
-                startSwapFeePercentage,
-                endSwapFeePercentage
-            );
+        _poolState = ManagedPoolStorageLib.setSwapFeeData(
+            _poolState,
+            startTime,
+            endTime,
+            startSwapFeePercentage,
+            endSwapFeePercentage
+        );
     }
 
     // Token weights
@@ -424,14 +403,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _poolState = _startGradualWeightChange(
-            _poolState,
-            startTime,
-            endTime,
-            _getNormalizedWeights(tokens),
-            endWeights,
-            tokens
-        );
+        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
     }
 
     /**
@@ -439,13 +411,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * if necessary.
      */
     function _startGradualWeightChange(
-        bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256[] memory startWeights,
         uint256[] memory endWeights,
         IERC20[] memory tokens
-    ) internal returns (bytes32) {
+    ) internal {
         uint256 normalizedSum;
 
         for (uint256 i = 0; i < endWeights.length; i++) {
@@ -462,7 +433,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
 
-        return ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
+        _poolState = ManagedPoolStorageLib.setWeightChangeData(_poolState, startTime, endTime);
     }
 
     // Invariant
@@ -780,14 +751,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
         // Note that this call will set the weight for `tokenToAdd`, which we've already done - that'll just be a no-op.
-        _poolState = _startGradualWeightChange(
-            _poolState,
-            block.timestamp,
-            block.timestamp,
-            newWeights,
-            newWeights,
-            tokens
-        );
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
@@ -883,14 +847,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
-        _poolState = _startGradualWeightChange(
-            _poolState,
-            block.timestamp,
-            block.timestamp,
-            newWeights,
-            newWeights,
-            tokens
-        );
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
 
         if (burnAmount > 0) {
             // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
