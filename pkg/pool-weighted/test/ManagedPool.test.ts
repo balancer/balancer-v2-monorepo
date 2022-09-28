@@ -35,7 +35,6 @@ describe('ManagedPool', function () {
   const TOKEN_COUNT = 20;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
-  const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
 
   const poolWeights: BigNumber[] = Array(TOKEN_COUNT).fill(fp(1 / TOKEN_COUNT));
   const initialBalances = Array(TOKEN_COUNT).fill(fp(1000));
@@ -395,11 +394,7 @@ describe('ManagedPool', function () {
           const balanceBefore = await pool.balanceOf(owner);
 
           const totalSupply = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(
-            totalSupply,
-            POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
-            timeElapsed
-          );
+          const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
 
           const receipt = await collectAUMFees();
 
