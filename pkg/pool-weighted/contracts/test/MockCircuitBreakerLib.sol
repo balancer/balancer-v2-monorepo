@@ -51,6 +51,10 @@ contract MockCircuitBreakerLib {
         return CircuitBreakerLib.setCircuitBreakerFields(bptPrice, weightComplement, lowerBound, upperBound);
     }
 
+    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) external pure returns (bytes32) {
+        return CircuitBreakerLib.updateBoundRatios(circuitBreakerState, weightComplement);
+    }
+
     function getBoundaryConversionRatios(
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage,
