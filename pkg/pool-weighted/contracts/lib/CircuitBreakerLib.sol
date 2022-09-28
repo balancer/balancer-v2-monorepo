@@ -13,7 +13,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
@@ -65,13 +64,6 @@ library CircuitBreakerLib {
     using ValueCompression for uint256;
     using FixedPoint for uint256;
     using WordCodec for bytes32;
-
-    struct CircuitBreakerParams {
-        uint256 bptPrice;
-        uint256 weightComplement;
-        uint256 lowerBound;
-        uint256 upperBound;
-    }
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
@@ -125,13 +117,18 @@ library CircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         internal
         pure
-        returns (CircuitBreakerParams memory params)
+        returns (
+            uint256 bptPrice,
+            uint256 weightComplement,
+            uint256 lowerBound,
+            uint256 upperBound
+        )
     {
-        params.bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        params.weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
+        bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        weightComplement = circuitBreakerState.decodeUint(_WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
         // Decompress the bounds by shifting left.
-        params.lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
-        params.upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
+        lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
+        upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
     }
 
     /**
@@ -257,45 +254,47 @@ library CircuitBreakerLib {
     /**
      * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
-     * @param params - CircuitBreakerParams has the following components:
-     * - bptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
+     * @param bptPrice: The BptPrice of the token at the time the circuit breaker is set. The BPT Price
      *   of a token is generally given by: supply * weight / balance.
-     * - weightComplement: This is (1 - currentWeight).
-     * - lowerBound: The value of the lower bound, expressed as a percentage.
-     * - upperBound: The value of the upper bound, expressed as a percentage.
+     * @param weightComplement: This is (1 - currentWeight).
+     * @param lowerBound: The value of the lower bound, expressed as a percentage.
+     * @param upperBound: The value of the upper bound, expressed as a percentage.
      */
-    function setCircuitBreakerFields(CircuitBreakerParams memory params) internal pure returns (bytes32) {
+    function setCircuitBreakerFields(
+        uint256 bptPrice,
+        uint256 weightComplement,
+        uint256 lowerBound,
+        uint256 upperBound
+    ) internal pure returns (bytes32) {
         // It's theoretically not required for the lower bound to be < 1, but it wouldn't make much sense otherwise:
         // the circuit breaker would immediately trip. Note that this explicitly allows setting either to 0, disabling
         // the circuit breaker for the token in that direction.
         _require(
-            params.lowerBound == 0 ||
-                (params.lowerBound >= _MIN_BOUND_PERCENTAGE && params.lowerBound <= FixedPoint.ONE),
+            lowerBound == 0 || (lowerBound >= _MIN_BOUND_PERCENTAGE && lowerBound <= FixedPoint.ONE),
             Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
         );
-        _require(params.upperBound <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
-        _require(
-            params.upperBound == 0 || params.upperBound >= params.lowerBound,
-            Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
-        );
+        _require(upperBound <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
+        _require(upperBound == 0 || upperBound >= lowerBound, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
 
         // Set the reference parameters: BPT price of the token, and the weight complement.
-        bytes32 circuitBreakerState = bytes32(0)
-            .insertUint(params.bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH)
-            .insertUint(params.weightComplement, _WEIGHT_COMPLEMENT_OFFSET, _WEIGHT_COMPLEMENT_WIDTH);
+        bytes32 circuitBreakerState = bytes32(0).insertUint(bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH).insertUint(
+            weightComplement,
+            _WEIGHT_COMPLEMENT_OFFSET,
+            _WEIGHT_COMPLEMENT_WIDTH
+        );
 
         // Add the lower and upper percentage bounds. Compress by shifting right.
         circuitBreakerState = circuitBreakerState
-            .insertUint(params.lowerBound >> _BOUND_SHIFT_BITS, _LOWER_BOUND_OFFSET, _BOUND_WIDTH)
-            .insertUint(params.upperBound >> _BOUND_SHIFT_BITS, _UPPER_BOUND_OFFSET, _BOUND_WIDTH);
+            .insertUint(lowerBound >> _BOUND_SHIFT_BITS, _LOWER_BOUND_OFFSET, _BOUND_WIDTH)
+            .insertUint(upperBound >> _BOUND_SHIFT_BITS, _UPPER_BOUND_OFFSET, _BOUND_WIDTH);
 
         // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
         // If the weight complement has not changed since the breaker was set, we can use the precomputed values
         // directly, and avoid a heavy computation.
         (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
-            params.lowerBound,
-            params.upperBound,
-            params.weightComplement
+            lowerBound,
+            upperBound,
+            weightComplement
         );
 
         // Finally, insert these computed ratios, and return the complete set of fields.

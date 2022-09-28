@@ -21,7 +21,7 @@ contract MockCircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         external
         pure
-        returns (CircuitBreakerLib.CircuitBreakerParams memory)
+        returns (uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
     {
             return CircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
     }
@@ -43,12 +43,12 @@ contract MockCircuitBreakerLib {
         return CircuitBreakerLib.hasCircuitBreakerTripped(circuitBreakerState, totalSupply, normalizedWeight, upscaledBalance);
     }
 
-    function setCircuitBreakerFields(CircuitBreakerLib.CircuitBreakerParams memory params)
+    function setCircuitBreakerFields(uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
         external
         pure
         returns (bytes32)
     {
-        return CircuitBreakerLib.setCircuitBreakerFields(params);
+        return CircuitBreakerLib.setCircuitBreakerFields(bptPrice, weightComplement, lowerBound, upperBound);
     }
 
     function getBoundaryConversionRatios(
