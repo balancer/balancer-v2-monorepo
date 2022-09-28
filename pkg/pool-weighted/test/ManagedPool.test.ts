@@ -329,12 +329,12 @@ describe('ManagedPool', function () {
       sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
         // In practice, a separate contract would call `updateSwapFeeGradually` using `block.timestamp` both as start
         // and endTime to make the change immediately.
-        const blockTimestamp = await currentTimestamp();
-        await setNextBlockTimestamp(blockTimestamp.add(1));
+        const nextBlockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(nextBlockTimestamp);
         await pool.updateSwapFeeGradually(
           owner,
-          blockTimestamp,
-          blockTimestamp,
+          nextBlockTimestamp,
+          nextBlockTimestamp,
           MAX_SWAP_FEE_PERCENTAGE,
           MAX_SWAP_FEE_PERCENTAGE
         );
