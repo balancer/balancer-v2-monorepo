@@ -108,7 +108,9 @@ library CircuitBreakerLib {
     // Since the bound ratios are (bound percentage)**(weightComplement), and weights are stored normalized, the maximum
     // weight complement is 1 - minimumWeight, which is 0.99 ~ 1. Therefore the ratio bounds are likewise constrained to
     // 10**1 ~ 10. So we can use this as the maximum value of both the percentage and ratio values.
-    uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18 decimal fixed point
+    uint256 private constant _MIN_BOUND_PERCENTAGE = 1e17; // 0.1 in 18-decimal fixed point
+
+    uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18-decimal fixed point
 
     // Since we know the bounds fit into 64 bits, simply shifting them down to fit in 16 bits is not only faster than
     // the compression and decompression operations, but generally less lossy.
@@ -272,7 +274,11 @@ library CircuitBreakerLib {
         // It's theoretically not required for the lower bound to be < 1, but it wouldn't make much sense otherwise:
         // the circuit breaker would immediately trip. Note that this explicitly allows setting either to 0, disabling
         // the circuit breaker for the token in that direction.
-        _require(params.lowerBound <= FixedPoint.ONE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
+        _require(
+            params.lowerBound == 0 ||
+                (params.lowerBound >= _MIN_BOUND_PERCENTAGE && params.lowerBound <= FixedPoint.ONE),
+            Errors.INVALID_CIRCUIT_BREAKER_BOUNDS
+        );
         _require(params.upperBound <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
         _require(
             params.upperBound == 0 || params.upperBound >= params.lowerBound,

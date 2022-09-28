@@ -57,8 +57,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // creation gas consumption.
     uint256 private constant _MAX_TOKENS = 38;
 
-    uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
-
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
     // Stores commonly used Pool state.
