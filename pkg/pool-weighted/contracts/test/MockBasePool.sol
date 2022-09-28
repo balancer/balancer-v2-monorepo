@@ -17,6 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+
 import "../managed/vendor/BasePool.sol";
 
 contract MockBasePool is BasePool {
@@ -48,11 +50,9 @@ contract MockBasePool is BasePool {
     )
         BasePool(
             vault,
-            specialization,
+            PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers),
             name,
             symbol,
-            tokens,
-            assetManagers,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
