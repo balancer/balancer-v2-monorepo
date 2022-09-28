@@ -276,28 +276,31 @@ library CircuitBreakerLib {
         _require(upperBound <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
         _require(upperBound == 0 || upperBound >= lowerBound, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
 
-        // Set the reference parameters: BPT price of the token, and the weight complement.
-        bytes32 circuitBreakerState = bytes32(0).insertUint(bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH).insertUint(
-            weightComplement,
-            _WEIGHT_COMPLEMENT_OFFSET,
-            _WEIGHT_COMPLEMENT_WIDTH
-        );
-
-        // Add the lower and upper percentage bounds. Compress by shifting right.
-        circuitBreakerState = circuitBreakerState
+        // Set the reference BPT price of the token and the lower and upper percentage bounds.
+        // The bounds are compressed by bit shifting them right.
+        bytes32 circuitBreakerState = bytes32(0)
+            .insertUint(bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH)
             .insertUint(lowerBound >> _BOUND_SHIFT_BITS, _LOWER_BOUND_OFFSET, _BOUND_WIDTH)
             .insertUint(upperBound >> _BOUND_SHIFT_BITS, _UPPER_BOUND_OFFSET, _BOUND_WIDTH);
 
         // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
         // If the weight complement has not changed since the breaker was set, we can use the precomputed values
         // directly, and avoid a heavy computation.
+        return updateBoundRatios(circuitBreakerState, weightComplement);
+    }
+
+    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) internal pure returns (bytes32) {
         (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
-            lowerBound,
-            upperBound,
+            circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
+            circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
             weightComplement
         );
 
-        // Finally, insert these computed ratios, and return the complete set of fields.
+        circuitBreakerState = circuitBreakerState.insertUint(
+            weightComplement,
+            _WEIGHT_COMPLEMENT_OFFSET,
+            _WEIGHT_COMPLEMENT_WIDTH
+        );
         return
             circuitBreakerState
                 .insertUint(
