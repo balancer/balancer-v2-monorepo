@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import { Contract, BigNumber } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, fp, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
-import { random } from 'lodash';
+import { fp, FP_ZERO, randomFromInterval } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { CircuitBreakerParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 describe('CircuitBreakerLib', () => {
   const BPT_PRICE = 0.4212;
+  const MIN_BOUND = 0.1;
   const MAX_BOUND = 10;
   const MAX_RELATIVE_ERROR = 0.01;
   const LOWER_BOUND = 0.8;
@@ -50,8 +50,8 @@ describe('CircuitBreakerLib', () => {
       await assertCircuitBreakerState(
         lib.getCircuitBreakerFields,
         lib.setCircuitBreakerFields,
-        fp(lowerBound),
-        fp(upperBound)
+        lowerBound,
+        upperBound
       );
     });
   }
@@ -96,16 +96,16 @@ describe('CircuitBreakerLib', () => {
   });
 
   context('when only the lower bound is set', () => {
-    itSetsCircuitBreakersCorrectly(bn(Math.random()), FP_ZERO);
+    itSetsCircuitBreakersCorrectly(fp(randomFromInterval(MIN_BOUND, 1)), FP_ZERO);
   });
 
   context('when only the upper bound is set', () => {
-    itSetsCircuitBreakersCorrectly(FP_ZERO, bn(random(2, true)));
+    itSetsCircuitBreakersCorrectly(FP_ZERO, fp(randomFromInterval(1, MAX_BOUND)));
   });
 
   context('when both bounds are set', () => {
-    const lowerBound = bn(Math.random());
-    const upperBound = lowerBound.add(bn(Math.random()));
+    const lowerBound = fp(randomFromInterval(MIN_BOUND, 1));
+    const upperBound = lowerBound.add(fp(randomFromInterval(MIN_BOUND, MAX_BOUND - 1)));
 
     itSetsCircuitBreakersCorrectly(lowerBound, upperBound);
   });
