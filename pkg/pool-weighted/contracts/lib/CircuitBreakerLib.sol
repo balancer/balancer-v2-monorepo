@@ -312,6 +312,42 @@ library CircuitBreakerLib {
             );
     }
 
+    /**
+     * @notice Update the cached ratios given a new weight complement.
+     * @dev This might be used when weights are adjusted, pre-emptively updating the cache to improve performance
+     * of operations after the weight change completed. Note that this does not update the BPT price: this is still
+     * relative to the last call to `setCircuitBreakerFields`. The intent is only to optimize the automatic bounds
+     * adjustments due to changing weights.
+     */
+    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) internal pure returns (bytes32) {
+        (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
+            circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
+            circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
+            weightComplement
+        );
+
+        // Replace the weight complement.
+        bytes32 result = circuitBreakerState.insertUint(
+            weightComplement,
+            _WEIGHT_COMPLEMENT_OFFSET,
+            _WEIGHT_COMPLEMENT_WIDTH
+        );
+
+        // Update the cached ratio bounds.
+        return
+            result
+                .insertUint(
+                lowerBoundRatio.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _LOWER_BOUND_RATIO_OFFSET,
+                _BOUND_RATIO_WIDTH
+            )
+                .insertUint(
+                upperBoundRatio.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _UPPER_BOUND_RATIO_OFFSET,
+                _BOUND_RATIO_WIDTH
+            );
+    }
+
     // Convert percentage bounds to BPT price bounds
     function getBoundaryConversionRatios(
         uint256 lowerBound,
