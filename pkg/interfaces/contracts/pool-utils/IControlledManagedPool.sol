@@ -14,10 +14,15 @@
 
 pragma solidity ^0.7.0;
 
-import "./IControlledPool.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IControlledManagedPool {
-    function setSwapFeePercentage(uint256 swapFeePercentage) external;
+    function updateSwapFeeGradually(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    ) external;
 
     function updateWeightsGradually(
         uint256 startTime,

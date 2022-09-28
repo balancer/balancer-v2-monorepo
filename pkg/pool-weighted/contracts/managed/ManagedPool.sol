@@ -235,8 +235,7 @@ contract ManagedPool is ManagedPoolSettings {
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         uint256 preFeeCollectionSupply = _getVirtualSupply();
-        (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(preFeeCollectionSupply);
-        uint256 postFeeCollectionSupply = preFeeCollectionSupply + protocolAUMFees + managerAUMFees;
+        uint256 postFeeCollectionSupply = preFeeCollectionSupply + _collectAumManagementFees(preFeeCollectionSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
             sender,
@@ -319,8 +318,7 @@ contract ManagedPool is ManagedPoolSettings {
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
         uint256 preFeeCollectionSupply = _getVirtualSupply();
-        (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(preFeeCollectionSupply);
-        uint256 postFeeCollectionSupply = preFeeCollectionSupply + protocolAUMFees + managerAUMFees;
+        uint256 postFeeCollectionSupply = preFeeCollectionSupply + _collectAumManagementFees(preFeeCollectionSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
             sender,
