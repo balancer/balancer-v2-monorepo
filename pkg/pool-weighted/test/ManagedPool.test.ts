@@ -55,7 +55,8 @@ describe('ManagedPool', function () {
       tokens: poolTokens,
       weights: poolWeights,
       owner: owner.address,
-      poolType: WeightedPoolType.MANAGED_POOL,
+      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
+      mockContractName: 'MockManagedPool',
       ...overrides,
     };
     return WeightedPool.create(params);
