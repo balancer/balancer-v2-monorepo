@@ -55,8 +55,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // creation gas consumption.
     uint256 private constant _MAX_TOKENS = 38;
 
-    uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
-
     // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
     // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
     // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
@@ -181,6 +179,48 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     function _getTokenState(IERC20 token) internal view returns (bytes32) {
         return _tokenState[token];
+    }
+
+    // Virtual Supply
+
+    /**
+     * @notice Returns the number of tokens in circulation.
+     * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
+     * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
+     * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
+     */
+    function _getVirtualSupply() internal view virtual returns (uint256) {
+        return totalSupply();
+    }
+
+    // Actual Supply
+
+    /**
+     * @notice Returns the effective BPT supply.
+     *
+     * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
+     * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
+     *  they will effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() external view returns (uint256) {
+        return _getActualSupply(_getVirtualSupply());
+    }
+
+    function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
+        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
+            // If we're in recovery mode then we bypass any fee logic and perform an early return.
+            return virtualSupply;
+        }
+
+        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+            virtualSupply,
+            block.timestamp,
+            _lastAumFeeCollectionTimestamp,
+            getManagementAumFeePercentage()
+        );
+        return virtualSupply.add(aumFeesAmount);
     }
 
     // Swap fees
@@ -561,7 +601,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
         // To prevent this, we perform a collection before updating the fee percentage.
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
-        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
             _lastAumFeeCollectionTimestamp = block.timestamp;
@@ -590,7 +630,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
         (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
@@ -664,16 +704,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused nonReentrant {
-        uint256 supply = totalSupply();
+        // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to mint is zero.
+        uint256 supply = _getVirtualSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
+
+        // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToAdd != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
         // change and would override an existing one, and b) any previous weight changes would be incomplete since they
         // wouldn't include the new token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
         // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
@@ -685,7 +730,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
         // opportunity to check we have not added too many tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -766,16 +811,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 burnAmount,
         address sender
     ) external authenticate nonReentrant whenNotPaused {
-        uint256 supply = totalSupply();
+        // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to burn is zero.
+        uint256 supply = _getVirtualSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
+
+        // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToRemove != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
         // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
         // they would include the removed token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
@@ -788,7 +838,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
         // good opportunity to check we didn't end up with too few tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -881,7 +931,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // not paused.
         _ensureNotPaused();
 
-        _collectAumManagementFees(totalSupply());
+        _collectAumManagementFees(_getVirtualSupply());
     }
 
     // Recovery Mode

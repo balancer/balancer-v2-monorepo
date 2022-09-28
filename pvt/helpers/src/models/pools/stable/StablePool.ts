@@ -360,7 +360,7 @@ export default class StablePool extends BasePool {
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
     const { tokens: allTokens } = await this.getTokens();
 
-    const tx = this.vault.joinPool({
+    const tx = await this.vault.joinPool({
       poolAddress: this.address,
       poolId: this.poolId,
       recipient: to,
@@ -372,7 +372,7 @@ export default class StablePool extends BasePool {
       from: params.from,
     });
 
-    const receipt = await (await tx).wait();
+    const receipt = await tx.wait();
     const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
     return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees };
   }

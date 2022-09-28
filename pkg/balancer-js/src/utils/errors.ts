@@ -80,6 +80,7 @@ const balancerErrorCodes: Record<string, string> = {
   '351': 'UNAUTHORIZED_JOIN',
   '352': 'MAX_MANAGEMENT_AUM_FEE_PERCENTAGE',
   '353': 'FRACTIONAL_TARGET',
+  '354': 'ADD_OR_REMOVE_BPT',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
