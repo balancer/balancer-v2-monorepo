@@ -11,7 +11,6 @@ import {
   currentTimestamp,
   receiptTimestamp,
   advanceToTimestamp,
-  setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -596,7 +595,7 @@ describe('ManagedPoolSettings', function () {
           });
         });
 
-        function itStartsAGradualWeightChangeCorrectly(startTimeOffset: BigNumberish, ongoingSwapFeeChange: boolean) {
+        function itStartsAGradualWeightChangeCorrectly(startTimeOffset: BigNumberish) {
           let now, startTime: BigNumber, endTime: BigNumber;
           const START_SWAP_FEE = INITIAL_SWAP_FEE;
           const END_SWAP_FEE = VALID_SWAP_FEE;
@@ -641,26 +640,15 @@ describe('ManagedPoolSettings', function () {
             });
           });
 
-          // We don't run this test when an ongoing swap fee change is in progress as we can't guarantee the prior condition
-          if (!ongoingSwapFeeChange) {
-            context('when the starting swap fee is equal to the current swap fee', () => {
-              sharedBeforeEach(async () => {
-                expect(await pool.getSwapFeePercentage()).to.equal(START_SWAP_FEE);
-              });
-
-              it('does not emit a SwapFeePercentageChanged event', async () => {
-                const tx = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
-                expectEvent.notEmitted(await tx.wait(), 'SwapFeePercentageChanged');
-              });
-            });
-          }
-
           context('when the starting swap fee is different from the current swap fee', () => {
             sharedBeforeEach(async () => {
-              const blockTimestamp = (await currentTimestamp()).add(1);
-              await setNextBlockTimestamp(blockTimestamp);
-              await pool.updateSwapFeeGradually(caller, blockTimestamp, blockTimestamp, MAX_SWAP_FEE, MAX_SWAP_FEE);
+              await pool.updateSwapFeeGradually(caller, await currentTimestamp(), endTime, MAX_SWAP_FEE, MAX_SWAP_FEE);
               expect(await pool.getSwapFeePercentage()).to.not.equal(START_SWAP_FEE);
+            });
+
+            it('instantly sets the swap fee with the starting value', async () => {
+              await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+              expect(await pool.getSwapFeePercentage()).to.be.equal(START_SWAP_FEE);
             });
           });
         }
@@ -668,45 +656,33 @@ describe('ManagedPoolSettings', function () {
         context('when gradual update start time is the future', () => {
           const START_TIME_OFFSET = MINUTE * 10;
 
-          context('with no ongoing swap fee change', () => {
-            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, false);
+          sharedBeforeEach(async () => {
+            // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+            // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+            // current swap fee correctly.
+            const now = await currentTimestamp();
+
+            await pool.updateSwapFeeGradually(caller, now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
+            await advanceToTimestamp(now.add(10));
           });
 
-          context('with an ongoing swap fee change', () => {
-            sharedBeforeEach(async () => {
-              // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
-              // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
-              // current swap fee correctly.
-              const now = await currentTimestamp();
-
-              await pool.updateSwapFeeGradually(caller, now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
-              await advanceToTimestamp(now.add(10));
-            });
-
-            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, true);
-          });
+          itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET);
         });
 
         context('when gradual update start time is in the past', () => {
           const START_TIME_OFFSET = -1 * MINUTE * 10;
 
-          context('with no ongoing swap fee change', () => {
-            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, false);
+          sharedBeforeEach(async () => {
+            // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+            // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+            // current swap fee correctly.
+            const now = await currentTimestamp();
+
+            await pool.updateSwapFeeGradually(caller, now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
+            await advanceToTimestamp(now.add(10));
           });
 
-          context('with an ongoing swap fee change', () => {
-            sharedBeforeEach(async () => {
-              // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
-              // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
-              // current swap fee correctly.
-              const now = await currentTimestamp();
-
-              await pool.updateSwapFeeGradually(caller, now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
-              await advanceToTimestamp(now.add(10));
-            });
-
-            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, true);
-          });
+          itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET);
         });
       });
 
