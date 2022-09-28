@@ -596,9 +596,11 @@ describe('ManagedPoolSettings', function () {
 
           it('setting a circuit breaker emits an event', async () => {
             const receipt = await pool.setCircuitBreaker(owner, poolTokens.first, LOWER_BOUND, UPPER_BOUND);
+            const [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
 
             expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
               token: poolTokens.first.address,
+              bptPrice: bptPrice,
               lowerBoundPercentage: LOWER_BOUND,
               upperBoundPercentage: UPPER_BOUND,
             });

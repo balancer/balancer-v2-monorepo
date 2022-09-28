@@ -99,7 +99,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
     event TokenRemoved(IERC20 indexed token);
-    event CircuitBreakerSet(IERC20 indexed token, uint256 lowerBoundPercentage, uint256 upperBoundPercentage);
+    event CircuitBreakerSet(
+        IERC20 indexed token,
+        uint256 bptPrice,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    );
 
     struct NewPoolParams {
         string name;
@@ -1019,15 +1024,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 normalizedWeight = _getNormalizedWeight(token);
 
         // Note that `getBptPrice` will revert if the token is invalid.
+        uint256 bptPrice = getBptPrice(token, normalizedWeight);
+
         // The library will validate the lower/upper bounds
         _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(
-            getBptPrice(token, normalizedWeight),
+            bptPrice,
             normalizedWeight.complement(),
             lowerBoundPercentage,
             upperBoundPercentage
         );
 
-        emit CircuitBreakerSet(token, lowerBoundPercentage, upperBoundPercentage);
+        emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
     }
 
     /**
