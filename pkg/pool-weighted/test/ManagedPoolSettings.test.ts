@@ -11,7 +11,6 @@ import {
   currentTimestamp,
   receiptTimestamp,
   advanceToTimestamp,
-  setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -642,21 +641,14 @@ describe('ManagedPoolSettings', function () {
           });
 
           context('when the starting swap fee is different from the current swap fee', () => {
-            const UPDATE_FEE_START = START_SWAP_FEE.add(MAX_SWAP_FEE).div(2);
             sharedBeforeEach(async () => {
-              const blockTimestamp = (await currentTimestamp()).add(1);
-              await setNextBlockTimestamp(blockTimestamp);
-              await pool.updateSwapFeeGradually(
-                caller,
-                blockTimestamp,
-                blockTimestamp.add(DAY),
-                UPDATE_FEE_START,
-                MIN_SWAP_FEE
-              );
+              await pool.updateSwapFeeGradually(caller, await currentTimestamp(), endTime, MAX_SWAP_FEE, MAX_SWAP_FEE);
+              expect(await pool.getSwapFeePercentage()).to.not.equal(START_SWAP_FEE);
             });
 
             it('instantly sets the swap fee with the starting value', async () => {
-              expect(await pool.getSwapFeePercentage()).to.be.equal(UPDATE_FEE_START);
+              await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+              expect(await pool.getSwapFeePercentage()).to.be.equal(START_SWAP_FEE);
             });
           });
         }
