@@ -1044,8 +1044,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      */
     function getBptPrice(IERC20 token, uint256 normalizedWeight) public view returns (uint256) {
         if (token == IERC20(this)) {
-            // BPT price of the BPT token itself is undefined.
-            _revert(Errors.INVALID_TOKEN);
+            return FixedPoint.ONE;
         }
 
         uint256 tokenBalance = _getUpscaledTokenBalance(token);

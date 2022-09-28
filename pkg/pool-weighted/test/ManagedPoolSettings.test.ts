@@ -650,8 +650,8 @@ describe('ManagedPoolSettings', function () {
             }
           });
 
-          it('reverts if you pass the pool token', async () => {
-            await expect(pool.instance.getBptPrice(pool.address, poolWeights[0])).to.be.revertedWith('INVALID_TOKEN');
+          it('returns 1 if you pass the pool token', async () => {
+            expect(await pool.instance.getBptPrice(pool.address, poolWeights[0])).to.equal(FP_ONE);
           });
         });
 
