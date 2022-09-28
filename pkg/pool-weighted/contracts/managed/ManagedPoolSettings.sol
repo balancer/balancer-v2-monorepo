@@ -572,7 +572,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
-            (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
+            amount = _collectAumManagementFees(supplyBeforeFeeCollection);
             _lastAumFeeCollectionTimestamp = block.timestamp;
         }
 
@@ -602,15 +602,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
-        return managerAUMFees;
+        return _collectAumManagementFees(supplyBeforeFeeCollection);
     }
 
     /**
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256, uint256) {
+    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
         uint256 bptAmount = ProtocolAUMFees.getAumFeesBptAmount(
             totalSupply,
             block.timestamp,
@@ -622,7 +621,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // - AUM fee is disabled.
         // - no time has passed since the last collection.
         if (bptAmount == 0) {
-            return (0, 0);
+            return 0;
         }
 
         // As we update `_lastAumFeeCollectionTimestamp` when updating `_managementAumFeePercentage`, we only need to
@@ -640,7 +639,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         _mintPoolTokens(getOwner(), managerBPTAmount);
 
-        return (protocolBptAmount, managerBPTAmount);
+        return bptAmount;
     }
 
     // Add/Remove tokens
