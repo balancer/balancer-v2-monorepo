@@ -1,13 +1,18 @@
 import { expect } from 'chai';
 import { Contract, BigNumber } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { bn, fp, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
-import { random } from 'lodash';
+import { fp, fpDiv, fpMul, FP_ZERO, randomFromInterval } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { CircuitBreakerParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('CircuitBreakerLib', () => {
-  const BPT_PRICE = 0.4212;
+  const TOTAL_SUPPLY = 4202.444487;
+  const NORMALIZED_WEIGHT = 0.8;
+  const TOKEN_BALANCE = 8000;
+
+  const BPT_PRICE = (TOTAL_SUPPLY * NORMALIZED_WEIGHT) / TOKEN_BALANCE;
+  const MIN_BOUND = 0.1;
   const MAX_BOUND = 10;
   const MAX_RELATIVE_ERROR = 0.01;
   const LOWER_BOUND = 0.8;
@@ -47,12 +52,97 @@ describe('CircuitBreakerLib', () => {
 
   async function itSetsCircuitBreakersCorrectly(lowerBound: BigNumber, upperBound: BigNumber) {
     it('sets and retrieves the bounds', async () => {
-      await assertCircuitBreakerState(
-        lib.getCircuitBreakerFields,
-        lib.setCircuitBreakerFields,
-        fp(lowerBound),
-        fp(upperBound)
+      await assertCircuitBreakerState(lib.getCircuitBreakerFields, lib.setCircuitBreakerFields, lowerBound, upperBound);
+    });
+  }
+
+  async function itReportsTrippedBreakersCorrectly(lowerBound: BigNumber, upperBound: BigNumber) {
+    it('checks tripped status', async () => {
+      const circuitBreakerParams: CircuitBreakerParams = {
+        bptPrice: fp(BPT_PRICE),
+        weightComplement: fp(WEIGHT_COMPLEMENT),
+        lowerBound: lowerBound,
+        upperBound: upperBound,
+      };
+      const data = await lib.setCircuitBreakerFields(circuitBreakerParams);
+
+      // Pass in the same weight factor it was constructed with to get the reference bounds
+      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
+        data,
+        fp(WEIGHT_COMPLEMENT)
       );
+
+      let lowerBoundTripped: boolean;
+      let upperBoundTripped: boolean;
+      let priceMultiplier: BigNumber;
+      let supplyAtBoundary: BigNumber;
+
+      // if the lowerBound/lowerBound is 0, the corresponding price bound should also be zero
+      if (lowerBound == FP_ZERO) {
+        expect(lowerBptPriceBound).to.equal(FP_ZERO);
+        // It is never tripped, even with a 0 price (0 supply = 0 price)
+        const [lowerBoundTripped] = await lib.hasCircuitBreakerTripped(
+          data,
+          FP_ZERO,
+          fp(NORMALIZED_WEIGHT),
+          fp(TOKEN_BALANCE)
+        );
+        expect(lowerBoundTripped).to.be.false;
+      } else {
+        // The breaker should NOT be tripped with the nominal bpt price
+        [lowerBoundTripped] = await lib.hasCircuitBreakerTripped(
+          data,
+          fp(TOTAL_SUPPLY),
+          fp(NORMALIZED_WEIGHT),
+          fp(TOKEN_BALANCE)
+        );
+        expect(lowerBoundTripped).to.be.false;
+
+        // The breaker should be tripped with a price slightly below the bound
+        priceMultiplier = fpDiv(lowerBptPriceBound, fp(BPT_PRICE));
+        supplyAtBoundary = fpMul(fp(TOTAL_SUPPLY), priceMultiplier);
+
+        [lowerBoundTripped] = await lib.hasCircuitBreakerTripped(
+          data,
+          fpMul(supplyAtBoundary, fp(0.9999)),
+          fp(NORMALIZED_WEIGHT),
+          fp(TOKEN_BALANCE)
+        );
+        expect(lowerBoundTripped).to.be.true;
+      }
+
+      if (upperBound == FP_ZERO) {
+        expect(upperBptPriceBound).to.equal(FP_ZERO);
+        // It is never tripped, even with a max price
+        const [, upperBoundTripped] = await lib.hasCircuitBreakerTripped(
+          data,
+          MAX_UINT96,
+          fp(NORMALIZED_WEIGHT),
+          fp(TOKEN_BALANCE)
+        );
+        expect(upperBoundTripped).to.be.false;
+      } else {
+        // The breaker should NOT be tripped with the nominal bpt price
+        [, upperBoundTripped] = await lib.hasCircuitBreakerTripped(
+          data,
+          fp(TOTAL_SUPPLY),
+          fp(NORMALIZED_WEIGHT),
+          fp(TOKEN_BALANCE)
+        );
+        expect(upperBoundTripped).to.be.false;
+
+        // The breaker should be tripped with a price slightly above the bound
+        priceMultiplier = fpDiv(upperBptPriceBound, fp(BPT_PRICE));
+        supplyAtBoundary = fpMul(fp(TOTAL_SUPPLY), priceMultiplier);
+
+        [, upperBoundTripped] = await lib.hasCircuitBreakerTripped(
+          data,
+          fpMul(supplyAtBoundary, fp(1.0001)),
+          fp(NORMALIZED_WEIGHT),
+          fp(TOKEN_BALANCE)
+        );
+        expect(upperBoundTripped).to.be.true;
+      }
     });
   }
 
@@ -93,21 +183,29 @@ describe('CircuitBreakerLib', () => {
 
   context('when circuit breakers are not set', () => {
     itSetsCircuitBreakersCorrectly(FP_ZERO, FP_ZERO);
+    itReportsTrippedBreakersCorrectly(FP_ZERO, FP_ZERO);
   });
 
   context('when only the lower bound is set', () => {
-    itSetsCircuitBreakersCorrectly(bn(Math.random()), FP_ZERO);
+    const lowerBound = fp(randomFromInterval(MIN_BOUND, 1));
+
+    itSetsCircuitBreakersCorrectly(lowerBound, FP_ZERO);
+    itReportsTrippedBreakersCorrectly(lowerBound, FP_ZERO);
   });
 
   context('when only the upper bound is set', () => {
-    itSetsCircuitBreakersCorrectly(FP_ZERO, bn(random(2, true)));
+    const upperBound = fp(randomFromInterval(1, MAX_BOUND));
+
+    itSetsCircuitBreakersCorrectly(FP_ZERO, upperBound);
+    itReportsTrippedBreakersCorrectly(FP_ZERO, upperBound);
   });
 
   context('when both bounds are set', () => {
-    const lowerBound = bn(Math.random());
-    const upperBound = lowerBound.add(bn(Math.random()));
+    const lowerBound = fp(randomFromInterval(MIN_BOUND, 1));
+    const upperBound = lowerBound.add(fp(randomFromInterval(MIN_BOUND, MAX_BOUND - 1)));
 
     itSetsCircuitBreakersCorrectly(lowerBound, upperBound);
+    itReportsTrippedBreakersCorrectly(lowerBound, upperBound);
   });
 
   describe('percentage to BPT price conversion ratios', () => {

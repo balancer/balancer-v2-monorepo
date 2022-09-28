@@ -34,6 +34,15 @@ contract MockCircuitBreakerLib {
         return CircuitBreakerLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeightFactor);
     }
 
+    function hasCircuitBreakerTripped(
+        bytes32 circuitBreakerState,
+        uint256 totalSupply,
+        uint256 normalizedWeight,
+        uint256 upscaledBalance
+    ) external pure returns (bool, bool) {
+        return CircuitBreakerLib.hasCircuitBreakerTripped(circuitBreakerState, totalSupply, normalizedWeight, upscaledBalance);
+    }
+
     function setCircuitBreakerFields(CircuitBreakerLib.CircuitBreakerParams memory params)
         external
         pure
