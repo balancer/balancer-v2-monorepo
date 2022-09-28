@@ -224,6 +224,35 @@ library CircuitBreakerLib {
     }
 
     /**
+     * @notice Checks whether either the lower or upper circuit breakers would trip in the given pool state.
+     * @dev Compute the current BPT price from the input parameters, and compare it to the bounds to determine whether
+     * the given post-operation pool state is within the circuit breaker bounds.
+     * @param circuitBreakerState - the state corresponding to the token we are checking.
+     * @param totalSupply - the post-operation totalSupply (including protocol fees, etc.)
+     * @param normalizedWeight - the normalized weight of the token we are checking.
+     * @param upscaledBalance - the post-operation token balance (including swap fees, etc.). It must be an 18-decimal
+     * floating point number, adjusted by the scaling factor of the token.
+     * @return - boolean flags set to true if the breaker should be tripped: (lowerBoundTripped, upperBoundTripped)
+     */
+    function hasCircuitBreakerTripped(
+        bytes32 circuitBreakerState,
+        uint256 totalSupply,
+        uint256 normalizedWeight,
+        uint256 upscaledBalance
+    ) internal pure returns (bool, bool) {
+        (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) = getCurrentCircuitBreakerBounds(
+            circuitBreakerState,
+            normalizedWeight.complement()
+        );
+        uint256 currentBptPrice = totalSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
+
+        return (
+            lowerBoundBptPrice != 0 && currentBptPrice < lowerBoundBptPrice,
+            upperBoundBptPrice != 0 && currentBptPrice > upperBoundBptPrice
+        );
+    }
+
+    /**
      * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
      * @param params - CircuitBreakerParams has the following components:
@@ -251,16 +280,8 @@ library CircuitBreakerLib {
 
         // Add the lower and upper percentage bounds. Compress by shifting right.
         circuitBreakerState = circuitBreakerState
-            .insertUint(
-            params.lowerBound >> _BOUND_SHIFT_BITS,
-            _LOWER_BOUND_OFFSET,
-            _BOUND_WIDTH
-        )
-            .insertUint(
-            params.upperBound >> _BOUND_SHIFT_BITS,
-            _UPPER_BOUND_OFFSET,
-            _BOUND_WIDTH
-        );
+            .insertUint(params.lowerBound >> _BOUND_SHIFT_BITS, _LOWER_BOUND_OFFSET, _BOUND_WIDTH)
+            .insertUint(params.upperBound >> _BOUND_SHIFT_BITS, _UPPER_BOUND_OFFSET, _BOUND_WIDTH);
 
         // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
         // If the weight complement has not changed since the breaker was set, we can use the precomputed values
