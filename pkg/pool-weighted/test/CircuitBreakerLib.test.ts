@@ -234,4 +234,33 @@ describe('CircuitBreakerLib', () => {
       expect(upperBptPriceBound).to.almostEqual(expectedUpperBound);
     });
   });
+
+  describe('update bounds', () => {
+    let data: string;
+
+    sharedBeforeEach('set default values', async () => {
+      data = await lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(LOWER_BOUND), fp(UPPER_BOUND));
+    });
+
+    it('should update the bounds given a new weight complement', async () => {
+      const newWeightComplement = WEIGHT_COMPLEMENT * (Math.random() < 0.5 ? 1 + Math.random() : 1 - Math.random());
+
+      data = await lib.updateBoundRatios(data, fp(newWeightComplement));
+
+      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
+        data,
+        fp(newWeightComplement)
+      );
+
+      const expLower = LOWER_BOUND ** newWeightComplement;
+      const expHigher = UPPER_BOUND ** newWeightComplement;
+
+      const expectedLowerBound = fp(BPT_PRICE * expLower);
+      const expectedUpperBound = fp(BPT_PRICE * expHigher);
+
+      // There is compression, so it won't match exactly
+      expect(lowerBptPriceBound).to.almostEqual(expectedLowerBound);
+      expect(upperBptPriceBound).to.almostEqual(expectedUpperBound);
+    });
+  });
 });
