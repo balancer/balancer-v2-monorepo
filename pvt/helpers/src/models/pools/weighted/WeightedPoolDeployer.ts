@@ -125,7 +125,9 @@ export default {
         break;
       }
       case WeightedPoolType.MOCK_MANAGED_POOL: {
-        assert(mockContractName != undefined, 'Mock contract name required to deploy mock base pool');
+        if (mockContractName == undefined) {
+           throw new Error('Mock contract name required to deploy mock base pool');
+        }
         result = deploy(mockContractName, {
           args: [
             {
