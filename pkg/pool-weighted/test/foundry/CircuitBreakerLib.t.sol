@@ -131,4 +131,48 @@ contract CircuitBreakerLibTest is Test {
             _MAX_RELATIVE_ERROR
         );
     }
+
+    function testUpdateCachedRatios(
+        uint256 initialBptPrice,
+        uint256 initialWeightComplement,
+        uint256 newWeightComplement,
+        uint256 lowerBound,
+        uint256 upperBound
+    ) public {
+        initialBptPrice = bound(initialBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
+        lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
+        upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
+        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
+
+        // Set the initial state of the breaker
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(
+            initialBptPrice,
+            initialWeightComplement,
+            lowerBound,
+            upperBound
+        );
+
+        // We now model the weight of the the token changing so `initialWeightComplement` becomes `newWeightComplement`.
+        // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
+        uint256 dynamicCost = gasleft();
+        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerLib
+            .getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
+        dynamicCost -= gasleft();
+
+        // This is expensive so we refresh the cached bound ratios using the new weight complement.
+        bytes32 updatedPoolState = CircuitBreakerLib.updateBoundRatios(initialPoolState, newWeightComplement);
+        uint256 cachedCost = gasleft();
+        (uint256 newCachedLowerBptPriceBoundary, uint256 newCachedUpperBptPriceBoundary) = CircuitBreakerLib
+            .getCurrentCircuitBreakerBounds(updatedPoolState, newWeightComplement);
+        cachedCost -= gasleft();
+
+        // The new cached values should match what was previously calculated dynamically.
+        uint256 MAX_ERROR = 5e12;
+        assertApproxEqRel(newCachedLowerBptPriceBoundary, lowerBptPriceBoundary, MAX_ERROR);
+        assertApproxEqRel(newCachedUpperBptPriceBoundary, upperBptPriceBoundary, MAX_ERROR);
+
+        // Using the new cached values should reduce costs by over 2/3rds
+        assertLe(cachedCost, dynamicCost / 3);
+    }
 }
