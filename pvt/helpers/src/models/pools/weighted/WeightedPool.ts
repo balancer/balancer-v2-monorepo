@@ -593,7 +593,10 @@ export default class WeightedPool extends BasePool {
     if (this._isManagedPool()) {
       if (!tokens) {
         const { tokens: registeredTokens } = await this.getTokens();
-        tokens = registeredTokens.slice(1);
+        // If the first token is BPT then we can assume that the Pool is composable.
+        if (registeredTokens[0] == this.address) {
+          tokens = registeredTokens.slice(1);
+        }
       }
 
       return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
