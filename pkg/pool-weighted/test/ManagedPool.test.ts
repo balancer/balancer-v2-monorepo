@@ -356,11 +356,11 @@ describe('ManagedPool', function () {
 
     describe('management aum fee collection', () => {
       function expectedAUMFees(
-        totalSupply: BigNumberish,
+        virtualSupply: BigNumberish,
         aumFeePercentage: BigNumberish,
         timeElapsed: BigNumberish
       ): BigNumber {
-        return bn(totalSupply)
+        return bn(virtualSupply)
           .mul(timeElapsed)
           .div(365 * DAY)
           .mul(aumFeePercentage)
@@ -393,8 +393,8 @@ describe('ManagedPool', function () {
         it('collects the expected amount of fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
 
-          const totalSupply = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+          const virtualSupply = await pool.getVirtualSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(virtualSupply, managementAumFeePercentage, timeElapsed);
 
           const receipt = await collectAUMFees();
 
@@ -408,22 +408,26 @@ describe('ManagedPool', function () {
         });
 
         it('reports the expected actual supply', async () => {
-          // As we're performing a join or exit here we need to account for the change in the BPT total supply due to
+          // As we're performing a join or exit here we need to account for the change in the BPT virtual supply due to
           // the join/exit. We do this by tracking the user's balance.
           const balanceBefore = await pool.balanceOf(other);
-          const totalSupplyBefore = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(totalSupplyBefore, managementAumFeePercentage, timeElapsed);
+          const virtualSupplyBefore = await pool.getVirtualSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(
+            virtualSupplyBefore,
+            managementAumFeePercentage,
+            timeElapsed
+          );
 
           const balanceAfter = await pool.balanceOf(other);
           const joinExitDelta = balanceAfter.sub(balanceBefore);
 
-          const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt).add(joinExitDelta);
+          const expectedActualSupply = virtualSupplyBefore.add(expectedManagementFeeBpt).add(joinExitDelta);
           const actualSupply = await pool.getActualSupply();
           expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
         });
 
         it('does not affect the actual supply', async () => {
-          // As we're performing a join or exit here we need to account for the change in the BPT total supply due to
+          // As we're performing a join or exit here we need to account for the change in the BPT virtual supply due to
           // the join/exit. We do this by tracking the user's balance.
           const balanceBefore = await pool.balanceOf(other);
           const actualSupplyBefore = await pool.getActualSupply();
@@ -438,7 +442,7 @@ describe('ManagedPool', function () {
         });
 
         it('syncs the total supply to the actual supply', async () => {
-          // As we're performing a join or exit here we need to account for the change in the BPT total supply due to
+          // As we're performing a join or exit here we need to account for the change in the BPT virtual supply due to
           // the join/exit. We do this by tracking the user's balance.
           const balanceBefore = await pool.balanceOf(other);
           const actualSupplyBefore = await pool.getActualSupply();
@@ -448,8 +452,8 @@ describe('ManagedPool', function () {
           const balanceAfter = await pool.balanceOf(other);
           const joinExitDelta = balanceAfter.sub(balanceBefore);
 
-          const totalSupplyAfter = await pool.totalSupply();
-          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore.add(joinExitDelta), 1e-5);
+          const virtualSupplyAfter = await pool.getVirtualSupply();
+          expect(virtualSupplyAfter).to.equalWithError(actualSupplyBefore.add(joinExitDelta), 1e-5);
         });
       }
 
