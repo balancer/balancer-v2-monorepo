@@ -202,20 +202,6 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
-    /**
-     * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
-     * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
-     */
-    function _beforeJoinExit(uint256 virtualSupply) internal returns (uint256) {
-        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-        (uint256 protocolAUMFees, uint256 managerAUMFees) = _collectAumManagementFees(virtualSupply);
-
-        return virtualSupply.add(protocolAUMFees + managerAUMFees);
-    }
-
     // Initialize
 
     function _onInitializePool(address sender, bytes memory userData)
@@ -283,14 +269,18 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        uint256 preJoinExitSupply = _beforeJoinExit(virtualSupply);
+        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
+        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
+        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+        virtualSupply += _collectAumManagementFees(virtualSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
             sender,
             balances,
             _getNormalizedWeights(tokens),
             scalingFactors,
-            preJoinExitSupply,
+            virtualSupply,
             userData
         );
 
@@ -369,14 +359,18 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        uint256 preJoinExitSupply = _beforeJoinExit(virtualSupply);
+        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
+        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
+        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+        virtualSupply += _collectAumManagementFees(virtualSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
             sender,
             balances,
             _getNormalizedWeights(tokens),
             scalingFactors,
-            preJoinExitSupply,
+            virtualSupply,
             userData
         );
 

@@ -97,6 +97,7 @@ export default {
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
+      mockContractName: params.mockContractName,
     };
   },
 

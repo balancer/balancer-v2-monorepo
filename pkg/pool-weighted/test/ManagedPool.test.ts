@@ -3,7 +3,13 @@ import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
 import { BigNumberish, bn, fp, FP_ONE, FP_ZERO, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { DAY, advanceTime, receiptTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import {
+  DAY,
+  advanceTime,
+  receiptTimestamp,
+  currentTimestamp,
+  setNextBlockTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
@@ -309,7 +315,9 @@ describe('ManagedPool', function () {
 
     context('with a 100% swap fee', () => {
       sharedBeforeEach('set swap fee to 100%', async () => {
-        await pool.setSwapFeePercentage(owner, fp(1));
+        const blockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(blockTimestamp);
+        await pool.updateSwapFeeGradually(owner, blockTimestamp, blockTimestamp, fp(1), fp(1));
       });
 
       it('reverts on joinSwap', async () => {
@@ -319,7 +327,17 @@ describe('ManagedPool', function () {
 
     context('with the max swap fee', () => {
       sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
-        await pool.setSwapFeePercentage(owner, MAX_SWAP_FEE_PERCENTAGE);
+        // In practice, a separate contract would call `updateSwapFeeGradually` using `block.timestamp` both as start
+        // and endTime to make the change immediately.
+        const nextBlockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(nextBlockTimestamp);
+        await pool.updateSwapFeeGradually(
+          owner,
+          nextBlockTimestamp,
+          nextBlockTimestamp,
+          MAX_SWAP_FEE_PERCENTAGE,
+          MAX_SWAP_FEE_PERCENTAGE
+        );
       });
 
       it('allows (unfavorable) joinSwap', async () => {

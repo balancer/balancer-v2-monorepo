@@ -45,6 +45,7 @@ import {
 import { Account, accountToAddress, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import BasePool from '../base/BasePool';
+import assert from 'assert';
 
 const MAX_IN_RATIO = fp(0.3);
 const MAX_OUT_RATIO = fp(0.3);
@@ -527,12 +528,19 @@ export default class WeightedPool extends BasePool {
     };
   }
 
+  private _isManagedPool() {
+    return this.poolType == WeightedPoolType.MANAGED_POOL || this.poolType == WeightedPoolType.MOCK_MANAGED_POOL;
+  }
+
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
     return pool.setSwapEnabled(swapEnabled);
   }
 
   async setSwapFeePercentage(from: SignerWithAddress, swapFeePercentage: BigNumberish): Promise<ContractTransaction> {
+    if (this._isManagedPool()) {
+      throw new Error('Not available in managed pool');
+    }
     const pool = this.instance.connect(from);
     return pool.setSwapFeePercentage(swapFeePercentage);
   }
@@ -582,7 +590,7 @@ export default class WeightedPool extends BasePool {
   ): Promise<ContractTransaction> {
     const pool = this.instance.connect(from);
 
-    if (this.poolType == WeightedPoolType.MANAGED_POOL) {
+    if (this._isManagedPool()) {
       if (!tokens) {
         const { tokens: registeredTokens } = await this.getTokens();
         tokens = registeredTokens.slice(1);
@@ -601,6 +609,7 @@ export default class WeightedPool extends BasePool {
     startSwapFeePercentage: BigNumberish,
     endSwapFeePercentage: BigNumberish
   ): Promise<ContractTransaction> {
+    assert(this._isManagedPool(), 'Only available in managed pool');
     const pool = this.instance.connect(from);
     return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
   }
