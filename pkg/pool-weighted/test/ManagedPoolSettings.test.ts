@@ -687,6 +687,12 @@ describe('ManagedPoolSettings', function () {
             expect(expectedUpperBoundBptPrice).to.equalWithError(referenceUpperBoundBptPrice, 0.001);
           });
 
+          it('should not report tripped', async () => {
+            for (const token of poolTokens.tokens) {
+              expect(await pool.instance.hasCircuitBreakerTripped(token.address)).to.deep.equal([false, false]);
+            }
+          });
+
           describe('tracks weight changes', () => {
             const UPDATE_DURATION = DAY * 2;
 

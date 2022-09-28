@@ -197,7 +197,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
-    function getActualSupply() external view returns (uint256) {
+    function getActualSupply() public view returns (uint256) {
         return _getActualSupply(_getVirtualSupply());
     }
 
@@ -978,6 +978,19 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
+     * @notice Returns flags indicating whether the lower or upper bound circuit breakers have tripped.
+     */
+    function hasCircuitBreakerTripped(IERC20 token) external view returns (bool, bool) {
+        return
+            CircuitBreakerLib.hasCircuitBreakerTripped(
+                _circuitBreakerState[token],
+                getActualSupply(),
+                _getNormalizedWeight(token),
+                _getUpscaledTokenBalance(token)
+            );
+    }
+
+    /**
      * @notice Set a circuit breaker for a token.
      * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
      * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
@@ -1025,10 +1038,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _revert(Errors.INVALID_TOKEN);
         }
 
-        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), token);
-        uint256 tokenBalance = _upscale(cash + managed, ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]));
+        uint256 tokenBalance = _getUpscaledTokenBalance(token);
 
-        return totalSupply().mulUp(normalizedWeight).divDown(tokenBalance);
+        return getActualSupply().mulUp(normalizedWeight).divDown(tokenBalance);
+    }
+
+    function _getUpscaledTokenBalance(IERC20 token) private view returns (uint256) {
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), token);
+        return _upscale(cash + managed, ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]));
     }
 
     // Misc
