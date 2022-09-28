@@ -92,7 +92,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     );
-
     event GradualWeightUpdateScheduled(
         uint256 startTime,
         uint256 endTime,
