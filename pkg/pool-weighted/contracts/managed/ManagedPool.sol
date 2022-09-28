@@ -97,6 +97,9 @@ contract ManagedPool is ManagedPoolSettings {
      */
     function _getVirtualSupply() internal view override returns (uint256) {
         (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+        // We don't need to use SafeMath here as the Vault restricts token balances to be less than 2**112.
+        // This ensures that `cash + managed` cannot overflow and the Pool's balance of BPT cannot exceed the total
+        // supply so we cannot underflow either.
         return totalSupply() - (cash + managed);
     }
 
