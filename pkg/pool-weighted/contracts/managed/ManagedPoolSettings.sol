@@ -142,7 +142,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
         }
 
-        // We write the pool state here, as both `_setSwapEnabled` and `_setMustAllowlistLPs` read it from storage.
         _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
