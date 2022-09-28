@@ -10,10 +10,12 @@ import {
   advanceTime,
   currentTimestamp,
   receiptTimestamp,
+  advanceToTimestamp,
+  setNextBlockTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
 import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
@@ -27,7 +29,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { range } from 'lodash';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
-import { Interface } from 'ethers/lib/utils';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ManagedPoolSettings', function () {
   let allTokens: TokenList;
@@ -44,6 +46,10 @@ describe('ManagedPoolSettings', function () {
 
   const MAX_TOKENS = 38;
   const TOKEN_COUNT = 20;
+
+  const MIN_SWAP_FEE = fp(0.000001);
+  const MAX_SWAP_FEE = fp(0.8);
+  const INITIAL_SWAP_FEE = MIN_SWAP_FEE.add(1);
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
@@ -65,33 +71,41 @@ describe('ManagedPoolSettings', function () {
     await allTokens.approve({ from: owner, to: vault });
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function createMockPool(params: any): Promise<WeightedPool> {
+    const fullParams = {
+      ...params,
+      swapFeePercentage: INITIAL_SWAP_FEE,
+      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
+      mockContractName: 'MockManagedPool',
+    };
+    return WeightedPool.create(fullParams);
+  }
+
   describe('constructor', () => {
     context('with invalid creation parameters', () => {
       it('fails with < 2 tokens', async () => {
         const params = {
           tokens: allTokens.subset(1),
           weights: [fp(0.3)],
-          poolType: WeightedPoolType.MANAGED_POOL,
         };
-        await expect(WeightedPool.create(params)).to.be.revertedWith('MIN_TOKENS');
+        await expect(createMockPool(params)).to.be.revertedWith('MIN_TOKENS');
       });
 
       it('fails with > MAX_TOKENS tokens', async () => {
         const params = {
           tokens: allTokens,
           weights: tooManyWeights,
-          poolType: WeightedPoolType.MANAGED_POOL,
         };
-        await expect(WeightedPool.create(params)).to.be.revertedWith('MAX_TOKENS');
+        await expect(createMockPool(params)).to.be.revertedWith('MAX_TOKENS');
       });
 
       it('fails with mismatched tokens/weights', async () => {
         const params = {
           tokens: allTokens.subset(20),
           weights: tooManyWeights,
-          poolType: WeightedPoolType.MANAGED_POOL,
         };
-        await expect(WeightedPool.create(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+        await expect(createMockPool(params)).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
       });
     });
 
@@ -110,8 +124,7 @@ describe('ManagedPoolSettings', function () {
                 range(numTokens).map(async () => await ethers.Wallet.createRandom().getAddress())
               );
 
-              pool = await WeightedPool.create({
-                poolType: WeightedPoolType.MANAGED_POOL,
+              pool = await createMockPool({
                 tokens,
                 weights: poolWeights,
                 assetManagers,
@@ -164,10 +177,9 @@ describe('ManagedPoolSettings', function () {
               tokens: poolTokens,
               weights: poolWeights,
               owner: owner.address,
-              poolType: WeightedPoolType.MANAGED_POOL,
               swapEnabledOnStart: false,
             };
-            pool = await WeightedPool.create(params);
+            pool = await createMockPool(params);
           });
 
           it('swaps show disabled on start', async () => {
@@ -181,10 +193,9 @@ describe('ManagedPoolSettings', function () {
               tokens: poolTokens,
               weights: poolWeights,
               vault,
-              poolType: WeightedPoolType.MANAGED_POOL,
               swapEnabledOnStart: true,
             };
-            pool = await WeightedPool.create(params);
+            pool = await createMockPool(params);
           });
 
           it('swaps show enabled on start', async () => {
@@ -200,10 +211,9 @@ describe('ManagedPoolSettings', function () {
               tokens: poolTokens,
               weights: poolWeights,
               owner: owner.address,
-              poolType: WeightedPoolType.MANAGED_POOL,
               mustAllowlistLPs: false,
             };
-            pool = await WeightedPool.create(params);
+            pool = await createMockPool(params);
           });
 
           it('getMustAllowlistLPs() returns false', async () => {
@@ -217,10 +227,9 @@ describe('ManagedPoolSettings', function () {
               tokens: poolTokens,
               weights: poolWeights,
               vault,
-              poolType: WeightedPoolType.MANAGED_POOL,
               mustAllowlistLPs: true,
             };
-            pool = await WeightedPool.create(params);
+            pool = await createMockPool(params);
           });
 
           it('getMustAllowlistLPs() returns true', async () => {
@@ -236,13 +245,12 @@ describe('ManagedPoolSettings', function () {
       const params = {
         tokens: poolTokens,
         weights: poolWeights,
-        poolType: WeightedPoolType.MANAGED_POOL,
         vault,
         swapEnabledOnStart: true,
         mustAllowlistLPs: true,
         owner: owner.address,
       };
-      pool = await WeightedPool.create(params);
+      pool = await createMockPool(params);
     });
 
     context('when allowlist is active', () => {
@@ -339,10 +347,9 @@ describe('ManagedPoolSettings', function () {
           weights: poolWeights,
           owner: owner.address,
           vault,
-          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
-        pool = await WeightedPool.create(params);
+        pool = await createMockPool(params);
       });
 
       context('when the sender is not the owner', () => {
@@ -397,10 +404,9 @@ describe('ManagedPoolSettings', function () {
           weights: poolWeights,
           vault,
           owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
           swapEnabledOnStart: true,
         };
-        pool = await WeightedPool.create(params);
+        pool = await createMockPool(params);
       });
 
       const UPDATE_DURATION = DAY * 2;
@@ -521,17 +527,17 @@ describe('ManagedPoolSettings', function () {
   describe('update swap fee gradually', () => {
     let caller: SignerWithAddress;
 
-    let libInterface: Interface;
-
     let startTime: BigNumber, endTime: BigNumber;
     const START_DELAY = MINUTE * 10;
     const UPDATE_DURATION = DAY * 2;
     const START_SWAP_FEE = fp(0.5);
     const END_SWAP_FEE = fp(0.01);
 
-    sharedBeforeEach(async () => {
-      libInterface = new Interface((await getArtifact('ManagedPoolSwapFeesLib')).abi);
+    const VALID_SWAP_FEE = MIN_SWAP_FEE.add(MAX_SWAP_FEE).div(2);
+    const TOO_LOW_SWAP_FEE = MIN_SWAP_FEE.sub(1);
+    const TOO_HIGH_SWAP_FEE = MAX_SWAP_FEE.add(1);
 
+    sharedBeforeEach(async () => {
       const now = await currentTimestamp();
       startTime = now.add(START_DELAY);
       endTime = startTime.add(UPDATE_DURATION);
@@ -546,10 +552,168 @@ describe('ManagedPoolSettings', function () {
     }
 
     function itStartsAGradualFeeChange() {
+      describe('updateSwapFeeGradually', () => {
+        const UPDATE_DURATION = DAY * 2;
+
+        context('with invalid parameters', () => {
+          let start: BigNumber;
+          let end: BigNumber;
+
+          sharedBeforeEach(async () => {
+            const now = await currentTimestamp();
+            start = now.add(100);
+            end = start.add(WEEK);
+          });
+
+          it('cannot set starting swap fee below minimum', async () => {
+            await expect(
+              pool.updateSwapFeeGradually(caller, start, end, TOO_LOW_SWAP_FEE, VALID_SWAP_FEE)
+            ).to.be.revertedWith('MIN_SWAP_FEE_PERCENTAGE');
+          });
+
+          it('cannot set starting swap fee above maximum', async () => {
+            await expect(
+              pool.updateSwapFeeGradually(caller, start, end, TOO_HIGH_SWAP_FEE, VALID_SWAP_FEE)
+            ).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
+          });
+
+          it('cannot set ending swap fee below minimum', async () => {
+            await expect(
+              pool.updateSwapFeeGradually(caller, start, end, VALID_SWAP_FEE, TOO_LOW_SWAP_FEE)
+            ).to.be.revertedWith('MIN_SWAP_FEE_PERCENTAGE');
+          });
+
+          it('cannot set ending swap fee above maximum', async () => {
+            await expect(
+              pool.updateSwapFeeGradually(caller, start, end, VALID_SWAP_FEE, TOO_HIGH_SWAP_FEE)
+            ).to.be.revertedWith('MAX_SWAP_FEE_PERCENTAGE');
+          });
+
+          it('cannot have swap fee change finish before it starts', async () => {
+            await expect(
+              pool.updateSwapFeeGradually(caller, end, start, VALID_SWAP_FEE, VALID_SWAP_FEE)
+            ).to.be.revertedWith('GRADUAL_UPDATE_TIME_TRAVEL');
+          });
+        });
+
+        function itStartsAGradualWeightChangeCorrectly(startTimeOffset: BigNumberish, ongoingSwapFeeChange: boolean) {
+          let now, startTime: BigNumber, endTime: BigNumber;
+          const START_SWAP_FEE = INITIAL_SWAP_FEE;
+          const END_SWAP_FEE = VALID_SWAP_FEE;
+
+          sharedBeforeEach('calculate gradual update parameters', async () => {
+            now = await currentTimestamp();
+            startTime = now.add(startTimeOffset);
+            endTime = startTime.add(UPDATE_DURATION);
+
+            // Make sure start <> end (in case it got changed above)
+            expect(START_SWAP_FEE).to.not.equal(END_SWAP_FEE);
+          });
+
+          it('updates the swap fee parameters', async () => {
+            const tx = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+
+            const updateParams = await pool.getGradualSwapFeeUpdateParams();
+
+            // If the start time has already passed (due to multisig signer wrangling / a tx being slow to confirm),
+            // then we bring it forwards to block.timestamp to avoid reverting or causing a discontinuity in swap fees.
+            const txTimestamp = bn(await receiptTimestamp(tx.wait()));
+            const expectedStartTime = startTime.gt(txTimestamp) ? startTime : txTimestamp;
+
+            expect(updateParams.startTime).to.eq(expectedStartTime);
+            expect(updateParams.endTime).to.eq(endTime);
+            expect(updateParams.startSwapFeePercentage).to.equal(START_SWAP_FEE);
+            expect(updateParams.endSwapFeePercentage).to.equal(END_SWAP_FEE);
+          });
+
+          it('emits a GradualSwapFeeUpdateScheduled event', async () => {
+            const tx = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+            const receipt = await tx.wait();
+
+            const txTimestamp = bn(await receiptTimestamp(receipt));
+            const expectedStartTime = startTime.gt(txTimestamp) ? startTime : txTimestamp;
+
+            expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'GradualSwapFeeUpdateScheduled', {
+              startTime: expectedStartTime,
+              endTime: endTime,
+              startSwapFeePercentage: START_SWAP_FEE,
+              endSwapFeePercentage: END_SWAP_FEE,
+            });
+          });
+
+          // We don't run this test when an ongoing swap fee change is in progress as we can't guarantee the prior condition
+          if (!ongoingSwapFeeChange) {
+            context('when the starting swap fee is equal to the current swap fee', () => {
+              sharedBeforeEach(async () => {
+                expect(await pool.getSwapFeePercentage()).to.equal(START_SWAP_FEE);
+              });
+
+              it('does not emit a SwapFeePercentageChanged event', async () => {
+                const tx = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
+                expectEvent.notEmitted(await tx.wait(), 'SwapFeePercentageChanged');
+              });
+            });
+          }
+
+          context('when the starting swap fee is different from the current swap fee', () => {
+            sharedBeforeEach(async () => {
+              const blockTimestamp = (await currentTimestamp()).add(1);
+              await setNextBlockTimestamp(blockTimestamp);
+              await pool.updateSwapFeeGradually(caller, blockTimestamp, blockTimestamp, MAX_SWAP_FEE, MAX_SWAP_FEE);
+              expect(await pool.getSwapFeePercentage()).to.not.equal(START_SWAP_FEE);
+            });
+          });
+        }
+
+        context('when gradual update start time is the future', () => {
+          const START_TIME_OFFSET = MINUTE * 10;
+
+          context('with no ongoing swap fee change', () => {
+            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, false);
+          });
+
+          context('with an ongoing swap fee change', () => {
+            sharedBeforeEach(async () => {
+              // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+              // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+              // current swap fee correctly.
+              const now = await currentTimestamp();
+
+              await pool.updateSwapFeeGradually(caller, now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
+              await advanceToTimestamp(now.add(10));
+            });
+
+            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, true);
+          });
+        });
+
+        context('when gradual update start time is in the past', () => {
+          const START_TIME_OFFSET = -1 * MINUTE * 10;
+
+          context('with no ongoing swap fee change', () => {
+            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, false);
+          });
+
+          context('with an ongoing swap fee change', () => {
+            sharedBeforeEach(async () => {
+              // Before we schedule the "real" swap fee update we perform another one which ensures that the start and
+              // end swap fee percentages held in storage are not equal. This ensures that we're calculating the
+              // current swap fee correctly.
+              const now = await currentTimestamp();
+
+              await pool.updateSwapFeeGradually(caller, now.add(100), now.add(1000), MIN_SWAP_FEE, MAX_SWAP_FEE);
+              await advanceToTimestamp(now.add(10));
+            });
+
+            itStartsAGradualWeightChangeCorrectly(START_TIME_OFFSET, true);
+          });
+        });
+      });
+
       it('begins a gradual swap fee update', async () => {
         const receipt = await pool.updateSwapFeeGradually(caller, startTime, endTime, START_SWAP_FEE, END_SWAP_FEE);
 
-        expectEvent.inIndirectReceipt(await receipt.wait(), libInterface, 'GradualSwapFeeUpdateScheduled', {
+        expectEvent.inIndirectReceipt(await receipt.wait(), pool.instance.interface, 'GradualSwapFeeUpdateScheduled', {
           startTime: startTime,
           endTime: endTime,
           startSwapFeePercentage: START_SWAP_FEE,
@@ -560,11 +724,10 @@ describe('ManagedPoolSettings', function () {
 
     context('with an owner', () => {
       sharedBeforeEach('deploy pool', async () => {
-        pool = await WeightedPool.create({
+        pool = await createMockPool({
           vault,
           tokens: poolTokens,
           owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
         });
       });
 
@@ -587,11 +750,10 @@ describe('ManagedPoolSettings', function () {
 
     context('with a delegated owner', () => {
       sharedBeforeEach('deploy pool', async () => {
-        pool = await WeightedPool.create({
+        pool = await createMockPool({
           vault,
           tokens: poolTokens,
           owner: DELEGATE_OWNER,
-          poolType: WeightedPoolType.MANAGED_POOL,
         });
         caller = other;
       });
@@ -609,6 +771,31 @@ describe('ManagedPoolSettings', function () {
         itReverts();
       });
     });
+
+    describe('swap fee validation', () => {
+      sharedBeforeEach(async () => {
+        pool = await createMockPool({
+          vault,
+          tokens: poolTokens,
+        });
+      });
+
+      it('rejects swap fees above maximum', async () => {
+        await expect(pool.instance.validateSwapFeePercentage(TOO_HIGH_SWAP_FEE)).to.be.revertedWith(
+          'MAX_SWAP_FEE_PERCENTAGE'
+        );
+      });
+
+      it('rejects swap fee below minimum', async () => {
+        await expect(pool.instance.validateSwapFeePercentage(TOO_LOW_SWAP_FEE)).to.be.revertedWith(
+          'MIN_SWAP_FEE_PERCENTAGE'
+        );
+      });
+
+      it('accepts valid swap fees', async () => {
+        await expect(pool.instance.validateSwapFeePercentage(VALID_SWAP_FEE)).to.be.not.be.reverted;
+      });
+    });
   });
 
   describe('recovery mode', () => {
@@ -617,11 +804,10 @@ describe('ManagedPoolSettings', function () {
         tokens: poolTokens,
         weights: poolWeights,
         owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
       };
-      pool = await WeightedPool.create(params);
+      pool = await createMockPool(params);
       await pool.init({ from: other, initialBalances });
 
       await pool.collectAumManagementFees(owner);
@@ -660,13 +846,12 @@ describe('ManagedPoolSettings', function () {
         weights: poolWeights,
         assetManagers: poolTokens.map(() => assetManager.address),
         owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
         managementAumFeePercentage,
       };
-      pool = await WeightedPool.create(params);
+      pool = await createMockPool(params);
     });
 
     describe('management aum fee collection', () => {
@@ -870,13 +1055,12 @@ describe('ManagedPoolSettings', function () {
         tokens: poolTokens,
         weights: poolWeights,
         owner: owner.address,
-        poolType: WeightedPoolType.MANAGED_POOL,
         swapEnabledOnStart: true,
         vault,
         swapFeePercentage,
         managementAumFeePercentage,
       };
-      pool = await WeightedPool.create(params);
+      pool = await createMockPool(params);
 
       await poolTokens.mint({ to: owner, amount: fp(100) });
       await poolTokens.approve({ from: owner, to: await pool.getVault() });
