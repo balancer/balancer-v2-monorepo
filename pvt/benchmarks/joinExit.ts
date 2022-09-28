@@ -231,15 +231,16 @@ async function joinAndExitWeightedPool(
   const { address: poolAddress } = await vault.getPool(poolId);
   const pool: Contract = await deployedAt('v2-pool-weighted/WeightedPool', poolAddress);
 
+  const { tokens: assets } = await vault.getPoolTokens(poolId);
   const joinRequest = {
-    assets: pickTokenAddresses(tokens, numTokens),
-    maxAmountsIn: Array(numTokens).fill(MAX_UINT256),
+    assets,
+    maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
     userData: joinData,
     fromInternalBalance: !transferTokens,
   };
   const exitRequest = {
-    assets: pickTokenAddresses(tokens, numTokens),
-    minAmountsOut: Array(numTokens).fill(0),
+    assets,
+    minAmountsOut: Array(assets.length).fill(0),
     userData: exitData,
     fromInternalBalance: !transferTokens,
   };
