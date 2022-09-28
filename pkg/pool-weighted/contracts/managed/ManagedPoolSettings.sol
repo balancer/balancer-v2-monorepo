@@ -253,8 +253,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * value) to the given ending fee percentage, over startTime to endTime.
      *
      * Note that calling this with a starting swap fee different from the current value will immediately change the
-     * current swap fee to `startSwapFeePercentage` (including emitting the SwapFeePercentageChanged event),
-     * before commencing the gradual change at `startTime`. Emits the GradualSwapFeeUpdateScheduled event.
+     * current swap fee to `startSwapFeePercentage`, before commencing the gradual change at `startTime`.
+     * Emits the GradualSwapFeeUpdateScheduled event.
      * This is a permissioned function.
      *
      * @param startTime - The timestamp when the swap fee change will begin.
