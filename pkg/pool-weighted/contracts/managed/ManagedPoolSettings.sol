@@ -1022,19 +1022,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * externally.
      */
     function getBptPrice(IERC20 token, uint256 normalizedWeight) public view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
-        uint256 tokenBalance;
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (tokens[i] == token) {
-                tokenBalance = _upscale(balances[i], ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]));
-                break;
-            }
-        }
-
-        if (tokenBalance == 0) {
+        if (token == IERC20(this)) {
+            // BPT price of the BPT token itself is undefined.
             _revert(Errors.INVALID_TOKEN);
         }
+
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), token);
+        uint256 tokenBalance = _upscale(cash + managed, ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]));
 
         return totalSupply().mulUp(normalizedWeight).divDown(tokenBalance);
     }

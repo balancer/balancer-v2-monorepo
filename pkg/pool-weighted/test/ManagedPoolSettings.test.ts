@@ -566,7 +566,7 @@ describe('ManagedPoolSettings', function () {
         context('with invalid parameters', () => {
           it('fails if the token is invalid', async () => {
             await expect(pool.setCircuitBreaker(sender, ZERO_ADDRESS, LOWER_BOUND, UPPER_BOUND)).to.be.revertedWith(
-              'INVALID_TOKEN'
+              'TOKEN_NOT_REGISTERED'
             );
           });
 
@@ -641,6 +641,10 @@ describe('ManagedPoolSettings', function () {
 
               expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
             }
+          });
+
+          it('reverts if you pass the pool token', async () => {
+            await expect(pool.instance.getBptPrice(pool.address, poolWeights[0])).to.be.revertedWith('INVALID_TOKEN');
           });
         });
 
