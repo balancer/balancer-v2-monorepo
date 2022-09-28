@@ -22,7 +22,7 @@ import "../../contracts/lib/CircuitBreakerLib.sol";
 contract CircuitBreakerLibTest is Test {
     using FixedPoint for uint256;
 
-    uint256 private constant _MINIMUM_BOUND_PERCENTAGE = 1e17;  // 0.1
+    uint256 private constant _MINIMUM_BOUND_PERCENTAGE = 1e17; // 0.1
     // The weight complement (1 - w) is bounded by the min/max token weights
     uint256 private constant _MINIMUM_TOKEN_WEIGHT = 1e16; // 0.01 (1%)
     uint256 private constant _MAXIMUM_TOKEN_WEIGHT = 99e16; // 0.99 (99%)
@@ -43,9 +43,18 @@ contract CircuitBreakerLibTest is Test {
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(bptPrice, weightComplement, lowerBound, upperBound);
-        (uint256 actualBptPrice, uint256 actualWeightComplement, uint256 actualLowerBound, uint256 actualUpperBound)
-            = CircuitBreakerLib.getCircuitBreakerFields(poolState);
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(
+            bptPrice,
+            weightComplement,
+            lowerBound,
+            upperBound
+        );
+        (
+            uint256 actualBptPrice,
+            uint256 actualWeightComplement,
+            uint256 actualLowerBound,
+            uint256 actualUpperBound
+        ) = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
         assertEq(actualBptPrice, bptPrice);
         assertEq(actualWeightComplement, weightComplement);
@@ -67,11 +76,16 @@ contract CircuitBreakerLibTest is Test {
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(bptPrice, weightComplement, lowerBound, upperBound);
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(
+            bptPrice,
+            weightComplement,
+            lowerBound,
+            upperBound
+        );
 
         // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
-        (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) =
-            CircuitBreakerLib.getCurrentCircuitBreakerBounds(poolState, weightComplement);
+        (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) = CircuitBreakerLib
+            .getCurrentCircuitBreakerBounds(poolState, weightComplement);
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
@@ -91,16 +105,21 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(initialBptPrice, initialWeightComplement, lowerBound, upperBound);
-        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) =
-            CircuitBreakerLib.getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(
+            initialBptPrice,
+            initialWeightComplement,
+            lowerBound,
+            upperBound
+        );
+        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerLib
+            .getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 
         (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.getBoundaryConversionRatios(
             lowerBound,
             upperBound,
             newWeightComplement
         );
-        
+
         assertApproxEqRel(
             lowerBptPriceBoundary,
             uint256(initialBptPrice).mulDown(expectedLowerBptPrice),
