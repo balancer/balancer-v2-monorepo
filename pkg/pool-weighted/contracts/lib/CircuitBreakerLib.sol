@@ -85,7 +85,7 @@ library CircuitBreakerLib {
     // computed every time. However, if the weight of the token and composition of the pool have not changed since
     // the circuit breaker was set, these stored values can still be used, avoiding a heavy computation.
     //
-    // [      24 bits      |      24 bits      |  112 bits |   64 bits    |   16 bits   |   16 bits   |
+    // [      32 bits      |      32 bits      |   96 bits |   64 bits    |   16 bits   |   16 bits   |
     // [ upper bound ratio | lower bound ratio | BPT price | weight comp. | upper bound | lower bound |
     // |MSB                                                                                        LSB|
     uint256 private constant _LOWER_BOUND_OFFSET = 0;
@@ -96,9 +96,9 @@ library CircuitBreakerLib {
     uint256 private constant _UPPER_BOUND_RATIO_OFFSET = _LOWER_BOUND_RATIO_OFFSET + _BOUND_RATIO_WIDTH;
 
     uint256 private constant _WEIGHT_COMPLEMENT_WIDTH = 64;
-    uint256 private constant _BPT_PRICE_WIDTH = 112;
+    uint256 private constant _BPT_PRICE_WIDTH = 96;
     uint256 private constant _BOUND_WIDTH = 16;
-    uint256 private constant _BOUND_RATIO_WIDTH = 24;
+    uint256 private constant _BOUND_RATIO_WIDTH = 32;
 
     // We compress the ratios from a range of [0, 10e18], chosen to allow the upper bound to exceed 1.
     // For consistency, use the same max value to compress the lower bound, even though we expect it to be less than 1.

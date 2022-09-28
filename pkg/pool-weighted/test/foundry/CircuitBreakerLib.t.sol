@@ -30,7 +30,7 @@ contract CircuitBreakerLibTest is Test {
     uint256 private constant _MIN_BPT_PRICE = 1e6;
 
     uint256 private constant _MAX_RELATIVE_ERROR = 1e16;
-    uint256 private constant _MAX_BPT_PRICE = type(uint112).max;
+    uint256 private constant _MAX_BPT_PRICE = type(uint96).max;
 
     function testReferenceParams(
         uint256 bptPrice,
