@@ -958,7 +958,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     function getCircuitBreakerFields(IERC20 token)
         external
         view
-        returns (CircuitBreakerLib.CircuitBreakerParams memory)
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
     {
         return CircuitBreakerLib.getCircuitBreakerFields(_circuitBreakerState[token]);
     }
@@ -1014,15 +1019,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 normalizedWeight = _getNormalizedWeight(token);
 
         // Note that `getBptPrice` will revert if the token is invalid.
-        CircuitBreakerLib.CircuitBreakerParams memory params = CircuitBreakerLib.CircuitBreakerParams({
-            bptPrice: getBptPrice(token, normalizedWeight),
-            weightComplement: normalizedWeight.complement(),
-            lowerBound: lowerBoundPercentage,
-            upperBound: upperBoundPercentage
-        });
-
         // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(params);
+        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(
+            getBptPrice(token, normalizedWeight),
+            normalizedWeight.complement(),
+            lowerBoundPercentage,
+            upperBoundPercentage
+        );
 
         emit CircuitBreakerSet(token, lowerBoundPercentage, upperBoundPercentage);
     }

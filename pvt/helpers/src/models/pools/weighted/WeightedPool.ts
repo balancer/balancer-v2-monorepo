@@ -28,7 +28,6 @@ import {
   GradualWeightUpdateParams,
   GradualSwapFeeUpdateParams,
   WeightedPoolType,
-  CircuitBreakerParams,
 } from './types';
 import {
   calculateInvariant,
@@ -626,7 +625,7 @@ export default class WeightedPool extends BasePool {
     return await pool.getGradualSwapFeeUpdateParams();
   }
 
-  async getCircuitBreakerFields(token: Token | string): Promise<CircuitBreakerParams> {
+  async getCircuitBreakerFields(token: Token | string): Promise<BigNumber[]> {
     return await this.instance.getCircuitBreakerFields(TypesConverter.toAddress(token));
   }
 

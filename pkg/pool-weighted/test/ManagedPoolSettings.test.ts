@@ -28,7 +28,7 @@ import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { CircuitBreakerParams, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
@@ -605,7 +605,12 @@ describe('ManagedPoolSettings', function () {
           });
 
           it('stores the params', async () => {
-            const circuitBreakerParams = await pool.getCircuitBreakerFields(poolTokens.first);
+            const [
+              actualBptPrice,
+              actualWeightComplement,
+              actualLowerBound,
+              actualUpperBound,
+            ] = await pool.getCircuitBreakerFields(poolTokens.first);
             const expectedWeightComplement = FP_ONE.sub(poolWeights[0]);
             const totalSupply = await pool.totalSupply();
             const scalingFactors = await pool.getScalingFactors();
@@ -615,10 +620,10 @@ describe('ManagedPoolSettings', function () {
               fpMul(initialBalances[0], scalingFactors[0])
             );
 
-            expect(circuitBreakerParams.lowerBound).to.equalWithError(LOWER_BOUND, 0.001);
-            expect(circuitBreakerParams.upperBound).to.equalWithError(UPPER_BOUND, 0.001);
-            expect(circuitBreakerParams.bptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
-            expect(circuitBreakerParams.weightComplement).to.equal(expectedWeightComplement);
+            expect(actualLowerBound).to.equalWithError(LOWER_BOUND, 0.001);
+            expect(actualUpperBound).to.equalWithError(UPPER_BOUND, 0.001);
+            expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
+            expect(actualWeightComplement).to.equal(expectedWeightComplement);
           });
         });
 
@@ -655,7 +660,7 @@ describe('ManagedPoolSettings', function () {
 
           let referenceLowerBoundBptPrice: BigNumber;
           let referenceUpperBoundBptPrice: BigNumber;
-          let circuitBreakerParams: CircuitBreakerParams;
+          let bptPrice: BigNumber;
 
           function getBptPriceBounds(bptPrice: BigNumber, normalizedWeight: BigNumber): BigNumber[] {
             const weightComplement = Number(fromFp(fp(1).sub(normalizedWeight)));
@@ -670,7 +675,7 @@ describe('ManagedPoolSettings', function () {
           sharedBeforeEach('set the breaker', async () => {
             await pool.setCircuitBreaker(owner, poolTokens.first, fp(lowerBound), fp(upperBound));
 
-            circuitBreakerParams = await pool.getCircuitBreakerFields(poolTokens.first);
+            [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
             [referenceLowerBoundBptPrice, referenceUpperBoundBptPrice] = await pool.getCurrentCircuitBreakerBounds(
               poolTokens.first
             );
@@ -678,10 +683,7 @@ describe('ManagedPoolSettings', function () {
 
           it('sets the reference bounds', async () => {
             // Computing with the original weight should match the stored values
-            const [expectedLowerBoundBptPrice, expectedUpperBoundBptPrice] = getBptPriceBounds(
-              circuitBreakerParams.bptPrice,
-              initialWeight
-            );
+            const [expectedLowerBoundBptPrice, expectedUpperBoundBptPrice] = getBptPriceBounds(bptPrice, initialWeight);
 
             expect(expectedLowerBoundBptPrice).to.equalWithError(referenceLowerBoundBptPrice, 0.001);
             expect(expectedUpperBoundBptPrice).to.equalWithError(referenceUpperBoundBptPrice, 0.001);
@@ -726,7 +728,7 @@ describe('ManagedPoolSettings', function () {
                 const intermediateWeight = getIntermediateWeight(poolWeights[0], endWeights[0], pct);
 
                 const [expectedLowerBptPriceBound, expectedUpperBptPriceBound] = getBptPriceBounds(
-                  circuitBreakerParams.bptPrice,
+                  bptPrice,
                   intermediateWeight
                 );
 
