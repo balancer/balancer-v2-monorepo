@@ -105,7 +105,6 @@ async function deployControllerAndPool(
 
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts
 describe('ManagedPoolController', function () {
-  const NEW_SWAP_FEE = fp(0.05);
   const NEW_MGMT_AUM_FEE = fp(0.015);
 
   context('pool controller not initialized', () => {
@@ -119,12 +118,6 @@ describe('ManagedPoolController', function () {
 
     it('sets up the pool controller', async () => {
       expect(await poolController.getManager()).to.equal(manager.address);
-    });
-
-    it('cannot call functions before initialization', async () => {
-      await expect(poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
-        'UNINITIALIZED_POOL_CONTROLLER'
-      );
     });
 
     it('sets base pool permissions', async () => {
@@ -151,20 +144,6 @@ describe('ManagedPoolController', function () {
     sharedBeforeEach('initialize pool controller', async () => {
       await deployControllerAndPool();
       await poolController.initialize(pool.address);
-    });
-
-    describe('set swap fee percentage', () => {
-      it('lets the manager set the swap fee', async () => {
-        await poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE);
-
-        expect(await pool.getSwapFeePercentage()).to.equal(NEW_SWAP_FEE);
-      });
-
-      it('reverts if non-manager sets the swap fee', async () => {
-        await expect(poolController.connect(other).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
-        );
-      });
     });
 
     describe('change management aum fee percentage', () => {
