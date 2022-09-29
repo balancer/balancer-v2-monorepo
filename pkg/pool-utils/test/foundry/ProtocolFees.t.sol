@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "../../contracts/protocol-fees/ProtocolFees.sol";
+import "../../contracts/external-fees/ProtocolFees.sol";
 
 contract ProtocolFeesTest is Test {
     function testNoPercentage(uint128 totalSupply) external {

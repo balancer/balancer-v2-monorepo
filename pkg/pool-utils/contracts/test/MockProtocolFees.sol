@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../protocol-fees/ProtocolFees.sol";
+import "../external-fees/ProtocolFees.sol";
 
 contract MockProtocolFees {
     function bptForPoolOwnershipPercentage(uint256 totalSupply, uint256 poolPercentage)

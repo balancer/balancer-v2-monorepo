@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../protocol-fees/ExternalAUMFees.sol";
+import "../external-fees/ExternalAUMFees.sol";
 
 contract MockExternalAUMFees {
     function getAumFeesBptAmount(
