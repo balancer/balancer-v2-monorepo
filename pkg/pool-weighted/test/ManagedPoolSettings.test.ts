@@ -829,7 +829,7 @@ describe('ManagedPoolSettings', function () {
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
 
-        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address, poolWeights[0]);
+        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address);
       });
 
       function itReverts() {
@@ -896,7 +896,7 @@ describe('ManagedPoolSettings', function () {
           });
 
           it('setting a circuit breaker emits an event', async () => {
-            const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address, poolWeights[0]);
+            const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address);
 
             const receipt = await pool.setCircuitBreakers(sender, [poolTokens.first], [initialPrice], [LOWER_BOUND], [UPPER_BOUND]);
             const [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
@@ -1012,14 +1012,14 @@ describe('ManagedPoolSettings', function () {
             fpMul(totalSupply, poolWeights[i]),
             fpMul(initialBalances[i], scalingFactors[i])
           );
-          const actualBptPrice = await pool.instance.getBptPrice(poolTokens.tokens[i].address, poolWeights[i]);
+          const actualBptPrice = await pool.instance.getBptPrice(poolTokens.tokens[i].address);
 
           expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
         }
       });
 
       it('returns 1 if you pass the pool token', async () => {
-        expect(await pool.instance.getBptPrice(pool.address, poolWeights[0])).to.equal(FP_ONE);
+        expect(await pool.instance.getBptPrice(pool.address)).to.equal(FP_ONE);
       });
     });
 
@@ -1035,7 +1035,7 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
-        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address, poolWeights[0]);
+        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address);
       });
 
       const initialWeight = poolWeights[0];
