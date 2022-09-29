@@ -57,12 +57,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
     // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
-    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
+    // amounts exceed the pool's token balances in the Vault. 95% is a very high but safe maximum value, and we want to
+    // be permissive to let the owner manage the Pool as they see fit.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 95e16; // 95%
 
+    // The same logic applies to the AUM fee.
+    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 95e16; // 95%
+
+    // We impose a minimum swap fee to create some buy/sell spread, and prevent the Pool from being drained through
+    // repeated interactions. We should not need this since we explicity always round favoring the Pool, but a minimum
+    // swap fee adds an extra safeguard.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-
-    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
     // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
