@@ -1110,9 +1110,10 @@ describe('ManagedPoolSettings', function () {
               intermediateWeight
             );
 
-            const { lowerBptPriceBound: actualLowerBptPriceBound, upperBptPriceBound: actualUpperBptPriceBound } = await pool.getCircuitBreakerState(
-              poolTokens.first
-            );
+            const {
+              lowerBptPriceBound: actualLowerBptPriceBound,
+              upperBptPriceBound: actualUpperBptPriceBound,
+            } = await pool.getCircuitBreakerState(poolTokens.first);
 
             expect(actualLowerBptPriceBound).to.equalWithError(expectedLowerBptPriceBound, 0.001);
             expect(actualUpperBptPriceBound).to.equalWithError(expectedUpperBptPriceBound, 0.001);
