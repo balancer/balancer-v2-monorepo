@@ -58,7 +58,7 @@ describe('ProtocolFeeCache', () => {
   });
 
   context('with valid fee type ids', () => {
-    context('using default mapping', () => {
+    context('using default fee ids', () => {
       itTestsProtocolFeePercentages({ swap: ProtocolFee.SWAP, yield: ProtocolFee.YIELD, aum: ProtocolFee.AUM });
     });
 
