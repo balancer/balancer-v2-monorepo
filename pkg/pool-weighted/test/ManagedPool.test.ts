@@ -17,7 +17,6 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import {
   JoinQueryResult,
-  JoinResult,
   RawWeightedPoolDeployment,
   SwapResult,
   WeightedPoolType,
