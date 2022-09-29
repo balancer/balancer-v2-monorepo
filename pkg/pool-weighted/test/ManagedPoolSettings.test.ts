@@ -793,24 +793,24 @@ describe('ManagedPoolSettings', function () {
     });
 
     context('when entering recovery mode', () => {
-      it('sets the actual supply equal to the total supply', async () => {
+      it('sets the actual supply equal to the virtual supply', async () => {
         // Advance time so that AUM fees are accrued.
         await advanceTime(365 * DAY);
 
-        const totalSupplyBefore = await pool.totalSupply();
+        const virtualSupplyBefore = await pool.getVirtualSupply();
         const actualSupplyBefore = await pool.getActualSupply();
 
-        // The total supply which doesn't consider yet-to-be-minted fees should be lower.
+        // The virtual supply which doesn't consider yet-to-be-minted fees should be lower.
         // Check that we have a difference of at least 0.01% to discard rounding error.
-        expect(totalSupplyBefore).to.be.lt(actualSupplyBefore.mul(9999).div(10000));
+        expect(virtualSupplyBefore).to.be.lt(actualSupplyBefore.mul(9999).div(10000));
 
         await pool.enableRecoveryMode();
 
-        const totalSupplyAfter = await pool.totalSupply();
-        expect(totalSupplyAfter).to.be.eq(totalSupplyBefore);
+        const virtualSupplyAfter = await pool.getVirtualSupply();
+        expect(virtualSupplyAfter).to.be.eq(virtualSupplyBefore);
 
         const actualSupplyAfter = await pool.getActualSupply();
-        expect(actualSupplyAfter).to.equalWithError(totalSupplyAfter, 0.0001);
+        expect(actualSupplyAfter).to.equalWithError(virtualSupplyAfter, 0.0001);
       });
     });
 
@@ -857,11 +857,11 @@ describe('ManagedPoolSettings', function () {
 
     describe('management aum fee collection', () => {
       function expectedAUMFees(
-        totalSupply: BigNumberish,
+        virtualSupply: BigNumberish,
         aumFeePercentage: BigNumberish,
         timeElapsed: BigNumberish
       ): BigNumber {
-        return bn(totalSupply)
+        return bn(virtualSupply)
           .mul(timeElapsed)
           .div(365 * DAY)
           .mul(aumFeePercentage)
@@ -894,8 +894,8 @@ describe('ManagedPoolSettings', function () {
         it('collects the expected amount of fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
 
-          const totalSupply = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+          const virtualSupply = await pool.getVirtualSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(virtualSupply, managementAumFeePercentage, timeElapsed);
 
           const receipt = await collectAUMFees();
 
@@ -909,10 +909,14 @@ describe('ManagedPoolSettings', function () {
         });
 
         it('reports the expected actual supply', async () => {
-          const totalSupplyBefore = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(totalSupplyBefore, managementAumFeePercentage, timeElapsed);
+          const virtualSupplyBefore = await pool.getVirtualSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(
+            virtualSupplyBefore,
+            managementAumFeePercentage,
+            timeElapsed
+          );
 
-          const expectedActualSupply = totalSupplyBefore.add(expectedManagementFeeBpt);
+          const expectedActualSupply = virtualSupplyBefore.add(expectedManagementFeeBpt);
           const actualSupply = await pool.getActualSupply();
           expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
         });
@@ -926,13 +930,13 @@ describe('ManagedPoolSettings', function () {
           expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, 1e-6);
         });
 
-        it('syncs the total supply to the actual supply', async () => {
+        it('syncs the virtual supply to the actual supply', async () => {
           const actualSupplyBefore = await pool.getActualSupply();
 
           await collectAUMFees();
 
-          const totalSupplyAfter = await pool.totalSupply();
-          expect(totalSupplyAfter).to.equalWithError(actualSupplyBefore, 1e-6);
+          const virtualSupplyAfter = await pool.getVirtualSupply();
+          expect(virtualSupplyAfter).to.equalWithError(actualSupplyBefore, 1e-6);
         });
       }
 
@@ -1102,8 +1106,8 @@ describe('ManagedPoolSettings', function () {
     it('accounts for the protocol portion of the AUM fee', async () => {
       const protocolFeesCollector = await vault.getFeesCollector();
 
-      const totalSupply = await pool.totalSupply();
-      const expectedBpt = totalSupply
+      const virtualSupplyAfter = await pool.getVirtualSupply();
+      const expectedBpt = virtualSupplyAfter
         .mul(180)
         .div(365)
         .mul(managementAumFeePercentage)
