@@ -977,19 +977,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Returns flags indicating whether the lower or upper bound circuit breakers have tripped.
-     */
-    function hasCircuitBreakerTripped(IERC20 token) external view returns (bool, bool) {
-        return
-            CircuitBreakerLib.hasCircuitBreakerTripped(
-                _circuitBreakerState[token],
-                getActualSupply(),
-                _getNormalizedWeight(token),
-                _getUpscaledTokenBalance(token)
-            );
-    }
-
-    /**
      * @notice Set a circuit breaker for one or more tokens.
      * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
      * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
