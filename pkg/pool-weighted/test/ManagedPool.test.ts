@@ -135,6 +135,7 @@ describe('ManagedPool', function () {
 
     context('join swaps', () => {
       function itPerformsAJoinSwapCorrectly(
+        joinTokenIndex: number,
         doJoinSwap: () => Promise<SwapResult>,
         queryJoinSwap: () => Promise<BigNumber[]>,
         queryEquivalentJoin: () => Promise<JoinQueryResult>
@@ -149,14 +150,17 @@ describe('ManagedPool', function () {
             const joinResult = await queryEquivalentJoin();
 
             // BPT is leaving the Vault and so is represented as a negative value.
-            expect(joinSwapResult[0].mul(-1)).to.be.eq(joinResult.bptOut);
+            expect(joinSwapResult[BPT_INDEX].mul(-1)).to.be.eq(joinResult.bptOut);
           });
 
           it('takes the same amount of tokens as the equivalent join', async () => {
             const joinSwapResult = await queryJoinSwap();
             const joinResult = await queryEquivalentJoin();
 
-            expect(joinSwapResult[1]).to.be.eq(joinResult.amountsIn[1]);
+            // Note that these two arrays index over two different sets of tokens.
+            // `joinSwapResult` indexes over the tokens involved in the swap and so has length 2
+            // `joinResult.amountsIn` indexes over all the tokens in the pool (including BPT).
+            expect(joinSwapResult[1]).to.be.eq(joinResult.amountsIn[joinTokenIndex]);
           });
         }
 
@@ -205,9 +209,13 @@ describe('ManagedPool', function () {
         });
       }
 
+      const JOIN_TOKEN_INDEX = 1;
+
       context('given in', () => {
         itPerformsAJoinSwapCorrectly(
-          () => pool.swapGivenIn({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other }),
+          JOIN_TOKEN_INDEX,
+          () =>
+            pool.swapGivenIn({ in: JOIN_TOKEN_INDEX, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other }),
           () =>
             pool.vault.queryBatchSwap({
               kind: SwapKind.GivenIn,
@@ -222,7 +230,8 @@ describe('ManagedPool', function () {
             }),
           () =>
             pool.queryJoinGivenIn({
-              amountsIn: poolTokens.map((_, i) => (i == 0 ? fp(0.1) : FP_ZERO)),
+              // `amountsIn` and `poolTokens` don't include BPT so we subtract 1 from JOIN_TOKEN_INDEX
+              amountsIn: poolTokens.map((_, i) => (i == JOIN_TOKEN_INDEX - 1 ? fp(0.1) : FP_ZERO)),
               from: other,
               recipient: other,
             })
@@ -231,7 +240,9 @@ describe('ManagedPool', function () {
 
       context('given out', () => {
         itPerformsAJoinSwapCorrectly(
-          () => pool.swapGivenOut({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other }),
+          JOIN_TOKEN_INDEX,
+          () =>
+            pool.swapGivenOut({ in: JOIN_TOKEN_INDEX, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other }),
           () =>
             pool.vault.queryBatchSwap({
               kind: SwapKind.GivenOut,
@@ -246,7 +257,8 @@ describe('ManagedPool', function () {
             }),
           () =>
             pool.queryJoinGivenOut({
-              token: 1,
+              // `userData` doesn't account for BPT so we subtract 1 from JOIN_TOKEN_INDEX
+              token: JOIN_TOKEN_INDEX - 1,
               bptOut: fp(0.1),
               from: other,
               recipient: other,
