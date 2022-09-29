@@ -119,9 +119,14 @@ describe('ProtocolFeeCache', () => {
 
           context('when the fee value is updated', () => {
             const NEW_VALUE = fp(0.007);
+            let preSwapFee: BigNumber, preYieldFee: BigNumber, preAumFee: BigNumber;
 
             sharedBeforeEach('update the provider protocol fee', async () => {
               await vault.protocolFeesProvider.connect(admin).setFeeTypePercentage(providerFeeId, NEW_VALUE);
+
+              preSwapFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP);
+              preYieldFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.YIELD);
+              preAumFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.AUM);
             });
 
             it('retrieves the old fee value when not updated', async () => {
@@ -135,10 +140,6 @@ describe('ProtocolFeeCache', () => {
             });
 
             it('calls the hook before the cache is updated', async () => {
-              const preSwapFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP);
-              const preYieldFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.YIELD);
-              const preAumFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.AUM);
-
               const receipt = await protocolFeeCache.updateProtocolFeePercentageCache();
 
               expectEvent.inReceipt(await receipt.wait(), 'FeesInBeforeHook', {
@@ -150,10 +151,14 @@ describe('ProtocolFeeCache', () => {
 
             it('emits an event when updating the cache', async () => {
               const receipt = await protocolFeeCache.updateProtocolFeePercentageCache();
+              const feeCache = {
+                swap: providerFeeId.eq(providerFeeIds.swap) ? NEW_VALUE : preSwapFee,
+                yield: providerFeeId.eq(providerFeeIds.yield) ? NEW_VALUE : preYieldFee,
+                aum: providerFeeId.eq(providerFeeIds.aum) ? NEW_VALUE : preAumFee,
+              };
 
               expectEvent.inReceipt(await receipt.wait(), 'ProtocolFeePercentageCacheUpdated', {
-                feeType: cacheFeeType,
-                protocolFeePercentage: NEW_VALUE,
+                feeCache: Object.values(feeCache),
               });
             });
           });

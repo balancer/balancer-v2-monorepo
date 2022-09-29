@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
@@ -63,7 +64,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     FeeTypeCache private _cache;
 
-    event ProtocolFeePercentageCacheUpdated(uint256 indexed feeType, uint256 protocolFeePercentage);
+    event ProtocolFeePercentageCacheUpdated(FeeTypeCache feeCache);
 
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs) {
         _protocolFeeProvider = protocolFeeProvider;
@@ -71,9 +72,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         _yieldFeeId = providerFeeIDs.yield;
         _aumFeeId = providerFeeIDs.aum;
 
-        _updateSwapProtocolFeeCache(protocolFeeProvider, providerFeeIDs.swap);
-        _updateYieldProtocolFeeCache(protocolFeeProvider, providerFeeIDs.yield);
-        _updateAumProtocolFeeCache(protocolFeeProvider, providerFeeIDs.aum);
+        _updateProtocolFeeCache(protocolFeeProvider, providerFeeIDs);
     }
 
     /**
@@ -117,9 +116,10 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     function updateProtocolFeePercentageCache() external {
         _beforeProtocolFeeCacheUpdate();
 
-        _updateSwapProtocolFeeCache(_protocolFeeProvider, _swapFeeId);
-        _updateYieldProtocolFeeCache(_protocolFeeProvider, _yieldFeeId);
-        _updateAumProtocolFeeCache(_protocolFeeProvider, _aumFeeId);
+        _updateProtocolFeeCache(
+            _protocolFeeProvider,
+            ProviderFeeIDs({ swap: _swapFeeId, yield: _yieldFeeId, aum: _aumFeeId })
+        );
     }
 
     /**
@@ -131,21 +131,18 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _updateSwapProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeId) private {
-        uint256 swapFee = protocolFeeProvider.getFeeTypePercentage(feeId);
-        _cache.swapFee = swapFee.toUint64();
-        emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.SWAP, swapFee);
-    }
+    function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory feeIds)
+        private
+    {
+        uint256 swapFee = protocolFeeProvider.getFeeTypePercentage(feeIds.swap);
+        uint256 yieldFee = protocolFeeProvider.getFeeTypePercentage(feeIds.yield);
+        uint256 aumFee = protocolFeeProvider.getFeeTypePercentage(feeIds.aum);
 
-    function _updateYieldProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeId) private {
-        uint256 yieldFee = protocolFeeProvider.getFeeTypePercentage(feeId);
-        _cache.yieldFee = yieldFee.toUint64();
-        emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.YIELD, yieldFee);
-    }
-
-    function _updateAumProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, uint256 feeId) private {
-        uint256 aumFee = protocolFeeProvider.getFeeTypePercentage(feeId);
-        _cache.aumFee = aumFee.toUint64();
-        emit ProtocolFeePercentageCacheUpdated(ProtocolFeeType.AUM, aumFee);
+        _cache = FeeTypeCache({
+            swapFee: swapFee.toUint64(),
+            yieldFee: yieldFee.toUint64(),
+            aumFee: aumFee.toUint64()
+        });
+        emit ProtocolFeePercentageCacheUpdated(_cache);
     }
 }
