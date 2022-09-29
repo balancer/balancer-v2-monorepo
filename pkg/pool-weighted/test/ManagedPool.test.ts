@@ -324,6 +324,7 @@ describe('ManagedPool', function () {
             });
 
             context('when trader is not allowlisted', () => {
+              // The allowlist is for joins, not exits or swaps
               isEquivalentToARegularExit();
             });
           });
