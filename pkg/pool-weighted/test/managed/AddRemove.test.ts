@@ -289,14 +289,17 @@ describe('ManagedPoolSettings - add/remove token', () => {
               const { tokens: afterAddTokens } = await pool.getTokens();
               const afterAddWeights = await pool.getNormalizedWeights();
 
-              const newTokenWeightIndex = afterAddTokens.indexOf(newToken.address);
+              // We subtract 1 from this as the weights array doesn't include BPT.
+              const newTokenWeightIndex = afterAddTokens.indexOf(newToken.address) - 1;
               expect(afterAddWeights[newTokenWeightIndex]).to.equalWithError(normalizedWeight, 1e-14);
             });
 
             it('scales weights of all other tokens', async () => {
-              const { tokens: beforeTokens } = await pool.getTokens();
+              const { tokens: beforeTokensWithBpt } = await pool.getTokens();
               const beforeWeights = await pool.getNormalizedWeights();
 
+              // The first token is BPT which doesn't have a weight so we drop it.
+              const beforeTokens = beforeTokensWithBpt.slice(1);
               const beforeTokenWeights = range(beforeTokens.length).map((i) => ({
                 token: beforeTokens[i],
                 weight: beforeWeights[i],
@@ -304,9 +307,11 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
               await pool.addToken(owner, newToken, assetManager, fp(0.1));
 
-              const { tokens: afterTokens } = await pool.getTokens();
+              const { tokens: afterTokensWithBpt } = await pool.getTokens();
               const afterWeights = await pool.getNormalizedWeights();
 
+              // The first token is BPT which doesn't have a weight so we drop it.
+              const afterTokens = afterTokensWithBpt.slice(1);
               const afterTokenWeights = range(afterTokens.length).map((i) => ({
                 token: afterTokens[i],
                 weight: afterWeights[i],
@@ -567,9 +572,11 @@ describe('ManagedPoolSettings - add/remove token', () => {
             });
 
             it('scales weights of all other tokens', async () => {
-              const { tokens: beforeTokens } = await pool.getTokens();
+              const { tokens: beforeTokensWithBpt } = await pool.getTokens();
               const beforeWeights = await pool.getNormalizedWeights();
 
+              // The first token is BPT which doesn't have a weight so we drop it.
+              const beforeTokens = beforeTokensWithBpt.slice(1);
               const beforeTokenWeights = range(beforeTokens.length).map((i) => ({
                 token: beforeTokens[i],
                 weight: beforeWeights[i],
@@ -577,9 +584,11 @@ describe('ManagedPoolSettings - add/remove token', () => {
 
               await pool.removeToken(owner, tokenToRemove);
 
-              const { tokens: afterTokens } = await pool.getTokens();
+              const { tokens: afterTokensWithBpt } = await pool.getTokens();
               const afterWeights = await pool.getNormalizedWeights();
 
+              // The first token is BPT which doesn't have a weight so we drop it.
+              const afterTokens = afterTokensWithBpt.slice(1);
               const afterTokenWeights = range(afterTokens.length).map((i) => ({
                 token: afterTokens[i],
                 weight: afterWeights[i],

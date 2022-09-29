@@ -76,7 +76,7 @@ describe('ManagedPoolSettings', function () {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
       poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPool',
+      mockContractName: 'MockManagedPoolSettings',
     };
     return WeightedPool.create(fullParams);
   }
