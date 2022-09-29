@@ -55,7 +55,8 @@ contract ManagedPool is ManagedPoolSettings {
     using WeightedPoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
-    // We are preminting half of that value (rounded up).
+    // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
+    // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
 
     constructor(
@@ -94,6 +95,9 @@ contract ManagedPool is ManagedPoolSettings {
      * totalSupply and Vault balance can change. If users join or exit using swaps, some of the preminted BPT are
      * exchanged, so the Vault's balance increases after joins and decreases after exits. If users call the recovery
      * mode exit function, the totalSupply can change as BPT are burned.
+     *
+     * The virtual supply can also be calculated by calling ComposablePoolLib.dropBptFromBalances with appropriate
+     * inputs, which is the preferred approach whenever possible, as it avoids extra calls to the Vault.
      */
     function _getVirtualSupply() internal view override returns (uint256) {
         (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
@@ -240,8 +244,6 @@ contract ManagedPool is ManagedPoolSettings {
 
         // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
         // supply, and have the Vault pull those tokens from the sender as part of the join.
-        // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
-        // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
         //
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
         // all accounts.
