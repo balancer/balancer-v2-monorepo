@@ -189,6 +189,7 @@ contract ManagedPool is ManagedPoolSettings {
             // BPT doesn't need scaling so we can return immediately.
             return amountOut;
         } else {
+            // request.amount is a BPT amount, so it doesn't need scaling.
             uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
                 balanceTokenIn,
                 tokenInWeight,
