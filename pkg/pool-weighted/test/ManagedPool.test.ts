@@ -156,7 +156,7 @@ describe('ManagedPool', function () {
             const joinSwapResult = await queryJoinSwap();
             const joinResult = await queryEquivalentJoin();
 
-            expect(joinSwapResult[1]).to.be.eq(joinResult.amountsIn[2]);
+            expect(joinSwapResult[1]).to.be.eq(joinResult.amountsIn[1]);
           });
         }
 
@@ -222,7 +222,7 @@ describe('ManagedPool', function () {
             }),
           () =>
             pool.queryJoinGivenIn({
-              amountsIn: poolTokens.map((_, i) => (i == 1 ? fp(0.1) : FP_ZERO)),
+              amountsIn: poolTokens.map((_, i) => (i == 0 ? fp(0.1) : FP_ZERO)),
               from: other,
               recipient: other,
             })
