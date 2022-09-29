@@ -147,8 +147,8 @@ contract ManagedPool is ManagedPoolSettings {
 
             // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
             // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-            // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
+            // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
             uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
