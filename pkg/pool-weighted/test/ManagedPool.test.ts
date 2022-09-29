@@ -136,8 +136,7 @@ describe('ManagedPool', function () {
       function itPerformsAJoinSwapCorrectly(doJoinSwap: () => Promise<SwapResult>) {
         function doesJoinThingsCorrectly() {
           it("doesn't revert", async () => {
-            await doJoinSwap();
-            // await expect(doJoinSwap()).to.not.be.reverted;
+            await expect(doJoinSwap()).to.not.be.reverted;
           });
         }
 
