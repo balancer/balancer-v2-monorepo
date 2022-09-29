@@ -617,7 +617,7 @@ describe('ManagedPoolSettings', function () {
               actualUpperBound,
             ] = await pool.getCircuitBreakerFields(poolTokens.first);
             const expectedWeightComplement = FP_ONE.sub(poolWeights[0]);
-            const totalSupply = await pool.totalSupply();
+            const totalSupply = await pool.getActualSupply();
             const scalingFactors = await pool.getScalingFactors();
 
             const expectedBptPrice = fpDiv(
@@ -637,7 +637,7 @@ describe('ManagedPoolSettings', function () {
           let scalingFactors: BigNumber[];
 
           sharedBeforeEach('get pool data', async () => {
-            totalSupply = await pool.totalSupply();
+            totalSupply = await pool.getActualSupply();
             scalingFactors = await pool.getScalingFactors();
           });
 
