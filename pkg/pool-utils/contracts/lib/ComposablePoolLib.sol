@@ -89,4 +89,14 @@ library ComposablePoolLib {
             balances := add(registeredBalances, 32)
         }
     }
+
+    /**
+     * @notice Returns the passed array prepended with an zero element.
+     */
+    function prependZeroElement(uint256[] memory array) internal pure returns (uint256[] memory prependedArray) {
+        prependedArray = new uint256[](array.length + 1);
+        for (uint256 i = 0; i < array.length; i++) {
+            prependedArray[i + 1] = array[i];
+        }
+    }
 }
