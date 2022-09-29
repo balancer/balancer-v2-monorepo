@@ -68,7 +68,7 @@ describe('ManagedPool owner only actions', () => {
     'setSwapEnabled(bool)',
     'updateSwapFeeGradually(uint256,uint256,uint256,uint256)',
     'updateWeightsGradually(uint256,uint256,address[],uint256[])',
-    'setCircuitBreaker(address,uint256,uint256)',
+    'setCircuitBreakers(address[],uint256[],uint256[])',
   ];
 
   const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));

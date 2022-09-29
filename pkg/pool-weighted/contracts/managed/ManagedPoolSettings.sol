@@ -986,18 +986,22 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Set a circuit breaker for a token.
+     * @notice Set a circuit breaker for one or more tokens.
      * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
      * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
      * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
      * more relative to the rest of the pool.
      */
-    function setCircuitBreaker(
-        IERC20 token,
-        uint256 lowerBoundPercentage,
-        uint256 upperBoundPercentage
+    function setCircuitBreakers(
+        IERC20[] memory tokens,
+        uint256[] memory lowerBoundPercentages,
+        uint256[] memory upperBoundPercentages
     ) external authenticate whenNotPaused {
-        _setCircuitBreaker(token, lowerBoundPercentage, upperBoundPercentage);
+        InputHelpers.ensureInputLengthMatch(tokens.length, lowerBoundPercentages.length, upperBoundPercentages.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _setCircuitBreaker(tokens[i], lowerBoundPercentages[i], upperBoundPercentages[i]);
+        }
     }
 
     // Compute the reference values, then pass them along with the bounds to the library.
@@ -1060,7 +1064,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setCircuitBreaker.selector));
+            (actionId == getActionId(ManagedPoolSettings.setCircuitBreakers.selector));
     }
 
     /**

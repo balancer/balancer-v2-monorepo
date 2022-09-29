@@ -551,9 +551,9 @@ describe('ManagedPoolSettings', function () {
 
       context('when the sender is not the owner', () => {
         it('non-owners cannot set circuit breakers', async () => {
-          await expect(pool.setCircuitBreaker(other, poolTokens.first, LOWER_BOUND, UPPER_BOUND)).to.be.revertedWith(
-            'SENDER_NOT_ALLOWED'
-          );
+          await expect(
+            pool.setCircuitBreakers(other, [poolTokens.first], [LOWER_BOUND], [UPPER_BOUND])
+          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       });
 
@@ -568,43 +568,59 @@ describe('ManagedPoolSettings', function () {
 
         context('with invalid parameters', () => {
           it('fails if the token is invalid', async () => {
-            await expect(pool.setCircuitBreaker(sender, ZERO_ADDRESS, LOWER_BOUND, UPPER_BOUND)).to.be.revertedWith(
-              'TOKEN_NOT_REGISTERED'
-            );
+            await expect(
+              pool.setCircuitBreakers(sender, [ZERO_ADDRESS], [LOWER_BOUND], [UPPER_BOUND])
+            ).to.be.revertedWith('TOKEN_NOT_REGISTERED');
+          });
+
+          it('fails with mismatched lower bounds', async () => {
+            const upperBounds = Array(poolTokens.length).fill(UPPER_BOUND);
+
+            await expect(
+              pool.setCircuitBreakers(owner, poolTokens.addresses, [LOWER_BOUND], upperBounds)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with mismatched lower bounds', async () => {
+            const lowerBounds = Array(poolTokens.length).fill(LOWER_BOUND);
+
+            await expect(
+              pool.setCircuitBreakers(owner, poolTokens.addresses, lowerBounds, [UPPER_BOUND])
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
           it('fails with a lower bound above the maximum', async () => {
             await expect(
-              pool.setCircuitBreaker(sender, poolTokens.first, FP_ONE.add(1), UPPER_BOUND)
+              pool.setCircuitBreakers(sender, [poolTokens.first], [FP_ONE.add(1)], [UPPER_BOUND])
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
 
           it('fails with a upper bound above the maximum', async () => {
             await expect(
-              pool.setCircuitBreaker(sender, poolTokens.first, LOWER_BOUND, MAX_UPPER_BOUND.add(1))
+              pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [MAX_UPPER_BOUND.add(1)])
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
 
           it('fails with a upper bound below the minimum', async () => {
             await expect(
-              pool.setCircuitBreaker(sender, poolTokens.first, LOWER_BOUND, LOWER_BOUND.sub(1))
+              pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
 
           it('does not allow setting a breaker on the BPT', async () => {
             await expect(
-              pool.setCircuitBreaker(sender, pool.address, LOWER_BOUND, LOWER_BOUND.sub(1))
+              pool.setCircuitBreakers(sender, [pool.address], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
             ).to.be.revertedWith('INVALID_TOKEN');
           });
         });
 
         context('with valid parameters', () => {
           sharedBeforeEach('set the breaker', async () => {
-            await pool.setCircuitBreaker(owner, poolTokens.first, LOWER_BOUND, UPPER_BOUND);
+            await pool.setCircuitBreakers(owner, [poolTokens.first], [LOWER_BOUND], [UPPER_BOUND]);
           });
 
           it('setting a circuit breaker emits an event', async () => {
-            const receipt = await pool.setCircuitBreaker(owner, poolTokens.first, LOWER_BOUND, UPPER_BOUND);
+            const receipt = await pool.setCircuitBreakers(owner, [poolTokens.first], [LOWER_BOUND], [UPPER_BOUND]);
             const [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
 
             expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
@@ -684,7 +700,7 @@ describe('ManagedPoolSettings', function () {
           }
 
           sharedBeforeEach('set the breaker', async () => {
-            await pool.setCircuitBreaker(owner, poolTokens.first, fp(lowerBound), fp(upperBound));
+            await pool.setCircuitBreakers(owner, [poolTokens.first], [fp(lowerBound)], [fp(upperBound)]);
 
             [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
             [referenceLowerBoundBptPrice, referenceUpperBoundBptPrice] = await pool.getCurrentCircuitBreakerBounds(
