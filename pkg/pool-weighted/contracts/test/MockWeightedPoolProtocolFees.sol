@@ -70,7 +70,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     {
         uint256 protocolYieldFeesPoolPercentage;
         (protocolYieldFeesPoolPercentage, athRateProduct) = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
-        yieldProtocolFees = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
+        yieldProtocolFees = ExternalFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
     }
 
     function getPostJoinExitProtocolFees(

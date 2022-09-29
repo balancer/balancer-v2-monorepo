@@ -229,7 +229,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         );
 
         return (
-            ProtocolFees.bptForPoolOwnershipPercentage(
+            ExternalFees.bptForPoolOwnershipPercentage(
                 preJoinExitSupply,
                 protocolSwapFeesPoolPercentage + protocolYieldFeesPoolPercentage
             ),

@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-import "./ProtocolFees.sol";
+import "./ExternalFees.sol";
 
 library ExternalAUMFees {
     /**
@@ -39,7 +39,7 @@ library ExternalAUMFees {
         if (currentTime <= lastCollection || annualAumFeePercentage == 0) return 0;
 
         // Reuse the "BPT amount for pool percentage" calculation used to compute protocol fees.
-        uint256 annualBptAmount = ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, annualAumFeePercentage);
+        uint256 annualBptAmount = ExternalFees.bptForPoolOwnershipPercentage(totalSupply, annualAumFeePercentage);
 
         // We want to collect fees so that after a year the Pool will have paid `annualAumFeePercentage` of its AUM as
         // fees. In normal operation however, we will collect fees regularly over the course of the year so we
