@@ -1024,8 +1024,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     /**
      * @notice Get the price of a single token in terms of BPT, given the weight.
-     * @dev Returns an 18-decimal floating point number. Could be internal, but might be generally useful
-     * externally.
+     * @dev Returns an 18-decimal floating point number.
      */
     function getBptPrice(IERC20 token, uint256 normalizedWeight) public view returns (uint256) {
         if (token == IERC20(this)) {
