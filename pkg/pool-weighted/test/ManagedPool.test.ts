@@ -254,7 +254,6 @@ describe('ManagedPool', function () {
         );
       });
     });
-    ``;
   });
 
   describe('initialization', () => {
