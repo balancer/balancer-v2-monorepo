@@ -215,3 +215,12 @@ export type ManagedPoolParams = {
   managementAumFeePercentage: BigNumberish;
   aumFeeId: BigNumberish;
 };
+
+export type CircuitBreakerState = {
+  bptPrice: BigNumber;
+  weightComplement: BigNumber;
+  lowerBound: BigNumber;
+  upperBound: BigNumber;
+  lowerBptPriceBound: BigNumber;
+  upperBptPriceBound: BigNumber;
+}

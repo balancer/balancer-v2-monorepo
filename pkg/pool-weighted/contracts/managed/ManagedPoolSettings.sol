@@ -944,36 +944,45 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // Circuit Breakers
 
     /**
-     * @notice Return the circuit breaker parameters for the given token.
+     * @notice Return the full circuit breaker state for the given token.
      * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
-     * along with the percentage bounds. To get the current BPT price boundaries needed to check whether the
-     * circuit breaker should trip, call `getCurrentCircuitBreakerBounds`.
+     * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
+     * the circuit breaker should trip.
      */
-    function getCircuitBreakerFields(IERC20 token)
+    function getCircuitBreakerState(IERC20 token)
         external
         view
         returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256
+            uint256 bptPrice,
+            uint256 weightComplement,
+            uint256 lowerBound,
+            uint256 upperBound,
+            uint256 lowerBptPriceBound,
+            uint256 upperBptPriceBound
         )
     {
-        return CircuitBreakerLib.getCircuitBreakerFields(_circuitBreakerState[token]);
+        bytes32 circuitBreakerState = _circuitBreakerState[token];
+
+        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+            circuitBreakerState
+        );
+
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+            circuitBreakerState,
+            _getNormalizedWeight(token).complement()
+        );
     }
 
     /**
-     * @notice Get the current BPT price bounds for the given token.
-     * @dev The bounds are set as percentages, but retrieved as BPT prices which can be directly compared to the
-     * current BPT price. Though the percentages are fixed when the breaker is set, the BPT price bounds are dynamic.
-     * If there is an ongoing gradual weight update, they will shift up or down with the current weight.
+     * @notice Get the price of a single token in terms of BPT, given the weight.
+     * @dev Returns an 18-decimal floating point number.
      */
-    function getCurrentCircuitBreakerBounds(IERC20 token) public view returns (uint256, uint256) {
-        return
-            CircuitBreakerLib.getCurrentCircuitBreakerBounds(
-                _circuitBreakerState[token],
-                _getNormalizedWeight(token).complement()
-            );
+    function getBptPrice(IERC20 token) external view returns (uint256) {
+        if (token == IERC20(this)) {
+            return FixedPoint.ONE;
+        }
+
+        return getActualSupply().mulUp(_getNormalizedWeight(token)).divDown(_getUpscaledTokenBalance(token));
     }
 
     /**
@@ -1018,18 +1027,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         );
 
         emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
-    }
-
-    /**
-     * @notice Get the price of a single token in terms of BPT, given the weight.
-     * @dev Returns an 18-decimal floating point number.
-     */
-    function getBptPrice(IERC20 token) external view returns (uint256) {
-        if (token == IERC20(this)) {
-            return FixedPoint.ONE;
-        }
-
-        return getActualSupply().mulUp(_getNormalizedWeight(token)).divDown(_getUpscaledTokenBalance(token));
     }
 
     function _getUpscaledTokenBalance(IERC20 token) private view returns (uint256) {
