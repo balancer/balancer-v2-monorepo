@@ -995,6 +995,18 @@ describe('ManagedPoolSettings', function () {
             const tx = await pool.collectAumManagementFees(owner);
             return tx.wait();
           });
+
+          it('returns the paid AUM fees', async () => {
+            const expectedManagementFeeBpt = await pool.instance.callStatic.collectAumManagementFees();
+
+            const tx = await pool.collectAumManagementFees(owner);
+            const receipt = await tx.wait();
+
+            const {
+              args: { bptAmount: actualManagementFeeBpt },
+            } = expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected');
+            expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+          });
         });
       });
 
