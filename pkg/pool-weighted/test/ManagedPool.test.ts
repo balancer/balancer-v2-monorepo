@@ -266,6 +266,135 @@ describe('ManagedPool', function () {
         );
       });
     });
+
+    context('exit swaps', () => {
+      function itPerformsAnExitSwapCorrectly(
+        exitTokenIndex: number,
+        doExitSwap: () => Promise<SwapResult>,
+        queryExitSwap: () => Promise<BigNumber[]>,
+        queryEquivalentExit: () => Promise<ExitQueryResult>
+      ) {
+        function isEquivalentToARegularExit() {
+          it("doesn't revert", async () => {
+            await expect(doExitSwap()).to.not.be.reverted;
+          });
+
+          it('returns the same amount of BPT as the equivalent join', async () => {
+            const joinSwapResult = await queryExitSwap();
+            const joinResult = await queryEquivalentExit();
+
+            expect(joinSwapResult[0]).to.be.eq(joinResult.bptIn);
+          });
+
+          it('takes the same amount of tokens as the equivalent join', async () => {
+            const joinSwapResult = await queryExitSwap();
+            const joinResult = await queryEquivalentExit();
+
+            // Tokens are leaving the Vault and so is represented as a negative value.
+            expect(joinSwapResult[1].mul(-1)).to.be.eq(joinResult.amountsOut[exitTokenIndex]);
+          });
+        }
+
+        context('when swaps are disabled', () => {
+          sharedBeforeEach('disable swaps', async () => {
+            await pool.setSwapEnabled(owner, false);
+          });
+
+          it('it reverts', async () => {
+            await expect(doExitSwap()).to.be.revertedWith('SWAPS_DISABLED');
+          });
+        });
+
+        context('when swaps are enabled', () => {
+          sharedBeforeEach('enable swaps', async () => {
+            await pool.setSwapEnabled(owner, true);
+          });
+
+          context('when LP allowlist is enabled', () => {
+            sharedBeforeEach('enable allowlist', async () => {
+              await pool.setMustAllowlistLPs(owner, true);
+            });
+
+            context('when trader is allowlisted', () => {
+              sharedBeforeEach('allowlist LP', async () => {
+                await pool.addAllowedAddress(owner, other);
+              });
+
+              isEquivalentToARegularExit();
+            });
+
+            context('when trader is not allowlisted', () => {
+              // The allowlist is for joins, not exits or swaps
+              isEquivalentToARegularExit();
+            });
+          });
+
+          context('when LP allowlist is disabled', () => {
+            sharedBeforeEach('disable allowlist', async () => {
+              await pool.setMustAllowlistLPs(owner, false);
+            });
+
+            isEquivalentToARegularExit();
+          });
+        });
+      }
+
+      const EXIT_TOKEN_INDEX = 1;
+
+      context('given in', () => {
+        itPerformsAnExitSwapCorrectly(
+          EXIT_TOKEN_INDEX,
+          () =>
+            pool.swapGivenIn({ in: BPT_INDEX, out: EXIT_TOKEN_INDEX, amount: fp(0.1), from: other, recipient: other }),
+          () =>
+            pool.vault.queryBatchSwap({
+              kind: SwapKind.GivenIn,
+              assets: [pool.address, poolTokens.first.address],
+              funds: {
+                sender: other.address,
+                fromInternalBalance: false,
+                recipient: other.address,
+                toInternalBalance: false,
+              },
+              swaps: [{ poolId: pool.poolId, assetInIndex: 0, assetOutIndex: 1, amount: fp(0.1), userData: '0x' }],
+            }),
+          () =>
+            pool.querySingleExitGivenIn({
+              bptIn: fp(0.1),
+              token: EXIT_TOKEN_INDEX - 1,
+              from: other,
+              recipient: other,
+            })
+        );
+      });
+
+      context('given out', () => {
+        itPerformsAnExitSwapCorrectly(
+          EXIT_TOKEN_INDEX,
+          () =>
+            pool.swapGivenOut({ in: BPT_INDEX, out: EXIT_TOKEN_INDEX, amount: fp(0.1), from: other, recipient: other }),
+          () =>
+            pool.vault.queryBatchSwap({
+              kind: SwapKind.GivenOut,
+              assets: [pool.address, poolTokens.first.address],
+              funds: {
+                sender: other.address,
+                fromInternalBalance: false,
+                recipient: other.address,
+                toInternalBalance: false,
+              },
+              swaps: [{ poolId: pool.poolId, assetInIndex: 0, assetOutIndex: 1, amount: fp(0.1), userData: '0x' }],
+            }),
+          () =>
+            pool.queryExitGivenOut({
+              // `amountsIn` and `poolTokens` don't include BPT so we subtract 1 from JOIN_TOKEN_INDEX
+              amountsOut: poolTokens.map((_, i) => (i == EXIT_TOKEN_INDEX - 1 ? fp(0.1) : FP_ZERO)),
+              from: other,
+              recipient: other,
+            })
+        );
+      });
+    });
   });
 
   describe('initialization', () => {
@@ -690,6 +819,40 @@ describe('ManagedPool', function () {
               const { receipt } = await pool.swapGivenOut({
                 in: 1,
                 out: BPT_INDEX,
+                from: other,
+                recipient: other,
+                amount: FP_ONE,
+              });
+              return receipt;
+            });
+          });
+        });
+      });
+
+      context('on exitSwaps', () => {
+        context('after pool initialization', () => {
+          sharedBeforeEach('initialize pool', async () => {
+            await pool.init({ from: other, initialBalances });
+          });
+
+          context('given in', () => {
+            itCollectsAUMFeesCorrectly(async () => {
+              const { receipt } = await pool.swapGivenIn({
+                in: BPT_INDEX,
+                out: 1,
+                from: other,
+                recipient: other,
+                amount: FP_ONE,
+              });
+              return receipt;
+            });
+          });
+
+          context('given out', () => {
+            itCollectsAUMFeesCorrectly(async () => {
+              const { receipt } = await pool.swapGivenOut({
+                in: BPT_INDEX,
+                out: 1,
                 from: other,
                 recipient: other,
                 amount: FP_ONE,

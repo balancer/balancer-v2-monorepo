@@ -141,7 +141,17 @@ contract ManagedPool is ManagedPoolSettings {
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
         } else if (request.tokenIn == IERC20(this)) {
-            // Do an exitSwap
+            // balanceTokenIn is the amount of BPT held by the Pool in the Vault.
+            // Subtracting this from the total supply gives us the virtual supply.
+            uint256 virtualSupply = totalSupply() - balanceTokenIn;
+
+            // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+            // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
+            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
+            // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+            uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
+
+            return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
         } else {
             return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
         }
@@ -200,6 +210,62 @@ contract ManagedPool is ManagedPoolSettings {
 
             // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountIn, scalingFactorTokenIn);
+        }
+    }
+
+    /*
+     * @dev Called when a swap with the Pool occurs, where the tokens entering the Pool are BPT.
+     *
+     * This function is responsible for upscaling any amounts received, in particular `balanceTokenOut`
+     * and `request.amount`.
+     *
+     * The return value is expected to be downscaled (appropriately rounded based on the swap type) ready to be passed
+     * to the Vault.
+     */
+    function _onExitSwap(
+        SwapRequest memory request,
+        uint256 balanceTokenOut,
+        uint256 actualSupply,
+        bytes32 poolState
+    ) internal view returns (uint256) {
+        bytes32 tokenOutState = _getTokenState(request.tokenOut);
+
+        uint256 tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(
+            tokenOutState,
+            ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
+        );
+        uint256 scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
+        uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
+
+        // We must always upscale the token balance for both `GIVEN_IN` and `GIVEN_OUT` swaps
+        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            // request.amount is a BPT amount, so it doesn't need scaling.
+            uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
+                balanceTokenOut,
+                tokenOutWeight,
+                request.amount,
+                actualSupply,
+                swapFeePercentage
+            );
+
+            // amountOut tokens are exiting the Pool, so we round down.
+            return _downscaleDown(amountOut, scalingFactorTokenOut);
+        } else {
+            // All token amounts are upscaled.
+            request.amount = _upscale(request.amount, scalingFactorTokenOut);
+
+            uint256 amountIn = WeightedMath._calcBptInGivenExactTokenOut(
+                balanceTokenOut,
+                tokenOutWeight,
+                request.amount,
+                actualSupply,
+                swapFeePercentage
+            );
+
+            // BPT doesn't need scaling so we can return immediately.
+            return amountIn;
         }
     }
 
