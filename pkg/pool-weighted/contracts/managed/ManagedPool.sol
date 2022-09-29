@@ -278,14 +278,14 @@ contract ManagedPool is ManagedPoolSettings {
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-        virtualSupply += _collectAumManagementFees(virtualSupply);
+        uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
             sender,
             balances,
             _getNormalizedWeights(tokens),
             scalingFactors,
-            virtualSupply,
+            actualSupply,
             userData
         );
 
@@ -368,14 +368,14 @@ contract ManagedPool is ManagedPoolSettings {
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
         // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-        virtualSupply += _collectAumManagementFees(virtualSupply);
+        uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
             sender,
             balances,
             _getNormalizedWeights(tokens),
             scalingFactors,
-            virtualSupply,
+            actualSupply,
             userData
         );
 
