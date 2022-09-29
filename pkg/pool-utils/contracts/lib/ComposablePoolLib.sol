@@ -91,7 +91,7 @@ library ComposablePoolLib {
     }
 
     /**
-     * @notice Returns the passed array prepended with an zero element.
+     * @notice Returns the passed array prepended with a zero element.
      */
     function prependZeroElement(uint256[] memory array) internal pure returns (uint256[] memory prependedArray) {
         prependedArray = new uint256[](array.length + 1);
