@@ -6,11 +6,11 @@ import { BigNumberish, bn, fp, FP_100_PCT, FP_ONE, FP_ZERO } from '@balancer-lab
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
 
-describe('ProtocolAUMFees', function () {
+describe('ExternalAUMFees', function () {
   let lib: Contract;
 
   sharedBeforeEach(async function () {
-    lib = await deploy('MockProtocolAUMFees');
+    lib = await deploy('MockExternalAUMFees');
   });
 
   function expectedAUMFees(
