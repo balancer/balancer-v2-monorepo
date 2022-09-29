@@ -24,6 +24,7 @@ import {
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ManagedPool', function () {
@@ -63,6 +64,7 @@ describe('ManagedPool', function () {
       tokens: poolTokens,
       weights: poolWeights,
       owner: owner.address,
+      aumFeeId: ProtocolFee.AUM,
       poolType: WeightedPoolType.MOCK_MANAGED_POOL,
       mockContractName: 'MockManagedPool',
       ...overrides,
