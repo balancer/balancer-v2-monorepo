@@ -1,4 +1,4 @@
-import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
+import { BigNumber, Contract, ContractFunction, ContractReceipt, ContractTransaction } from 'ethers';
 import { BigNumberish, bn, fp, fpMul } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
@@ -299,8 +299,32 @@ export default class WeightedPool extends BasePool {
   }
 
   async swap(params: MinimalSwap): Promise<SwapResult> {
-    const tx = await this.vault.minimalSwap(params);
-    const receipt = await tx.wait();
+    let receipt: ContractReceipt;
+    if (this.vault.mocked) {
+      const tx = await this.vault.minimalSwap(params);
+      receipt = await tx.wait();
+    } else {
+      if (!params.from) throw new Error('No signer provided');
+      const tx = await this.vault.instance.connect(params.from).swap(
+        {
+          poolId: params.poolId,
+          kind: params.kind,
+          assetIn: params.tokenIn,
+          assetOut: params.tokenOut,
+          amount: params.amount,
+          userData: params.data,
+        },
+        {
+          sender: TypesConverter.toAddress(params.from),
+          recipient: TypesConverter.toAddress(params.to) ?? ZERO_ADDRESS,
+          fromInternalBalance: false,
+          toInternalBalance: false,
+        },
+        params.kind == 0 ? 0 : MAX_UINT256,
+        MAX_UINT256
+      );
+      receipt = await tx.wait();
+    }
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
     return { amount, receipt };
   }
@@ -428,17 +452,19 @@ export default class WeightedPool extends BasePool {
 
   private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<MinimalSwap> {
     const currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const { tokens } = await this.vault.getPoolTokens(this.poolId);
+    const tokenIn = typeof params.in === 'number' ? tokens[params.in] : params.in.address;
+    const tokenOut = typeof params.out === 'number' ? tokens[params.out] : params.out.address;
     return {
       kind,
       poolAddress: this.address,
       poolId: this.poolId,
       from: params.from,
       to: params.recipient ?? ZERO_ADDRESS,
-      tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-      tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-      balanceTokenIn: currentBalances[tokenIn] || bn(0),
-      balanceTokenOut: currentBalances[tokenOut] || bn(0),
+      tokenIn: tokenIn ?? ZERO_ADDRESS,
+      tokenOut: tokenOut ?? ZERO_ADDRESS,
+      balanceTokenIn: currentBalances[tokens.indexOf(tokenIn)] || bn(0),
+      balanceTokenOut: currentBalances[tokens.indexOf(tokenOut)] || bn(0),
       lastChangeBlock: params.lastChangeBlock ?? 0,
       data: params.data ?? '0x',
       amount: params.amount,
