@@ -100,6 +100,7 @@ export default {
       from: params.from,
       poolType,
       aumFeeId,
+      mockContractName: params.mockContractName,
     };
   },
 

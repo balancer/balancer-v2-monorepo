@@ -29,7 +29,15 @@ contract MockManagedPool is ManagedPool {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function getVirtualSupply() external view returns (uint256) {
+        return _getVirtualSupply();
+    }
+
     function isOwnerOnlyAction(bytes32 actionId) external view returns (bool) {
         return _isOwnerOnlyAction(actionId);
+    }
+
+    function validateSwapFeePercentage(uint256 swapFeePercentage) external pure {
+        _validateSwapFeePercentage(swapFeePercentage);
     }
 }

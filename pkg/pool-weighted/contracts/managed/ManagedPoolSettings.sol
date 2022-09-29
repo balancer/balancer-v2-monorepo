@@ -35,7 +35,6 @@ import "../WeightedMath.sol";
 import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
-import "./ManagedPoolSwapFeesLib.sol";
 import "./ManagedPoolTokenLib.sol";
 
 /**
@@ -56,7 +55,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // creation gas consumption.
     uint256 private constant _MAX_TOKENS = 38;
 
-    uint256 private constant _MAX_MANAGEMENT_SWAP_FEE_PERCENTAGE = 1e18; // 100%
+    // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
+    // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
+    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
+
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
 
     uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
@@ -70,6 +74,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     // See `ManagedPoolTokenLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
 
+    // Store the circuit breaker configuration for each token.
+    // See `CircuitBreakerLib.sol` for data layout.
+    mapping(IERC20 => bytes32) private _circuitBreakerState;
+
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
@@ -82,6 +90,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // Event declarations
 
+    event GradualSwapFeeUpdateScheduled(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    );
     event GradualWeightUpdateScheduled(
         uint256 startTime,
         uint256 endTime,
@@ -132,15 +146,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
         }
 
-        // This bytes32 holds a lot of the core Pool state which is read on most interactions, by keeping it in a single
-        // word we can save gas from unnecessary storage reads. It includes items like:
-        // - Swap fees
-        // - Weight change progress
-        // - Various feature flags
-        bytes32 poolState;
-
-        poolState = _startGradualWeightChange(
-            poolState,
+        _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
             params.normalizedWeights,
@@ -148,16 +154,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             params.tokens
         );
 
-        poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
-            poolState,
+        _startGradualSwapFeeChange(
             block.timestamp,
             block.timestamp,
             params.swapFeePercentage,
             params.swapFeePercentage
         );
-
-        // We write the pool state here, as both `_setSwapEnabled` and `_setMustAllowlistLPs` read it from storage.
-        _poolState = poolState;
 
         // If false, the pool will start in the disabled state (prevents front-running the enable swaps transaction).
         _setSwapEnabled(params.swapEnabledOnStart);
@@ -172,6 +174,48 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     function _getTokenState(IERC20 token) internal view returns (bytes32) {
         return _tokenState[token];
+    }
+
+    // Virtual Supply
+
+    /**
+     * @notice Returns the number of tokens in circulation.
+     * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
+     * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
+     * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
+     */
+    function _getVirtualSupply() internal view virtual returns (uint256) {
+        return totalSupply();
+    }
+
+    // Actual Supply
+
+    /**
+     * @notice Returns the effective BPT supply.
+     *
+     * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
+     * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
+     *  they will effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() external view returns (uint256) {
+        return _getActualSupply(_getVirtualSupply());
+    }
+
+    function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
+        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
+            // If we're in recovery mode then we bypass any fee logic and perform an early return.
+            return virtualSupply;
+        }
+
+        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+            virtualSupply,
+            block.timestamp,
+            _lastAumFeeCollectionTimestamp,
+            getManagementAumFeePercentage()
+        );
+        return virtualSupply.add(aumFeesAmount);
     }
 
     // Swap fees
@@ -207,34 +251,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) external override authenticate whenNotPaused {
-        // Do not allow setting if there is an ongoing fee change
-        uint256 currentTime = block.timestamp;
-        bytes32 poolState = _poolState;
-        (uint256 startTime, uint256 endTime, , ) = ManagedPoolStorageLib.getSwapFeeFields(poolState);
-
-        if (currentTime < endTime) {
-            _revert(
-                currentTime < startTime ? Errors.SET_SWAP_FEE_PENDING_FEE_CHANGE : Errors.SET_SWAP_FEE_DURING_FEE_CHANGE
-            );
-        }
-
-        _poolState = ManagedPoolSwapFeesLib.setSwapFeePercentage(poolState, swapFeePercentage);
-    }
-
-    /**
      * @notice Schedule a gradual swap fee update.
      * @dev The swap fee will change from the given starting value (which may or may not be the current
-     * value) to the given ending fee percentage, over startTime to endTime. Calling this with a starting
-     * value avoids requiring an explicit external `setSwapFeePercentage` call.
+     * value) to the given ending fee percentage, over startTime to endTime.
      *
      * Note that calling this with a starting swap fee different from the current value will immediately change the
-     * current swap fee to `startSwapFeePercentage` (including emitting the SwapFeePercentageChanged event),
-     * before commencing the gradual change at `startTime`. Emits the GradualSwapFeeUpdateScheduled event.
+     * current swap fee to `startSwapFeePercentage`, before commencing the gradual change at `startTime`.
+     * Emits the GradualSwapFeeUpdateScheduled event.
      * This is a permissioned function.
      *
      * @param startTime - The timestamp when the swap fee change will begin.
@@ -248,14 +271,43 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) external authenticate whenNotPaused nonReentrant {
-        _poolState = ManagedPoolSwapFeesLib.startGradualSwapFeeChange(
+    ) external override authenticate whenNotPaused nonReentrant {
+        _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+    }
+
+    function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+    }
+
+    /**
+     * @notice Encodes a gradual swap fee update into the Pool state in storage.
+     * @param startTime - The timestamp when the swap fee change will begin.
+     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
+     * @param startSwapFeePercentage - The starting value for the swap fee change.
+     * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
+     * `getSwapFeePercentage()` will return this value.
+     */
+    function _startGradualSwapFeeChange(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    ) internal {
+        _validateSwapFeePercentage(startSwapFeePercentage);
+        _validateSwapFeePercentage(endSwapFeePercentage);
+
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
+
+        _poolState = ManagedPoolStorageLib.setSwapFeeData(
             _poolState,
             startTime,
             endTime,
             startSwapFeePercentage,
             endSwapFeePercentage
         );
+
+        emit GradualSwapFeeUpdateScheduled(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
     // Token weights
@@ -354,14 +406,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
-        _poolState = _startGradualWeightChange(
-            _poolState,
-            startTime,
-            endTime,
-            _getNormalizedWeights(tokens),
-            endWeights,
-            tokens
-        );
+        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
     }
 
     /**
@@ -369,13 +414,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * if necessary.
      */
     function _startGradualWeightChange(
-        bytes32 poolState,
         uint256 startTime,
         uint256 endTime,
         uint256[] memory startWeights,
         uint256[] memory endWeights,
         IERC20[] memory tokens
-    ) internal returns (bytes32) {
+    ) internal {
         uint256 normalizedSum;
 
         for (uint256 i = 0; i < endWeights.length; i++) {
@@ -390,9 +434,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+        _poolState = ManagedPoolStorageLib.setWeightChangeData(_poolState, startTime, endTime);
 
-        return ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
+        emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
     // Invariant
@@ -534,9 +578,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // We want to prevent the pool manager from retroactively increasing the amount of AUM fees payable.
         // To prevent this, we perform a collection before updating the fee percentage.
         // This is only necessary if the pool has been initialized (which is indicated by a nonzero total supply).
-        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
-            (, amount) = _collectAumManagementFees(supplyBeforeFeeCollection);
+            amount = _collectAumManagementFees(supplyBeforeFeeCollection);
             _lastAumFeeCollectionTimestamp = block.timestamp;
         }
 
@@ -563,18 +607,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        uint256 supplyBeforeFeeCollection = totalSupply();
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
 
-        (, uint256 managerAUMFees) = _collectAumManagementFees(supplyBeforeFeeCollection);
-        return managerAUMFees;
+        return _collectAumManagementFees(supplyBeforeFeeCollection);
     }
 
     /**
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256, uint256) {
+    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
         uint256 bptAmount = ProtocolAUMFees.getAumFeesBptAmount(
             totalSupply,
             block.timestamp,
@@ -586,7 +629,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // - AUM fee is disabled.
         // - no time has passed since the last collection.
         if (bptAmount == 0) {
-            return (0, 0);
+            return 0;
         }
 
         // As we update `_lastAumFeeCollectionTimestamp` when updating `_managementAumFeePercentage`, we only need to
@@ -604,7 +647,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         _mintPoolTokens(getOwner(), managerBPTAmount);
 
-        return (protocolBptAmount, managerBPTAmount);
+        return bptAmount;
     }
 
     // Add/Remove tokens
@@ -637,16 +680,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused nonReentrant {
-        uint256 supply = totalSupply();
+        // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to mint is zero.
+        uint256 supply = _getVirtualSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
+
+        // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToAdd != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
         // change and would override an existing one, and b) any previous weight changes would be incomplete since they
         // wouldn't include the new token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
         // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
@@ -658,7 +706,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
         // opportunity to check we have not added too many tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -702,17 +750,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
         }
 
-        // `_startGradualWeightChange` will perform all requierd validation on the new weights, including minimum
+        // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
         // Note that this call will set the weight for `tokenToAdd`, which we've already done - that'll just be a no-op.
-        _poolState = _startGradualWeightChange(
-            _poolState,
-            block.timestamp,
-            block.timestamp,
-            newWeights,
-            newWeights,
-            tokens
-        );
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
@@ -739,16 +780,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 burnAmount,
         address sender
     ) external authenticate nonReentrant whenNotPaused {
-        uint256 supply = totalSupply();
+        // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
+        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+        // changes. For consistency, we do this always, even if the amount to burn is zero.
+        uint256 supply = _getVirtualSupply();
         _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
+
+        // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToRemove != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
 
         // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
         // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
         // they would include the removed token.
         _ensureNoWeightChange();
-
-        // Total supply is potentially changing so we collect AUM fees. For consistency, we do this unconditionally.
-        _collectAumManagementFees(supply);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
@@ -761,7 +807,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
         // good opportunity to check we didn't end up with too few tokens.
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(getPoolId());
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -801,16 +847,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
         }
 
-        // `_startGradualWeightChange` will perform all requierd validation on the new weights, including minimum
+        // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
-        _poolState = _startGradualWeightChange(
-            _poolState,
-            block.timestamp,
-            block.timestamp,
-            newWeights,
-            newWeights,
-            tokens
-        );
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
 
         if (burnAmount > 0) {
             // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
@@ -854,7 +893,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // not paused.
         _ensureNotPaused();
 
-        _collectAumManagementFees(totalSupply());
+        _collectAumManagementFees(_getVirtualSupply());
     }
 
     // Recovery Mode
@@ -896,7 +935,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setSwapFeePercentage.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||

@@ -3,7 +3,13 @@ import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
 import { BigNumberish, bn, fp, FP_ONE, pct } from '@balancer-labs/v2-helpers/src/numbers';
-import { DAY, advanceTime, receiptTimestamp } from '@balancer-labs/v2-helpers/src/time';
+import {
+  DAY,
+  advanceTime,
+  receiptTimestamp,
+  currentTimestamp,
+  setNextBlockTimestamp,
+} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
@@ -50,8 +56,9 @@ describe('ManagedPool', function () {
       tokens: poolTokens,
       weights: poolWeights,
       owner: owner.address,
-      poolType: WeightedPoolType.MANAGED_POOL,
       aumFeeId: ProtocolFee.AUM,
+      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
+      mockContractName: 'MockManagedPool',
       ...overrides,
     };
     return WeightedPool.create(params);
@@ -311,7 +318,9 @@ describe('ManagedPool', function () {
 
     context('with a 100% swap fee', () => {
       sharedBeforeEach('set swap fee to 100%', async () => {
-        await pool.setSwapFeePercentage(owner, fp(1));
+        const blockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(blockTimestamp);
+        await pool.updateSwapFeeGradually(owner, blockTimestamp, blockTimestamp, fp(1), fp(1));
       });
 
       it('reverts on joinSwap', async () => {
@@ -321,7 +330,17 @@ describe('ManagedPool', function () {
 
     context('with the max swap fee', () => {
       sharedBeforeEach('set swap fee to the max value (< 100%)', async () => {
-        await pool.setSwapFeePercentage(owner, MAX_SWAP_FEE_PERCENTAGE);
+        // In practice, a separate contract would call `updateSwapFeeGradually` using `block.timestamp` both as start
+        // and endTime to make the change immediately.
+        const nextBlockTimestamp = (await currentTimestamp()).add(1);
+        await setNextBlockTimestamp(nextBlockTimestamp);
+        await pool.updateSwapFeeGradually(
+          owner,
+          nextBlockTimestamp,
+          nextBlockTimestamp,
+          MAX_SWAP_FEE_PERCENTAGE,
+          MAX_SWAP_FEE_PERCENTAGE
+        );
       });
 
       it('allows (unfavorable) joinSwap', async () => {
@@ -332,7 +351,7 @@ describe('ManagedPool', function () {
 
   describe('management fees', () => {
     const swapFeePercentage = fp(0.02);
-    const managementAumFeePercentage = fp(0.01);
+    const managementAumFeePercentage = fp(0.1);
 
     sharedBeforeEach('deploy pool', async () => {
       pool = await deployPool({ swapFeePercentage, managementAumFeePercentage });
@@ -340,11 +359,11 @@ describe('ManagedPool', function () {
 
     describe('management aum fee collection', () => {
       function expectedAUMFees(
-        totalSupply: BigNumberish,
+        virtualSupply: BigNumberish,
         aumFeePercentage: BigNumberish,
         timeElapsed: BigNumberish
       ): BigNumber {
-        return bn(totalSupply)
+        return bn(virtualSupply)
           .mul(timeElapsed)
           .div(365 * DAY)
           .mul(aumFeePercentage)
@@ -377,8 +396,8 @@ describe('ManagedPool', function () {
         it('collects the expected amount of fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
 
-          const totalSupply = await pool.totalSupply();
-          const expectedManagementFeeBpt = expectedAUMFees(totalSupply, managementAumFeePercentage, timeElapsed);
+          const virtualSupply = await pool.getVirtualSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(virtualSupply, managementAumFeePercentage, timeElapsed);
 
           const receipt = await collectAUMFees();
 
@@ -389,6 +408,55 @@ describe('ManagedPool', function () {
           expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
             bptAmount: actualManagementFeeBpt,
           });
+        });
+
+        it('reports the expected actual supply', async () => {
+          // As we're performing a join or exit here we need to account for the change in the BPT virtual supply due to
+          // the join/exit. We do this by tracking the user's balance.
+          const balanceBefore = await pool.balanceOf(other);
+          const virtualSupplyBefore = await pool.getVirtualSupply();
+          const expectedManagementFeeBpt = expectedAUMFees(
+            virtualSupplyBefore,
+            managementAumFeePercentage,
+            timeElapsed
+          );
+
+          const balanceAfter = await pool.balanceOf(other);
+          const joinExitDelta = balanceAfter.sub(balanceBefore);
+
+          const expectedActualSupply = virtualSupplyBefore.add(expectedManagementFeeBpt).add(joinExitDelta);
+          const actualSupply = await pool.getActualSupply();
+          expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
+        });
+
+        it('does not affect the actual supply', async () => {
+          // As we're performing a join or exit here we need to account for the change in the BPT virtual supply due to
+          // the join/exit. We do this by tracking the user's balance.
+          const balanceBefore = await pool.balanceOf(other);
+          const actualSupplyBefore = await pool.getActualSupply();
+
+          await collectAUMFees();
+
+          const balanceAfter = await pool.balanceOf(other);
+          const joinExitDelta = balanceAfter.sub(balanceBefore);
+
+          const actualSupplyAfter = await pool.getActualSupply();
+          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore.add(joinExitDelta), 1e-5);
+        });
+
+        it('syncs the total supply to the actual supply', async () => {
+          // As we're performing a join or exit here we need to account for the change in the BPT virtual supply due to
+          // the join/exit. We do this by tracking the user's balance.
+          const balanceBefore = await pool.balanceOf(other);
+          const actualSupplyBefore = await pool.getActualSupply();
+
+          await collectAUMFees();
+
+          const balanceAfter = await pool.balanceOf(other);
+          const joinExitDelta = balanceAfter.sub(balanceBefore);
+
+          const virtualSupplyAfter = await pool.getVirtualSupply();
+          expect(virtualSupplyAfter).to.equalWithError(actualSupplyBefore.add(joinExitDelta), 1e-5);
         });
       }
 
@@ -445,8 +513,7 @@ describe('ManagedPool', function () {
           });
 
           itCollectsAUMFeesCorrectly(async () => {
-            const amountsIn = initialBalances.map((x) => x.div(2));
-            const { receipt } = await pool.joinGivenIn({ from: other, amountsIn });
+            const { receipt } = await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
             return receipt;
           });
         });

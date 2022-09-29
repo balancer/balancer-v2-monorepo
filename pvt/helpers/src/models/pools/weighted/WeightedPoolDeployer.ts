@@ -76,6 +76,7 @@ export default {
       owner,
       from,
       aumFeeId,
+      mockContractName,
     } = params;
 
     let result: Promise<Contract>;
@@ -101,6 +102,35 @@ export default {
       }
       case WeightedPoolType.MANAGED_POOL: {
         result = deploy('v2-pool-weighted/ManagedPool', {
+          args: [
+            {
+              name: NAME,
+              symbol: SYMBOL,
+              tokens: tokens.addresses,
+              normalizedWeights: weights,
+              swapFeePercentage: swapFeePercentage,
+              assetManagers: assetManagers,
+              swapEnabledOnStart: swapEnabledOnStart,
+              mustAllowlistLPs: mustAllowlistLPs,
+              managementAumFeePercentage: managementAumFeePercentage,
+              aumProtocolFeesCollector: aumProtocolFeesCollector,
+              aumFeeId: aumFeeId,
+            },
+            vault.address,
+            vault.protocolFeesProvider.address,
+            owner,
+            pauseWindowDuration,
+            bufferPeriodDuration,
+          ],
+          from,
+        });
+        break;
+      }
+      case WeightedPoolType.MOCK_MANAGED_POOL: {
+        if (mockContractName == undefined) {
+          throw new Error('Mock contract name required to deploy mock base pool');
+        }
+        result = deploy(mockContractName, {
           args: [
             {
               name: NAME,
@@ -236,6 +266,9 @@ export default {
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
         result = deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
         break;
+      }
+      case WeightedPoolType.MOCK_MANAGED_POOL: {
+        throw new Error('Mock type not supported to deploy from factory');
       }
       default: {
         const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {

@@ -193,6 +193,8 @@ library Errors {
     uint256 internal constant UNAUTHORIZED_JOIN = 351;
     uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
     uint256 internal constant FRACTIONAL_TARGET = 353;
+    uint256 internal constant ADD_OR_REMOVE_BPT = 354;
+    uint256 internal constant INVALID_CIRCUIT_BREAKER_BOUNDS = 355;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
