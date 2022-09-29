@@ -1,4 +1,4 @@
-import { BigNumber, Contract, ContractFunction, ContractTransaction } from 'ethers';
+import { BigNumber, Contract, ContractFunction, ContractReceipt, ContractTransaction } from 'ethers';
 import { BigNumberish, bn, fp, fpMul } from '../../../numbers';
 import { MAX_UINT256, ZERO_ADDRESS } from '../../../constants';
 import * as expectEvent from '../../../test/expectEvent';
@@ -299,8 +299,32 @@ export default class WeightedPool extends BasePool {
   }
 
   async swap(params: MinimalSwap): Promise<SwapResult> {
-    const tx = await this.vault.minimalSwap(params);
-    const receipt = await tx.wait();
+    let receipt: ContractReceipt;
+    if (this.vault.mocked) {
+      const tx = await this.vault.minimalSwap(params);
+      receipt = await tx.wait();
+    } else {
+      if (!params.from) throw new Error('No signer provided');
+      const tx = await this.vault.instance.connect(params.from).swap(
+        {
+          poolId: params.poolId,
+          kind: params.kind,
+          assetIn: params.tokenIn,
+          assetOut: params.tokenOut,
+          amount: params.amount,
+          userData: params.data,
+        },
+        {
+          sender: TypesConverter.toAddress(params.from),
+          recipient: TypesConverter.toAddress(params.to) ?? ZERO_ADDRESS,
+          fromInternalBalance: false,
+          toInternalBalance: false,
+        },
+        params.kind == 0 ? 0 : MAX_UINT256,
+        MAX_UINT256
+      );
+      receipt = await tx.wait();
+    }
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
     return { amount, receipt };
   }

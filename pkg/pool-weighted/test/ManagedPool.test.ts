@@ -102,7 +102,7 @@ describe('ManagedPool', function () {
 
   describe('swap', () => {
     sharedBeforeEach('deploy pool', async () => {
-      pool = await deployPool({ vault: undefined, swapEnabledOnStart: true });
+      pool = await deployPool({ swapEnabledOnStart: true });
 
       await pool.init({ from: other, initialBalances });
     });
@@ -114,7 +114,9 @@ describe('ManagedPool', function () {
         });
 
         it('it reverts', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: 2, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
+          await expect(
+            pool.swapGivenIn({ in: 1, out: 2, amount: fp(0.1), from: other, recipient: other })
+          ).to.be.revertedWith('SWAPS_DISABLED');
         });
       });
 
@@ -124,7 +126,8 @@ describe('ManagedPool', function () {
         });
 
         it('swaps are not blocked', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: 2, amount: fp(0.1) })).to.not.be.reverted;
+          await expect(pool.swapGivenIn({ in: 1, out: 2, amount: fp(0.1), from: other, recipient: other })).to.not.be
+            .reverted;
         });
       });
     });
@@ -133,7 +136,8 @@ describe('ManagedPool', function () {
       function itPerformsAJoinSwapCorrectly(doJoinSwap: () => Promise<SwapResult>) {
         function doesJoinThingsCorrectly() {
           it("doesn't revert", async () => {
-            await expect(doJoinSwap()).to.not.be.reverted;
+            await doJoinSwap();
+            // await expect(doJoinSwap()).to.not.be.reverted;
           });
         }
 
@@ -183,11 +187,15 @@ describe('ManagedPool', function () {
       }
 
       context('given in', () => {
-        itPerformsAJoinSwapCorrectly(() => pool.swapGivenIn({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other }));
+        itPerformsAJoinSwapCorrectly(() =>
+          pool.swapGivenIn({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other })
+        );
       });
 
       context('given out', () => {
-        itPerformsAJoinSwapCorrectly(() => pool.swapGivenOut({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other }));
+        itPerformsAJoinSwapCorrectly(() =>
+          pool.swapGivenOut({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other })
+        );
       });
     });
   });
@@ -379,7 +387,9 @@ describe('ManagedPool', function () {
     const MAX_SWAP_FEE_PERCENTAGE = fp(0.8);
 
     sharedBeforeEach('deploy pool', async () => {
-      pool = await deployPool({ vault: undefined, swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE });
+      pool = await deployPool({
+        swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
+      });
       await pool.init({ from: owner, initialBalances });
     });
 
@@ -413,7 +423,7 @@ describe('ManagedPool', function () {
       });
 
       it('allows (unfavorable) joinSwap', async () => {
-        await expect(pool.joinGivenOut({ recipient: owner, bptOut: fp(1), token: 0 })).to.not.be.reverted;
+        await expect(pool.joinGivenOut({ from: other, recipient: owner, bptOut: fp(1), token: 0 })).to.not.be.reverted;
       });
     });
   });
@@ -423,7 +433,7 @@ describe('ManagedPool', function () {
     const managementAumFeePercentage = fp(0.1);
 
     sharedBeforeEach('deploy pool', async () => {
-      pool = await deployPool({ swapFeePercentage, managementAumFeePercentage, vault: undefined });
+      pool = await deployPool({ swapFeePercentage, managementAumFeePercentage });
     });
 
     describe('management aum fee collection', () => {
