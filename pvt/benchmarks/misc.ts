@@ -17,6 +17,7 @@ import {
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { poolConfigs } from './config';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
@@ -90,6 +91,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
           managementAumFeePercentage: aumFee,
+          aumFeeId: ProtocolFee.AUM,
         };
 
         const basePoolRights: BasePoolRights = {

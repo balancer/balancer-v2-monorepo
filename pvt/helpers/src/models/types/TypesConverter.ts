@@ -7,7 +7,7 @@ import { DAY, MONTH } from '../../time';
 import { ZERO_ADDRESS } from '../../constants';
 import TokenList from '../tokens/TokenList';
 import { Account } from './types';
-import { RawVaultDeployment, VaultDeployment } from '../vault/types';
+import { ProtocolFee, RawVaultDeployment, VaultDeployment } from '../vault/types';
 import { RawLinearPoolDeployment, LinearPoolDeployment } from '../pools/linear/types';
 import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/types';
 import {
@@ -67,6 +67,7 @@ export default {
       managementAumFeePercentage,
       aumProtocolFeesCollector,
       poolType,
+      aumFeeId,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -79,6 +80,7 @@ export default {
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
+    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
@@ -97,6 +99,7 @@ export default {
       owner: this.toAddress(params.owner),
       from: params.from,
       poolType,
+      aumFeeId,
       mockContractName: params.mockContractName,
     };
   },

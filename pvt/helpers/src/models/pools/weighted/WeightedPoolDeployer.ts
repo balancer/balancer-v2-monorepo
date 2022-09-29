@@ -17,6 +17,7 @@ import {
 } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { DAY } from '@balancer-labs/v2-helpers/src/time';
+import { ProtocolFee } from '../../vault/types';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -74,6 +75,7 @@ export default {
       aumProtocolFeesCollector,
       owner,
       from,
+      aumFeeId,
       mockContractName,
     } = params;
 
@@ -112,6 +114,7 @@ export default {
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
               aumProtocolFeesCollector: aumProtocolFeesCollector,
+              aumFeeId: aumFeeId,
             },
             vault.address,
             vault.protocolFeesProvider.address,
@@ -140,6 +143,7 @@ export default {
               mustAllowlistLPs: mustAllowlistLPs,
               managementAumFeePercentage: managementAumFeePercentage,
               aumProtocolFeesCollector: aumProtocolFeesCollector,
+              aumFeeId: aumFeeId,
             },
             vault.address,
             vault.protocolFeesProvider.address,
@@ -191,6 +195,7 @@ export default {
       poolType,
       owner,
       from,
+      aumFeeId,
     } = params;
 
     let result: Promise<Contract>;
@@ -236,6 +241,7 @@ export default {
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
           managementAumFeePercentage: managementAumFeePercentage,
+          aumFeeId: aumFeeId ?? ProtocolFee.AUM,
         };
 
         const basePoolRights: BasePoolRights = {

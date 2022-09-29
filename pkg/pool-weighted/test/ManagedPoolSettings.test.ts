@@ -179,6 +179,34 @@ describe('ManagedPoolSettings', function () {
         itComputesWeightsAndScalingFactors(numTokens);
       }
 
+      context('provider fee ID', () => {
+        function itStoresProviderFeeIds(aumFeeId: number) {
+          context(`when aum fee ID is ${ProtocolFee[aumFeeId]}`, () => {
+            sharedBeforeEach('deploy pool', async () => {
+              pool = await WeightedPool.create({
+                poolType: WeightedPoolType.MANAGED_POOL,
+                tokens: allTokens.subset(2),
+                vault,
+                aumFeeId,
+              });
+            });
+
+            it('stores provider fee IDs correctly', async () => {
+              // Swap and Yield are fixed, Aum is custom.
+              expect(await pool.instance.getProviderFeeId(ProtocolFee.SWAP)).to.be.eq(ProtocolFee.SWAP);
+              expect(await pool.instance.getProviderFeeId(ProtocolFee.YIELD)).to.be.eq(ProtocolFee.YIELD);
+              expect(await pool.instance.getProviderFeeId(ProtocolFee.AUM)).to.be.eq(aumFeeId);
+            });
+          });
+        }
+
+        Object.values(ProtocolFee)
+          .filter((v) => !isNaN(Number(v)))
+          .forEach((feeId) => {
+            itStoresProviderFeeIds(Number(feeId));
+          });
+      });
+
       context('swapsEnabled', () => {
         context('when initialized with swaps disabled', () => {
           sharedBeforeEach('deploy pool', async () => {
