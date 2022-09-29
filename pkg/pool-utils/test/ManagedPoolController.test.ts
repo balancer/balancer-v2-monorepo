@@ -188,7 +188,9 @@ describe('ManagedPoolController', function () {
       let tokens: string[];
 
       sharedBeforeEach('get tokens', async () => {
-        tokens = (await pool.getTokens()).tokens;
+        const { tokens: registeredTokens } = await pool.getTokens();
+        // Remove BPT
+        tokens = registeredTokens.slice(1);
       });
 
       it('lets the manager update weights gradually', async () => {

@@ -3,9 +3,9 @@ pragma solidity ^0.7.0;
 
 import "forge-std/Test.sol";
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+import "../../contracts/lib/ComposablePoolLib.sol";
 
-contract DropBptFromArrayTest is Test {
+contract ComposablePoolLibTest is Test {
     event log_named_array(string key, IERC20[] val);
 
     function testDropBptFromTokens(IERC20[] memory tokens) external {
@@ -20,10 +20,7 @@ contract DropBptFromArrayTest is Test {
         emit log_named_array("Expected tokens without BPT", expectedTokensWithoutBpt);
 
         // Note that this requires tokens.length > 0 otherwise the array length will underflow.
-        assembly {
-            mstore(add(tokens, 32), sub(mload(tokens), 1))
-            tokens := add(tokens, 32)
-        }
+        tokens = ComposablePoolLib.dropBptFromTokens(tokens);
 
         emit log_named_array("Actual tokens without BPT", tokens);
 
@@ -33,8 +30,11 @@ contract DropBptFromArrayTest is Test {
         }
     }
 
-    function testDropBptFromBalances(uint256[] memory balances) external {
+    function testDropBptFromBalances(uint256 totalSupply, uint256[] memory balances) external {
         vm.assume(balances.length > 0);
+        totalSupply = bound(totalSupply, balances[0], type(uint256).max);
+
+        uint256 expectedVirtualSupply = totalSupply - balances[0];
 
         uint256[] memory expectedBalancesWithoutBpt = new uint256[](balances.length - 1);
         for (uint256 i = 0; i < expectedBalancesWithoutBpt.length; i++) {
@@ -45,12 +45,12 @@ contract DropBptFromArrayTest is Test {
         emit log_named_array("Expected balances without BPT", expectedBalancesWithoutBpt);
 
         // Note that this requires balances.length > 0 otherwise the array length will underflow.
-        assembly {
-            mstore(add(balances, 32), sub(mload(balances), 1))
-            balances := add(balances, 32)
-        }
+        uint256 virtualSupply;
+        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
         emit log_named_array("Actual balances without BPT", balances);
+
+        assertEq(virtualSupply, expectedVirtualSupply);
 
         assertEq(balances.length, expectedBalancesWithoutBpt.length);
         for (uint256 i = 0; i < expectedBalancesWithoutBpt.length; i++) {
