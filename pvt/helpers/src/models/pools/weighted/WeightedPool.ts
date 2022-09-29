@@ -648,13 +648,14 @@ export default class WeightedPool extends BasePool {
   async setCircuitBreakers(
     from: SignerWithAddress,
     tokens: Token[] | string[],
+    bptPrices: BigNumber[],
     lowerBounds: BigNumber[],
     upperBounds: BigNumber[]
   ): Promise<ContractTransaction> {
     const tokensArg = tokens.map((t) => TypesConverter.toAddress(t));
     const pool = this.instance.connect(from);
 
-    return await pool.setCircuitBreakers(tokensArg, lowerBounds, upperBounds);
+    return await pool.setCircuitBreakers(tokensArg, bptPrices, lowerBounds, upperBounds);
   }
 
   async getGradualWeightUpdateParams(from?: SignerWithAddress): Promise<GradualWeightUpdateParams> {

@@ -817,6 +817,7 @@ describe('ManagedPoolSettings', function () {
       const LOWER_BOUND = fp(0.8);
       const UPPER_BOUND = fp(2);
       const MAX_UPPER_BOUND = fp(10);
+      let bptPrice: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
         const params = {
@@ -827,12 +828,15 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
+
+        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address, poolWeights[0]);
       });
 
       function itReverts() {
         it('reverts', async () => {
+          
           await expect(
-            pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [UPPER_BOUND])
+            pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [UPPER_BOUND])
           ).to.be.revertedWith('SENDER_NOT_ALLOWED');
         });
       }
@@ -841,15 +845,15 @@ describe('ManagedPoolSettings', function () {
         context('with invalid parameters', () => {
           it('fails if the token is invalid', async () => {
             await expect(
-              pool.setCircuitBreakers(sender, [ZERO_ADDRESS], [LOWER_BOUND], [UPPER_BOUND])
-            ).to.be.revertedWith('TOKEN_NOT_REGISTERED');
+              pool.setCircuitBreakers(sender, [ZERO_ADDRESS], [bptPrice], [LOWER_BOUND], [UPPER_BOUND])
+            ).to.be.revertedWith('INVALID_TOKEN');
           });
 
           it('fails with mismatched lower bounds', async () => {
             const upperBounds = Array(poolTokens.length).fill(UPPER_BOUND);
 
             await expect(
-              pool.setCircuitBreakers(sender, poolTokens.addresses, [LOWER_BOUND], upperBounds)
+              pool.setCircuitBreakers(sender, poolTokens.addresses, [bptPrice], [LOWER_BOUND], upperBounds)
             ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
@@ -857,42 +861,44 @@ describe('ManagedPoolSettings', function () {
             const lowerBounds = Array(poolTokens.length).fill(LOWER_BOUND);
 
             await expect(
-              pool.setCircuitBreakers(sender, poolTokens.addresses, lowerBounds, [UPPER_BOUND])
+              pool.setCircuitBreakers(sender, poolTokens.addresses, [bptPrice], lowerBounds, [UPPER_BOUND])
             ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
           it('fails with a lower bound above the maximum', async () => {
             await expect(
-              pool.setCircuitBreakers(sender, [poolTokens.first], [FP_ONE.add(1)], [UPPER_BOUND])
+              pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [FP_ONE.add(1)], [UPPER_BOUND])
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
 
           it('fails with a upper bound above the maximum', async () => {
             await expect(
-              pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [MAX_UPPER_BOUND.add(1)])
+              pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [MAX_UPPER_BOUND.add(1)])
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
 
           it('fails with a upper bound below the minimum', async () => {
             await expect(
-              pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
+              pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
 
           it('does not allow setting a breaker on the BPT', async () => {
             await expect(
-              pool.setCircuitBreakers(sender, [pool.address], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
+              pool.setCircuitBreakers(sender, [pool.address], [bptPrice], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
             ).to.be.revertedWith('INVALID_TOKEN');
           });
         });
 
         context('with valid parameters', () => {
           sharedBeforeEach('set the breaker', async () => {
-            await pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [UPPER_BOUND]);
+            await pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [UPPER_BOUND]);
           });
 
           it('setting a circuit breaker emits an event', async () => {
-            const receipt = await pool.setCircuitBreakers(sender, [poolTokens.first], [LOWER_BOUND], [UPPER_BOUND]);
+            const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address, poolWeights[0]);
+
+            const receipt = await pool.setCircuitBreakers(sender, [poolTokens.first], [initialPrice], [LOWER_BOUND], [UPPER_BOUND]);
             const [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
 
             expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
@@ -1018,6 +1024,8 @@ describe('ManagedPoolSettings', function () {
     });
 
     context('circuit breaker bounds', () => {
+      let bptPrice: BigNumber;
+
       sharedBeforeEach('deploy pool', async () => {
         const params = {
           tokens: poolTokens,
@@ -1027,6 +1035,7 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
+        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address, poolWeights[0]);
       });
 
       const initialWeight = poolWeights[0];
@@ -1035,7 +1044,6 @@ describe('ManagedPoolSettings', function () {
 
       let referenceLowerBoundBptPrice: BigNumber;
       let referenceUpperBoundBptPrice: BigNumber;
-      let bptPrice: BigNumber;
 
       function getBptPriceBounds(bptPrice: BigNumber, normalizedWeight: BigNumber): BigNumber[] {
         const weightComplement = Number(fromFp(fp(1).sub(normalizedWeight)));
@@ -1048,7 +1056,7 @@ describe('ManagedPoolSettings', function () {
       }
 
       sharedBeforeEach('set the breaker', async () => {
-        await pool.setCircuitBreakers(owner, [poolTokens.first], [fp(lowerBound)], [fp(upperBound)]);
+        await pool.setCircuitBreakers(owner, [poolTokens.first], [bptPrice], [fp(lowerBound)], [fp(upperBound)]);
 
         [bptPrice] = await pool.getCircuitBreakerFields(poolTokens.first);
         [referenceLowerBoundBptPrice, referenceUpperBoundBptPrice] = await pool.getCurrentCircuitBreakerBounds(

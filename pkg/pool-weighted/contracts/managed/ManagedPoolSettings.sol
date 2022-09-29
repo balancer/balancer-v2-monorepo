@@ -985,29 +985,29 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      */
     function setCircuitBreakers(
         IERC20[] memory tokens,
+        uint256[] memory bptPrices,
         uint256[] memory lowerBoundPercentages,
         uint256[] memory upperBoundPercentages
     ) external authenticate whenNotPaused {
         InputHelpers.ensureInputLengthMatch(tokens.length, lowerBoundPercentages.length, upperBoundPercentages.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, bptPrices.length);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            _setCircuitBreaker(tokens[i], lowerBoundPercentages[i], upperBoundPercentages[i]);
+            _setCircuitBreaker(tokens[i], bptPrices[i], lowerBoundPercentages[i], upperBoundPercentages[i]);
         }
     }
 
-    // Compute the reference values, then pass them along with the bounds to the library.
+    // Compute the reference values, then pass them along with the bounds to the library. The bptPrice must be
+    // passed in from the caller, or it would be manipulable.
     function _setCircuitBreaker(
         IERC20 token,
+        uint256 bptPrice,
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage
     ) private {
-        // Do not allow setting a circuit breaker on the BPT itself
-        _require(address(token) != address(this), Errors.INVALID_TOKEN);
-
         uint256 normalizedWeight = _getNormalizedWeight(token);
-
-        // Note that `getBptPrice` will revert if the token is invalid.
-        uint256 bptPrice = getBptPrice(token, normalizedWeight);
+        // Fail if the token is not in the pool (or is the BPT token)
+        _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
         // The library will validate the lower/upper bounds
         _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(
