@@ -223,4 +223,4 @@ export type CircuitBreakerState = {
   upperBound: BigNumber;
   lowerBptPriceBound: BigNumber;
   upperBptPriceBound: BigNumber;
-}
+};
