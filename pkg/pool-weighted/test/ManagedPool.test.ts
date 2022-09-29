@@ -15,10 +15,15 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { RawWeightedPoolDeployment, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import {
+  RawWeightedPoolDeployment,
+  SwapResult,
+  WeightedPoolType,
+} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -33,6 +38,8 @@ describe('ManagedPool', function () {
 
   const MAX_TOKENS = 38;
   const TOKEN_COUNT = 20;
+
+  const BPT_INDEX = 0;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
 
@@ -100,23 +107,87 @@ describe('ManagedPool', function () {
       await pool.init({ from: other, initialBalances });
     });
 
-    context('when swaps are disabled', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        await pool.setSwapEnabled(owner, false);
+    context('token swaps', () => {
+      context('when swaps are disabled', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          await pool.setSwapEnabled(owner, false);
+        });
+
+        it('it reverts', async () => {
+          await expect(pool.swapGivenIn({ in: 1, out: 2, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
+        });
       });
 
-      it('it reverts', async () => {
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.be.revertedWith('SWAPS_DISABLED');
+      context('when swaps are enabled', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          await pool.setSwapEnabled(owner, true);
+        });
+
+        it('swaps are not blocked', async () => {
+          await expect(pool.swapGivenIn({ in: 1, out: 2, amount: fp(0.1) })).to.not.be.reverted;
+        });
       });
     });
 
-    context('when swaps are enabled', () => {
-      sharedBeforeEach('deploy pool', async () => {
-        await pool.setSwapEnabled(owner, true);
+    context('join swaps', () => {
+      function itPerformsAJoinSwapCorrectly(doJoinSwap: () => Promise<SwapResult>) {
+        function doesJoinThingsCorrectly() {
+          it("doesn't revert", async () => {
+            await expect(doJoinSwap()).to.not.be.reverted;
+          });
+        }
+
+        context('when swaps are disabled', () => {
+          sharedBeforeEach('disable swaps', async () => {
+            await pool.setSwapEnabled(owner, false);
+          });
+
+          it('it reverts', async () => {
+            await expect(doJoinSwap()).to.be.revertedWith('SWAPS_DISABLED');
+          });
+        });
+
+        context('when swaps are enabled', () => {
+          sharedBeforeEach('enable swaps', async () => {
+            await pool.setSwapEnabled(owner, true);
+          });
+
+          context('when LP allowlist is enabled', () => {
+            sharedBeforeEach('enable allowlist', async () => {
+              await pool.setMustAllowlistLPs(owner, true);
+            });
+
+            context('when trader is allowlisted', () => {
+              sharedBeforeEach('allowlist LP', async () => {
+                await pool.addAllowedAddress(owner, other);
+              });
+
+              doesJoinThingsCorrectly();
+            });
+
+            context('when trader is not allowlisted', () => {
+              it('reverts', async () => {
+                await expect(doJoinSwap()).to.be.revertedWith('ADDRESS_NOT_ALLOWLISTED');
+              });
+            });
+          });
+
+          context('when LP allowlist is disabled', () => {
+            sharedBeforeEach('disable allowlist', async () => {
+              await pool.setMustAllowlistLPs(owner, false);
+            });
+
+            doesJoinThingsCorrectly();
+          });
+        });
+      }
+
+      context('given in', () => {
+        itPerformsAJoinSwapCorrectly(() => pool.swapGivenIn({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other }));
       });
 
-      it('swaps are not blocked', async () => {
-        await expect(pool.swapGivenIn({ in: 1, out: 0, amount: fp(0.1) })).to.not.be.reverted;
+      context('given out', () => {
+        itPerformsAJoinSwapCorrectly(() => pool.swapGivenOut({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other }));
       });
     });
   });
@@ -352,7 +423,7 @@ describe('ManagedPool', function () {
     const managementAumFeePercentage = fp(0.1);
 
     sharedBeforeEach('deploy pool', async () => {
-      pool = await deployPool({ swapFeePercentage, managementAumFeePercentage });
+      pool = await deployPool({ swapFeePercentage, managementAumFeePercentage, vault: undefined });
     });
 
     describe('management aum fee collection', () => {
@@ -513,6 +584,40 @@ describe('ManagedPool', function () {
           itCollectsAUMFeesCorrectly(async () => {
             const { receipt } = await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
             return receipt;
+          });
+        });
+      });
+
+      context('on joinSwaps', () => {
+        context('after pool initialization', () => {
+          sharedBeforeEach('initialize pool', async () => {
+            await pool.init({ from: other, initialBalances });
+          });
+
+          context('given in', () => {
+            itCollectsAUMFeesCorrectly(async () => {
+              const { receipt } = await pool.swapGivenIn({
+                in: 1,
+                out: BPT_INDEX,
+                from: other,
+                recipient: other,
+                amount: FP_ONE,
+              });
+              return receipt;
+            });
+          });
+
+          context('given out', () => {
+            itCollectsAUMFeesCorrectly(async () => {
+              const { receipt } = await pool.swapGivenOut({
+                in: 1,
+                out: BPT_INDEX,
+                from: other,
+                recipient: other,
+                amount: FP_ONE,
+              });
+              return receipt;
+            });
           });
         });
       });

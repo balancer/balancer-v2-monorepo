@@ -428,17 +428,19 @@ export default class WeightedPool extends BasePool {
 
   private async _buildSwapParams(kind: number, params: SwapWeightedPool): Promise<MinimalSwap> {
     const currentBalances = await this.getBalances();
-    const [tokenIn, tokenOut] = this.tokens.indicesOf(params.in, params.out);
+    const { tokens } = await this.vault.getPoolTokens(this.poolId);
+    const tokenIn = typeof params.in === 'number' ? tokens[params.in] : params.in.address;
+    const tokenOut = typeof params.out === 'number' ? tokens[params.out] : params.out.address;
     return {
       kind,
       poolAddress: this.address,
       poolId: this.poolId,
       from: params.from,
       to: params.recipient ?? ZERO_ADDRESS,
-      tokenIn: this.tokens.get(params.in)?.address ?? ZERO_ADDRESS,
-      tokenOut: this.tokens.get(params.out)?.address ?? ZERO_ADDRESS,
-      balanceTokenIn: currentBalances[tokenIn] || bn(0),
-      balanceTokenOut: currentBalances[tokenOut] || bn(0),
+      tokenIn: tokenIn ?? ZERO_ADDRESS,
+      tokenOut: tokenOut ?? ZERO_ADDRESS,
+      balanceTokenIn: currentBalances[tokens.indexOf(tokenIn)] || bn(0),
+      balanceTokenOut: currentBalances[tokens.indexOf(tokenOut)] || bn(0),
       lastChangeBlock: params.lastChangeBlock ?? 0,
       data: params.data ?? '0x',
       amount: params.amount,
@@ -596,8 +598,6 @@ export default class WeightedPool extends BasePool {
         // If the first token is BPT then we can assume that the Pool is composable.
         if (registeredTokens[0] == this.address) {
           tokens = registeredTokens.slice(1);
-        } else {
-          tokens = registeredTokens;
         }
       }
 

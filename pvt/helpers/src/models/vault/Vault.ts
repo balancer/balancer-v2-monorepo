@@ -77,8 +77,8 @@ export default class Vault {
       {
         kind: params.kind,
         poolId: params.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.to,
+        from: TypesConverter.toAddress(params.from) ?? ZERO_ADDRESS,
+        to: TypesConverter.toAddress(params.to),
         tokenIn: params.tokenIn,
         tokenOut: params.tokenOut,
         lastChangeBlock: params.lastChangeBlock,
