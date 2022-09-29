@@ -1006,6 +1006,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage
     ) private {
+        // Do not allow setting a circuit breaker on the BPT itself
+        _require(address(token) != address(this), Errors.INVALID_TOKEN);
+
         uint256 normalizedWeight = _getNormalizedWeight(token);
 
         // Note that `getBptPrice` will revert if the token is invalid.

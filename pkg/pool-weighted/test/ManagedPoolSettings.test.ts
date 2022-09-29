@@ -590,6 +590,12 @@ describe('ManagedPoolSettings', function () {
               pool.setCircuitBreaker(sender, poolTokens.first, LOWER_BOUND, LOWER_BOUND.sub(1))
             ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
           });
+
+          it('does not allow setting a breaker on the BPT', async () => {
+            await expect(
+              pool.setCircuitBreaker(sender, pool.address, LOWER_BOUND, LOWER_BOUND.sub(1))
+            ).to.be.revertedWith('INVALID_TOKEN');
+          });
         });
 
         context('with valid parameters', () => {
