@@ -543,10 +543,8 @@ describe('ManagedPoolSettings', function () {
           weights: poolWeights,
           vault,
           owner: owner.address,
-          poolType: WeightedPoolType.MANAGED_POOL,
-          swapEnabledOnStart: true,
         };
-        pool = await WeightedPool.create(params);
+        pool = await createMockPool(params);
       });
 
       context('when the sender is not the owner', () => {
