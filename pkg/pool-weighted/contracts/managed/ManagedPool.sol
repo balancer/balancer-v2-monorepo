@@ -137,9 +137,9 @@ contract ManagedPool is ManagedPoolSettings {
             // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
             // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
             // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-            virtualSupply += _collectAumManagementFees(virtualSupply);
+            uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
-            return _onJoinSwap(request, balanceTokenIn, virtualSupply, poolState);
+            return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
         } else if (request.tokenIn == IERC20(this)) {
             // Do an exitSwap
         } else {
@@ -160,7 +160,7 @@ contract ManagedPool is ManagedPoolSettings {
     function _onJoinSwap(
         SwapRequest memory request,
         uint256 balanceTokenIn,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
         bytes32 tokenInState = _getTokenState(request.tokenIn);
@@ -182,7 +182,7 @@ contract ManagedPool is ManagedPoolSettings {
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
-                virtualSupply,
+                actualSupply,
                 swapFeePercentage
             );
 
@@ -193,7 +193,7 @@ contract ManagedPool is ManagedPoolSettings {
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
-                virtualSupply,
+                actualSupply,
                 swapFeePercentage
             );
 
