@@ -113,6 +113,10 @@ export default class BasePool {
     return this.instance.getRate();
   }
 
+  async getVirtualSupply(): Promise<BigNumber> {
+    return this.instance.getVirtualSupply();
+  }
+
   async getActualSupply(): Promise<BigNumber> {
     return this.instance.getActualSupply();
   }
