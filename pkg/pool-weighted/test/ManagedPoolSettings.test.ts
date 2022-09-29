@@ -1005,7 +1005,7 @@ describe('ManagedPoolSettings', function () {
             const {
               args: { bptAmount: actualManagementFeeBpt },
             } = expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected');
-            expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+            expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 1e-14);
           });
         });
       });
