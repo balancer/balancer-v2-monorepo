@@ -47,6 +47,10 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function getVirtualSupply() external view returns (uint256) {
+        return _getVirtualSupply();
+    }
+
     function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
