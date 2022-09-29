@@ -94,7 +94,7 @@ describe('ProtocolFeeCache', () => {
       await expect(protocolFeeCache.getProtocolFeePercentageCache(17)).to.be.revertedWith('UNHANDLED_FEE_TYPE');
     });
 
-    it('stores fee type id mappings correctly', async () => {
+    it('stores fee type ids correctly', async () => {
       expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.SWAP)).to.be.eq(providerFeeIds.swap);
       expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.YIELD)).to.be.eq(providerFeeIds.yield);
       expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.AUM)).to.be.eq(providerFeeIds.aum);
