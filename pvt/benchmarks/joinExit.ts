@@ -6,7 +6,7 @@ import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
+import { setupEnvironment, getWeightedPool, getStablePool } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { poolConfigs } from './config';
