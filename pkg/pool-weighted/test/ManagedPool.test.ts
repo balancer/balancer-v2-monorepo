@@ -16,12 +16,14 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import {
+  JoinQueryResult,
+  JoinResult,
   RawWeightedPoolDeployment,
   SwapResult,
   WeightedPoolType,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PoolSpecialization } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
@@ -133,10 +135,29 @@ describe('ManagedPool', function () {
     });
 
     context('join swaps', () => {
-      function itPerformsAJoinSwapCorrectly(doJoinSwap: () => Promise<SwapResult>) {
-        function doesJoinThingsCorrectly() {
+      function itPerformsAJoinSwapCorrectly(
+        doJoinSwap: () => Promise<SwapResult>,
+        queryJoinSwap: () => Promise<BigNumber[]>,
+        queryEquivalentJoin: () => Promise<JoinQueryResult>
+      ) {
+        function isEquivalentToARegularJoin() {
           it("doesn't revert", async () => {
             await expect(doJoinSwap()).to.not.be.reverted;
+          });
+
+          it('returns the same amount of BPT as the equivalent join', async () => {
+            const joinSwapResult = await queryJoinSwap();
+            const joinResult = await queryEquivalentJoin();
+
+            // BPT is leaving the Vault and so is represented as a negative value.
+            expect(joinSwapResult[0].mul(-1)).to.be.eq(joinResult.bptOut);
+          });
+
+          it('takes the same amount of tokens as the equivalent join', async () => {
+            const joinSwapResult = await queryJoinSwap();
+            const joinResult = await queryEquivalentJoin();
+
+            expect(joinSwapResult[1]).to.be.eq(joinResult.amountsIn[2]);
           });
         }
 
@@ -165,7 +186,7 @@ describe('ManagedPool', function () {
                 await pool.addAllowedAddress(owner, other);
               });
 
-              doesJoinThingsCorrectly();
+              isEquivalentToARegularJoin();
             });
 
             context('when trader is not allowlisted', () => {
@@ -180,23 +201,61 @@ describe('ManagedPool', function () {
               await pool.setMustAllowlistLPs(owner, false);
             });
 
-            doesJoinThingsCorrectly();
+            isEquivalentToARegularJoin();
           });
         });
       }
 
       context('given in', () => {
-        itPerformsAJoinSwapCorrectly(() =>
-          pool.swapGivenIn({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other })
+        itPerformsAJoinSwapCorrectly(
+          () => pool.swapGivenIn({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other }),
+          () =>
+            pool.vault.queryBatchSwap({
+              kind: SwapKind.GivenIn,
+              assets: [pool.address, poolTokens.first.address],
+              funds: {
+                sender: other.address,
+                fromInternalBalance: false,
+                recipient: other.address,
+                toInternalBalance: false,
+              },
+              swaps: [{ poolId: pool.poolId, assetInIndex: 1, assetOutIndex: 0, amount: fp(0.1), userData: '0x' }],
+            }),
+          () =>
+            pool.queryJoinGivenIn({
+              amountsIn: poolTokens.map((_, i) => (i == 1 ? fp(0.1) : FP_ZERO)),
+              from: other,
+              recipient: other,
+            })
         );
       });
 
       context('given out', () => {
-        itPerformsAJoinSwapCorrectly(() =>
-          pool.swapGivenOut({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other })
+        itPerformsAJoinSwapCorrectly(
+          () => pool.swapGivenOut({ in: 1, out: BPT_INDEX, amount: fp(0.1), from: other, recipient: other }),
+          () =>
+            pool.vault.queryBatchSwap({
+              kind: SwapKind.GivenOut,
+              assets: [pool.address, poolTokens.first.address],
+              funds: {
+                sender: other.address,
+                fromInternalBalance: false,
+                recipient: other.address,
+                toInternalBalance: false,
+              },
+              swaps: [{ poolId: pool.poolId, assetInIndex: 1, assetOutIndex: 0, amount: fp(0.1), userData: '0x' }],
+            }),
+          () =>
+            pool.queryJoinGivenOut({
+              token: 1,
+              bptOut: fp(0.1),
+              from: other,
+              recipient: other,
+            })
         );
       });
     });
+    ``;
   });
 
   describe('initialization', () => {
