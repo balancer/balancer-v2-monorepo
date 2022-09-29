@@ -76,7 +76,7 @@ describe('ManagedPoolSettings', function () {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
       poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPool',
+      mockContractName: 'MockManagedPoolSettings',
     };
     return WeightedPool.create(fullParams);
   }
@@ -889,11 +889,9 @@ describe('ManagedPoolSettings', function () {
         aumFeePercentage: BigNumberish,
         timeElapsed: BigNumberish
       ): BigNumber {
-        return bn(virtualSupply)
-          .mul(timeElapsed)
-          .div(365 * DAY)
-          .mul(aumFeePercentage)
-          .div(fp(1).sub(aumFeePercentage));
+        const annualBptAmount = bn(virtualSupply).mul(aumFeePercentage).div(fp(1).sub(aumFeePercentage));
+
+        return annualBptAmount.mul(timeElapsed).div(365 * DAY);
       }
 
       function itReverts(collectAUMFees: () => Promise<ContractReceipt>) {
@@ -919,6 +917,8 @@ describe('ManagedPoolSettings', function () {
         collectAUMFees: () => Promise<ContractReceipt>,
         timeElapsed: BigNumberish
       ) {
+        const MAX_REL_ERROR = 1e-8;
+
         it('collects the expected amount of fees', async () => {
           const balanceBefore = await pool.balanceOf(owner);
 
@@ -929,7 +929,7 @@ describe('ManagedPoolSettings', function () {
 
           const balanceAfter = await pool.balanceOf(owner);
           const actualManagementFeeBpt = balanceAfter.sub(balanceBefore);
-          expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 0.0001);
+          expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 1e-5);
 
           expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected', {
             bptAmount: actualManagementFeeBpt,
@@ -946,7 +946,7 @@ describe('ManagedPoolSettings', function () {
 
           const expectedActualSupply = virtualSupplyBefore.add(expectedManagementFeeBpt);
           const actualSupply = await pool.getActualSupply();
-          expect(actualSupply).to.be.equalWithError(expectedActualSupply, 1e-6);
+          expect(actualSupply).to.be.equalWithError(expectedActualSupply, MAX_REL_ERROR);
         });
 
         it('does not affect the actual supply', async () => {
@@ -955,7 +955,7 @@ describe('ManagedPoolSettings', function () {
           await collectAUMFees();
 
           const actualSupplyAfter = await pool.getActualSupply();
-          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, 1e-6);
+          expect(actualSupplyAfter).to.be.equalWithError(actualSupplyBefore, MAX_REL_ERROR);
         });
 
         it('syncs the virtual supply to the actual supply', async () => {
@@ -964,7 +964,7 @@ describe('ManagedPoolSettings', function () {
           await collectAUMFees();
 
           const virtualSupplyAfter = await pool.getVirtualSupply();
-          expect(virtualSupplyAfter).to.equalWithError(actualSupplyBefore, 1e-6);
+          expect(virtualSupplyAfter).to.equalWithError(actualSupplyBefore, MAX_REL_ERROR);
         });
       }
 
@@ -1022,6 +1022,20 @@ describe('ManagedPoolSettings', function () {
           itCollectsAUMFeesCorrectly(async () => {
             const tx = await pool.collectAumManagementFees(owner);
             return tx.wait();
+          });
+
+          it('returns the paid AUM fees', async () => {
+            await advanceTime(10 * DAY);
+
+            const expectedManagementFeeBpt = await pool.instance.callStatic.collectAumManagementFees();
+
+            const tx = await pool.collectAumManagementFees(owner);
+            const receipt = await tx.wait();
+
+            const {
+              args: { bptAmount: actualManagementFeeBpt },
+            } = expectEvent.inIndirectReceipt(receipt, pool.instance.interface, 'ManagementAumFeeCollected');
+            expect(actualManagementFeeBpt).to.equalWithError(expectedManagementFeeBpt, 1e-6);
           });
         });
       });

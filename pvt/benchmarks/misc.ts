@@ -149,7 +149,12 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
   const poolId = await pool.getPoolId();
   const { tokens: allTokens } = await vault.getPoolTokens(poolId);
-  const initialBalances = allTokens.map((t) => (t == pool.address ? 0 : initialPoolBalance));
+
+  // ComposableStablePool needs BPT in the initialize userData but ManagedPool doesn't.
+  const initialBalances = (poolName == 'ManagedPool'
+    ? allTokens.filter((t) => t != pool.address)
+    : allTokens
+  ).map((t) => (t == pool.address ? 0 : initialPoolBalance));
   joinUserData = StablePoolEncoder.joinInit(initialBalances);
 
   await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {
