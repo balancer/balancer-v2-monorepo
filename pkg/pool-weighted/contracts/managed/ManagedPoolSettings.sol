@@ -377,12 +377,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         (startTime, endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        uint256 totalTokens = tokens.length;
 
-        startWeights = new uint256[](totalTokens);
-        endWeights = new uint256[](totalTokens);
+        startWeights = new uint256[](tokens.length);
+        endWeights = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < totalTokens; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(_tokenState[tokens[i]]);
         }
     }
