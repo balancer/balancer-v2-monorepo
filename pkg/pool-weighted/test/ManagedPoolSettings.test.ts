@@ -47,7 +47,7 @@ describe('ManagedPoolSettings', function () {
   const TOKEN_COUNT = 20;
 
   const MIN_SWAP_FEE = fp(0.000001);
-  const MAX_SWAP_FEE = fp(0.8);
+  const MAX_SWAP_FEE = fp(0.95);
   const INITIAL_SWAP_FEE = MIN_SWAP_FEE.add(1);
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
