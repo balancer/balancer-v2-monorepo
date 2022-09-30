@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "../external-fees/ExternalFees.sol";
 
-contract MockProtocolFees {
+contract MockExternalFees {
     function bptForPoolOwnershipPercentage(uint256 totalSupply, uint256 poolPercentage)
         external
         pure

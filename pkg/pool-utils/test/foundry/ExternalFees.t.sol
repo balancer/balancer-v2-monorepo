@@ -7,7 +7,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "../../contracts/external-fees/ExternalFees.sol";
 
-contract ProtocolFeesTest is Test {
+contract ExternalFeesTest is Test {
     function testNoPercentage(uint128 totalSupply) external {
         assertEq(ExternalFees.bptForPoolOwnershipPercentage(totalSupply, 0), 0);
     }

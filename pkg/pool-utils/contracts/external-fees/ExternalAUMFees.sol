@@ -38,7 +38,6 @@ library ExternalAUMFees {
         // We also perform an early return if the AUM fee is zero.
         if (currentTime <= lastCollection || annualAumFeePercentage == 0) return 0;
 
-        // Reuse the "BPT amount for pool percentage" calculation used to compute protocol fees.
         uint256 annualBptAmount = ExternalFees.bptForPoolOwnershipPercentage(totalSupply, annualAumFeePercentage);
 
         // We want to collect fees so that after a year the Pool will have paid `annualAumFeePercentage` of its AUM as
