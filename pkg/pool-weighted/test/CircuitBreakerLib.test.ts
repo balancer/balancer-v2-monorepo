@@ -49,13 +49,13 @@ describe('CircuitBreakerLib', () => {
 
   async function itSetsCircuitBreakersCorrectly(lowerBound: BigNumber, upperBound: BigNumber) {
     it('sets and retrieves the bounds', async () => {
-      await assertCircuitBreakerState(lib.getCircuitBreakerFields, lib.setCircuitBreakerFields, lowerBound, upperBound);
+      await assertCircuitBreakerState(lib.getCircuitBreakerFields, lib.setCircuitBreaker, lowerBound, upperBound);
     });
   }
 
   async function itReportsTrippedBreakersCorrectly(lowerBound: BigNumber, upperBound: BigNumber) {
     it('checks tripped status', async () => {
-      const data = await lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), lowerBound, upperBound);
+      const data = await lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), lowerBound, upperBound);
 
       // Pass in the same weight factor it was constructed with to get the reference bounds
       const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
@@ -140,25 +140,25 @@ describe('CircuitBreakerLib', () => {
   context('when parameters are invalid', () => {
     it('reverts if the lower bound < 0.1', async () => {
       await expect(
-        lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(MIN_BOUND).sub(1), 0)
+        lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(MIN_BOUND).sub(1), 0)
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
 
     it('reverts if the lower bound > 1', async () => {
       await expect(
-        lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(1).add(1), 0)
+        lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(1).add(1), 0)
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
 
     it('reverts if the upper bound > MAX_BOUND', async () => {
       await expect(
-        lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), 0, fp(MAX_BOUND).add(1))
+        lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), 0, fp(MAX_BOUND).add(1))
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
 
     it('reverts if the upper bound < lower_bound', async () => {
       await expect(
-        lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(0.9), fp(0.9).sub(1))
+        lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(0.9), fp(0.9).sub(1))
       ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
     });
   });
@@ -194,7 +194,7 @@ describe('CircuitBreakerLib', () => {
     let data: string;
 
     sharedBeforeEach('set default values', async () => {
-      data = await lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(LOWER_BOUND), fp(UPPER_BOUND));
+      data = await lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(LOWER_BOUND), fp(UPPER_BOUND));
     });
 
     it('should store default reference values', async () => {
@@ -239,7 +239,7 @@ describe('CircuitBreakerLib', () => {
     let data: string;
 
     sharedBeforeEach('set default values', async () => {
-      data = await lib.setCircuitBreakerFields(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(LOWER_BOUND), fp(UPPER_BOUND));
+      data = await lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(LOWER_BOUND), fp(UPPER_BOUND));
     });
 
     it('should update the bounds given a new weight complement', async () => {

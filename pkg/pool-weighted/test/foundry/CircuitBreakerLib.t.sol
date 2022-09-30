@@ -43,7 +43,7 @@ contract CircuitBreakerLibTest is Test {
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(
             bptPrice,
             weightComplement,
             lowerBound,
@@ -76,7 +76,7 @@ contract CircuitBreakerLibTest is Test {
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(
             bptPrice,
             weightComplement,
             lowerBound,
@@ -105,7 +105,7 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
             initialBptPrice,
             initialWeightComplement,
             lowerBound,
@@ -145,7 +145,7 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
             initialBptPrice,
             initialWeightComplement,
             lowerBound,

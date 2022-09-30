@@ -1007,7 +1007,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
         // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(
+        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
             bptPrice,
             normalizedWeight.complement(),
             lowerBoundPercentage,
