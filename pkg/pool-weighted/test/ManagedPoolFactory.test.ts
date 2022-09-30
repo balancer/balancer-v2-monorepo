@@ -18,6 +18,7 @@ import {
   ManagedPoolParams,
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('ManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -74,6 +75,7 @@ describe('ManagedPoolFactory', function () {
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumFeeId: ProtocolFee.AUM,
     };
 
     const basePoolRights: BasePoolRights = {
@@ -132,7 +134,7 @@ describe('ManagedPoolFactory', function () {
       const poolId = await pool.getPoolId();
       const poolTokens = await vault.getPoolTokens(poolId);
 
-      expect(poolTokens.tokens).to.have.members(tokens.addresses);
+      expect(poolTokens.tokens).to.deep.eq([pool.address, ...tokens.addresses]);
       expect(poolTokens.balances).to.be.zeros;
     });
 

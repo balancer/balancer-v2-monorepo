@@ -13,6 +13,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('BaseManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -60,6 +61,7 @@ describe('BaseManagedPoolFactory', function () {
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumFeeId: ProtocolFee.AUM,
     };
 
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
@@ -83,7 +85,7 @@ describe('BaseManagedPoolFactory', function () {
       const poolId = await pool.getPoolId();
       const poolTokens = await vault.getPoolTokens(poolId);
 
-      expect(poolTokens.tokens).to.have.members(tokens.addresses);
+      expect(poolTokens.tokens).to.have.members([pool.address, ...tokens.addresses]);
       expect(poolTokens.balances).to.be.zeros;
     });
 
