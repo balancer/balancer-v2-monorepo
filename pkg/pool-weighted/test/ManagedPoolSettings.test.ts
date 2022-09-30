@@ -824,6 +824,9 @@ describe('ManagedPoolSettings', function () {
       const LOWER_BOUND = fp(0.8);
       const UPPER_BOUND = fp(2);
       const MAX_UPPER_BOUND = fp(10);
+      let lowerBounds: BigNumber[];
+      let upperBounds: BigNumber[];
+      let bptPrices: BigNumber[];
       let bptPrice: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
@@ -837,6 +840,11 @@ describe('ManagedPoolSettings', function () {
         await pool.init({ from: other, initialBalances });
 
         bptPrice = await getBptPrice();
+
+        // For range checks
+        lowerBounds = Array(poolTokens.length).fill(LOWER_BOUND);
+        upperBounds = Array(poolTokens.length).fill(UPPER_BOUND);
+        bptPrices = Array(poolTokens.length).fill(FP_ONE);
       });
 
       function itReverts() {
@@ -855,19 +863,21 @@ describe('ManagedPoolSettings', function () {
             ).to.be.revertedWith('INVALID_TOKEN');
           });
 
-          it('fails with mismatched lower bounds', async () => {
-            const upperBounds = Array(poolTokens.length).fill(UPPER_BOUND);
-
+          it('fails with mismatched upper bounds', async () => {
             await expect(
-              pool.setCircuitBreakers(sender, poolTokens.addresses, [bptPrice], [LOWER_BOUND], upperBounds)
+              pool.setCircuitBreakers(sender, poolTokens.addresses, bptPrices, lowerBounds, [UPPER_BOUND])
             ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
           it('fails with mismatched lower bounds', async () => {
-            const lowerBounds = Array(poolTokens.length).fill(LOWER_BOUND);
-
             await expect(
-              pool.setCircuitBreakers(sender, poolTokens.addresses, [bptPrice], lowerBounds, [UPPER_BOUND])
+              pool.setCircuitBreakers(sender, poolTokens.addresses, bptPrices, [LOWER_BOUND], upperBounds)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with mismatched BPT prices', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, poolTokens.addresses, [bptPrice], lowerBounds, upperBounds)
             ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
           });
 
