@@ -169,11 +169,23 @@ contract CircuitBreakerLibTest is Test {
         cachedCost -= gasleft();
 
         // The new cached values should match what was previously calculated dynamically.
-        uint256 MAX_ERROR = 5e12;
+        uint256 MAX_ERROR = 1e11;
         assertApproxEqRel(newCachedLowerBptPriceBoundary, lowerBptPriceBoundary, MAX_ERROR);
         assertApproxEqRel(newCachedUpperBptPriceBoundary, upperBptPriceBoundary, MAX_ERROR);
 
         // Using the new cached values should reduce costs by over 2/3rds
         assertLe(cachedCost, dynamicCost / 3);
+    }
+
+    function assertApproxEqRel(
+        uint256 a,
+        uint256 b,
+        uint256 maxPercentDelta
+    ) internal override {
+        if ((b * maxPercentDelta) / 1e18 == 0) {
+            assertApproxEqAbs(a, b, 1);
+        } else {
+            super.assertApproxEqRel(a, b, maxPercentDelta);
+        }
     }
 }
