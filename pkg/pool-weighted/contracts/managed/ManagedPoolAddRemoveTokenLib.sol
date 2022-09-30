@@ -41,7 +41,7 @@ library ManagedPoolAddRemoveTokenLib {
     }
 
     /**
-     * @notice Adds a token to the Pool's list of tradeable tokens. This is a permissioned function.
+     * @notice Adds a token to the Pool's list of tradeable tokens.
      *
      * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
      * token will have no balance - it is up to the owner to provide some immediately after calling this function.
@@ -50,14 +50,17 @@ library ManagedPoolAddRemoveTokenLib {
      *
      * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
      *
-     * The caller may additionally pass a non-zero `mintAmount` to have some BPT be minted for them, which might be
-     * useful in some scenarios to account for the fact that the Pool will have more tokens.
-     *
-     * Emits the TokenAdded event.
-     *
+     * @param vault - The address of the Balancer Vault.
+     * @param poolId - The bytes32 poolId of the Pool which to add the token.
+     * @param poolState - The byte32 state of the Pool.
+     * @param currentTokens - The array of IERC20 tokens held in the Pool prior to adding the new token.
+     * @param currentWeights - The array of token weights prior to adding the new token.
      * @param tokenToAdd - The ERC20 token to be added to the Pool.
      * @param assetManager - The Asset Manager for the token.
      * @param tokenToAddNormalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
+     * @return tokenToAddState - The bytes32 state of the token which has been added.
+     * @return newTokens - The updated tokens array once the token has been added.
+     * @return newWeights - The updated weights array once the token has been added.
      */
     function addToken(
         IVault vault,
@@ -100,8 +103,7 @@ library ManagedPoolAddRemoveTokenLib {
 
         // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
-        // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
-        // which will check the entire set of weights for correctness.
+        // Note that we don't need to check here that the weight is valid as this is enforced when updating the weights.
         tokenToAddState = ManagedPoolTokenLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
 
         // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
@@ -136,14 +138,19 @@ library ManagedPoolAddRemoveTokenLib {
 
     /**
      * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
-     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2.
      *
-     * Emits the TokenRemoved event. This is a permissioned function.
+     * Token removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
      *
-     * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
-     * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
+     * @param vault - The address of the Balancer Vault.
+     * @param poolId - The bytes32 poolId of the Pool which to add the token.
+     * @param poolState - The byte32 state of the Pool.
+     * @param currentTokens - The array of IERC20 tokens held in the Pool prior to adding the new token.
+     * @param currentWeights - The array of token weights prior to adding the new token.
      * @param tokenToRemove - The ERC20 token to be removed from the Pool.
+     * @param tokenToRemoveNormalizedWeight - The normalized weight of `tokenToRemove`.
+     * @return newTokens - The updated tokens array once the token has been removed.
+     * @return newWeights - The updated weights array once the token has been removed.
      */
     function removeToken(
         IVault vault,
@@ -187,7 +194,8 @@ library ManagedPoolAddRemoveTokenLib {
         for (uint256 i = 0; i < newWeights.length; ++i) {
             if (currentTokens[i] == tokenToRemove) {
                 // If we're at the index of the removed token then want to instead insert the weight of the final token.
-                // This is because the token at the end of the array will be moved into the index of the removed token.
+                // This is because the token at the end of the array will be moved into the index of the removed token
+                // in a "swap and pop" operation.
                 newTokens[i] = currentTokens[currentTokens.length - 1];
                 newWeights[i] = currentWeights[currentWeights.length - 1].divDown(
                     FixedPoint.ONE.sub(tokenToRemoveNormalizedWeight)

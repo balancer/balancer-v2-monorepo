@@ -668,16 +668,20 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 mintAmount,
         address recipient
     ) external authenticate whenNotPaused nonReentrant {
-        // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
-        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
-        // changes. For consistency, we do this always, even if the amount to mint is zero.
-        uint256 supply = _getVirtualSupply();
-        _require(supply > 0, Errors.UNINITIALIZED);
-        _collectAumManagementFees(supply);
+        {
+            // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
+            // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
+            // changes. For consistency, we do this always, even if the amount to mint is zero.
+            uint256 supply = _getVirtualSupply();
+            _require(supply > 0, Errors.UNINITIALIZED);
+            _collectAumManagementFees(supply);
+        }
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
+        // `ManagedPoolAddRemoveTokenLib.addToken` performs any necessary state updates in the Vault and returns
+        // values necessary for the Pool to update its own state.
         (bytes32 tokenToAddState, IERC20[] memory newTokens, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib
             .addToken(
             getVault(),
@@ -689,6 +693,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             assetManager,
             tokenToAddNormalizedWeight
         );
+
+        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // since we need to:
+        //  a) initialize the state of the new token
+        //  b) adjust the weights of all other tokens
 
         // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
@@ -757,6 +766,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         //  a) delete the state of the removed token
         //  b) adjust the weights of all other tokens
 
+        // Deleting the old token is straightforward. The Pool itself doesn't track how many or which tokens it uses
+        // (and relies instead on the Vault for this), so we simply delete the token-specific information.
         delete _tokenState[tokenToRemove];
 
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
