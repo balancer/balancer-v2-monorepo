@@ -206,7 +206,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
-    function getActualSupply() external view returns (uint256) {
+    function getActualSupply() public view returns (uint256) {
         return _getActualSupply(_getVirtualSupply());
     }
 
@@ -967,15 +967,32 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             circuitBreakerState
         );
 
-        lowerBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, true);
-        upperBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, false);
+        lowerBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(
+            circuitBreakerState,
+            weightComplement,
+            true
+        );
+        upperBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(
+            circuitBreakerState,
+            weightComplement,
+            false
+        );
     }
 
     /**
      * @dev Get the current one-sided BPT price bound for a given token and weight.
      */
-    function getCurrentCircuitBreakerBound(IERC20 token, uint256 weightComplement, bool isLowerBound) internal view returns (uint256) {
-        return CircuitBreakerLib.getCurrentCircuitBreakerBound(_circuitBreakerState[token], weightComplement, isLowerBound);
+    function _getCurrentCircuitBreakerBound(
+        IERC20 token,
+        uint256 weightComplement,
+        bool isLowerBound
+    ) internal view returns (uint256) {
+        return
+            CircuitBreakerLib.getCurrentCircuitBreakerBound(
+                _circuitBreakerState[token],
+                weightComplement,
+                isLowerBound
+            );
     }
 
     /**

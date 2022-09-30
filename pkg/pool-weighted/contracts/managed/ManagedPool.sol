@@ -269,6 +269,16 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
+    struct SwapData {
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        uint256 scalingFactorTokenIn;
+        uint256 scalingFactorTokenOut;
+        uint256 swapFeeComplement;
+        uint256 lowerBptPriceBound;
+        uint256 upperBptPriceBound;
+    }
+
     /*
      * @dev Called when a swap with the Pool occurs, where neither of the tokens involved are the BPT of the Pool.
      *
@@ -284,63 +294,116 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut,
         bytes32 poolState
     ) internal view returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        uint256 scalingFactorTokenIn;
-        uint256 scalingFactorTokenOut;
-        uint256 swapFeeComplement;
-        {
-            bytes32 tokenInState = _getTokenState(request.tokenIn);
-            bytes32 tokenOutState = _getTokenState(request.tokenOut);
+        SwapData memory swapData = _getSwapData(request, poolState);
+        uint256 virtualSupply = getActualSupply();
 
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-            tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress);
-            tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress);
-
-            scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
-            scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
-
-            swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
-        }
-
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+        balanceTokenIn = _upscale(balanceTokenIn, swapData.scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, swapData.scalingFactorTokenOut);
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenIn);
+            request.amount = _upscale(request.amount, swapData.scalingFactorTokenIn);
 
             // We round the amount in down (favoring a higher fee amount).
-            request.amount = request.amount.mulDown(swapFeeComplement);
+            request.amount = request.amount.mulDown(swapData.swapFeeComplement);
 
             uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                tokenInWeight,
+                swapData.tokenInWeight,
                 balanceTokenOut,
-                tokenOutWeight,
+                swapData.tokenOutWeight,
                 request.amount
             );
 
+            if (swapData.lowerBptPriceBound != 0) {
+                _checkCircuitBreaker(
+                    swapData.lowerBptPriceBound,
+                    virtualSupply,
+                    swapData.tokenInWeight,
+                    balanceTokenIn.add(request.amount),
+                    true
+                );
+            }
+
+            if (swapData.upperBptPriceBound != 0) {
+                _checkCircuitBreaker(
+                    swapData.upperBptPriceBound,
+                    virtualSupply,
+                    swapData.tokenOutWeight,
+                    balanceTokenOut.sub(amountOut),
+                    false
+                );
+            }
+
             // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, scalingFactorTokenOut);
+            return _downscaleDown(amountOut, swapData.scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenOut);
+            request.amount = _upscale(request.amount, swapData.scalingFactorTokenOut);
 
             uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                tokenInWeight,
+                swapData.tokenInWeight,
                 balanceTokenOut,
-                tokenOutWeight,
+                swapData.tokenOutWeight,
                 request.amount
             );
 
             // We round the amount in up (favoring a higher fee amount).
-            amountIn = amountIn.divUp(swapFeeComplement);
+            amountIn = amountIn.divUp(swapData.swapFeeComplement);
+
+            if (swapData.lowerBptPriceBound != 0) {
+                _checkCircuitBreaker(
+                    swapData.lowerBptPriceBound,
+                    virtualSupply,
+                    swapData.tokenInWeight,
+                    balanceTokenIn.add(amountIn),
+                    true
+                );
+            }
+
+            if (swapData.upperBptPriceBound != 0) {
+                _checkCircuitBreaker(
+                    swapData.upperBptPriceBound,
+                    virtualSupply,
+                    swapData.tokenOutWeight,
+                    balanceTokenOut.sub(request.amount),
+                    false
+                );
+            }
 
             // amountIn tokens are entering the Pool, so we round up.
-            return _downscaleUp(amountIn, scalingFactorTokenIn);
+            return _downscaleUp(amountIn, swapData.scalingFactorTokenIn);
         }
+    }
+
+    function _getSwapData(SwapRequest memory request, bytes32 poolState)
+        private
+        view
+        returns (SwapData memory tokenInfo)
+    {
+        bytes32 tokenInState = _getTokenState(request.tokenIn);
+        bytes32 tokenOutState = _getTokenState(request.tokenOut);
+
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+        tokenInfo.tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress);
+        tokenInfo.tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress);
+
+        tokenInfo.scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
+        tokenInfo.scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
+
+        tokenInfo.swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+
+        tokenInfo.lowerBptPriceBound = _getCurrentCircuitBreakerBound(
+            request.tokenIn,
+            tokenInfo.tokenInWeight.complement(),
+            true
+        );
+        tokenInfo.upperBptPriceBound = _getCurrentCircuitBreakerBound(
+            request.tokenOut,
+            tokenInfo.tokenOutWeight.complement(),
+            false
+        );
     }
 
     // Initialize
@@ -584,6 +647,37 @@ contract ManagedPool is ManagedPoolSettings {
         );
 
         return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
+    }
+
+    // Circuit Breakers
+
+    /**
+     * @dev Get the current BPT price, given its components (e.g., the end state of an operation).
+     */
+    function _getBptPrice(
+        uint256 virtualSupply,
+        uint256 normalizedWeight,
+        uint256 upscaledBalance
+    ) private pure returns (uint256) {
+        return virtualSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
+    }
+
+    // Trip the circuit breaker if the current BPT price is less than the lower bound, or greater than the upper bound.
+    // For performance reasons, check for a zero bound (= no circuit breaker set) externally, avoiding computation of
+    // the current BPT price when it's not needed.
+    function _checkCircuitBreaker(
+        uint256 bptPriceBound,
+        uint256 virtualSupply,
+        uint256 normalizedWeight,
+        uint256 upscaledBalance,
+        bool isLowerBound
+    ) private pure {
+        uint256 currentBptPrice = _getBptPrice(virtualSupply, normalizedWeight, upscaledBalance);
+
+        _require(
+            isLowerBound ? currentBptPrice >= bptPriceBound : currentBptPrice <= bptPriceBound,
+            Errors.CIRCUIT_BREAKER_TRIPPED
+        );
     }
 
     // Unimplemented
