@@ -173,13 +173,10 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
-        bytes32 tokenInState = _getTokenState(request.tokenIn);
-
-        uint256 tokenInWeight = ManagedPoolTokenLib.getTokenWeight(
-            tokenInState,
+        (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
+            request.tokenIn,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
         );
-        uint256 scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
@@ -228,13 +225,10 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
-        bytes32 tokenOutState = _getTokenState(request.tokenOut);
-
-        uint256 tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(
-            tokenOutState,
+        (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
+            request.tokenOut,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
         );
-        uint256 scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
         // We must always upscale the token balance for both `GIVEN_IN` and `GIVEN_OUT` swaps
@@ -290,15 +284,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 scalingFactorTokenOut;
         uint256 swapFeeComplement;
         {
-            bytes32 tokenInState = _getTokenState(request.tokenIn);
-            bytes32 tokenOutState = _getTokenState(request.tokenOut);
-
             uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-            tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress);
-            tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress);
-
-            scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
-            scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
+            (tokenInWeight, scalingFactorTokenIn) = _getTokenInfo(request.tokenIn, weightChangeProgress);
+            (tokenOutWeight, scalingFactorTokenOut) = _getTokenInfo(request.tokenOut, weightChangeProgress);
 
             swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
         }
@@ -341,6 +329,19 @@ contract ManagedPool is ManagedPoolSettings {
             // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountIn, scalingFactorTokenIn);
         }
+    }
+
+    /**
+     * @notice Returns a token's weight and scaling factor
+     */
+    function _getTokenInfo(IERC20 token, uint256 weightChangeProgress)
+        private
+        view
+        returns (uint256 tokenWeight, uint256 scalingFactor)
+    {
+        bytes32 tokenState = _getTokenState(token);
+        tokenWeight = ManagedPoolTokenLib.getTokenWeight(tokenState, weightChangeProgress);
+        scalingFactor = ManagedPoolTokenLib.getTokenScalingFactor(tokenState);
     }
 
     // Initialize
