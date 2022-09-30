@@ -638,9 +638,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
+    function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
         uint256 bptAmount = ExternalAUMFees.getAumFeesBptAmount(
-            totalSupply,
+            virtualSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
             getManagementAumFeePercentage()
