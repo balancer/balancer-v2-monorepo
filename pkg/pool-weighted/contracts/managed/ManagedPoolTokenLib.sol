@@ -80,11 +80,13 @@ library ManagedPoolTokenLib {
      * @return normalizedStartWeight - The starting normalized weight of the token.
      * @return normalizedEndWeight - The ending normalized weight of the token.
      */
-    function getTokenStartAndEndWeights(bytes32 tokenState) internal pure returns (uint256, uint256) {
-        return (
-            tokenState.decodeUint(_START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH),
-            tokenState.decodeUint(_END_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH)
-        );
+    function getTokenStartAndEndWeights(bytes32 tokenState)
+        internal
+        pure
+        returns (uint256 normalizedStartWeight, uint256 normalizedEndWeight)
+    {
+        normalizedStartWeight = tokenState.decodeUint(_START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH);
+        normalizedEndWeight = tokenState.decodeUint(_END_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH);
     }
 
     // Setters
