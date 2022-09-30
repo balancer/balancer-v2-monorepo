@@ -138,9 +138,8 @@ library ManagedPoolTokenLib {
      * @param token - The ERC20 token of interest.
      * @param normalizedWeight - The normalized weight of the token.
      */
-    function initializeTokenState(IERC20 token, uint256 normalizedWeight) internal view returns (bytes32) {
-        bytes32 tokenState = bytes32(0);
-        tokenState = setTokenScalingFactor(tokenState, token);
+    function initializeTokenState(IERC20 token, uint256 normalizedWeight) internal view returns (bytes32 tokenState) {
+        tokenState = setTokenScalingFactor(bytes32(0), token);
         tokenState = setTokenWeight(tokenState, normalizedWeight, normalizedWeight);
         return tokenState;
     }
