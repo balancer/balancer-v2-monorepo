@@ -732,9 +732,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         {
             // Add new scope to avoid stack too deep.
 
-            // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
-            // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
-            // changes. For consistency, we do this always, even if the amount to burn is zero.
+            // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens
+            // before initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the
+            // BPT supply changes. For consistency, we do this always, even if the amount to burn is zero.
             uint256 supply = _getVirtualSupply();
             _require(supply > 0, Errors.UNINITIALIZED);
             _collectAumManagementFees(supply);
