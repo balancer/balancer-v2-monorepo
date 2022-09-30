@@ -179,13 +179,23 @@ library CircuitBreakerLib {
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param weightComplement - The complement of this token's weight, generally given by (1 - weight).
-     * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
+     * @param isLowerBound - Specify which bound to return. (We don't need both at the same time.)
+     * @return - lower or upper BPT price bound, which can be directly compared against the current BPT price.
      */
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 weightComplement)
-        internal
-        pure
-        returns (uint256, uint256)
-    {
+    function getCurrentCircuitBreakerBound(
+        bytes32 circuitBreakerState,
+        uint256 weightComplement,
+        bool isLowerBound
+    ) internal pure returns (uint256) {
+        uint256 bound = circuitBreakerState.decodeUint(
+            isLowerBound ? _LOWER_BOUND_OFFSET : _UPPER_BOUND_OFFSET, _BOUND_WIDTH
+        ) << _BOUND_SHIFT_BITS;
+
+        // If there is no bound set, short circuit to avoid unnecessary computation.
+        if (bound == 0) {
+            return 0;
+        }
+
         // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
         uint256 initialWeightComplement = circuitBreakerState.decodeUint(
@@ -193,33 +203,21 @@ library CircuitBreakerLib {
             _WEIGHT_COMPLEMENT_WIDTH
         );
 
-        uint256 lowerBoundRatio;
-        uint256 upperBoundRatio;
+        uint256 boundRatio;
 
         if (initialWeightComplement == weightComplement) {
             // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary ratios.
-            lowerBoundRatio = circuitBreakerState.decodeUint(_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
-                _BOUND_RATIO_WIDTH,
-                _MAX_BOUND_PERCENTAGE
-            );
-            upperBoundRatio = circuitBreakerState.decodeUint(_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH).decompress(
-                _BOUND_RATIO_WIDTH,
-                _MAX_BOUND_PERCENTAGE
-            );
+            boundRatio = circuitBreakerState
+                .decodeUint(isLowerBound ? _LOWER_BOUND_RATIO_OFFSET : _UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
+                .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
-            // Something has changed - either the weight of the token, or the composition of the pool, so we must
-            // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
-            (lowerBoundRatio, upperBoundRatio) = getBoundaryConversionRatios(
-                circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
-                circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
-                weightComplement
-            );
+            boundRatio = isLowerBound ? bound.powUp(weightComplement) : bound.powDown(weightComplement);
         }
 
         // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
         // To err in favor of tripping the breaker, round the lower bound up, and the upper bound down.
-        return (bptPrice.mulUp(lowerBoundRatio), bptPrice.mulDown(upperBoundRatio));
+         return (isLowerBound ? FixedPoint.mulUp : FixedPoint.mulDown)(bptPrice, boundRatio);
     }
 
     /**
@@ -239,10 +237,11 @@ library CircuitBreakerLib {
         uint256 normalizedWeight,
         uint256 upscaledBalance
     ) internal pure returns (bool, bool) {
-        (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) = getCurrentCircuitBreakerBounds(
-            circuitBreakerState,
-            normalizedWeight.complement()
-        );
+        uint256 weightComplement = normalizedWeight.complement();
+
+        uint256 lowerBoundBptPrice = getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, true);
+        uint256 upperBoundBptPrice = getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, false);
+
         uint256 currentBptPrice = totalSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
 
         return (

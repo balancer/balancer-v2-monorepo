@@ -58,10 +58,8 @@ describe('CircuitBreakerLib', () => {
       const data = await lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), lowerBound, upperBound);
 
       // Pass in the same weight factor it was constructed with to get the reference bounds
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
-        data,
-        fp(WEIGHT_COMPLEMENT)
-      );
+      const lowerBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(WEIGHT_COMPLEMENT), true);
+      const upperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(WEIGHT_COMPLEMENT), false);
 
       let lowerBoundTripped: boolean;
       let upperBoundTripped: boolean;
@@ -199,10 +197,8 @@ describe('CircuitBreakerLib', () => {
 
     it('should store default reference values', async () => {
       // Pass in the same weight factor it was constructed with
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
-        data,
-        fp(WEIGHT_COMPLEMENT)
-      );
+      const lowerBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(WEIGHT_COMPLEMENT), true);
+      const upperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(WEIGHT_COMPLEMENT), false);
 
       const expLower = LOWER_BOUND ** WEIGHT_COMPLEMENT;
       const expHigher = UPPER_BOUND ** WEIGHT_COMPLEMENT;
@@ -218,10 +214,8 @@ describe('CircuitBreakerLib', () => {
     it('should compute the bounds manually when necessary', async () => {
       const newWeightComplement = WEIGHT_COMPLEMENT * (Math.random() < 0.5 ? 1 + Math.random() : 1 - Math.random());
 
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
-        data,
-        fp(newWeightComplement)
-      );
+      const lowerBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(newWeightComplement), true);
+      const upperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(newWeightComplement), false);
 
       const expLower = LOWER_BOUND ** newWeightComplement;
       const expHigher = UPPER_BOUND ** newWeightComplement;
@@ -245,12 +239,12 @@ describe('CircuitBreakerLib', () => {
     it('should update the bounds given a new weight complement', async () => {
       const newWeightComplement = WEIGHT_COMPLEMENT * (Math.random() < 0.5 ? 1 + Math.random() : 1 - Math.random());
 
+      const origUpperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(WEIGHT_COMPLEMENT), false);
+
       data = await lib.updateBoundRatios(data, fp(newWeightComplement));
 
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
-        data,
-        fp(newWeightComplement)
-      );
+      const lowerBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(newWeightComplement), true);
+      const upperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(newWeightComplement), false);
 
       const expLower = LOWER_BOUND ** newWeightComplement;
       const expHigher = UPPER_BOUND ** newWeightComplement;

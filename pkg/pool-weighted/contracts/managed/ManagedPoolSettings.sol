@@ -967,10 +967,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
-            circuitBreakerState,
-            _getNormalizedWeight(token).complement()
-        );
+        lowerBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, true);
+        upperBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, false);
     }
 
     /**

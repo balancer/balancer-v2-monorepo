@@ -26,12 +26,12 @@ contract MockCircuitBreakerLib {
             return CircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
     }
 
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightFactor)
+    function getCurrentCircuitBreakerBound(bytes32 circuitBreakerState, uint256 currentWeightFactor, bool isLowerBound)
         external
         pure
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        return CircuitBreakerLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeightFactor);
+        return CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, currentWeightFactor, isLowerBound);
     }
 
     function hasCircuitBreakerTripped(
