@@ -36,6 +36,7 @@ import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolTokenLib.sol";
+import "./ManagedPoolAddRemoveTokenLib.sol";
 
 /**
  * @title Managed Pool Settings
@@ -687,68 +688,29 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _require(supply > 0, Errors.UNINITIALIZED);
         _collectAumManagementFees(supply);
 
-        // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
-        // functions.
-        _require(tokenToAdd != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
-
-        // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
-        // change and would override an existing one, and b) any previous weight changes would be incomplete since they
-        // wouldn't include the new token.
-        _ensureNoWeightChange(_poolState);
-
-        // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
-        // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
-        // initial balance and restore regular operation.
-        //
-        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
-        // try to register it again.
-        PoolRegistrationLib.registerToken(getVault(), getPoolId(), tokenToAdd, assetManager);
-
-        // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
-        // opportunity to check we have not added too many tokens.
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
-        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
-        // since we need to:
-        //  a) initialize the state of the new token
-        //  b) adjust the weights of all other tokens
+        (bytes32 tokenToAddState, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib.addToken(
+            getVault(),
+            getPoolId(),
+            _poolState,
+            _getNormalizedWeights(tokens),
+            tokenToAdd,
+            assetManager,
+            tokenToAddNormalizedWeight
+        );
 
         // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
         // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
         // which will check the entire set of weights for correctness.
-        _tokenState[tokenToAdd] = ManagedPoolTokenLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
+        _tokenState[tokenToAdd] = tokenToAddState;
 
-        // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
-        // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.
-        // For example, if a  0.25/0.75 Pool gets added a token with a weight of 0.80, the final weights would be
-        // 0.05/0.15/0.80, where 0.05 = 0.25 * (1 - 0.80) and 0.15 = 0.75 * (1 - 0.80).
-        uint256[] memory currentWeights = _getNormalizedWeights(tokens);
-        uint256[] memory newWeights = new uint256[](tokens.length);
-        uint256 newWeightSum = 0;
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == tokenToAdd) {
-                newWeights[i] = tokenToAddNormalizedWeight;
-            } else {
-                newWeights[i] = currentWeights[i].mulDown(FixedPoint.ONE.sub(tokenToAddNormalizedWeight));
-            }
-
-            newWeightSum = newWeightSum.add(newWeights[i]);
-        }
-
-        // It is possible that the new weights don't add up to 100% due to rounding errors - the sum might be slightly
-        // smaller since we round the weights down. In that case, we adjust the last weight so that the sum is exact.
-        //
-        // This error is negligible, since the error introduced in the weight of the last token equals the number of
-        // tokens in the worst case (as each weight can be off by one at most), and the minimum weight is 1e16, meaning
-        // there's ~15 orders of magnitude between the smallest weight and the error. It is important however that the
-        // weights do add up to 100% exactly, as that property is relied on in some parts of the WeightedMath
-        // computations.
-        if (newWeightSum != FixedPoint.ONE) {
-            newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
-        }
+        // We now need an updated list of tokens which includes `tokenToAdd`.
+        // For simplicity we just read it from the Vault again.
+        // This is also a good opportunity to check we have not added too many tokens.
+        (tokens, ) = _getPoolTokens();
+        _require(tokens.length + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
