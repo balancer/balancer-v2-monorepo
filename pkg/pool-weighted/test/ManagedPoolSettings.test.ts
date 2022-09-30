@@ -813,6 +813,16 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('circuit breakers', () => {
+    async function getBptPrice(): Promise<BigNumber> {
+      const totalSupply = await pool.getActualSupply();
+      const scalingFactors = await pool.getScalingFactors();
+
+      return fpDiv(
+        fpMul(totalSupply, poolWeights[0]),
+        fpMul(initialBalances[0], scalingFactors[0])
+      );
+    }
+
     describe('setCircuitBreakers', () => {
       const LOWER_BOUND = fp(0.8);
       const UPPER_BOUND = fp(2);
@@ -829,8 +839,7 @@ describe('ManagedPoolSettings', function () {
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
 
-        //bptPrice = await pool.instance.getBptPrice(poolTokens.first.address);
-        bptPrice = fpDiv(fpMul((await pool.getActualSupply()), poolWeights[0]), initialBalances[0]); // await pool.instance.getBptPrice(poolTokens.first.address);
+        bptPrice = await getBptPrice();
       });
 
       function itReverts() {
@@ -1005,7 +1014,7 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
-        bptPrice = fpDiv(fpMul((await pool.getActualSupply()), poolWeights[0]), initialBalances[0]); // await pool.instance.getBptPrice(poolTokens.first.address);
+        bptPrice = await getBptPrice();
       });
 
       const initialWeight = poolWeights[0];
