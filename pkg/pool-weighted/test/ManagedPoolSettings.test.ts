@@ -829,7 +829,8 @@ describe('ManagedPoolSettings', function () {
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
 
-        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address);
+        //bptPrice = await pool.instance.getBptPrice(poolTokens.first.address);
+        bptPrice = fpDiv(fpMul((await pool.getActualSupply()), poolWeights[0]), initialBalances[0]); // await pool.instance.getBptPrice(poolTokens.first.address);
       });
 
       function itReverts() {
@@ -895,7 +896,8 @@ describe('ManagedPoolSettings', function () {
           });
 
           it('setting a circuit breaker emits an event', async () => {
-            const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address);
+            //const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address);
+            const initialPrice = fpDiv(fpMul((await pool.getActualSupply()), poolWeights[0]), initialBalances[0]); 
 
             const receipt = await pool.setCircuitBreakers(
               sender,
@@ -991,43 +993,6 @@ describe('ManagedPoolSettings', function () {
       });
     });
 
-    context('getBptPrice', () => {
-      let totalSupply: BigNumber;
-      let scalingFactors: BigNumber[];
-
-      sharedBeforeEach('deploy pool', async () => {
-        const params = {
-          tokens: poolTokens,
-          weights: poolWeights,
-          vault,
-          owner: owner.address,
-        };
-        pool = await createMockPool(params);
-        await pool.init({ from: other, initialBalances });
-      });
-
-      sharedBeforeEach('get pool data', async () => {
-        totalSupply = await pool.getActualSupply();
-        scalingFactors = await pool.getScalingFactors();
-      });
-
-      it('calculates the BPT price for each token', async () => {
-        for (let i = 0; i < poolTokens.length; i++) {
-          const expectedBptPrice = fpDiv(
-            fpMul(totalSupply, poolWeights[i]),
-            fpMul(initialBalances[i], scalingFactors[i])
-          );
-          const actualBptPrice = await pool.instance.getBptPrice(poolTokens.tokens[i].address);
-
-          expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
-        }
-      });
-
-      it('returns 1 if you pass the pool token', async () => {
-        expect(await pool.instance.getBptPrice(pool.address)).to.equal(FP_ONE);
-      });
-    });
-
     context('circuit breaker bounds', () => {
       let bptPrice: BigNumber;
 
@@ -1040,7 +1005,7 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
-        bptPrice = await pool.instance.getBptPrice(poolTokens.first.address);
+        bptPrice = fpDiv(fpMul((await pool.getActualSupply()), poolWeights[0]), initialBalances[0]); // await pool.instance.getBptPrice(poolTokens.first.address);
       });
 
       const initialWeight = poolWeights[0];

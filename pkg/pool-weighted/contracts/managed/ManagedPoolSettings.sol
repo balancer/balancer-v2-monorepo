@@ -974,18 +974,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
-     * @notice Get the price of a single token in terms of BPT, given the weight.
-     * @dev Returns an 18-decimal floating point number.
-     */
-    function getBptPrice(IERC20 token) external view returns (uint256) {
-        if (token == IERC20(this)) {
-            return FixedPoint.ONE;
-        }
-
-        return getActualSupply().mulUp(_getNormalizedWeight(token)).divDown(_getUpscaledTokenBalance(token));
-    }
-
-    /**
      * @notice Set a circuit breaker for one or more tokens.
      * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
      * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
@@ -1027,11 +1015,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         );
 
         emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
-    }
-
-    function _getUpscaledTokenBalance(IERC20 token) private view returns (uint256) {
-        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), token);
-        return _upscale(cash + managed, ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[token]));
     }
 
     // Misc
