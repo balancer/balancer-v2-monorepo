@@ -364,9 +364,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
     }
 
-    function _ensureNoWeightChange() private view {
+    function _ensureNoWeightChange(bytes32 poolState) private view {
         uint256 currentTime = block.timestamp;
-        (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
+        (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(poolState);
 
         if (currentTime < endTime) {
             _revert(
@@ -694,7 +694,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
         // change and would override an existing one, and b) any previous weight changes would be incomplete since they
         // wouldn't include the new token.
-        _ensureNoWeightChange();
+        _ensureNoWeightChange(_poolState);
 
         // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
         // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
@@ -794,7 +794,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
         // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
         // they would include the removed token.
-        _ensureNoWeightChange();
+        _ensureNoWeightChange(_poolState);
 
         // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
         // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
