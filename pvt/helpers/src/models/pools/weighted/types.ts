@@ -33,6 +33,7 @@ export type RawWeightedPoolDeployment = {
   vault?: Vault;
   fromFactory?: boolean;
   poolType?: WeightedPoolType;
+  aumFeeId?: BigNumberish;
   mockContractName?: string;
 };
 
@@ -49,6 +50,7 @@ export type WeightedPoolDeployment = {
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  aumFeeId?: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -211,4 +213,5 @@ export type ManagedPoolParams = {
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
+  aumFeeId: BigNumberish;
 };
