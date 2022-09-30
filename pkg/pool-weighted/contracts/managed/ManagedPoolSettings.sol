@@ -25,9 +25,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/CircuitBreakerLib.sol";
@@ -58,12 +58,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
     // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
-    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
+    // amounts exceed the pool's token balances in the Vault. 95% is a very high but safe maximum value, and we want to
+    // be permissive to let the owner manage the Pool as they see fit.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 95e16; // 95%
 
+    // The same logic applies to the AUM fee.
+    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 95e16; // 95%
+
+    // We impose a minimum swap fee to create some buy/sell spread, and prevent the Pool from being drained through
+    // repeated interactions. We should not need this since we explicity always round favoring the Pool, but a minimum
+    // swap fee adds an extra safeguard.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-
-    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
     // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
@@ -216,7 +221,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             return virtualSupply;
         }
 
-        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+        uint256 aumFeesAmount = ExternalAUMFees.getAumFeesBptAmount(
             virtualSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
@@ -634,7 +639,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * This function is called automatically on joins and exits.
      */
     function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
-        uint256 bptAmount = ProtocolAUMFees.getAumFeesBptAmount(
+        uint256 bptAmount = ExternalAUMFees.getAumFeesBptAmount(
             totalSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
