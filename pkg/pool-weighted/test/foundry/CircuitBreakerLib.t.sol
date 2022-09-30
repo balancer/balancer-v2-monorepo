@@ -119,7 +119,6 @@ contract CircuitBreakerLibTest is Test {
             upperBound,
             newWeightComplement
         );
-
         assertApproxEqRel(
             lowerBptPriceBoundary,
             uint256(initialBptPrice).mulDown(expectedLowerBptPrice),

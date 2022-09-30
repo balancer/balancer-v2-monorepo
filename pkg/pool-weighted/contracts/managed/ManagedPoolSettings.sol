@@ -30,6 +30,7 @@ import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
+import "../lib/CircuitBreakerLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -110,6 +111,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
     event TokenRemoved(IERC20 indexed token);
+    event CircuitBreakerSet(
+        IERC20 indexed token,
+        uint256 bptPrice,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    );
 
     struct NewPoolParams {
         string name;
@@ -331,6 +338,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     function getNormalizedWeights() external view returns (uint256[] memory) {
         (IERC20[] memory tokens, ) = _getPoolTokens();
         return _getNormalizedWeights(tokens);
+    }
+
+    /**
+     * @dev Returns the normalized weight of a single token.
+     */
+    function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
+
+        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress);
     }
 
     /**
@@ -925,6 +941,82 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
     }
 
+    // Circuit Breakers
+
+    /**
+     * @notice Return the full circuit breaker state for the given token.
+     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
+     * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
+     * the circuit breaker should trip.
+     */
+    function getCircuitBreakerState(IERC20 token)
+        external
+        view
+        returns (
+            uint256 bptPrice,
+            uint256 weightComplement,
+            uint256 lowerBound,
+            uint256 upperBound,
+            uint256 lowerBptPriceBound,
+            uint256 upperBptPriceBound
+        )
+    {
+        bytes32 circuitBreakerState = _circuitBreakerState[token];
+
+        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+            circuitBreakerState
+        );
+
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+            circuitBreakerState,
+            _getNormalizedWeight(token).complement()
+        );
+    }
+
+    /**
+     * @notice Set a circuit breaker for one or more tokens.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
+     * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
+     * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
+     * more relative to the rest of the pool.
+     */
+    function setCircuitBreakers(
+        IERC20[] memory tokens,
+        uint256[] memory bptPrices,
+        uint256[] memory lowerBoundPercentages,
+        uint256[] memory upperBoundPercentages
+    ) external authenticate whenNotPaused {
+        InputHelpers.ensureInputLengthMatch(tokens.length, lowerBoundPercentages.length, upperBoundPercentages.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, bptPrices.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _setCircuitBreaker(tokens[i], bptPrices[i], lowerBoundPercentages[i], upperBoundPercentages[i]);
+        }
+    }
+
+    // Compute the reference values, then pass them along with the bounds to the library. The bptPrice must be
+    // passed in from the caller, or it would be manipulable.
+    function _setCircuitBreaker(
+        IERC20 token,
+        uint256 bptPrice,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    ) private {
+        uint256 normalizedWeight = _getNormalizedWeight(token);
+        // Fail if the token is not in the pool (or is the BPT token)
+        _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
+
+        // The library will validate the lower/upper bounds
+        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreakerFields(
+            bptPrice,
+            normalizedWeight.complement(),
+            lowerBoundPercentage,
+            upperBoundPercentage
+        );
+
+        emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
+    }
+
     // Misc
 
     /**
@@ -940,7 +1032,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
+            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setCircuitBreakers.selector));
     }
 
     /**
