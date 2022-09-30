@@ -972,6 +972,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     /**
+     * @dev Get the current one-sided BPT price bound for a given token and weight.
+     */
+    function getCurrentCircuitBreakerBound(IERC20 token, uint256 weightComplement, bool isLowerBound) internal view returns (uint256) {
+        return CircuitBreakerLib.getCurrentCircuitBreakerBound(_circuitBreakerState[token], weightComplement, isLowerBound);
+    }
+
+    /**
      * @notice Set a circuit breaker for one or more tokens.
      * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
      * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
