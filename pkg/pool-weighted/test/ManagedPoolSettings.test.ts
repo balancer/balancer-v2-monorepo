@@ -817,10 +817,7 @@ describe('ManagedPoolSettings', function () {
       const totalSupply = await pool.getActualSupply();
       const scalingFactors = await pool.getScalingFactors();
 
-      return fpDiv(
-        fpMul(totalSupply, poolWeights[0]),
-        fpMul(initialBalances[0], scalingFactors[0])
-      );
+      return fpDiv(fpMul(totalSupply, poolWeights[0]), fpMul(initialBalances[0], scalingFactors[0]));
     }
 
     describe('setCircuitBreakers', () => {
@@ -906,7 +903,7 @@ describe('ManagedPoolSettings', function () {
 
           it('setting a circuit breaker emits an event', async () => {
             //const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address);
-            const initialPrice = fpDiv(fpMul((await pool.getActualSupply()), poolWeights[0]), initialBalances[0]); 
+            const initialPrice = fpDiv(fpMul(await pool.getActualSupply(), poolWeights[0]), initialBalances[0]);
 
             const receipt = await pool.setCircuitBreakers(
               sender,
