@@ -313,7 +313,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
         _poolState = ManagedPoolStorageLib.setSwapFeeData(
             _poolState,
-            startTime,
+            GradualValueChange.resolveStartTime(startTime, endTime),
             endTime,
             startSwapFeePercentage,
             endSwapFeePercentage
@@ -349,9 +349,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Returns the normalized weight of a single token.
      */
     function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-
-        return ManagedPoolTokenLib.getTokenWeight(_tokenState[token], weightChangeProgress);
+        return
+            ManagedPoolTokenLib.getTokenWeight(
+                _tokenState[token],
+                ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
+            );
     }
 
     /**
@@ -425,9 +427,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _require(actualTokens[i] == tokens[i], Errors.TOKENS_MISMATCH);
         }
 
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
+        _startGradualWeightChange(
+            GradualValueChange.resolveStartTime(startTime, endTime),
+            endTime,
+            _getNormalizedWeights(tokens),
+            endWeights,
+            tokens
+        );
     }
 
     /**
@@ -472,8 +478,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors(tokens));
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
+        return WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), balances);
     }
 
     // Swap Enabled
