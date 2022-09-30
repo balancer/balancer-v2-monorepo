@@ -333,7 +333,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 numTokens = tokens.length;
         normalizedWeights = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; i++) {
-            normalizedWeights[i] = ManagedPoolTokenStorageLib.getTokenWeight(_tokenState[tokens[i]], weightChangeProgress);
+            normalizedWeights[i] = ManagedPoolTokenStorageLib.getTokenWeight(
+                _tokenState[tokens[i]],
+                weightChangeProgress
+            );
         }
     }
 
@@ -381,7 +384,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            (startWeights[i], endWeights[i]) = ManagedPoolTokenStorageLib.getTokenStartAndEndWeights(_tokenState[tokens[i]]);
+            (startWeights[i], endWeights[i]) = ManagedPoolTokenStorageLib.getTokenStartAndEndWeights(
+                _tokenState[tokens[i]]
+            );
         }
     }
 
@@ -449,7 +454,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenWeight(_tokenState[token], startWeights[i], endWeight);
+            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenWeight(
+                _tokenState[token],
+                startWeights[i],
+                endWeight
+            );
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -739,7 +748,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
         // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
         // which will check the entire set of weights for correctness.
-        _tokenState[tokenToAdd] = ManagedPoolTokenStorageLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
+        _tokenState[tokenToAdd] = ManagedPoolTokenStorageLib.initializeTokenState(
+            tokenToAdd,
+            tokenToAddNormalizedWeight
+        );
 
         // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
         // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.
@@ -840,7 +852,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
         // its weight however, since we'll need it later.
         // We've ensured that the most recent weight change is complete.
-        uint256 tokenToRemoveWeight = ManagedPoolTokenStorageLib.getTokenWeight(_tokenState[tokenToRemove], FixedPoint.ONE);
+        uint256 tokenToRemoveWeight = ManagedPoolTokenStorageLib.getTokenWeight(
+            _tokenState[tokenToRemove],
+            FixedPoint.ONE
+        );
         delete _tokenState[tokenToRemove];
 
         // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add
