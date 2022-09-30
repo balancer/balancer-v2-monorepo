@@ -188,7 +188,8 @@ library CircuitBreakerLib {
         bool isLowerBound
     ) internal pure returns (uint256) {
         uint256 bound = circuitBreakerState.decodeUint(
-            isLowerBound ? _LOWER_BOUND_OFFSET : _UPPER_BOUND_OFFSET, _BOUND_WIDTH
+            isLowerBound ? _LOWER_BOUND_OFFSET : _UPPER_BOUND_OFFSET,
+            _BOUND_WIDTH
         ) << _BOUND_SHIFT_BITS;
 
         // If there is no bound set, short circuit to avoid unnecessary computation.
@@ -217,7 +218,7 @@ library CircuitBreakerLib {
 
         // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
         // To err in favor of tripping the breaker, round the lower bound up, and the upper bound down.
-         return (isLowerBound ? FixedPoint.mulUp : FixedPoint.mulDown)(bptPrice, boundRatio);
+        return (isLowerBound ? FixedPoint.mulUp : FixedPoint.mulDown)(bptPrice, boundRatio);
     }
 
     /**

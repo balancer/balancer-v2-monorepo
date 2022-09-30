@@ -143,9 +143,9 @@ describe('CircuitBreakerLib', () => {
     });
 
     it('reverts if the lower bound > 1', async () => {
-      await expect(
-        lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(1).add(1), 0)
-      ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
+      await expect(lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(1).add(1), 0)).to.be.revertedWith(
+        'INVALID_CIRCUIT_BREAKER_BOUNDS'
+      );
     });
 
     it('reverts if the upper bound > MAX_BOUND', async () => {
@@ -238,8 +238,6 @@ describe('CircuitBreakerLib', () => {
 
     it('should update the bounds given a new weight complement', async () => {
       const newWeightComplement = WEIGHT_COMPLEMENT * (Math.random() < 0.5 ? 1 + Math.random() : 1 - Math.random());
-
-      const origUpperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(WEIGHT_COMPLEMENT), false);
 
       data = await lib.updateBoundRatios(data, fp(newWeightComplement));
 
