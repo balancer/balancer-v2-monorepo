@@ -206,7 +206,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
-    function getActualSupply() public view returns (uint256) {
+    function getActualSupply() external view returns (uint256) {
         return _getActualSupply(_getVirtualSupply());
     }
 
