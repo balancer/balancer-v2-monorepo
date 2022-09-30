@@ -4,11 +4,11 @@ import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
 
-describe('ProtocolFees', function () {
+describe('ExternalFees', function () {
   let mock: Contract;
 
   sharedBeforeEach(async function () {
-    mock = await deploy('MockProtocolFees');
+    mock = await deploy('MockExternalFees');
   });
 
   describe('bptForPoolOwnershipPercentage', () => {

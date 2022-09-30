@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "./ProtocolFees.sol";
+import "./ExternalFees.sol";
 
 library InvariantGrowthProtocolSwapFees {
     using FixedPoint for uint256;
@@ -95,6 +95,6 @@ library InvariantGrowthProtocolSwapFees {
             protocolSwapFeePercentage
         );
 
-        return ProtocolFees.bptForPoolOwnershipPercentage(currentSupply, protocolOwnershipPercentage);
+        return ExternalFees.bptForPoolOwnershipPercentage(currentSupply, protocolOwnershipPercentage);
     }
 }

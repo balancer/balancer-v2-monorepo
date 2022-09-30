@@ -25,9 +25,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../lib/CircuitBreakerLib.sol";
@@ -216,7 +216,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             return virtualSupply;
         }
 
-        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+        uint256 aumFeesAmount = ExternalAUMFees.getAumFeesBptAmount(
             virtualSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
@@ -634,7 +634,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * This function is called automatically on joins and exits.
      */
     function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
-        uint256 bptAmount = ProtocolAUMFees.getAumFeesBptAmount(
+        uint256 bptAmount = ExternalAUMFees.getAumFeesBptAmount(
             totalSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
