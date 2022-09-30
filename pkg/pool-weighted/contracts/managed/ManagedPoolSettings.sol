@@ -388,12 +388,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     }
 
     function _ensureNoWeightChange() private view {
-        uint256 currentTime = block.timestamp;
         (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
-        if (currentTime < endTime) {
+        if (block.timestamp < endTime) {
             _revert(
-                currentTime < startTime
+                block.timestamp < startTime
                     ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
                     : Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE
             );
