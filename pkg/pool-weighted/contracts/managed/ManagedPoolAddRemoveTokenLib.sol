@@ -119,4 +119,82 @@ library ManagedPoolAddRemoveTokenLib {
         // computations.
         newWeights[newWeights.length - 1] = FixedPoint.ONE.sub(newWeightSum);
     }
+
+    /**
+     * @notice Removes a token from the Pool's list of tradeable tokens.
+     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
+     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
+     *
+     * Emits the TokenRemoved event. This is a permissioned function.
+     *
+     * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
+     * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
+     * @param tokenToRemove - The ERC20 token to be removed from the Pool.
+     */
+    function removeToken(
+        IVault vault,
+        bytes32 poolId,
+        bytes32 poolState,
+        IERC20[] memory currentTokens,
+        uint256[] memory currentWeights,
+        IERC20 tokenToRemove,
+        uint256 tokenToRemoveWeight
+    ) internal returns (IERC20[] memory newTokens, uint256[] memory newWeights) {
+        // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
+        // functions.
+        _require(tokenToRemove != IERC20(address(this)), Errors.ADD_OR_REMOVE_BPT);
+
+        // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
+        // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
+        // they would include the removed token.
+        _ensureNoWeightChange(poolState);
+
+        // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
+        // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
+        // in a valid state and all value-changing operations will revert, we are free to modify the Pool state (e.g.
+        // alter weights).
+        //
+        // We don't need to test the zero balance since the Vault will simply revert on deregistration if this is not
+        // the case, or if the token is not currently registered.
+        PoolRegistrationLib.deregisterToken(vault, poolId, tokenToRemove);
+
+        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // since we need to:
+        //  a) delete the state of the removed token
+        //  b) adjust the weights of all other tokens
+
+        // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add
+        // up to 100%. This is achieved by dividing them by a factor of `1 - old token weight`.
+        // For example, if a  0.05/0.15/0.80 Pool has its 80% token removed, the final weights would be 0.25/0.75, where
+        // 0.25 = 0.05 / (1 - 0.80) and 0.75 = 0.15 / (1 - 0.80).
+        uint256 newWeightSum = 0;
+        newTokens = new IERC20[](currentTokens.length - 1);
+        newWeights = new uint256[](currentWeights.length - 1);
+        for (uint256 i = 0; i < newWeights.length; ++i) {
+            if (currentTokens[i] == tokenToRemove) {
+                // If we're at the index of the removed token then want to instead insert the weight of the final token.
+                // This is because the token at the end of the array will be moved into the index of the removed token.
+                newTokens[i] = currentTokens[currentTokens.length - 1];
+                newWeights[i] = currentWeights[currentWeights.length - 1].divDown(
+                    FixedPoint.ONE.sub(tokenToRemoveWeight)
+                );
+            } else {
+                newTokens[i] = currentTokens[i];
+                newWeights[i] = currentWeights[i].divDown(FixedPoint.ONE.sub(tokenToRemoveWeight));
+            }
+            newWeightSum = newWeightSum.add(newWeights[i]);
+        }
+
+        // It is possible that the new weights don't add up to 100% due to rounding errors - the sum might be slightly
+        // smaller since we round the weights down. In that case, we adjust the last weight so that the sum is exact.
+        //
+        // This error is negligible, since the error introduced in the weight of the last token equals the number of
+        // tokens in the worst case (as each weight can be off by one at most), and the minimum weight is 1e16, meaning
+        // there's ~15 orders of magnitude between the smallest weight and the error. It is important however that the
+        // weights do add up to 100% exactly, as that property is relied on in some parts of the WeightedMath
+        // computations.
+        if (newWeightSum != FixedPoint.ONE) {
+            newWeights[newWeights.length - 1] = newWeights[newWeights.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
+        }
+    }
 }
