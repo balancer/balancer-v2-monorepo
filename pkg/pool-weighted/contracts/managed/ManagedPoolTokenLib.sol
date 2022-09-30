@@ -36,15 +36,15 @@ library ManagedPoolTokenLib {
     // Store token-based values:
     // Each token's scaling factor (encoded as the scaling factor's exponent / token decimals).
     // Each token's starting and ending normalized weights.
-    // [ 123 bits |  5 bits  |     64 bits     |     64 bits       |
-    // [  unused  | decimals | end norm weight | start norm weight |
-    // |MSB                                                     LSB|
+    // [  8 bits  |    120 bits    |     64 bits     |     64 bits       |
+    // [  unused  | scaling factor | end norm weight | start norm weight |
+    // |MSB                                                           LSB|
     uint256 private constant _START_NORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_NORM_WEIGHT_OFFSET = _START_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
-    uint256 private constant _DECIMAL_DIFF_OFFSET = _END_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
+    uint256 private constant _SCALING_FACTOR_OFFSET = _END_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
 
     uint256 private constant _NORM_WEIGHT_WIDTH = 64;
-    uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
+    uint256 private constant _SCALING_FACTOR_WIDTH = 120;
 
     // Getters
 
@@ -52,11 +52,8 @@ library ManagedPoolTokenLib {
      * @notice Returns the token's scaling factor.
      * @param tokenState - The byte32 state of the token of interest.
      */
-    function getTokenScalingFactor(bytes32 tokenState) internal pure returns (uint256) {
-        uint256 decimalsDifference = tokenState.decodeUint(_DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH);
-
-        // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-        return FixedPoint.ONE * 10**decimalsDifference;
+    function getTokenScalingFactor(bytes32 tokenState) internal pure returns (uint256 scalingFactor) {
+        return tokenState.decodeUint(_SCALING_FACTOR_OFFSET, _SCALING_FACTOR_WIDTH);
     }
 
     /**
@@ -122,12 +119,8 @@ library ManagedPoolTokenLib {
     function setTokenScalingFactor(bytes32 tokenState, IERC20 token) internal view returns (bytes32) {
         // Tokens that don't implement the `decimals` method are not supported.
         // Tokens with more than 18 decimals are not supported
-        return
-            tokenState.insertUint(
-                uint256(18).sub(ERC20(address(token)).decimals()),
-                _DECIMAL_DIFF_OFFSET,
-                _DECIMAL_DIFF_WIDTH
-            );
+        uint256 tokenScalingFactor = FixedPoint.ONE * 10**(uint256(18).sub(ERC20(address(token)).decimals()));
+        return tokenState.insertUint(tokenScalingFactor, _SCALING_FACTOR_OFFSET, _SCALING_FACTOR_WIDTH);
     }
 
     /**

@@ -27,10 +27,10 @@ import "../../contracts/test/MockManagedPoolTokenLib.sol";
 contract ManagedPoolTokenLibTest is Test {
     uint256 private constant _START_NORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_NORM_WEIGHT_OFFSET = _START_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
-    uint256 private constant _DECIMAL_DIFF_OFFSET = _END_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
+    uint256 private constant _SCALING_FACTOR_OFFSET = _END_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
 
     uint256 private constant _NORM_WEIGHT_WIDTH = 64;
-    uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
+    uint256 private constant _SCALING_FACTOR_WIDTH = 120;
 
     MockManagedPoolTokenLib private mock;
 
@@ -66,7 +66,7 @@ contract ManagedPoolTokenLibTest is Test {
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
 
             bytes32 newTokenState = mock.setTokenScalingFactor(tokenState, token);
-            assertOtherStateUnchanged(tokenState, newTokenState, _DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH);
+            assertOtherStateUnchanged(tokenState, newTokenState, _SCALING_FACTOR_OFFSET, _SCALING_FACTOR_WIDTH);
 
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(newTokenState);
             assertEq(tokenScalingFactor, expectedScalingFactor);
@@ -149,7 +149,7 @@ contract ManagedPoolTokenLibTest is Test {
                 bytes32(0),
                 tokenState,
                 _START_NORM_WEIGHT_OFFSET,
-                _NORM_WEIGHT_WIDTH * 2 + _DECIMAL_DIFF_WIDTH
+                _NORM_WEIGHT_WIDTH * 2 + _SCALING_FACTOR_WIDTH
             );
 
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
