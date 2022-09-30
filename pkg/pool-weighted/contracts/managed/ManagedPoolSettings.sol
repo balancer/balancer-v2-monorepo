@@ -676,11 +676,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _collectAumManagementFees(supply);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
+        _require(tokens.length + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
-        (bytes32 tokenToAddState, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib.addToken(
+        (bytes32 tokenToAddState, IERC20[] memory newTokens, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib
+            .addToken(
             getVault(),
             getPoolId(),
             _poolState,
+            tokens,
             _getNormalizedWeights(tokens),
             tokenToAdd,
             assetManager,
@@ -693,16 +696,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // which will check the entire set of weights for correctness.
         _tokenState[tokenToAdd] = tokenToAddState;
 
-        // We now need an updated list of tokens which includes `tokenToAdd`.
-        // For simplicity we just read it from the Vault again.
-        // This is also a good opportunity to check we have not added too many tokens.
-        (tokens, ) = _getPoolTokens();
-        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
-
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
         // Note that this call will set the weight for `tokenToAdd`, which we've already done - that'll just be a no-op.
-        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, newTokens);
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);

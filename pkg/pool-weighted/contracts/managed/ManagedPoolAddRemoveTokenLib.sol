@@ -63,11 +63,19 @@ library ManagedPoolAddRemoveTokenLib {
         IVault vault,
         bytes32 poolId,
         bytes32 poolState,
+        IERC20[] memory currentTokens,
         uint256[] memory currentWeights,
         IERC20 tokenToAdd,
         address assetManager,
         uint256 tokenToAddNormalizedWeight
-    ) internal returns (bytes32 tokenToAddState, uint256[] memory newWeights) {
+    )
+        internal
+        returns (
+            bytes32 tokenToAddState,
+            IERC20[] memory newTokens,
+            uint256[] memory newWeights
+        )
+    {
         // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
         _require(tokenToAdd != IERC20(address(this)), Errors.ADD_OR_REMOVE_BPT);
@@ -101,11 +109,17 @@ library ManagedPoolAddRemoveTokenLib {
         // For example, if a  0.25/0.75 Pool gets added a token with a weight of 0.80, the final weights would be
         // 0.05/0.15/0.80, where 0.05 = 0.25 * (1 - 0.80) and 0.15 = 0.75 * (1 - 0.80).
         uint256 newWeightSum = 0;
+        newTokens = new IERC20[](currentTokens.length + 1);
         newWeights = new uint256[](currentWeights.length + 1);
         for (uint256 i = 0; i < currentWeights.length; ++i) {
+            newTokens[i] = currentTokens[i];
+
             newWeights[i] = currentWeights[i].mulDown(FixedPoint.ONE.sub(tokenToAddNormalizedWeight));
             newWeightSum = newWeightSum.add(newWeights[i]);
         }
+
+        // Newly added tokens are always appended to the end of the existing array.
+        newTokens[newTokens.length - 1] = tokenToAdd;
 
         // At this point `newWeights` contains the updated weights for all tokens other than the token to be added.
         // We could naively write `tokenToAddNormalizedWeight` into the last element of the `newWeights` array however,
@@ -138,7 +152,7 @@ library ManagedPoolAddRemoveTokenLib {
         IERC20[] memory currentTokens,
         uint256[] memory currentWeights,
         IERC20 tokenToRemove,
-        uint256 tokenToRemoveWeight
+        uint256 tokenToRemoveNormalizedWeight
     ) internal returns (IERC20[] memory newTokens, uint256[] memory newWeights) {
         // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
@@ -176,11 +190,11 @@ library ManagedPoolAddRemoveTokenLib {
                 // This is because the token at the end of the array will be moved into the index of the removed token.
                 newTokens[i] = currentTokens[currentTokens.length - 1];
                 newWeights[i] = currentWeights[currentWeights.length - 1].divDown(
-                    FixedPoint.ONE.sub(tokenToRemoveWeight)
+                    FixedPoint.ONE.sub(tokenToRemoveNormalizedWeight)
                 );
             } else {
                 newTokens[i] = currentTokens[i];
-                newWeights[i] = currentWeights[i].divDown(FixedPoint.ONE.sub(tokenToRemoveWeight));
+                newWeights[i] = currentWeights[i].divDown(FixedPoint.ONE.sub(tokenToRemoveNormalizedWeight));
             }
             newWeightSum = newWeightSum.add(newWeights[i]);
         }
