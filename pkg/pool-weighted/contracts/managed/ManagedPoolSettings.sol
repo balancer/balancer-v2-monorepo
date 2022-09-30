@@ -749,6 +749,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length - 1 >= 2, Errors.MIN_TOKENS);
 
+        // Token removal is forbidden during a weight change or if one is scheduled so we can assume that
+        // the weight change progress is 100%.
+        uint256 tokenToRemoveNormalizedWeight = ManagedPoolTokenLib.getTokenWeight(
+            _tokenState[tokenToRemove],
+            FixedPoint.ONE
+        );
+
         // `ManagedPoolAddRemoveTokenLib.removeToken` performs any necessary state updates in the Vault and returns
         // values necessary for the Pool to update its own state.
         (IERC20[] memory newTokens, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib.removeToken(
@@ -758,7 +765,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             tokens,
             _getNormalizedWeights(tokens),
             tokenToRemove,
-            ManagedPoolTokenLib.getTokenWeight(_tokenState[tokenToRemove], FixedPoint.ONE)
+            tokenToRemoveNormalizedWeight
         );
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
