@@ -19,7 +19,6 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
@@ -41,7 +40,7 @@ import "./ManagedPoolTokenStorageLib.sol";
 /**
  * @title Managed Pool Settings
  */
-abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
+abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -283,7 +282,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) external override authenticate whenNotPaused nonReentrant {
+    ) external override authenticate whenNotPaused {
         _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
@@ -422,7 +421,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         IERC20[] memory tokens,
         uint256[] memory endWeights
-    ) external override authenticate whenNotPaused nonReentrant {
+    ) external override authenticate whenNotPaused {
         (IERC20[] memory actualTokens, ) = _getPoolTokens();
         InputHelpers.ensureInputLengthMatch(tokens.length, actualTokens.length, endWeights.length);
 
@@ -709,7 +708,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 tokenToAddNormalizedWeight,
         uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused nonReentrant {
+    ) external authenticate whenNotPaused {
         // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to mint is zero.
@@ -812,7 +811,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         IERC20 tokenToRemove,
         uint256 burnAmount,
         address sender
-    ) external authenticate nonReentrant whenNotPaused {
+    ) external authenticate whenNotPaused {
         // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to burn is zero.
