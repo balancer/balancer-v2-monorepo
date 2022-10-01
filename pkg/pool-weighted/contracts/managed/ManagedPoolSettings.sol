@@ -283,6 +283,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external override authenticate whenNotPaused {
+        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
         _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
     }
 
@@ -307,8 +308,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     ) internal {
         _validateSwapFeePercentage(startSwapFeePercentage);
         _validateSwapFeePercentage(endSwapFeePercentage);
-
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
 
         _poolState = ManagedPoolStorageLib.setSwapFeeData(
             _poolState,
