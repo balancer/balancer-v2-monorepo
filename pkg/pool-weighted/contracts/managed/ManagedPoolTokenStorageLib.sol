@@ -29,7 +29,7 @@ import "../lib/GradualValueChange.sol";
  * This library stores all token weights in a normalized format, meaning they add up to 100% (1.0 in 18 decimal fixed
  * point format).
  */
-library ManagedPoolTokenLib {
+library ManagedPoolTokenStorageLib {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
 
@@ -141,6 +141,5 @@ library ManagedPoolTokenLib {
     function initializeTokenState(IERC20 token, uint256 normalizedWeight) internal view returns (bytes32 tokenState) {
         tokenState = setTokenScalingFactor(bytes32(0), token);
         tokenState = setTokenWeight(tokenState, normalizedWeight, normalizedWeight);
-        return tokenState;
     }
 }
