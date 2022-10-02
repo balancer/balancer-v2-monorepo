@@ -325,12 +325,15 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut,
         bytes32 poolState
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 amountCalculated) {
         SwapData memory swapData = _getSwapData(request, poolState);
         uint256 virtualSupply = getActualSupply();
 
         balanceTokenIn = _upscale(balanceTokenIn, swapData.scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, swapData.scalingFactorTokenOut);
+
+        uint256 endingBalanceTokenIn;
+        uint256 endingBalanceTokenOut;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
@@ -347,29 +350,11 @@ contract ManagedPool is ManagedPoolSettings {
                 request.amount
             );
 
-            // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
-            if (swapData.lowerBptPriceBound != 0) {
-                _checkCircuitBreaker(
-                    swapData.lowerBptPriceBound,
-                    virtualSupply,
-                    swapData.tokenInWeight,
-                    balanceTokenIn.add(request.amount),
-                    true
-                );
-            }
-
-            if (swapData.upperBptPriceBound != 0) {
-                _checkCircuitBreaker(
-                    swapData.upperBptPriceBound,
-                    virtualSupply,
-                    swapData.tokenOutWeight,
-                    balanceTokenOut.sub(amountOut),
-                    false
-                );
-            }
+            endingBalanceTokenIn = balanceTokenIn.add(request.amount);
+            endingBalanceTokenOut = balanceTokenOut.sub(amountOut);
 
             // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, swapData.scalingFactorTokenOut);
+            amountCalculated = _downscaleDown(amountOut, swapData.scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, swapData.scalingFactorTokenOut);
@@ -385,29 +370,33 @@ contract ManagedPool is ManagedPoolSettings {
             // We round the amount in up (favoring a higher fee amount).
             amountIn = amountIn.divUp(swapData.swapFeeComplement);
 
-            // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
-            if (swapData.lowerBptPriceBound != 0) {
-                _checkCircuitBreaker(
-                    swapData.lowerBptPriceBound,
-                    virtualSupply,
-                    swapData.tokenInWeight,
-                    balanceTokenIn.add(amountIn),
-                    true
-                );
-            }
-
-            if (swapData.upperBptPriceBound != 0) {
-                _checkCircuitBreaker(
-                    swapData.upperBptPriceBound,
-                    virtualSupply,
-                    swapData.tokenOutWeight,
-                    balanceTokenOut.sub(request.amount),
-                    false
-                );
-            }
+            endingBalanceTokenIn = balanceTokenIn.add(amountIn);
+            endingBalanceTokenOut = balanceTokenOut.sub(request.amount);
 
             // amountIn tokens are entering the Pool, so we round up.
-            return _downscaleUp(amountIn, swapData.scalingFactorTokenIn);
+            amountCalculated = _downscaleUp(amountIn, swapData.scalingFactorTokenIn);
+        }
+
+        // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
+
+        if (swapData.lowerBptPriceBound != 0) {
+            _checkCircuitBreaker(
+                swapData.lowerBptPriceBound,
+                virtualSupply,
+                swapData.tokenInWeight,
+                endingBalanceTokenIn,
+                true
+            );
+        }
+
+        if (swapData.upperBptPriceBound != 0) {
+            _checkCircuitBreaker(
+                swapData.upperBptPriceBound,
+                virtualSupply,
+                swapData.tokenOutWeight,
+                endingBalanceTokenOut,
+                false
+            );
         }
     }
 
