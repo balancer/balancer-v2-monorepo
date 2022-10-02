@@ -158,6 +158,17 @@ contract ManagedPool is ManagedPoolSettings {
         // solhint-enable no-empty-blocks
     }
 
+    // We need to check the breakers for all tokens on joins and exits (including join and exit swaps), since any
+    // change to the virtualSupply affects all BPT prices. For a multi-token join or exit, we will have a set of
+    // balances and delta amounts. For a join/exitSwap, only one token balance is changing. We can use the same
+    // data for both: in the single token swap case, the other token `amounts` will be zero.
+    struct PoolDelta {
+        IERC20[] tokens;
+        uint256[] normalizedWeights;
+        uint256[] balances;
+        uint256[] amounts;
+    }
+
     /*
      * @dev Called when a swap with the Pool occurs, where the tokens leaving the Pool are BPT.
      *
@@ -193,6 +204,8 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
 
+            _checkCircuitBreakers(actualSupply.add(amountOut), _getPoolDelta(request.tokenIn, request.amount), true);
+
             // BPT doesn't need scaling so we can return immediately.
             return amountOut;
         } else {
@@ -204,6 +217,8 @@ contract ManagedPool is ManagedPoolSettings {
                 actualSupply,
                 swapFeePercentage
             );
+
+            _checkCircuitBreakers(actualSupply.add(request.amount), _getPoolDelta(request.tokenIn, amountIn), true);
 
             // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountIn, scalingFactorTokenIn);
@@ -244,6 +259,8 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
 
+            _checkCircuitBreakers(actualSupply.sub(request.amount), _getPoolDelta(request.tokenOut, amountOut), false);
+
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
@@ -258,11 +275,32 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
 
+            _checkCircuitBreakers(actualSupply.sub(amountIn), _getPoolDelta(request.tokenOut, request.amount), false);
+
             // BPT doesn't need scaling so we can return immediately.
             return amountIn;
         }
     }
 
+    /**
+     * @dev Construct a PoolDelta object with all data needed to check circuit breakers for all tokens after a
+     * single token swap with BPT. In this case, the `amounts` will be zero except for the token involved in the
+     * swap.
+     */
+    function _getPoolDelta(IERC20 token, uint256 deltaAmount) private view returns (PoolDelta memory poolDelta) {
+        (poolDelta.tokens, poolDelta.balances) = _getPoolTokens();
+        poolDelta.normalizedWeights = _getNormalizedWeights(poolDelta.tokens);
+        // Initialize to all zeros, and fill in the deltaAmount associated with the swap.
+        poolDelta.amounts = new uint256[](poolDelta.tokens.length);
+        for (uint256 i = 0; i < poolDelta.tokens.length; i++) {
+            if (poolDelta.tokens[i] == token) {
+                poolDelta.amounts[i] = deltaAmount;
+                break;
+            }
+        }
+    }
+
+    // Holds information, including circuit breaker bounds, for the tokens involved in a regular swap.
     struct SwapData {
         uint256 tokenInWeight;
         uint256 tokenOutWeight;
@@ -309,6 +347,7 @@ contract ManagedPool is ManagedPoolSettings {
                 request.amount
             );
 
+            // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
             if (swapData.lowerBptPriceBound != 0) {
                 _checkCircuitBreaker(
                     swapData.lowerBptPriceBound,
@@ -346,6 +385,7 @@ contract ManagedPool is ManagedPoolSettings {
             // We round the amount in up (favoring a higher fee amount).
             amountIn = amountIn.divUp(swapData.swapFeeComplement);
 
+            // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
             if (swapData.lowerBptPriceBound != 0) {
                 _checkCircuitBreaker(
                     swapData.lowerBptPriceBound,
@@ -371,6 +411,9 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
+    /**
+     * @dev Gather the information required to process a regular token swap, including circuit breaker bounds.
+     */
     function _getSwapData(SwapRequest memory request, bytes32 poolState)
         private
         view
@@ -380,11 +423,11 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 tokenOutState = _getTokenState(request.tokenOut);
 
         uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-        tokenInfo.tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress);
-        tokenInfo.tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress);
+        tokenInfo.tokenInWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenInState, weightChangeProgress);
+        tokenInfo.tokenOutWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenOutState, weightChangeProgress);
 
-        tokenInfo.scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
-        tokenInfo.scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
+        tokenInfo.scalingFactorTokenIn = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenInState);
+        tokenInfo.scalingFactorTokenOut = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenOutState);
 
         tokenInfo.swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
 
@@ -478,6 +521,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
+        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
+
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -487,10 +532,16 @@ contract ManagedPool is ManagedPoolSettings {
         (bptAmountOut, amountsIn) = _doJoin(
             sender,
             balances,
-            _getNormalizedWeights(tokens),
+            normalizedWeights,
             scalingFactors,
             actualSupply,
             userData
+        );
+
+        _checkCircuitBreakers(
+            actualSupply.add(bptAmountOut),
+            PoolDelta({ tokens: tokens, normalizedWeights: normalizedWeights, balances: balances, amounts: amountsIn }),
+            true
         );
 
         // amountsIn are amounts entering the Pool, so we round up.
@@ -568,6 +619,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
+        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
+
         // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
         // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
         // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
@@ -577,10 +630,21 @@ contract ManagedPool is ManagedPoolSettings {
         (bptAmountIn, amountsOut) = _doExit(
             sender,
             balances,
-            _getNormalizedWeights(tokens),
+            normalizedWeights,
             scalingFactors,
             actualSupply,
             userData
+        );
+
+        _checkCircuitBreakers(
+            actualSupply.sub(bptAmountIn),
+            PoolDelta({
+                tokens: tokens,
+                normalizedWeights: normalizedWeights,
+                balances: balances,
+                amounts: amountsOut
+            }),
+            false
         );
 
         // amountsOut are amounts exiting the Pool, so we round down.
@@ -669,9 +733,11 @@ contract ManagedPool is ManagedPoolSettings {
         return virtualSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
     }
 
-    // Trip the circuit breaker if the current BPT price is less than the lower bound, or greater than the upper bound.
-    // For performance reasons, check for a zero bound (= no circuit breaker set) externally, avoiding computation of
-    // the current BPT price when it's not needed.
+    /**
+     * @dev Trip the circuit breaker if the current BPT price is less than the lower bound, or greater than the
+     * upper bound. For performance reasons, check for a zero bound (= no circuit breaker set) externally,
+     * avoiding computation of the current BPT price when no breaker is set.
+     */
     function _checkCircuitBreaker(
         uint256 bptPriceBound,
         uint256 virtualSupply,
@@ -685,6 +751,40 @@ contract ManagedPool is ManagedPoolSettings {
             isLowerBound ? currentBptPrice >= bptPriceBound : currentBptPrice <= bptPriceBound,
             Errors.CIRCUIT_BREAKER_TRIPPED
         );
+    }
+
+    /**
+     * @dev Check circuit breakers for a set of tokens. The given virtual supply is what it will be post-operation:
+     * this includes any pending external fees, and the amount of BPT exchanged (swapped, minted, or burned) in the
+     * current operation.
+     *
+     * First get the appropriate bound (lowerBound for joins, since increasing the token balance decreases the BPT
+     * price; upperBound for exits), short-circuiting if it is zero. Adjust the balance by the poolDelta amount,
+     * and call `_checkCircuitBreaker` to test the current token.
+     */
+    function _checkCircuitBreakers(
+        uint256 virtualSupply,
+        PoolDelta memory poolDelta,
+        bool isJoin
+    ) private view {
+        for (uint256 i = 0; i < poolDelta.tokens.length; i++) {
+            // If it is a join, tokens are coming in, and we're checking the lower bound, so isLowerBound = isJoin.
+            uint256 bptPriceBound = _getCurrentCircuitBreakerBound(
+                poolDelta.tokens[i],
+                poolDelta.normalizedWeights[i].complement(),
+                isJoin
+            );
+
+            if (bptPriceBound != 0) {
+                _checkCircuitBreaker(
+                    bptPriceBound,
+                    virtualSupply,
+                    poolDelta.normalizedWeights[i],
+                    (isJoin ? FixedPoint.add : FixedPoint.sub)(poolDelta.balances[i], poolDelta.amounts[i]),
+                    isJoin
+                );
+            }
+        }
     }
 
     // Unimplemented
