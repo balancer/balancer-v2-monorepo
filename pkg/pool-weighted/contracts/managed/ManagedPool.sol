@@ -527,11 +527,14 @@ contract ManagedPool is ManagedPoolSettings {
             userData
         );
 
-        _checkCircuitBreakers(
-            actualSupply.add(bptAmountOut),
-            PoolDelta({ tokens: tokens, normalizedWeights: normalizedWeights, balances: balances, amounts: amountsIn }),
-            true
-        );
+        // Avoiding PoolDelta({key: value}) syntax for memory savings
+        PoolDelta memory poolDelta;
+        poolDelta.tokens = tokens;
+        poolDelta.normalizedWeights = normalizedWeights;
+        poolDelta.balances = balances;
+        poolDelta.amounts = amountsIn;
+
+        _checkCircuitBreakers(actualSupply.add(bptAmountOut), poolDelta, true);
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
@@ -625,16 +628,14 @@ contract ManagedPool is ManagedPoolSettings {
             userData
         );
 
-        _checkCircuitBreakers(
-            actualSupply.sub(bptAmountIn),
-            PoolDelta({
-                tokens: tokens,
-                normalizedWeights: normalizedWeights,
-                balances: balances,
-                amounts: amountsOut
-            }),
-            false
-        );
+        // Avoiding PoolDelta({key: value}) syntax for memory savings
+        PoolDelta memory poolDelta;
+        poolDelta.tokens = tokens;
+        poolDelta.normalizedWeights = normalizedWeights;
+        poolDelta.balances = balances;
+        poolDelta.amounts = amountsOut;
+
+        _checkCircuitBreakers(actualSupply.sub(bptAmountIn), poolDelta, false);
 
         // amountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
