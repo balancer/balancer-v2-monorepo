@@ -409,8 +409,8 @@ contract ManagedPool is ManagedPoolSettings {
         returns (uint256 tokenWeight, uint256 scalingFactor)
     {
         bytes32 tokenState = _getTokenState(token);
-        tokenWeight = ManagedPoolTokenLib.getTokenWeight(tokenState, weightChangeProgress);
-        scalingFactor = ManagedPoolTokenLib.getTokenScalingFactor(tokenState);
+        tokenWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenState, weightChangeProgress);
+        scalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenState);
     }
 
     // Initialize
