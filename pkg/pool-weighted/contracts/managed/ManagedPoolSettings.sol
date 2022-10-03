@@ -187,6 +187,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return _tokenState[token];
     }
 
+    function _getCircuitBreakerState(IERC20 token) internal view returns (bytes32) {
+        return _circuitBreakerState[token];
+    }
+
     // Virtual Supply
 
     /**
@@ -1002,26 +1006,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             weightComplement,
             false
         );
-    }
-
-    /**
-     * @dev Check whether a token's lower or upper bound circuit breaker should be tripped.
-     */
-    function _hasCircuitBreakerTripped(
-        IERC20 token,
-        uint256 totalSupply,
-        uint256 normalizedWeight,
-        uint256 upscaledBalance,
-        bool isLowerBound
-    ) internal view returns (bool) {
-        return
-            CircuitBreakerLib.hasCircuitBreakerTripped(
-                _circuitBreakerState[token],
-                totalSupply,
-                normalizedWeight,
-                upscaledBalance,
-                isLowerBound
-            );
     }
 
     /**

@@ -380,15 +380,15 @@ contract ManagedPool is ManagedPoolSettings {
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
         _require(
-            !_hasCircuitBreakerTripped(
-                request.tokenIn,
+            !CircuitBreakerLib.hasCircuitBreakerTripped(
+                _getCircuitBreakerState(request.tokenIn),
                 virtualSupply,
                 swapData.tokenInWeight,
                 endingBalanceTokenIn,
                 true
             ) &&
-                !_hasCircuitBreakerTripped(
-                    request.tokenOut,
+                !CircuitBreakerLib.hasCircuitBreakerTripped(
+                    _getCircuitBreakerState(request.tokenOut),
                     virtualSupply,
                     swapData.tokenOutWeight,
                     endingBalanceTokenOut,
@@ -704,24 +704,43 @@ contract ManagedPool is ManagedPoolSettings {
      * this includes any pending external fees, and the amount of BPT exchanged (swapped, minted, or burned) in the
      * current operation.
      *
-     * First get the appropriate bound (lowerBound for joins, since increasing the token balance decreases the BPT
-     * price; upperBound for exits), short-circuiting if it is zero. Adjust the balance by the poolDelta amount,
-     * and call `_checkCircuitBreaker` to test the current token.
+     * PoolDelta will have the tokens, upscaled balances, and weights necessary to compute BPT prices and check the
+     * breakers. Unlike a straightforward token swap, where we know the direction the BPT price will move, once the
+     * virtual supply changes, all bets are off. To be safe, we need to check both directions for all tokens.
+     *
+     * It does attempt to short circuit quickly if there is no bound set.
      */
     function _checkCircuitBreakers(
         uint256 virtualSupply,
         PoolDelta memory poolDelta,
         bool isJoin
     ) private view {
+        bytes32 circuitBreakerState;
+
         for (uint256 i = 0; i < poolDelta.tokens.length; i++) {
+            uint256 finalBalance = (isJoin ? FixedPoint.add : FixedPoint.sub)(
+                poolDelta.balances[i],
+                poolDelta.amounts[i]
+            );
+
+            circuitBreakerState = _getCircuitBreakerState(poolDelta.tokens[i]);
+
+            // Check both upper and lower bounds.
             _require(
-                !_hasCircuitBreakerTripped(
-                    poolDelta.tokens[i],
+                !CircuitBreakerLib.hasCircuitBreakerTripped(
+                    circuitBreakerState,
                     virtualSupply,
                     poolDelta.normalizedWeights[i],
-                    (isJoin ? FixedPoint.add : FixedPoint.sub)(poolDelta.balances[i], poolDelta.amounts[i]),
-                    isJoin
-                ),
+                    finalBalance,
+                    true
+                ) &&
+                    !CircuitBreakerLib.hasCircuitBreakerTripped(
+                        circuitBreakerState,
+                        virtualSupply,
+                        poolDelta.normalizedWeights[i],
+                        finalBalance,
+                        false
+                    ),
                 Errors.CIRCUIT_BREAKER_TRIPPED
             );
         }
