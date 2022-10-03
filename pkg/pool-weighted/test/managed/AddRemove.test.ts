@@ -383,7 +383,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
                 pool
               );
 
-              expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
+              const [, lastAumFeeCollectionTimestamp] = await pool.getManagementAumFeeParams();
+              expect(lastAumFeeCollectionTimestamp).to.equal(await currentTimestamp());
             });
           }
         });
@@ -667,7 +668,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
                 pool
               );
 
-              expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.equal(await currentTimestamp());
+              const [, lastAumFeeCollectionTimestamp] = await pool.getManagementAumFeeParams();
+              expect(lastAumFeeCollectionTimestamp).to.equal(await currentTimestamp());
             });
           }
         });

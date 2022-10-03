@@ -150,7 +150,9 @@ describe('ManagedPoolController', function () {
       it('lets the manager set the management AUM fee', async () => {
         await poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE);
 
-        expect(await pool.getManagementAumFeePercentage()).to.equal(NEW_MGMT_AUM_FEE);
+        const [aumFeePercentage] = await pool.getManagementAumFeeParams();
+
+        expect(aumFeePercentage).to.equal(NEW_MGMT_AUM_FEE);
       });
 
       it('reverts if non-manager sets the management AUM fee', async () => {

@@ -136,8 +136,8 @@ export default class WeightedPool extends BasePool {
     return this.instance.connect(from).getSwapEnabled();
   }
 
-  async getManagementAumFeePercentage(): Promise<BigNumber> {
-    return this.instance.getManagementAumFeePercentage();
+  async getManagementAumFeeParams(): Promise<[BigNumber, BigNumber]> {
+    return this.instance.getManagementAumFeeParams();
   }
 
   async getNormalizedWeights(): Promise<BigNumber[]> {

@@ -1124,11 +1124,13 @@ describe('ManagedPoolSettings', function () {
 
     context('when entering recovery mode', () => {
       it('sets the AUM fee percentage to zero', async () => {
-        expect(await pool.getManagementAumFeePercentage()).to.be.gt(0);
+        const [aumFeePercentageBefore] = await pool.getManagementAumFeeParams();
+        expect(aumFeePercentageBefore).to.be.gt(0);
 
         await pool.enableRecoveryMode();
 
-        expect(await pool.getManagementAumFeePercentage()).to.equal(0);
+        const [aumFeePercentageAfter] = await pool.getManagementAumFeeParams();
+        expect(aumFeePercentageAfter).to.equal(0);
       });
 
       it('sets the actual supply equal to the virtual supply', async () => {
@@ -1154,28 +1156,31 @@ describe('ManagedPoolSettings', function () {
 
     context('when leaving recovery mode', () => {
       sharedBeforeEach('enable recovery mode', async () => {
-        const lastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
+        const [, expectedLastAUMCollectionTimestamp] = await pool.getManagementAumFeeParams();
         // Set recovery mode to stop AUM fee calculations.
         await pool.enableRecoveryMode();
 
         // Advance time so that AUM fees would otherwise be accrued.
         await advanceTime(365 * DAY);
 
-        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(lastAUMCollectionTimestamp);
+        const [, lastAUMCollectionTimestamp] = await pool.getManagementAumFeeParams();
+        expect(lastAUMCollectionTimestamp).to.be.eq(expectedLastAUMCollectionTimestamp);
       });
 
       it('resets the AUM fee percentage to its original value', async () => {
-        expect(await pool.getManagementAumFeePercentage()).to.be.eq(0);
+        const [aumFeePercentageBefore] = await pool.getManagementAumFeeParams();
+        expect(aumFeePercentageBefore).to.equal(0);
 
         await pool.disableRecoveryMode();
 
-        expect(await pool.getManagementAumFeePercentage()).to.equal(managementAumFeePercentage);
+        const [aumFeePercentageAfter] = await pool.getManagementAumFeeParams();
+        expect(aumFeePercentageAfter).to.equal(managementAumFeePercentage);
       });
 
       it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
         const tx = await pool.disableRecoveryMode();
         const expectedLastAUMCollectionTimestamp = await receiptTimestamp(tx.wait());
-        const updatedLastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
+        const [, updatedLastAUMCollectionTimestamp] = await pool.getManagementAumFeeParams();
         expect(updatedLastAUMCollectionTimestamp).to.be.eq(expectedLastAUMCollectionTimestamp);
       });
     });
