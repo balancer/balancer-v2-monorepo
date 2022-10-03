@@ -260,7 +260,7 @@ library CircuitBreakerLib {
      * @param lowerBound: The value of the lower bound, expressed as a percentage.
      * @param upperBound: The value of the upper bound, expressed as a percentage.
      */
-    function setCircuitBreakerFields(
+    function setCircuitBreaker(
         uint256 bptPrice,
         uint256 weightComplement,
         uint256 lowerBound,
@@ -316,7 +316,7 @@ library CircuitBreakerLib {
      * @notice Update the cached ratios given a new weight complement.
      * @dev This might be used when weights are adjusted, pre-emptively updating the cache to improve performance
      * of operations after the weight change completed. Note that this does not update the BPT price: this is still
-     * relative to the last call to `setCircuitBreakerFields`. The intent is only to optimize the automatic bounds
+     * relative to the last call to `setCircuitBreaker`. The intent is only to optimize the automatic bounds
      * adjustments due to changing weights.
      */
     function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) internal pure returns (bytes32) {

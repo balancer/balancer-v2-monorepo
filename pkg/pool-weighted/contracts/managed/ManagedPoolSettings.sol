@@ -19,28 +19,28 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolAUMFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
+import "../lib/CircuitBreakerLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
-import "./ManagedPoolTokenLib.sol";
+import "./ManagedPoolTokenStorageLib.sol";
 
 /**
  * @title Managed Pool Settings
  */
-abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyGuard, IControlledManagedPool {
+abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlledManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -57,12 +57,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
 
     // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
     // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
-    // amounts exceed the pool's token balances in the Vault. 80% is a very high, but relatively safe maximum value.
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 80e16; // 80%
+    // amounts exceed the pool's token balances in the Vault. 95% is a very high but safe maximum value, and we want to
+    // be permissive to let the owner manage the Pool as they see fit.
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 95e16; // 95%
 
+    // The same logic applies to the AUM fee.
+    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 95e16; // 95%
+
+    // We impose a minimum swap fee to create some buy/sell spread, and prevent the Pool from being drained through
+    // repeated interactions. We should not need this since we explicity always round favoring the Pool, but a minimum
+    // swap fee adds an extra safeguard.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-
-    uint256 private constant _MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 1e17; // 10%
 
     // Stores commonly used Pool state.
     // This slot is preferred for gas-sensitive operations as it is read in all joins, swaps and exits,
@@ -71,7 +76,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     bytes32 private _poolState;
 
     // Store scaling factor and start/end normalized weights for each token.
-    // See `ManagedPoolTokenLib.sol` for data layout.
+    // See `ManagedPoolTokenStorageLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Store the circuit breaker configuration for each token.
@@ -110,6 +115,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     event AllowlistAddressRemoved(address indexed member);
     event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
     event TokenRemoved(IERC20 indexed token);
+    event CircuitBreakerSet(
+        IERC20 indexed token,
+        uint256 bptPrice,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    );
 
     struct NewPoolParams {
         string name;
@@ -143,7 +154,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // We do this before setting the weights in `_startGradualWeightChange` so we start from a empty token state.
         for (uint256 i = 0; i < totalTokens; i++) {
             IERC20 token = params.tokens[i];
-            _tokenState[token] = ManagedPoolTokenLib.setTokenScalingFactor(bytes32(0), token);
+            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenScalingFactor(bytes32(0), token);
         }
 
         _startGradualWeightChange(
@@ -209,7 +220,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             return virtualSupply;
         }
 
-        uint256 aumFeesAmount = ProtocolAUMFees.getAumFeesBptAmount(
+        uint256 aumFeesAmount = ExternalAUMFees.getAumFeesBptAmount(
             virtualSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
@@ -225,7 +236,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Computes the current swap fee percentage, which can change every block if a gradual swap fee
      * update is in progress.
      */
-    function getSwapFeePercentage() public view override returns (uint256) {
+    function getSwapFeePercentage() external view override returns (uint256) {
         return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
     }
 
@@ -271,8 +282,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
-    ) external override authenticate whenNotPaused nonReentrant {
-        _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+    ) external override authenticate whenNotPaused {
+        _startGradualSwapFeeChange(
+            GradualValueChange.resolveStartTime(startTime, endTime),
+            endTime,
+            startSwapFeePercentage,
+            endSwapFeePercentage
+        );
     }
 
     function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
@@ -297,8 +313,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         _validateSwapFeePercentage(startSwapFeePercentage);
         _validateSwapFeePercentage(endSwapFeePercentage);
 
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
         _poolState = ManagedPoolStorageLib.setSwapFeeData(
             _poolState,
             startTime,
@@ -321,7 +335,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 numTokens = tokens.length;
         normalizedWeights = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; i++) {
-            normalizedWeights[i] = ManagedPoolTokenLib.getTokenWeight(_tokenState[tokens[i]], weightChangeProgress);
+            normalizedWeights[i] = ManagedPoolTokenStorageLib.getTokenWeight(
+                _tokenState[tokens[i]],
+                weightChangeProgress
+            );
         }
     }
 
@@ -331,6 +348,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
     function getNormalizedWeights() external view returns (uint256[] memory) {
         IERC20[] memory tokens = _getPoolTokens();
         return _getNormalizedWeights(tokens);
+    }
+
+    /**
+     * @dev Returns the normalized weight of a single token.
+     */
+    function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
+        return
+            ManagedPoolTokenStorageLib.getTokenWeight(
+                _tokenState[token],
+                ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
+            );
     }
 
     /**
@@ -354,23 +382,23 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         (startTime, endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
         IERC20[] memory tokens = _getPoolTokens();
-        uint256 totalTokens = tokens.length;
 
-        startWeights = new uint256[](totalTokens);
-        endWeights = new uint256[](totalTokens);
+        startWeights = new uint256[](tokens.length);
+        endWeights = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < totalTokens; i++) {
-            (startWeights[i], endWeights[i]) = ManagedPoolTokenLib.getTokenStartAndEndWeights(_tokenState[tokens[i]]);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            (startWeights[i], endWeights[i]) = ManagedPoolTokenStorageLib.getTokenStartAndEndWeights(
+                _tokenState[tokens[i]]
+            );
         }
     }
 
     function _ensureNoWeightChange() private view {
-        uint256 currentTime = block.timestamp;
         (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
-        if (currentTime < endTime) {
+        if (block.timestamp < endTime) {
             _revert(
-                currentTime < startTime
+                block.timestamp < startTime
                     ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
                     : Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE
             );
@@ -396,7 +424,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 endTime,
         IERC20[] memory tokens,
         uint256[] memory endWeights
-    ) external override authenticate whenNotPaused nonReentrant {
+    ) external override authenticate whenNotPaused {
         IERC20[] memory actualTokens = _getPoolTokens();
         InputHelpers.ensureInputLengthMatch(tokens.length, actualTokens.length, endWeights.length);
 
@@ -404,9 +432,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             _require(actualTokens[i] == tokens[i], Errors.TOKENS_MISMATCH);
         }
 
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
+        _startGradualWeightChange(
+            GradualValueChange.resolveStartTime(startTime, endTime),
+            endTime,
+            _getNormalizedWeights(tokens),
+            endWeights,
+            tokens
+        );
     }
 
     /**
@@ -428,7 +460,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             normalizedSum = normalizedSum.add(endWeight);
 
             IERC20 token = tokens[i];
-            _tokenState[token] = ManagedPoolTokenLib.setTokenWeight(_tokenState[token], startWeights[i], endWeight);
+            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenWeight(
+                _tokenState[token],
+                startWeights[i],
+                endWeight
+            );
         }
 
         // Ensure that the normalized weights sum to ONE
@@ -601,9 +637,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
      * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * This function is called automatically on joins and exits.
      */
-    function _collectAumManagementFees(uint256 totalSupply) internal returns (uint256) {
-        uint256 bptAmount = ProtocolAUMFees.getAumFeesBptAmount(
-            totalSupply,
+    function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
+        uint256 bptAmount = ExternalAUMFees.getAumFeesBptAmount(
+            virtualSupply,
             block.timestamp,
             _lastAumFeeCollectionTimestamp,
             getManagementAumFeePercentage()
@@ -663,7 +699,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         uint256 tokenToAddNormalizedWeight,
         uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused nonReentrant {
+    ) external authenticate whenNotPaused {
         // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to mint is zero.
@@ -702,7 +738,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
         // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
         // which will check the entire set of weights for correctness.
-        _tokenState[tokenToAdd] = ManagedPoolTokenLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
+        _tokenState[tokenToAdd] = ManagedPoolTokenStorageLib.initializeTokenState(
+            tokenToAdd,
+            tokenToAddNormalizedWeight
+        );
 
         // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
         // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.
@@ -763,7 +802,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         IERC20 tokenToRemove,
         uint256 burnAmount,
         address sender
-    ) external authenticate nonReentrant whenNotPaused {
+    ) external authenticate whenNotPaused {
         // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to burn is zero.
@@ -803,7 +842,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
         // its weight however, since we'll need it later.
         // We've ensured that the most recent weight change is complete.
-        uint256 tokenToRemoveWeight = ManagedPoolTokenLib.getTokenWeight(_tokenState[tokenToRemove], FixedPoint.ONE);
+        uint256 tokenToRemoveWeight = ManagedPoolTokenStorageLib.getTokenWeight(
+            _tokenState[tokenToRemove],
+            FixedPoint.ONE
+        );
         delete _tokenState[tokenToRemove];
 
         // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add
@@ -860,7 +902,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         scalingFactors = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; i++) {
-            scalingFactors[i] = ManagedPoolTokenLib.getTokenScalingFactor(_tokenState[tokens[i]]);
+            scalingFactors[i] = ManagedPoolTokenStorageLib.getTokenScalingFactor(_tokenState[tokens[i]]);
         }
     }
 
@@ -909,6 +951,82 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
         }
     }
 
+    // Circuit Breakers
+
+    /**
+     * @notice Return the full circuit breaker state for the given token.
+     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
+     * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
+     * the circuit breaker should trip.
+     */
+    function getCircuitBreakerState(IERC20 token)
+        external
+        view
+        returns (
+            uint256 bptPrice,
+            uint256 weightComplement,
+            uint256 lowerBound,
+            uint256 upperBound,
+            uint256 lowerBptPriceBound,
+            uint256 upperBptPriceBound
+        )
+    {
+        bytes32 circuitBreakerState = _circuitBreakerState[token];
+
+        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+            circuitBreakerState
+        );
+
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+            circuitBreakerState,
+            _getNormalizedWeight(token).complement()
+        );
+    }
+
+    /**
+     * @notice Set a circuit breaker for one or more tokens.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
+     * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
+     * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
+     * more relative to the rest of the pool.
+     */
+    function setCircuitBreakers(
+        IERC20[] memory tokens,
+        uint256[] memory bptPrices,
+        uint256[] memory lowerBoundPercentages,
+        uint256[] memory upperBoundPercentages
+    ) external authenticate whenNotPaused {
+        InputHelpers.ensureInputLengthMatch(tokens.length, lowerBoundPercentages.length, upperBoundPercentages.length);
+        InputHelpers.ensureInputLengthMatch(tokens.length, bptPrices.length);
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            _setCircuitBreaker(tokens[i], bptPrices[i], lowerBoundPercentages[i], upperBoundPercentages[i]);
+        }
+    }
+
+    // Compute the reference values, then pass them along with the bounds to the library. The bptPrice must be
+    // passed in from the caller, or it would be manipulable.
+    function _setCircuitBreaker(
+        IERC20 token,
+        uint256 bptPrice,
+        uint256 lowerBoundPercentage,
+        uint256 upperBoundPercentage
+    ) private {
+        uint256 normalizedWeight = _getNormalizedWeight(token);
+        // Fail if the token is not in the pool (or is the BPT token)
+        _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
+
+        // The library will validate the lower/upper bounds
+        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
+            bptPrice,
+            normalizedWeight.complement(),
+            lowerBoundPercentage,
+            upperBoundPercentage
+        );
+
+        emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
+    }
+
     // Misc
 
     /**
@@ -924,7 +1042,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, ReentrancyG
             (actionId == getActionId(ManagedPoolSettings.setMustAllowlistLPs.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addToken.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeToken.selector)) ||
-            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector));
+            (actionId == getActionId(ManagedPoolSettings.setManagementAumFeePercentage.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setCircuitBreakers.selector));
     }
 
     /**

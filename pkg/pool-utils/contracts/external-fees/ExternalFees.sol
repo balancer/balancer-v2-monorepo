@@ -17,11 +17,12 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
-library ProtocolFees {
+library ExternalFees {
     using FixedPoint for uint256;
 
     /**
-     * @dev Calculates the amount of BPT necessary to give ownership of a given percentage of the Pool.
+     * @dev Calculates the amount of BPT necessary to give ownership of a given percentage of the Pool to an external
+     * third party. In the case of protocol fees, this is the DAO, but could also be a pool manager, etc.
      * Note that this function reverts if `poolPercentage` >= 100%, it's expected that the caller will enforce this.
      * @param totalSupply - The total supply of the pool prior to minting BPT.
      * @param poolOwnershipPercentage - The desired ownership percentage of the pool to have as a result of minting BPT.
