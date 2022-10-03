@@ -450,7 +450,7 @@ contract ManagedPool is ManagedPoolSettings {
     function _onInitializePool(address sender, bytes memory userData)
         internal
         override
-        returns (uint256, uint256[] memory)
+        returns (uint256 bptAmountOut, uint256[] memory amountsIn)
     {
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
@@ -459,7 +459,7 @@ contract ManagedPool is ManagedPoolSettings {
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        uint256[] memory amountsIn = userData.initialAmountsIn();
+        amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
 
         uint256[] memory scalingFactors = _scalingFactors(tokens);
@@ -469,7 +469,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
+        bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
         // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
         // so naturally charges no AUM fees.
