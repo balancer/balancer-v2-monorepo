@@ -37,7 +37,11 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     using SafeCast for uint256;
     using WordCodec for bytes32;
 
-    // Protocol Fee IDs represent fee types; 8 bits is enough to represent all of them.
+    // Protocol Fee IDs represent fee types; we are supporting 3 types (join, yield and aum), so 8 bits is enough to
+    // store each of them.
+    // [ 232 bits |   8 bits   |    8 bits    |    8 bits   ]
+    // [  unused  | AUM fee ID | Yield fee ID | Swap fee ID ]
+    // [MSB                                              LSB]
     uint256 private constant _FEE_TYPE_ID_WIDTH = 8;
     uint256 private constant _SWAP_FEE_ID_OFFSET = 0;
     uint256 private constant _YIELD_FEE_ID_OFFSET = _SWAP_FEE_ID_OFFSET + _FEE_TYPE_ID_WIDTH;
@@ -45,6 +49,9 @@ abstract contract ProtocolFeeCache is RecoveryMode {
 
     // Protocol Fee Percentages can never be larger than 100% (1e18), which fits in ~59 bits, so using 64 for each type
     // is sufficient.
+    // [  64 bits |    64 bits    |     64 bits     |     64 bits    ]
+    // [  unused  | AUM fee cache | Yield fee cache | Swap fee cache ]
+    // [MSB                                                       LSB]
     uint256 private constant _FEE_TYPE_CACHE_WIDTH = 64;
     uint256 private constant _SWAP_FEE_OFFSET = 0;
     uint256 private constant _YIELD_FEE_OFFSET = _SWAP_FEE_OFFSET + _FEE_TYPE_CACHE_WIDTH;
