@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/CircuitBreakerLib.sol";
+import "../lib/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -976,11 +976,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
             circuitBreakerState,
             _getNormalizedWeight(token).complement()
         );
@@ -1020,7 +1020,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
         // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
+        _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
             bptPrice,
             normalizedWeight.complement(),
             lowerBoundPercentage,
