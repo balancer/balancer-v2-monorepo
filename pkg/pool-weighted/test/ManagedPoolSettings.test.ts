@@ -1123,6 +1123,14 @@ describe('ManagedPoolSettings', function () {
     });
 
     context('when entering recovery mode', () => {
+      it('sets the AUM fee percentage to zero', async () => {
+        expect(await pool.getManagementAumFeePercentage()).to.be.gt(0);
+
+        await pool.enableRecoveryMode();
+
+        expect(await pool.getManagementAumFeePercentage()).to.equal(0);
+      });
+
       it('sets the actual supply equal to the virtual supply', async () => {
         // Advance time so that AUM fees are accrued.
         await advanceTime(365 * DAY);
@@ -1145,7 +1153,7 @@ describe('ManagedPoolSettings', function () {
     });
 
     context('when leaving recovery mode', () => {
-      it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
+      sharedBeforeEach('enable recovery mode', async () => {
         const lastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
         // Set recovery mode to stop AUM fee calculations.
         await pool.enableRecoveryMode();
@@ -1154,8 +1162,17 @@ describe('ManagedPoolSettings', function () {
         await advanceTime(365 * DAY);
 
         expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(lastAUMCollectionTimestamp);
+      });
 
-        // On disabling recovery mode we expect the `_lastAumFeeCollectionTimestamp` to be be equal to the current time.
+      it('resets the AUM fee percentage to its original value', async () => {
+        expect(await pool.getManagementAumFeePercentage()).to.be.eq(0);
+
+        await pool.disableRecoveryMode();
+
+        expect(await pool.getManagementAumFeePercentage()).to.equal(managementAumFeePercentage);
+      });
+
+      it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
         const tx = await pool.disableRecoveryMode();
         const expectedLastAUMCollectionTimestamp = await receiptTimestamp(tx.wait());
         const updatedLastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
