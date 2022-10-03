@@ -611,7 +611,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             amount = _collectAumManagementFees(supplyBeforeFeeCollection);
-            _updateAumFeeCollectTimestamp();
+            _updateAumFeeCollectionTimestamp();
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -631,7 +631,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @notice Stores the current timestamp as the most recent collection of AUM fees.
      * @dev This function *must* be called after each collection of AUM fees.
      */
-    function _updateAumFeeCollectTimestamp() internal {
+    function _updateAumFeeCollectionTimestamp() internal {
         _aumState = ManagedPoolAumStorageLib.setLastCollectionTimestamp(_aumState, block.timestamp);
     }
 
@@ -674,7 +674,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // As we update `_lastAumFeeCollectionTimestamp` when updating `_managementAumFeePercentage`, we only need to
         // update `_lastAumFeeCollectionTimestamp` when non-zero AUM fees are paid. This avoids an SSTORE on zero-length
         // collections.
-        _updateAumFeeCollectTimestamp();
+        _updateAumFeeCollectionTimestamp();
 
         // Split AUM fees between protocol and Pool manager.
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
@@ -966,7 +966,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             // and in Recovery mode for a period of time and then later returns to normal operation then AUM fees will
             // be charged to the remaining LPs for the full period. We then update the collection timestamp so that no
             // AUM fees are accrued over this period.
-            _updateAumFeeCollectTimestamp();
+            _updateAumFeeCollectionTimestamp();
         }
     }
 

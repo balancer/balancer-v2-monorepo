@@ -70,7 +70,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
 
         // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
         // so naturally charges no AUM fees.
-        _updateAumFeeCollectTimestamp();
+        _updateAumFeeCollectionTimestamp();
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
