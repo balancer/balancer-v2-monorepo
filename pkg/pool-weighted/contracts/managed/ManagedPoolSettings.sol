@@ -283,8 +283,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         uint256 startSwapFeePercentage,
         uint256 endSwapFeePercentage
     ) external override authenticate whenNotPaused {
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-        _startGradualSwapFeeChange(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
+        _startGradualSwapFeeChange(
+            GradualValueChange.resolveStartTime(startTime, endTime),
+            endTime,
+            startSwapFeePercentage,
+            endSwapFeePercentage
+        );
     }
 
     function _validateSwapFeePercentage(uint256 swapFeePercentage) internal pure {
@@ -350,9 +354,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @dev Returns the normalized weight of a single token.
      */
     function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
-        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState);
-
-        return ManagedPoolTokenStorageLib.getTokenWeight(_tokenState[token], weightChangeProgress);
+        return
+            ManagedPoolTokenStorageLib.getTokenWeight(
+                _tokenState[token],
+                ManagedPoolStorageLib.getGradualWeightChangeProgress(_poolState)
+            );
     }
 
     /**
@@ -376,12 +382,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         (startTime, endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        uint256 totalTokens = tokens.length;
 
-        startWeights = new uint256[](totalTokens);
-        endWeights = new uint256[](totalTokens);
+        startWeights = new uint256[](tokens.length);
+        endWeights = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < totalTokens; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             (startWeights[i], endWeights[i]) = ManagedPoolTokenStorageLib.getTokenStartAndEndWeights(
                 _tokenState[tokens[i]]
             );
@@ -389,12 +394,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     function _ensureNoWeightChange() private view {
-        uint256 currentTime = block.timestamp;
         (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
-        if (currentTime < endTime) {
+        if (block.timestamp < endTime) {
             _revert(
-                currentTime < startTime
+                block.timestamp < startTime
                     ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
                     : Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE
             );
@@ -428,9 +432,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             _require(actualTokens[i] == tokens[i], Errors.TOKENS_MISMATCH);
         }
 
-        startTime = GradualValueChange.resolveStartTime(startTime, endTime);
-
-        _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(tokens), endWeights, tokens);
+        _startGradualWeightChange(
+            GradualValueChange.resolveStartTime(startTime, endTime),
+            endTime,
+            _getNormalizedWeights(tokens),
+            endWeights,
+            tokens
+        );
     }
 
     /**
@@ -479,8 +487,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // upscale here for consistency
         _upscaleArray(balances, _scalingFactors(tokens));
 
-        uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
-        return WeightedMath._calculateInvariant(normalizedWeights, balances);
+        return WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), balances);
     }
 
     // Swap Enabled

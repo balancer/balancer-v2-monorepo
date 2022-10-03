@@ -80,11 +80,13 @@ library ManagedPoolTokenStorageLib {
      * @return normalizedStartWeight - The starting normalized weight of the token.
      * @return normalizedEndWeight - The ending normalized weight of the token.
      */
-    function getTokenStartAndEndWeights(bytes32 tokenState) internal pure returns (uint256, uint256) {
-        return (
-            tokenState.decodeUint(_START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH),
-            tokenState.decodeUint(_END_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH)
-        );
+    function getTokenStartAndEndWeights(bytes32 tokenState)
+        internal
+        pure
+        returns (uint256 normalizedStartWeight, uint256 normalizedEndWeight)
+    {
+        normalizedStartWeight = tokenState.decodeUint(_START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH);
+        normalizedEndWeight = tokenState.decodeUint(_END_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH);
     }
 
     // Setters
@@ -136,10 +138,8 @@ library ManagedPoolTokenStorageLib {
      * @param token - The ERC20 token of interest.
      * @param normalizedWeight - The normalized weight of the token.
      */
-    function initializeTokenState(IERC20 token, uint256 normalizedWeight) internal view returns (bytes32) {
-        bytes32 tokenState = bytes32(0);
-        tokenState = setTokenScalingFactor(tokenState, token);
+    function initializeTokenState(IERC20 token, uint256 normalizedWeight) internal view returns (bytes32 tokenState) {
+        tokenState = setTokenScalingFactor(bytes32(0), token);
         tokenState = setTokenWeight(tokenState, normalizedWeight, normalizedWeight);
-        return tokenState;
     }
 }
