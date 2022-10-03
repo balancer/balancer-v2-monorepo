@@ -70,20 +70,22 @@ describe('CircuitBreakerLib', () => {
       if (lowerBound == FP_ZERO) {
         expect(lowerBptPriceBound).to.equal(FP_ZERO);
         // It is never tripped, even with a 0 price (0 supply = 0 price)
-        const [lowerBoundTripped] = await lib.hasCircuitBreakerTripped(
+        lowerBoundTripped = await lib.hasCircuitBreakerTripped(
           data,
           FP_ZERO,
           fp(NORMALIZED_WEIGHT),
-          fp(TOKEN_BALANCE)
+          fp(TOKEN_BALANCE),
+          true
         );
         expect(lowerBoundTripped).to.be.false;
       } else {
         // The breaker should NOT be tripped with the nominal bpt price
-        [lowerBoundTripped] = await lib.hasCircuitBreakerTripped(
+        lowerBoundTripped = await lib.hasCircuitBreakerTripped(
           data,
           fp(TOTAL_SUPPLY),
           fp(NORMALIZED_WEIGHT),
-          fp(TOKEN_BALANCE)
+          fp(TOKEN_BALANCE),
+          true
         );
         expect(lowerBoundTripped).to.be.false;
 
@@ -91,11 +93,12 @@ describe('CircuitBreakerLib', () => {
         priceMultiplier = fpDiv(lowerBptPriceBound, fp(BPT_PRICE));
         supplyAtBoundary = fpMul(fp(TOTAL_SUPPLY), priceMultiplier);
 
-        [lowerBoundTripped] = await lib.hasCircuitBreakerTripped(
+        lowerBoundTripped = await lib.hasCircuitBreakerTripped(
           data,
           fpMul(supplyAtBoundary, fp(0.9999)),
           fp(NORMALIZED_WEIGHT),
-          fp(TOKEN_BALANCE)
+          fp(TOKEN_BALANCE),
+          true
         );
         expect(lowerBoundTripped).to.be.true;
       }
@@ -103,20 +106,22 @@ describe('CircuitBreakerLib', () => {
       if (upperBound == FP_ZERO) {
         expect(upperBptPriceBound).to.equal(FP_ZERO);
         // It is never tripped, even with a max price
-        const [, upperBoundTripped] = await lib.hasCircuitBreakerTripped(
+        const upperBoundTripped = await lib.hasCircuitBreakerTripped(
           data,
           MAX_UINT96,
           fp(NORMALIZED_WEIGHT),
-          fp(TOKEN_BALANCE)
+          fp(TOKEN_BALANCE),
+          false
         );
         expect(upperBoundTripped).to.be.false;
       } else {
         // The breaker should NOT be tripped with the nominal bpt price
-        [, upperBoundTripped] = await lib.hasCircuitBreakerTripped(
+        upperBoundTripped = await lib.hasCircuitBreakerTripped(
           data,
           fp(TOTAL_SUPPLY),
           fp(NORMALIZED_WEIGHT),
-          fp(TOKEN_BALANCE)
+          fp(TOKEN_BALANCE),
+          false
         );
         expect(upperBoundTripped).to.be.false;
 
@@ -124,11 +129,12 @@ describe('CircuitBreakerLib', () => {
         priceMultiplier = fpDiv(upperBptPriceBound, fp(BPT_PRICE));
         supplyAtBoundary = fpMul(fp(TOTAL_SUPPLY), priceMultiplier);
 
-        [, upperBoundTripped] = await lib.hasCircuitBreakerTripped(
+        upperBoundTripped = await lib.hasCircuitBreakerTripped(
           data,
           fpMul(supplyAtBoundary, fp(1.0001)),
           fp(NORMALIZED_WEIGHT),
-          fp(TOKEN_BALANCE)
+          fp(TOKEN_BALANCE),
+          false
         );
         expect(upperBoundTripped).to.be.true;
       }

@@ -230,25 +230,29 @@ library CircuitBreakerLib {
      * @param normalizedWeight - the normalized weight of the token we are checking.
      * @param upscaledBalance - the post-operation token balance (including swap fees, etc.). It must be an 18-decimal
      * floating point number, adjusted by the scaling factor of the token.
-     * @return - boolean flags set to true if the breaker should be tripped: (lowerBoundTripped, upperBoundTripped)
+     * @param isLowerBound - whether we are checking the lower or upper bound.
+     * @return - boolean flag set to true if the breaker should be tripped.
      */
     function hasCircuitBreakerTripped(
         bytes32 circuitBreakerState,
         uint256 totalSupply,
         uint256 normalizedWeight,
-        uint256 upscaledBalance
-    ) internal pure returns (bool, bool) {
-        uint256 weightComplement = normalizedWeight.complement();
+        uint256 upscaledBalance,
+        bool isLowerBound
+    ) internal pure returns (bool) {
+        uint256 bptPriceBound = getCurrentCircuitBreakerBound(
+            circuitBreakerState,
+            normalizedWeight.complement(),
+            isLowerBound
+        );
 
-        uint256 lowerBoundBptPrice = getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, true);
-        uint256 upperBoundBptPrice = getCurrentCircuitBreakerBound(circuitBreakerState, weightComplement, false);
+        if (bptPriceBound == 0) {
+            return false;
+        }
 
         uint256 currentBptPrice = totalSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
 
-        return (
-            lowerBoundBptPrice != 0 && currentBptPrice < lowerBoundBptPrice,
-            upperBoundBptPrice != 0 && currentBptPrice > upperBoundBptPrice
-        );
+        return isLowerBound ? currentBptPrice < bptPriceBound : currentBptPrice > bptPriceBound;
     }
 
     /**

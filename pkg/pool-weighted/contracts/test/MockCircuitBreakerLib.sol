@@ -38,9 +38,17 @@ contract MockCircuitBreakerLib {
         bytes32 circuitBreakerState,
         uint256 totalSupply,
         uint256 normalizedWeight,
-        uint256 upscaledBalance
-    ) external pure returns (bool, bool) {
-        return CircuitBreakerLib.hasCircuitBreakerTripped(circuitBreakerState, totalSupply, normalizedWeight, upscaledBalance);
+        uint256 upscaledBalance,
+        bool isLowerBound
+    ) external pure returns (bool) {
+        return
+            CircuitBreakerLib.hasCircuitBreakerTripped(
+                circuitBreakerState,
+                totalSupply,
+                normalizedWeight,
+                upscaledBalance,
+                isLowerBound
+            );
     }
 
     function setCircuitBreaker(uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
