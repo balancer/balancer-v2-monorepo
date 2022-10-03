@@ -469,21 +469,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    // Invariant
-
-    /**
-     * @dev Returns the current value of the invariant.
-     */
-    function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
-
-        // Since the Pool hooks always work with upscaled balances, we manually
-        // upscale here for consistency
-        _upscaleArray(balances, _scalingFactors(tokens));
-
-        return WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), balances);
-    }
-
     // Swap Enabled
 
     /**
@@ -956,8 +941,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      */
     function _setRecoveryMode(bool enabled) internal override {
         _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
-
-        emit RecoveryModeStateChanged(enabled);
 
         // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
         // We do not perform any state updates when entering recovery mode as this may jeopardize the ability to enable

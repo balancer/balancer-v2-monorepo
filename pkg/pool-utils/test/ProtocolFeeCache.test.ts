@@ -157,8 +157,11 @@ describe('ProtocolFeeCache', () => {
                 aum: providerFeeId.eq(providerFeeIds.aum) ? NEW_VALUE : preAumFee,
               };
 
+              // Swap, yield and AUM fees are 64-bit values encoded with 0, 64 and 128 bit offsets respectively.
+              const feeCacheEncoded = feeCache.swap.shl(0).or(feeCache.yield.shl(64)).or(feeCache.aum.shl(128));
+
               expectEvent.inReceipt(await receipt.wait(), 'ProtocolFeePercentageCacheUpdated', {
-                feeCache: Object.values(feeCache),
+                feeCache: feeCacheEncoded,
               });
             });
           });

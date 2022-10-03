@@ -70,6 +70,8 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
         _ensureNotInRecoveryMode();
 
         _setRecoveryMode(true);
+
+        emit RecoveryModeStateChanged(true);
     }
 
     /**
@@ -84,6 +86,8 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
         _ensureInRecoveryMode();
 
         _setRecoveryMode(false);
+
+        emit RecoveryModeStateChanged(false);
     }
 
     // Defer implementation for functions that require storage
