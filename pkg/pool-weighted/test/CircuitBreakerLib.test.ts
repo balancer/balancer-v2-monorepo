@@ -145,9 +145,9 @@ describe('CircuitBreakerLib', () => {
     });
 
     it('reverts if the lower bound > 1', async () => {
-      await expect(
-        lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(1).add(1), 0)
-      ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
+      await expect(lib.setCircuitBreaker(fp(BPT_PRICE), fp(WEIGHT_COMPLEMENT), fp(1).add(1), 0)).to.be.revertedWith(
+        'INVALID_CIRCUIT_BREAKER_BOUNDS'
+      );
     });
 
     it('reverts if the upper bound > MAX_BOUND', async () => {
