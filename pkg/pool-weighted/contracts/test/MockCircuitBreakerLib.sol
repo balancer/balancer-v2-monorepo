@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../lib/CircuitBreakerStorageLib.sol";
+import "../lib/CircuitBreakerLib.sol";
 
 contract MockCircuitBreakerLib {
     using FixedPoint for uint256;

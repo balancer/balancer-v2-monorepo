@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/CircuitBreakerStorageLib.sol";
+import "../lib/CircuitBreakerLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
