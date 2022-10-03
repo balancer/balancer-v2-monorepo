@@ -292,7 +292,7 @@ library CircuitBreakerLib {
             .insertUint(upperBound >> _BOUND_SHIFT_BITS, _UPPER_BOUND_OFFSET, _BOUND_WIDTH);
 
         // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
-        // If the weight has not changed since the breaker was set, we can use the precomputed valuesvdirectly,
+        // If the weight has not changed since the breaker was set, we can use the precomputed values directly,
         // and avoid a heavy computation.
         (uint256 lowerBoundRatio, uint256 upperBoundRatio) = getBoundaryConversionRatios(
             lowerBound,
