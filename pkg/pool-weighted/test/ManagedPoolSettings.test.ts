@@ -548,7 +548,7 @@ describe('ManagedPoolSettings', function () {
             });
           });
 
-          it('stores the params', async () => {
+          it('stores the gradual weight update params', async () => {
             const updateParams = await pool.getGradualWeightUpdateParams();
 
             expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
@@ -932,14 +932,14 @@ describe('ManagedPoolSettings', function () {
             });
           });
 
-          it('stores the params', async () => {
+          it('stores the circuit breaker params', async () => {
             const {
               bptPrice: actualBptPrice,
-              weightComplement: actualWeightComplement,
+              normalizedWeight: actualNormalizedWeight,
               lowerBound: actualLowerBound,
               upperBound: actualUpperBound,
             } = await pool.getCircuitBreakerState(poolTokens.first);
-            const expectedWeightComplement = FP_ONE.sub(poolWeights[0]);
+            const expectedNormalizedWeight = poolWeights[0];
             const totalSupply = await pool.getActualSupply();
             const scalingFactors = await pool.getScalingFactors();
 
@@ -951,7 +951,7 @@ describe('ManagedPoolSettings', function () {
             expect(actualLowerBound).to.equalWithError(LOWER_BOUND, 0.001);
             expect(actualUpperBound).to.equalWithError(UPPER_BOUND, 0.001);
             expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
-            expect(actualWeightComplement).to.equal(expectedWeightComplement);
+            expect(actualNormalizedWeight).to.equal(expectedNormalizedWeight);
           });
         });
       }

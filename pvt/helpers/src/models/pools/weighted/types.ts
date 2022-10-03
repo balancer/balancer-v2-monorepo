@@ -218,7 +218,7 @@ export type ManagedPoolParams = {
 
 export type CircuitBreakerState = {
   bptPrice: BigNumber;
-  weightComplement: BigNumber;
+  normalizedWeight: BigNumber;
   lowerBound: BigNumber;
   upperBound: BigNumber;
   lowerBptPriceBound: BigNumber;

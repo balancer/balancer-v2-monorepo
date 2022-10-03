@@ -21,17 +21,17 @@ contract MockCircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         external
         pure
-        returns (uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
+        returns (uint256 bptPrice, uint256 normalizedWeight, uint256 lowerBound, uint256 upperBound)
     {
             return CircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
     }
 
-    function getCurrentCircuitBreakerBound(bytes32 circuitBreakerState, uint256 currentWeightFactor, bool isLowerBound)
+    function getCurrentCircuitBreakerBound(bytes32 circuitBreakerState, uint256 normalizedWeight, bool isLowerBound)
         external
         pure
         returns (uint256)
     {
-        return CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, currentWeightFactor, isLowerBound);
+        return CircuitBreakerLib.getCurrentCircuitBreakerBound(circuitBreakerState, normalizedWeight, isLowerBound);
     }
 
     function hasCircuitBreakerTripped(
@@ -51,27 +51,27 @@ contract MockCircuitBreakerLib {
             );
     }
 
-    function setCircuitBreaker(uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
+    function setCircuitBreaker(uint256 bptPrice, uint256 normalizedWeight, uint256 lowerBound, uint256 upperBound)
         external
         pure
         returns (bytes32)
     {
-        return CircuitBreakerLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
+        return CircuitBreakerLib.setCircuitBreaker(bptPrice, normalizedWeight, lowerBound, upperBound);
     }
 
-    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) external pure returns (bytes32) {
-        return CircuitBreakerLib.updateBoundRatios(circuitBreakerState, weightComplement);
+    function updateBoundRatios(bytes32 circuitBreakerState, uint256 normalizedWeight) external pure returns (bytes32) {
+        return CircuitBreakerLib.updateBoundRatios(circuitBreakerState, normalizedWeight);
     }
 
     function getBoundaryConversionRatios(
         uint256 lowerBoundPercentage,
         uint256 upperBoundPercentage,
-        uint256 currentWeightComplement
+        uint256 normalizedWeight
     ) external pure returns (uint256, uint256) {
         return CircuitBreakerLib.getBoundaryConversionRatios(
             lowerBoundPercentage,
             upperBoundPercentage,
-            currentWeightComplement
+            normalizedWeight
         );
     }
 }

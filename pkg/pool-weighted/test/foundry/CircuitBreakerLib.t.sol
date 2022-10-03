@@ -34,58 +34,60 @@ contract CircuitBreakerLibTest is Test {
 
     function testReferenceParams(
         uint256 bptPrice,
-        uint256 weightComplement,
+        uint256 normalizedWeight,
         uint256 lowerBound,
         uint256 upperBound
     ) public {
         bptPrice = bound(bptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
-        weightComplement = bound(weightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        normalizedWeight = bound(normalizedWeight, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
         bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(
             bptPrice,
-            weightComplement,
+            normalizedWeight,
             lowerBound,
             upperBound
         );
         (
             uint256 actualBptPrice,
-            uint256 actualWeightComplement,
+            uint256 actualNormalizedWeight,
             uint256 actualLowerBound,
             uint256 actualUpperBound
         ) = CircuitBreakerLib.getCircuitBreakerFields(poolState);
 
         assertEq(actualBptPrice, bptPrice);
-        assertEq(actualWeightComplement, weightComplement);
+        assertEq(actualNormalizedWeight, normalizedWeight);
         assertApproxEqRel(actualLowerBound, lowerBound, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBound, upperBound, _MAX_RELATIVE_ERROR);
     }
 
     function testReferenceBoundRatios(
         uint256 bptPrice,
-        uint256 weightComplement,
+        uint256 normalizedWeight,
         uint256 lowerBound,
         uint256 upperBound
     ) public {
         bptPrice = bound(bptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
-        weightComplement = bound(weightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        normalizedWeight = bound(normalizedWeight, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
+
+        uint256 weightComplement = normalizedWeight.complement();
 
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
         bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(
             bptPrice,
-            weightComplement,
+            normalizedWeight,
             lowerBound,
             upperBound
         );
 
-        // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
-        uint256 actualLowerBoundBptPrice  = CircuitBreakerLib.getCurrentCircuitBreakerBound(poolState, weightComplement, true);
-        uint256 actualUpperBoundBptPrice  = CircuitBreakerLib.getCurrentCircuitBreakerBound(poolState, weightComplement, false);
+        // Test that calling it with the original normalizedWeight retrieves exact values from the ratio cache
+        uint256 actualLowerBoundBptPrice  = CircuitBreakerLib.getCurrentCircuitBreakerBound(poolState, normalizedWeight, true);
+        uint256 actualUpperBoundBptPrice  = CircuitBreakerLib.getCurrentCircuitBreakerBound(poolState, normalizedWeight, false);
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
@@ -93,32 +95,32 @@ contract CircuitBreakerLibTest is Test {
 
     function testDynamicBoundRatios(
         uint256 initialBptPrice,
-        uint256 initialWeightComplement,
-        uint256 newWeightComplement,
+        uint256 initialNormalizedWeight,
+        uint256 newNormalizedWeight,
         uint256 lowerBound,
         uint256 upperBound
     ) public {
         initialBptPrice = bound(initialBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
-        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
-        newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
+        initialNormalizedWeight = bound(initialNormalizedWeight, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        newNormalizedWeight = bound(newNormalizedWeight, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
         bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
             initialBptPrice,
-            initialWeightComplement,
+            initialNormalizedWeight,
             lowerBound,
             upperBound
         );
 
-        uint256 lowerBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newWeightComplement, true);
-        uint256 upperBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newWeightComplement, false);
+        uint256 lowerBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newNormalizedWeight, true);
+        uint256 upperBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newNormalizedWeight, false);
 
         (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.getBoundaryConversionRatios(
             lowerBound,
             upperBound,
-            newWeightComplement
+            newNormalizedWeight
         );
         assertApproxEqRel(
             lowerBptPriceBoundary,
@@ -134,39 +136,39 @@ contract CircuitBreakerLibTest is Test {
 
     function testUpdateCachedRatios(
         uint256 initialBptPrice,
-        uint256 initialWeightComplement,
-        uint256 newWeightComplement,
+        uint256 initialNormalizedWeight,
+        uint256 newNormalizedWeight,
         uint256 lowerBound,
         uint256 upperBound
     ) public {
         initialBptPrice = bound(initialBptPrice, _MIN_BPT_PRICE, _MAX_BPT_PRICE);
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
-        initialWeightComplement = bound(initialWeightComplement, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
-        newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
+        initialNormalizedWeight = bound(initialNormalizedWeight, _MINIMUM_TOKEN_WEIGHT, _MAXIMUM_TOKEN_WEIGHT);
+        newNormalizedWeight = bound(newNormalizedWeight, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
         bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
             initialBptPrice,
-            initialWeightComplement,
+            initialNormalizedWeight,
             lowerBound,
             upperBound
         );
 
-        // We now model the weight of the the token changing so `initialWeightComplement` becomes `newWeightComplement`.
+        // We now model the weight of the the token changing so `initialNormalizedWeight` becomes `newNormalizedWeight`.
         // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
         uint256 dynamicCost = gasleft();
-        uint256 lowerBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newWeightComplement, true);
-        uint256 upperBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newWeightComplement, false);
+        uint256 lowerBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newNormalizedWeight, true);
+        uint256 upperBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(initialPoolState, newNormalizedWeight, false);
 
         dynamicCost -= gasleft();
 
-        // This is expensive so we refresh the cached bound ratios using the new weight complement.
-        bytes32 updatedPoolState = CircuitBreakerLib.updateBoundRatios(initialPoolState, newWeightComplement);
+        // This is expensive so we refresh the cached bound ratios using the new weight.
+        bytes32 updatedPoolState = CircuitBreakerLib.updateBoundRatios(initialPoolState, newNormalizedWeight);
 
         uint256 cachedCost = gasleft();
-        uint256 newCachedLowerBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(updatedPoolState, newWeightComplement, true);
-        uint256 newCachedUpperBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(updatedPoolState, newWeightComplement, false);
+        uint256 newCachedLowerBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(updatedPoolState, newNormalizedWeight, true);
+        uint256 newCachedUpperBptPriceBoundary = CircuitBreakerLib.getCurrentCircuitBreakerBound(updatedPoolState, newNormalizedWeight, false);
 
         cachedCost -= gasleft();
 

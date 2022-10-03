@@ -983,7 +983,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         view
         returns (
             uint256 bptPrice,
-            uint256 weightComplement,
+            uint256 normalizedWeight,
             uint256 lowerBound,
             uint256 upperBound,
             uint256 lowerBptPriceBound,
@@ -992,18 +992,18 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+        (bptPrice, normalizedWeight, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
         lowerBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(
             circuitBreakerState,
-            weightComplement,
+            normalizedWeight,
             true
         );
         upperBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(
             circuitBreakerState,
-            weightComplement,
+            normalizedWeight,
             false
         );
     }
@@ -1044,7 +1044,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // The library will validate the lower/upper bounds
         _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
             bptPrice,
-            normalizedWeight.complement(),
+            normalizedWeight,
             lowerBoundPercentage,
             upperBoundPercentage
         );
