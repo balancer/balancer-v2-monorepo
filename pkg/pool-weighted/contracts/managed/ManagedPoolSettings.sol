@@ -933,8 +933,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     function _setRecoveryMode(bool enabled) internal override {
         _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
 
-        emit RecoveryModeStateChanged(enabled);
-
         // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
         // We do not perform any state updates when entering recovery mode as this may jeopardize the ability to enable
         // Recovery mode.
