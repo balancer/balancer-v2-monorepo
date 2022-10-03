@@ -912,7 +912,6 @@ describe('ManagedPoolSettings', function () {
           });
 
           it('setting a circuit breaker emits an event', async () => {
-            //const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address);
             const initialPrice = fpDiv(fpMul(await pool.getActualSupply(), poolWeights[0]), initialBalances[0]);
 
             const receipt = await pool.setCircuitBreakers(
@@ -922,11 +921,11 @@ describe('ManagedPoolSettings', function () {
               [LOWER_BOUND],
               [UPPER_BOUND]
             );
-            const { bptPrice } = await pool.getCircuitBreakerState(poolTokens.first);
+            const { referenceBptPrice } = await pool.getCircuitBreakerState(poolTokens.first);
 
             expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
               token: poolTokens.first.address,
-              bptPrice: bptPrice,
+              bptPrice: initialPrice,
               lowerBoundPercentage: LOWER_BOUND,
               upperBoundPercentage: UPPER_BOUND,
             });
@@ -934,8 +933,8 @@ describe('ManagedPoolSettings', function () {
 
           it('stores the circuit breaker params', async () => {
             const {
-              bptPrice: actualBptPrice,
-              normalizedWeight: actualNormalizedWeight,
+              referenceBptPrice: actualBptPrice,
+              referenceNormalizedWeight: actualNormalizedWeight,
               lowerBound: actualLowerBound,
               upperBound: actualUpperBound,
             } = await pool.getCircuitBreakerState(poolTokens.first);

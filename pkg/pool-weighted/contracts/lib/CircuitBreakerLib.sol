@@ -109,7 +109,7 @@ library CircuitBreakerLib {
     uint256 private constant _BOUND_SHIFT_BITS = 64 - _BOUND_WIDTH;
 
     /**
-     * @notice Returns the BPT price and normalized weight values, and lower and upper bounds for a given token.
+     * @notice Returns the BPT price and weight stored when the breaker was set, plus the upper and lower bounds.
      * @dev If an upper or lower bound value is zero, it means there is no circuit breaker in that direction for the
      * given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
@@ -118,14 +118,14 @@ library CircuitBreakerLib {
         internal
         pure
         returns (
-            uint256 bptPrice,
-            uint256 normalizedWeight,
+            uint256 referenceBptPrice,
+            uint256 referenceNormalizedWeight,
             uint256 lowerBound,
             uint256 upperBound
         )
     {
-        bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        normalizedWeight = circuitBreakerState.decodeUint(_NORMALIZED_WEIGHT_OFFSET, _NORMALIZED_WEIGHT_WIDTH);
+        referenceBptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        referenceNormalizedWeight = circuitBreakerState.decodeUint(_NORMALIZED_WEIGHT_OFFSET, _NORMALIZED_WEIGHT_WIDTH);
         // Decompress the bounds by shifting left.
         lowerBound = circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
         upperBound = circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS;
@@ -178,13 +178,13 @@ library CircuitBreakerLib {
      * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentNormalizedWeight - The normalized weight of the token.
+     * @param normalizedWeight - The normalized weight of the token.
      * @param isLowerBound - Specify which bound to return. (We don't need both at the same time.)
      * @return - lower or upper BPT price bound, which can be directly compared against the current BPT price.
      */
     function getCurrentCircuitBreakerBound(
         bytes32 circuitBreakerState,
-        uint256 currentNormalizedWeight,
+        uint256 normalizedWeight,
         bool isLowerBound
     ) internal pure returns (uint256) {
         uint256 bound = circuitBreakerState.decodeUint(
@@ -198,26 +198,28 @@ library CircuitBreakerLib {
         }
 
         // Retrieve the weight passed in and bptPrice computed when the circuit breaker was set.
-        uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        uint256 normalizedWeight = circuitBreakerState.decodeUint(_NORMALIZED_WEIGHT_OFFSET, _NORMALIZED_WEIGHT_WIDTH);
-
+        uint256 referenceBptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
+        uint256 referenceNormalizedWeight = circuitBreakerState.decodeUint(
+            _NORMALIZED_WEIGHT_OFFSET,
+            _NORMALIZED_WEIGHT_WIDTH
+        );
         uint256 boundRatio;
 
-        if (normalizedWeight == currentNormalizedWeight) {
+        if (normalizedWeight == referenceNormalizedWeight) {
             // If the normalized weight hasn't changed since the circuit breaker was set, we can use the precomputed
             // boundary ratios.
             boundRatio = circuitBreakerState
                 .decodeUint(isLowerBound ? _LOWER_BOUND_RATIO_OFFSET : _UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
                 .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
-            uint256 weightComplement = currentNormalizedWeight.complement();
+            uint256 weightComplement = normalizedWeight.complement();
 
             boundRatio = isLowerBound ? bound.powUp(weightComplement) : bound.powDown(weightComplement);
         }
 
         // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
         // To err in favor of tripping the breaker, round the lower bound up, and the upper bound down.
-        return (isLowerBound ? FixedPoint.mulUp : FixedPoint.mulDown)(bptPrice, boundRatio);
+        return (isLowerBound ? FixedPoint.mulUp : FixedPoint.mulDown)(referenceBptPrice, boundRatio);
     }
 
     /**

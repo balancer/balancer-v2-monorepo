@@ -21,7 +21,7 @@ contract MockCircuitBreakerLib {
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         external
         pure
-        returns (uint256 bptPrice, uint256 normalizedWeight, uint256 lowerBound, uint256 upperBound)
+        returns (uint256 referenceBptPrice, uint256 referenceNormalizedWeight, uint256 lowerBound, uint256 upperBound)
     {
             return CircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
     }

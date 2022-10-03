@@ -963,15 +963,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Return the full circuit breaker state for the given token.
      * @dev These are the reference values (BPT price and normalized weight) computed when the breaker was set,
-     * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
+     * along with the percentage bounds. It also returns the reference BPT price bounds, needed to check whether
      * the circuit breaker should trip.
      */
     function getCircuitBreakerState(IERC20 token)
         external
         view
         returns (
-            uint256 bptPrice,
-            uint256 normalizedWeight,
+            uint256 referenceBptPrice,
+            uint256 referenceNormalizedWeight,
             uint256 lowerBound,
             uint256 upperBound,
             uint256 lowerBptPriceBound,
@@ -980,18 +980,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, normalizedWeight, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
-            circuitBreakerState
-        );
+        (referenceBptPrice, referenceNormalizedWeight, lowerBound, upperBound) = CircuitBreakerLib
+            .getCircuitBreakerFields(circuitBreakerState);
 
         lowerBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(
             circuitBreakerState,
-            normalizedWeight,
+            referenceNormalizedWeight,
             true
         );
         upperBptPriceBound = CircuitBreakerLib.getCurrentCircuitBreakerBound(
             circuitBreakerState,
-            normalizedWeight,
+            referenceNormalizedWeight,
             false
         );
     }
