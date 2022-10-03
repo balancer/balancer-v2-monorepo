@@ -587,7 +587,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         (aumFeePercentage, lastCollectionTimestamp) = ManagedPoolAumStorageLib.getAumFeeFields(_aumState);
 
         // If we're in recovery mode then we bypass any fee logic by setting the fee percentage to zero.
-        aumFeePercentage = ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState) ? 0 : aumFeePercentage;
+        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
+            aumFeePercentage = 0;
+        }
     }
 
     /**
