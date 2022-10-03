@@ -693,7 +693,6 @@ contract ManagedPool is ManagedPoolSettings {
         (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
             getPoolId()
         );
-
         return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
     }
 
