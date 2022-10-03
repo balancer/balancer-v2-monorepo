@@ -8,6 +8,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('ManagedPool owner only actions', () => {
   let pool: Contract;
@@ -26,8 +27,8 @@ describe('ManagedPool owner only actions', () => {
           swapFeePercentage: fp(0.05),
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
-          managementSwapFeePercentage: fp(0),
           managementAumFeePercentage: fp(0),
+          aumFeeId: ProtocolFee.AUM,
         },
         vault.address,
         vault.getFeesProvider().address,
@@ -61,16 +62,15 @@ describe('ManagedPool owner only actions', () => {
 
   const expectedOwnerOnlyFunctions = [
     'addAllowedAddress(address)',
-    'addToken(address,uint256,uint256,address)',
+    'addToken(address,address,uint256,uint256,address)',
     'removeAllowedAddress(address)',
-    'removeToken(address,address,uint256,uint256)',
+    'removeToken(address,uint256,address)',
     'setManagementAumFeePercentage(uint256)',
-    'setManagementSwapFeePercentage(uint256)',
     'setMustAllowlistLPs(bool)',
     'setSwapEnabled(bool)',
-    'setSwapFeePercentage(uint256)',
     'updateSwapFeeGradually(uint256,uint256,uint256,uint256)',
-    'updateWeightsGradually(uint256,uint256,uint256[])',
+    'updateWeightsGradually(uint256,uint256,address[],uint256[])',
+    'setCircuitBreakers(address[],uint256[],uint256[],uint256[])',
   ];
 
   const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));

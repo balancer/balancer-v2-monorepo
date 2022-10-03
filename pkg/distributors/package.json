@@ -45,7 +45,7 @@
     "ethereumjs-util": "^7.0.10",
     "ethers": "^5.4.1",
     "hardhat": "^2.11.1",
-    "hardhat-ignore-warnings": "^0.1.2",
+    "hardhat-ignore-warnings": "^0.2.3",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",

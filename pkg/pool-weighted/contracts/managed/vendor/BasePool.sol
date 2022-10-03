@@ -22,7 +22,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
 import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
@@ -68,11 +67,9 @@ abstract contract BasePool is
 
     constructor(
         IVault vault,
-        IVault.PoolSpecialization specialization,
+        bytes32 poolId,
         string memory name,
         string memory symbol,
-        IERC20[] memory tokens,
-        address[] memory assetManagers,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
@@ -87,13 +84,6 @@ abstract contract BasePool is
         BasePoolAuthorization(owner)
         TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
     {
-        bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
-            vault,
-            specialization,
-            tokens,
-            assetManagers
-        );
-
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
         _protocolFeesCollector = vault.getProtocolFeesCollector();
@@ -111,8 +101,8 @@ abstract contract BasePool is
     function _getAuthorizer() internal view override returns (IAuthorizer) {
         // Access control management is delegated to the Vault's Authorizer. This lets Balancer Governance manage which
         // accounts can call permissioned functions: for example, to perform emergency pauses.
-        // If the owner is delegated, then *all* permissioned functions, including `setSwapFeePercentage`, will be under
-        // Governance control.
+        // If the owner is delegated, then *all* permissioned functions, including `updateSwapFeeGradually`, will be
+        // under Governance control.
         return getVault().getAuthorizer();
     }
 
@@ -216,13 +206,15 @@ abstract contract BasePool is
         address sender,
         address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256,
+        uint256,
         bytes memory userData
-    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
+    ) external override onlyVault(poolId) returns (uint256[] memory amountsIn, uint256[] memory dueProtocolFees) {
+        uint256 bptAmountOut;
+
         _ensureNotPaused();
         if (totalSupply() == 0) {
-            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(poolId, sender, recipient, userData);
+            (bptAmountOut, amountsIn) = _onInitializePool(sender, userData);
 
             // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
             // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
@@ -230,26 +222,16 @@ abstract contract BasePool is
             _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
             _mintPoolTokens(address(0), _getMinimumBpt());
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
-
-            return (amountsIn, new uint256[](balances.length));
         } else {
-            (uint256 bptAmountOut, uint256[] memory amountsIn) = _onJoinPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
-                userData
-            );
+            (bptAmountOut, amountsIn) = _onJoinPool(sender, balances, userData);
 
             // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
-
-            // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
-            return (amountsIn, new uint256[](balances.length));
         }
+
+        // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
+        dueProtocolFees = new uint256[](amountsIn.length);
     }
 
     /**
@@ -259,13 +241,12 @@ abstract contract BasePool is
     function onExitPool(
         bytes32 poolId,
         address sender,
-        address recipient,
+        address,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256,
+        uint256,
         bytes memory userData
-    ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory amountsOut;
+    ) external override onlyVault(poolId) returns (uint256[] memory amountsOut, uint256[] memory dueProtocolFees) {
         uint256 bptAmountIn;
 
         // When a user calls `exitPool`, this is the first point of entry from the Vault.
@@ -283,15 +264,7 @@ abstract contract BasePool is
             // Note that we only call this if we're not in a recovery mode exit.
             _ensureNotPaused();
 
-            (bptAmountIn, amountsOut) = _onExitPool(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                inRecoveryMode() ? 0 : protocolSwapFeePercentage, // Protocol fees are disabled while in recovery mode
-                userData
-            );
+            (bptAmountIn, amountsOut) = _onExitPool(sender, balances, userData);
         }
 
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
@@ -299,7 +272,7 @@ abstract contract BasePool is
         _burnPoolTokens(sender, bptAmountIn);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
-        return (amountsOut, new uint256[](balances.length));
+        dueProtocolFees = new uint256[](amountsOut.length);
     }
 
     // Query functions
@@ -316,24 +289,15 @@ abstract contract BasePool is
      * explicitly use eth_call instead of eth_sendTransaction.
      */
     function queryJoin(
-        bytes32 poolId,
+        bytes32,
         address sender,
-        address recipient,
+        address,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256,
+        uint256,
         bytes memory userData
     ) external override returns (uint256 bptOut, uint256[] memory amountsIn) {
-        _queryAction(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            userData,
-            _onJoinPool
-        );
+        _queryAction(sender, balances, userData, _onJoinPool);
 
         // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
         // and we don't need to return anything here - it just silences compiler warnings.
@@ -352,24 +316,15 @@ abstract contract BasePool is
      * explicitly use eth_call instead of eth_sendTransaction.
      */
     function queryExit(
-        bytes32 poolId,
+        bytes32,
         address sender,
-        address recipient,
+        address,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
+        uint256,
+        uint256,
         bytes memory userData
     ) external override returns (uint256 bptIn, uint256[] memory amountsOut) {
-        _queryAction(
-            poolId,
-            sender,
-            recipient,
-            balances,
-            lastChangeBlock,
-            protocolSwapFeePercentage,
-            userData,
-            _onExitPool
-        );
+        _queryAction(sender, balances, userData, _onExitPool);
 
         // The `return` opcode is executed directly inside `_queryAction`, so execution never reaches this statement,
         // and we don't need to return anything here - it just silences compiler warnings.
@@ -392,12 +347,10 @@ abstract contract BasePool is
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
      * be downscaled (rounding up) before being returned to the Vault.
      */
-    function _onInitializePool(
-        bytes32 poolId,
-        address sender,
-        address recipient,
-        bytes memory userData
-    ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
+    function _onInitializePool(address sender, bytes memory userData)
+        internal
+        virtual
+        returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
     /**
      * @dev Called whenever the Pool is joined after the first initialization join (see `_onInitializePool`).
@@ -417,12 +370,8 @@ abstract contract BasePool is
      * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
      */
     function _onJoinPool(
-        bytes32 poolId,
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
@@ -444,26 +393,16 @@ abstract contract BasePool is
      * amounts are considered upscaled and will be downscaled (rounding down) before being returned to the Vault.
      */
     function _onExitPool(
-        bytes32 poolId,
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
         bytes memory userData
     ) internal virtual returns (uint256 bptAmountIn, uint256[] memory amountsOut);
 
     function _queryAction(
-        bytes32 poolId,
         address sender,
-        address recipient,
         uint256[] memory balances,
-        uint256 lastChangeBlock,
-        uint256 protocolSwapFeePercentage,
         bytes memory userData,
-        function(bytes32, address, address, uint256[] memory, uint256, uint256, bytes memory)
-            internal
-            returns (uint256, uint256[] memory) _action
+        function(address, uint256[] memory, bytes memory) internal returns (uint256, uint256[] memory) _action
     ) private {
         // This uses the same technique used by the Vault in queryBatchSwap. Refer to that function for a detailed
         // explanation.
@@ -533,15 +472,7 @@ abstract contract BasePool is
                     }
             }
         } else {
-            (uint256 bptAmount, uint256[] memory tokenAmounts) = _action(
-                poolId,
-                sender,
-                recipient,
-                balances,
-                lastChangeBlock,
-                protocolSwapFeePercentage,
-                userData
-            );
+            (uint256 bptAmount, uint256[] memory tokenAmounts) = _action(sender, balances, userData);
 
             // solhint-disable-next-line no-inline-assembly
             assembly {

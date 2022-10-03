@@ -13,6 +13,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('BaseManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -25,7 +26,6 @@ describe('BaseManagedPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
@@ -60,8 +60,8 @@ describe('BaseManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumFeeId: ProtocolFee.AUM,
     };
 
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
@@ -85,7 +85,7 @@ describe('BaseManagedPoolFactory', function () {
       const poolId = await pool.getPoolId();
       const poolTokens = await vault.getPoolTokens(poolId);
 
-      expect(poolTokens.tokens).to.have.members(tokens.addresses);
+      expect(poolTokens.tokens).to.have.members([pool.address, ...tokens.addresses]);
       expect(poolTokens.balances).to.be.zeros;
     });
 
@@ -109,16 +109,12 @@ describe('BaseManagedPoolFactory', function () {
       expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
     });
 
-    it('sets management swap fee', async () => {
-      expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
-    });
-
     it('sets management aum fee', async () => {
       expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
     });
 
     it('sets the pool owner', async () => {
-      // Would not do this! The owner for real pools should be a pool controller
+      // Would not do this! The owner for real pools should be a contract, never an EOA.
       expect(await pool.getOwner()).to.equal(manager.address);
     });
 

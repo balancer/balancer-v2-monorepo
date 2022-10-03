@@ -16,6 +16,17 @@ export function expectEqualWithError(actual: BigNumberish, expected: BigNumberis
   }
 }
 
+export function expectArrayEqualWithError(
+  actual: Array<BigNumberish>,
+  expected: Array<BigNumberish>,
+  error: BigNumberish = 0.001
+): void {
+  expect(actual.length).to.be.eq(expected.length);
+  for (let i = 0; i < actual.length; i++) {
+    expectEqualWithError(actual[i], expected[i], error);
+  }
+}
+
 export function expectLessThanOrEqualWithError(
   actual: BigNumberish,
   expected: BigNumberish,

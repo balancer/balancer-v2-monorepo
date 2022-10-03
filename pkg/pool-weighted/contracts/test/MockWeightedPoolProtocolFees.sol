@@ -45,7 +45,10 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             owner,
             false
         )
-        ProtocolFeeCache(protocolFeeProvider)
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
         WeightedPoolProtocolFees(tokens.length, rateProviders)
     {
         _totalTokens = tokens.length;
@@ -70,7 +73,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     {
         uint256 protocolYieldFeesPoolPercentage;
         (protocolYieldFeesPoolPercentage, athRateProduct) = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
-        yieldProtocolFees = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
+        yieldProtocolFees = ExternalFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
     }
 
     function getPostJoinExitProtocolFees(

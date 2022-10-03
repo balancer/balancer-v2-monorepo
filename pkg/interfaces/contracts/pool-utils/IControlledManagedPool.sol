@@ -14,14 +14,20 @@
 
 pragma solidity ^0.7.0;
 
-import "./IControlledPool.sol";
+import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IControlledManagedPool {
-    function setSwapFeePercentage(uint256 swapFeePercentage) external;
+    function updateSwapFeeGradually(
+        uint256 startTime,
+        uint256 endTime,
+        uint256 startSwapFeePercentage,
+        uint256 endSwapFeePercentage
+    ) external;
 
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
+        IERC20[] calldata tokens,
         uint256[] calldata endWeights
     ) external;
 
@@ -34,8 +40,6 @@ interface IControlledManagedPool {
     function setMustAllowlistLPs(bool mustAllowlistLPs) external;
 
     function collectAumManagementFees() external returns (uint256);
-
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage) external;
 
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage) external returns (uint256);
 }

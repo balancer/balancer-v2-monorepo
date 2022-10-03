@@ -10,7 +10,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
@@ -24,7 +24,6 @@ describe('BasePool', function () {
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
   const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
@@ -471,22 +470,39 @@ describe('BasePool', function () {
         expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
       });
 
-      it('can disable recovery mode', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        await pool.connect(sender).disableRecoveryMode();
+      context('when recovery mode is enabled', () => {
+        sharedBeforeEach('enable recovery mode', async () => {
+          await pool.connect(sender).enableRecoveryMode();
+        });
 
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
+        it('can disable recovery mode', async () => {
+          await pool.connect(sender).disableRecoveryMode();
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
+
+        it('cannot enable recovery mode again', async () => {
+          await expect(pool.connect(sender).enableRecoveryMode()).to.be.revertedWith('IN_RECOVERY_MODE');
+        });
+
+        it('disabling recovery mode emits an event', async () => {
+          const tx = await pool.connect(sender).disableRecoveryMode();
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
       });
 
-      it('disabling recovery mode emits an event', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        const tx = await pool.connect(sender).disableRecoveryMode();
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+      context('when recovery mode is disabled', () => {
+        it('cannot be disabled again', async () => {
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
 
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
+          await expect(pool.connect(sender).disableRecoveryMode()).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
+        });
       });
 
       it('reverts when calling functions in the wrong mode', async () => {

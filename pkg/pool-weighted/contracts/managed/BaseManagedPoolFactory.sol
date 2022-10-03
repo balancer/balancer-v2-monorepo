@@ -23,12 +23,15 @@ import "./ManagedPool.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
- * with a particular controller/owner. It should NOT be used directly to deploy ManagedPools without
- * controllers. ManagedPools controlled by EOAs would be very dangerous for LPs. There are no restrictions
- * on what the managers can do, so a malicious manager could easily manipulate prices and drain the pool.
+ * with a particular contract as the owner. This contract might have a privileged or admin account
+ * to perform permissioned actions: this account is often called the pool manager.
  *
- * In this design, other controller-specific factories will deploy a pool controller, then call this factory to
- * deploy the pool, passing in the controller as the owner.
+ * This factory should NOT be used directly to deploy ManagedPools owned by EOAs. ManagedPools
+ * owned by EOAs would be very dangerous for LPs. There are no restrictions on what the owner
+ * can do, so a malicious owner could easily manipulate prices and drain the pool.
+ *
+ * In this design, other client-specific factories will deploy a contract, then call this factory
+ * to deploy the pool, passing in that contract address as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
@@ -38,8 +41,7 @@ contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     }
 
     /**
-     * @dev Deploys a new `ManagedPool`. The owner should be a managed pool controller, deployed by
-     * another factory.
+     * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
     function create(ManagedPoolSettings.NewPoolParams memory poolParams, address owner)
         external
@@ -50,18 +52,7 @@ contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
-                    ManagedPoolSettings.NewPoolParams({
-                        name: poolParams.name,
-                        symbol: poolParams.symbol,
-                        tokens: poolParams.tokens,
-                        normalizedWeights: poolParams.normalizedWeights,
-                        assetManagers: poolParams.assetManagers,
-                        swapFeePercentage: poolParams.swapFeePercentage,
-                        swapEnabledOnStart: poolParams.swapEnabledOnStart,
-                        mustAllowlistLPs: poolParams.mustAllowlistLPs,
-                        managementSwapFeePercentage: poolParams.managementSwapFeePercentage,
-                        managementAumFeePercentage: poolParams.managementAumFeePercentage
-                    }),
+                    poolParams,
                     getVault(),
                     getProtocolFeePercentagesProvider(),
                     owner,

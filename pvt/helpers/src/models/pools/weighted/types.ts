@@ -12,6 +12,7 @@ export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
+  MOCK_MANAGED_POOL,
 }
 
 export type RawWeightedPoolDeployment = {
@@ -24,7 +25,6 @@ export type RawWeightedPoolDeployment = {
   bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
-  managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
   aumProtocolFeesCollector?: string;
   owner?: Account;
@@ -33,6 +33,8 @@ export type RawWeightedPoolDeployment = {
   vault?: Vault;
   fromFactory?: boolean;
   poolType?: WeightedPoolType;
+  aumFeeId?: BigNumberish;
+  mockContractName?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -46,12 +48,13 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  aumFeeId?: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
+  mockContractName?: string;
 };
 
 export type SwapWeightedPool = {
@@ -209,6 +212,15 @@ export type ManagedPoolParams = {
   swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
+  aumFeeId: BigNumberish;
+};
+
+export type CircuitBreakerState = {
+  bptPrice: BigNumber;
+  weightComplement: BigNumber;
+  lowerBound: BigNumber;
+  upperBound: BigNumber;
+  lowerBptPriceBound: BigNumber;
+  upperBptPriceBound: BigNumber;
 };

@@ -14,14 +14,14 @@
 
 pragma solidity ^0.7.0;
 
-import "../protocol-fees/ProtocolFees.sol";
+import "../external-fees/ExternalFees.sol";
 
-contract MockProtocolFees {
+contract MockExternalFees {
     function bptForPoolOwnershipPercentage(uint256 totalSupply, uint256 poolPercentage)
         external
         pure
         returns (uint256)
     {
-        return ProtocolFees.bptForPoolOwnershipPercentage(totalSupply, poolPercentage);
+        return ExternalFees.bptForPoolOwnershipPercentage(totalSupply, poolPercentage);
     }
 }

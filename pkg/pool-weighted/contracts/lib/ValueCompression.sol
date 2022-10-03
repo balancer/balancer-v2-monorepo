@@ -24,6 +24,21 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
  */
 library ValueCompression {
     /**
+     * @notice Returns the maximum potential error when compressing and decompressing a value to a certain bit length.
+     * @dev During compression, the range [0, maxUncompressedValue] is mapped onto the range [0, maxCompressedValue].
+     * Each increment in compressed space then corresponds to an increment of maxUncompressedValue / maxCompressedValue
+     * in uncompressed space. This granularity is the maximum error when decompressing a compressed value.
+     */
+    function maxCompressionError(uint256 bitLength, uint256 maxUncompressedValue) internal pure returns (uint256) {
+        // It's not meaningful to compress 1-bit values (2 bits is also a bit silly, but theoretically possible).
+        // 255 would likewise not be very helpful, but is technically valid.
+        _require(bitLength >= 2 && bitLength <= 255, Errors.OUT_OF_BOUNDS);
+
+        uint256 maxCompressedValue = (1 << bitLength) - 1;
+        return Math.divUp(maxUncompressedValue, maxCompressedValue);
+    }
+
+    /**
      * @dev Compress a 256 bit value into `bitLength` bits.
      * To compress a value down to n bits, you first "normalize" it over the full input range.
      * For instance, if the maximum value were 10_000, and the `value` is 2_000, it would be

@@ -81,12 +81,10 @@ library WeightedJoinsLib {
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal pure returns (uint256, uint256[] memory) {
-        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+    ) internal pure returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
+        bptAmountOut = userData.allTokensInForExactBptOut();
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        uint256[] memory amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply);
-
-        return (bptAmountOut, amountsIn);
+        amountsIn = WeightedMath._calcAllTokensInGivenExactBptOut(balances, bptAmountOut, totalSupply);
     }
 }

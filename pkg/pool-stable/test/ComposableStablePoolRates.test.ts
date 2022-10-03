@@ -6,7 +6,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { bn, fp, fpDiv, FP_ONE, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -28,7 +28,6 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 describe('ComposableStablePoolRates', () => {
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let vault: Vault;
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const INITIAL_CACHE_DURATION = bn(HOUR);
 

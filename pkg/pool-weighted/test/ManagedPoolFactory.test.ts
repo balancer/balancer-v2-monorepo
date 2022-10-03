@@ -18,6 +18,7 @@ import {
   ManagedPoolParams,
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('ManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -33,7 +34,6 @@ describe('ManagedPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const MIN_WEIGHT_CHANGE_DURATION = DAY;
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
@@ -74,8 +74,8 @@ describe('ManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumFeeId: ProtocolFee.AUM,
     };
 
     const basePoolRights: BasePoolRights = {
@@ -126,7 +126,7 @@ describe('ManagedPoolFactory', function () {
       expect(await factory.isPoolFromFactory(assetManager.address)).to.be.false;
     });
 
-    it('sets the pool controller', async () => {
+    it('sets the pool owner', async () => {
       expect(await pool.getOwner()).to.equal(poolControllerAddress);
     });
 
@@ -134,7 +134,7 @@ describe('ManagedPoolFactory', function () {
       const poolId = await pool.getPoolId();
       const poolTokens = await vault.getPoolTokens(poolId);
 
-      expect(poolTokens.tokens).to.have.members(tokens.addresses);
+      expect(poolTokens.tokens).to.deep.eq([pool.address, ...tokens.addresses]);
       expect(poolTokens.balances).to.be.zeros;
     });
 
@@ -156,10 +156,6 @@ describe('ManagedPoolFactory', function () {
 
     it('sets swap fee', async () => {
       expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
-    });
-
-    it('sets management swap fee', async () => {
-      expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
     });
 
     it('sets management aum fee', async () => {

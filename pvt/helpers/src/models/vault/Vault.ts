@@ -77,8 +77,8 @@ export default class Vault {
       {
         kind: params.kind,
         poolId: params.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.to,
+        from: TypesConverter.toAddress(params.from) ?? ZERO_ADDRESS,
+        to: TypesConverter.toAddress(params.to),
         tokenIn: params.tokenIn,
         tokenOut: params.tokenOut,
         lastChangeBlock: params.lastChangeBlock,
@@ -159,6 +159,7 @@ export default class Vault {
 
   async exitPool(params: ExitPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
+
     return this.mocked
       ? vault.callExitPool(
           params.poolAddress ?? ZERO_ADDRESS,
