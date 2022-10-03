@@ -685,6 +685,23 @@ contract ManagedPool is ManagedPoolSettings {
     }
 
     /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        uint256 virtualSupply;
+        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
+
+        (bptAmountIn, amountsOut) = super._doRecoveryModeExit(balances, virtualSupply, userData);
+
+        // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
+        amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
+    }
+
+    /**
      * @notice Returns the tokens in the Pool and their current balances.
      * @dev This function drops the BPT token and its balance from the returned arrays as these values are unused by
      * internal functions outside of the swap/join/exit hooks.
