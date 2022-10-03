@@ -215,11 +215,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
-        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
-            // If we're in recovery mode then we bypass any fee logic and perform an early return.
-            return virtualSupply;
-        }
-
         uint256 aumFeesAmount = ExternalAUMFees.getAumFeesBptAmount(
             virtualSupply,
             block.timestamp,
@@ -585,7 +580,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number.
      */
     function getManagementAumFeePercentage() public view returns (uint256) {
-        return _managementAumFeePercentage;
+        // If we're in recovery mode then we bypass any fee logic and perform an early return.
+        return ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState) ? 0 : _managementAumFeePercentage;
     }
 
     /**
