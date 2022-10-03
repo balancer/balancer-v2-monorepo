@@ -671,9 +671,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             return 0;
         }
 
-        // As we update `_lastAumFeeCollectionTimestamp` when updating `_managementAumFeePercentage`, we only need to
-        // update `_lastAumFeeCollectionTimestamp` when non-zero AUM fees are paid. This avoids an SSTORE on zero-length
-        // collections.
+        // As we update the AUM fee collection timestamp when updating the AUM fee percentage, we only need to
+        // update the timestamp when non-zero AUM fees are paid. This avoids an SSTORE on zero-length collections.
         _updateAumFeeCollectionTimestamp();
 
         // Split AUM fees between protocol and Pool manager.
