@@ -1005,17 +1005,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     /**
-     * @dev Get the current one-sided BPT price bound for a given token and weight.
+     * @dev Check whether a token's lower or upper bound circuit breaker should be tripped.
      */
-    function _getCurrentCircuitBreakerBound(
+    function _hasCircuitBreakerTripped(
         IERC20 token,
-        uint256 weightComplement,
+        uint256 totalSupply,
+        uint256 normalizedWeight,
+        uint256 upscaledBalance,
         bool isLowerBound
-    ) internal view returns (uint256) {
+    ) internal view returns (bool) {
         return
-            CircuitBreakerLib.getCurrentCircuitBreakerBound(
+            CircuitBreakerLib.hasCircuitBreakerTripped(
                 _circuitBreakerState[token],
-                weightComplement,
+                totalSupply,
+                normalizedWeight,
+                upscaledBalance,
                 isLowerBound
             );
     }

@@ -290,6 +290,9 @@ contract ManagedPool is ManagedPoolSettings {
     function _getPoolDelta(IERC20 token, uint256 deltaAmount) private view returns (PoolDelta memory poolDelta) {
         (poolDelta.tokens, poolDelta.balances) = _getPoolTokens();
         poolDelta.normalizedWeights = _getNormalizedWeights(poolDelta.tokens);
+        uint256[] memory scalingFactors = _scalingFactors(poolDelta.tokens);
+        _upscaleArray(poolDelta.balances, scalingFactors);
+
         // Initialize to all zeros, and fill in the deltaAmount associated with the swap.
         poolDelta.amounts = new uint256[](poolDelta.tokens.length);
         for (uint256 i = 0; i < poolDelta.tokens.length; i++) {
@@ -307,8 +310,6 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 scalingFactorTokenIn;
         uint256 scalingFactorTokenOut;
         uint256 swapFeeComplement;
-        uint256 lowerBptPriceBound;
-        uint256 upperBptPriceBound;
     }
 
     /*
@@ -378,26 +379,23 @@ contract ManagedPool is ManagedPoolSettings {
         }
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
-
-        if (swapData.lowerBptPriceBound != 0) {
-            _checkCircuitBreaker(
-                swapData.lowerBptPriceBound,
+        _require(
+            !_hasCircuitBreakerTripped(
+                request.tokenIn,
                 virtualSupply,
                 swapData.tokenInWeight,
                 endingBalanceTokenIn,
                 true
-            );
-        }
-
-        if (swapData.upperBptPriceBound != 0) {
-            _checkCircuitBreaker(
-                swapData.upperBptPriceBound,
-                virtualSupply,
-                swapData.tokenOutWeight,
-                endingBalanceTokenOut,
-                false
-            );
-        }
+            ) &&
+                !_hasCircuitBreakerTripped(
+                    request.tokenOut,
+                    virtualSupply,
+                    swapData.tokenOutWeight,
+                    endingBalanceTokenOut,
+                    false
+                ),
+            Errors.CIRCUIT_BREAKER_TRIPPED
+        );
     }
 
     /**
@@ -419,17 +417,6 @@ contract ManagedPool is ManagedPoolSettings {
         tokenInfo.scalingFactorTokenOut = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenOutState);
 
         tokenInfo.swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
-
-        tokenInfo.lowerBptPriceBound = _getCurrentCircuitBreakerBound(
-            request.tokenIn,
-            tokenInfo.tokenInWeight.complement(),
-            true
-        );
-        tokenInfo.upperBptPriceBound = _getCurrentCircuitBreakerBound(
-            request.tokenOut,
-            tokenInfo.tokenOutWeight.complement(),
-            false
-        );
     }
 
     /**
@@ -713,37 +700,6 @@ contract ManagedPool is ManagedPoolSettings {
     // Circuit Breakers
 
     /**
-     * @dev Get the current BPT price, given its components (e.g., the end state of an operation).
-     */
-    function _getBptPrice(
-        uint256 virtualSupply,
-        uint256 normalizedWeight,
-        uint256 upscaledBalance
-    ) private pure returns (uint256) {
-        return virtualSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
-    }
-
-    /**
-     * @dev Trip the circuit breaker if the current BPT price is less than the lower bound, or greater than the
-     * upper bound. For performance reasons, check for a zero bound (= no circuit breaker set) externally,
-     * avoiding computation of the current BPT price when no breaker is set.
-     */
-    function _checkCircuitBreaker(
-        uint256 bptPriceBound,
-        uint256 virtualSupply,
-        uint256 normalizedWeight,
-        uint256 upscaledBalance,
-        bool isLowerBound
-    ) private pure {
-        uint256 currentBptPrice = _getBptPrice(virtualSupply, normalizedWeight, upscaledBalance);
-
-        _require(
-            isLowerBound ? currentBptPrice >= bptPriceBound : currentBptPrice <= bptPriceBound,
-            Errors.CIRCUIT_BREAKER_TRIPPED
-        );
-    }
-
-    /**
      * @dev Check circuit breakers for a set of tokens. The given virtual supply is what it will be post-operation:
      * this includes any pending external fees, and the amount of BPT exchanged (swapped, minted, or burned) in the
      * current operation.
@@ -758,22 +714,16 @@ contract ManagedPool is ManagedPoolSettings {
         bool isJoin
     ) private view {
         for (uint256 i = 0; i < poolDelta.tokens.length; i++) {
-            // If it is a join, tokens are coming in, and we're checking the lower bound, so isLowerBound = isJoin.
-            uint256 bptPriceBound = _getCurrentCircuitBreakerBound(
-                poolDelta.tokens[i],
-                poolDelta.normalizedWeights[i].complement(),
-                isJoin
-            );
-
-            if (bptPriceBound != 0) {
-                _checkCircuitBreaker(
-                    bptPriceBound,
+            _require(
+                !_hasCircuitBreakerTripped(
+                    poolDelta.tokens[i],
                     virtualSupply,
                     poolDelta.normalizedWeights[i],
                     (isJoin ? FixedPoint.add : FixedPoint.sub)(poolDelta.balances[i], poolDelta.amounts[i]),
                     isJoin
-                );
-            }
+                ),
+                Errors.CIRCUIT_BREAKER_TRIPPED
+            );
         }
     }
 
