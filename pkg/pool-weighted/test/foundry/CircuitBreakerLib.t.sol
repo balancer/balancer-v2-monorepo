@@ -43,12 +43,7 @@ contract CircuitBreakerLibTest is Test {
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(
-            bptPrice,
-            weightComplement,
-            lowerBound,
-            upperBound
-        );
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
         (
             uint256 actualBptPrice,
             uint256 actualWeightComplement,
@@ -76,12 +71,7 @@ contract CircuitBreakerLibTest is Test {
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreakerFields(
-            bptPrice,
-            weightComplement,
-            lowerBound,
-            upperBound
-        );
+        bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
 
         // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
         (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) = CircuitBreakerLib
@@ -105,7 +95,7 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
             initialBptPrice,
             initialWeightComplement,
             lowerBound,
@@ -145,7 +135,7 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreakerFields(
+        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
             initialBptPrice,
             initialWeightComplement,
             lowerBound,
