@@ -163,25 +163,6 @@ jobs:
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
 
-  test-asset-managers:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-      - name: Test
-        run: yarn workspace @balancer-labs/asset-manager-utils run test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/asset-manager-utils test-fuzz
-
   test-distributors:
     runs-on: ubuntu-latest
     steps:
