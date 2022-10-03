@@ -35,6 +35,7 @@ import "../WeightedMath.sol";
 import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
+import "./ManagedPoolAumStorageLib.sol";
 import "./ManagedPoolTokenStorageLib.sol";
 
 /**
@@ -75,6 +76,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     // See `ManagedPoolStorageLib.sol` for data layout.
     bytes32 private _poolState;
 
+    // Stores state related to charging AUM fees.
+    // See `ManagedPoolAUMStorageLib.sol` for data layout.
+    bytes32 private _aumState;
+
     // Store scaling factor and start/end normalized weights for each token.
     // See `ManagedPoolTokenStorageLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _tokenState;
@@ -85,13 +90,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
-
-    // Percentage of the pool's TVL to pay as management AUM fees over the course of a year.
-    uint256 private _managementAumFeePercentage;
-
-    // Timestamp of the most recent collection of management AUM fees.
-    // Note that this is only initialized the first time fees are collected.
-    uint256 internal _lastAumFeeCollectionTimestamp;
 
     // Event declarations
 
@@ -219,11 +217,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     function _getActualSupply(uint256 virtualSupply) internal view returns (uint256) {
+        (uint256 aumFeePercentage, uint256 lastCollectionTimestamp) = getManagementAumFeeParams();
         uint256 aumFeesAmount = ExternalAUMFees.getAumFeesBptAmount(
             virtualSupply,
             block.timestamp,
-            _lastAumFeeCollectionTimestamp,
-            getManagementAumFeePercentage()
+            lastCollectionTimestamp,
+            aumFeePercentage
         );
         return virtualSupply.add(aumFeesAmount);
     }
@@ -566,18 +565,20 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     // AUM management fees
 
     /**
-     * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number.
+     * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number and the timestamp of the
+     * last collection of AUM fees.
      */
-    function getManagementAumFeePercentage() public view returns (uint256) {
-        // If we're in recovery mode then we bypass any fee logic by returning zero.
-        return ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState) ? 0 : _managementAumFeePercentage;
-    }
+    function getManagementAumFeeParams()
+        public
+        view
+        returns (uint256 aumFeePercentage, uint256 lastCollectionTimestamp)
+    {
+        (aumFeePercentage, lastCollectionTimestamp) = ManagedPoolAumStorageLib.getAumFeeFields(_aumState);
 
-    /**
-     * @notice Returns the timestamp of the last collection of AUM fees.
-     */
-    function getLastAumFeeCollectionTimestamp() external view returns (uint256) {
-        return _lastAumFeeCollectionTimestamp;
+        // If we're in recovery mode then we bypass any fee logic by setting the fee percentage to zero.
+        if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
+            aumFeePercentage = 0;
+        }
     }
 
     /**
@@ -601,7 +602,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             amount = _collectAumManagementFees(supplyBeforeFeeCollection);
-            _lastAumFeeCollectionTimestamp = block.timestamp;
+            _updateAumFeeCollectionTimestamp();
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -613,8 +614,16 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             Errors.MAX_MANAGEMENT_AUM_FEE_PERCENTAGE
         );
 
-        _managementAumFeePercentage = managementAumFeePercentage;
+        _aumState = ManagedPoolAumStorageLib.setAumFeePercentage(_aumState, managementAumFeePercentage);
         emit ManagementAumFeePercentageChanged(managementAumFeePercentage);
+    }
+
+    /**
+     * @notice Stores the current timestamp as the most recent collection of AUM fees.
+     * @dev This function *must* be called after each collection of AUM fees.
+     */
+    function _updateAumFeeCollectionTimestamp() internal {
+        _aumState = ManagedPoolAumStorageLib.setLastCollectionTimestamp(_aumState, block.timestamp);
     }
 
     /**
@@ -638,11 +647,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * This function is called automatically on joins and exits.
      */
     function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
+        (uint256 aumFeePercentage, uint256 lastCollectionTimestamp) = getManagementAumFeeParams();
         uint256 bptAmount = ExternalAUMFees.getAumFeesBptAmount(
             virtualSupply,
             block.timestamp,
-            _lastAumFeeCollectionTimestamp,
-            getManagementAumFeePercentage()
+            lastCollectionTimestamp,
+            aumFeePercentage
         );
 
         // Early return if either:
@@ -652,10 +662,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             return 0;
         }
 
-        // As we update `_lastAumFeeCollectionTimestamp` when updating `_managementAumFeePercentage`, we only need to
-        // update `_lastAumFeeCollectionTimestamp` when non-zero AUM fees are paid. This avoids an SSTORE on zero-length
-        // collections.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
+        // As we update the AUM fee collection timestamp when updating the AUM fee percentage, we only need to
+        // update the timestamp when non-zero AUM fees are paid. This avoids an SSTORE on zero-length collections.
+        _updateAumFeeCollectionTimestamp();
 
         // Split AUM fees between protocol and Pool manager.
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
@@ -945,7 +954,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             // and in Recovery mode for a period of time and then later returns to normal operation then AUM fees will
             // be charged to the remaining LPs for the full period. We then update the collection timestamp so that no
             // AUM fees are accrued over this period.
-            _lastAumFeeCollectionTimestamp = block.timestamp;
+            _updateAumFeeCollectionTimestamp();
         }
     }
 

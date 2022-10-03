@@ -411,7 +411,8 @@ describe('ManagedPool', function () {
       it('sets the first AUM fee collection timestamp', async () => {
         const { receipt } = await pool.init({ from: other, initialBalances });
 
-        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(await receiptTimestamp(receipt));
+        const [, lastAUMFeeCollectionTimestamp] = await pool.getManagementAumFeeParams();
+        expect(lastAUMFeeCollectionTimestamp).to.be.eq(await receiptTimestamp(receipt));
       });
     }
 
