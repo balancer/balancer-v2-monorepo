@@ -357,7 +357,7 @@ contract ManagedPool is ManagedPoolSettings {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
 
@@ -405,7 +405,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
@@ -494,7 +494,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
 
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
@@ -579,10 +579,11 @@ contract ManagedPool is ManagedPoolSettings {
      * @dev This function drops the BPT token and its balance from the returned arrays as these values are unused by
      * internal functions outside of the swap/join/exit hooks.
      */
-    function _getPoolTokens() internal view override returns (IERC20[] memory) {
-        (IERC20[] memory registeredTokens, , ) = getVault().getPoolTokens(getPoolId());
-
-        return ComposablePoolLib.dropBptFromTokens(registeredTokens);
+    function _getPoolTokens() internal view override returns (IERC20[] memory, uint256[] memory) {
+        (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
+            getPoolId()
+        );
+        return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
     }
 
     // Unimplemented

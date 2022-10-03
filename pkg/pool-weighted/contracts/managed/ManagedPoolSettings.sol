@@ -346,7 +346,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @notice Returns all normalized weights, in the same order as the Pool's tokens.
      */
     function getNormalizedWeights() external view returns (uint256[] memory) {
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         return _getNormalizedWeights(tokens);
     }
 
@@ -381,7 +381,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         (startTime, endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
 
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
 
         startWeights = new uint256[](tokens.length);
         endWeights = new uint256[](tokens.length);
@@ -425,7 +425,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         IERC20[] memory tokens,
         uint256[] memory endWeights
     ) external override authenticate whenNotPaused {
-        IERC20[] memory actualTokens = _getPoolTokens();
+        (IERC20[] memory actualTokens, ) = _getPoolTokens();
         InputHelpers.ensureInputLengthMatch(tokens.length, actualTokens.length, endWeights.length);
 
         for (uint256 i = 0; i < actualTokens.length; ++i) {
@@ -726,7 +726,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
         // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
         // opportunity to check we have not added too many tokens.
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -830,7 +830,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
         // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
         // good opportunity to check we didn't end up with too few tokens.
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         _require(tokens.length >= 2, Errors.MIN_TOKENS);
 
         // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
@@ -893,7 +893,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     // Scaling Factors
 
     function getScalingFactors() external view override returns (uint256[] memory) {
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         return _scalingFactors(tokens);
     }
 
@@ -1051,7 +1051,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
      * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
      */
-    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens) {
-        (tokens, , ) = getVault().getPoolTokens(getPoolId());
+    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances) {
+        (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
     }
 }

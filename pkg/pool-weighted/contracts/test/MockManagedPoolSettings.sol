@@ -55,7 +55,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
-        IERC20[] memory tokens = _getPoolTokens();
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256[] memory amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
 
