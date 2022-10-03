@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeCast.sol";
 
 import "../RecoveryMode.sol";
@@ -34,19 +35,22 @@ import "../RecoveryMode.sol";
  */
 abstract contract ProtocolFeeCache is RecoveryMode {
     using SafeCast for uint256;
+    using WordCodec for bytes32;
 
-    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
-    uint256 private immutable _swapFeeId;
-    uint256 private immutable _yieldFeeId;
-    uint256 private immutable _aumFeeId;
+    // Protocol Fee IDs represent fee types; 8 bits is enough to represent all of them.
+    uint256 private constant _FEE_TYPE_ID_WIDTH = 8;
+    uint256 private constant _SWAP_FEE_ID_OFFSET = 0;
+    uint256 private constant _YIELD_FEE_ID_OFFSET = _SWAP_FEE_ID_OFFSET + _FEE_TYPE_ID_WIDTH;
+    uint256 private constant _AUM_FEE_ID_OFFSET = _YIELD_FEE_ID_OFFSET + _FEE_TYPE_ID_WIDTH;
 
     // Protocol Fee Percentages can never be larger than 100% (1e18), which fits in ~59 bits, so using 64 for each type
     // is sufficient.
-    struct FeeTypeCache {
-        uint64 swapFee;
-        uint64 yieldFee;
-        uint64 aumFee;
-    }
+    uint256 private constant _FEE_TYPE_CACHE_WIDTH = 64;
+    uint256 private constant _SWAP_FEE_OFFSET = 0;
+    uint256 private constant _YIELD_FEE_OFFSET = _SWAP_FEE_OFFSET + _FEE_TYPE_CACHE_WIDTH;
+    uint256 private constant _AUM_FEE_OFFSET = _YIELD_FEE_OFFSET + _FEE_TYPE_CACHE_WIDTH;
+
+    event ProtocolFeePercentageCacheUpdated(bytes32 feeCache);
 
     /**
      * @dev Protocol fee types can be set at contract creation. Fee IDs store which of the IDs in the protocol fee
@@ -62,17 +66,21 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         uint256 aum;
     }
 
-    FeeTypeCache private _cache;
+    IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
+    bytes32 private immutable _feeIds;
 
-    event ProtocolFeePercentageCacheUpdated(FeeTypeCache feeCache);
+    bytes32 private _feeCache;
 
     constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs) {
         _protocolFeeProvider = protocolFeeProvider;
-        _swapFeeId = providerFeeIDs.swap;
-        _yieldFeeId = providerFeeIDs.yield;
-        _aumFeeId = providerFeeIDs.aum;
 
-        _updateProtocolFeeCache(protocolFeeProvider, providerFeeIDs);
+        bytes32 feeIds = WordCodec.encodeUint(providerFeeIDs.swap, _SWAP_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH) |
+            WordCodec.encodeUint(providerFeeIDs.yield, _YIELD_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH) |
+            WordCodec.encodeUint(providerFeeIDs.aum, _AUM_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
+
+        _feeIds = feeIds;
+
+        _updateProtocolFeeCache(protocolFeeProvider, feeIds);
     }
 
     /**
@@ -84,11 +92,11 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         }
 
         if (feeType == ProtocolFeeType.SWAP) {
-            return _cache.swapFee;
+            return _feeCache.decodeUint(_SWAP_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
         } else if (feeType == ProtocolFeeType.YIELD) {
-            return _cache.yieldFee;
+            return _feeCache.decodeUint(_YIELD_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
         } else if (feeType == ProtocolFeeType.AUM) {
-            return _cache.aumFee;
+            return _feeCache.decodeUint(_AUM_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
         } else {
             _revert(Errors.UNHANDLED_FEE_TYPE);
         }
@@ -99,11 +107,11 @@ abstract contract ProtocolFeeCache is RecoveryMode {
      */
     function getProviderFeeId(uint256 feeType) public view returns (uint256) {
         if (feeType == ProtocolFeeType.SWAP) {
-            return _swapFeeId;
+            return _feeIds.decodeUint(_SWAP_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
         } else if (feeType == ProtocolFeeType.YIELD) {
-            return _yieldFeeId;
+            return _feeIds.decodeUint(_YIELD_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
         } else if (feeType == ProtocolFeeType.AUM) {
-            return _aumFeeId;
+            return _feeIds.decodeUint(_AUM_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
         } else {
             _revert(Errors.UNHANDLED_FEE_TYPE);
         }
@@ -116,10 +124,7 @@ abstract contract ProtocolFeeCache is RecoveryMode {
     function updateProtocolFeePercentageCache() external {
         _beforeProtocolFeeCacheUpdate();
 
-        _updateProtocolFeeCache(
-            _protocolFeeProvider,
-            ProviderFeeIDs({ swap: _swapFeeId, yield: _yieldFeeId, aum: _aumFeeId })
-        );
+        _updateProtocolFeeCache(_protocolFeeProvider, _feeIds);
     }
 
     /**
@@ -131,18 +136,23 @@ abstract contract ProtocolFeeCache is RecoveryMode {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory feeIds)
-        private
-    {
-        uint256 swapFee = protocolFeeProvider.getFeeTypePercentage(feeIds.swap);
-        uint256 yieldFee = protocolFeeProvider.getFeeTypePercentage(feeIds.yield);
-        uint256 aumFee = protocolFeeProvider.getFeeTypePercentage(feeIds.aum);
+    function _updateProtocolFeeCache(IProtocolFeePercentagesProvider protocolFeeProvider, bytes32 feeIds) private {
+        uint256 swapFee = protocolFeeProvider.getFeeTypePercentage(
+            feeIds.decodeUint(_SWAP_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH)
+        );
+        uint256 yieldFee = protocolFeeProvider.getFeeTypePercentage(
+            feeIds.decodeUint(_YIELD_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH)
+        );
+        uint256 aumFee = protocolFeeProvider.getFeeTypePercentage(
+            feeIds.decodeUint(_AUM_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH)
+        );
 
-        _cache = FeeTypeCache({
-            swapFee: swapFee.toUint64(),
-            yieldFee: yieldFee.toUint64(),
-            aumFee: aumFee.toUint64()
-        });
-        emit ProtocolFeePercentageCacheUpdated(_cache);
+        bytes32 feeCache = WordCodec.encodeUint(swapFee, _SWAP_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH) |
+            WordCodec.encodeUint(yieldFee, _YIELD_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH) |
+            WordCodec.encodeUint(aumFee, _AUM_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
+
+        _feeCache = feeCache;
+
+        emit ProtocolFeePercentageCacheUpdated(feeCache);
     }
 }
