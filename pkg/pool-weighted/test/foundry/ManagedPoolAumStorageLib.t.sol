@@ -49,7 +49,7 @@ contract ManagedPoolAumStorageLibTest is Test {
     }
 
     function testSetAumFeePercentage(bytes32 aumState, uint256 expectedAumFeePercentage) public {
-        vm.assume(expectedAumFeePercentage < _MAX_AUM_FEE);
+        vm.assume(expectedAumFeePercentage <= _MAX_AUM_FEE);
 
         bytes32 newAumState = ManagedPoolAumStorageLib.setAumFeePercentage(aumState, expectedAumFeePercentage);
         assertOtherStateUnchanged(aumState, newAumState, _AUM_FEE_PERCENTAGE_OFFSET, _AUM_FEE_PCT_WIDTH);
@@ -59,7 +59,7 @@ contract ManagedPoolAumStorageLibTest is Test {
     }
 
     function testSetLastCollectionTimestamp(bytes32 aumState, uint256 expectedLastCollectionTimestamp) public {
-        vm.assume(expectedLastCollectionTimestamp < _MAX_TIMESTAMP);
+        vm.assume(expectedLastCollectionTimestamp <= _MAX_TIMESTAMP);
 
         bytes32 newAumState = ManagedPoolAumStorageLib.setLastCollectionTimestamp(
             aumState,
