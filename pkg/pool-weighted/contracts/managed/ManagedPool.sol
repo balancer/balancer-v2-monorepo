@@ -380,20 +380,20 @@ contract ManagedPool is ManagedPoolSettings {
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
         _require(
-            !CircuitBreakerLib.hasCircuitBreakerTripped(
+            !(CircuitBreakerLib.hasCircuitBreakerTripped(
                 _getCircuitBreakerState(request.tokenIn),
                 virtualSupply,
                 swapData.tokenInWeight,
                 endingBalanceTokenIn,
                 true
-            ) &&
-                !CircuitBreakerLib.hasCircuitBreakerTripped(
+            ) ||
+                CircuitBreakerLib.hasCircuitBreakerTripped(
                     _getCircuitBreakerState(request.tokenOut),
                     virtualSupply,
                     swapData.tokenOutWeight,
                     endingBalanceTokenOut,
                     false
-                ),
+                )),
             Errors.CIRCUIT_BREAKER_TRIPPED
         );
     }
@@ -727,20 +727,20 @@ contract ManagedPool is ManagedPoolSettings {
 
             // Check both upper and lower bounds.
             _require(
-                !CircuitBreakerLib.hasCircuitBreakerTripped(
+                !(CircuitBreakerLib.hasCircuitBreakerTripped(
                     circuitBreakerState,
                     virtualSupply,
                     poolDelta.normalizedWeights[i],
                     finalBalance,
                     true
-                ) &&
-                    !CircuitBreakerLib.hasCircuitBreakerTripped(
+                ) ||
+                    CircuitBreakerLib.hasCircuitBreakerTripped(
                         circuitBreakerState,
                         virtualSupply,
                         poolDelta.normalizedWeights[i],
                         finalBalance,
                         false
-                    ),
+                    )),
                 Errors.CIRCUIT_BREAKER_TRIPPED
             );
         }
