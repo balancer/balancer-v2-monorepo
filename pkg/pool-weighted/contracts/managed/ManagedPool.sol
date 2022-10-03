@@ -385,14 +385,14 @@ contract ManagedPool is ManagedPoolSettings {
                 virtualSupply,
                 swapData.tokenInWeight,
                 endingBalanceTokenIn,
-                true
+                true // check lower bound
             ) ||
                 CircuitBreakerLib.hasCircuitBreakerTripped(
                     _getCircuitBreakerState(request.tokenOut),
                     virtualSupply,
                     swapData.tokenOutWeight,
                     endingBalanceTokenOut,
-                    false
+                    false // check upper bound
                 )),
             Errors.CIRCUIT_BREAKER_TRIPPED
         );
@@ -732,14 +732,14 @@ contract ManagedPool is ManagedPoolSettings {
                     virtualSupply,
                     poolDelta.normalizedWeights[i],
                     finalBalance,
-                    true
+                    true // check lower bound
                 ) ||
                     CircuitBreakerLib.hasCircuitBreakerTripped(
                         circuitBreakerState,
                         virtualSupply,
                         poolDelta.normalizedWeights[i],
                         finalBalance,
-                        false
+                        false // check upper bound
                     )),
                 Errors.CIRCUIT_BREAKER_TRIPPED
             );
