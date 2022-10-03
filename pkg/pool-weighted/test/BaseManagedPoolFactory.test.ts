@@ -110,7 +110,9 @@ describe('BaseManagedPoolFactory', function () {
     });
 
     it('sets management aum fee', async () => {
-      expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      const [aumFeePercentage, lastCollectionTimestamp] = await pool.getManagementAumFeeParams();
+      expect(aumFeePercentage).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      expect(lastCollectionTimestamp).to.equal(0);
     });
 
     it('sets the pool owner', async () => {
