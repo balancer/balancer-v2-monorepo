@@ -91,30 +91,37 @@ abstract contract ProtocolFeeCache is RecoveryMode {
             return 0;
         }
 
+        uint256 offset;
         if (feeType == ProtocolFeeType.SWAP) {
-            return _feeCache.decodeUint(_SWAP_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
+            offset = _SWAP_FEE_OFFSET;
         } else if (feeType == ProtocolFeeType.YIELD) {
-            return _feeCache.decodeUint(_YIELD_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
+            offset = _YIELD_FEE_OFFSET;
         } else if (feeType == ProtocolFeeType.AUM) {
-            return _feeCache.decodeUint(_AUM_FEE_OFFSET, _FEE_TYPE_CACHE_WIDTH);
+            offset = _AUM_FEE_OFFSET;
         } else {
             _revert(Errors.UNHANDLED_FEE_TYPE);
         }
+
+        return _feeCache.decodeUint(offset, _FEE_TYPE_CACHE_WIDTH);
     }
 
     /**
      * @notice Returns the provider fee ID for the given fee type.
      */
     function getProviderFeeId(uint256 feeType) public view returns (uint256) {
+        uint256 offset;
+
         if (feeType == ProtocolFeeType.SWAP) {
-            return _feeIds.decodeUint(_SWAP_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
+            offset = _SWAP_FEE_ID_OFFSET;
         } else if (feeType == ProtocolFeeType.YIELD) {
-            return _feeIds.decodeUint(_YIELD_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
+            offset = _YIELD_FEE_ID_OFFSET;
         } else if (feeType == ProtocolFeeType.AUM) {
-            return _feeIds.decodeUint(_AUM_FEE_ID_OFFSET, _FEE_TYPE_ID_WIDTH);
+            offset = _AUM_FEE_ID_OFFSET;
         } else {
             _revert(Errors.UNHANDLED_FEE_TYPE);
         }
+
+        return _feeIds.decodeUint(offset, _FEE_TYPE_ID_WIDTH);
     }
 
     /**
