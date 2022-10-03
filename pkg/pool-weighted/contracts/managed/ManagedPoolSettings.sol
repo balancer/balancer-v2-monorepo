@@ -475,21 +475,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    // Invariant
-
-    /**
-     * @dev Returns the current value of the invariant.
-     */
-    function getInvariant() external view returns (uint256) {
-        (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
-
-        // Since the Pool hooks always work with upscaled balances, we manually
-        // upscale here for consistency
-        _upscaleArray(balances, _scalingFactors(tokens));
-
-        return WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), balances);
-    }
-
     // Swap Enabled
 
     /**
