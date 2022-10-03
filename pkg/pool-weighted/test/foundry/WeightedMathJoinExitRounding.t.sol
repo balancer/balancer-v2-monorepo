@@ -39,6 +39,43 @@ contract WeightedMathJoinExitRoundingTest is Test {
         swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
 
+        _testJoinExitGivenInGivenInNoProfit(
+            originalBalance,
+            normalizedWeight,
+            initialAmount,
+            originalBptTotalSupply,
+            swapFeePercentage
+        );
+    }
+
+    function testJoinExitGivenInGivenInNoSwapFeeNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 initialAmount,
+        uint256 originalBptTotalSupply
+    ) external {
+        originalBalance = bound(originalBalance, 1e10, type(uint112).max);
+        initialAmount = bound(initialAmount, 0, originalBalance);
+
+        normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
+        originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+
+        _testJoinExitGivenInGivenInNoProfit(
+            originalBalance,
+            normalizedWeight,
+            initialAmount,
+            originalBptTotalSupply,
+            0
+        );
+    }
+
+    function _testJoinExitGivenInGivenInNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 initialAmount,
+        uint256 originalBptTotalSupply,
+        uint256 swapFeePercentage
+    ) private {
         // Join given a token amount in
         uint256 intermediateBptAmount = WeightedMath._calcBptOutGivenExactTokenIn(
             originalBalance,
@@ -90,6 +127,43 @@ contract WeightedMathJoinExitRoundingTest is Test {
         swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
 
+        _testJoinExitGivenInGivenOutNoProfit(
+            originalBalance,
+            normalizedWeight,
+            initialAmount,
+            originalBptTotalSupply,
+            swapFeePercentage
+        );
+    }
+
+    function testJoinExitGivenInGivenOutNoSwapFeeNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 initialAmount,
+        uint256 originalBptTotalSupply
+    ) external {
+        originalBalance = bound(originalBalance, 1e10, type(uint112).max);
+        initialAmount = bound(initialAmount, 0, originalBalance);
+
+        normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
+        originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+
+        _testJoinExitGivenInGivenOutNoProfit(
+            originalBalance,
+            normalizedWeight,
+            initialAmount,
+            originalBptTotalSupply,
+            0
+        );
+    }
+
+    function _testJoinExitGivenInGivenOutNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 initialAmount,
+        uint256 originalBptTotalSupply,
+        uint256 swapFeePercentage
+    ) private {
         // Join given a token amount in
         uint256 intermediateBptAmount = WeightedMath._calcBptOutGivenExactTokenIn(
             originalBalance,
@@ -139,6 +213,42 @@ contract WeightedMathJoinExitRoundingTest is Test {
         swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
 
+        _testJoinExitGivenOutGivenInNoProfit(
+            originalBalance,
+            normalizedWeight,
+            intermediateBptAmount,
+            originalBptTotalSupply,
+            swapFeePercentage
+        );
+    }
+
+    function testJoinExitGivenOutGivenInNoSwapFeeNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 intermediateBptAmount,
+        uint256 originalBptTotalSupply
+    ) external {
+        originalBalance = bound(originalBalance, 1e10, type(uint112).max);
+
+        normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
+        originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+
+        _testJoinExitGivenOutGivenInNoProfit(
+            originalBalance,
+            normalizedWeight,
+            intermediateBptAmount,
+            originalBptTotalSupply,
+            0
+        );
+    }
+
+    function _testJoinExitGivenOutGivenInNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 intermediateBptAmount,
+        uint256 originalBptTotalSupply,
+        uint256 swapFeePercentage
+    ) private {
         // Join given a token amount in
         intermediateBptAmount = bound(intermediateBptAmount, 0, originalBptTotalSupply / 3); // This makes the assume reject fewer cases
         vm.assume(
@@ -195,6 +305,42 @@ contract WeightedMathJoinExitRoundingTest is Test {
         swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
 
+        _testJoinExitGivenOutGivenOutNoProfit(
+            originalBalance,
+            normalizedWeight,
+            intermediateBptAmount,
+            originalBptTotalSupply,
+            swapFeePercentage
+        );
+    }
+
+    function testJoinExitGivenOutGivenOutNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 intermediateBptAmount,
+        uint256 originalBptTotalSupply
+    ) external {
+        originalBalance = bound(originalBalance, 1e10, type(uint112).max);
+
+        normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
+        originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+
+        _testJoinExitGivenOutGivenOutNoProfit(
+            originalBalance,
+            normalizedWeight,
+            intermediateBptAmount,
+            originalBptTotalSupply,
+            0
+        );
+    }
+
+    function _testJoinExitGivenOutGivenOutNoProfit(
+        uint256 originalBalance,
+        uint256 normalizedWeight,
+        uint256 intermediateBptAmount,
+        uint256 originalBptTotalSupply,
+        uint256 swapFeePercentage
+    ) private {
         // Join given a token amount in
         intermediateBptAmount = bound(intermediateBptAmount, 0, originalBptTotalSupply / 3); // This makes the assume reject fewer cases
         vm.assume(
