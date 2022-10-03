@@ -925,7 +925,7 @@ describe('ManagedPoolSettings', function () {
 
             expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
               token: poolTokens.first.address,
-              bptPrice: initialPrice,
+              bptPrice: referenceBptPrice,
               lowerBoundPercentage: LOWER_BOUND,
               upperBoundPercentage: UPPER_BOUND,
             });
