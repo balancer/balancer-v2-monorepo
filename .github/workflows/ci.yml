@@ -1,5 +1,9 @@
 name: CI
 
+env:
+  CI: true
+  FOUNDRY_PROFILE: 'intense'
+
 on:
   push:
     branches:
@@ -43,7 +47,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-solidity-utils test-fuzz
 
   test-standalone-utils:
     runs-on: ubuntu-latest
@@ -62,7 +66,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-standalone-utils test-fuzz
 
   test-vault:
     runs-on: ubuntu-latest
@@ -81,7 +85,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-vault test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-vault test-fuzz
 
   test-pool-utils:
     runs-on: ubuntu-latest
@@ -100,7 +104,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-pool-utils test-fuzz
 
   test-pool-weighted:
     runs-on: ubuntu-latest
@@ -119,7 +123,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-pool-weighted test-fuzz
 
   test-pool-stable:
     runs-on: ubuntu-latest
@@ -138,7 +142,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-pool-stable test-fuzz
 
   test-pool-linear:
     runs-on: ubuntu-latest
@@ -157,26 +161,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz -vvv
-
-  test-asset-managers:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-      - name: Test
-        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspaces foreach --verbose --include @balancer-labs/v2-asset-manager-* run test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
 
   test-distributors:
     runs-on: ubuntu-latest
@@ -195,7 +180,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-distributors test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-distributors test-fuzz
 
   test-liquidity-mining:
     runs-on: ubuntu-latest
@@ -214,7 +199,7 @@ jobs:
         with:
           version: nightly
       - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz -vvv
+        run: yarn workspace @balancer-labs/v2-liquidity-mining test-fuzz
 
   test-governance-scripts:
     runs-on: ubuntu-latest
@@ -274,6 +259,3 @@ jobs:
           OPTIMISM_RPC_ENDPOINT: ${{ secrets.ALCHEMY_OPTIMISM_ARCHIVE_ENDPOINT }}
       - name: Test
         run: yarn workspace @balancer-labs/v2-deployments test
-
-env:
-  CI: true

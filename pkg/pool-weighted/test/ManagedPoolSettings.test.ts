@@ -12,13 +12,23 @@ import {
   receiptTimestamp,
   advanceToTimestamp,
 } from '@balancer-labs/v2-helpers/src/time';
-import { BigNumberish, bn, FP_100_PCT, FP_ZERO, fp, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import {
+  BigNumberish,
+  bn,
+  FP_100_PCT,
+  FP_ZERO,
+  fp,
+  fpMul,
+  FP_ONE,
+  fpDiv,
+  fromFp,
+} from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { CircuitBreakerState, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
@@ -47,7 +57,7 @@ describe('ManagedPoolSettings', function () {
   const TOKEN_COUNT = 20;
 
   const MIN_SWAP_FEE = fp(0.000001);
-  const MAX_SWAP_FEE = fp(0.8);
+  const MAX_SWAP_FEE = fp(0.95);
   const INITIAL_SWAP_FEE = MIN_SWAP_FEE.add(1);
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.05);
@@ -802,6 +812,298 @@ describe('ManagedPoolSettings', function () {
     });
   });
 
+  describe('circuit breakers', () => {
+    async function getBptPrice(): Promise<BigNumber> {
+      const totalSupply = await pool.getActualSupply();
+      const scalingFactors = await pool.getScalingFactors();
+
+      return fpDiv(fpMul(totalSupply, poolWeights[0]), fpMul(initialBalances[0], scalingFactors[0]));
+    }
+
+    describe('setCircuitBreakers', () => {
+      const LOWER_BOUND = fp(0.8);
+      const UPPER_BOUND = fp(2);
+      const MAX_UPPER_BOUND = fp(10);
+      let lowerBounds: BigNumber[];
+      let upperBounds: BigNumber[];
+      let bptPrices: BigNumber[];
+      let bptPrice: BigNumber;
+
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          vault,
+          owner: owner.address,
+        };
+        pool = await createMockPool(params);
+        await pool.init({ from: other, initialBalances });
+
+        bptPrice = await getBptPrice();
+
+        // For range checks
+        lowerBounds = Array(poolTokens.length).fill(LOWER_BOUND);
+        upperBounds = Array(poolTokens.length).fill(UPPER_BOUND);
+        bptPrices = Array(poolTokens.length).fill(FP_ONE);
+      });
+
+      function itReverts() {
+        it('reverts', async () => {
+          await expect(
+            pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [UPPER_BOUND])
+          ).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      }
+
+      function itSetsTheCircuitBreaker() {
+        context('with invalid parameters', () => {
+          it('fails if the token is invalid', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, [ZERO_ADDRESS], [bptPrice], [LOWER_BOUND], [UPPER_BOUND])
+            ).to.be.revertedWith('INVALID_TOKEN');
+          });
+
+          it('fails with mismatched upper bounds', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, poolTokens.addresses, bptPrices, lowerBounds, [UPPER_BOUND])
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with mismatched lower bounds', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, poolTokens.addresses, bptPrices, [LOWER_BOUND], upperBounds)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with mismatched BPT prices', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, poolTokens.addresses, [bptPrice], lowerBounds, upperBounds)
+            ).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
+          });
+
+          it('fails with a lower bound above the maximum', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [FP_ONE.add(1)], [UPPER_BOUND])
+            ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
+          });
+
+          it('fails with a upper bound above the maximum', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [MAX_UPPER_BOUND.add(1)])
+            ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
+          });
+
+          it('fails with a upper bound below the minimum', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
+            ).to.be.revertedWith('INVALID_CIRCUIT_BREAKER_BOUNDS');
+          });
+
+          it('does not allow setting a breaker on the BPT', async () => {
+            await expect(
+              pool.setCircuitBreakers(sender, [pool.address], [bptPrice], [LOWER_BOUND], [LOWER_BOUND.sub(1)])
+            ).to.be.revertedWith('INVALID_TOKEN');
+          });
+        });
+
+        context('with valid parameters', () => {
+          sharedBeforeEach('set the breaker', async () => {
+            await pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [UPPER_BOUND]);
+          });
+
+          it('setting a circuit breaker emits an event', async () => {
+            //const initialPrice = await pool.instance.getBptPrice(poolTokens.first.address);
+            const initialPrice = fpDiv(fpMul(await pool.getActualSupply(), poolWeights[0]), initialBalances[0]);
+
+            const receipt = await pool.setCircuitBreakers(
+              sender,
+              [poolTokens.first],
+              [initialPrice],
+              [LOWER_BOUND],
+              [UPPER_BOUND]
+            );
+            const { bptPrice } = await pool.getCircuitBreakerState(poolTokens.first);
+
+            expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
+              token: poolTokens.first.address,
+              bptPrice: bptPrice,
+              lowerBoundPercentage: LOWER_BOUND,
+              upperBoundPercentage: UPPER_BOUND,
+            });
+          });
+
+          it('stores the params', async () => {
+            const {
+              bptPrice: actualBptPrice,
+              weightComplement: actualWeightComplement,
+              lowerBound: actualLowerBound,
+              upperBound: actualUpperBound,
+            } = await pool.getCircuitBreakerState(poolTokens.first);
+            const expectedWeightComplement = FP_ONE.sub(poolWeights[0]);
+            const totalSupply = await pool.getActualSupply();
+            const scalingFactors = await pool.getScalingFactors();
+
+            const expectedBptPrice = fpDiv(
+              fpMul(totalSupply, poolWeights[0]),
+              fpMul(initialBalances[0], scalingFactors[0])
+            );
+
+            expect(actualLowerBound).to.equalWithError(LOWER_BOUND, 0.001);
+            expect(actualUpperBound).to.equalWithError(UPPER_BOUND, 0.001);
+            expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
+            expect(actualWeightComplement).to.equal(expectedWeightComplement);
+          });
+        });
+      }
+
+      context('with an owner', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await createMockPool({
+            vault,
+            tokens: poolTokens,
+            owner: owner.address,
+          });
+          await pool.init({ from: other, initialBalances });
+        });
+
+        context('when the sender is allowed', () => {
+          sharedBeforeEach(async () => {
+            sender = owner;
+          });
+
+          itSetsTheCircuitBreaker();
+        });
+
+        context('when the sender is not allowed', () => {
+          sharedBeforeEach(async () => {
+            sender = other;
+          });
+
+          itReverts();
+        });
+      });
+
+      context('with a delegated owner', () => {
+        sharedBeforeEach('deploy pool', async () => {
+          pool = await createMockPool({
+            vault,
+            tokens: poolTokens,
+            owner: DELEGATE_OWNER,
+          });
+          await pool.init({ from: other, initialBalances });
+          sender = other;
+        });
+
+        context('when the sender is allowed', () => {
+          sharedBeforeEach('grant permissions', async () => {
+            const setCircuitBreakersPermission = await actionId(pool.instance, 'setCircuitBreakers');
+            await pool.vault.grantPermissionsGlobally([setCircuitBreakersPermission], other);
+          });
+
+          itSetsTheCircuitBreaker();
+        });
+
+        context('when the sender is not allowed', () => {
+          itReverts();
+        });
+      });
+    });
+
+    context('circuit breaker bounds', () => {
+      let bptPrice: BigNumber;
+
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          vault,
+          owner: owner.address,
+        };
+        pool = await createMockPool(params);
+        await pool.init({ from: other, initialBalances });
+        bptPrice = await getBptPrice();
+      });
+
+      const initialWeight = poolWeights[0];
+      const lowerBound = 0.9;
+      const upperBound = 1.5;
+
+      let referenceState: CircuitBreakerState;
+
+      function getBptPriceBounds(bptPrice: BigNumber, normalizedWeight: BigNumber): BigNumber[] {
+        const weightComplement = Number(fromFp(fp(1).sub(normalizedWeight)));
+
+        const result: BigNumber[] = [];
+        result[0] = fpMul(bptPrice, fp(lowerBound ** weightComplement));
+        result[1] = fpMul(bptPrice, fp(upperBound ** weightComplement));
+
+        return result;
+      }
+
+      sharedBeforeEach('set the breaker', async () => {
+        await pool.setCircuitBreakers(owner, [poolTokens.first], [bptPrice], [fp(lowerBound)], [fp(upperBound)]);
+
+        referenceState = await pool.getCircuitBreakerState(poolTokens.first);
+      });
+
+      it('sets the reference bounds', async () => {
+        // Computing with the original weight should match the stored values
+        const [expectedLowerBoundBptPrice, expectedUpperBoundBptPrice] = getBptPriceBounds(bptPrice, initialWeight);
+
+        expect(expectedLowerBoundBptPrice).to.equalWithError(referenceState.lowerBptPriceBound, 0.001);
+        expect(expectedUpperBoundBptPrice).to.equalWithError(referenceState.upperBptPriceBound, 0.001);
+      });
+
+      describe('tracks weight changes', () => {
+        const UPDATE_DURATION = DAY * 2;
+
+        const START_DELAY = MINUTE * 10;
+        let now, startTime: BigNumber, endTime: BigNumber;
+        let endWeights: BigNumber[];
+
+        sharedBeforeEach('updateWeightsGradually', async () => {
+          now = await currentTimestamp();
+          startTime = now.add(START_DELAY);
+          endTime = startTime.add(UPDATE_DURATION);
+          endWeights = poolWeights.reverse();
+
+          await pool.updateWeightsGradually(owner, startTime, endTime, endWeights);
+        });
+
+        function getIntermediateWeight(startWeight: BigNumber, endWeight: BigNumber, pct: number): BigNumber {
+          if (startWeight < endWeight) {
+            // Weight is increasing
+            return startWeight.add(endWeight.sub(startWeight).mul(pct).div(100));
+          } else {
+            // Weight is decreasing (or not changing)
+            return startWeight.sub(startWeight.sub(endWeight).mul(pct).div(100));
+          }
+        }
+
+        for (let pct = 5; pct < 100; pct += 5) {
+          it(`gets correct bounds if called ${pct}% through`, async () => {
+            await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
+
+            const intermediateWeight = getIntermediateWeight(poolWeights[0], endWeights[0], pct);
+
+            const [expectedLowerBptPriceBound, expectedUpperBptPriceBound] = getBptPriceBounds(
+              bptPrice,
+              intermediateWeight
+            );
+
+            const {
+              lowerBptPriceBound: actualLowerBptPriceBound,
+              upperBptPriceBound: actualUpperBptPriceBound,
+            } = await pool.getCircuitBreakerState(poolTokens.first);
+
+            expect(actualLowerBptPriceBound).to.equalWithError(expectedLowerBptPriceBound, 0.001);
+            expect(actualUpperBptPriceBound).to.equalWithError(expectedUpperBptPriceBound, 0.001);
+          });
+        }
+      });
+    });
+  });
+
   describe('recovery mode', () => {
     const managementAumFeePercentage = fp(0.01);
 
@@ -821,6 +1123,14 @@ describe('ManagedPoolSettings', function () {
     });
 
     context('when entering recovery mode', () => {
+      it('sets the AUM fee percentage to zero', async () => {
+        expect(await pool.getManagementAumFeePercentage()).to.be.gt(0);
+
+        await pool.enableRecoveryMode();
+
+        expect(await pool.getManagementAumFeePercentage()).to.equal(0);
+      });
+
       it('sets the actual supply equal to the virtual supply', async () => {
         // Advance time so that AUM fees are accrued.
         await advanceTime(365 * DAY);
@@ -843,7 +1153,7 @@ describe('ManagedPoolSettings', function () {
     });
 
     context('when leaving recovery mode', () => {
-      it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
+      sharedBeforeEach('enable recovery mode', async () => {
         const lastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();
         // Set recovery mode to stop AUM fee calculations.
         await pool.enableRecoveryMode();
@@ -852,8 +1162,17 @@ describe('ManagedPoolSettings', function () {
         await advanceTime(365 * DAY);
 
         expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(lastAUMCollectionTimestamp);
+      });
 
-        // On disabling recovery mode we expect the `_lastAumFeeCollectionTimestamp` to be be equal to the current time.
+      it('resets the AUM fee percentage to its original value', async () => {
+        expect(await pool.getManagementAumFeePercentage()).to.be.eq(0);
+
+        await pool.disableRecoveryMode();
+
+        expect(await pool.getManagementAumFeePercentage()).to.equal(managementAumFeePercentage);
+      });
+
+      it('sets the lastAumFeeCollectionTimestamp to the current timestamp', async () => {
         const tx = await pool.disableRecoveryMode();
         const expectedLastAUMCollectionTimestamp = await receiptTimestamp(tx.wait());
         const updatedLastAUMCollectionTimestamp = await pool.instance.getLastAumFeeCollectionTimestamp();

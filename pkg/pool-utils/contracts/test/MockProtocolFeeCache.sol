@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../protocol-fees/ProtocolFeeCache.sol";
+import "../external-fees/ProtocolFeeCache.sol";
 import "./MockRecoveryModeStorage.sol";
 
 contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {

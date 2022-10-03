@@ -17,23 +17,23 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
-import "../managed/ManagedPoolTokenLib.sol";
+import "../managed/ManagedPoolTokenStorageLib.sol";
 
-contract MockManagedPoolTokenLib {
+contract MockManagedPoolTokenStorageLib {
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Getters
 
     function getTokenScalingFactor(bytes32 tokenState) external pure returns (uint256) {
-        return ManagedPoolTokenLib.getTokenScalingFactor(tokenState);
+        return ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenState);
     }
 
     function getTokenWeight(bytes32 tokenState, uint256 pctProgress) external pure returns (uint256) {
-        return ManagedPoolTokenLib.getTokenWeight(tokenState, pctProgress);
+        return ManagedPoolTokenStorageLib.getTokenWeight(tokenState, pctProgress);
     }
 
     function getTokenStartAndEndWeights(bytes32 tokenState) external pure returns (uint256, uint256) {
-        return ManagedPoolTokenLib.getTokenStartAndEndWeights(tokenState);
+        return ManagedPoolTokenStorageLib.getTokenStartAndEndWeights(tokenState);
     }
 
     // Setters
@@ -43,14 +43,14 @@ contract MockManagedPoolTokenLib {
         uint256 normalizedStartWeight,
         uint256 normalizedEndWeight
     ) external pure returns (bytes32) {
-        return ManagedPoolTokenLib.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
+        return ManagedPoolTokenStorageLib.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
     }
 
     function setTokenScalingFactor(bytes32 tokenState, IERC20 token) external view returns (bytes32) {
-        return ManagedPoolTokenLib.setTokenScalingFactor(tokenState, token);
+        return ManagedPoolTokenStorageLib.setTokenScalingFactor(tokenState, token);
     }
 
     function initializeTokenState(IERC20 token, uint256 normalizedWeight) external view returns (bytes32) {
-        return ManagedPoolTokenLib.initializeTokenState(token, normalizedWeight);
+        return ManagedPoolTokenStorageLib.initializeTokenState(token, normalizedWeight);
     }
 }

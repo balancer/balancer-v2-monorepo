@@ -22,9 +22,9 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "../../contracts/lib/GradualValueChange.sol";
 import "../../contracts/WeightedMath.sol";
 
-import "../../contracts/test/MockManagedPoolTokenLib.sol";
+import "../../contracts/test/MockManagedPoolTokenStorageLib.sol";
 
-contract ManagedPoolTokenLibTest is Test {
+contract ManagedPoolTokenStorageLibTest is Test {
     uint256 private constant _START_NORM_WEIGHT_OFFSET = 0;
     uint256 private constant _END_NORM_WEIGHT_OFFSET = _START_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
     uint256 private constant _DECIMAL_DIFF_OFFSET = _END_NORM_WEIGHT_OFFSET + _NORM_WEIGHT_WIDTH;
@@ -32,10 +32,10 @@ contract ManagedPoolTokenLibTest is Test {
     uint256 private constant _NORM_WEIGHT_WIDTH = 64;
     uint256 private constant _DECIMAL_DIFF_WIDTH = 5;
 
-    MockManagedPoolTokenLib private mock;
+    MockManagedPoolTokenStorageLib private mock;
 
     function setUp() external {
-        mock = new MockManagedPoolTokenLib();
+        mock = new MockManagedPoolTokenStorageLib();
     }
 
     function clearWordAtPosition(

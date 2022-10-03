@@ -173,13 +173,10 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
-        bytes32 tokenInState = _getTokenState(request.tokenIn);
-
-        uint256 tokenInWeight = ManagedPoolTokenLib.getTokenWeight(
-            tokenInState,
+        (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
+            request.tokenIn,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
         );
-        uint256 scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
@@ -228,13 +225,10 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
-        bytes32 tokenOutState = _getTokenState(request.tokenOut);
-
-        uint256 tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(
-            tokenOutState,
+        (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
+            request.tokenOut,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
         );
-        uint256 scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
         // We must always upscale the token balance for both `GIVEN_IN` and `GIVEN_OUT` swaps
@@ -290,15 +284,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 scalingFactorTokenOut;
         uint256 swapFeeComplement;
         {
-            bytes32 tokenInState = _getTokenState(request.tokenIn);
-            bytes32 tokenOutState = _getTokenState(request.tokenOut);
-
             uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-            tokenInWeight = ManagedPoolTokenLib.getTokenWeight(tokenInState, weightChangeProgress);
-            tokenOutWeight = ManagedPoolTokenLib.getTokenWeight(tokenOutState, weightChangeProgress);
-
-            scalingFactorTokenIn = ManagedPoolTokenLib.getTokenScalingFactor(tokenInState);
-            scalingFactorTokenOut = ManagedPoolTokenLib.getTokenScalingFactor(tokenOutState);
+            (tokenInWeight, scalingFactorTokenIn) = _getTokenInfo(request.tokenIn, weightChangeProgress);
+            (tokenOutWeight, scalingFactorTokenOut) = _getTokenInfo(request.tokenOut, weightChangeProgress);
 
             swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
         }
@@ -343,12 +331,25 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
+    /**
+     * @notice Returns a token's weight and scaling factor
+     */
+    function _getTokenInfo(IERC20 token, uint256 weightChangeProgress)
+        private
+        view
+        returns (uint256 tokenWeight, uint256 scalingFactor)
+    {
+        bytes32 tokenState = _getTokenState(token);
+        tokenWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenState, weightChangeProgress);
+        scalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenState);
+    }
+
     // Initialize
 
     function _onInitializePool(address sender, bytes memory userData)
         internal
         override
-        returns (uint256, uint256[] memory)
+        returns (uint256 bptAmountOut, uint256[] memory amountsIn)
     {
         // Check allowlist for LPs, if applicable
         _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
@@ -357,7 +358,7 @@ contract ManagedPool is ManagedPoolSettings {
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        uint256[] memory amountsIn = userData.initialAmountsIn();
+        amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
 
         uint256[] memory scalingFactors = _scalingFactors(tokens);
@@ -367,7 +368,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
-        uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
+        bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
         // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
         // so naturally charges no AUM fees.
@@ -574,6 +575,23 @@ contract ManagedPool is ManagedPoolSettings {
     }
 
     /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        uint256 virtualSupply;
+        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
+
+        (bptAmountIn, amountsOut) = super._doRecoveryModeExit(balances, virtualSupply, userData);
+
+        // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
+        amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
+    }
+
+    /**
      * @notice Returns the tokens in the Pool and their current balances.
      * @dev This function drops the BPT token and its balance from the returned arrays as these values are unused by
      * internal functions outside of the swap/join/exit hooks.
@@ -582,7 +600,6 @@ contract ManagedPool is ManagedPoolSettings {
         (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
             getPoolId()
         );
-
         return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
     }
 
