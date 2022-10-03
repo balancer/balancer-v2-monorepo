@@ -23,7 +23,6 @@ contract CircuitBreakerLibTest is Test {
     using FixedPoint for uint256;
 
     uint256 private constant _MINIMUM_BOUND_PERCENTAGE = 1e17; // 0.1
-    // The weight complement (1 - w) is bounded by the min/max token weights
     uint256 private constant _MINIMUM_TOKEN_WEIGHT = 1e16; // 0.01 (1%)
     uint256 private constant _MAXIMUM_TOKEN_WEIGHT = 99e16; // 0.99 (99%)
     uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0

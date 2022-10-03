@@ -243,7 +243,7 @@ describe('CircuitBreakerLib', () => {
       data = await lib.setCircuitBreaker(fp(BPT_PRICE), fp(NORMALIZED_WEIGHT), fp(LOWER_BOUND), fp(UPPER_BOUND));
     });
 
-    it('should update the bounds given a new weight complement', async () => {
+    it('should update the bounds given a new normalized weight', async () => {
       const newNormalizedWeight = randomFromInterval(MIN_WEIGHT, MAX_WEIGHT);
 
       data = await lib.updateBoundRatios(data, fp(newNormalizedWeight));
