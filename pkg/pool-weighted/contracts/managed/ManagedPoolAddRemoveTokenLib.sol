@@ -22,18 +22,17 @@ import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./ManagedPoolStorageLib.sol";
-import "./ManagedPoolTokenLib.sol";
+import "./ManagedPoolTokenStorageLib.sol";
 
 library ManagedPoolAddRemoveTokenLib {
     using FixedPoint for uint256;
 
     function _ensureNoWeightChange(bytes32 poolState) private view {
-        uint256 currentTime = block.timestamp;
         (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(poolState);
 
-        if (currentTime < endTime) {
+        if (block.timestamp < endTime) {
             _revert(
-                currentTime < startTime
+                block.timestamp < startTime
                     ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
                     : Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE
             );
@@ -104,7 +103,7 @@ library ManagedPoolAddRemoveTokenLib {
         // Initializing the new token is straightforward. The Pool itself doesn't track how many or which tokens it uses
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
         // Note that we don't need to check here that the weight is valid as this is enforced when updating the weights.
-        tokenToAddState = ManagedPoolTokenLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
+        tokenToAddState = ManagedPoolTokenStorageLib.initializeTokenState(tokenToAdd, tokenToAddNormalizedWeight);
 
         // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
         // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.

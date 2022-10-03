@@ -56,12 +56,11 @@ library WeightedExitsLib {
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal pure returns (uint256, uint256[] memory) {
-        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+    ) internal pure returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        uint256[] memory amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
-        return (bptAmountIn, amountsOut);
+        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
     }
 
     function exitBPTInForExactTokensOut(

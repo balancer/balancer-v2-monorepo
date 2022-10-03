@@ -15,15 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../protocol-fees/ProtocolAUMFees.sol";
+import "../external-fees/ExternalAUMFees.sol";
 
-contract MockProtocolAUMFees {
+contract MockExternalAUMFees {
     function getAumFeesBptAmount(
         uint256 totalSupply,
         uint256 currentTime,
         uint256 lastCollection,
         uint256 annualAumFeePercentage
     ) external pure returns (uint256) {
-        return ProtocolAUMFees.getAumFeesBptAmount(totalSupply, currentTime, lastCollection, annualAumFeePercentage);
+        return ExternalAUMFees.getAumFeesBptAmount(totalSupply, currentTime, lastCollection, annualAumFeePercentage);
     }
 }
