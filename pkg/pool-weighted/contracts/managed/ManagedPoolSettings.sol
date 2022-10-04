@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/CircuitBreakerLib.sol";
+import "../managed/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -85,7 +85,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Store the circuit breaker configuration for each token.
-    // See `CircuitBreakerLib.sol` for data layout.
+    // See `CircuitBreakerStorageLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _circuitBreakerState;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
