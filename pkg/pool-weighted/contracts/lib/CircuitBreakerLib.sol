@@ -28,8 +28,8 @@ library CircuitBreakerLib {
      * @dev Compute the current BPT price from the input parameters, and compare it to the bounds to determine whether
      * the given post-operation pool state is within the circuit breaker bounds.
      * @param virtualSupply - the post-operation totalSupply (including protocol fees, etc.)
-     * @param normalizedWeight - the normalized weight of the token we are checking.
-     * @param upscaledBalance - the post-operation token balance (including swap fees, etc.). It must be an 18-decimal
+     * @param weight - the normalized weight of the token we are checking.
+     * @param balance - the post-operation token balance (including swap fees, etc.). It must be an 18-decimal
      * @param lowerBoundBptPrice - the lowest BPT price in the allowed trading range.
      * @param upperBoundBptPrice - the highest BPT price in the allowed trading range.
      * floating point number, adjusted by the scaling factor of the token.
@@ -37,12 +37,12 @@ library CircuitBreakerLib {
      */
     function hasCircuitBreakerTripped(
         uint256 virtualSupply,
-        uint256 normalizedWeight,
-        uint256 upscaledBalance,
+        uint256 weight,
+        uint256 balance,
         uint256 lowerBoundBptPrice,
         uint256 upperBoundBptPrice
     ) internal pure returns (bool, bool) {
-        uint256 currentBptPrice = virtualSupply.mulUp(normalizedWeight).divDown(upscaledBalance);
+        uint256 currentBptPrice = virtualSupply.mulUp(weight).divDown(balance);
 
         return (
             lowerBoundBptPrice != 0 && currentBptPrice < lowerBoundBptPrice,
