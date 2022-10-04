@@ -86,6 +86,10 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         _validateSwapFeePercentage(swapFeePercentage);
     }
 
+    function isAllowedAddress(address member) external view returns (bool) {
+        return _isAllowedAddress(_getPoolState(), member);
+    }
+
     // Pure virtual functions
 
     function _getVirtualSupply() internal view override returns (uint256)  {

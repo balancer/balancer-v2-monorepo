@@ -127,7 +127,7 @@ contract ManagedPool is ManagedPoolSettings {
         // solhint-disable no-empty-blocks
         if (request.tokenOut == IERC20(this)) {
             // Check allowlist for LPs, if applicable
-            _require(isAllowedAddress(request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
+            _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
 
             // balanceTokenOut is the amount of BPT held by the Pool in the Vault.
             // Subtracting this from the total supply gives us the virtual supply.
@@ -352,7 +352,7 @@ contract ManagedPool is ManagedPoolSettings {
         returns (uint256 bptAmountOut, uint256[] memory amountsIn)
     {
         // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(_isAllowedAddress(_getPoolState(), sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
@@ -454,7 +454,7 @@ contract ManagedPool is ManagedPoolSettings {
         );
 
         // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(_isAllowedAddress(poolState, sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return

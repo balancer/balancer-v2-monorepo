@@ -331,6 +331,26 @@ describe('ManagedPoolSettings', function () {
           expect(await pool.isAllowedAddress(other.address)).to.be.true;
         });
 
+        it('allows checking the allowlist regardless of status', async () => {
+          // Initial state: allowlist is on, and the owner is not on it
+          expect(await pool.getMustAllowlistLPs()).to.be.true;
+          expect(await pool.isAllowedAddress(owner.address)).to.be.false;
+          expect(await pool.isAllowedAddress(other.address)).to.be.true;
+
+          // Can still check the raw allowlist, when enabled
+          expect(await pool.instance.isAddressOnAllowlist(owner.address)).to.be.false;
+          expect(await pool.instance.isAddressOnAllowlist(other.address)).to.be.true;
+
+          // Turn the allowlist off
+          await pool.setMustAllowlistLPs(owner, false);
+          expect(await pool.isAllowedAddress(owner.address)).to.be.true;
+          expect(await pool.isAllowedAddress(ANY_ADDRESS)).to.be.true;
+
+          // Results are the same when disabled
+          expect(await pool.instance.isAddressOnAllowlist(owner.address)).to.be.false;
+          expect(await pool.instance.isAddressOnAllowlist(other.address)).to.be.true;
+        });
+
         context('when an address is removed', () => {
           sharedBeforeEach('remove address from allowlist', async () => {
             const receipt = await pool.removeAllowedAddress(owner, other.address);
