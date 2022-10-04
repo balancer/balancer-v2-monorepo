@@ -322,9 +322,6 @@ describe('ManagedPoolSettings', function () {
           expect(await pool.isAllowedAddress(owner.address)).to.be.true;
           expect(await pool.isAllowedAddress(other.address)).to.be.true;
 
-          // Cannot remove addresses when the allowlist is disabled
-          await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
-
           // Turn the allowlist back on
           await pool.setMustAllowlistLPs(owner, true);
 
@@ -365,9 +362,9 @@ describe('ManagedPoolSettings', function () {
         // Should be turned off
         expect(await pool.getMustAllowlistLPs()).to.be.false;
 
-        // Does not allow adding or removing addresses now
-        await expect(pool.addAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
-        await expect(pool.removeAllowedAddress(owner, other.address)).to.be.revertedWith('FEATURE_DISABLED');
+        // Allows adding or removing addresses now
+        await expect(pool.addAllowedAddress(owner, other.address)).to.not.be.reverted;
+        await expect(pool.removeAllowedAddress(owner, other.address)).to.not.be.reverted;
       });
 
       it('reverts if non-owner tries to enable public LPs', async () => {
@@ -402,10 +399,6 @@ describe('ManagedPoolSettings', function () {
 
         sharedBeforeEach('initialize pool', async () => {
           await pool.init({ from: sender, initialBalances });
-        });
-
-        it('cannot add to the allowlist when it is not enabled', async () => {
-          await expect(pool.addAllowedAddress(sender, other.address)).to.be.revertedWith('FEATURE_DISABLED');
         });
 
         it('swaps can be enabled and disabled', async () => {

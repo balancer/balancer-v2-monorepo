@@ -303,13 +303,12 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
-    // Holds information, including circuit breaker bounds, for the tokens involved in a regular swap.
-    struct SwapData {
+    // Holds information for the tokens involved in a regular swap.
+    struct SwapTokenData {
         uint256 tokenInWeight;
         uint256 tokenOutWeight;
         uint256 scalingFactorTokenIn;
         uint256 scalingFactorTokenOut;
-        uint256 swapFeeComplement;
     }
 
     /*
@@ -327,27 +326,27 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut,
         bytes32 poolState
     ) internal view returns (uint256 amountCalculated) {
-        SwapData memory swapData = _getSwapData(request, poolState);
-        uint256 virtualSupply = getActualSupply();
+        SwapTokenData memory swapTokenData = _getSwapTokenData(request, poolState);
 
-        balanceTokenIn = _upscale(balanceTokenIn, swapData.scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, swapData.scalingFactorTokenOut);
+        balanceTokenIn = _upscale(balanceTokenIn, swapTokenData.scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, swapTokenData.scalingFactorTokenOut);
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
 
         uint256 endingBalanceTokenIn;
         uint256 endingBalanceTokenOut;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, swapData.scalingFactorTokenIn);
+            request.amount = _upscale(request.amount, swapTokenData.scalingFactorTokenIn);
 
             // We round the amount in down (favoring a higher fee amount).
-            request.amount = request.amount.mulDown(swapData.swapFeeComplement);
+            request.amount = request.amount.mulDown(swapFeeComplement);
 
             uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                swapData.tokenInWeight,
+                swapTokenData.tokenInWeight,
                 balanceTokenOut,
-                swapData.tokenOutWeight,
+                swapTokenData.tokenOutWeight,
                 request.amount
             );
 
@@ -355,42 +354,44 @@ contract ManagedPool is ManagedPoolSettings {
             endingBalanceTokenOut = balanceTokenOut.sub(amountOut);
 
             // amountOut tokens are exiting the Pool, so we round down.
-            amountCalculated = _downscaleDown(amountOut, swapData.scalingFactorTokenOut);
+            amountCalculated = _downscaleDown(amountOut, swapTokenData.scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, swapData.scalingFactorTokenOut);
+            request.amount = _upscale(request.amount, swapTokenData.scalingFactorTokenOut);
 
             uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                swapData.tokenInWeight,
+                swapTokenData.tokenInWeight,
                 balanceTokenOut,
-                swapData.tokenOutWeight,
+                swapTokenData.tokenOutWeight,
                 request.amount
             );
 
             // We round the amount in up (favoring a higher fee amount).
-            amountIn = amountIn.divUp(swapData.swapFeeComplement);
+            amountIn = amountIn.divUp(swapFeeComplement);
 
             endingBalanceTokenIn = balanceTokenIn.add(amountIn);
             endingBalanceTokenOut = balanceTokenOut.sub(request.amount);
 
             // amountIn tokens are entering the Pool, so we round up.
-            amountCalculated = _downscaleUp(amountIn, swapData.scalingFactorTokenIn);
+            amountCalculated = _downscaleUp(amountIn, swapTokenData.scalingFactorTokenIn);
         }
+
+        uint256 virtualSupply = _getVirtualSupply();
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
         _require(
             !(CircuitBreakerLib.hasCircuitBreakerTripped(
                 _getCircuitBreakerState(request.tokenIn),
                 virtualSupply,
-                swapData.tokenInWeight,
+                swapTokenData.tokenInWeight,
                 endingBalanceTokenIn,
                 true // check lower bound
             ) ||
                 CircuitBreakerLib.hasCircuitBreakerTripped(
                     _getCircuitBreakerState(request.tokenOut),
                     virtualSupply,
-                    swapData.tokenOutWeight,
+                    swapTokenData.tokenOutWeight,
                     endingBalanceTokenOut,
                     false // check upper bound
                 )),
@@ -401,10 +402,10 @@ contract ManagedPool is ManagedPoolSettings {
     /**
      * @dev Gather the information required to process a regular token swap, including circuit breaker bounds.
      */
-    function _getSwapData(SwapRequest memory request, bytes32 poolState)
+    function _getSwapTokenData(SwapRequest memory request, bytes32 poolState)
         private
         view
-        returns (SwapData memory tokenInfo)
+        returns (SwapTokenData memory tokenInfo)
     {
         bytes32 tokenInState = _getTokenState(request.tokenIn);
         bytes32 tokenOutState = _getTokenState(request.tokenOut);
@@ -415,8 +416,6 @@ contract ManagedPool is ManagedPoolSettings {
 
         tokenInfo.scalingFactorTokenIn = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenInState);
         tokenInfo.scalingFactorTokenOut = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenOutState);
-
-        tokenInfo.swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
     }
 
     /**
