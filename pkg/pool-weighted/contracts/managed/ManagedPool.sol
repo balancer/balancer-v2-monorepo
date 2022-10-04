@@ -377,7 +377,7 @@ contract ManagedPool is ManagedPoolSettings {
             amountCalculated = _downscaleUp(amountIn, swapTokenData.scalingFactorTokenIn);
         }
 
-        uint256 virtualSupply = getActualSupply();
+        uint256 virtualSupply = _getVirtualSupply();
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
         _require(
