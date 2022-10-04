@@ -86,6 +86,10 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         _validateSwapFeePercentage(swapFeePercentage);
     }
 
+    function isAllowedAddress(address member) external view returns (bool) {
+        return _isAllowedAddress(member);
+    }
+
     // Unimplemented
 
     function _onSwapMinimal(
