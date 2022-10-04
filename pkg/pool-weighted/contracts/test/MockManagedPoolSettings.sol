@@ -87,7 +87,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
     }
 
     function isAllowedAddress(address member) external view returns (bool) {
-        return _isAllowedAddress(member);
+        return _isAllowedAddress(_getPoolState(), member);
     }
 
     // Pure virtual functions
