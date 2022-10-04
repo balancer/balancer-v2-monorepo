@@ -195,12 +195,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Returns the number of tokens in circulation.
      * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
-     * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
-     * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
+     * composable pools premint a large fraction of the BPT supply and place it in the Vault. In this situation,
+     * the override would subtract this BPT balance from the total to reflect the actual amount of BPT in circulation.
      */
-    function _getVirtualSupply() internal view virtual returns (uint256) {
-        return totalSupply();
-    }
+    function _getVirtualSupply() internal view virtual returns (uint256);
 
     // Actual Supply
 
@@ -508,13 +506,24 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     /**
+     * @notice Check whether an LP address is on the allowlist.
+     * @dev This simply checks the list, regardless of whether the allowlist feature is enabled.
+     * @param member - The address to check against the allowlist.
+     * @return true if the given address is on the allowlist.
+     */
+    function isAddressOnAllowlist(address member) public view returns (bool) {
+        return _allowedAddresses[member];
+    }
+
+    /**
      * @notice Check an LP address against the allowlist.
      * @dev If the allowlist is not enabled, this returns true for every address.
+     * @param poolState - The bytes32 representing the state of the pool.
      * @param member - The address to check against the allowlist.
-     * @return true if the given address is allowed to join the pool.
+     * @return - Whether the given address is allowed to join the pool.
      */
-    function isAllowedAddress(address member) public view returns (bool) {
-        return !ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState) || _allowedAddresses[member];
+    function _isAllowedAddress(bytes32 poolState, address member) internal view returns (bool) {
+        return !ManagedPoolStorageLib.getLPAllowlistEnabled(poolState) || isAddressOnAllowlist(member);
     }
 
     /**
@@ -524,7 +533,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
+        _require(!isAddressOnAllowlist(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
         emit AllowlistAddressAdded(member);
@@ -537,7 +546,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(isAddressOnAllowlist(member), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
         emit AllowlistAddressRemoved(member);
@@ -1059,10 +1068,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Returns the tokens in the Pool and their current balances.
-     * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
-     * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
+     * @dev This function must be overridden to process these arrays according to the specific pool type.
+     * A common example of this is in composable pools, as we may need to drop the BPT token and its balance.
      */
-    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances) {
-        (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
-    }
+    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
 }
