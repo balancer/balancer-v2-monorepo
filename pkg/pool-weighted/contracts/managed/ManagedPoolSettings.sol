@@ -191,8 +191,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Returns the number of tokens in circulation.
      * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
-     * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
-     * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
+     * composable pools premint a large fraction of the BPT supply and place it in the Vault. In this situation,
+     * the override would subtract this BPT balance from the total to reflect the actual amount of BPT in circulation.
      */
     function _getVirtualSupply() internal view virtual returns (uint256);
 
@@ -1047,8 +1047,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Returns the tokens in the Pool and their current balances.
-     * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
-     * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
+     * @dev This function must be overridden to process these arrays according to the specific pool type.
+     * A common example of this is in composable pools, as we may need to drop the BPT token and its balance.
      */
     function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
 }
