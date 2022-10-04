@@ -45,7 +45,7 @@ contract MockCircuitBreakerLib {
     ) external pure returns (bool, bool) {
         (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
             circuitBreakerState,
-            normalizedWeight.complement()
+            normalizedWeight
         );
 
         return

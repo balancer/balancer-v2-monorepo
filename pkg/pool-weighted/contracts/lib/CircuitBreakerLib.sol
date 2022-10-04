@@ -54,13 +54,15 @@ library CircuitBreakerLib {
      * @notice Convert bounds to BPT price ratios
      * @param lowerBound - the lower bound percentage; 0.8 means tolerate a 20% relative drop.
      * @param upperBound - the upper bound percentage; 5.0 means tolerate a 5x increase.
-     * @param weightComplement - the complement of the normalized token weight: 1 - weight.
+     * @param weight - the current normalized token weight.
      */
     function calcBoundaryConversionRatios(
         uint256 lowerBound,
         uint256 upperBound,
-        uint256 weightComplement
+        uint256 weight
     ) internal pure returns (uint256 lowerBoundRatio, uint256 upperBoundRatio) {
+        uint256 weightComplement = weight.complement();
+
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
         lowerBoundRatio = lowerBound.powUp(weightComplement);
         upperBoundRatio = upperBound.powDown(weightComplement);
