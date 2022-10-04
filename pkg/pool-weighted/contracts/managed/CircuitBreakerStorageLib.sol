@@ -68,10 +68,10 @@ library CircuitBreakerStorageLib {
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
-    // and the current weight complement (1 - weight). Since this value is bounded by 1e18, which fits in ~60 bits,
-    // there is no need for compression.
+    // and the current BPT price and weight complement (1 - weight). Since this value is bounded by 1e18, which fits
+    // in ~60 bits, there is no need for compression.
     //
-    // We then compute and store the current BPT price, and the lower and upper bound conversion ratios, used to
+    // We then store the current BPT price, and the lower and upper bound conversion ratios, used to
     // convert the percentage bounds into BPT prices that can be directly compared to the "runtime" BPT prices.
     //
     // Since the price bounds shift along with the token weight, in general these bound ratios would need to be
@@ -219,8 +219,7 @@ library CircuitBreakerStorageLib {
         }
 
         // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
-        // To err in favor of tripping the breaker, round the lower bound up, and the upper bound down.
-        return (bptPrice.mulUp(lowerBoundRatio), bptPrice.mulDown(upperBoundRatio));
+        return CircuitBreakerLib.calcBptPriceBoundaries(lowerBoundRatio, upperBoundRatio, bptPrice);
     }
 
     /**

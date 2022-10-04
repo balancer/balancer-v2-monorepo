@@ -51,7 +51,7 @@ library CircuitBreakerLib {
     }
 
     /**
-     * @notice Convert bounds to BPT prices
+     * @notice Convert bounds to BPT price ratios
      * @param lowerBound - the lower bound percentage; 0.8 means tolerate a 20% relative drop.
      * @param upperBound - the upper bound percentage; 5.0 means tolerate a 5x increase.
      * @param weightComplement - the complement of the normalized token weight: 1 - weight.
@@ -64,5 +64,21 @@ library CircuitBreakerLib {
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
         lowerBoundRatio = lowerBound.powUp(weightComplement);
         upperBoundRatio = upperBound.powDown(weightComplement);
+    }
+
+    /**
+     * @notice Convert BPT price ratios to BPT price bounds
+     * @param lowerBoundRatio - the cached lower bound ratio
+     * @param upperBoundRatio - the cached upper bound ratio
+     * @param bptPrice - The BPT price stored at the time the breaker was set.
+     */
+    function calcBptPriceBoundaries(
+        uint256 lowerBoundRatio,
+        uint256 upperBoundRatio,
+        uint256 bptPrice
+    ) internal pure returns (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) {
+        // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
+        lowerBoundBptPrice = bptPrice.mulUp(lowerBoundRatio);
+        upperBoundBptPrice = bptPrice.mulDown(upperBoundRatio);
     }
 }
