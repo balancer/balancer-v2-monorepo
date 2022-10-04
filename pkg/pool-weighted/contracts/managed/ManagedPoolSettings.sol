@@ -148,13 +148,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // Validate and set initial fees
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
-        // Write the scaling factors for each token into their token state.
-        // We do this before setting the weights in `_startGradualWeightChange` so we start from a empty token state.
+        // Initialize the tokens' states with their scaling factors and weights.
         for (uint256 i = 0; i < totalTokens; i++) {
             IERC20 token = params.tokens[i];
-            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenScalingFactor(bytes32(0), token);
+            _tokenState[token] = ManagedPoolTokenStorageLib.initializeTokenState(token, params.normalizedWeights[i]);
         }
 
+        // This is technically a noop with regards to the tokens' weights in storage however it performs important
+        // validation of the token weights (normalization / bounds checking) and emits an event for offchain services.
         _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
@@ -496,7 +497,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Returns whether the allowlist for LPs is enabled.
      */
-    function getMustAllowlistLPs() public view returns (bool) {
+    function getMustAllowlistLPs() external view returns (bool) {
         return ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState);
     }
 
@@ -507,17 +508,16 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @return true if the given address is allowed to join the pool.
      */
     function isAllowedAddress(address member) public view returns (bool) {
-        return !getMustAllowlistLPs() || _allowedAddresses[member];
+        return !ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState) || _allowedAddresses[member];
     }
 
     /**
      * @notice Adds an address to the LP allowlist.
-     * @dev Will fail if the LP allowlist is not enabled, or the address is already allowlisted.
+     * @dev Will fail if the address is already allowlisted.
      * Emits the AllowlistAddressAdded event. This is a permissioned function.
      * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
         _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
@@ -526,13 +526,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Removes an address from the LP allowlist.
-     * @dev Will fail if the LP allowlist is not enabled, or the address was not previously allowlisted.
-     * Emits the AllowlistAddressRemoved event. Do not allow removing addresses while the allowlist
-     * is disabled. This is a permissioned function.
+     * @dev Will fail if the address was not previously allowlisted.
+     * Emits the AllowlistAddressRemoved event. This is a permissioned function.
      * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
@@ -542,7 +540,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Enable or disable the LP allowlist.
      * @dev Note that any addresses added to the allowlist will be retained if the allowlist is toggled off and
-     * back on again, because adding or removing addresses is not allowed while the allowlist is disabled.
+     * back on again, because this action does not affect the list of LP addresses.
      * Emits the MustAllowlistLPsSet event. This is a permissioned function.
      * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
