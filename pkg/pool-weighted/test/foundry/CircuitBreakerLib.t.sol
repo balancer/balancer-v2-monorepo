@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
-import "../../contracts/lib/CircuitBreakerLib.sol";
+import "../../contracts/managed/CircuitBreakerStorageLib.sol";
 
 contract CircuitBreakerLibTest is Test {
     using FixedPoint for uint256;
