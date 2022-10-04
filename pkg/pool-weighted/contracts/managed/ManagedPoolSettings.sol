@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/CircuitBreakerLib.sol";
+import "../managed/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -85,7 +85,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Store the circuit breaker configuration for each token.
-    // See `CircuitBreakerLib.sol` for data layout.
+    // See `CircuitBreakerStorageLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _circuitBreakerState;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
@@ -983,11 +983,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
             circuitBreakerState,
             _getNormalizedWeight(token).complement()
         );
@@ -1027,7 +1027,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
         // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
+        _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
             bptPrice,
             normalizedWeight.complement(),
             lowerBoundPercentage,

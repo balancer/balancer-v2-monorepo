@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
-import "../../contracts/lib/CircuitBreakerLib.sol";
+import "../../contracts/managed/CircuitBreakerStorageLib.sol";
 
 contract CircuitBreakerLibTest is Test {
     using FixedPoint for uint256;
@@ -43,13 +43,13 @@ contract CircuitBreakerLibTest is Test {
         lowerBound = bound(lowerBound, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
         upperBound = bound(upperBound, lowerBound, _MAX_BOUND_PERCENTAGE);
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
+        bytes32 poolState = CircuitBreakerStorageLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
         (
             uint256 actualBptPrice,
             uint256 actualWeightComplement,
             uint256 actualLowerBound,
             uint256 actualUpperBound
-        ) = CircuitBreakerLib.getCircuitBreakerFields(poolState);
+        ) = CircuitBreakerStorageLib.getCircuitBreakerFields(poolState);
 
         assertEq(actualBptPrice, bptPrice);
         assertEq(actualWeightComplement, weightComplement);
@@ -71,10 +71,10 @@ contract CircuitBreakerLibTest is Test {
         uint256 expectedLowerBoundBptPrice = uint256(bptPrice).mulDown(lowerBound.powUp(weightComplement));
         uint256 expectedUpperBoundBptPrice = uint256(bptPrice).mulDown(upperBound.powDown(weightComplement));
 
-        bytes32 poolState = CircuitBreakerLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
+        bytes32 poolState = CircuitBreakerStorageLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
 
         // Test that calling it with the original weightComplement retrieves exact values from the ratio cache
-        (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) = CircuitBreakerLib
+        (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) = CircuitBreakerStorageLib
             .getCurrentCircuitBreakerBounds(poolState, weightComplement);
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
@@ -95,16 +95,16 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
+        bytes32 initialPoolState = CircuitBreakerStorageLib.setCircuitBreaker(
             initialBptPrice,
             initialWeightComplement,
             lowerBound,
             upperBound
         );
-        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerLib
+        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib
             .getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
 
-        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.getBoundaryConversionRatios(
+        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.calcBoundaryConversionRatios(
             lowerBound,
             upperBound,
             newWeightComplement
@@ -135,7 +135,7 @@ contract CircuitBreakerLibTest is Test {
         newWeightComplement = bound(newWeightComplement, _MINIMUM_BOUND_PERCENTAGE, FixedPoint.ONE);
 
         // Set the initial state of the breaker
-        bytes32 initialPoolState = CircuitBreakerLib.setCircuitBreaker(
+        bytes32 initialPoolState = CircuitBreakerStorageLib.setCircuitBreaker(
             initialBptPrice,
             initialWeightComplement,
             lowerBound,
@@ -145,15 +145,15 @@ contract CircuitBreakerLibTest is Test {
         // We now model the weight of the the token changing so `initialWeightComplement` becomes `newWeightComplement`.
         // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
         uint256 dynamicCost = gasleft();
-        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerLib
+        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib
             .getCurrentCircuitBreakerBounds(initialPoolState, newWeightComplement);
         dynamicCost -= gasleft();
 
         // This is expensive so we refresh the cached bound ratios using the new weight complement.
-        bytes32 updatedPoolState = CircuitBreakerLib.updateBoundRatios(initialPoolState, newWeightComplement);
+        bytes32 updatedPoolState = CircuitBreakerStorageLib.updateBoundRatios(initialPoolState, newWeightComplement);
 
         uint256 cachedCost = gasleft();
-        (uint256 newCachedLowerBptPriceBoundary, uint256 newCachedUpperBptPriceBoundary) = CircuitBreakerLib
+        (uint256 newCachedLowerBptPriceBoundary, uint256 newCachedUpperBptPriceBoundary) = CircuitBreakerStorageLib
             .getCurrentCircuitBreakerBounds(updatedPoolState, newWeightComplement);
         cachedCost -= gasleft();
 
