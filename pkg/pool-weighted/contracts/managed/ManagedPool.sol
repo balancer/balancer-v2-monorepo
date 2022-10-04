@@ -328,7 +328,6 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState
     ) internal view returns (uint256 amountCalculated) {
         SwapData memory swapData = _getSwapData(request, poolState);
-        uint256 virtualSupply = getActualSupply();
 
         balanceTokenIn = _upscale(balanceTokenIn, swapData.scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, swapData.scalingFactorTokenOut);
@@ -377,6 +376,8 @@ contract ManagedPool is ManagedPoolSettings {
             // amountIn tokens are entering the Pool, so we round up.
             amountCalculated = _downscaleUp(amountIn, swapData.scalingFactorTokenIn);
         }
+
+        uint256 virtualSupply = getActualSupply();
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
         _require(
