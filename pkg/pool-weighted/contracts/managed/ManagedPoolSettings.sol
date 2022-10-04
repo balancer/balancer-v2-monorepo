@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IManagedPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -41,7 +41,7 @@ import "./ManagedPoolTokenStorageLib.sol";
 /**
  * @title Managed Pool Settings
  */
-abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlledManagedPool {
+abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -90,35 +90,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
-
-    // Event declarations
-
-    event GradualSwapFeeUpdateScheduled(
-        uint256 startTime,
-        uint256 endTime,
-        uint256 startSwapFeePercentage,
-        uint256 endSwapFeePercentage
-    );
-    event GradualWeightUpdateScheduled(
-        uint256 startTime,
-        uint256 endTime,
-        uint256[] startWeights,
-        uint256[] endWeights
-    );
-    event SwapEnabledSet(bool swapEnabled);
-    event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
-    event ManagementAumFeeCollected(uint256 bptAmount);
-    event AllowlistAddressAdded(address indexed member);
-    event AllowlistAddressRemoved(address indexed member);
-    event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
-    event TokenRemoved(IERC20 indexed token);
-    event CircuitBreakerSet(
-        IERC20 indexed token,
-        uint256 bptPrice,
-        uint256 lowerBoundPercentage,
-        uint256 upperBoundPercentage
-    );
 
     struct NewPoolParams {
         string name;
@@ -198,16 +169,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Actual Supply
 
-    /**
-     * @notice Returns the effective BPT supply.
-     *
-     * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
-     * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
-     *  they will effectively be included in any Pool operation that involves BPT.
-     *
-     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
-     */
-    function getActualSupply() external view returns (uint256) {
+    function getActualSupply() external view override returns (uint256) {
         return _getActualSupply(_getVirtualSupply());
     }
 
@@ -233,17 +195,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
     }
 
-    /**
-     * @notice Returns the current gradual swap fee update parameters.
-     * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
-     * @return startTime - The timestamp when the swap fee update will begin.
-     * @return endTime - The timestamp when the swap fee update will end.
-     * @return startSwapFeePercentage - The starting swap fee percentage (could be different from the current value).
-     * @return endSwapFeePercentage - The final swap fee percentage, when the current timestamp >= endTime.
-     */
     function getGradualSwapFeeUpdateParams()
         external
         view
+        override
         returns (
             uint256 startTime,
             uint256 endTime,
@@ -254,22 +209,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return ManagedPoolStorageLib.getSwapFeeFields(_poolState);
     }
 
-    /**
-     * @notice Schedule a gradual swap fee update.
-     * @dev The swap fee will change from the given starting value (which may or may not be the current
-     * value) to the given ending fee percentage, over startTime to endTime.
-     *
-     * Note that calling this with a starting swap fee different from the current value will immediately change the
-     * current swap fee to `startSwapFeePercentage`, before commencing the gradual change at `startTime`.
-     * Emits the GradualSwapFeeUpdateScheduled event.
-     * This is a permissioned function.
-     *
-     * @param startTime - The timestamp when the swap fee change will begin.
-     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
-     * @param startSwapFeePercentage - The starting value for the swap fee change.
-     * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
-     * `getSwapFeePercentage()` will return this value.
-     */
     function updateSwapFeeGradually(
         uint256 startTime,
         uint256 endTime,
@@ -335,10 +274,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         }
     }
 
-    /**
-     * @notice Returns all normalized weights, in the same order as the Pool's tokens.
-     */
-    function getNormalizedWeights() external view returns (uint256[] memory) {
+    function getNormalizedWeights() external view override returns (uint256[] memory) {
         (IERC20[] memory tokens, ) = _getPoolTokens();
         return _getNormalizedWeights(tokens);
     }
@@ -354,17 +290,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             );
     }
 
-    /**
-     * @notice Returns the current gradual weight change update parameters.
-     * @dev The current weights can be retrieved via `getNormalizedWeights()`.
-     * @return startTime - The timestamp when the weight update will begin.
-     * @return endTime - The timestamp when the weight update will end.
-     * @return startWeights - The starting weights, when the weight change was initiated.
-     * @return endWeights - The final weights, when the current timestamp >= endTime.
-     */
     function getGradualWeightUpdateParams()
         external
         view
+        override
         returns (
             uint256 startTime,
             uint256 endTime,
@@ -398,20 +327,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         }
     }
 
-    /**
-     * @notice Schedule a gradual weight change.
-     * @dev The weights will change from their current values to the given endWeights, over startTime to endTime.
-     * This is a permissioned function.
-     *
-     * Since, unlike with swap fee updates, we generally do not want to allow instantaneous weight changes,
-     * the weights always start from their current values. This also guarantees a smooth transition when
-     * updateWeightsGradually is called during an ongoing weight change.
-     * @param startTime - The timestamp when the weight change will begin.
-     * @param endTime - The timestamp when the weight change will end (can be >= startTime).
-     * @param tokens - The tokens associated with the target weights (must match the current pool tokens).
-     * @param endWeights - The target weights. If the current timestamp >= endTime, `getNormalizedWeights()`
-     * will return these values.
-     */
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
@@ -470,18 +385,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Swap Enabled
 
-    /**
-     * @notice Returns whether swaps are enabled.
-     */
-    function getSwapEnabled() external view returns (bool) {
+    function getSwapEnabled() external view override returns (bool) {
         return ManagedPoolStorageLib.getSwapsEnabled(_poolState);
     }
 
-    /**
-     * @notice Enable or disable trading.
-     * @dev Emits the SwapEnabledSet event. This is a permissioned function.
-     * @param swapEnabled - The new value of the swap enabled flag.
-     */
     function setSwapEnabled(bool swapEnabled) external override authenticate whenNotPaused {
         _setSwapEnabled(swapEnabled);
     }
@@ -494,29 +401,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // LP Allowlist
 
-    /**
-     * @notice Returns whether the allowlist for LPs is enabled.
-     */
-    function getMustAllowlistLPs() external view returns (bool) {
+    function getMustAllowlistLPs() external view override returns (bool) {
         return ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState);
     }
 
-    /**
-     * @notice Check an LP address against the allowlist.
-     * @dev If the allowlist is not enabled, this returns true for every address.
-     * @param member - The address to check against the allowlist.
-     * @return true if the given address is allowed to join the pool.
-     */
-    function isAllowedAddress(address member) public view returns (bool) {
+    function isAllowedAddress(address member) public view override returns (bool) {
         return !ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState) || _allowedAddresses[member];
     }
 
-    /**
-     * @notice Adds an address to the LP allowlist.
-     * @dev Will fail if the address is already allowlisted.
-     * Emits the AllowlistAddressAdded event. This is a permissioned function.
-     * @param member - The address to be added to the allowlist.
-     */
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
         _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
@@ -524,12 +416,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit AllowlistAddressAdded(member);
     }
 
-    /**
-     * @notice Removes an address from the LP allowlist.
-     * @dev Will fail if the address was not previously allowlisted.
-     * Emits the AllowlistAddressRemoved event. This is a permissioned function.
-     * @param member - The address to be removed from the allowlist.
-     */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
         _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
 
@@ -537,13 +423,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit AllowlistAddressRemoved(member);
     }
 
-    /**
-     * @notice Enable or disable the LP allowlist.
-     * @dev Note that any addresses added to the allowlist will be retained if the allowlist is toggled off and
-     * back on again, because this action does not affect the list of LP addresses.
-     * Emits the MustAllowlistLPsSet event. This is a permissioned function.
-     * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
-     */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external override authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
     }
@@ -556,13 +435,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // AUM management fees
 
-    /**
-     * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number and the timestamp of the
-     * last collection of AUM fees.
-     */
     function getManagementAumFeeParams()
         public
         view
+        override
         returns (uint256 aumFeePercentage, uint256 lastCollectionTimestamp)
     {
         (aumFeePercentage, lastCollectionTimestamp) = ManagedPoolAumStorageLib.getAumFeeFields(_aumState);
@@ -573,14 +449,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         }
     }
 
-    /**
-     * @notice Setter for the yearly percentage AUM management fee, which is payable to the pool manager.
-     * @dev Attempting to collect AUM fees in excess of the maximum permitted percentage will revert.
-     * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
-     * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
-     * @param managementAumFeePercentage - The new management AUM fee percentage.
-     * @return amount - The amount of BPT minted to the manager before the update, if any.
-     */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
         override
@@ -618,12 +486,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         _aumState = ManagedPoolAumStorageLib.setLastCollectionTimestamp(_aumState, block.timestamp);
     }
 
-    /**
-     * @notice Collect any accrued AUM fees and send them to the pool manager.
-     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
-     * joins and exits.
-     * @return The amount of BPT minted to the manager.
-     */
     function collectAumManagementFees() external override whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
@@ -673,34 +535,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Add/Remove tokens
 
-    /**
-     * @notice Adds a token to the Pool's list of tradeable tokens. This is a permissioned function.
-     *
-     * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
-     * token will have no balance - it is up to the owner to provide some immediately after calling this function.
-     * Note however that regular join functions will not work while the new token has no balance: the only way to
-     * deposit an initial amount is by using an Asset Manager.
-     *
-     * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
-     *
-     * The caller may additionally pass a non-zero `mintAmount` to have some BPT be minted for them, which might be
-     * useful in some scenarios to account for the fact that the Pool will have more tokens.
-     *
-     * Emits the TokenAdded event.
-     *
-     * @param tokenToAdd - The ERC20 token to be added to the Pool.
-     * @param assetManager - The Asset Manager for the token.
-     * @param tokenToAddNormalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
-     * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
-     * @param recipient - The address to receive the BPT minted by the Pool.
-     */
     function addToken(
         IERC20 tokenToAdd,
         address assetManager,
         uint256 tokenToAddNormalizedWeight,
         uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused {
+    ) external override authenticate whenNotPaused {
         // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to mint is zero.
@@ -786,24 +627,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit TokenAdded(tokenToAdd, tokenToAddNormalizedWeight);
     }
 
-    /**
-     * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
-     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
-     *
-     * Emits the TokenRemoved event. This is a permissioned function.
-     *
-     * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
-     * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
-     * @param tokenToRemove - The ERC20 token to be removed from the Pool.
-     * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
-     * @param sender - The address to burn BPT from.
-     */
     function removeToken(
         IERC20 tokenToRemove,
         uint256 burnAmount,
         address sender
-    ) external authenticate whenNotPaused {
+    ) external override authenticate whenNotPaused {
         // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to burn is zero.
@@ -952,15 +780,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Circuit Breakers
 
-    /**
-     * @notice Return the full circuit breaker state for the given token.
-     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
-     * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
-     * the circuit breaker should trip.
-     */
     function getCircuitBreakerState(IERC20 token)
         external
         view
+        override
         returns (
             uint256 bptPrice,
             uint256 weightComplement,
@@ -982,19 +805,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         );
     }
 
-    /**
-     * @notice Set a circuit breaker for one or more tokens.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
-     * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
-     * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
-     * more relative to the rest of the pool.
-     */
     function setCircuitBreakers(
         IERC20[] memory tokens,
         uint256[] memory bptPrices,
         uint256[] memory lowerBoundPercentages,
         uint256[] memory upperBoundPercentages
-    ) external authenticate whenNotPaused {
+    ) external override authenticate whenNotPaused {
         InputHelpers.ensureInputLengthMatch(tokens.length, lowerBoundPercentages.length, upperBoundPercentages.length);
         InputHelpers.ensureInputLengthMatch(tokens.length, bptPrices.length);
 

@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IManagedPool.sol";
 
 import "./BasePoolController.sol";
 
@@ -159,7 +159,7 @@ contract ManagedPoolController is BasePoolController {
             Errors.WEIGHT_CHANGE_TOO_FAST
         );
 
-        IControlledManagedPool(pool).updateWeightsGradually(startTime, endTime, tokens, endWeights);
+        IManagedPool(pool).updateWeightsGradually(startTime, endTime, tokens, endWeights);
     }
 
     /**
@@ -168,7 +168,7 @@ contract ManagedPoolController is BasePoolController {
     function setSwapEnabled(bool swapEnabled) external virtual onlyManager withBoundPool {
         _require(canDisableSwaps(), Errors.FEATURE_DISABLED);
 
-        IControlledManagedPool(pool).setSwapEnabled(swapEnabled);
+        IManagedPool(pool).setSwapEnabled(swapEnabled);
     }
 
     /**
@@ -183,7 +183,7 @@ contract ManagedPoolController is BasePoolController {
     function setMustAllowlistLPs(bool mustAllowlistLPs) external virtual onlyManager withBoundPool {
         _require(canSetMustAllowlistLPs(), Errors.FEATURE_DISABLED);
 
-        IControlledManagedPool(pool).setMustAllowlistLPs(mustAllowlistLPs);
+        IManagedPool(pool).setMustAllowlistLPs(mustAllowlistLPs);
     }
 
     /**
@@ -191,7 +191,7 @@ contract ManagedPoolController is BasePoolController {
      * The underlying pool handles all state/permission checks. It will revert if the LP allowlist is off.
      */
     function addAllowedAddress(address member) external virtual onlyManager withBoundPool {
-        IControlledManagedPool(pool).addAllowedAddress(member);
+        IManagedPool(pool).addAllowedAddress(member);
     }
 
     /**
@@ -200,7 +200,7 @@ contract ManagedPoolController is BasePoolController {
      * previouslly added to the allowlist.
      */
     function removeAllowedAddress(address member) external virtual onlyManager withBoundPool {
-        IControlledManagedPool(pool).removeAllowedAddress(member);
+        IManagedPool(pool).removeAllowedAddress(member);
     }
 
     /**
@@ -222,6 +222,6 @@ contract ManagedPoolController is BasePoolController {
     {
         _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
 
-        return IControlledManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
+        return IManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
     }
 }
