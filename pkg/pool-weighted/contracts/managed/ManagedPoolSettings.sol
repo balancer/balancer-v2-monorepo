@@ -193,9 +193,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
      * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
      */
-    function _getVirtualSupply() internal view virtual returns (uint256) {
-        return totalSupply();
-    }
+    function _getVirtualSupply() internal view virtual returns (uint256);
 
     // Actual Supply
 
@@ -1054,7 +1052,5 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
      * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
      */
-    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances) {
-        (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
-    }
+    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
 }
