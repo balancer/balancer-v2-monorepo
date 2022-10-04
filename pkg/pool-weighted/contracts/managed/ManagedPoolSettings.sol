@@ -148,13 +148,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // Validate and set initial fees
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
-        // Write the scaling factors for each token into their token state.
-        // We do this before setting the weights in `_startGradualWeightChange` so we start from a empty token state.
+        // Initialize the tokens' states with their scaling factors and weights.
         for (uint256 i = 0; i < totalTokens; i++) {
             IERC20 token = params.tokens[i];
-            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenScalingFactor(bytes32(0), token);
+            _tokenState[token] = ManagedPoolTokenStorageLib.initializeTokenState(token, params.normalizedWeights[i]);
         }
 
+        // This is technically a noop with regards to the tokens' weights in storage however it performs important
+        // validation of the token weights (normalization / bounds checking) and emits an event for offchain services.
         _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
