@@ -14,9 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
-
-import "../lib/ValueCompression.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 /**
  * @title Circuit Breaker Library
