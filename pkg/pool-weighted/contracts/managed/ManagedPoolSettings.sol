@@ -628,10 +628,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @return The amount of BPT minted to the manager.
      */
     function collectAumManagementFees() external override whenNotPaused returns (uint256) {
-        return _collectAumManagementFeesWhenInitialized();
-    }
-
-    function _collectAumManagementFeesWhenInitialized() internal returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
@@ -710,7 +706,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to mint is zero.
-        _collectAumManagementFeesWhenInitialized();
+        uint256 supply = _getVirtualSupply();
+        _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
 
         // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
@@ -811,7 +809,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
         // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
         // changes. For consistency, we do this always, even if the amount to burn is zero.
-        _collectAumManagementFeesWhenInitialized();
+        uint256 supply = _getVirtualSupply();
+        _require(supply > 0, Errors.UNINITIALIZED);
+        _collectAumManagementFees(supply);
 
         // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
