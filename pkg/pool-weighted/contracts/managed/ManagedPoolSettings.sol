@@ -507,7 +507,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @param member - The address to check against the allowlist.
      * @return true if the given address is on the allowlist.
      */
-    function isAddressOnAllowlist(address member) external view returns (bool) {
+    function isAddressOnAllowlist(address member) public view returns (bool) {
         return _allowedAddresses[member];
     }
 
@@ -519,7 +519,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @return - Whether the given address is allowed to join the pool.
      */
     function _isAllowedAddress(bytes32 poolState, address member) internal view returns (bool) {
-        return !ManagedPoolStorageLib.getLPAllowlistEnabled(poolState) || _allowedAddresses[member];
+        return !ManagedPoolStorageLib.getLPAllowlistEnabled(poolState) || isAddressOnAllowlist(member);
     }
 
     /**
@@ -529,7 +529,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
+        _require(!isAddressOnAllowlist(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
         emit AllowlistAddressAdded(member);
@@ -542,7 +542,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(isAddressOnAllowlist(member), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
         emit AllowlistAddressRemoved(member);
