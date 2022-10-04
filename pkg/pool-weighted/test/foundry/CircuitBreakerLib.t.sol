@@ -78,6 +78,13 @@ contract CircuitBreakerLibTest is Test {
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
+
+        // Single sided
+        uint256 singleSidedLowerBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(poolState, referenceWeight, true);
+        uint256 singleUpperBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(poolState, referenceWeight, false);
+
+        assertEq(singleSidedLowerBoundBptPrice, actualLowerBoundBptPrice);
+        assertEq(singleUpperBoundBptPrice, actualUpperBoundBptPrice);
     }
 
     function testDynamicBoundRatios(
@@ -118,6 +125,14 @@ contract CircuitBreakerLibTest is Test {
             uint256(bptPrice).mulUp(expectedUpperBptPrice),
             _MAX_RELATIVE_ERROR
         );
+
+        // Single-sided
+
+        uint256 singleSidedLowerBptPrice = CircuitBreakerLib.calcBoundaryConversionRatio(lowerBound, newWeight, true);
+        uint256 singleSidedUpperBptPrice = CircuitBreakerLib.calcBoundaryConversionRatio(upperBound, newWeight, false);
+
+        assertEq(singleSidedLowerBptPrice, expectedLowerBptPrice);
+        assertEq(singleSidedUpperBptPrice, expectedUpperBptPrice);
     }
 
     function testUpdateCachedRatios(
