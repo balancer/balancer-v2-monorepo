@@ -514,7 +514,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Adds an address to the LP allowlist.
-     * @dev Will fail if the LP allowlist is not enabled, or the address is already allowlisted.
+     * @dev Will fail if the address is already allowlisted.
      * Emits the AllowlistAddressAdded event. This is a permissioned function.
      * @param member - The address to be added to the allowlist.
      */
@@ -527,9 +527,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Removes an address from the LP allowlist.
-     * @dev Will fail if the LP allowlist is not enabled, or the address was not previously allowlisted.
-     * Emits the AllowlistAddressRemoved event. Do not allow removing addresses while the allowlist
-     * is disabled. This is a permissioned function.
+     * @dev Will fail if the address was not previously allowlisted.
+     * Emits the AllowlistAddressRemoved event. This is a permissioned function.
      * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
@@ -542,7 +541,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Enable or disable the LP allowlist.
      * @dev Note that any addresses added to the allowlist will be retained if the allowlist is toggled off and
-     * back on again, because adding or removing addresses is not allowed while the allowlist is disabled.
+     * back on again, because this action does not affect the list of LP addresses.
      * Emits the MustAllowlistLPsSet event. This is a permissioned function.
      * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
