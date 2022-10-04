@@ -194,12 +194,12 @@ interface IManagedPool is IBasePool {
     function getMustAllowlistLPs() external view returns (bool);
 
     /**
-     * @notice Check an LP address against the allowlist.
-     * @dev If the allowlist is not enabled, this returns true for every address.
+     * @notice Check whether an LP address is on the allowlist.
+     * @dev This simply checks the list, regardless of whether the allowlist feature is enabled.
      * @param member - The address to check against the allowlist.
-     * @return true if the given address is allowed to join the pool.
+     * @return true if the given address is on the allowlist.
      */
-    function isAllowedAddress(address member) external view returns (bool);
+    function isAddressOnAllowlist(address member) external view returns (bool);
 
     // Management fees
 

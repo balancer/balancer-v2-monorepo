@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/CircuitBreakerLib.sol";
+import "../managed/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -85,7 +85,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Store the circuit breaker configuration for each token.
-    // See `CircuitBreakerLib.sol` for data layout.
+    // See `CircuitBreakerStorageLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _circuitBreakerState;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
@@ -405,19 +405,36 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         return ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState);
     }
 
-    function isAllowedAddress(address member) public view override returns (bool) {
-        return !ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState) || _allowedAddresses[member];
+    /**
+     * @notice Check whether an LP address is on the allowlist.
+     * @dev This simply checks the list, regardless of whether the allowlist feature is enabled.
+     * @param member - The address to check against the allowlist.
+     * @return true if the given address is on the allowlist.
+     */
+    function isAddressOnAllowlist(address member) public view override returns (bool) {
+        return _allowedAddresses[member];
+    }
+
+    /**
+     * @notice Check an LP address against the allowlist.
+     * @dev If the allowlist is not enabled, this returns true for every address.
+     * @param poolState - The bytes32 representing the state of the pool.
+     * @param member - The address to check against the allowlist.
+     * @return - Whether the given address is allowed to join the pool.
+     */
+    function _isAllowedAddress(bytes32 poolState, address member) internal view returns (bool) {
+        return !ManagedPoolStorageLib.getLPAllowlistEnabled(poolState) || isAddressOnAllowlist(member);
     }
 
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
+        _require(!isAddressOnAllowlist(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
         emit AllowlistAddressAdded(member);
     }
 
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(isAddressOnAllowlist(member), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
         emit AllowlistAddressRemoved(member);
@@ -795,11 +812,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
             circuitBreakerState,
             _getNormalizedWeight(token).complement()
         );
@@ -832,7 +849,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
         // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
+        _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
             bptPrice,
             normalizedWeight.complement(),
             lowerBoundPercentage,
