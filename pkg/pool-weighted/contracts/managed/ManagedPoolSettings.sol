@@ -1027,14 +1027,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
         // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
+        // The incoming BPT price will have been calculated dividing by unscaled token balance, effectively
+        // multiplying the result by the scaling factor. To correct this, we need to divide by it (downscaling).
+        uint256 scaledBptPrice = _downscaleDown(
             bptPrice,
+            ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token))
+        );
+
+        _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
+            scaledBptPrice,
             normalizedWeight.complement(),
             lowerBoundPercentage,
             upperBoundPercentage
         );
 
-        emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
+        emit CircuitBreakerSet(token, scaledBptPrice, lowerBoundPercentage, upperBoundPercentage);
     }
 
     // Misc
