@@ -29,14 +29,6 @@ contract MockCircuitBreakerLib {
             return CircuitBreakerStorageLib.getCircuitBreakerFields(circuitBreakerState);
     }
 
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeight)
-        external
-        pure
-        returns (uint256, uint256)
-    {
-        return CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeight);
-    }
-
     function getCurrentCircuitBreakerBound(bytes32 circuitBreakerState, uint256 currentWeight, bool isLowerBound)
         external
         pure
@@ -46,27 +38,6 @@ contract MockCircuitBreakerLib {
     }
 
     function hasCircuitBreakerTripped(
-        bytes32 circuitBreakerState,
-        uint256 virtualSupply,
-        uint256 normalizedWeight,
-        uint256 upscaledBalance
-    ) external pure returns (bool, bool) {
-        (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
-            circuitBreakerState,
-            normalizedWeight
-        );
-
-        return
-            CircuitBreakerLib.hasCircuitBreakerTripped(
-                virtualSupply,
-                normalizedWeight,
-                upscaledBalance,
-                lowerBoundBptPrice,
-                upperBoundBptPrice
-            );
-    }
-
-    function hasSingleSidedCircuitBreakerTripped(
         bytes32 circuitBreakerState,
         uint256 virtualSupply,
         uint256 normalizedWeight,
@@ -95,17 +66,5 @@ contract MockCircuitBreakerLib {
 
     function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) external pure returns (bytes32) {
         return CircuitBreakerStorageLib.updateBoundRatios(circuitBreakerState, weightComplement);
-    }
-
-    function calcBoundaryConversionRatios(
-        uint256 lowerBoundPercentage,
-        uint256 upperBoundPercentage,
-        uint256 currentWeightComplement
-    ) external pure returns (uint256, uint256) {
-        return CircuitBreakerLib.calcBoundaryConversionRatios(
-            lowerBoundPercentage,
-            upperBoundPercentage,
-            currentWeightComplement
-        );
     }
 }

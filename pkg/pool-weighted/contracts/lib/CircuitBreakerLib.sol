@@ -52,67 +52,6 @@ library CircuitBreakerLib {
     }
 
     /**
-     * @notice Checks whether either the lower or upper circuit breakers would trip in the given pool state.
-     * @dev Compute the current BPT price from the input parameters, and compare it to the bounds to determine whether
-     * the given post-operation pool state is within the circuit breaker bounds.
-     * @param virtualSupply - the post-operation totalSupply (including protocol fees, etc.)
-     * @param weight - the normalized weight of the token we are checking.
-     * @param balance - the post-operation token balance (including swap fees, etc.). It must be an 18-decimal
-     * @param lowerBoundBptPrice - the lowest BPT price in the allowed trading range.
-     * @param upperBoundBptPrice - the highest BPT price in the allowed trading range.
-     * floating point number, adjusted by the scaling factor of the token.
-     * @return - boolean flags set to true if the breaker should be tripped: (lowerBoundTripped, upperBoundTripped)
-     */
-    function hasCircuitBreakerTripped(
-        uint256 virtualSupply,
-        uint256 weight,
-        uint256 balance,
-        uint256 lowerBoundBptPrice,
-        uint256 upperBoundBptPrice
-    ) internal pure returns (bool, bool) {
-        uint256 currentBptPrice = virtualSupply.mulUp(weight).divDown(balance);
-
-        return (
-            lowerBoundBptPrice != 0 && currentBptPrice < lowerBoundBptPrice,
-            upperBoundBptPrice != 0 && currentBptPrice > upperBoundBptPrice
-        );
-    }
-
-    /**
-     * @notice Convert bounds to BPT price ratios
-     * @param lowerBound - the lower bound percentage; 0.8 means tolerate a 20% relative drop.
-     * @param upperBound - the upper bound percentage; 5.0 means tolerate a 5x increase.
-     * @param weight - the current normalized token weight.
-     */
-    function calcBoundaryConversionRatios(
-        uint256 lowerBound,
-        uint256 upperBound,
-        uint256 weight
-    ) internal pure returns (uint256 lowerBoundRatio, uint256 upperBoundRatio) {
-        uint256 weightComplement = weight.complement();
-
-        // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        lowerBoundRatio = lowerBound.powUp(weightComplement);
-        upperBoundRatio = upperBound.powDown(weightComplement);
-    }
-
-    /**
-     * @notice Convert BPT price ratios to BPT price bounds
-     * @param lowerBoundRatio - the cached lower bound ratio
-     * @param upperBoundRatio - the cached upper bound ratio
-     * @param bptPrice - The BPT price stored at the time the breaker was set.
-     */
-    function calcBptPriceBoundaries(
-        uint256 lowerBoundRatio,
-        uint256 upperBoundRatio,
-        uint256 bptPrice
-    ) internal pure returns (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) {
-        // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        lowerBoundBptPrice = bptPrice.mulUp(lowerBoundRatio);
-        upperBoundBptPrice = bptPrice.mulDown(upperBoundRatio);
-    }
-
-    /**
      * @notice Convert a bound to a BPT price ratio
      * @param bound - The bound percentage.
      * @param weight - The current normalized token weight.

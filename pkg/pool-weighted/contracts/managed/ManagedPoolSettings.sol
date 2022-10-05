@@ -991,9 +991,17 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
+        uint256 normalizedWeight = _getNormalizedWeight(token);
+
+        lowerBptPriceBound = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
             circuitBreakerState,
-            _getNormalizedWeight(token)
+            normalizedWeight,
+            true
+        );
+        upperBptPriceBound = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+            circuitBreakerState,
+            normalizedWeight,
+            false
         );
     }
 
