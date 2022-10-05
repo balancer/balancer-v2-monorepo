@@ -218,8 +218,9 @@ library CircuitBreakerStorageLib {
     }
 
     /**
-     * @notice Returns the dynamic lower and upper BPT price bounds for a given token, at the current weight.
-     * @dev The current BPT price of the token can be directly compared to these values, to determine whether
+     * @notice Returns a dynamic lower or upper BPT price bound for a given token, at the current weight.
+     * @dev The current BPT price of the token can be directly compared to this value, to determine whether
+     * the breaker should be tripped.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param currentWeight - The token's current normalized weight.
      * @param isLowerBound - Flag indicating whether this is the lower bound.
