@@ -263,6 +263,14 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
+    // Holds information for the tokens involved in a regular swap.
+    struct SwapTokenData {
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        uint256 scalingFactorTokenIn;
+        uint256 scalingFactorTokenOut;
+    }
+
     /*
      * @dev Called when a swap with the Pool occurs, where neither of the tokens involved are the BPT of the Pool.
      *
@@ -277,49 +285,42 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut,
         bytes32 poolState
-    ) internal view returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        uint256 scalingFactorTokenIn;
-        uint256 scalingFactorTokenOut;
-        uint256 swapFeeComplement;
-        {
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-            (tokenInWeight, scalingFactorTokenIn) = _getTokenInfo(request.tokenIn, weightChangeProgress);
-            (tokenOutWeight, scalingFactorTokenOut) = _getTokenInfo(request.tokenOut, weightChangeProgress);
+    ) internal view returns (uint256 amountCalculated) {
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+        SwapTokenData memory swapTokenData = _getSwapTokenData(request, poolState);
 
-            swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
-        }
+        balanceTokenIn = _upscale(balanceTokenIn, swapTokenData.scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, swapTokenData.scalingFactorTokenOut);
 
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+        uint256 endingBalanceTokenIn;
+        uint256 endingBalanceTokenOut;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenIn);
+            request.amount = _upscale(request.amount, swapTokenData.scalingFactorTokenIn);
 
             // We round the amount in down (favoring a higher fee amount).
             request.amount = request.amount.mulDown(swapFeeComplement);
 
             uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                tokenInWeight,
+                swapTokenData.tokenInWeight,
                 balanceTokenOut,
-                tokenOutWeight,
+                swapTokenData.tokenOutWeight,
                 request.amount
             );
 
             // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, scalingFactorTokenOut);
+            amountCalculated = _downscaleDown(amountOut, swapTokenData.scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenOut);
+            request.amount = _upscale(request.amount, swapTokenData.scalingFactorTokenOut);
 
             uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                tokenInWeight,
+                swapTokenData.tokenInWeight,
                 balanceTokenOut,
-                tokenOutWeight,
+                swapTokenData.tokenOutWeight,
                 request.amount
             );
 
@@ -327,8 +328,58 @@ contract ManagedPool is ManagedPoolSettings {
             amountIn = amountIn.divUp(swapFeeComplement);
 
             // amountIn tokens are entering the Pool, so we round up.
-            return _downscaleUp(amountIn, scalingFactorTokenIn);
+            amountCalculated = _downscaleUp(amountIn, swapTokenData.scalingFactorTokenIn);
         }
+
+        // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
+        uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+            _getCircuitBreakerState(request.tokenIn),
+            swapTokenData.tokenInWeight,
+            true
+        );
+        uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+            _getCircuitBreakerState(request.tokenOut),
+            swapTokenData.tokenOutWeight,
+            false
+        );
+        uint256 virtualSupply = _getVirtualSupply();
+
+        _require(
+            !(CircuitBreakerLib.hasCircuitBreakerTripped(
+                virtualSupply,
+                swapTokenData.tokenInWeight,
+                endingBalanceTokenIn,
+                lowerBoundBptPrice,
+                true // check lower bound
+            ) ||
+                CircuitBreakerLib.hasCircuitBreakerTripped(
+                    virtualSupply,
+                    swapTokenData.tokenOutWeight,
+                    endingBalanceTokenOut,
+                    upperBoundBptPrice,
+                    false // check upper bound
+                )),
+            Errors.CIRCUIT_BREAKER_TRIPPED
+        );
+    }
+
+    /**
+     * @dev Gather the information required to process a regular token swap, including circuit breaker bounds.
+     */
+    function _getSwapTokenData(SwapRequest memory request, bytes32 poolState)
+        private
+        view
+        returns (SwapTokenData memory tokenInfo)
+    {
+        bytes32 tokenInState = _getTokenState(request.tokenIn);
+        bytes32 tokenOutState = _getTokenState(request.tokenOut);
+
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+        tokenInfo.tokenInWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenInState, weightChangeProgress);
+        tokenInfo.tokenOutWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenOutState, weightChangeProgress);
+
+        tokenInfo.scalingFactorTokenIn = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenInState);
+        tokenInfo.scalingFactorTokenOut = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenOutState);
     }
 
     /**
