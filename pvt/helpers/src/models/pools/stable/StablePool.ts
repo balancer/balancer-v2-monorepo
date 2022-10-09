@@ -364,7 +364,6 @@ export default class StablePool extends BasePool {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
   }
 
-
   async join(params: JoinExitStablePool): Promise<JoinResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
