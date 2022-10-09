@@ -692,12 +692,12 @@ contract ManagedPool is ManagedPoolSettings {
 
             circuitBreakerState = _getCircuitBreakerState(poolDelta.tokens[i]);
 
-            uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+            uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
                 circuitBreakerState,
                 poolDelta.normalizedWeights[i],
                 true
             );
-            uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+            uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
                 circuitBreakerState,
                 poolDelta.normalizedWeights[i],
                 false
