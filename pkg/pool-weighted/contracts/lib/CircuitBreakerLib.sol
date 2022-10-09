@@ -58,9 +58,9 @@ library CircuitBreakerLib {
      * @param virtualSupply - the post-operation totalSupply (including protocol fees, etc.)
      * @param weight - the normalized weight of the token we are checking.
      * @param balance - the post-operation token balance (including swap fees, etc.). It must be an 18-decimal
+     * floating point number, adjusted by the scaling factor of the token.
      * @param lowerBoundBptPrice - the lowest BPT price in the allowed trading range.
      * @param upperBoundBptPrice - the highest BPT price in the allowed trading range.
-     * floating point number, adjusted by the scaling factor of the token.
      * @return - boolean flags set to true if the breaker should be tripped: (lowerBoundTripped, upperBoundTripped)
      */
     function hasCircuitBreakerTripped(
@@ -79,37 +79,41 @@ library CircuitBreakerLib {
     }
 
     /**
-     * @notice Convert bounds to BPT price ratios
+     * @notice Convert bounds to adjusted bounds (apply non-linear adjustment for weights)
      * @param lowerBound - the lower bound percentage; 0.8 means tolerate a 20% relative drop.
      * @param upperBound - the upper bound percentage; 5.0 means tolerate a 5x increase.
      * @param weight - the current normalized token weight.
+     * @return adjustedLowerBound - the final lower bound, adjusted for any weight changes.
+     * @return adjustedUpperBound - the final upper bound, adjusted for any weight changes.
+     * At any given time, the BPT price trading range is defined by the BPT price at the time
+     * the circuit breaker was set, multiplied by the weight-adjusted bounds.
      */
-    function calcBoundaryConversionRatios(
+    function calcAdjustedBounds(
         uint256 lowerBound,
         uint256 upperBound,
         uint256 weight
-    ) internal pure returns (uint256 lowerBoundRatio, uint256 upperBoundRatio) {
+    ) internal pure returns (uint256 adjustedLowerBound, uint256 adjustedUpperBound) {
         uint256 weightComplement = weight.complement();
 
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        lowerBoundRatio = lowerBound.powUp(weightComplement);
-        upperBoundRatio = upperBound.powDown(weightComplement);
+        adjustedLowerBound = lowerBound.powUp(weightComplement);
+        adjustedUpperBound = upperBound.powDown(weightComplement);
     }
 
     /**
-     * @notice Convert BPT price ratios to BPT price bounds
-     * @param lowerBoundRatio - the cached lower bound ratio
-     * @param upperBoundRatio - the cached upper bound ratio
+     * @notice Convert adjusted bounds to BPT prices
+     * @param adjustedLowerBound - the lower bound after applying the weight adjustment
+     * @param adjustedUpperBound - the upper bound after applying the weight adjustment
      * @param bptPrice - The BPT price stored at the time the breaker was set.
      */
     function calcBptPriceBoundaries(
-        uint256 lowerBoundRatio,
-        uint256 upperBoundRatio,
+        uint256 adjustedLowerBound,
+        uint256 adjustedUpperBound,
         uint256 bptPrice
     ) internal pure returns (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) {
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        lowerBoundBptPrice = bptPrice.mulUp(lowerBoundRatio);
-        upperBoundBptPrice = bptPrice.mulDown(upperBoundRatio);
+        lowerBoundBptPrice = bptPrice.mulUp(adjustedLowerBound);
+        upperBoundBptPrice = bptPrice.mulDown(adjustedUpperBound);
     }
 
     /**
@@ -118,7 +122,7 @@ library CircuitBreakerLib {
      * @param weight - The current normalized token weight.
      * @param isLowerBound - A flag indicating whether this is for a lower bound.
      */
-    function calcBoundaryConversionRatio(
+    function calcAdjustedBound(
         uint256 bound,
         uint256 weight,
         bool isLowerBound
