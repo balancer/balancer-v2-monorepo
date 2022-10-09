@@ -138,10 +138,7 @@ describe('CircuitBreakerLib', () => {
       const data = await lib.setCircuitBreaker(fp(BPT_PRICE), fp(NORMALIZED_WEIGHT), lowerBound, upperBound);
 
       // Pass in the same weight factor it was constructed with to get the reference bounds
-      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getCurrentCircuitBreakerBounds(
-        data,
-        fp(NORMALIZED_WEIGHT)
-      );
+      const [lowerBptPriceBound, upperBptPriceBound] = await lib.getBptPriceBounds(data, fp(NORMALIZED_WEIGHT));
 
       let lowerBoundTripped: boolean;
       let upperBoundTripped: boolean;
@@ -300,8 +297,8 @@ describe('CircuitBreakerLib', () => {
 
     it('should support single sided bounds', async () => {
       // Pass in the same weight factor it was constructed with
-      const lowerBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(NORMALIZED_WEIGHT), true);
-      const upperBptPriceBound = await lib.getCurrentCircuitBreakerBound(data, fp(NORMALIZED_WEIGHT), false);
+      const lowerBptPriceBound = await lib.getBptPriceBound(data, fp(NORMALIZED_WEIGHT), true);
+      const upperBptPriceBound = await lib.getBptPriceBound(data, fp(NORMALIZED_WEIGHT), false);
 
       const expLower = LOWER_BOUND ** (1 - NORMALIZED_WEIGHT);
       const expHigher = UPPER_BOUND ** (1 - NORMALIZED_WEIGHT);

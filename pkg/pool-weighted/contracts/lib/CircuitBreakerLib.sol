@@ -122,7 +122,7 @@ library CircuitBreakerLib {
      * @param weight - The current normalized token weight.
      * @param isLowerBound - A flag indicating whether this is for a lower bound.
      */
-    function calcBoundaryConversionRatio(
+    function calcAdjustedBound(
         uint256 bound,
         uint256 weight,
         bool isLowerBound

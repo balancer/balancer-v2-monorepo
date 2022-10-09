@@ -80,8 +80,8 @@ contract CircuitBreakerLibTest is Test {
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
 
         // Single sided
-        uint256 singleSidedLowerBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(poolState, referenceWeight, true);
-        uint256 singleUpperBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(poolState, referenceWeight, false);
+        uint256 singleSidedLowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(poolState, referenceWeight, true);
+        uint256 singleUpperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(poolState, referenceWeight, false);
 
         assertEq(singleSidedLowerBoundBptPrice, actualLowerBoundBptPrice);
         assertEq(singleUpperBoundBptPrice, actualUpperBoundBptPrice);
@@ -128,8 +128,8 @@ contract CircuitBreakerLibTest is Test {
 
         // Single-sided
 
-        uint256 singleSidedLowerBptPrice = CircuitBreakerLib.calcBoundaryConversionRatio(lowerBound, newWeight, true);
-        uint256 singleSidedUpperBptPrice = CircuitBreakerLib.calcBoundaryConversionRatio(upperBound, newWeight, false);
+        uint256 singleSidedLowerBptPrice = CircuitBreakerLib.calcAdjustedBound(lowerBound, newWeight, true);
+        uint256 singleSidedUpperBptPrice = CircuitBreakerLib.calcAdjustedBound(upperBound, newWeight, false);
 
         assertEq(singleSidedLowerBptPrice, expectedLowerBptPrice);
         assertEq(singleSidedUpperBptPrice, expectedUpperBptPrice);
