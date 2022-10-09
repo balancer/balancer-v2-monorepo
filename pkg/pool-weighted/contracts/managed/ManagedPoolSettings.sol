@@ -922,7 +922,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // not paused.
         _ensureNotPaused();
 
-        // No need to collect fees if we are not initialized yet.
+        // If the Pool doesn't hold any tokens due to being uninitialized then we skip fee collection.
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             _collectAumManagementFees(supplyBeforeFeeCollection);
