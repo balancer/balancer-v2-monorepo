@@ -29,20 +29,20 @@ contract MockCircuitBreakerLib {
             return CircuitBreakerStorageLib.getCircuitBreakerFields(circuitBreakerState);
     }
 
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeight)
+    function getBptPriceBounds(bytes32 circuitBreakerState, uint256 currentWeight)
         external
         pure
         returns (uint256, uint256)
     {
-        return CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeight);
+        return CircuitBreakerStorageLib.getBptPriceBounds(circuitBreakerState, currentWeight);
     }
 
-    function getCurrentCircuitBreakerBound(bytes32 circuitBreakerState, uint256 currentWeight, bool isLowerBound)
+    function getBptPriceBound(bytes32 circuitBreakerState, uint256 currentWeight, bool isLowerBound)
         external
         pure
         returns (uint256)
     {
-        return CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(circuitBreakerState, currentWeight, isLowerBound);
+        return CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, currentWeight, isLowerBound);
     }
 
     function hasCircuitBreakerTripped(
@@ -51,7 +51,7 @@ contract MockCircuitBreakerLib {
         uint256 normalizedWeight,
         uint256 upscaledBalance
     ) external pure returns (bool, bool) {
-        (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
+        (uint256 lowerBoundBptPrice, uint256 upperBoundBptPrice) = CircuitBreakerStorageLib.getBptPriceBounds(
             circuitBreakerState,
             normalizedWeight
         );
@@ -73,14 +73,14 @@ contract MockCircuitBreakerLib {
         uint256 upscaledBalance,
         bool isLowerBound
     ) external pure returns (bool) {
-        uint256 boundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(circuitBreakerState, normalizedWeight, isLowerBound);
+        uint256 bptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, isLowerBound);
 
         return
             CircuitBreakerLib.hasCircuitBreakerTripped(
                 virtualSupply,
                 normalizedWeight,
                 upscaledBalance,
-                boundBptPrice,
+                bptPriceBound,
                 isLowerBound
             );
     }
@@ -93,19 +93,15 @@ contract MockCircuitBreakerLib {
         return CircuitBreakerStorageLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
     }
 
-    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) external pure returns (bytes32) {
-        return CircuitBreakerStorageLib.updateBoundRatios(circuitBreakerState, weightComplement);
+    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 weight) external pure returns (bytes32) {
+        return CircuitBreakerStorageLib.updateAdjustedBounds(circuitBreakerState, weight);
     }
 
-    function calcBoundaryConversionRatios(
-        uint256 lowerBoundPercentage,
-        uint256 upperBoundPercentage,
-        uint256 currentWeightComplement
+    function calcAdjustedBounds(
+        uint256 lowerBound,
+        uint256 upperBound,
+        uint256 weight
     ) external pure returns (uint256, uint256) {
-        return CircuitBreakerLib.calcBoundaryConversionRatios(
-            lowerBoundPercentage,
-            upperBoundPercentage,
-            currentWeightComplement
-        );
+        return CircuitBreakerLib.calcAdjustedBounds(lowerBound, upperBound, weight);
     }
 }
