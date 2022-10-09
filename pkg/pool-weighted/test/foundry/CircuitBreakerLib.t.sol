@@ -74,7 +74,7 @@ contract CircuitBreakerLibTest is Test {
 
         // Test that calling it with the reference weight retrieves exact values from the ratio cache
         (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) = CircuitBreakerStorageLib
-            .getCurrentCircuitBreakerBounds(poolState, referenceWeight);
+            .getBptPriceBounds(poolState, referenceWeight);
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
@@ -101,9 +101,9 @@ contract CircuitBreakerLibTest is Test {
             upperBound
         );
         (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib
-            .getCurrentCircuitBreakerBounds(referencePoolState, newWeight);
+            .getBptPriceBounds(referencePoolState, newWeight);
 
-        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.calcBoundaryConversionRatios(
+        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.calcAdjustedBounds(
             lowerBound,
             upperBound,
             newWeight
@@ -144,16 +144,18 @@ contract CircuitBreakerLibTest is Test {
         // We now model the weight of the the token changing so `referenceWeight` becomes `newWeight`.
         // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
         uint256 dynamicCost = gasleft();
-        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib
-            .getCurrentCircuitBreakerBounds(referencePoolState, newWeight);
+        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib.getBptPriceBounds(
+            referencePoolState,
+            newWeight
+        );
         dynamicCost -= gasleft();
 
         // This is expensive so we refresh the cached bound ratios using the new weight.
-        bytes32 updatedPoolState = CircuitBreakerStorageLib.updateBoundRatios(referencePoolState, newWeight);
+        bytes32 updatedPoolState = CircuitBreakerStorageLib.updateAdjustedBounds(referencePoolState, newWeight);
 
         uint256 cachedCost = gasleft();
         (uint256 newCachedLowerBptPriceBoundary, uint256 newCachedUpperBptPriceBoundary) = CircuitBreakerStorageLib
-            .getCurrentCircuitBreakerBounds(updatedPoolState, newWeight);
+            .getBptPriceBounds(updatedPoolState, newWeight);
         cachedCost -= gasleft();
 
         // The new cached values should match what was previously calculated dynamically.
