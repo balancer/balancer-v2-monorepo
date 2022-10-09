@@ -68,39 +68,41 @@ library CircuitBreakerStorageLib {
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
-    // and the current BPT price and weight complement (1 - weight). Since this value is bounded by 1e18, which fits
-    // in ~60 bits, there is no need for compression.
+    // and the current BPT price and normalized weight. Since this value is bounded by 1e18, which fits in ~60 bits,
+    // there is no need for compression.
     //
-    // We then store the current BPT price, and the lower and upper bound conversion ratios, used to
-    // convert the percentage bounds into BPT prices that can be directly compared to the "runtime" BPT prices.
+    // We then store the current BPT price, and compute and cache the adjusted lower and upper bounds at the current
+    // weight. When multiplied by the stored BPT price, the adjusted bounds define the BPT price trading range: the
+    // "runtime" BPT prices can be directly compared to these BPT price bounds.
     //
-    // Since the price bounds shift along with the token weight, in general these bound ratios would need to be
+    // Since the price bounds need to be adjusted for the token weight, in general these adjusted bounds would be
     // computed every time. However, if the weight of the token and composition of the pool have not changed since
-    // the circuit breaker was set, these stored values can still be used, avoiding a heavy computation.
+    // the circuit breaker was set, the adjusted bounds cache can still be used, avoiding a heavy computation.
     //
-    // [          32 bits         |          32 bits         |  96 bits  |   64 bits   |   16 bits   |   16 bits   |
-    // [ cached upper bound ratio | cached lower bound ratio | BPT price | ref. weight | upper bound | lower bound |
-    // |MSB                                                                                                     LSB|
+    // [        32 bits       |        32 bits       |  96 bits  |     64 bits      |   16 bits   |   16 bits   |
+    // [ adjusted upper bound | adjusted lower bound | BPT price | reference weight | upper bound | lower bound |
+    // |MSB                                                                                                  LSB|
     uint256 private constant _LOWER_BOUND_OFFSET = 0;
     uint256 private constant _UPPER_BOUND_OFFSET = _LOWER_BOUND_OFFSET + _BOUND_WIDTH;
     uint256 private constant _REFERENCE_WEIGHT_OFFSET = _UPPER_BOUND_OFFSET + _BOUND_WIDTH;
     uint256 private constant _BPT_PRICE_OFFSET = _REFERENCE_WEIGHT_OFFSET + _REFERENCE_WEIGHT_WIDTH;
-    uint256 private constant _CACHED_LOWER_BOUND_RATIO_OFFSET = _BPT_PRICE_OFFSET + _BPT_PRICE_WIDTH;
-    uint256 private constant _CACHED_UPPER_BOUND_RATIO_OFFSET = _CACHED_LOWER_BOUND_RATIO_OFFSET + _BOUND_RATIO_WIDTH;
+    uint256 private constant _ADJUSTED_LOWER_BOUND_OFFSET = _BPT_PRICE_OFFSET + _BPT_PRICE_WIDTH;
+    uint256 private constant _ADJUSTED_UPPER_BOUND_OFFSET = _ADJUSTED_LOWER_BOUND_OFFSET + _ADJUSTED_BOUND_WIDTH;
 
     uint256 private constant _REFERENCE_WEIGHT_WIDTH = 64;
     uint256 private constant _BPT_PRICE_WIDTH = 96;
     uint256 private constant _BOUND_WIDTH = 16;
-    uint256 private constant _BOUND_RATIO_WIDTH = 32;
+    uint256 private constant _ADJUSTED_BOUND_WIDTH = 32;
 
     // We allow the bounds to range over two orders of magnitude: 0.1 - 10. The maximum upper bound is set to 10.0
     // in 18-decimal floating point, since this fits in 64 bits, and can be shifted down to 16 bit precision without
     // much loss. Since compression would lose a lot of precision for values close to 0, we also constrain the lower
-    // bound to a minimum value > 0.
+    // bound to a minimum value >> 0.
     //
-    // Since the bound ratios are (bound percentage)**(weightComplement), and weights are stored normalized, the maximum
-    // normalized weight is 1 - minimumWeight, which is 0.99 ~ 1. Therefore the ratio bounds are likewise constrained to
-    // 10**1 ~ 10. So we can use this as the maximum value of both the percentage and ratio values.
+    // Since the adjusted bounds are (bound percentage)**(1 - weight), and weights are stored normalized, the
+    // maximum normalized weight is 1 - minimumWeight, which is 0.99 ~ 1. Therefore the adjusted bounds are likewise
+    // constrained to 10**1 ~ 10. So we can use this as the maximum value of both the raw percentage and
+    // weight-adjusted bounds.
     uint256 private constant _MIN_BOUND_PERCENTAGE = 1e17; // 0.1 in 18-decimal fixed point
 
     uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18-decimal fixed point
@@ -110,7 +112,7 @@ library CircuitBreakerStorageLib {
     uint256 private constant _BOUND_SHIFT_BITS = 64 - _BOUND_WIDTH;
 
     /**
-     * @notice Returns the BPT price and reference weight values, and lower and upper bounds for a given token.
+     * @notice Returns the BPT price, reference weight, and the lower and upper percentage bounds for a given token.
      * @dev If an upper or lower bound value is zero, it means there is no circuit breaker in that direction for the
      * given token.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
@@ -139,9 +141,9 @@ library CircuitBreakerStorageLib {
      * for this token: there might be a lower bound, but no upper bound. If the current BPT price is less than
      * the lower bound, or greater than the non-zero upper bound, the transaction should revert.
      *
-     * These BPT price bounds are dynamically calculated using the conversion ratios. In general:
-     * lower/upper BPT price bound = bptPrice * "conversion ratio". The conversion ratio is given as
-     * (boundaryPercentage)**(weightComplement).
+     * These BPT price bounds are dynamically adjusted by a non-linear factor dependent on the weight.
+     * In general: lower/upper BPT price bound = bptPrice * "weight adjustment". The weight adjustment is
+     * given as: (boundaryPercentage)**(weightComplement).
      *
      * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
      * (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
@@ -168,108 +170,60 @@ library CircuitBreakerStorageLib {
      * given by: B1 = k * B0. Since the BPTPrice0 = totalSupply*weight/B0, and BPTPrice1 = totalSupply*weight/B1,
      * we can combine these equations to compute the BPT price ratio BPTPrice1/BPTPrice0 = 1/k; BPT1 = BPT0/k.
      * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
-     * as above BPT1 = BPT0 * (1/k), or more simply: (reference BPT price) * (priceRatio)**(1 - weight).
+     * as above BPT1 = BPT0 * (1/k), or more simply: (BPT price) * (priceRatio)**(1 - weight).
      *
-     * If the value of the weight complement has not changed, we can use the reference conversion ratios stored
+     * If the value of the weight complement has not changed, we can use the cached weight adjustments stored
      * when the breaker was set. Otherwise, we need to calculate them.
      *
-     * As described in the general comments above, the weight complement calculation attempts to isolate changes
+     * As described in the general comments above, the weight adjustment calculation attempts to isolate changes
      * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
      * ongoing weight update, or changes to the pool composition. There is a non-linear relationship between "spot"
      * price changes and BPT price changes. This calculation transforms one into the other.
      *
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param currentWeight - The token's current normalized weight.
-     * @return - lower and upper BPT price bounds, which can be directly compared against the current BPT price.
+     * @return - lower and upper BPT price bounds, which can be directly compared to the current BPT price.
      */
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeight)
+    function getBptPriceBounds(bytes32 circuitBreakerState, uint256 currentWeight)
         internal
         pure
         returns (uint256, uint256)
     {
-        // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
+        // Retrieve the reference weight and BPT price passed in when the circuit breaker was set.
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
         uint256 referenceWeight = circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_OFFSET, _REFERENCE_WEIGHT_WIDTH);
 
-        uint256 lowerBoundRatio;
-        uint256 upperBoundRatio;
+        uint256 adjustedLowerBound;
+        uint256 adjustedUpperBound;
 
         if (currentWeight == referenceWeight) {
             // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
-            // boundary ratios.
-            lowerBoundRatio = circuitBreakerState
-                .decodeUint(_CACHED_LOWER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
-                .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
-            upperBoundRatio = circuitBreakerState
-                .decodeUint(_CACHED_UPPER_BOUND_RATIO_OFFSET, _BOUND_RATIO_WIDTH)
-                .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
+            // adjusted bounds.
+            adjustedLowerBound = circuitBreakerState
+                .decodeUint(_ADJUSTED_LOWER_BOUND_OFFSET, _ADJUSTED_BOUND_WIDTH)
+                .decompress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE);
+            adjustedUpperBound = circuitBreakerState
+                .decodeUint(_ADJUSTED_UPPER_BOUND_OFFSET, _ADJUSTED_BOUND_WIDTH)
+                .decompress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
             // Something has changed - either the weight of the token, or the composition of the pool, so we must
             // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
-            (lowerBoundRatio, upperBoundRatio) = CircuitBreakerLib.calcBoundaryConversionRatios(
+            (adjustedLowerBound, adjustedUpperBound) = CircuitBreakerLib.calcAdjustedBounds(
                 circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
                 circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
                 currentWeight
             );
         }
 
-        // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
-        return CircuitBreakerLib.calcBptPriceBoundaries(lowerBoundRatio, upperBoundRatio, bptPrice);
+        // Use the adjusted bounds retrieved (or computed) above to calculate the BPT price bounds.
+        return CircuitBreakerLib.calcBptPriceBoundaries(adjustedLowerBound, adjustedUpperBound, bptPrice);
     }
 
     /**
-     * @notice Returns a dynamic lower or upper BPT price bound for a given token, at the current weight.
-     * @dev The current BPT price of the token can be directly compared to this value, to determine whether
-     * the breaker should be tripped.
-     * @param circuitBreakerState - The bytes32 state of the token of interest.
-     * @param currentWeight - The token's current normalized weight.
-     * @param isLowerBound - Flag indicating whether this is the lower bound.
-     * @return - lower or upper bound BPT price, which can be directly compared against the current BPT price.
-     */
-    function getCurrentCircuitBreakerBound(
-        bytes32 circuitBreakerState,
-        uint256 currentWeight,
-        bool isLowerBound
-    ) internal pure returns (uint256) {
-        uint256 bound = circuitBreakerState.decodeUint(
-            isLowerBound ? _LOWER_BOUND_OFFSET : _UPPER_BOUND_OFFSET,
-            _BOUND_WIDTH
-        ) << _BOUND_SHIFT_BITS;
-
-        if (bound == 0) {
-            return 0;
-        }
-
-        // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
-        uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
-        uint256 referenceWeight = circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_OFFSET, _REFERENCE_WEIGHT_WIDTH);
-
-        uint256 boundRatio;
-
-        if (currentWeight == referenceWeight) {
-            // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
-            // boundary ratios.
-            boundRatio = circuitBreakerState
-                .decodeUint(
-                isLowerBound ? _CACHED_LOWER_BOUND_RATIO_OFFSET : _CACHED_UPPER_BOUND_RATIO_OFFSET,
-                _BOUND_RATIO_WIDTH
-            )
-                .decompress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE);
-        } else {
-            // Something has changed - either the weight of the token, or the composition of the pool, so we must
-            // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
-            boundRatio = CircuitBreakerLib.calcBoundaryConversionRatio(bound, currentWeight, isLowerBound);
-        }
-
-        // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
-        return CircuitBreakerLib.calcBptPriceBoundary(boundRatio, bptPrice, isLowerBound);
-    }
-
-    /**
-     * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
+     * @notice Sets the reference BPT price, normalized weight, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
      * @param bptPrice: The BPT price of the token at the time the circuit breaker is set. The BPT Price
-     *   of a token is generally given by: supply * weight / balance.
+     * of a token is generally given by: supply * weight / balance.
      * @param weight: This is the current normalized weight of the token.
      * @param lowerBound: The value of the lower bound, expressed as a percentage.
      * @param upperBound: The value of the upper bound, expressed as a percentage.
@@ -290,7 +244,7 @@ library CircuitBreakerStorageLib {
         _require(upperBound <= _MAX_BOUND_PERCENTAGE, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
         _require(upperBound == 0 || upperBound >= lowerBound, Errors.INVALID_CIRCUIT_BREAKER_BOUNDS);
 
-        // Set the reference parameters: BPT price of the token, and the weight complement.
+        // Set the reference parameters: BPT price of the token, and the reference weight.
         bytes32 circuitBreakerState = bytes32(0).insertUint(bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH).insertUint(
             weight,
             _REFERENCE_WEIGHT_OFFSET,
@@ -302,59 +256,63 @@ library CircuitBreakerStorageLib {
             .insertUint(lowerBound >> _BOUND_SHIFT_BITS, _LOWER_BOUND_OFFSET, _BOUND_WIDTH)
             .insertUint(upperBound >> _BOUND_SHIFT_BITS, _UPPER_BOUND_OFFSET, _BOUND_WIDTH);
 
-        // Precompute and store the conversion ratios, used to convert percentage bounds to BPT price bounds.
-        // If the weight complement has not changed since the breaker was set, we can use the precomputed values
-        // directly, and avoid a heavy computation.
-        (uint256 lowerBoundRatio, uint256 upperBoundRatio) = CircuitBreakerLib.calcBoundaryConversionRatios(
+        // Precompute and store the adjusted bounds, used to convert percentage bounds to BPT price bounds.
+        // If the weight has not changed since the breaker was set, we can use the precomputed values directly,
+        // and avoid a heavy computation.
+        (uint256 adjustedLowerBound, uint256 adjustedUpperBound) = CircuitBreakerLib.calcAdjustedBounds(
             lowerBound,
             upperBound,
             weight
         );
 
-        // Finally, insert these computed ratios, and return the complete set of fields.
+        // Finally, insert these computed adjusted bounds, and return the complete set of fields.
         return
             circuitBreakerState
                 .insertUint(
-                lowerBoundRatio.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _CACHED_LOWER_BOUND_RATIO_OFFSET,
-                _BOUND_RATIO_WIDTH
+                adjustedLowerBound.compress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _ADJUSTED_LOWER_BOUND_OFFSET,
+                _ADJUSTED_BOUND_WIDTH
             )
                 .insertUint(
-                upperBoundRatio.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _CACHED_UPPER_BOUND_RATIO_OFFSET,
-                _BOUND_RATIO_WIDTH
+                adjustedUpperBound.compress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _ADJUSTED_UPPER_BOUND_OFFSET,
+                _ADJUSTED_BOUND_WIDTH
             );
     }
 
     /**
-     * @notice Update the cached ratios given a new weight.
+     * @notice Update the cached adjusted bounds, given a new weight.
      * @dev This might be used when weights are adjusted, pre-emptively updating the cache to improve performance
      * of operations after the weight change completed. Note that this does not update the BPT price: this is still
      * relative to the last call to `setCircuitBreaker`. The intent is only to optimize the automatic bounds
      * adjustments due to changing weights.
      */
-    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weight) internal pure returns (bytes32) {
-        (uint256 lowerBoundRatio, uint256 upperBoundRatio) = CircuitBreakerLib.calcBoundaryConversionRatios(
+    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 currentWeight) internal pure returns (bytes32) {
+        (uint256 adjustedLowerBound, uint256 adjustedUpperBound) = CircuitBreakerLib.calcAdjustedBounds(
             circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
             circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
-            weight
+            currentWeight
         );
 
-        // Replace the weight complement.
-        bytes32 result = circuitBreakerState.insertUint(weight, _REFERENCE_WEIGHT_OFFSET, _REFERENCE_WEIGHT_WIDTH);
+        // Replace the reference weight.
+        bytes32 result = circuitBreakerState.insertUint(
+            currentWeight,
+            _REFERENCE_WEIGHT_OFFSET,
+            _REFERENCE_WEIGHT_WIDTH
+        );
 
-        // Update the cached ratio bounds.
+        // Update the cached adjusted bounds.
         return
             result
                 .insertUint(
-                lowerBoundRatio.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _CACHED_LOWER_BOUND_RATIO_OFFSET,
-                _BOUND_RATIO_WIDTH
+                adjustedLowerBound.compress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _ADJUSTED_LOWER_BOUND_OFFSET,
+                _ADJUSTED_BOUND_WIDTH
             )
                 .insertUint(
-                upperBoundRatio.compress(_BOUND_RATIO_WIDTH, _MAX_BOUND_PERCENTAGE),
-                _CACHED_UPPER_BOUND_RATIO_OFFSET,
-                _BOUND_RATIO_WIDTH
+                adjustedUpperBound.compress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE),
+                _ADJUSTED_UPPER_BOUND_OFFSET,
+                _ADJUSTED_BOUND_WIDTH
             );
     }
 }
