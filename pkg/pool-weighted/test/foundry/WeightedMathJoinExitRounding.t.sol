@@ -36,8 +36,8 @@ contract WeightedMathJoinExitRoundingTest is Test {
         initialAmount = bound(initialAmount, 0, originalBalance);
 
         normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
-        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
 
         _testJoinExitGivenInGivenInNoProfit(
             originalBalance,
@@ -124,8 +124,8 @@ contract WeightedMathJoinExitRoundingTest is Test {
         initialAmount = bound(initialAmount, 0, originalBalance);
 
         normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
-        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
 
         _testJoinExitGivenInGivenOutNoProfit(
             originalBalance,
@@ -210,8 +210,8 @@ contract WeightedMathJoinExitRoundingTest is Test {
         originalBalance = bound(originalBalance, 1e10, type(uint112).max);
 
         normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
-        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
 
         _testJoinExitGivenOutGivenInNoProfit(
             originalBalance,
@@ -302,8 +302,8 @@ contract WeightedMathJoinExitRoundingTest is Test {
         originalBalance = bound(originalBalance, 1e10, type(uint112).max);
 
         normalizedWeight = bound(normalizedWeight, WeightedMath._MIN_WEIGHT, FixedPoint.ONE - WeightedMath._MIN_WEIGHT);
-        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
+        swapFeePercentage = bound(swapFeePercentage, 0, 0.95e18);
 
         _testJoinExitGivenOutGivenOutNoProfit(
             originalBalance,
