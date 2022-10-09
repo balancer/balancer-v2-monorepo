@@ -987,10 +987,18 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             circuitBreakerState
         );
 
+        // Restore the original unscaled BPT price passed in `setCircuitBreakers`.
+        uint256 tokenScalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token));
+        bptPrice = _upscale(bptPrice, tokenScalingFactor);
+
         (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
             circuitBreakerState,
             _getNormalizedWeight(token).complement()
         );
+
+        // Also render the adjusted bounds as unscaled values.
+        lowerBptPriceBound = _upscale(lowerBptPriceBound, tokenScalingFactor);
+        upperBptPriceBound = _upscale(upperBptPriceBound, tokenScalingFactor);
     }
 
     /**
@@ -1026,14 +1034,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // Fail if the token is not in the pool (or is the BPT token)
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
-        // The library will validate the lower/upper bounds
-        // The incoming BPT price will have been calculated dividing by unscaled token balance, effectively
-        // multiplying the result by the scaling factor. To correct this, we need to divide by it (downscaling).
+        // The incoming BPT price (defined as virtualSupply * weight / balance) will have been calculated dividing
+        // by unscaled token balance, effectively multiplying the result by the scaling factor.
+        // To correct this, we need to divide by it (downscaling).
         uint256 scaledBptPrice = _downscaleDown(
             bptPrice,
             ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token))
         );
 
+        // The library will validate the lower/upper bounds
         _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
             scaledBptPrice,
             normalizedWeight.complement(),
@@ -1041,7 +1050,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             upperBoundPercentage
         );
 
-        emit CircuitBreakerSet(token, scaledBptPrice, lowerBoundPercentage, upperBoundPercentage);
+        // Echo the unscaled BPT price in the event.
+        emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
     }
 
     // Misc

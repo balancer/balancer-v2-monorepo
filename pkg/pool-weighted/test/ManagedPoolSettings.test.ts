@@ -826,18 +826,25 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('circuit breakers', () => {
-    async function getUnscaledBptPrice(): Promise<BigNumber> {
+    let tokenIndex: number;
+
+    async function getUnscaledBptPrice(tokenIndex: number): Promise<BigNumber> {
       const totalSupply = await pool.getActualSupply();
 
-      return fpDiv(fpMul(totalSupply, poolWeights[0]), initialBalances[0]);
+      return fpDiv(fpMul(totalSupply, poolWeights[tokenIndex]), initialBalances[tokenIndex]);
     }
 
-    async function getScaledBptPrice(): Promise<BigNumber> {
+    async function getScaledBptPrice(tokenIndex: number): Promise<BigNumber> {
       const totalSupply = await pool.getActualSupply();
       const scalingFactors = await pool.getScalingFactors();
 
-      return fpDiv(fpMul(totalSupply, poolWeights[0]), fpMul(initialBalances[0], scalingFactors[0]));
+      return fpDiv(
+        fpMul(totalSupply, poolWeights[tokenIndex]),
+        fpMul(initialBalances[tokenIndex], scalingFactors[tokenIndex])
+      );
     }
+
+    const randomInt = (max: number) => Math.floor(Math.random() * Math.floor(max));
 
     describe('setCircuitBreakers', () => {
       const LOWER_BOUND = fp(0.8);
@@ -857,8 +864,9 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
+        tokenIndex = randomInt(poolTokens.length);
 
-        bptPrice = await getUnscaledBptPrice();
+        bptPrice = await getUnscaledBptPrice(tokenIndex);
 
         // For range checks
         lowerBounds = Array(poolTokens.length).fill(LOWER_BOUND);
@@ -927,24 +935,29 @@ describe('ManagedPoolSettings', function () {
 
         context('with valid parameters', () => {
           sharedBeforeEach('set the breaker', async () => {
-            await pool.setCircuitBreakers(sender, [poolTokens.first], [bptPrice], [LOWER_BOUND], [UPPER_BOUND]);
+            await pool.setCircuitBreakers(
+              sender,
+              [poolTokens.get(tokenIndex)],
+              [bptPrice],
+              [LOWER_BOUND],
+              [UPPER_BOUND]
+            );
           });
 
           it('setting a circuit breaker emits an event', async () => {
-            const unscaledBptPrice = await getUnscaledBptPrice();
-            const scaledBptPrice = await getScaledBptPrice();
+            const unscaledBptPrice = await getUnscaledBptPrice(tokenIndex);
 
             const receipt = await pool.setCircuitBreakers(
               sender,
-              [poolTokens.first],
+              [poolTokens.get(tokenIndex)],
               [unscaledBptPrice],
               [LOWER_BOUND],
               [UPPER_BOUND]
             );
 
             expectEvent.inReceipt(await receipt.wait(), 'CircuitBreakerSet', {
-              token: poolTokens.first.address,
-              bptPrice: scaledBptPrice,
+              token: poolTokens.get(tokenIndex).address,
+              bptPrice: unscaledBptPrice,
               lowerBoundPercentage: LOWER_BOUND,
               upperBoundPercentage: UPPER_BOUND,
             });
@@ -956,15 +969,12 @@ describe('ManagedPoolSettings', function () {
               weightComplement: actualWeightComplement,
               lowerBound: actualLowerBound,
               upperBound: actualUpperBound,
-            } = await pool.getCircuitBreakerState(poolTokens.first);
-            const expectedWeightComplement = FP_ONE.sub(poolWeights[0]);
+            } = await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
+            const expectedWeightComplement = FP_ONE.sub(poolWeights[tokenIndex]);
             const totalSupply = await pool.getActualSupply();
-            const scalingFactors = await pool.getScalingFactors();
 
-            const expectedBptPrice = fpDiv(
-              fpMul(totalSupply, poolWeights[0]),
-              fpMul(initialBalances[0], scalingFactors[0])
-            );
+            // Don't scale; the getter will return the unscaled value.
+            const expectedBptPrice = fpDiv(fpMul(totalSupply, poolWeights[tokenIndex]), initialBalances[tokenIndex]);
 
             expect(actualLowerBound).to.equalWithError(LOWER_BOUND, 0.001);
             expect(actualUpperBound).to.equalWithError(UPPER_BOUND, 0.001);
@@ -1030,6 +1040,8 @@ describe('ManagedPoolSettings', function () {
     context('circuit breaker bounds', () => {
       let unscaledBptPrice: BigNumber;
       let scaledBptPrice: BigNumber;
+      let initialWeight: BigNumber;
+      let scalingFactor: BigNumber;
 
       sharedBeforeEach('deploy pool', async () => {
         const params = {
@@ -1040,18 +1052,22 @@ describe('ManagedPoolSettings', function () {
         };
         pool = await createMockPool(params);
         await pool.init({ from: other, initialBalances });
-        unscaledBptPrice = await getUnscaledBptPrice();
-        scaledBptPrice = await getScaledBptPrice();
+        tokenIndex = randomInt(poolTokens.length);
+        initialWeight = poolWeights[tokenIndex];
+        const scalingFactors = await pool.getScalingFactors();
+        scalingFactor = scalingFactors[tokenIndex];
+
+        unscaledBptPrice = await getUnscaledBptPrice(tokenIndex);
+        scaledBptPrice = await getScaledBptPrice(tokenIndex);
       });
 
-      const initialWeight = poolWeights[0];
       const lowerBound = 0.9;
       const upperBound = 1.5;
 
       let referenceState: CircuitBreakerState;
 
       function getBptPriceBounds(bptPrice: BigNumber, normalizedWeight: BigNumber): BigNumber[] {
-        const weightComplement = Number(fromFp(fp(1).sub(normalizedWeight)));
+        const weightComplement = Number(fromFp(FP_ONE.sub(normalizedWeight)));
 
         const result: BigNumber[] = [];
         result[0] = fpMul(bptPrice, fp(lowerBound ** weightComplement));
@@ -1063,13 +1079,13 @@ describe('ManagedPoolSettings', function () {
       sharedBeforeEach('set the breaker', async () => {
         await pool.setCircuitBreakers(
           owner,
-          [poolTokens.first],
+          [poolTokens.get(tokenIndex)],
           [unscaledBptPrice],
           [fp(lowerBound)],
           [fp(upperBound)]
         );
 
-        referenceState = await pool.getCircuitBreakerState(poolTokens.first);
+        referenceState = await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
       });
 
       it('sets the reference bounds', async () => {
@@ -1079,8 +1095,14 @@ describe('ManagedPoolSettings', function () {
           initialWeight
         );
 
-        expect(expectedLowerBoundBptPrice).to.equalWithError(referenceState.lowerBptPriceBound, 0.001);
-        expect(expectedUpperBoundBptPrice).to.equalWithError(referenceState.upperBptPriceBound, 0.001);
+        expect(referenceState.lowerBptPriceBound).to.equalWithError(
+          fpMul(expectedLowerBoundBptPrice, scalingFactor),
+          0.001
+        );
+        expect(referenceState.upperBptPriceBound).to.equalWithError(
+          fpMul(expectedUpperBoundBptPrice, scalingFactor),
+          0.001
+        );
       });
 
       describe('tracks weight changes', () => {
@@ -1113,7 +1135,7 @@ describe('ManagedPoolSettings', function () {
           it(`gets correct bounds if called ${pct}% through`, async () => {
             await advanceTime(START_DELAY + (UPDATE_DURATION * pct) / 100);
 
-            const intermediateWeight = getIntermediateWeight(poolWeights[0], endWeights[0], pct);
+            const intermediateWeight = getIntermediateWeight(poolWeights[tokenIndex], endWeights[tokenIndex], pct);
 
             const [expectedLowerBptPriceBound, expectedUpperBptPriceBound] = getBptPriceBounds(
               scaledBptPrice,
@@ -1123,10 +1145,10 @@ describe('ManagedPoolSettings', function () {
             const {
               lowerBptPriceBound: actualLowerBptPriceBound,
               upperBptPriceBound: actualUpperBptPriceBound,
-            } = await pool.getCircuitBreakerState(poolTokens.first);
+            } = await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
 
-            expect(actualLowerBptPriceBound).to.equalWithError(expectedLowerBptPriceBound, 0.001);
-            expect(actualUpperBptPriceBound).to.equalWithError(expectedUpperBptPriceBound, 0.001);
+            expect(actualLowerBptPriceBound).to.equalWithError(fpMul(expectedLowerBptPriceBound, scalingFactor), 0.001);
+            expect(actualUpperBptPriceBound).to.equalWithError(fpMul(expectedUpperBptPriceBound, scalingFactor), 0.001);
           });
         }
       });
