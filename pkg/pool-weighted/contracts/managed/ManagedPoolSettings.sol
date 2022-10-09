@@ -969,7 +969,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Return the full circuit breaker state for the given token.
-     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
+     * @dev These are the reference values (BPT price and normalized weight) passed in when the breaker was set,
      * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
      * the circuit breaker should trip.
      */
@@ -993,16 +993,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
         uint256 normalizedWeight = _getNormalizedWeight(token);
 
-        lowerBptPriceBound = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
-            circuitBreakerState,
-            normalizedWeight,
-            true
-        );
-        upperBptPriceBound = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
-            circuitBreakerState,
-            normalizedWeight,
-            false
-        );
+        lowerBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, true);
+        upperBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, false);
     }
 
     /**

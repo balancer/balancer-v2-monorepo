@@ -72,8 +72,8 @@ contract CircuitBreakerLibTest is Test {
 
         bytes32 poolState = CircuitBreakerStorageLib.setCircuitBreaker(bptPrice, referenceWeight, lowerBound, upperBound);
 
-        uint256 actualLowerBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(poolState, referenceWeight, true);
-        uint256 actualUpperBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(poolState, referenceWeight, false);
+        uint256 actualLowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(poolState, referenceWeight, true);
+        uint256 actualUpperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(poolState, referenceWeight, false);
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
@@ -99,11 +99,11 @@ contract CircuitBreakerLibTest is Test {
             lowerBound,
             upperBound
         );
-        uint256 lowerBptPriceBoundary = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(referencePoolState, newWeight, true);
-        uint256 upperBptPriceBoundary = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(referencePoolState, newWeight, false);
+        uint256 lowerBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, true);
+        uint256 upperBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, false);
 
-        uint256 expectedLowerBptPrice = CircuitBreakerLib.calcBoundaryConversionRatio(lowerBound, newWeight, true);
-        uint256 expectedUpperBptPrice = CircuitBreakerLib.calcBoundaryConversionRatio(upperBound, newWeight, false);
+        uint256 expectedLowerBptPrice = CircuitBreakerLib.calcAdjustedBound(lowerBound, newWeight, true);
+        uint256 expectedUpperBptPrice = CircuitBreakerLib.calcAdjustedBound(upperBound, newWeight, false);
 
         assertApproxEqRel(
             lowerBptPriceBoundary,
@@ -142,18 +142,18 @@ contract CircuitBreakerLibTest is Test {
         // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
         uint256 dynamicCost = gasleft();
 
-        uint256 lowerBptPriceBoundary = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(referencePoolState, newWeight, true);
-        uint256 upperBptPriceBoundary = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(referencePoolState, newWeight, false);
+        uint256 lowerBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, true);
+        uint256 upperBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, false);
 
         dynamicCost -= gasleft();
 
         // This is expensive so we refresh the cached bound ratios using the new weight.
-        bytes32 updatedPoolState = CircuitBreakerStorageLib.updateBoundRatios(referencePoolState, newWeight);
+        bytes32 updatedPoolState = CircuitBreakerStorageLib.updateAdjustedBounds(referencePoolState, newWeight);
 
         uint256 cachedCost = gasleft();
 
-        uint256 newCachedLowerBptPriceBoundary = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(updatedPoolState, newWeight, true);
-        uint256 newCachedUpperBptPriceBoundary = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(updatedPoolState, newWeight, false);
+        uint256 newCachedLowerBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(updatedPoolState, newWeight, true);
+        uint256 newCachedUpperBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(updatedPoolState, newWeight, false);
 
         cachedCost -= gasleft();
 
