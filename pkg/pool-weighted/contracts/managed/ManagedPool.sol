@@ -465,14 +465,17 @@ contract ManagedPool is ManagedPoolSettings {
             userData
         );
 
-        // Avoiding PoolDelta({key: value}) syntax for memory savings
-        PoolDelta memory poolDelta;
-        poolDelta.tokens = tokens;
-        poolDelta.normalizedWeights = normalizedWeights;
-        poolDelta.balances = balances;
-        poolDelta.amounts = amountsIn;
+        // Do not check circuit breakers on proportional joins, which do not change BPT prices.
+        if (userData.joinKind() != WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            // Avoiding PoolDelta({key: value}) syntax for memory savings
+            PoolDelta memory poolDelta;
+            poolDelta.tokens = tokens;
+            poolDelta.normalizedWeights = normalizedWeights;
+            poolDelta.balances = balances;
+            poolDelta.amounts = amountsIn;
 
-        _checkCircuitBreakers(actualSupply.add(bptAmountOut), poolDelta, true);
+            _checkCircuitBreakers(actualSupply.add(bptAmountOut), poolDelta, true);
+        }
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
@@ -566,14 +569,17 @@ contract ManagedPool is ManagedPoolSettings {
             userData
         );
 
-        // Avoiding PoolDelta({key: value}) syntax for memory savings
-        PoolDelta memory poolDelta;
-        poolDelta.tokens = tokens;
-        poolDelta.normalizedWeights = normalizedWeights;
-        poolDelta.balances = balances;
-        poolDelta.amounts = amountsOut;
+        // Do not check circuit breakers on proportional exits, which do not change BPT prices.
+        if (userData.exitKind() != WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+            // Avoiding PoolDelta({key: value}) syntax for memory savings
+            PoolDelta memory poolDelta;
+            poolDelta.tokens = tokens;
+            poolDelta.normalizedWeights = normalizedWeights;
+            poolDelta.balances = balances;
+            poolDelta.amounts = amountsOut;
 
-        _checkCircuitBreakers(actualSupply.sub(bptAmountIn), poolDelta, false);
+            _checkCircuitBreakers(actualSupply.sub(bptAmountIn), poolDelta, false);
+        }
 
         // amountsOut are amounts exiting the Pool, so we round down.
         _downscaleDownArray(amountsOut, scalingFactors);
