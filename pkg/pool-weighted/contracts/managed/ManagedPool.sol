@@ -342,18 +342,18 @@ contract ManagedPool is ManagedPoolSettings {
             swapTokenData.tokenOutWeight,
             false
         );
-        uint256 virtualSupply = _getVirtualSupply();
+        uint256 actualSupply = _getActualSupply(_getVirtualSupply());
 
         _require(
             !(CircuitBreakerLib.hasCircuitBreakerTripped(
-                virtualSupply,
+                actualSupply,
                 swapTokenData.tokenInWeight,
                 endingBalanceTokenIn,
                 lowerBoundBptPrice,
                 true // check lower bound
             ) ||
                 CircuitBreakerLib.hasCircuitBreakerTripped(
-                    virtualSupply,
+                    actualSupply,
                     swapTokenData.tokenOutWeight,
                     endingBalanceTokenOut,
                     upperBoundBptPrice,
