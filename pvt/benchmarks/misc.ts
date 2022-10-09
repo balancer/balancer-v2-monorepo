@@ -77,7 +77,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   if (poolName == 'WeightedPool' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
-    const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
 
     switch (poolName) {
@@ -117,7 +116,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
       default: {
         const rateProviders = Array(weights.length).fill(ZERO_ADDRESS);
 
-        params = [tokens.addresses, weights, rateProviders, assetManagers, swapFeePercentage];
+        params = [tokens.addresses, weights, rateProviders, swapFeePercentage];
       }
     }
 

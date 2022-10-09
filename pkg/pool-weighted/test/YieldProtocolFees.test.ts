@@ -4,7 +4,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { random, range } from 'lodash';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
@@ -73,6 +73,26 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
           const providers = await pool.getRateProviders();
 
           expect(providers).to.deep.eq(rateProviderAddresses);
+        });
+      });
+
+      describe('getYieldFeeExemption', () => {
+        it('returns the expected value', async () => {
+          // We force a check of this case as it would otherwise only occur once in every 2**numTokens attempts.
+          const zeroRateProviders = Array.from({ length: numTokens }, () => ZERO_ADDRESS);
+          expect(await pool.getYieldFeeExemption(zeroRateProviders)).to.be.true;
+
+          for (let i = 0; i < 10; i++) {
+            // Randomly create a set of rate providers which are a mix of real or zero addresses.
+            const rateProviders = Array.from({ length: numTokens }, () =>
+              random(0, 1.0) < 0.5 ? ANY_ADDRESS : ZERO_ADDRESS
+            );
+
+            // We expect the pool to be exempt if every rate provider is the zero address
+            const isExempt = rateProviders.every((rateProvider) => rateProvider === ZERO_ADDRESS);
+
+            expect(await pool.getYieldFeeExemption(rateProviders)).to.be.eq(isExempt);
+          }
         });
       });
 

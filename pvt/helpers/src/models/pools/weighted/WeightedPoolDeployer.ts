@@ -157,11 +157,11 @@ export default {
   },
 
   async _deployFromFactory(params: WeightedPoolDeployment, vault: Vault): Promise<Contract> {
+    // Note that we only support asset managers with the standalone deploy method.
     const {
       tokens,
       weights,
       rateProviders,
-      assetManagers,
       swapFeePercentage,
       swapEnabledOnStart,
       mustAllowlistLPs,
@@ -254,7 +254,6 @@ export default {
           tokens.addresses,
           weights,
           rateProviders,
-          assetManagers,
           swapFeePercentage,
           owner
         );

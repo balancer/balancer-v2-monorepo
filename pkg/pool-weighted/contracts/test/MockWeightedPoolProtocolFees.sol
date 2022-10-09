@@ -51,6 +51,10 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         _totalTokens = tokens.length;
     }
 
+    function getYieldFeeExemption(IRateProvider[] memory rateProviders) external pure returns (bool) {
+        return _getYieldFeeExemption(rateProviders);
+    }
+
     function getRateProduct(uint256[] memory normalizedWeights) external view returns (uint256) {
         return _getRateProduct(normalizedWeights);
     }
@@ -78,6 +82,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     ) external returns (uint256) {
         return
             _getPostJoinExitProtocolFees(
+                WeightedMath._calculateInvariant(normalizedWeights, preBalances),
                 preBalances,
                 balanceDeltas,
                 normalizedWeights,
