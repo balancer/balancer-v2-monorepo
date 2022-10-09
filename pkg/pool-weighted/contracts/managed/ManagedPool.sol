@@ -332,12 +332,12 @@ contract ManagedPool is ManagedPoolSettings {
         }
 
         // If circuit breakers are set, check the lower bound on the tokenIn, and the upper bound on the tokenOut.
-        uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+        uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
             _getCircuitBreakerState(request.tokenIn),
             swapTokenData.tokenInWeight,
             true
         );
-        uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getCurrentCircuitBreakerBound(
+        uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
             _getCircuitBreakerState(request.tokenOut),
             swapTokenData.tokenOutWeight,
             false
