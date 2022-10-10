@@ -654,8 +654,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the 
      * virtual supply of the Pool changes to ensure proper accounting.
      *
-     * This collection syncs the virtual supply to the actual supply so by adding the minted BPT to the passed virtual
-     * supply we can calculate the current actual supply.
+     * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of BPT 
+     * returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is 
+     * equal to the actual supply).
      * @return bptAmount - The amount of BPT minted as AUM fees.
      */
     function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
