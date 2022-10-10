@@ -102,7 +102,7 @@ library CircuitBreakerStorageLib {
     // Since the adjusted bounds are (bound percentage)**(1 - weight), and weights are stored normalized, the
     // maximum normalized weight is 1 - minimumWeight, which is 0.99 ~ 1. Therefore the adjusted bounds are likewise
     // constrained to 10**1 ~ 10. So we can use this as the maximum value of both the raw percentage and
-    // weight-adjusted bounds.
+    // weight-adjusted percentage bounds.
     uint256 private constant _MIN_BOUND_PERCENTAGE = 1e17; // 0.1 in 18-decimal fixed point
 
     uint256 private constant _MAX_BOUND_PERCENTAGE = 10e18; // 10.0 in 18-decimal fixed point
@@ -172,8 +172,8 @@ library CircuitBreakerStorageLib {
      * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
      * as above BPT1 = BPT0 * (1/k), or more simply: (BPT price) * (priceRatio)**(1 - weight).
      *
-     * If the value of the weight complement has not changed, we can use the cached weight adjustments stored
-     * when the breaker was set. Otherwise, we need to calculate them.
+     * If the value of the weight complement has not changed, we can use the cached adjusted bounds stored when
+     * the breaker was set. Otherwise, we need to calculate them.
      *
      * As described in the general comments above, the weight adjustment calculation attempts to isolate changes
      * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
@@ -228,13 +228,13 @@ library CircuitBreakerStorageLib {
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
      * @param bptPrice: The BPT price of the token at the time the circuit breaker is set. The BPT Price
      * of a token is generally given by: supply * weight / balance.
-     * @param weight: This is the current normalized weight of the token.
+     * @param referenceWeight: This is the current normalized weight of the token.
      * @param lowerBound: The value of the lower bound, expressed as a percentage.
      * @param upperBound: The value of the upper bound, expressed as a percentage.
      */
     function setCircuitBreaker(
         uint256 bptPrice,
-        uint256 weight,
+        uint256 referenceWeight,
         uint256 lowerBound,
         uint256 upperBound
     ) internal pure returns (bytes32) {
@@ -250,7 +250,7 @@ library CircuitBreakerStorageLib {
 
         // Set the reference parameters: BPT price of the token, and the reference weight.
         bytes32 circuitBreakerState = bytes32(0).insertUint(bptPrice, _BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH).insertUint(
-            weight,
+            referenceWeight,
             _REFERENCE_WEIGHT_OFFSET,
             _REFERENCE_WEIGHT_WIDTH
         );
@@ -263,8 +263,8 @@ library CircuitBreakerStorageLib {
         // Precompute and store the adjusted bounds, used to convert percentage bounds to BPT price bounds.
         // If the weight has not changed since the breaker was set, we can use the precomputed values directly,
         // and avoid a heavy computation.
-        uint256 adjustedLowerBound = CircuitBreakerLib.calcAdjustedBound(lowerBound, weight, true);
-        uint256 adjustedUpperBound = CircuitBreakerLib.calcAdjustedBound(upperBound, weight, false);
+        uint256 adjustedLowerBound = CircuitBreakerLib.calcAdjustedBound(lowerBound, referenceWeight, true);
+        uint256 adjustedUpperBound = CircuitBreakerLib.calcAdjustedBound(upperBound, referenceWeight, false);
 
         // Finally, insert these computed adjusted bounds, and return the complete set of fields.
         return
@@ -284,24 +284,28 @@ library CircuitBreakerStorageLib {
     /**
      * @notice Update the cached adjusted bounds, given a new weight.
      * @dev This might be used when weights are adjusted, pre-emptively updating the cache to improve performance
-     * of operations after the weight change completed. Note that this does not update the BPT price: this is still
+     * of operations after the weight change completes. Note that this does not update the BPT price: this is still
      * relative to the last call to `setCircuitBreaker`. The intent is only to optimize the automatic bounds
      * adjustments due to changing weights.
      */
-    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 weight) internal pure returns (bytes32) {
+    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 newReferenceWeight) internal pure returns (bytes32) {
         uint256 adjustedLowerBound = CircuitBreakerLib.calcAdjustedBound(
             circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
-            weight,
+            newReferenceWeight,
             true
         );
         uint256 adjustedUpperBound = CircuitBreakerLib.calcAdjustedBound(
             circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
-            weight,
+            newReferenceWeight,
             false
         );
 
         // Replace the reference weight.
-        bytes32 result = circuitBreakerState.insertUint(weight, _REFERENCE_WEIGHT_OFFSET, _REFERENCE_WEIGHT_WIDTH);
+        bytes32 result = circuitBreakerState.insertUint(
+            newReferenceWeight,
+            _REFERENCE_WEIGHT_OFFSET,
+            _REFERENCE_WEIGHT_WIDTH
+        );
 
         // Update the cached adjusted bounds.
         return
