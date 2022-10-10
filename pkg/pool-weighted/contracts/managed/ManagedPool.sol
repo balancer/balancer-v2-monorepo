@@ -677,7 +677,7 @@ contract ManagedPool is ManagedPoolSettings {
         // so we need to check the lower bound.
         _checkCircuitBreaker(
             BoundCheckKind.LOWER,
-            _getCircuitBreakerState(request.tokenIn),
+            request.tokenIn,
             actualSupply,
             tokenData.tokenInWeight,
             balanceTokenIn.add(amountIn)
@@ -687,7 +687,7 @@ contract ManagedPool is ManagedPoolSettings {
         // so we need to check the upper bound.
         _checkCircuitBreaker(
             BoundCheckKind.UPPER,
-            _getCircuitBreakerState(request.tokenOut),
+            request.tokenOut,
             actualSupply,
             tokenData.tokenOutWeight,
             balanceTokenOut.sub(amountOut)
@@ -706,17 +706,16 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 amountCalculated,
         bool isJoin
     ) private view {
-        uint256 virtualSupply;
         uint256 amount;
 
-        // This is a swap between the BPT token and another pool token. Calculate the end state: virtualSupply
+        // This is a swap between the BPT token and another pool token. Calculate the end state: actualSupply
         // and the token amount being swapped, depending on whether it is a join or exit, GivenIn or GivenOut.
         if (isJoin) {
-            (virtualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
+            (actualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
                 ? (actualSupply.add(amountCalculated), request.amount)
                 : (actualSupply.add(request.amount), amountCalculated);
         } else {
-            (virtualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
+            (actualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
                 ? (actualSupply.sub(request.amount), amountCalculated)
                 : (actualSupply.sub(amountCalculated), request.amount);
         }
@@ -738,7 +737,7 @@ contract ManagedPool is ManagedPoolSettings {
             }
         }
 
-        _checkCircuitBreakers(virtualSupply, tokens, balances, amounts, normalizedWeights, isJoin);
+        _checkCircuitBreakers(actualSupply, tokens, balances, amounts, normalizedWeights, isJoin);
     }
 
     /**
@@ -753,7 +752,7 @@ contract ManagedPool is ManagedPoolSettings {
      * It does attempt to short circuit quickly if there is no bound set.
      */
     function _checkCircuitBreakers(
-        uint256 virtualSupply,
+        uint256 actualSupply,
         IERC20[] memory tokens,
         uint256[] memory balances,
         uint256[] memory amounts,
@@ -765,24 +764,20 @@ contract ManagedPool is ManagedPoolSettings {
 
             // Since we cannot be sure which direction the BPT price of the token has moved,
             // we must check both the lower and upper bounds.
-            _checkCircuitBreaker(
-                BoundCheckKind.BOTH,
-                _getCircuitBreakerState(tokens[i]),
-                virtualSupply,
-                normalizedWeights[i],
-                finalBalance
-            );
+            _checkCircuitBreaker(BoundCheckKind.BOTH, tokens[i], actualSupply, normalizedWeights[i], finalBalance);
         }
     }
 
     // Check the appropriate circuit breaker(s) according to the BoundCheckKind.
     function _checkCircuitBreaker(
         BoundCheckKind checkKind,
-        bytes32 circuitBreakerState,
+        IERC20 token,
         uint256 actualSupply,
-        uint256 weight,
-        uint256 balance
-    ) private pure {
+        uint256 balance,
+        uint256 weight
+    ) private view {
+        bytes32 circuitBreakerState = _getCircuitBreakerState(token);
+
         if (checkKind == BoundCheckKind.LOWER || checkKind == BoundCheckKind.BOTH) {
             _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, weight, balance, true);
         }
@@ -796,8 +791,8 @@ contract ManagedPool is ManagedPoolSettings {
     function _checkOneSidedCircuitBreaker(
         bytes32 circuitBreakerState,
         uint256 actualSupply,
-        uint256 weight,
         uint256 balance,
+        uint256 weight,
         bool isLowerBound
     ) private pure {
         uint256 bound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, weight, isLowerBound);
