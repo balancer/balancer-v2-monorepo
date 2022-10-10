@@ -124,7 +124,9 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        // solhint-disable no-empty-blocks
+        // ManagedPool is a composable Pool so a swap could either be a join, exit or a regular token swap.
+        // By checking whether the incoming or outgoing tokens are the Pool's BPT can determine
+        // which kind of swap we're performing and handle it appropriately. 
         if (request.tokenOut == IERC20(this)) {
             // Check allowlist for LPs, if applicable
             _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
@@ -155,7 +157,6 @@ contract ManagedPool is ManagedPoolSettings {
         } else {
             return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
         }
-        // solhint-enable no-empty-blocks
     }
 
     /*
