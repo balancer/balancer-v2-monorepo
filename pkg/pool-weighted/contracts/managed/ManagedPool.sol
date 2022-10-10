@@ -122,40 +122,47 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut
     ) internal override returns (uint256) {
         bytes32 poolState = _getPoolState();
+
+        // ManagedPool is a composable Pool, so a swap could be either a join swap, an exit swap, or a token swap.
+        // By checking whether the incoming or outgoing token is the BPT, we can determine which kind of
+        // operation we want to perform and pass it to the appropriate handler.
+        //
+        // We block all types of swap if swaps are disabled as a token swap is equivalent to a join swap followed by
+        // an exit swap into a different token.
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        // solhint-disable no-empty-blocks
         if (request.tokenOut == IERC20(this)) {
-            // Check allowlist for LPs, if applicable
-            _require(isAllowedAddress(request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
+            // `tokenOut` is the BPT, so this is a join swap.
 
-            // balanceTokenOut is the amount of BPT held by the Pool in the Vault.
-            // Subtracting this from the total supply gives us the virtual supply.
+            // Check allowlist for LPs, if applicable
+            _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
+
+            // This is equivalent to `_getVirtualSupply()`, but as `balanceTokenOut` is the Vault's balance of BPT
+            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply()`.
             uint256 virtualSupply = totalSupply() - balanceTokenOut;
 
-            // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-            // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
-            // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+            // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
             uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
         } else if (request.tokenIn == IERC20(this)) {
-            // balanceTokenIn is the amount of BPT held by the Pool in the Vault.
-            // Subtracting this from the total supply gives us the virtual supply.
+            // `tokenIn` is the BPT, so this is an exit swap.
+
+            // Note that we do not check the LP allowlist here. LPs must always be able to exit the pool,
+            // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
+
+            // This is equivalent to `_getVirtualSupply()`, but as `balanceTokenIn` is the Vault's balance of BPT
+            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply()`.
             uint256 virtualSupply = totalSupply() - balanceTokenIn;
 
-            // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-            // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
-            // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+            // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
             uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
         } else {
+            // Neither token is the BPT, so this is a standard token swap.
             return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
         }
-        // solhint-enable no-empty-blocks
     }
 
     /*
@@ -263,6 +270,14 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
+    // Holds information for the tokens involved in a regular swap.
+    struct SwapTokenData {
+        uint256 tokenInWeight;
+        uint256 tokenOutWeight;
+        uint256 scalingFactorTokenIn;
+        uint256 scalingFactorTokenOut;
+    }
+
     /*
      * @dev Called when a swap with the Pool occurs, where neither of the tokens involved are the BPT of the Pool.
      *
@@ -278,57 +293,125 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut,
         bytes32 poolState
     ) internal view returns (uint256) {
-        uint256 tokenInWeight;
-        uint256 tokenOutWeight;
-        uint256 scalingFactorTokenIn;
-        uint256 scalingFactorTokenOut;
-        uint256 swapFeeComplement;
-        {
-            uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
-            (tokenInWeight, scalingFactorTokenIn) = _getTokenInfo(request.tokenIn, weightChangeProgress);
-            (tokenOutWeight, scalingFactorTokenOut) = _getTokenInfo(request.tokenOut, weightChangeProgress);
+        // We first query data needed to perform the swap, i.e. token weights and scaling factors as well as the Pool's
+        // swap fee (in the form of its complement).
+        SwapTokenData memory tokenData = _getSwapTokenData(request, poolState);
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
 
-            swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
-        }
+        // `_onSwapMinimal` passes unscaled values so we upscale token balances using the appropriate scaling factors.
+        balanceTokenIn = _upscale(balanceTokenIn, tokenData.scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, tokenData.scalingFactorTokenOut);
 
-        balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-
+        // We must also upscale `request.amount` however we do not yet know which scaling factor to use as this differs
+        // depending on whether it represents an amount of tokens entering (GIVEN_IN) or leaving (GIVEN_OUT) the Pool.
+        //
+        // Therefore we branch depending on the swap kind and calculate the `amountOut` for GIVEN_IN swaps or the
+        // `amountIn` for GIVEN_OUT swaps. We call these values the `amountCalculated`.
+        uint256 amountCalculated;
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenIn);
+            // In `GIVEN_IN` swaps, `request.amount` is the amount of tokens entering the pool so we upscale with
+            // `scalingFactorTokenIn`.
+            request.amount = _upscale(request.amount, tokenData.scalingFactorTokenIn);
 
-            // We round the amount in down (favoring a higher fee amount).
-            request.amount = request.amount.mulDown(swapFeeComplement);
+            // We then subtract swap fees from this amount so the collected swap fees aren't use to calculate how many
+            // tokens the trader will receive. We round this value down (favoring a higher fee amount).
+            uint256 amountInMinusFees = request.amount.mulDown(swapFeeComplement);
 
-            uint256 amountOut = WeightedMath._calcOutGivenIn(
+            // Once fees are removed we can then calculate the equivalent amount of `tokenOut`.
+            amountCalculated = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                tokenInWeight,
+                tokenData.tokenInWeight,
                 balanceTokenOut,
-                tokenOutWeight,
-                request.amount
+                tokenData.tokenOutWeight,
+                amountInMinusFees
             );
-
-            // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, scalingFactorTokenOut);
         } else {
-            // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, scalingFactorTokenOut);
+            // In `GIVEN_OUT` swaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
+            // `scalingFactorTokenOut`.
+            request.amount = _upscale(request.amount, tokenData.scalingFactorTokenOut);
 
-            uint256 amountIn = WeightedMath._calcInGivenOut(
+            // We first calculate how many tokens must be sent in order to receive `request.amount` tokens out.
+            // This calculation does not yet include fees.
+            uint256 amountInMinusFees = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                tokenInWeight,
+                tokenData.tokenInWeight,
                 balanceTokenOut,
-                tokenOutWeight,
+                tokenData.tokenOutWeight,
                 request.amount
             );
 
-            // We round the amount in up (favoring a higher fee amount).
-            amountIn = amountIn.divUp(swapFeeComplement);
-
-            // amountIn tokens are entering the Pool, so we round up.
-            return _downscaleUp(amountIn, scalingFactorTokenIn);
+            // We then add swap fees to this amount so the trader must send extra tokens.
+            // We round this value up (favoring a higher fee amount).
+            amountCalculated = amountInMinusFees.divUp(swapFeeComplement);
         }
+
+        // A token swap increases the price of the token leaving the Pool and reduces the price of the token entering
+        // the Pool. ManagedPool's circuit breakers prevent the tokens' prices from leaving certain bounds so we must
+        // check that we haven't tripped a breaker as a result of the token swap.
+        _checkCircuitBreakersOnRegularSwap(request, tokenData, balanceTokenIn, balanceTokenOut, amountCalculated);
+
+        // Finally we downscale `amountCalculated` before we return it. We want to round this value in favour of the
+        // Pool so apply different scaling on amounts entering or leaving the Pool.
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            // `amountCalculated` tokens are exiting the Pool, so we round down.
+            return _downscaleDown(amountCalculated, tokenData.scalingFactorTokenOut);
+        } else {
+            // `amountCalculated` tokens are entering the Pool, so we round up.
+            return _downscaleUp(amountCalculated, tokenData.scalingFactorTokenIn);
+        }
+    }
+
+    function _checkCircuitBreakersOnRegularSwap(
+        SwapRequest memory request,
+        SwapTokenData memory tokenData,
+        uint256 balanceTokenIn,
+        uint256 balanceTokenOut,
+        uint256 amountCalculated
+    ) private view {
+        uint256 actualSupply = _getActualSupply(_getVirtualSupply());
+
+        (uint256 amountIn, uint256 amountOut) = request.kind == IVault.SwapKind.GIVEN_IN
+            ? (request.amount, amountCalculated)
+            : (amountCalculated, request.amount);
+
+        _checkBreaker(actualSupply, request.tokenIn, tokenData.tokenInWeight, balanceTokenIn.add(amountIn), true);
+        _checkBreaker(actualSupply, request.tokenOut, tokenData.tokenOutWeight, balanceTokenOut.sub(amountOut), false);
+    }
+
+    function _checkBreaker(
+        uint256 actualSupply,
+        IERC20 token,
+        uint256 weight,
+        uint256 balance,
+        bool isLowerBound
+    ) private view {
+        // Since the balance of tokenIn is increasing, its BPT price will decrease,
+        // so we need to check the lower bound.
+        uint256 bound = CircuitBreakerStorageLib.getBptPriceBound(_getCircuitBreakerState(token), weight, isLowerBound);
+
+        _require(
+            !CircuitBreakerLib.hasCircuitBreakerTripped(actualSupply, weight, balance, bound, isLowerBound),
+            Errors.CIRCUIT_BREAKER_TRIPPED
+        );
+    }
+
+    /**
+     * @dev Gather the information required to process a regular token swap, including circuit breaker bounds.
+     */
+    function _getSwapTokenData(SwapRequest memory request, bytes32 poolState)
+        private
+        view
+        returns (SwapTokenData memory tokenInfo)
+    {
+        bytes32 tokenInState = _getTokenState(request.tokenIn);
+        bytes32 tokenOutState = _getTokenState(request.tokenOut);
+
+        uint256 weightChangeProgress = ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState);
+        tokenInfo.tokenInWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenInState, weightChangeProgress);
+        tokenInfo.tokenOutWeight = ManagedPoolTokenStorageLib.getTokenWeight(tokenOutState, weightChangeProgress);
+
+        tokenInfo.scalingFactorTokenIn = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenInState);
+        tokenInfo.scalingFactorTokenOut = ManagedPoolTokenStorageLib.getTokenScalingFactor(tokenOutState);
     }
 
     /**
@@ -352,15 +435,19 @@ contract ManagedPool is ManagedPoolSettings {
         returns (uint256 bptAmountOut, uint256[] memory amountsIn)
     {
         // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(_isAllowedAddress(_getPoolState(), sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
+        // Ensure that the user intends to initialize the Pool.
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
+        // Extract the initial token balances `sender` is sending to the Pool.
         (IERC20[] memory tokens, ) = _getPoolTokens();
         amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
 
+        // We now want to determine the correct amount of BPT to mint in return for these tokens.
+        // In order to do this we calculate the Pool's invariant which requires the token amounts to be upscaled.
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
@@ -370,14 +457,11 @@ contract ManagedPool is ManagedPoolSettings {
         // consistent in Pools with similar compositions but different number of tokens.
         bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
-        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
-        // so naturally charges no AUM fees.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
-
-        // amountsIn are amounts entering the Pool, so we round up.
+        // We don't need upscaled balances anymore and will need to return downscaled amounts so we downscale here.
+        // `amountsIn` are amounts entering the Pool, so we round up when doing this.
         _downscaleUpArray(amountsIn, scalingFactors);
 
-        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
+        // BasePool will mint `bptAmountOut` for the sender: we then also mint the remaining BPT to make up the total
         // supply, and have the Vault pull those tokens from the sender as part of the join.
         //
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
@@ -386,11 +470,15 @@ contract ManagedPool is ManagedPoolSettings {
         _mintPoolTokens(sender, initialBpt);
 
         // The Vault expects an array of amounts which includes BPT (which always sits in the first position).
-        // We then add an extra element to the beginning of the array and set it to `initialBpt`
+        // We then add an extra element to the beginning of the array and set it to `initialBpt`.
         amountsIn = ComposablePoolLib.prependZeroElement(amountsIn);
         amountsIn[0] = initialBpt;
 
-        return (bptAmountOut, amountsIn);
+        // At this point we have all necessary return values for the initialization.
+
+        // Finally, we want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds
+        // no funds so naturally charges no AUM fees.
+        _updateAumFeeCollectionTimestamp();
     }
 
     // Join
@@ -405,14 +493,13 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
+        // We want to upscale all of the balances received from the Vault by the appropriate scaling factors.
+        // In order to do this we must query the Pool's tokens from the Vault as ManagedPool doesn't keep track.
         (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+        // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
@@ -442,11 +529,11 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
-        // token prices.
-
         bytes32 poolState = _getPoolState();
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
+
+        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
+        // token prices.
         _require(
             ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
                 kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
@@ -454,7 +541,7 @@ contract ManagedPool is ManagedPoolSettings {
         );
 
         // Check allowlist for LPs, if applicable
-        _require(isAllowedAddress(sender), Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(_isAllowedAddress(poolState, sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return
@@ -494,15 +581,13 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
+        // We want to upscale all of the balances received from the Vault by the appropriate scaling factors.
+        // In order to do this we must query the Pool's tokens from the Vault as ManagedPool doesn't keep track.
         (IERC20[] memory tokens, ) = _getPoolTokens();
-
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+        // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
@@ -534,18 +619,18 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal view virtual returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
-        // token prices.
-
         bytes32 poolState = _getPoolState();
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
+
+        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
+        // token prices.
         _require(
             ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
+        // Note that we do not check the LP allowlist here. LPs must always be able to exit the pool,
         // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
@@ -575,6 +660,28 @@ contract ManagedPool is ManagedPoolSettings {
     }
 
     /**
+     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
+     */
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
+        // total supply to correctly distribute Pool assets proportionally.
+        // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
+        // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
+
+        uint256 virtualSupply;
+        (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
+
+        (bptAmountIn, amountsOut) = super._doRecoveryModeExit(balances, virtualSupply, userData);
+
+        // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
+        amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
+    }
+
+    /**
      * @notice Returns the tokens in the Pool and their current balances.
      * @dev This function drops the BPT token and its balance from the returned arrays as these values are unused by
      * internal functions outside of the swap/join/exit hooks.
@@ -583,7 +690,6 @@ contract ManagedPool is ManagedPoolSettings {
         (IERC20[] memory registeredTokens, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(
             getPoolId()
         );
-
         return ComposablePoolLib.dropBpt(registeredTokens, registeredBalances);
     }
 

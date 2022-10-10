@@ -16,4 +16,10 @@ solc_version = '0.7.1'
 ignored_error_codes = [8261]
 
 [fuzz]
-runs = 9999
+runs = 10000
+max_test_rejects = 60000
+
+[profile.intense.fuzz]
+verbosity = 3
+runs = 100000
+max_test_rejects = 600000

@@ -70,7 +70,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
 
         // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
         // so naturally charges no AUM fees.
-        _lastAumFeeCollectionTimestamp = block.timestamp;
+        _updateAumFeeCollectionTimestamp();
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
@@ -84,6 +84,25 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
 
     function validateSwapFeePercentage(uint256 swapFeePercentage) external pure {
         _validateSwapFeePercentage(swapFeePercentage);
+    }
+
+    function isAllowedAddress(address member) external view returns (bool) {
+        return _isAllowedAddress(_getPoolState(), member);
+    }
+
+    // Pure virtual functions
+
+    function _getVirtualSupply() internal view override returns (uint256)  {
+        return totalSupply();
+    }
+
+    function _getPoolTokens()
+        internal
+        view
+        override
+        returns (IERC20[] memory tokens, uint256[] memory balances)
+    {
+        (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
     }
 
     // Unimplemented

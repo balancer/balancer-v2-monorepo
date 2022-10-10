@@ -26,6 +26,7 @@ import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -410,7 +411,8 @@ describe('ManagedPool', function () {
       it('sets the first AUM fee collection timestamp', async () => {
         const { receipt } = await pool.init({ from: other, initialBalances });
 
-        expect(await pool.instance.getLastAumFeeCollectionTimestamp()).to.be.eq(await receiptTimestamp(receipt));
+        const [, lastAUMFeeCollectionTimestamp] = await pool.getManagementAumFeeParams();
+        expect(lastAUMFeeCollectionTimestamp).to.be.eq(await receiptTimestamp(receipt));
       });
     }
 
@@ -579,6 +581,51 @@ describe('ManagedPool', function () {
           );
         });
       });
+    });
+  });
+
+  context('recovery mode', () => {
+    sharedBeforeEach('deploy pool and enter recovery mode', async () => {
+      pool = await deployPool();
+      await pool.init({ from: other, initialBalances });
+      await pool.enableRecoveryMode();
+    });
+
+    function itExitsViaRecoveryModeCorrectly() {
+      it('the recovery mode exit can be used', async () => {
+        const preExitBPT = await pool.balanceOf(other.address);
+        const exitBPT = preExitBPT.div(3);
+
+        // The sole BPT holder is the initial LP, so they own the initial balances
+        const expectedChanges = poolTokens.reduce(
+          (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
+          {}
+        );
+
+        await expectBalanceChange(
+          () =>
+            pool.recoveryModeExit({
+              from: other,
+              bptIn: exitBPT,
+            }),
+          poolTokens,
+          { account: other, changes: expectedChanges }
+        );
+
+        // Exit BPT was burned
+        const afterExitBalance = await pool.balanceOf(other.address);
+        expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
+      });
+    }
+
+    itExitsViaRecoveryModeCorrectly();
+
+    context('when paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.pause();
+      });
+
+      itExitsViaRecoveryModeCorrectly();
     });
   });
 
