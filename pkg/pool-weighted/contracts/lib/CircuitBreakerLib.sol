@@ -65,10 +65,8 @@ library CircuitBreakerLib {
         uint256 weight,
         bool isLowerBound
     ) internal pure returns (uint256 boundRatio) {
-        uint256 weightComplement = weight.complement();
-
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        boundRatio = (isLowerBound ? FixedPoint.powUp : FixedPoint.powDown)(bound, weightComplement);
+        boundRatio = (isLowerBound ? FixedPoint.powUp : FixedPoint.powDown)(bound, weight.complement());
     }
 
     /**

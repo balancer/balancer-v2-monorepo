@@ -197,16 +197,15 @@ library CircuitBreakerStorageLib {
         if (bound == 0) {
             return 0;
         }
-
-        // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
+        // Retrieve the BPT price and reference weight passed in when the circuit breaker was set.
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
         uint256 referenceWeight = circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_OFFSET, _REFERENCE_WEIGHT_WIDTH);
 
         uint256 boundRatio;
 
         if (currentWeight == referenceWeight) {
-            // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
-            // boundary ratios.
+            // If the weight hasn't changed since the circuit breaker was set, we can use the precomputed
+            // adjusted bounds.
             boundRatio = circuitBreakerState
                 .decodeUint(
                 isLowerBound ? _ADJUSTED_LOWER_BOUND_OFFSET : _ADJUSTED_UPPER_BOUND_OFFSET,
@@ -219,7 +218,7 @@ library CircuitBreakerStorageLib {
             boundRatio = CircuitBreakerLib.calcAdjustedBound(bound, currentWeight, isLowerBound);
         }
 
-        // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
+        // Use the adjusted bounds (either cached or computed) to calculate the BPT price bounds.
         return CircuitBreakerLib.calcBptPriceBoundary(boundRatio, bptPrice, isLowerBound);
     }
 

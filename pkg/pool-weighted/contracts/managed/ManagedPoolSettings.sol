@@ -186,10 +186,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return _tokenState[token];
     }
 
-    function _getCircuitBreakerState(IERC20 token) internal view returns (bytes32) {
-        return _circuitBreakerState[token];
-    }
-
     // Virtual Supply
 
     /**
