@@ -712,9 +712,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         address recipient
     ) external authenticate whenNotPaused {
         {
-            // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
-            // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
-            // changes. For consistency, we do this always, even if the amount to mint is zero.
+            // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens
+            // before initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the
+            // BPT supply changes. For consistency, we do this always, even if the amount to mint is zero.
             uint256 supply = _getVirtualSupply();
             _require(supply > 0, Errors.UNINITIALIZED);
             _collectAumManagementFees(supply);

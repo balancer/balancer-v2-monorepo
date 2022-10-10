@@ -25,6 +25,10 @@ import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolTokenStorageLib.sol";
 
 library ManagedPoolAddRemoveTokenLib {
+    // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
+    // that any timestamp manipulation would achieve very little.
+    // solhint-disable not-rely-on-time
+
     using FixedPoint for uint256;
 
     function _ensureNoWeightChange(bytes32 poolState) private view {
