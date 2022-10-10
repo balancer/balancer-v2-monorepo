@@ -228,7 +228,7 @@ contract ManagedPool is ManagedPoolSettings {
             // BPT doesn't need scaling.
             return amountCalculated;
         } else {
-            // Tokens are entering the Pool, so we round up.
+            // amountIn tokens are entering the Pool, so we round up.
             return _downscaleUp(amountCalculated, scalingFactorTokenIn);
         }
     }
@@ -786,15 +786,15 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balance
     ) private pure {
         if (checkKind == BoundCheckKind.LOWER || checkKind == BoundCheckKind.BOTH) {
-            _checkOneSidedBreaker(circuitBreakerState, actualSupply, weight, balance, true);
+            _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, weight, balance, true);
         }
 
         if (checkKind == BoundCheckKind.UPPER || checkKind == BoundCheckKind.BOTH) {
-            _checkOneSidedBreaker(circuitBreakerState, actualSupply, weight, balance, false);
+            _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, weight, balance, false);
         }
     }
 
-    function _checkOneSidedBreaker(
+    function _checkOneSidedCircuitBreaker(
         bytes32 circuitBreakerState,
         uint256 actualSupply,
         uint256 weight,
