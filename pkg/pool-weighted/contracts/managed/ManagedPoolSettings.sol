@@ -207,7 +207,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      *
      * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
      * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
-     *  they will effectively be included in any Pool operation that involves BPT.
+     * they will effectively be included in any Pool operation that involves BPT. It is important that we take this BPT
+     * into account as otherwise users may evade paying fees through exiting the pool before they are paid.
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */

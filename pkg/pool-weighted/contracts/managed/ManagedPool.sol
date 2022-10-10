@@ -135,10 +135,7 @@ contract ManagedPool is ManagedPoolSettings {
             // Subtracting this from the total supply gives us the virtual supply.
             uint256 virtualSupply = totalSupply() - balanceTokenOut;
 
-            // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-            // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
-            // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+            // See documentation for `getActualSupply()`.
             uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
@@ -147,11 +144,8 @@ contract ManagedPool is ManagedPoolSettings {
             // Subtracting this from the total supply gives us the virtual supply.
             uint256 virtualSupply = totalSupply() - balanceTokenIn;
 
-            // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-            // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-            // for the period during which they are an LP within the pool: otherwise an LP could shift their share of
-            // the AUM fees onto the remaining LPs in the pool by exiting before they were paid.
-            uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
+           // See documentation for `getActualSupply()`.
+           uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
         } else {
@@ -466,10 +460,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+        // See documentation for `getActualSupply()`.
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
@@ -556,10 +547,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-        // We then must collect AUM fees whenever joining or exiting the pool to ensure that LPs only pay AUM fees
-        // for the period during which they are an LP within the pool: otherwise an LP could shift their share of the
-        // AUM fees onto the remaining LPs in the pool by exiting before they were paid.
+        // See documentation for `getActualSupply()`.
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
