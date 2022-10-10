@@ -159,7 +159,7 @@ contract ManagedPool is ManagedPoolSettings {
     }
 
     // We need to check the breakers for all tokens on joins and exits (including join and exit swaps), since any
-    // change to the virtualSupply affects all BPT prices. For a multi-token join or exit, we will have a set of
+    // change to the BPT supply affects all BPT prices. For a multi-token join or exit, we will have a set of
     // balances and delta amounts. For a join/exitSwap, only one token balance is changing. We can use the same
     // data for both: in the single token swap case, the other token `amounts` will be zero.
     struct PoolDelta {
@@ -183,7 +183,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 actualSupply,
         bytes32 poolState
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 amountCalculated) {
         (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
             request.tokenIn,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
@@ -191,26 +191,25 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
+        uint256 upscaledAmountCalculated;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = WeightedMath._calcBptOutGivenExactTokenIn(
+            upscaledAmountCalculated = WeightedMath._calcBptOutGivenExactTokenIn(
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
                 actualSupply,
                 swapFeePercentage
             );
-
-            _checkCircuitBreakers(actualSupply.add(amountOut), _getPoolDelta(request.tokenIn, request.amount), true);
 
             // BPT doesn't need scaling so we can return immediately.
-            return amountOut;
+            amountCalculated = upscaledAmountCalculated;
         } else {
             // request.amount is a BPT amount, so it doesn't need scaling.
-            uint256 amountIn = WeightedMath._calcTokenInGivenExactBptOut(
+            upscaledAmountCalculated = WeightedMath._calcTokenInGivenExactBptOut(
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
@@ -218,11 +217,18 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
 
-            _checkCircuitBreakers(actualSupply.add(request.amount), _getPoolDelta(request.tokenIn, amountIn), true);
-
             // amountIn tokens are entering the Pool, so we round up.
-            return _downscaleUp(amountIn, scalingFactorTokenIn);
+            amountCalculated = _downscaleUp(upscaledAmountCalculated, scalingFactorTokenIn);
         }
+
+        _checkCircuitBreakers(
+            actualSupply.add(request.kind == IVault.SwapKind.GIVEN_IN ? upscaledAmountCalculated : request.amount),
+            _getPoolDelta(
+                request.tokenIn,
+                request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : upscaledAmountCalculated
+            ),
+            true
+        );
     }
 
     /*
@@ -239,7 +245,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut,
         uint256 actualSupply,
         bytes32 poolState
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 amountCalculated) {
         (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
             request.tokenOut,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
@@ -248,10 +254,11 @@ contract ManagedPool is ManagedPoolSettings {
 
         // We must always upscale the token balance for both `GIVEN_IN` and `GIVEN_OUT` swaps
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
+        uint256 upscaledAmountCalculated;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // request.amount is a BPT amount, so it doesn't need scaling.
-            uint256 amountOut = WeightedMath._calcTokenOutGivenExactBptIn(
+            upscaledAmountCalculated = WeightedMath._calcTokenOutGivenExactBptIn(
                 balanceTokenOut,
                 tokenOutWeight,
                 request.amount,
@@ -259,15 +266,13 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
 
-            _checkCircuitBreakers(actualSupply.sub(request.amount), _getPoolDelta(request.tokenOut, amountOut), false);
-
-            // amountOut tokens are exiting the Pool, so we round down.
-            return _downscaleDown(amountOut, scalingFactorTokenOut);
+            // amountOut (upscaledAmountCalculated) tokens are exiting the Pool, so we round down.
+            amountCalculated = _downscaleDown(upscaledAmountCalculated, scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = WeightedMath._calcBptInGivenExactTokenOut(
+            upscaledAmountCalculated = WeightedMath._calcBptInGivenExactTokenOut(
                 balanceTokenOut,
                 tokenOutWeight,
                 request.amount,
@@ -275,11 +280,18 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
 
-            _checkCircuitBreakers(actualSupply.sub(amountIn), _getPoolDelta(request.tokenOut, request.amount), false);
-
             // BPT doesn't need scaling so we can return immediately.
-            return amountIn;
+            amountCalculated = upscaledAmountCalculated;
         }
+
+        _checkCircuitBreakers(
+            actualSupply.sub(request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : upscaledAmountCalculated),
+            _getPoolDelta(
+                request.tokenOut,
+                request.kind == IVault.SwapKind.GIVEN_IN ? upscaledAmountCalculated : request.amount
+            ),
+            false
+        );
     }
 
     /**
@@ -465,17 +477,14 @@ contract ManagedPool is ManagedPoolSettings {
             userData
         );
 
-        // Do not check circuit breakers on proportional joins, which do not change BPT prices.
-        if (userData.joinKind() != WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            // Avoiding PoolDelta({key: value}) syntax for memory savings
-            PoolDelta memory poolDelta;
-            poolDelta.tokens = tokens;
-            poolDelta.normalizedWeights = normalizedWeights;
-            poolDelta.balances = balances;
-            poolDelta.amounts = amountsIn;
+        // Avoiding PoolDelta({key: value}) syntax for memory savings
+        PoolDelta memory poolDelta;
+        poolDelta.tokens = tokens;
+        poolDelta.normalizedWeights = normalizedWeights;
+        poolDelta.balances = balances;
+        poolDelta.amounts = amountsIn;
 
-            _checkCircuitBreakers(actualSupply.add(bptAmountOut), poolDelta, true);
-        }
+        _checkCircuitBreakers(actualSupply.add(bptAmountOut), poolDelta, true);
 
         // amountsIn are amounts entering the Pool, so we round up.
         _downscaleUpArray(amountsIn, scalingFactors);
@@ -698,33 +707,39 @@ contract ManagedPool is ManagedPoolSettings {
 
             circuitBreakerState = _getCircuitBreakerState(poolDelta.tokens[i]);
 
+            // Since we cannot be sure which direction the BPT price of the token has moved,
+            // we must check both the lower and upper bounds.
             uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
                 circuitBreakerState,
                 poolDelta.normalizedWeights[i],
                 true
             );
+
+            _require(
+                !CircuitBreakerLib.hasCircuitBreakerTripped(
+                    virtualSupply,
+                    poolDelta.normalizedWeights[i],
+                    finalBalance,
+                    lowerBoundBptPrice,
+                    true
+                ),
+                Errors.CIRCUIT_BREAKER_TRIPPED
+            );
+
             uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
                 circuitBreakerState,
                 poolDelta.normalizedWeights[i],
                 false
             );
 
-            // Check both upper and lower bounds.
             _require(
-                !(CircuitBreakerLib.hasCircuitBreakerTripped(
+                !CircuitBreakerLib.hasCircuitBreakerTripped(
                     virtualSupply,
                     poolDelta.normalizedWeights[i],
                     finalBalance,
-                    lowerBoundBptPrice,
-                    true // check lower bound
-                ) ||
-                    CircuitBreakerLib.hasCircuitBreakerTripped(
-                        virtualSupply,
-                        poolDelta.normalizedWeights[i],
-                        finalBalance,
-                        upperBoundBptPrice,
-                        false // check upper bound
-                    )),
+                    upperBoundBptPrice,
+                    false
+                ),
                 Errors.CIRCUIT_BREAKER_TRIPPED
             );
         }
