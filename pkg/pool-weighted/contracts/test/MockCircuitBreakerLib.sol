@@ -37,6 +37,14 @@ contract MockCircuitBreakerLib {
         return CircuitBreakerStorageLib.getBptPriceBounds(circuitBreakerState, currentWeight);
     }
 
+    function getBptPriceBound(bytes32 circuitBreakerState, uint256 currentWeight, bool isLowerBound)
+        external
+        pure
+        returns (uint256)
+    {
+        return CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, currentWeight, isLowerBound);
+    }
+
     function hasCircuitBreakerTripped(
         bytes32 circuitBreakerState,
         uint256 virtualSupply,
@@ -55,6 +63,25 @@ contract MockCircuitBreakerLib {
                 upscaledBalance,
                 lowerBoundBptPrice,
                 upperBoundBptPrice
+            );
+    }
+
+    function hasSingleSidedCircuitBreakerTripped(
+        bytes32 circuitBreakerState,
+        uint256 virtualSupply,
+        uint256 normalizedWeight,
+        uint256 upscaledBalance,
+        bool isLowerBound
+    ) external pure returns (bool) {
+        uint256 bptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, isLowerBound);
+
+        return
+            CircuitBreakerLib.hasCircuitBreakerTripped(
+                virtualSupply,
+                normalizedWeight,
+                upscaledBalance,
+                bptPriceBound,
+                isLowerBound
             );
     }
 
