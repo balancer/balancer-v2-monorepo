@@ -697,8 +697,8 @@ contract ManagedPool is ManagedPoolSettings {
     /**
      * @dev We need to check the breakers for all tokens on joins and exits (including join and exit swaps), since any
      * change to the BPT supply affects all BPT prices. For a multi-token join or exit, we will have a set of
-     * balances and delta amounts. For a join/exitSwap, only one token balance is changing. We can use the same
-     * data for both: in the single token swap case, the other token `amounts` will be zero.
+     * balances and amounts. For a join/exitSwap, only one token balance is changing. We can use the same data for
+     *  both: in the single token swap case, the other token `amounts` will be zero.
      */
     function _checkCircuitBreakersOnJoinOrExitSwap(
         SwapRequest memory request,
@@ -727,7 +727,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // Initialize to all zeros, and set the deltaAmount associated with the swap.
+        // Initialize to all zeros, and set the amount associated with the swap.
         uint256[] memory amounts = new uint256[](tokens.length);
         IERC20 token = isJoin ? request.tokenIn : request.tokenOut;
 
