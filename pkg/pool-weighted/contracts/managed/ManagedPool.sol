@@ -128,6 +128,8 @@ contract ManagedPool is ManagedPoolSettings {
         // By checking whether the incoming or outgoing tokens are the Pool's BPT we can determine which kind of
         // operation we want to perform and pass it to the appropriate handler.
         if (request.tokenOut == IERC20(this)) {
+            // Token out is BPT so this is a join swap.
+
             // Check allowlist for LPs, if applicable
             _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
 
@@ -140,6 +142,8 @@ contract ManagedPool is ManagedPoolSettings {
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
         } else if (request.tokenIn == IERC20(this)) {
+            // Token in is BPT so this is a exit swap.
+
             // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
             // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
 
@@ -152,6 +156,7 @@ contract ManagedPool is ManagedPoolSettings {
 
             return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
         } else {
+            // Neither token is BPT so this is a standard token swap.
             return _onTokenSwap(request, balanceTokenIn, balanceTokenOut, poolState);
         }
     }
