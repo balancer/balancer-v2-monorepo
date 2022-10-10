@@ -993,14 +993,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             circuitBreakerState
         );
 
+        uint256 normalizedWeight = _getNormalizedWeight(token);
+
+        lowerBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, true);
+        upperBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, false);
+
         // Restore the original unscaled BPT price passed in `setCircuitBreakers`.
         uint256 tokenScalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token));
         bptPrice = _upscale(bptPrice, tokenScalingFactor);
-
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getBptPriceBounds(
-            circuitBreakerState,
-            _getNormalizedWeight(token)
-        );
 
         // Also render the adjusted bounds as unscaled values.
         lowerBptPriceBound = _upscale(lowerBptPriceBound, tokenScalingFactor);
