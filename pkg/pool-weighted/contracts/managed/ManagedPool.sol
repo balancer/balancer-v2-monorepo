@@ -518,11 +518,11 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
-        // token prices.
-
         bytes32 poolState = _getPoolState();
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
+
+        // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
+        // token prices.
         _require(
             ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
                 kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
@@ -609,11 +609,11 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal view virtual returns (uint256, uint256[] memory) {
-        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
-        // token prices.
-
         bytes32 poolState = _getPoolState();
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
+
+        // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
+        // token prices.
         _require(
             ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
