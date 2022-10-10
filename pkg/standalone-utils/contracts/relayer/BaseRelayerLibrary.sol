@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 import "./BalancerRelayer.sol";
@@ -38,6 +39,7 @@ import "./BalancerRelayer.sol";
  */
 contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
+    using SafeERC20 for IERC20;
 
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
@@ -81,7 +83,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
         // TODO: gas golf this a bit
-        token.approve(address(getVault()), amount);
+        token.safeApproval(address(getVault()), amount);
     }
 
     /**
