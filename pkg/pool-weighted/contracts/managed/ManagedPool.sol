@@ -433,13 +433,17 @@ contract ManagedPool is ManagedPoolSettings {
         // Check allowlist for LPs, if applicable
         _require(_isAllowedAddress(_getPoolState(), sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
+        // Ensure that the user intends to initialize the Pool.
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
+        // Extract the initial token balances `sender` is sending to the Pool.
         (IERC20[] memory tokens, ) = _getPoolTokens();
         amountsIn = userData.initialAmountsIn();
         InputHelpers.ensureInputLengthMatch(amountsIn.length, tokens.length);
 
+        // We now want to determine the correct amount of BPT to mint in return for these tokens.
+        // In order to do this we calculate the Pool's invariant which requires the token amounts to be upscaled.
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
@@ -449,14 +453,11 @@ contract ManagedPool is ManagedPoolSettings {
         // consistent in Pools with similar compositions but different number of tokens.
         bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
-        // We want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds no funds
-        // so naturally charges no AUM fees.
-        _updateAumFeeCollectionTimestamp();
-
-        // amountsIn are amounts entering the Pool, so we round up.
+        // We don't need upscaled balances anymore and will need to return downscaled amounts so we downscale here.
+        // `amountsIn` are amounts entering the Pool, so we round up when doing this. 
         _downscaleUpArray(amountsIn, scalingFactors);
 
-        // BasePool will mint bptAmountOut for the sender: we then also mint the remaining BPT to make up the total
+        // BasePool will mint `bptAmountOut` for the sender: we then also mint the remaining BPT to make up the total
         // supply, and have the Vault pull those tokens from the sender as part of the join.
         //
         // Note that the sender need not approve BPT for the Vault as the Vault already has infinite BPT allowance for
@@ -465,11 +466,15 @@ contract ManagedPool is ManagedPoolSettings {
         _mintPoolTokens(sender, initialBpt);
 
         // The Vault expects an array of amounts which includes BPT (which always sits in the first position).
-        // We then add an extra element to the beginning of the array and set it to `initialBpt`
+        // We then add an extra element to the beginning of the array and set it to `initialBpt`.
         amountsIn = ComposablePoolLib.prependZeroElement(amountsIn);
         amountsIn[0] = initialBpt;
 
-        return (bptAmountOut, amountsIn);
+        // At this point we have all necessary return values for the initialization.
+
+        // Finally, we want to start collecting AUM fees from this point onwards. Prior to initialization the Pool holds
+        // no funds so naturally charges no AUM fees.
+        _updateAumFeeCollectionTimestamp();
     }
 
     // Join
