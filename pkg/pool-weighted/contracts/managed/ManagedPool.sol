@@ -131,8 +131,8 @@ contract ManagedPool is ManagedPoolSettings {
             // Check allowlist for LPs, if applicable
             _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-            // balanceTokenOut is the amount of BPT held by the Pool in the Vault.
-            // Subtracting this from the total supply gives us the virtual supply.
+            // This is equivalent to `_getVirtualSupply`, but as `balanceTokenOut` is the Vault's balance of BPT
+            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply` 
             uint256 virtualSupply = totalSupply() - balanceTokenOut;
 
             // See documentation for `getActualSupply()`.
@@ -140,12 +140,12 @@ contract ManagedPool is ManagedPoolSettings {
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
         } else if (request.tokenIn == IERC20(this)) {
-            // balanceTokenIn is the amount of BPT held by the Pool in the Vault.
-            // Subtracting this from the total supply gives us the virtual supply.
+            // This is equivalent to `_getVirtualSupply`, but as `balanceTokenIn` is the Vault's balance of BPT
+            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply` 
             uint256 virtualSupply = totalSupply() - balanceTokenIn;
 
-           // See documentation for `getActualSupply()`.
-           uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
+            // See documentation for `getActualSupply()`.
+            uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
         } else {
