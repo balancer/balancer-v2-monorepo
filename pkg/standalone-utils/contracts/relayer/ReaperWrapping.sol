@@ -95,7 +95,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         uint256 sharesGained = vaultToken.balanceOf(address(this));
 
         // Send the shares to the recipient
-        vaultToken.safeTransfer(recipient, sharesGained);
+        IERC20(vaultToken).safeTransfer(recipient, sharesGained);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, sharesGained);
