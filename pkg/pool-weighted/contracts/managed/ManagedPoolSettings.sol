@@ -479,7 +479,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             amount = _collectAumManagementFees(supplyBeforeFeeCollection);
-            _updateAumFeeCollectionTimestamp();
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -507,10 +506,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
-        if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
-
-        return _collectAumManagementFees(supplyBeforeFeeCollection);
+        uint256 supply = _getVirtualSupply();
+        _require(supply > 0, Errors.UNINITIALIZED);
+        return _collectAumManagementFees(supply);
     }
 
     /**
@@ -526,16 +524,16 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
             aumFeePercentage
         );
 
+        // We always update last collection timestamp even when there is nothing to collect to ensure the state is kept
+        // consistent.
+        _updateAumFeeCollectionTimestamp();
+
         // Early return if either:
         // - AUM fee is disabled.
         // - no time has passed since the last collection.
         if (bptAmount == 0) {
             return 0;
         }
-
-        // As we update the AUM fee collection timestamp when updating the AUM fee percentage, we only need to
-        // update the timestamp when non-zero AUM fees are paid. This avoids an SSTORE on zero-length collections.
-        _updateAumFeeCollectionTimestamp();
 
         // Split AUM fees between protocol and Pool manager.
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
@@ -765,7 +763,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         // not paused.
         _ensureNotPaused();
 
-        _collectAumManagementFees(_getVirtualSupply());
+        // If the Pool doesn't hold any tokens due to being uninitialized then we skip fee collection.
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
+        if (supplyBeforeFeeCollection > 0) {
+            _collectAumManagementFees(supplyBeforeFeeCollection);
+        }
     }
 
     // Recovery Mode
@@ -803,7 +805,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         override
         returns (
             uint256 bptPrice,
-            uint256 weightComplement,
+            uint256 referenceWeight,
             uint256 lowerBound,
             uint256 upperBound,
             uint256 lowerBptPriceBound,
@@ -812,14 +814,22 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
+        (bptPrice, referenceWeight, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
+        // Restore the original unscaled BPT price passed in `setCircuitBreakers`.
+        uint256 tokenScalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token));
+        bptPrice = _upscale(bptPrice, tokenScalingFactor);
+
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getBptPriceBounds(
             circuitBreakerState,
-            _getNormalizedWeight(token).complement()
+            _getNormalizedWeight(token)
         );
+
+        // Also render the adjusted bounds as unscaled values.
+        lowerBptPriceBound = _upscale(lowerBptPriceBound, tokenScalingFactor);
+        upperBptPriceBound = _upscale(upperBptPriceBound, tokenScalingFactor);
     }
 
     function setCircuitBreakers(
@@ -848,14 +858,23 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         // Fail if the token is not in the pool (or is the BPT token)
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
+        // The incoming BPT price (defined as virtualSupply * weight / balance) will have been calculated dividing
+        // by unscaled token balance, effectively multiplying the result by the scaling factor.
+        // To correct this, we need to divide by it (downscaling).
+        uint256 scaledBptPrice = _downscaleDown(
+            bptPrice,
+            ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token))
+        );
+
         // The library will validate the lower/upper bounds
         _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
-            bptPrice,
-            normalizedWeight.complement(),
+            scaledBptPrice,
+            normalizedWeight,
             lowerBoundPercentage,
             upperBoundPercentage
         );
 
+        // Echo the unscaled BPT price in the event.
         emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
     }
 
