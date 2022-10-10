@@ -207,7 +207,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      *
      * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
      * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
-     *  they will effectively be included in any Pool operation that involves BPT.
+     * they will effectively be included in any Pool operation that involves BPT. It is important that we take this BPT
+     * into account, as otherwise users may evade paying fees through exiting the pool before they are paid.
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
@@ -648,8 +649,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     /**
-     * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
-     * This function is called automatically on joins and exits.
+     * @notice Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
+     * @dev The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+     * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the
+     * virtual supply of the Pool changes to ensure proper accounting.
+     *
+     * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of
+     * BPT returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is
+     * equal to the actual supply).
+     * @return bptAmount - The amount of BPT minted as AUM fees.
      */
     function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
         (uint256 aumFeePercentage, uint256 lastCollectionTimestamp) = getManagementAumFeeParams();
