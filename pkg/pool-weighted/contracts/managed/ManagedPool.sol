@@ -458,7 +458,7 @@ contract ManagedPool is ManagedPoolSettings {
         bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
         // We don't need upscaled balances anymore and will need to return downscaled amounts so we downscale here.
-        // `amountsIn` are amounts entering the Pool, so we round up when doing this. 
+        // `amountsIn` are amounts entering the Pool, so we round up when doing this.
         _downscaleUpArray(amountsIn, scalingFactors);
 
         // BasePool will mint `bptAmountOut` for the sender: we then also mint the remaining BPT to make up the total
@@ -667,7 +667,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the 
+        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
         // total supply to correctly distribute Pool assets proportionally.
         // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
         // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
