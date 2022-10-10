@@ -399,24 +399,24 @@ contract ManagedPool is ManagedPoolSettings {
             ? (request.amount, amountCalculated)
             : (amountCalculated, request.amount);
 
-        _checkBreaker(actualSupply, request.tokenIn, tokenData.tokenInWeight, balanceTokenIn.add(amountIn), true);
-        _checkBreaker(actualSupply, request.tokenOut, tokenData.tokenOutWeight, balanceTokenOut.sub(amountOut), false);
-    }
-
-    function _checkBreaker(
-        uint256 actualSupply,
-        IERC20 token,
-        uint256 weight,
-        uint256 balance,
-        bool isLowerBound
-    ) private view {
         // Since the balance of tokenIn is increasing, its BPT price will decrease,
         // so we need to check the lower bound.
-        uint256 bound = CircuitBreakerStorageLib.getBptPriceBound(_getCircuitBreakerState(token), weight, isLowerBound);
+        _checkCircuitBreaker(
+            BoundCheckKind.LOWER,
+            _getCircuitBreakerState(request.tokenIn),
+            actualSupply,
+            tokenData.tokenInWeight,
+            balanceTokenIn.add(amountIn)
+        );
 
-        _require(
-            !CircuitBreakerLib.hasCircuitBreakerTripped(actualSupply, weight, balance, bound, isLowerBound),
-            Errors.CIRCUIT_BREAKER_TRIPPED
+        // Since the balance of tokenOut is decreasing, its BPT price will increase,
+        // so we need to check the upper bound.
+        _checkCircuitBreaker(
+            BoundCheckKind.UPPER,
+            _getCircuitBreakerState(request.tokenOut),
+            actualSupply,
+            tokenData.tokenOutWeight,
+            balanceTokenOut.sub(amountOut)
         );
     }
 
@@ -737,6 +737,9 @@ contract ManagedPool is ManagedPoolSettings {
 
     // Circuit Breakers
 
+    // Depending on the type of operation, we may need to check only the upper or lower bound, or both.
+    enum BoundCheckKind { LOWER, UPPER, BOTH }
+
     /**
      * @dev Check circuit breakers for a set of tokens. The given virtual supply is what it will be post-operation:
      * this includes any pending external fees, and the amount of BPT exchanged (swapped, minted, or burned) in the
@@ -753,52 +756,53 @@ contract ManagedPool is ManagedPoolSettings {
         PoolDelta memory poolDelta,
         bool isJoin
     ) private view {
-        bytes32 circuitBreakerState;
-
         for (uint256 i = 0; i < poolDelta.tokens.length; i++) {
             uint256 finalBalance = (isJoin ? FixedPoint.add : FixedPoint.sub)(
                 poolDelta.balances[i],
                 poolDelta.amounts[i]
             );
 
-            circuitBreakerState = _getCircuitBreakerState(poolDelta.tokens[i]);
-
             // Since we cannot be sure which direction the BPT price of the token has moved,
             // we must check both the lower and upper bounds.
-            uint256 lowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
-                circuitBreakerState,
+            _checkCircuitBreaker(
+                BoundCheckKind.BOTH,
+                _getCircuitBreakerState(poolDelta.tokens[i]),
+                virtualSupply,
                 poolDelta.normalizedWeights[i],
-                true
-            );
-
-            _require(
-                !CircuitBreakerLib.hasCircuitBreakerTripped(
-                    virtualSupply,
-                    poolDelta.normalizedWeights[i],
-                    finalBalance,
-                    lowerBoundBptPrice,
-                    true
-                ),
-                Errors.CIRCUIT_BREAKER_TRIPPED
-            );
-
-            uint256 upperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(
-                circuitBreakerState,
-                poolDelta.normalizedWeights[i],
-                false
-            );
-
-            _require(
-                !CircuitBreakerLib.hasCircuitBreakerTripped(
-                    virtualSupply,
-                    poolDelta.normalizedWeights[i],
-                    finalBalance,
-                    upperBoundBptPrice,
-                    false
-                ),
-                Errors.CIRCUIT_BREAKER_TRIPPED
+                finalBalance
             );
         }
+    }
+
+    function _checkCircuitBreaker(
+        BoundCheckKind checkKind,
+        bytes32 circuitBreakerState,
+        uint256 actualSupply,
+        uint256 weight,
+        uint256 balance
+    ) private pure {
+        if (checkKind == BoundCheckKind.LOWER || checkKind == BoundCheckKind.BOTH) {
+            _checkOneSidedBreaker(circuitBreakerState, actualSupply, weight, balance, true);
+        }
+
+        if (checkKind == BoundCheckKind.UPPER || checkKind == BoundCheckKind.BOTH) {
+            _checkOneSidedBreaker(circuitBreakerState, actualSupply, weight, balance, false);
+        }
+    }
+
+    function _checkOneSidedBreaker(
+        bytes32 circuitBreakerState,
+        uint256 actualSupply,
+        uint256 weight,
+        uint256 balance,
+        bool isLowerBound
+    ) private pure {
+        uint256 bound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, weight, isLowerBound);
+
+        _require(
+            !CircuitBreakerLib.hasCircuitBreakerTripped(actualSupply, weight, balance, bound, isLowerBound),
+            Errors.CIRCUIT_BREAKER_TRIPPED
+        );
     }
 
     // Unimplemented
