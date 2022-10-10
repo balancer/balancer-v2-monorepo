@@ -349,10 +349,10 @@ contract ManagedPool is ManagedPoolSettings {
         // Finally we downscale `amountCalculated` before we return it. We want to round this value in favour of the
         // Pool so apply different scaling on amounts entering or leaving the Pool.
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // amountOut tokens are exiting the Pool, so we round down.
+            // `amountOut` tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountCalculated, tokenData.scalingFactorTokenOut);
         } else {
-            // amountIn tokens are entering the Pool, so we round up.
+            // `amountIn` tokens are entering the Pool, so we round up.
             return _downscaleUp(amountCalculated, tokenData.scalingFactorTokenIn);
         }
     }
