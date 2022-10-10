@@ -228,7 +228,7 @@ contract ManagedPool is ManagedPoolSettings {
             // BPT doesn't need scaling.
             return amountCalculated;
         } else {
-            // amountIn tokens are entering the Pool, so we round up.
+            // Tokens are entering the Pool, so we round up.
             return _downscaleUp(amountCalculated, scalingFactorTokenIn);
         }
     }
@@ -290,7 +290,7 @@ contract ManagedPool is ManagedPoolSettings {
         );
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // amountOut (amountCalculated) tokens are exiting the Pool, so we round down.
+            // Tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountCalculated, scalingFactorTokenOut);
         } else {
             // BPT doesn't need scaling so we can return immediately.
