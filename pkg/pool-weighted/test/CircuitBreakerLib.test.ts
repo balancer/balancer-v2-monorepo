@@ -234,6 +234,22 @@ describe('CircuitBreakerLib', () => {
       expect(upperBptPriceBound).to.almostEqual(expectedUpperBound);
     });
 
+    it('should support single sided bounds', async () => {
+      // Pass in the same weight factor it was constructed with
+      const lowerBptPriceBound = await lib.getBptPriceBound(data, fp(NORMALIZED_WEIGHT), true);
+      const upperBptPriceBound = await lib.getBptPriceBound(data, fp(NORMALIZED_WEIGHT), false);
+
+      const expLower = LOWER_BOUND ** (1 - NORMALIZED_WEIGHT);
+      const expHigher = UPPER_BOUND ** (1 - NORMALIZED_WEIGHT);
+
+      const expectedLowerBound = fp(BPT_PRICE * expLower);
+      const expectedUpperBound = fp(BPT_PRICE * expHigher);
+
+      // There is compression, so it won't match exactly
+      expect(lowerBptPriceBound).to.almostEqual(expectedLowerBound);
+      expect(upperBptPriceBound).to.almostEqual(expectedUpperBound);
+    });
+
     it('should compute the bounds manually when necessary', async () => {
       const newNormalizedWeight = randomFromInterval(MIN_WEIGHT, MAX_WEIGHT);
 

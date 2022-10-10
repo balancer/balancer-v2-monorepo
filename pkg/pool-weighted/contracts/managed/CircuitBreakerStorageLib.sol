@@ -214,8 +214,8 @@ library CircuitBreakerStorageLib {
             )
                 .decompress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
-            // Something has changed - either the weight of the token, or the composition of the pool, so we must
-            // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
+            // The weight has changed, so we retrieve the raw percentage bounds and do the full calculation.
+            // Decompress the bounds by shifting left.
             boundRatio = CircuitBreakerLib.calcAdjustedBound(bound, currentWeight, isLowerBound);
         }
 
