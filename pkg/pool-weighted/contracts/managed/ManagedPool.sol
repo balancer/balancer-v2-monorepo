@@ -493,6 +493,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
+        // We want to upscale all of the balances received from the Vault by the appropriate scaling factors.
+        // In order to do this we must query the Pool's tokens from the Vault as ManagedPool doesn't keep track.
         (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
@@ -578,7 +580,6 @@ contract ManagedPool is ManagedPoolSettings {
         // We want to separate this from the other balances before continuing with the exit.
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
-
 
         // We want to upscale all of the balances received from the Vault by the appropriate scaling factors.
         // In order to do this we must query the Pool's tokens from the Vault as ManagedPool doesn't keep track.
