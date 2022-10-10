@@ -133,8 +133,8 @@ contract ManagedPool is ManagedPoolSettings {
             // Check allowlist for LPs, if applicable
             _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
 
-            // This is equivalent to `_getVirtualSupply`, but as `balanceTokenOut` is the Vault's balance of BPT
-            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply` 
+            // This is equivalent to `_getVirtualSupply()`, but as `balanceTokenOut` is the Vault's balance of BPT
+            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply()`.
             uint256 virtualSupply = totalSupply() - balanceTokenOut;
 
             // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
@@ -147,8 +147,8 @@ contract ManagedPool is ManagedPoolSettings {
             // Note that we do not check the LP allowlist here. LPs must always be able to exit the pool,
             // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
 
-            // This is equivalent to `_getVirtualSupply`, but as `balanceTokenIn` is the Vault's balance of BPT
-            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply`.
+            // This is equivalent to `_getVirtualSupply()`, but as `balanceTokenIn` is the Vault's balance of BPT
+            // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply()`.
             uint256 virtualSupply = totalSupply() - balanceTokenIn;
 
             // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
@@ -301,7 +301,7 @@ contract ManagedPool is ManagedPoolSettings {
         // We must also upscale `request.amount` however we do not yet know which scaling factor to use as this differs
         // depending on whether it represents an amount of tokens entering (GIVEN_IN) or leaving (GIVEN_OUT) the Pool.
         //
-        // Therefore we branch depending on the swap kind and calculate the `amountOut` for GIVEN_IN swaps or the 
+        // Therefore we branch depending on the swap kind and calculate the `amountOut` for GIVEN_IN swaps or the
         // `amountIn` for GIVEN_OUT swaps. We call these values the `amountCalculated`.
         uint256 amountCalculated;
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
@@ -345,7 +345,6 @@ contract ManagedPool is ManagedPoolSettings {
         // the Pool. ManagedPool's circuit breakers prevent the tokens' prices from leaving certain bounds so we must
         // check that we haven't tripped a breaker as a result of the token swap.
         _checkCircuitBreakersOnRegularSwap(request, tokenData, balanceTokenIn, balanceTokenOut, amountCalculated);
-
 
         // Finally we downscale `amountCalculated` before we return it. We want to round this value in favour of the
         // Pool so apply different scaling on amounts entering or leaving the Pool.

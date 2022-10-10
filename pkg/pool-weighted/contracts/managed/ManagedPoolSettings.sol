@@ -651,11 +651,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
      * @dev The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-     * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the 
+     * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the
      * virtual supply of the Pool changes to ensure proper accounting.
      *
-     * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of BPT 
-     * returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is 
+     * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of
+     * BPT returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is
      * equal to the actual supply).
      * @return bptAmount - The amount of BPT minted as AUM fees.
      */
