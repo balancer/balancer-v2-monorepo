@@ -780,11 +780,11 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 circuitBreakerState = _getCircuitBreakerState(token);
 
         if (checkKind == BoundCheckKind.LOWER || checkKind == BoundCheckKind.BOTH) {
-            _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, weight, balance, true);
+            _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, balance, weight, true);
         }
 
         if (checkKind == BoundCheckKind.UPPER || checkKind == BoundCheckKind.BOTH) {
-            _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, weight, balance, false);
+            _checkOneSidedCircuitBreaker(circuitBreakerState, actualSupply, balance, weight, false);
         }
     }
 
