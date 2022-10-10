@@ -28,7 +28,7 @@ import {
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
-  return (i % 19);
+  return i % 19;
 }
 
 export default {
