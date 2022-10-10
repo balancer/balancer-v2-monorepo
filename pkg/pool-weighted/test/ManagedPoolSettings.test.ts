@@ -561,7 +561,7 @@ describe('ManagedPoolSettings', function () {
             });
           });
 
-          it('stores the params', async () => {
+          it('stores the gradual weight update params', async () => {
             const updateParams = await pool.getGradualWeightUpdateParams();
 
             expect(updateParams.startTime).to.equalWithError(startTime, 0.001);
@@ -963,14 +963,14 @@ describe('ManagedPoolSettings', function () {
             });
           });
 
-          it('stores the params', async () => {
+          it('stores the circuit breaker params', async () => {
             const {
               bptPrice: actualBptPrice,
-              weightComplement: actualWeightComplement,
+              referenceWeight: actualReferenceWeight,
               lowerBound: actualLowerBound,
               upperBound: actualUpperBound,
             } = await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
-            const expectedWeightComplement = FP_ONE.sub(poolWeights[tokenIndex]);
+            const expectedWeight = poolWeights[tokenIndex];
 
             // Don't scale; the getter will return the unscaled value.
             const expectedBptPrice = await getUnscaledBptPrice(tokenIndex);
@@ -978,7 +978,7 @@ describe('ManagedPoolSettings', function () {
             expect(actualLowerBound).to.equalWithError(LOWER_BOUND, 0.001);
             expect(actualUpperBound).to.equalWithError(UPPER_BOUND, 0.001);
             expect(actualBptPrice).to.equalWithError(expectedBptPrice, 0.0000001);
-            expect(actualWeightComplement).to.equal(expectedWeightComplement);
+            expect(actualReferenceWeight).to.equal(expectedWeight);
           });
         });
       }

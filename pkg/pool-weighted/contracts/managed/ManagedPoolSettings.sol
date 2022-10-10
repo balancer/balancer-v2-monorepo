@@ -967,7 +967,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Return the full circuit breaker state for the given token.
-     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
+     * @dev These are the reference values (BPT price and normalized weight) passed in when the breaker was set,
      * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
      * the circuit breaker should trip.
      */
@@ -976,7 +976,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         view
         returns (
             uint256 bptPrice,
-            uint256 weightComplement,
+            uint256 referenceWeight,
             uint256 lowerBound,
             uint256 upperBound,
             uint256 lowerBptPriceBound,
@@ -985,7 +985,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
+        (bptPrice, referenceWeight, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
@@ -993,9 +993,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         uint256 tokenScalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token));
         bptPrice = _upscale(bptPrice, tokenScalingFactor);
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getCurrentCircuitBreakerBounds(
+        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getBptPriceBounds(
             circuitBreakerState,
-            _getNormalizedWeight(token).complement()
+            _getNormalizedWeight(token)
         );
 
         // Also render the adjusted bounds as unscaled values.
@@ -1047,7 +1047,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // The library will validate the lower/upper bounds
         _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
             scaledBptPrice,
-            normalizedWeight.complement(),
+            normalizedWeight,
             lowerBoundPercentage,
             upperBoundPercentage
         );
