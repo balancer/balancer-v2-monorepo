@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 /**
  * @title Circuit Breaker Library
