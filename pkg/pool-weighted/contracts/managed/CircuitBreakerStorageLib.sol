@@ -76,8 +76,8 @@ library CircuitBreakerStorageLib {
     // "runtime" BPT prices can be directly compared to these BPT price bounds.
     //
     // Since the price bounds need to be adjusted for the token weight, in general these adjusted bounds would be
-    // computed every time. However, if the weight of the token and composition of the pool have not changed since
-    // the circuit breaker was set, the adjusted bounds cache can still be used, avoiding a heavy computation.
+    // computed every time. However, if the weight of the token has not changed since the circuit breaker was set,
+    // the adjusted bounds cache can still be used, avoiding a heavy computation.
     //
     // [        32 bits       |        32 bits       |  96 bits  |     64 bits      |   16 bits   |   16 bits   |
     // [ adjusted upper bound | adjusted lower bound | BPT price | reference weight | upper bound | lower bound |
@@ -143,7 +143,7 @@ library CircuitBreakerStorageLib {
      *
      * These BPT price bounds are dynamically adjusted by a non-linear factor dependent on the weight.
      * In general: lower/upper BPT price bound = bptPrice * "weight adjustment". The weight adjustment is
-     * given as: (boundaryPercentage)**(weightComplement).
+     * given as: (boundaryPercentage)**(1 - weight).
      *
      * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
      * (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
@@ -267,7 +267,7 @@ library CircuitBreakerStorageLib {
     }
 
     /**
-     * @notice Sets the reference BPT price, weight complement, and upper and lower bounds for a token.
+     * @notice Sets the reference BPT price, normalized weight, and upper and lower bounds for a token.
      * @dev If a bound is zero, it means there is no circuit breaker in that direction for the given token.
      * @param bptPrice: The BPT price of the token at the time the circuit breaker is set. The BPT Price
      * of a token is generally given by: supply * weight / balance.
