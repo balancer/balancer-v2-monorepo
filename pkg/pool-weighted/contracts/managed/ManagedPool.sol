@@ -140,6 +140,9 @@ contract ManagedPool is ManagedPoolSettings {
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
         } else if (request.tokenIn == IERC20(this)) {
+            // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
+            // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
+
             // This is equivalent to `_getVirtualSupply`, but as `balanceTokenIn` is the Vault's balance of BPT
             // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply` 
             uint256 virtualSupply = totalSupply() - balanceTokenIn;
