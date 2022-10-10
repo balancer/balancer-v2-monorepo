@@ -183,7 +183,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 actualSupply,
         bytes32 poolState
-    ) internal view returns (uint256 amountCalculated) {
+    ) internal view returns (uint256) {
         (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
             request.tokenIn,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
@@ -191,44 +191,46 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        uint256 upscaledAmountCalculated;
+        uint256 amountCalculated;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            upscaledAmountCalculated = WeightedMath._calcBptOutGivenExactTokenIn(
+            amountCalculated = WeightedMath._calcBptOutGivenExactTokenIn(
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
                 actualSupply,
                 swapFeePercentage
             );
-
-            // BPT doesn't need scaling so we can return immediately.
-            amountCalculated = upscaledAmountCalculated;
         } else {
             // request.amount is a BPT amount, so it doesn't need scaling.
-            upscaledAmountCalculated = WeightedMath._calcTokenInGivenExactBptOut(
+            amountCalculated = WeightedMath._calcTokenInGivenExactBptOut(
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
                 actualSupply,
                 swapFeePercentage
             );
-
-            // amountIn tokens are entering the Pool, so we round up.
-            amountCalculated = _downscaleUp(upscaledAmountCalculated, scalingFactorTokenIn);
         }
 
         _checkCircuitBreakers(
-            actualSupply.add(request.kind == IVault.SwapKind.GIVEN_IN ? upscaledAmountCalculated : request.amount),
+            actualSupply.add(request.kind == IVault.SwapKind.GIVEN_IN ? amountCalculated : request.amount),
             _getPoolDelta(
                 request.tokenIn,
-                request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : upscaledAmountCalculated
+                request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : amountCalculated
             ),
             true
         );
+
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            // BPT doesn't need scaling.
+            return amountCalculated;
+        } else {
+            // amountIn tokens are entering the Pool, so we round up.
+            return _downscaleUp(amountCalculated, scalingFactorTokenIn);
+        }
     }
 
     /*
@@ -245,7 +247,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut,
         uint256 actualSupply,
         bytes32 poolState
-    ) internal view returns (uint256 amountCalculated) {
+    ) internal view returns (uint256) {
         (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
             request.tokenOut,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
@@ -254,44 +256,46 @@ contract ManagedPool is ManagedPoolSettings {
 
         // We must always upscale the token balance for both `GIVEN_IN` and `GIVEN_OUT` swaps
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-        uint256 upscaledAmountCalculated;
+        uint256 amountCalculated;
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // request.amount is a BPT amount, so it doesn't need scaling.
-            upscaledAmountCalculated = WeightedMath._calcTokenOutGivenExactBptIn(
+            amountCalculated = WeightedMath._calcTokenOutGivenExactBptIn(
                 balanceTokenOut,
                 tokenOutWeight,
                 request.amount,
                 actualSupply,
                 swapFeePercentage
             );
-
-            // amountOut (upscaledAmountCalculated) tokens are exiting the Pool, so we round down.
-            amountCalculated = _downscaleDown(upscaledAmountCalculated, scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            upscaledAmountCalculated = WeightedMath._calcBptInGivenExactTokenOut(
+            amountCalculated = WeightedMath._calcBptInGivenExactTokenOut(
                 balanceTokenOut,
                 tokenOutWeight,
                 request.amount,
                 actualSupply,
                 swapFeePercentage
             );
-
-            // BPT doesn't need scaling so we can return immediately.
-            amountCalculated = upscaledAmountCalculated;
         }
 
         _checkCircuitBreakers(
-            actualSupply.sub(request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : upscaledAmountCalculated),
+            actualSupply.sub(request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : amountCalculated),
             _getPoolDelta(
                 request.tokenOut,
-                request.kind == IVault.SwapKind.GIVEN_IN ? upscaledAmountCalculated : request.amount
+                request.kind == IVault.SwapKind.GIVEN_IN ? amountCalculated : request.amount
             ),
             false
         );
+
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            // amountOut (amountCalculated) tokens are exiting the Pool, so we round down.
+            return _downscaleDown(amountCalculated, scalingFactorTokenOut);
+        } else {
+            // BPT doesn't need scaling so we can return immediately.
+            return amountCalculated;
+        }
     }
 
     /**
