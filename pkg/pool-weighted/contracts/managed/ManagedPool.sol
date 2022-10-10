@@ -289,32 +289,46 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut,
         bytes32 poolState
     ) internal view returns (uint256) {
-        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
+        // We first query data needed to perform the swap, i.e. token weights and scaling factors as well as the Pool's
+        // swap fee (in the form of its complement).
         SwapTokenData memory tokenData = _getSwapTokenData(request, poolState);
+        uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
 
+        // `_onSwapMinimal` passes unscaled values so we upscale token balances using the appropriate scaling factors.
         balanceTokenIn = _upscale(balanceTokenIn, tokenData.scalingFactorTokenIn);
         balanceTokenOut = _upscale(balanceTokenOut, tokenData.scalingFactorTokenOut);
 
+        // We must also upscale `request.amount` however we do not yet know which scaling factor to use as this differs
+        // depending on whether it represents an amount of tokens entering (GIVEN_IN) or leaving (GIVEN_OUT) the Pool.
+        //
+        // Therefore we branch depending on the swap kind and calculate the `amountOut` for GIVEN_IN swaps or the 
+        // `amountIn` for GIVEN_OUT swaps. We call these values the `amountCalculated`.
         uint256 amountCalculated;
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // All token amounts are upscaled.
+            // In `GIVEN_IN` swaps, `request.amount` is the amount of tokens entering the pool so we upscale with
+            // `scalingFactorTokenIn`.
             request.amount = _upscale(request.amount, tokenData.scalingFactorTokenIn);
 
-            // We round the amount in down (favoring a higher fee amount).
-            uint256 amountInWithoutFees = request.amount.mulDown(swapFeeComplement);
+            // We then subtract swap fees from this amount so the collected swap fees aren't use to calculate how many
+            // tokens the trader will receive. We round this value down (favoring a higher fee amount).
+            uint256 amountInMinusFees = request.amount.mulDown(swapFeeComplement);
 
+            // Once fees are removed we can then calculate the equivalent amount of `tokenOut`.
             amountCalculated = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
                 tokenData.tokenInWeight,
                 balanceTokenOut,
                 tokenData.tokenOutWeight,
-                amountInWithoutFees
+                amountInMinusFees
             );
         } else {
-            // All token amounts are upscaled.
+            // In `GIVEN_OUT` swaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
+            // `scalingFactorTokenOut`.
             request.amount = _upscale(request.amount, tokenData.scalingFactorTokenOut);
 
-            uint256 amountInWithoutFees = WeightedMath._calcInGivenOut(
+            // We first calculate how many tokens must be sent in order to receive `request.amount` tokens out.
+            // This calculation does not yet include fees.
+            uint256 amountInMinusFees = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
                 tokenData.tokenInWeight,
                 balanceTokenOut,
@@ -322,12 +336,19 @@ contract ManagedPool is ManagedPoolSettings {
                 request.amount
             );
 
-            // We round the amount in up (favoring a higher fee amount).
-            amountCalculated = amountInWithoutFees.divUp(swapFeeComplement);
+            // We then add swap fees to this amount so the trader must send extra tokens.
+            // We round this value up (favoring a higher fee amount).
+            amountCalculated = amountInMinusFees.divUp(swapFeeComplement);
         }
 
+        // A token swap increases the price of the token leaving the Pool and reduces the price of the token entering
+        // the Pool. ManagedPool's circuit breakers prevent the tokens' prices from leaving certain bounds so we must
+        // check that we haven't tripped a breaker as a result of the token swap.
         _checkCircuitBreakersOnRegularSwap(request, tokenData, balanceTokenIn, balanceTokenOut, amountCalculated);
 
+
+        // Finally we downscale `amountCalculated` before we return it. We want to round this value in favour of the
+        // Pool so apply different scaling on amounts entering or leaving the Pool.
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountCalculated, tokenData.scalingFactorTokenOut);
