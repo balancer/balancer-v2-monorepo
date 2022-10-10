@@ -205,8 +205,8 @@ library CircuitBreakerStorageLib {
                 .decodeUint(_ADJUSTED_UPPER_BOUND_OFFSET, _ADJUSTED_BOUND_WIDTH)
                 .decompress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
-            // Something has changed - either the weight of the token, or the composition of the pool, so we must
-            // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
+            // The weight has changed, so we retrieve the raw percentage bounds and do the full calculation.
+            // Decompress the bounds by shifting left.
             (adjustedLowerBound, adjustedUpperBound) = CircuitBreakerLib.calcAdjustedBounds(
                 circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
                 circuitBreakerState.decodeUint(_UPPER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
@@ -241,15 +241,15 @@ library CircuitBreakerStorageLib {
             return 0;
         }
 
-        // Retrieve the weight complement passed in and bptPrice computed when the circuit breaker was set.
+        // Retrieve the BPT price and reference weight passed in when the circuit breaker was set.
         uint256 bptPrice = circuitBreakerState.decodeUint(_BPT_PRICE_OFFSET, _BPT_PRICE_WIDTH);
         uint256 referenceWeight = circuitBreakerState.decodeUint(_REFERENCE_WEIGHT_OFFSET, _REFERENCE_WEIGHT_WIDTH);
 
         uint256 boundRatio;
 
         if (currentWeight == referenceWeight) {
-            // If the weight complement hasn't changed since the circuit breaker was set, we can use the precomputed
-            // boundary ratios.
+            // If the weight hasn't changed since the circuit breaker was set, we can use the precomputed
+            // adjusted bounds.
             boundRatio = circuitBreakerState
                 .decodeUint(
                 isLowerBound ? _ADJUSTED_LOWER_BOUND_OFFSET : _ADJUSTED_UPPER_BOUND_OFFSET,
@@ -257,12 +257,12 @@ library CircuitBreakerStorageLib {
             )
                 .decompress(_ADJUSTED_BOUND_WIDTH, _MAX_BOUND_PERCENTAGE);
         } else {
-            // Something has changed - either the weight of the token, or the composition of the pool, so we must
-            // retrieve the raw percentage bounds and do the full calculation. Decompress the bounds by shifting left.
+            // The weight has changed, so we retrieve the raw percentage bounds and do the full calculation.
+            // Decompress the bounds by shifting left.
             boundRatio = CircuitBreakerLib.calcAdjustedBound(bound, currentWeight, isLowerBound);
         }
 
-        // Use the ratios retrieved (or computed) above to convert raw percentage bounds to BPT price bounds.
+        // Use the adjusted bounds (either cached or computed) to calculate the BPT price bounds.
         return CircuitBreakerLib.calcBptPriceBoundary(boundRatio, bptPrice, isLowerBound);
     }
 

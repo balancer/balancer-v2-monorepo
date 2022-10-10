@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 /**
  * @title Circuit Breaker Library
@@ -33,7 +34,7 @@ library CircuitBreakerLib {
      * floating point number, adjusted by the scaling factor of the token.
      * @param boundBptPrice - the BPT price at the limit (lower or upper) of the allowed trading range.
      * @param isLowerBound - true if the boundBptPrice represents the lower bound.
-     * @return - boolean flag set to true if the breaker should be tripped
+     * @return - boolean flag for whether the breaker has been tripped.
      */
     function hasCircuitBreakerTripped(
         uint256 virtualSupply,
@@ -42,11 +43,13 @@ library CircuitBreakerLib {
         uint256 boundBptPrice,
         bool isLowerBound
     ) internal pure returns (bool) {
+        // A bound price of 0 means that no breaker is set.
         if (boundBptPrice == 0) {
             return false;
         }
 
-        uint256 currentBptPrice = virtualSupply.mulUp(weight).divDown(balance);
+        // Round down for lower bound checks, up for upper bound checks
+        uint256 currentBptPrice = Math.div(Math.mul(virtualSupply, weight), balance, !isLowerBound);
 
         return isLowerBound ? currentBptPrice < boundBptPrice : currentBptPrice > boundBptPrice;
     }
@@ -127,10 +130,8 @@ library CircuitBreakerLib {
         uint256 weight,
         bool isLowerBound
     ) internal pure returns (uint256 boundRatio) {
-        uint256 weightComplement = weight.complement();
-
         // To be conservative and protect LPs, round up for the lower bound, and down for the upper bound.
-        boundRatio = (isLowerBound ? FixedPoint.powUp : FixedPoint.powDown)(bound, weightComplement);
+        boundRatio = (isLowerBound ? FixedPoint.powUp : FixedPoint.powDown)(bound, weight.complement());
     }
 
     /**
