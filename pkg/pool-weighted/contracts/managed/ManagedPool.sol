@@ -285,112 +285,85 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut,
         bytes32 poolState
-    ) internal view returns (uint256 amountCalculated) {
+    ) internal view returns (uint256) {
         uint256 swapFeeComplement = ManagedPoolStorageLib.getSwapFeePercentage(poolState).complement();
-        SwapTokenData memory swapTokenData = _getSwapTokenData(request, poolState);
+        SwapTokenData memory tokenData = _getSwapTokenData(request, poolState);
 
-        balanceTokenIn = _upscale(balanceTokenIn, swapTokenData.scalingFactorTokenIn);
-        balanceTokenOut = _upscale(balanceTokenOut, swapTokenData.scalingFactorTokenOut);
+        balanceTokenIn = _upscale(balanceTokenIn, tokenData.scalingFactorTokenIn);
+        balanceTokenOut = _upscale(balanceTokenOut, tokenData.scalingFactorTokenOut);
 
-        uint256 upscaledAmountCalculated;
-
+        uint256 amountCalculated;
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, swapTokenData.scalingFactorTokenIn);
+            request.amount = _upscale(request.amount, tokenData.scalingFactorTokenIn);
 
             // We round the amount in down (favoring a higher fee amount).
-            request.amount = request.amount.mulDown(swapFeeComplement);
+            uint256 amountInWithoutFees = request.amount.mulDown(swapFeeComplement);
 
-            upscaledAmountCalculated = WeightedMath._calcOutGivenIn(
+            amountCalculated = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                swapTokenData.tokenInWeight,
+                tokenData.tokenInWeight,
                 balanceTokenOut,
-                swapTokenData.tokenOutWeight,
-                request.amount
+                tokenData.tokenOutWeight,
+                amountInWithoutFees
             );
-
-            // amountOut tokens are exiting the Pool, so we round down.
-            amountCalculated = _downscaleDown(upscaledAmountCalculated, swapTokenData.scalingFactorTokenOut);
         } else {
             // All token amounts are upscaled.
-            request.amount = _upscale(request.amount, swapTokenData.scalingFactorTokenOut);
+            request.amount = _upscale(request.amount, tokenData.scalingFactorTokenOut);
 
-            uint256 amountIn = WeightedMath._calcInGivenOut(
+            uint256 amountInWithoutFees = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                swapTokenData.tokenInWeight,
+                tokenData.tokenInWeight,
                 balanceTokenOut,
-                swapTokenData.tokenOutWeight,
+                tokenData.tokenOutWeight,
                 request.amount
             );
 
             // We round the amount in up (favoring a higher fee amount).
-            upscaledAmountCalculated = amountIn.divUp(swapFeeComplement);
-
-            // amountIn tokens are entering the Pool, so we round up.
-            amountCalculated = _downscaleUp(upscaledAmountCalculated, swapTokenData.scalingFactorTokenIn);
+            amountCalculated = amountInWithoutFees.divUp(swapFeeComplement);
         }
 
-        _checkCircuitBreakersOnRegularSwap(
-            request,
-            swapTokenData,
-            balanceTokenIn,
-            balanceTokenOut,
-            upscaledAmountCalculated
-        );
+        _checkCircuitBreakersOnRegularSwap(request, tokenData, balanceTokenIn, balanceTokenOut, amountCalculated);
+
+        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+            // amountOut tokens are exiting the Pool, so we round down.
+            return _downscaleDown(amountCalculated, tokenData.scalingFactorTokenOut);
+        } else {
+            // amountIn tokens are entering the Pool, so we round up.
+            return _downscaleUp(amountCalculated, tokenData.scalingFactorTokenIn);
+        }
     }
 
     function _checkCircuitBreakersOnRegularSwap(
         SwapRequest memory request,
-        SwapTokenData memory swapTokenData,
+        SwapTokenData memory tokenData,
         uint256 balanceTokenIn,
         uint256 balanceTokenOut,
         uint256 amountCalculated
     ) private view {
         uint256 actualSupply = _getActualSupply(_getVirtualSupply());
 
+        (uint256 amountIn, uint256 amountOut) = request.kind == IVault.SwapKind.GIVEN_IN
+            ? (request.amount, amountCalculated)
+            : (amountCalculated, request.amount);
+
+        _checkBreaker(actualSupply, request.tokenIn, tokenData.tokenInWeight, balanceTokenIn.add(amountIn), true);
+        _checkBreaker(actualSupply, request.tokenOut, tokenData.tokenOutWeight, balanceTokenOut.sub(amountOut), false);
+    }
+
+    function _checkBreaker(
+        uint256 actualSupply,
+        IERC20 token,
+        uint256 weight,
+        uint256 balance,
+        bool isLowerBound
+    ) private view {
         // Since the balance of tokenIn is increasing, its BPT price will decrease,
         // so we need to check the lower bound.
-        uint256 lowerBoundBptPriceTokenIn = CircuitBreakerStorageLib.getBptPriceBound(
-            _getCircuitBreakerState(request.tokenIn),
-            swapTokenData.tokenInWeight,
-            true
-        );
-
-        uint256 endingBalanceTokenIn = balanceTokenIn.add(
-            request.kind == IVault.SwapKind.GIVEN_IN ? request.amount : amountCalculated
-        );
+        uint256 bound = CircuitBreakerStorageLib.getBptPriceBound(_getCircuitBreakerState(token), weight, isLowerBound);
 
         _require(
-            !CircuitBreakerLib.hasCircuitBreakerTripped(
-                actualSupply,
-                swapTokenData.tokenInWeight,
-                endingBalanceTokenIn,
-                lowerBoundBptPriceTokenIn,
-                true
-            ),
-            Errors.CIRCUIT_BREAKER_TRIPPED
-        );
-
-        // Since the balance of tokenOut is decreasing, its BPT price will increase,
-        // so we need to check the upper bound.
-        uint256 upperBoundBptPriceTokenOut = CircuitBreakerStorageLib.getBptPriceBound(
-            _getCircuitBreakerState(request.tokenOut),
-            swapTokenData.tokenOutWeight,
-            false
-        );
-
-        uint256 endingBalanceTokenOut = balanceTokenOut.sub(
-            request.kind == IVault.SwapKind.GIVEN_IN ? amountCalculated : request.amount
-        );
-
-        _require(
-            !CircuitBreakerLib.hasCircuitBreakerTripped(
-                actualSupply,
-                swapTokenData.tokenOutWeight,
-                endingBalanceTokenOut,
-                upperBoundBptPriceTokenOut,
-                false
-            ),
+            !CircuitBreakerLib.hasCircuitBreakerTripped(actualSupply, weight, balance, bound, isLowerBound),
             Errors.CIRCUIT_BREAKER_TRIPPED
         );
     }
