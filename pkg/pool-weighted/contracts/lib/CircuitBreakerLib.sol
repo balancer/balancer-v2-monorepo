@@ -51,14 +51,14 @@ library CircuitBreakerLib {
     }
 
     /**
-     * @notice Convert bounds to adjusted bounds (apply non-linear adjustment for weights)
+     * @notice Convert bounds to adjusted bounds (apply non-linear adjustment for weight changes).
+     * @dev At any given time, the BPT price trading range is defined by the BPT price at the time
+     * the circuit breaker was set, multiplied by the weight-adjusted bounds.
      * @param lowerBound - the lower bound percentage; 0.8 means tolerate a 20% relative drop.
      * @param upperBound - the upper bound percentage; 5.0 means tolerate a 5x increase.
      * @param weight - the current normalized token weight.
      * @return adjustedLowerBound - the final lower bound, adjusted for any weight changes.
      * @return adjustedUpperBound - the final upper bound, adjusted for any weight changes.
-     * At any given time, the BPT price trading range is defined by the BPT price at the time
-     * the circuit breaker was set, multiplied by the weight-adjusted bounds.
      */
     function calcAdjustedBounds(
         uint256 lowerBound,
