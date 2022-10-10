@@ -570,8 +570,10 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply(), balances);
 
-        (IERC20[] memory tokens, ) = _getPoolTokens();
 
+        // We want to upscale all of the balances received from the Vault by the appropriate scaling factors.
+        // In order to do this we must query the Pool's tokens from the Vault as ManagedPool doesn't keep track.
+        (IERC20[] memory tokens, ) = _getPoolTokens();
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
@@ -655,6 +657,11 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        // As ManagedPool is a composable pool `_doRecoveryModeExit()` must use the virtual supply rather than the 
+        // total supply to correctly distribute Pool assets proportionally.
+        // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
+        // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
+
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
