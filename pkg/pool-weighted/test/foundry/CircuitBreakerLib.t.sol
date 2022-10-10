@@ -127,7 +127,6 @@ contract CircuitBreakerLibTest is Test {
         );
 
         // Single-sided
-
         uint256 singleSidedLowerBptPrice = CircuitBreakerLib.calcAdjustedBound(lowerBound, newWeight, true);
         uint256 singleSidedUpperBptPrice = CircuitBreakerLib.calcAdjustedBound(upperBound, newWeight, false);
 
