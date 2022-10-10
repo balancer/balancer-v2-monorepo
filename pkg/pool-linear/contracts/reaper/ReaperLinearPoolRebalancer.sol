@@ -18,11 +18,13 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IReaperTokenVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../LinearPoolRebalancer.sol";
 
 contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     using Math for uint256;
+    using SafeERC20 for IERC20;
 
     uint256 private immutable _divisor;
 
@@ -40,7 +42,7 @@ contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     function _wrapTokens(uint256 amount) internal override {
         // Depositing from underlying (i.e. DAI, USDC, etc. instead of rfDAI or rfUSDC). Before we can
         // deposit however, we need to approve the wrapper (reaper vault) in the underlying token.
-        _mainToken.approve(address(_wrappedToken), amount);
+        _mainToken.safeApproval(address(_wrappedToken), amount);
         IReaperTokenVault(address(_wrappedToken)).deposit(amount);
     }
 
