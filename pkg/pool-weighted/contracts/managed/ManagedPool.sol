@@ -144,7 +144,7 @@ contract ManagedPool is ManagedPoolSettings {
         } else if (request.tokenIn == IERC20(this)) {
             // `tokenIn` is the BPT, so this is an exit swap.
 
-            // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
+            // Note that we do not check the LP allowlist here. LPs must always be able to exit the pool,
             // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
 
             // This is equivalent to `_getVirtualSupply`, but as `balanceTokenIn` is the Vault's balance of BPT
@@ -598,7 +598,7 @@ contract ManagedPool is ManagedPoolSettings {
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
 
-        // Note that we do not perform any check on the LP allowlist here. LPs must always be able to exit the pool
+        // Note that we do not check the LP allowlist here. LPs must always be able to exit the pool,
         // and enforcing the allowlist would allow the manager to perform DOS attacks on LPs.
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
