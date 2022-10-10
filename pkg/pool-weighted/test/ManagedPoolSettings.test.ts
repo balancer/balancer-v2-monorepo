@@ -971,10 +971,9 @@ describe('ManagedPoolSettings', function () {
               upperBound: actualUpperBound,
             } = await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
             const expectedWeightComplement = FP_ONE.sub(poolWeights[tokenIndex]);
-            const totalSupply = await pool.getActualSupply();
 
             // Don't scale; the getter will return the unscaled value.
-            const expectedBptPrice = fpDiv(fpMul(totalSupply, poolWeights[tokenIndex]), initialBalances[tokenIndex]);
+            const expectedBptPrice = await getUnscaledBptPrice(tokenIndex);
 
             expect(actualLowerBound).to.equalWithError(LOWER_BOUND, 0.001);
             expect(actualUpperBound).to.equalWithError(UPPER_BOUND, 0.001);
