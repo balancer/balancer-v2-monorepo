@@ -679,8 +679,8 @@ contract ManagedPool is ManagedPoolSettings {
             BoundCheckKind.LOWER,
             request.tokenIn,
             actualSupply,
-            tokenData.tokenInWeight,
-            balanceTokenIn.add(amountIn)
+            balanceTokenIn.add(amountIn),
+            tokenData.tokenInWeight
         );
 
         // Since the balance of tokenOut is decreasing, its BPT price will increase,
@@ -689,8 +689,8 @@ contract ManagedPool is ManagedPoolSettings {
             BoundCheckKind.UPPER,
             request.tokenOut,
             actualSupply,
-            tokenData.tokenOutWeight,
-            balanceTokenOut.sub(amountOut)
+            balanceTokenOut.sub(amountOut),
+            tokenData.tokenOutWeight
         );
     }
 
@@ -706,16 +706,17 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 amountCalculated,
         bool isJoin
     ) private view {
+        uint256 newActualSupply;
         uint256 amount;
 
         // This is a swap between the BPT token and another pool token. Calculate the end state: actualSupply
         // and the token amount being swapped, depending on whether it is a join or exit, GivenIn or GivenOut.
         if (isJoin) {
-            (actualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
+            (newActualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
                 ? (actualSupply.add(amountCalculated), request.amount)
                 : (actualSupply.add(request.amount), amountCalculated);
         } else {
-            (actualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
+            (newActualSupply, amount) = request.kind == IVault.SwapKind.GIVEN_IN
                 ? (actualSupply.sub(request.amount), amountCalculated)
                 : (actualSupply.sub(amountCalculated), request.amount);
         }
@@ -737,7 +738,7 @@ contract ManagedPool is ManagedPoolSettings {
             }
         }
 
-        _checkCircuitBreakers(actualSupply, tokens, balances, amounts, normalizedWeights, isJoin);
+        _checkCircuitBreakers(newActualSupply, tokens, balances, amounts, normalizedWeights, isJoin);
     }
 
     /**
@@ -764,7 +765,7 @@ contract ManagedPool is ManagedPoolSettings {
 
             // Since we cannot be sure which direction the BPT price of the token has moved,
             // we must check both the lower and upper bounds.
-            _checkCircuitBreaker(BoundCheckKind.BOTH, tokens[i], actualSupply, normalizedWeights[i], finalBalance);
+            _checkCircuitBreaker(BoundCheckKind.BOTH, tokens[i], actualSupply, finalBalance, normalizedWeights[i]);
         }
     }
 
