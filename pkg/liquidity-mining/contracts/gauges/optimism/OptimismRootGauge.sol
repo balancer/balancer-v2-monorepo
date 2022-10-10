@@ -67,7 +67,8 @@ contract OptimismRootGauge is StakelessGauge {
     }
 
     function _postMintAction(uint256 mintAmount) internal override {
-        _balToken.approve(address(_optimismL1StandardBridge), mintAmount); // ERC20 compliant; no need to use safeApproval.
+        // ERC20 compliant; no need to use safeApproval.
+        _balToken.approve(address(_optimismL1StandardBridge), mintAmount);
 
         // This will transfer BAL to `_recipient` on the Optimism chain
         _optimismL1StandardBridge.depositERC20To(
