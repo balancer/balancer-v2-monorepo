@@ -45,7 +45,7 @@ contract ArbitrumRootGauge is StakelessGauge {
 
     function _postMintAction(uint256 mintAmount) internal override {
         // Token needs to be approved on the gateway NOT the gateway router
-        _balToken.approve(_gateway, mintAmount);
+        _balToken.approve(_gateway, mintAmount); // ERC20 compliant; no need to use safeApproval.
 
         (uint256 gasLimit, uint256 gasPrice, uint256 maxSubmissionCost) = _factory.getArbitrumFees();
         uint256 totalBridgeCost = _getTotalBridgeCost(gasLimit, gasPrice, maxSubmissionCost);
