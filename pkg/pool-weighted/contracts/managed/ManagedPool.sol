@@ -124,9 +124,9 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
         _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
-        // ManagedPool is a composable Pool so a swap could either be a join, exit or a regular token swap.
-        // By checking whether the incoming or outgoing tokens are the Pool's BPT can determine
-        // which kind of swap we're performing and handle it appropriately. 
+        // ManagedPool is a composable Pool so a swap could either be a join swap, exit swap or a token swap.
+        // By checking whether the incoming or outgoing tokens are the Pool's BPT we can determine which kind of
+        // operation we want to perform and pass it to the appropriate handler.
         if (request.tokenOut == IERC20(this)) {
             // Check allowlist for LPs, if applicable
             _require(_isAllowedAddress(poolState, request.from), Errors.ADDRESS_NOT_ALLOWLISTED);
