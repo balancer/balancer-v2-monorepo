@@ -288,7 +288,11 @@ library CircuitBreakerStorageLib {
      * relative to the last call to `setCircuitBreaker`. The intent is only to optimize the automatic bounds
      * adjustments due to changing weights.
      */
-    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 newReferenceWeight) internal pure returns (bytes32) {
+    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 newReferenceWeight)
+        internal
+        pure
+        returns (bytes32)
+    {
         uint256 adjustedLowerBound = CircuitBreakerLib.calcAdjustedBound(
             circuitBreakerState.decodeUint(_LOWER_BOUND_OFFSET, _BOUND_WIDTH) << _BOUND_SHIFT_BITS,
             newReferenceWeight,
