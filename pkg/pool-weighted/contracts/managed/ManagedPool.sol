@@ -122,11 +122,15 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 balanceTokenOut
     ) internal override returns (uint256) {
         bytes32 poolState = _getPoolState();
-        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
 
         // ManagedPool is a composable Pool, so a swap could be either a join swap, an exit swap, or a token swap.
         // By checking whether the incoming or outgoing token is the BPT, we can determine which kind of
         // operation we want to perform and pass it to the appropriate handler.
+        //
+        // We block all types of swap if swaps are disabled as a token swap is equivalent to a join swap followed by
+        // an exit swap into a different token.
+        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+
         if (request.tokenOut == IERC20(this)) {
             // `tokenOut` is the BPT, so this is a join swap.
 
