@@ -137,7 +137,7 @@ contract ManagedPool is ManagedPoolSettings {
             // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply` 
             uint256 virtualSupply = totalSupply() - balanceTokenOut;
 
-            // See documentation for `getActualSupply()`.
+            // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
             uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onJoinSwap(request, balanceTokenIn, actualSupply, poolState);
@@ -151,7 +151,7 @@ contract ManagedPool is ManagedPoolSettings {
             // we can avoid querying this value again from the Vault as we do in `_getVirtualSupply` 
             uint256 virtualSupply = totalSupply() - balanceTokenIn;
 
-            // See documentation for `getActualSupply()`.
+            // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
             uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
             return _onExitSwap(request, balanceTokenOut, actualSupply, poolState);
@@ -468,7 +468,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // See documentation for `getActualSupply()`.
+        // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountOut, amountsIn) = _doJoin(
@@ -555,7 +555,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(balances, scalingFactors);
 
-        // See documentation for `getActualSupply()`.
+        // See documentation for `getActualSupply()` and `_collectAumManagementFees()`.
         uint256 actualSupply = virtualSupply + _collectAumManagementFees(virtualSupply);
 
         (bptAmountIn, amountsOut) = _doExit(
