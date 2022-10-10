@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IReaperTokenVault.sol";
 
@@ -28,6 +29,7 @@ import "./IBaseRelayerLibrary.sol";
  */
 abstract contract ReaperWrapping is IBaseRelayerLibrary {
     using Address for address payable;
+    using SafeERC20 for IERC20;
 
     function unwrapReaperVaultToken(
         IReaperTokenVault vaultToken,
@@ -56,7 +58,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         uint256 withdrawnAmount = underlyingToken.balanceOf(address(this));
 
         // Send the shares to the recipient
-        underlyingToken.transfer(recipient, withdrawnAmount);
+        underlyingToken.safeTransfer(recipient, withdrawnAmount);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, withdrawnAmount);
@@ -84,7 +86,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         }
 
         // Approve the vault token to spend the amount specified in the wrap
-        underlyingToken.approve(address(vaultToken), amount);
+        underlyingToken.safeApproval(address(vaultToken), amount);
 
         // Deposit the tokens into the vault
         vaultToken.deposit(amount);
@@ -93,7 +95,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         uint256 sharesGained = vaultToken.balanceOf(address(this));
 
         // Send the shares to the recipient
-        vaultToken.transfer(recipient, sharesGained);
+        vaultToken.safeTransfer(recipient, sharesGained);
 
         if (_isChainedReference(outputReference)) {
             _setChainedReferenceValue(outputReference, sharesGained);

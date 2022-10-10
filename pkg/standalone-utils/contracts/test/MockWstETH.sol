@@ -33,7 +33,7 @@ contract MockWstETH is ERC20, IwstETH {
     }
 
     function wrap(uint256 _stETHAmount) external override returns (uint256) {
-        stETH.transferFrom(msg.sender, address(this), _stETHAmount);
+        stETH.transferFrom(msg.sender, address(this), _stETHAmount); // ERC20 compliant; no need to use safeTransferFrom.
         uint256 wstETHAmount = getWstETHByStETH(_stETHAmount);
         _mint(msg.sender, wstETHAmount);
         return wstETHAmount;
@@ -42,7 +42,7 @@ contract MockWstETH is ERC20, IwstETH {
     function unwrap(uint256 _wstETHAmount) external override returns (uint256) {
         _burn(msg.sender, _wstETHAmount);
         uint256 stETHAmount = getStETHByWstETH(_wstETHAmount);
-        stETH.transfer(msg.sender, stETHAmount);
+        stETH.transfer(msg.sender, stETHAmount); // ERC20 compliant; no need to use safeTransfer.
         return stETHAmount;
     }
 

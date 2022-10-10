@@ -61,11 +61,11 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             _pullToken(sender, _stETH, amount);
         }
 
-        _stETH.approve(address(_wstETH), amount);
+        _stETH.approve(address(_wstETH), amount); // ERC20 compliant; no need to use safeApproval.
         uint256 result = IwstETH(_wstETH).wrap(amount);
 
         if (recipient != address(this)) {
-            _wstETH.transfer(recipient, result);
+            _wstETH.transfer(recipient, result); // ERC20 compliant; no need to use safeTransfer.
         }
 
         if (_isChainedReference(outputReference)) {
@@ -94,7 +94,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         uint256 result = _wstETH.unwrap(amount);
 
         if (recipient != address(this)) {
-            _stETH.transfer(recipient, result);
+            _stETH.transfer(recipient, result); // ERC20 compliant; no need to use safeTransfer.
         }
 
         if (_isChainedReference(outputReference)) {
@@ -114,7 +114,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         uint256 result = _stETH.submit{ value: amount }(address(this));
 
         if (recipient != address(this)) {
-            _stETH.transfer(recipient, result);
+            _stETH.transfer(recipient, result); // ERC20 compliant; no need to use safeTransfer.
         }
 
         if (_isChainedReference(outputReference)) {
@@ -142,7 +142,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         payable(address(_wstETH)).sendValue(amount);
 
         if (recipient != address(this)) {
-            _wstETH.transfer(recipient, result);
+            _wstETH.transfer(recipient, result); // ERC20 compliant; no need to use safeTransfer.
         }
 
         if (_isChainedReference(outputReference)) {

@@ -15,11 +15,15 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+
 contract MockWithdrawDepositAssetManager {
+    using SafeERC20 for IERC20;
+
     IVault private immutable _vault;
 
     constructor(IVault vault) {
@@ -74,7 +78,7 @@ contract MockWithdrawDepositAssetManager {
         deposit[1].token = token;
 
         // Before we can deposit tokens into the Vault however, we must approve them.
-        token.approve(address(_vault), amount);
+        token.safeApproval(address(_vault), amount);
         _vault.managePoolBalance(deposit);
     }
 }
