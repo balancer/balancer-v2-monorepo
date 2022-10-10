@@ -657,7 +657,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 totalSupply,
         bytes memory userData
     ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        // As ManagedPool is a composable pool `_doRecoveryModeExit()` must use the virtual supply rather than the 
+        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the 
         // total supply to correctly distribute Pool assets proportionally.
         // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
         // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
