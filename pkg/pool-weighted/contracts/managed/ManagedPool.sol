@@ -180,19 +180,29 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // We first query data needed to perform the joinswap, i.e. the token weight and scaling factor as well as the
+        // Pool's swap fee.
         (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
             request.tokenIn,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
         );
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
+        // `_onSwapMinimal` passes unscaled values so we upscale the token balance.
         balanceTokenIn = _upscale(balanceTokenIn, scalingFactorTokenIn);
-        uint256 amountCalculated;
 
+        // We may also need to upscale `request.amount`, however we do not yet know this as that depends on whether that
+        // is a token amount (GIVEN_IN) or a BPT amount (GIVEN_OUT), which gets no scaling.
+        //
+        // Therefore we branch depending on the swap kind and calculate the `bptAmountOut` for GIVEN_IN joinswaps or the
+        // `amountIn` for GIVEN_OUT joinswaps. We call these values the `amountCalculated`.
+        uint256 amountCalculated;
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // All token amounts are upscaled.
+            // In `GIVEN_IN` joinswaps, `request.amount` is the amount of tokens entering the pool so we upscale with
+            // `scalingFactorTokenIn`.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
+            // Once fees are removed we can then calculate the equivalent BPT amount.
             amountCalculated = WeightedMath._calcBptOutGivenExactTokenIn(
                 balanceTokenIn,
                 tokenInWeight,
@@ -201,7 +211,8 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
         } else {
-            // request.amount is a BPT amount, so it doesn't need scaling.
+            // In `GIVEN_OUT` joinswaps, `request.amount` is the amount of BPT leaving the pool, which does not need any
+            // scaling.
             amountCalculated = WeightedMath._calcTokenInGivenExactBptOut(
                 balanceTokenIn,
                 tokenInWeight,
@@ -211,13 +222,17 @@ contract ManagedPool is ManagedPoolSettings {
             );
         }
 
+        // A joinswap decreases the price of the token entering the Pool and increases the price of all other tokens.
+        // ManagedPool's circuit breakers prevent the tokens' prices from leaving certain bounds so we must  check that
+        // we haven't tripped a breaker as a result of the joinswap.
         _checkCircuitBreakersOnJoinOrExitSwap(request, actualSupply, amountCalculated, true);
 
+        // Finally we downscale `amountCalculated` before we return it.
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // BPT doesn't need scaling.
+            // BPT is leaving the Pool, which doesn't need scaling.
             return amountCalculated;
         } else {
-            // amountIn tokens are entering the Pool, so we round up.
+            // `amountCalculated` tokens are entering the Pool, so we round up.
             return _downscaleUp(amountCalculated, scalingFactorTokenIn);
         }
     }
@@ -237,18 +252,26 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // We first query data needed to perform the exitswap, i.e. the token weight and scaling factor as well as the
+        // Pool's swap fee.
         (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
             request.tokenOut,
             ManagedPoolStorageLib.getGradualWeightChangeProgress(poolState)
         );
         uint256 swapFeePercentage = ManagedPoolStorageLib.getSwapFeePercentage(poolState);
 
-        // We must always upscale the token balance for both `GIVEN_IN` and `GIVEN_OUT` swaps
+        // `_onSwapMinimal` passes unscaled values so we upscale the token balance.
         balanceTokenOut = _upscale(balanceTokenOut, scalingFactorTokenOut);
-        uint256 amountCalculated;
 
+        // We may also need to upscale `request.amount`, however we do not yet know this as that depends on whether that
+        // is a BPT amount (GIVEN_IN), which gets no scaling, or a token amount (GIVEN_OUT).
+        //
+        // Therefore we branch depending on the swap kind and calculate the `amountOut` for GIVEN_IN exitswaps or the
+        // `bptAmountIn` for GIVEN_OUT exitswaps. We call these values the `amountCalculated`.
+        uint256 amountCalculated;
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // request.amount is a BPT amount, so it doesn't need scaling.
+            // In `GIVEN_IN` exitswaps, `request.amount` is the amount of BPT entering the pool, which does not need any
+            // scaling.
             amountCalculated = WeightedMath._calcTokenOutGivenExactBptIn(
                 balanceTokenOut,
                 tokenOutWeight,
@@ -257,7 +280,8 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
         } else {
-            // All token amounts are upscaled.
+            // In `GIVEN_IN` exitswaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
+            // `scalingFactorTokenOut`.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
             amountCalculated = WeightedMath._calcBptInGivenExactTokenOut(
@@ -269,13 +293,17 @@ contract ManagedPool is ManagedPoolSettings {
             );
         }
 
+        // A exitswap increases the price of the token leaving the Pool and decreases the price of all other tokens.
+        // ManagedPool's circuit breakers prevent the tokens' prices from leaving certain bounds so we must  check that
+        // we haven't tripped a breaker as a result of the exitswap.
         _checkCircuitBreakersOnJoinOrExitSwap(request, actualSupply, amountCalculated, false);
 
+        // Finally we downscale `amountCalculated` before we return it.
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
-            // Tokens are exiting the Pool, so we round down.
+            // `amountCalculated` tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountCalculated, scalingFactorTokenOut);
         } else {
-            // BPT doesn't need scaling so we can return immediately.
+            // BPT is entering the Pool, which doesn't need scaling.
             return amountCalculated;
         }
     }
@@ -372,7 +400,8 @@ contract ManagedPool is ManagedPoolSettings {
     }
 
     /**
-     * @dev Gather the information required to process a regular token swap, including circuit breaker bounds.
+     * @dev Gather the information required to process a regular token swap. This is required to avoid stack-too-deep
+     * issues.
      */
     function _getSwapTokenData(SwapRequest memory request, bytes32 poolState)
         private
