@@ -146,11 +146,9 @@ library CircuitBreakerStorageLib {
      * given as: (boundaryPercentage)**(1 - weight).
      *
      * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
-     * (1 - 0.8) = 0.2, so the lower BPT price bound conversion ratio would be (0.9 ** 0.2) ~ 0.9791.
-     * Intuitively, if you had a 50/50 pool with equal balances, the spot price and BPT price would move
-     * together: a 20% drop in spot price would correspond to a 20% drop in BPT price.
+     * (1 - 0.8) = 0.2, so the lower adjusted bound would be (0.9 ** 0.2) ~ 0.9791.
      *
-     * But with unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
+     * With unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
      * to a proportional change in spot price than a lower weight token. In the simulations, Integrations
      * coined the term "balance inertia".
      *
@@ -172,8 +170,8 @@ library CircuitBreakerStorageLib {
      * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
      * as above BPT1 = BPT0 * (1/k), or more simply: (BPT price) * (priceRatio)**(1 - weight).
      *
-     * If the value of the weight complement has not changed, we can use the cached adjusted bounds stored when
-     * the breaker was set. Otherwise, we need to calculate them.
+     * If the value of the weight has not changed, we can use the cached adjusted bounds stored when the breaker
+     * was set. Otherwise, we need to calculate them.
      *
      * As described in the general comments above, the weight adjustment calculation attempts to isolate changes
      * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
