@@ -23,6 +23,7 @@ import "./relayer/GaugeActions.sol";
 import "./relayer/LidoWrapping.sol";
 import "./relayer/UnbuttonWrapping.sol";
 import "./relayer/ReaperWrapping.sol";
+import "./relayer/BeefyWrapping.sol";
 import "./relayer/VaultActions.sol";
 import "./relayer/VaultPermit.sol";
 
@@ -39,6 +40,7 @@ contract BatchRelayerLibrary is
     LidoWrapping,
     UnbuttonWrapping,
     ReaperWrapping,
+    BeefyWrapping,
     VaultActions,
     VaultPermit
 {
