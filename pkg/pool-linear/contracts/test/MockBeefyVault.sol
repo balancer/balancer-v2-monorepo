@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 //we're unable to implement IYearnTokenVault because it defines the decimals function, which collides with
 //the TestToken ERC20 implementation
 contract MockBeefyVault is TestToken {
-    address public immutable token;
+    address public immutable want;
     uint256 private _pricePerFullShare;
 
     constructor(
@@ -29,7 +29,7 @@ contract MockBeefyVault is TestToken {
         address underlyingAsset,
         uint256 fullSharePrice
     ) TestToken(name, symbol, decimals) {
-        token = underlyingAsset;
+        want = underlyingAsset;
         _pricePerFullShare = fullSharePrice;
     }
 
