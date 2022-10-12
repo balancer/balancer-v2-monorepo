@@ -82,6 +82,6 @@ contract BeefyLinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        return _tokenVault.getPricePerFullShare() * _rateScaleFactor;
+        return _tokenVault.balance() * _rateScaleFactor / _tokenVault.totalSupply();
     }
 }

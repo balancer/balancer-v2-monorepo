@@ -33,6 +33,11 @@ interface IBeefyVault is IERC20 {
      */
     function getPricePerFullShare() external view returns (uint256);
 
+     /**
+     * @dev total amount of underlying want that is in the Beefy Strategy
+     */
+    function balance() external view returns (uint256);
+
     /**
      * @notice Deposits `_amount` `token`, issuing shares to the caller.
      * If Panic is activated, deposits will not be accepted and this call will fail.
