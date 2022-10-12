@@ -14,11 +14,11 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/ISToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
-contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
+contract MockSToken is TestToken, ISToken, ILendingPool {
     uint256 private _rate = 1e27;
     address private immutable _ASSET;
 
@@ -32,16 +32,16 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function ASSET() external view override returns (address) {
+    function UNDERLYING_ASSET_ADDRESS() external view override returns (address) {
         return _ASSET;
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function LENDING_POOL() external view override returns (ILendingPool) {
+    function POOL() external view override returns (ILendingPool) {
         return ILendingPool(this);
     }
 
-    function rate() external pure override returns (uint256) {
+    function rate() external pure returns (uint256) {
         revert("Should not call this");
     }
 
@@ -56,38 +56,19 @@ contract MockStaticAToken is TestToken, IStaticAToken, ILendingPool {
     function deposit(
         address,
         uint256,
-        uint16,
-        bool
-    ) external pure override returns (uint256) {
-        return 0;
-    }
-
-    function withdraw(
-        address,
-        uint256,
-        bool
-    ) external pure override returns (uint256, uint256) {
-        return (0, 0);
-    }
-
-    function deposit(
-        address,
-        uint256,
         address,
         uint16
-    ) external pure override {
-        revert("Should not call this");
-    }
+    ) external pure override {}
 
     function withdraw(
         address,
         uint256,
         address
     ) external pure override returns (uint256) {
-        revert("Should not call this");
+        return 0;
     }
 
-    function staticToDynamicAmount(uint256 amount) external pure override returns (uint256) {
+    function balanceOf(uint256 amount) external pure returns (uint256) {
         return amount;
     }
 }
