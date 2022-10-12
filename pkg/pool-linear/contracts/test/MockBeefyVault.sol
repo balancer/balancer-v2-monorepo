@@ -42,7 +42,7 @@ contract MockBeefyVault is TestToken {
     }
 
     function deposit(uint256 _amount) public {
-        ERC20(token).transferFrom(msg.sender, address(this), _amount);
+        ERC20(want).transferFrom(msg.sender, address(this), _amount);
 
         uint256 amountToMint = _amount * 10**18 / _pricePerFullShare;
 
@@ -54,6 +54,6 @@ contract MockBeefyVault is TestToken {
 
         uint256 amountToReturn = _shares * _pricePerFullShare / 10**18;
 
-        ERC20(token).transfer(msg.sender, amountToReturn);
+        ERC20(want).transfer(msg.sender, amountToReturn);
     }
 }
