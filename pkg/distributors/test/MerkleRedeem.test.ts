@@ -203,7 +203,7 @@ describe('MerkleRedeem', () => {
       const root2 = merkleTree2.getHexRoot();
 
       const errorMsg = 'cannot rewrite merkle root';
-      expect(merkleRedeem.connect(admin).seedAllocations(1, root2, claimableBalance.mul(2))).to.be.revertedWith(
+      await expect(merkleRedeem.connect(admin).seedAllocations(1, root2, claimableBalance.mul(2))).to.be.revertedWith(
         errorMsg
       );
     });

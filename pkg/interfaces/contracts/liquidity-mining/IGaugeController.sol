@@ -26,7 +26,7 @@ import "./IVotingEscrow.sol";
 interface IGaugeController {
     function checkpoint_gauge(address gauge) external;
 
-    function gauge_relative_weight(address gauge, uint256 time) external returns (uint256);
+    function gauge_relative_weight(address gauge, uint256 time) external view returns (uint256);
 
     function voting_escrow() external view returns (IVotingEscrow);
 
@@ -36,7 +36,6 @@ interface IGaugeController {
 
     function change_type_weight(int128 typeId, uint256 weight) external;
 
-    // Gauges are to be added with zero initial weight so the full signature is not required
     function add_gauge(address gauge, int128 gaugeType) external;
 
     function n_gauge_types() external view returns (int128);

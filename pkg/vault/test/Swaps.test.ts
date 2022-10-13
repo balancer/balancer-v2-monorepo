@@ -20,7 +20,7 @@ import {
 } from '@balancer-labs/balancer-js';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import {
   ANY_ADDRESS,
   MAX_GAS_LIMIT,
@@ -777,7 +777,7 @@ describe('Swaps', () => {
                     sharedBeforeEach('tweak the main pool to give back as much as it receives', async () => {
                       const [poolAddress] = (await vault.getPool(mainPoolId)) as [string, unknown];
                       const pool = await deployedAt('MockPool', poolAddress);
-                      await pool.setMultiplier(fp(1));
+                      await pool.setMultiplier(FP_ONE);
                     });
 
                     beforeEach('tweak sender and recipient to be other address', async () => {

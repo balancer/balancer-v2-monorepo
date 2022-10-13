@@ -62,13 +62,13 @@ describe('TimelockAuthorizer', () => {
         ['bytes32', 'address', 'address'],
         [GRANT_ACTION_ID, root.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(GRANT_ACTION_ID, root, EVERYWHERE)).to.be.equal(expectedGrantId);
+      expect(await authorizer.getPermissionId(GRANT_ACTION_ID, root, EVERYWHERE)).to.be.equal(expectedGrantId);
 
       const expectedRevokeId = ethers.utils.solidityKeccak256(
         ['bytes32', 'address', 'address'],
         [REVOKE_ACTION_ID, root.address, EVERYWHERE]
       );
-      expect(await authorizer.permissionId(REVOKE_ACTION_ID, root, EVERYWHERE)).to.be.equal(expectedRevokeId);
+      expect(await authorizer.getPermissionId(REVOKE_ACTION_ID, root, EVERYWHERE)).to.be.equal(expectedRevokeId);
     });
 
     it('can grant permissions everywhere', async () => {

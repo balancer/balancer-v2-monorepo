@@ -271,6 +271,150 @@
       "contractName": "FeeDistributor",
       "signature": "checkpoint()",
       "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    }
+  ],
+  "0x3bf29175652a3f0fac5abb715d0b7fe2e7b597e2e2eff555dac6b21a20a7c83e": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "add_reward(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "add_reward(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xa1fcfa4f107b70052cfbb2e460d99c96f9b18c1197671fe00ab59c32adcddbeb": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards()",
+      "useAdaptor": true
+    }
+  ],
+  "0x1c866c9ea7b119a642f593024ced6088dbde65d041e5d3e826b9ad49b949a64b": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x17b18f02fd5498a6aba17d20977b1a8a08f888d821999613fee42f9f9acb0bd9": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claim_rewards(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x507b520ac43f322b79e43a63eaa5b80ca89ac2c5b63970fa4b6242a23a9e8aa2": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claimable_tokens(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "claimable_tokens(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x514b6f05525a3f31c3bde60d063e91e88204c5cdc5b35934513f911943b97fcc": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0x360a8a15589674642b2125956d96757fc2f06ff1b968333271de16a20e01df05": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x7572a9d124a97112d9e0f610651c79f13cf257bea3a71e38663b8a23875a2241": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address,bool)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit(uint256,address,bool)",
+      "useAdaptor": true
+    }
+  ],
+  "0xb70966c80d8727484d7d85b65c022ce136cadffc1aa72bd6362cd9e160598bf9": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit_reward_token(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "deposit_reward_token(address,uint256)",
+      "useAdaptor": true
     }
   ],
   "0x7cd4c1de57fa031316e3b61c1bca9160d4feb774986a819a7c4c04dc66d7d21e": [
@@ -305,6 +449,20 @@
       "useAdaptor": true
     }
   ],
+  "0x5d4f8bc2dd6ae588be27076524fbf4fc2a833c466ab107fda2e84bf2f59bc0ca": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "kick(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "kick(address)",
+      "useAdaptor": true
+    }
+  ],
   "0xec1d467d9ab03a0079c22a89037209f5763aec973897ea763e2cf25d71a5f12e": [
     {
       "taskId": "20220325-mainnet-gauge-factory",
@@ -334,6 +492,58 @@
       "taskId": "20220628-optimism-root-gauge-factory",
       "contractName": "OptimismRootGauge",
       "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    }
+  ],
+  "0xd0090a09f425bba74e6c801fba7c6d15b44147ab0bd319e40076ce07e95168b6": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "set_reward_distributor(address,address)",
+      "useAdaptor": true
+    }
+  ],
+  "0x1b288a1f96e75e2fda7a0c1ac5c35a7fd2c5e2e5c425c32152ae01f82545e2da": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "set_rewards_receiver(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "set_rewards_receiver(address)",
       "useAdaptor": true
     }
   ],
@@ -366,6 +576,72 @@
       "taskId": "20220628-optimism-root-gauge-factory",
       "contractName": "OptimismRootGauge",
       "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "unkillGauge()",
+      "useAdaptor": true
+    }
+  ],
+  "0x3aaa120451be1d03b5f871d8f553636453af4ac4fed808c66c169c212b199436": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "user_checkpoint(address)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "user_checkpoint(address)",
+      "useAdaptor": true
+    }
+  ],
+  "0xec9d6185ed79aed8edc19bc6fc25ca544504ab0970d25b191e5279100224502a": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xb69fa1eb7b5ac6d9f3d5b8707460dc80b1f871eb64473f46b1aaaed1002aec60": [
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256,bool)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "withdraw(uint256,bool)",
       "useAdaptor": true
     }
   ],
@@ -650,6 +926,58 @@
       "taskId": "20220714-fee-distributor-v2",
       "contractName": "FeeDistributor",
       "signature": "depositTokens(address[],uint256[])",
+      "useAdaptor": true
+    }
+  ],
+  "0xa7eb8749bae4020b0007b643972b60456da2b6b92fa6b583c7277fc2dea05a39": [
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "initialize(address,uint256)",
+      "useAdaptor": true
+    }
+  ],
+  "0xae60dce27f51ce5815357b9f6b40f200557867f8222262a1646c005d09b7dfba": [
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "setRelativeWeightCap(uint256)",
       "useAdaptor": true
     }
   ]

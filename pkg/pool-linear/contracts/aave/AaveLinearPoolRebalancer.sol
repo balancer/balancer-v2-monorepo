@@ -16,23 +16,30 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 
 import "../LinearPoolRebalancer.sol";
 
 contract AaveLinearPoolRebalancer is LinearPoolRebalancer {
-    constructor(
-        ILinearPool pool,
-        IVault vault,
-        IBalancerQueries queries
-    ) LinearPoolRebalancer(pool, vault, queries) {}
+    // These Rebalancers can only be deployed from a factory to work around a circular dependency: the Pool must know
+    // the address of the Rebalancer in order to register it, and the Rebalancer must know the address of the Pool
+    // during construction.
+    constructor(IVault vault, IBalancerQueries queries)
+        LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries)
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function _wrapTokens(uint256 amount) internal override {
-        // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC).
+        // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Before we can
+        // deposit however, we need to approve the wrapper in the underlying token.
+        _mainToken.approve(address(_wrappedToken), amount);
         IStaticAToken(address(_wrappedToken)).deposit(address(this), amount, 0, true);
     }
 
     function _unwrapTokens(uint256 amount) internal override {
-        // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC).
+        // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Approvals are not necessary here
+        // as the wrapped token is simply burnt.
         IStaticAToken(address(_wrappedToken)).withdraw(address(this), amount, true);
     }
 

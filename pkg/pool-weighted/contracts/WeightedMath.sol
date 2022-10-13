@@ -173,7 +173,56 @@ library WeightedMath {
         );
 
         uint256 bptOut = (invariantRatio > FixedPoint.ONE)
-            ? bptTotalSupply.mulDown(invariantRatio.sub(FixedPoint.ONE))
+            ? bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE)
+            : 0;
+        return bptOut;
+    }
+
+    function _calcBptOutGivenExactTokenIn(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 amountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) internal pure returns (uint256) {
+        // BPT out, so we round down overall.
+
+        uint256 amountInWithoutFee;
+        {
+            uint256 balanceRatioWithFee = balance.add(amountIn).divDown(balance);
+
+            // The use of `normalizedWeight.complement()` assumes that the sum of all weights equals FixedPoint.ONE.
+            // This may not be the case when weights are stored in a denormalized format or during a gradual weight
+            // change due rounding errors during normalization or interpolation. This will result in a small difference
+            // between the output of this function and the equivalent `_calcBptOutGivenExactTokensIn` call.
+            uint256 invariantRatioWithFees = balanceRatioWithFee.mulDown(normalizedWeight).add(
+                normalizedWeight.complement()
+            );
+
+            if (balanceRatioWithFee > invariantRatioWithFees) {
+                uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
+                    ? balance.mulDown(invariantRatioWithFees - FixedPoint.ONE)
+                    : 0;
+                uint256 taxableAmount = amountIn.sub(nonTaxableAmount);
+                uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
+
+                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+            } else {
+                amountInWithoutFee = amountIn;
+                // If a token's amount in is not being charged a swap fee then it might be zero.
+                // In this case, it's clear that the sender should receive no BPT.
+                if (amountInWithoutFee == 0) {
+                    return 0;
+                }
+            }
+        }
+
+        uint256 balanceRatio = balance.add(amountInWithoutFee).divDown(balance);
+
+        uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
+
+        uint256 bptOut = (invariantRatio > FixedPoint.ONE)
+            ? bptTotalSupply.mulDown(invariantRatio - FixedPoint.ONE)
             : 0;
         return bptOut;
     }
@@ -197,13 +246,23 @@ library WeightedMath {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount = balances[i].mulDown(invariantRatioWithFees.sub(FixedPoint.ONE));
-                uint256 taxableAmount = amountsIn[i].sub(nonTaxableAmount);
-                uint256 swapFee = taxableAmount.mulUp(swapFeePercentage);
-
-                amountInWithoutFee = nonTaxableAmount.add(taxableAmount.sub(swapFee));
+                // invariantRatioWithFees might be less than FixedPoint.ONE in edge scenarios due to rounding error,
+                // particularly if the weights don't exactly add up to 100%.
+                uint256 nonTaxableAmount = invariantRatioWithFees > FixedPoint.ONE
+                    ? balances[i].mulDown(invariantRatioWithFees - FixedPoint.ONE)
+                    : 0;
+                uint256 swapFee = amountsIn[i].sub(nonTaxableAmount).mulUp(swapFeePercentage);
+                amountInWithoutFee = amountsIn[i].sub(swapFee);
             } else {
                 amountInWithoutFee = amountsIn[i];
+
+                // If a token's amount in is not being charged a swap fee then it might be zero (e.g. when joining a
+                // Pool with only a subset of tokens). In this case, `balanceRatio` will equal `FixedPoint.ONE`, and
+                // the `invariantRatio` will not change at all. We therefore skip to the next iteration, avoiding
+                // the costly `powDown` call.
+                if (amountInWithoutFee == 0) {
+                    continue;
+                }
             }
 
             uint256 balanceRatio = balances[i].add(amountInWithoutFee).divDown(balances[i]);
@@ -304,6 +363,47 @@ library WeightedMath {
         return bptTotalSupply.mulUp(invariantRatio.complement());
     }
 
+    function _calcBptInGivenExactTokenOut(
+        uint256 balance,
+        uint256 normalizedWeight,
+        uint256 amountOut,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) internal pure returns (uint256) {
+        // BPT in, so we round up overall.
+
+        uint256 balanceRatioWithoutFee = balance.sub(amountOut).divUp(balance);
+
+        uint256 invariantRatioWithoutFees = balanceRatioWithoutFee.mulUp(normalizedWeight).add(
+            normalizedWeight.complement()
+        );
+
+        uint256 amountOutWithFee;
+        if (invariantRatioWithoutFees > balanceRatioWithoutFee) {
+            // Swap fees are typically charged on 'token in', but there is no 'token in' here, so we apply it to
+            // 'token out'. This results in slightly larger price impact.
+
+            uint256 nonTaxableAmount = balance.mulDown(invariantRatioWithoutFees.complement());
+            uint256 taxableAmount = amountOut.sub(nonTaxableAmount);
+            uint256 taxableAmountPlusFees = taxableAmount.divUp(swapFeePercentage.complement());
+
+            amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
+        } else {
+            amountOutWithFee = amountOut;
+            // If a token's amount out is not being charged a swap fee then it might be zero.
+            // In this case, it's clear that the sender should not send any BPT.
+            if (amountOutWithFee == 0) {
+                return 0;
+            }
+        }
+
+        uint256 balanceRatio = balance.sub(amountOutWithFee).divDown(balance);
+
+        uint256 invariantRatio = balanceRatio.powDown(normalizedWeight);
+
+        return bptTotalSupply.mulUp(invariantRatio.complement());
+    }
+
     /**
      * @dev Intermediate function to avoid stack-too-deep errors.
      */
@@ -330,6 +430,13 @@ library WeightedMath {
                 amountOutWithFee = nonTaxableAmount.add(taxableAmountPlusFees);
             } else {
                 amountOutWithFee = amountsOut[i];
+                // If a token's amount out is not being charged a swap fee then it might be zero (e.g. when exiting a
+                // Pool with only a subset of tokens). In this case, `balanceRatio` will equal `FixedPoint.ONE`, and
+                // the `invariantRatio` will not change at all. We therefore skip to the next iteration, avoiding
+                // the costly `powDown` call.
+                if (amountOutWithFee == 0) {
+                    continue;
+                }
             }
 
             uint256 balanceRatio = balances[i].sub(amountOutWithFee).divDown(balances[i]);
@@ -404,44 +511,6 @@ library WeightedMath {
         }
 
         return amountsOut;
-    }
-
-    function _calcDueProtocolSwapFeeBptAmount(
-        uint256 totalSupply,
-        uint256 previousInvariant,
-        uint256 currentInvariant,
-        uint256 protocolSwapFeePercentage
-    ) internal pure returns (uint256) {
-        // We round down to prevent issues in the Pool's accounting, even if it means paying slightly less in protocol
-        // fees to the Vault.
-        uint256 growth = currentInvariant.divDown(previousInvariant);
-
-        // Shortcut in case there was no growth when comparing the current against the previous invariant.
-        // This shouldn't happen outside of rounding errors, but have this safeguard nonetheless to prevent the Pool
-        // from entering a locked state in which joins and exits revert while computing accumulated swap fees.
-        if (growth <= FixedPoint.ONE) {
-            return 0;
-        }
-
-        // Assuming the Pool is balanced and token weights have not changed, a growth of the invariant translates into
-        // proportional growth of all token balances. The protocol is due a percentage of that growth: more precisely,
-        // it is due `k = protocol fee * (growth - 1) * balance / growth` for each token.
-        // We compute the amount of BPT to mint for the protocol that would allow it to proportionally exit the Pool and
-        // receive these balances. Note that the total BPT supply will increase when minting, so we need to account for
-        // this in order to compute the percentage of Pool ownership the protocol will have.
-
-        // The formula is:
-        //
-        // toMint = supply * k / (1 - k)
-
-        // We compute protocol fee * (growth - 1) / growth, as we'll use that value twice.
-        // There is no need to use SafeMath since we already checked growth is strictly greater than one.
-        uint256 k = protocolSwapFeePercentage.mulDown(growth - FixedPoint.ONE).divDown(growth);
-
-        uint256 numerator = totalSupply.mulDown(k);
-        uint256 denominator = k.complement();
-
-        return denominator == 0 ? 0 : numerator.divDown(denominator);
     }
 
     /**

@@ -22,6 +22,7 @@ import {
   TaskRunOptions,
 } from './types';
 import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
+import { getTaskActionIds } from './actionId';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
@@ -245,6 +246,18 @@ export default class Task {
 
     if (!sourceName) throw Error(`Could not find artifact for ${contractName}`);
     return builds[sourceName][contractName];
+  }
+
+  actionId(contractName: string, signature: string): string {
+    const taskActionIds = getTaskActionIds(this);
+    if (taskActionIds === undefined) throw new Error('Could not find action IDs for task');
+    const contractInfo = taskActionIds[contractName];
+    if (contractInfo === undefined)
+      throw new Error(`Could not find action IDs for contract ${contractName} on task ${this.id}`);
+    const actionIds = taskActionIds[contractName].actionIds;
+    if (actionIds[signature] === undefined)
+      throw new Error(`Could not find function ${contractName}.${signature} on task ${this.id}`);
+    return actionIds[signature];
   }
 
   rawInput(): RawInputKeyValue {

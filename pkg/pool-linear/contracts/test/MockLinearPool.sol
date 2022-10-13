@@ -51,6 +51,10 @@ contract MockLinearPool is LinearPool, MockLinearMath {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function setTotalSupply(uint256 value) external {
+        _setTotalSupply(value);
+    }
+
     function getScalingFactor(IERC20 token) external view returns (uint256) {
         return _scalingFactor(token);
     }

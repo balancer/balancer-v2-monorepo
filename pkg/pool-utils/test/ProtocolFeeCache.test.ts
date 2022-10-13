@@ -1,20 +1,22 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { Contract } from 'ethers';
+import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
+type ProviderFeeIDs = {
+  swap: BigNumberish;
+  yield: BigNumberish;
+  aum: BigNumberish;
+};
 
 describe('ProtocolFeeCache', () => {
-  const MAX_PROTOCOL_FEE = fp(0.5); // 50%
-  const VAULT_PROTOCOL_FEE = fp(0.3); // 30%
-  const NEW_VAULT_PROTOCOL_FEE = fp(0.2); // 20%
-  const FIXED_PROTOCOL_FEE = fp(0.1); // 10%
-
   let protocolFeeCache: Contract;
   let admin: SignerWithAddress;
   let vault: Vault;
@@ -27,86 +29,148 @@ describe('ProtocolFeeCache', () => {
     vault = await Vault.create({ admin });
   });
 
-  context('with delegated fee', () => {
-    sharedBeforeEach('deploy delegated fee cache', async () => {
-      await vault.setSwapFeePercentage(VAULT_PROTOCOL_FEE, { from: admin });
+  sharedBeforeEach('grant permissions to admin', async () => {
+    const feesCollector = await vault.getFeesCollector();
 
-      // The sentinel value used to designate delegated fees is MAX_UINT256
-      protocolFeeCache = await deploy('MockProtocolFeeCache', { args: [vault.address, MAX_UINT256], from: admin });
+    await vault.authorizer
+      .connect(admin)
+      .grantPermissions([actionId(vault.protocolFeesProvider, 'setFeeTypePercentage')], admin.address, [
+        vault.protocolFeesProvider.address,
+      ]);
+
+    await vault.authorizer
+      .connect(admin)
+      .grantPermissions(
+        [actionId(feesCollector, 'setSwapFeePercentage'), actionId(feesCollector, 'setFlashLoanFeePercentage')],
+        vault.protocolFeesProvider.address,
+        [feesCollector.address, feesCollector.address]
+      );
+  });
+
+  sharedBeforeEach('set initial fee percentages', async () => {
+    await Promise.all(
+      Object.values(ProtocolFee)
+        .filter((val) => typeof val != 'string')
+        .map((fee) =>
+          vault.protocolFeesProvider.connect(admin).setFeeTypePercentage(fee, fp((1 + (fee as number)) / 1000))
+        )
+    );
+  });
+
+  context('with valid fee type ids', () => {
+    context('using default fee ids', () => {
+      itTestsProtocolFeePercentages({ swap: ProtocolFee.SWAP, yield: ProtocolFee.YIELD, aum: ProtocolFee.AUM });
     });
 
-    context('with recovery mode disabled', () => {
-      it('indicates delegated fees', async () => {
-        expect(await protocolFeeCache.getProtocolFeeDelegation()).to.be.true;
-      });
-
-      it('gets the protocol fee from the vault', async () => {
-        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(VAULT_PROTOCOL_FEE);
-      });
-
-      context('when the vault fee is updated', () => {
-        sharedBeforeEach('update the main protocol fee', async () => {
-          await vault.setSwapFeePercentage(NEW_VAULT_PROTOCOL_FEE, { from: admin });
-        });
-
-        it('retrieves the old value when not updated', async () => {
-          expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(VAULT_PROTOCOL_FEE);
-        });
-
-        it('updates the cached value', async () => {
-          await protocolFeeCache.updateProtocolSwapFeePercentageCache();
-
-          expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(NEW_VAULT_PROTOCOL_FEE);
-        });
-
-        it('emits an event when updating', async () => {
-          const receipt = await protocolFeeCache.updateProtocolSwapFeePercentageCache();
-
-          expectEvent.inReceipt(await receipt.wait(), 'ProtocolSwapFeePercentageCacheUpdated', {
-            protocolSwapFeePercentage: NEW_VAULT_PROTOCOL_FEE,
-          });
-        });
-      });
+    context('using the same fee for all types', () => {
+      itTestsProtocolFeePercentages({ swap: ProtocolFee.SWAP, yield: ProtocolFee.SWAP, aum: ProtocolFee.SWAP });
     });
 
-    context('with recovery mode enabled', () => {
-      sharedBeforeEach('enable recovery mode', async () => {
-        await protocolFeeCache.connect(admin).enableRecoveryMode();
-        expect(await protocolFeeCache.inRecoveryMode()).to.equal(true);
-      });
-
-      it('returns a zero protocol fee', async () => {
-        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(0);
-      });
+    context('using custom fee types', () => {
+      itTestsProtocolFeePercentages({ swap: ProtocolFee.FLASH_LOAN, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD });
     });
   });
 
-  context('with fixed fee', () => {
-    sharedBeforeEach('deploy fixed fee cache', async () => {
+  context('with invalid fee type ids', () => {
+    it('reverts during deployment', async () => {
+      await expect(
+        deploy('MockProtocolFeeCache', {
+          args: [vault.protocolFeesProvider.address, { swap: 137, yield: ProtocolFee.SWAP, aum: ProtocolFee.YIELD }],
+          from: admin,
+        })
+      ).to.be.revertedWith('Non-existent fee type');
+    });
+  });
+
+  function itTestsProtocolFeePercentages(providerFeeIds: ProviderFeeIDs): void {
+    sharedBeforeEach('deploy fee cache', async () => {
       protocolFeeCache = await deploy('MockProtocolFeeCache', {
-        args: [vault.address, FIXED_PROTOCOL_FEE],
+        args: [vault.protocolFeesProvider.address, providerFeeIds],
         from: admin,
       });
     });
 
+    it('reverts when querying unknown protocol fees', async () => {
+      await expect(protocolFeeCache.getProtocolFeePercentageCache(17)).to.be.revertedWith('UNHANDLED_FEE_TYPE');
+    });
+
+    it('stores fee type ids correctly', async () => {
+      expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.SWAP)).to.be.eq(providerFeeIds.swap);
+      expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.YIELD)).to.be.eq(providerFeeIds.yield);
+      expect(await protocolFeeCache.getProviderFeeId(ProtocolFee.AUM)).to.be.eq(providerFeeIds.aum);
+    });
+
     context('with recovery mode disabled', () => {
-      it('indicates fixed fees', async () => {
-        expect(await protocolFeeCache.getProtocolFeeDelegation()).to.be.false;
-      });
+      function itReturnsAndUpdatesProtocolFeePercentages(cacheFeeType: number) {
+        describe(`protocol fee type ${ProtocolFee[cacheFeeType]}`, () => {
+          let originalValue: BigNumber;
+          let providerFeeId: BigNumber;
 
-      it('sets the protocol fee', async () => {
-        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(FIXED_PROTOCOL_FEE);
-      });
+          sharedBeforeEach('get the original fee value', async () => {
+            providerFeeId = await protocolFeeCache.getProviderFeeId(cacheFeeType);
+            originalValue = await vault.protocolFeesProvider.getFeeTypePercentage(providerFeeId);
+          });
 
-      it('reverts if fee is too high', async () => {
-        await expect(
-          deploy('MockProtocolFeeCache', { args: [vault.address, MAX_PROTOCOL_FEE.add(1)] })
-        ).to.be.revertedWith('SWAP_FEE_PERCENTAGE_TOO_HIGH');
-      });
+          it('returns the same value as in the provider', async () => {
+            expect(await protocolFeeCache.getProtocolFeePercentageCache(cacheFeeType)).to.equal(
+              await vault.protocolFeesProvider.getFeeTypePercentage(providerFeeId)
+            );
+          });
 
-      it('reverts when trying to update fixed fee', async () => {
-        await expect(protocolFeeCache.updateProtocolSwapFeePercentageCache()).to.be.revertedWith('INVALID_OPERATION');
-      });
+          context('when the fee value is updated', () => {
+            const NEW_VALUE = fp(0.007);
+            let preSwapFee: BigNumber, preYieldFee: BigNumber, preAumFee: BigNumber;
+
+            sharedBeforeEach('update the provider protocol fee', async () => {
+              await vault.protocolFeesProvider.connect(admin).setFeeTypePercentage(providerFeeId, NEW_VALUE);
+
+              preSwapFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.SWAP);
+              preYieldFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.YIELD);
+              preAumFee = await protocolFeeCache.getProtocolFeePercentageCache(ProtocolFee.AUM);
+            });
+
+            it('retrieves the old fee value when not updated', async () => {
+              expect(await protocolFeeCache.getProtocolFeePercentageCache(cacheFeeType)).to.equal(originalValue);
+            });
+
+            it('updates the cached value', async () => {
+              await protocolFeeCache.updateProtocolFeePercentageCache();
+
+              expect(await protocolFeeCache.getProtocolFeePercentageCache(cacheFeeType)).to.equal(NEW_VALUE);
+            });
+
+            it('calls the hook before the cache is updated', async () => {
+              const receipt = await protocolFeeCache.updateProtocolFeePercentageCache();
+
+              expectEvent.inReceipt(await receipt.wait(), 'FeesInBeforeHook', {
+                swap: preSwapFee,
+                yield: preYieldFee,
+                aum: preAumFee,
+              });
+            });
+
+            it('emits an event when updating the cache', async () => {
+              const receipt = await protocolFeeCache.updateProtocolFeePercentageCache();
+              const feeCache = {
+                swap: providerFeeId.eq(providerFeeIds.swap) ? NEW_VALUE : preSwapFee,
+                yield: providerFeeId.eq(providerFeeIds.yield) ? NEW_VALUE : preYieldFee,
+                aum: providerFeeId.eq(providerFeeIds.aum) ? NEW_VALUE : preAumFee,
+              };
+
+              // Swap, yield and AUM fees are 64-bit values encoded with 0, 64 and 128 bit offsets respectively.
+              const feeCacheEncoded = feeCache.swap.shl(0).or(feeCache.yield.shl(64)).or(feeCache.aum.shl(128));
+
+              expectEvent.inReceipt(await receipt.wait(), 'ProtocolFeePercentageCacheUpdated', {
+                feeCache: feeCacheEncoded,
+              });
+            });
+          });
+        });
+      }
+
+      itReturnsAndUpdatesProtocolFeePercentages(ProtocolFee.YIELD);
+      itReturnsAndUpdatesProtocolFeePercentages(ProtocolFee.AUM);
+      itReturnsAndUpdatesProtocolFeePercentages(ProtocolFee.SWAP);
     });
 
     context('with recovery mode enabled', () => {
@@ -115,9 +179,15 @@ describe('ProtocolFeeCache', () => {
         expect(await protocolFeeCache.inRecoveryMode()).to.equal(true);
       });
 
-      it('returns a zero protocol fee', async () => {
-        expect(await protocolFeeCache.getProtocolSwapFeePercentageCache()).to.equal(0);
+      it('returns a zero protocol fee for all types', async () => {
+        await Promise.all(
+          Object.values(ProtocolFee)
+            .filter((val) => typeof val != 'string')
+            .map(async (fee) => {
+              expect(await protocolFeeCache.getProtocolFeePercentageCache(fee)).to.equal(0);
+            })
+        );
       });
     });
-  });
+  }
 });

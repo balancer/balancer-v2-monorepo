@@ -7,7 +7,7 @@ import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/c
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('ProtocolFeePercentagesProvider', function () {
   let admin: SignerWithAddress, authorized: SignerWithAddress, other: SignerWithAddress;
@@ -44,7 +44,7 @@ describe('ProtocolFeePercentagesProvider', function () {
     it('reverts if the maximum yield value is too high', async () => {
       await expect(
         deploy('ProtocolFeePercentagesProvider', {
-          args: [vault.address, fp(1).add(1), 0],
+          args: [vault.address, FP_100_PCT.add(1), 0],
         })
       ).to.be.revertedWith('Invalid maximum fee percentage');
     });
@@ -52,7 +52,7 @@ describe('ProtocolFeePercentagesProvider', function () {
     it('reverts if the maximum aum value is too high', async () => {
       await expect(
         deploy('ProtocolFeePercentagesProvider', {
-          args: [vault.address, 0, fp(1).add(1)],
+          args: [vault.address, 0, FP_100_PCT.add(1)],
         })
       ).to.be.revertedWith('Invalid maximum fee percentage');
     });
@@ -398,7 +398,7 @@ describe('ProtocolFeePercentagesProvider', function () {
         context('when the maximum value is above 100%', () => {
           it('reverts', async () => {
             await expect(
-              provider.connect(authorized).registerFeeType(NEW_FEE_TYPE, '', fp(1).add(1), 0)
+              provider.connect(authorized).registerFeeType(NEW_FEE_TYPE, '', FP_100_PCT.add(1), 0)
             ).to.be.revertedWith('Invalid maximum fee percentage');
           });
         });

@@ -18,4 +18,6 @@ import "./ILiquidityGauge.sol";
 
 interface IStakelessGauge is ILiquidityGauge {
     function checkpoint() external payable returns (bool);
+
+    function getRecipient() external view returns (address);
 }

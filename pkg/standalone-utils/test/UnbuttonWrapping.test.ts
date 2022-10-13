@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
+import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
 import { SwapKind, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -13,11 +13,12 @@ import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTr
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { Dictionary } from 'lodash';
+import { expectChainedReferenceContents, toChainedReference } from './helpers/chainedReferences';
 
 const amplFP = (n: number) => fp(n / 10 ** 9);
 
@@ -78,14 +79,6 @@ describe('UnbuttonWrapping', function () {
     await vault.instance.connect(senderUser).setRelayerApproval(senderUser.address, relayer.address, true);
   });
 
-  const CHAINED_REFERENCE_PREFIX = 'ba10';
-  function toChainedReference(key: BigNumberish): BigNumber {
-    // The full padded prefix is 66 characters long,
-    // with 64 hex characters and the 0x prefix.
-    const paddedPrefix = `0x${CHAINED_REFERENCE_PREFIX}${'0'.repeat(64 - CHAINED_REFERENCE_PREFIX.length)}`;
-    return BigNumber.from(paddedPrefix).add(key);
-  }
-
   function encodeApprove(token: Token, amount: BigNumberish): string {
     return relayerLibrary.interface.encodeFunctionData('approveVault', [token.address, amount]);
   }
@@ -122,16 +115,6 @@ describe('UnbuttonWrapping', function () {
 
   async function setChainedReferenceContents(ref: BigNumberish, value: BigNumberish): Promise<void> {
     await relayer.multicall([relayerLibrary.interface.encodeFunctionData('setChainedReferenceValue', [ref, value])]);
-  }
-
-  async function expectChainedReferenceContents(ref: BigNumberish, expectedValue: BigNumberish): Promise<void> {
-    const receipt = await (
-      await relayer.multicall([relayerLibrary.interface.encodeFunctionData('getChainedReferenceValue', [ref])])
-    ).wait();
-
-    expectEvent.inIndirectReceipt(receipt, relayerLibrary.interface, 'ChainedReferenceValueRead', {
-      value: bn(expectedValue),
-    });
   }
 
   describe('primitives', () => {
@@ -211,7 +194,7 @@ describe('UnbuttonWrapping', function () {
             .connect(senderUser)
             .multicall([encodeWrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
-          await expectChainedReferenceContents(toChainedReference(0), expectedWamplAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), expectedWamplAmount);
         });
 
         it('wraps with chained references', async () => {
@@ -321,7 +304,7 @@ describe('UnbuttonWrapping', function () {
             .multicall([encodeUnwrap(tokenSender, tokenRecipient, amount, toChainedReference(0))]);
 
           const amplAmount = await wampl.instance.wrapperToUnderlying(amount);
-          await expectChainedReferenceContents(toChainedReference(0), amplAmount);
+          await expectChainedReferenceContents(relayer, toChainedReference(0), amplAmount);
         });
 
         it('unwraps with chained references', async () => {
@@ -362,14 +345,14 @@ describe('UnbuttonWrapping', function () {
     let WETH: Token;
     let poolTokens: TokenList;
     let poolId: string;
-    let pool: StablePhantomPool;
+    let pool: StablePool;
     let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
       poolTokens = new TokenList([WETH, wampl]).sort();
 
-      pool = await StablePhantomPool.create({ tokens: poolTokens, vault });
+      pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
       bptIndex = await pool.getBptIndex();
 

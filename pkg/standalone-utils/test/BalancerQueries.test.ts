@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -13,7 +13,8 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 
 describe('BalancerQueries', function () {
-  let queries: Contract, vault: Vault, pool: WeightedPool, tokens: TokenList, lp: SignerWithAddress;
+  let queries: Contract, vault: Vault, pool: WeightedPool, tokens: TokenList;
+  let admin: SignerWithAddress, lp: SignerWithAddress;
 
   const initialBalances = [fp(20), fp(30)];
 
@@ -21,13 +22,13 @@ describe('BalancerQueries', function () {
   const recipient = ZERO_ADDRESS;
 
   before('setup signers', async () => {
-    [, lp] = await ethers.getSigners();
+    [, admin, lp] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy and initialize pool', async () => {
-    tokens = await TokenList.create(2, { sorted: true });
-    pool = await WeightedPool.create({ tokens, swapFeePercentage: fp(0.000001), fromFactory: true });
-    vault = pool.vault;
+    vault = await Vault.create({ admin });
+    tokens = await TokenList.create(2, { sorted: true, varyDecimals: true });
+    pool = await WeightedPool.create({ vault, tokens, swapFeePercentage: fp(0.000001), fromFactory: true });
 
     await tokens.mint({ to: lp, amount: fp(100) });
     await tokens.approve({ from: lp, to: vault.address, amount: fp(100) });
@@ -118,19 +119,24 @@ describe('BalancerQueries', function () {
   });
 
   describe('queryJoin', () => {
+    let expectedBptOut: BigNumber, amountsIn: BigNumber[], data: string;
+
     // These two values are superfluous, as they are not used by the helper
     const fromInternalBalance = false;
     const maxAmountsIn: BigNumber[] = [MAX_UINT112, MAX_UINT112];
 
-    it('can query join results', async () => {
-      const amountsIn = [fp(1), fp(0)];
-      const expectedBptOut = await pool.estimateBptOut(amountsIn);
+    sharedBeforeEach('estimate expected bpt out', async () => {
+      amountsIn = [fp(1), fp(0)];
+      expectedBptOut = bn(await pool.estimateBptOut(amountsIn));
 
-      const data = WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsIn, 0);
+      data = WeightedPoolEncoder.joinExactTokensInForBPTOut(amountsIn, 0);
+    });
+
+    it('can query join results', async () => {
       const result = await queries.queryJoin(pool.poolId, sender, recipient, {
         assets: tokens.addresses,
         maxAmountsIn,
-        fromInternalBalance: false,
+        fromInternalBalance,
         userData: data,
       });
 
@@ -139,22 +145,42 @@ describe('BalancerQueries', function () {
     });
 
     it('bubbles up revert reasons', async () => {
-      const data = WeightedPoolEncoder.joinInit(initialBalances);
-      const tx = queries.queryJoin(pool.poolId, sender, recipient, {
-        assets: tokens.addresses,
-        maxAmountsIn: maxAmountsIn,
-        fromInternalBalance: fromInternalBalance,
-        userData: data,
+      await expect(
+        queries.queryJoin(pool.poolId, sender, recipient, {
+          assets: tokens.addresses,
+          maxAmountsIn,
+          fromInternalBalance,
+          userData: WeightedPoolEncoder.joinInit(initialBalances),
+        })
+      ).to.be.revertedWith('UNHANDLED_JOIN_KIND');
+    });
+
+    context('when the pool is paused', () => {
+      // These are technically BasePool tests, as we're checking that BasePool reverts correctly, but it's easier to do
+      // them here.
+
+      sharedBeforeEach(async () => {
+        await pool.pause();
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_JOIN_KIND');
+      it('reverts', async () => {
+        await expect(
+          queries.queryJoin(pool.poolId, sender, recipient, {
+            assets: tokens.addresses,
+            maxAmountsIn,
+            fromInternalBalance,
+            userData: data,
+          })
+        ).to.be.revertedWith('PAUSED');
+      });
     });
   });
 
   describe('queryExit', () => {
     let bptIn: BigNumber, expectedAmountsOut: BigNumber[], data: string;
 
-    // This value is superfluous, as it is not used by the helper
+    // These two values are superfluous, as they are not used by the helper
+    const toInternalBalance = false;
     const minAmountsOut: BigNumber[] = [];
 
     sharedBeforeEach('estimate expected amounts out', async () => {
@@ -167,7 +193,7 @@ describe('BalancerQueries', function () {
       const result = await queries.queryExit(pool.poolId, sender, recipient, {
         assets: tokens.addresses,
         minAmountsOut,
-        toInternalBalance: false,
+        toInternalBalance,
         userData: data,
       });
 
@@ -177,15 +203,34 @@ describe('BalancerQueries', function () {
 
     it('bubbles up revert reasons', async () => {
       const tooBigIndex = 90;
-      const data = WeightedPoolEncoder.exitExactBPTInForOneTokenOut(bptIn, tooBigIndex);
-      const tx = queries.queryExit(pool.poolId, sender, recipient, {
-        assets: tokens.addresses,
-        minAmountsOut,
-        toInternalBalance: false,
-        userData: data,
+      await expect(
+        queries.queryExit(pool.poolId, sender, recipient, {
+          assets: tokens.addresses,
+          minAmountsOut,
+          toInternalBalance,
+          userData: WeightedPoolEncoder.exitExactBPTInForOneTokenOut(bptIn, tooBigIndex),
+        })
+      ).to.be.revertedWith('OUT_OF_BOUNDS');
+    });
+
+    context('when the pool is paused', () => {
+      // These are technically BasePool tests, as we're checking that BasePool reverts correctly, but it's easier to do
+      // them here.
+
+      sharedBeforeEach(async () => {
+        await pool.pause();
       });
 
-      await expect(tx).to.be.revertedWith('OUT_OF_BOUNDS');
+      it('reverts', async () => {
+        await expect(
+          queries.queryExit(pool.poolId, sender, recipient, {
+            assets: tokens.addresses,
+            minAmountsOut,
+            toInternalBalance,
+            userData: data,
+          })
+        ).to.be.revertedWith('PAUSED');
+      });
     });
   });
 });

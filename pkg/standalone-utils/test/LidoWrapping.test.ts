@@ -5,7 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import StablePhantomPool from '@balancer-labs/v2-helpers/src/models/pools/stable-phantom/StablePhantomPool';
+import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -507,14 +507,14 @@ describe('LidoWrapping', function () {
     let WETH: Token;
     let poolTokens: TokenList;
     let poolId: string;
-    let pool: StablePhantomPool;
+    let pool: StablePool;
     let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
       poolTokens = new TokenList([WETH, wstETH]).sort();
 
-      pool = await StablePhantomPool.create({ tokens: poolTokens, vault });
+      pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
 
       await WETH.mint(senderUser, fp(2));

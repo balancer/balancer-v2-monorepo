@@ -14,8 +14,6 @@
 
 pragma solidity ^0.7.0;
 
-import "./IControlledPool.sol";
-
-interface IBasePoolController is IControlledPool {
+interface IBasePoolController {
     function initialize(address poolAddress) external;
 }
