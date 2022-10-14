@@ -65,8 +65,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
     constructor(
         IVault vault,
-        string memory name,
-        string memory symbol,
         IPrimaryIssuePoolFactory.FactoryPoolParams memory _factoryPoolParams,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
@@ -75,8 +73,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
-            name,
-            symbol,
+            _factoryPoolParams.name,
+            _factoryPoolParams.symbol,
             _sortTokens(IERC20(_factoryPoolParams.security), IERC20(_factoryPoolParams.currency), this),
             new address[](_TOTAL_TOKENS),
             _factoryPoolParams.swapFeePercentage,

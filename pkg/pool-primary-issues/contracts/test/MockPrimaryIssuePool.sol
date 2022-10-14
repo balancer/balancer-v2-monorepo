@@ -29,8 +29,6 @@ contract MockPrimaryIssuePool is PrimaryIssuePool {
     )
         PrimaryIssuePool(
             vault,
-            _factoryPoolParams.name,
-            _factoryPoolParams.symbol,
             _factoryPoolParams,
             pauseWindowDuration,
             bufferPeriodDuration,
