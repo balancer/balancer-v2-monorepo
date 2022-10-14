@@ -94,11 +94,11 @@ describe('PrimaryPool', function () {
       });
 
       it('sets the name', async () => {
-        expect(await pool.name()).to.equal('DAI');
+        expect(await pool.name()).to.equal('Balancer Pool Token');
       });
 
       it('sets the symbol', async () => {
-        expect(await pool.symbol()).to.equal('DAI');
+        expect(await pool.symbol()).to.equal('BPT');
       });
 
       it('sets the decimals', async () => {

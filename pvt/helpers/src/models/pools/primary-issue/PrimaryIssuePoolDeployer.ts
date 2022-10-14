@@ -70,7 +70,7 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
-    return deploy('pool-primary-issues/PrimaryIssuePool', {
+    return deploy('pool-primary-issues/MockPrimaryIssuePool', {
       args: [
         vault.address,
         securityToken.address,

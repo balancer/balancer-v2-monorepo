@@ -15,7 +15,7 @@ interface IPrimaryIssuePoolFactory {
         uint256 minimumPrice;
         uint256 basePrice;
         uint256 maxAmountsIn;
-        uint256 issueFeePercentage;
+        uint256 swapFeePercentage;
         uint256 cutOffTime;
     }
 

@@ -34,7 +34,7 @@ contract PrimaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     params.minimumPrice,
                     params.basePrice,
                     params.maxAmountsIn,
-                    params.issueFeePercentage,
+                    params.swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     params.cutOffTime,
