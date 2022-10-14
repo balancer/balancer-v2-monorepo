@@ -10,6 +10,8 @@ import '@balancer-labs/v2-interfaces/contracts/vault/IVault.sol';
 interface IPrimaryIssuePoolFactory {
 
     struct FactoryPoolParams{
+        string name;
+        string symbol;
         address security;
         address currency;
         uint256 minimumPrice;

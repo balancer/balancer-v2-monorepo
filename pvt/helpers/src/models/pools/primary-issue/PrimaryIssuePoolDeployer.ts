@@ -10,6 +10,9 @@ import PrimaryPool from './PrimaryIssuePool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
 
+const NAME = 'Balancer Pool Token';
+const SYMBOL = 'BPT';
+
 export default {
   
   async deploy(params: RawPrimaryPoolDeployment, mockedVault: boolean): Promise<PrimaryPool> {
@@ -55,6 +58,7 @@ export default {
   },
 
   async _deployStandalone(params: PrimaryPoolDeployment, vault: Vault): Promise<Contract> {
+    
     const {
       securityToken,
       currencyToken,
@@ -70,18 +74,24 @@ export default {
 
     const owner = TypesConverter.toAddress(params.owner);
 
+    let FactoryPoolParams ={
+      name: NAME,
+      symbol: SYMBOL,
+      security: securityToken.address,
+      currency: currencyToken.address,
+      minimumPrice: minimumPrice,
+      basePrice: basePrice,
+      maxAmountsIn: maxSecurityOffered,
+      swapFeePercentage: swapFeePercentage,
+      cutOffTime: issueCutoffTime
+  }
+
     return deploy('pool-primary-issues/MockPrimaryIssuePool', {
       args: [
         vault.address,
-        securityToken.address,
-        currencyToken.address,
-        minimumPrice,
-        basePrice,
-        maxSecurityOffered,
-        swapFeePercentage,
+        FactoryPoolParams,
         pauseWindowDuration,
         bufferPeriodDuration,
-        issueCutoffTime,
         owner,
       ],
       from,

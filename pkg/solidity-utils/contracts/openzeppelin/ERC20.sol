@@ -4,7 +4,6 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
-import "hardhat/console.sol";
 
 import "./SafeMath.sol";
 
@@ -241,9 +240,6 @@ contract ERC20 is IERC20 {
         _require(recipient != address(0), Errors.ERC20_TRANSFER_TO_ZERO_ADDRESS);
 
         _beforeTokenTransfer(sender, recipient, amount);
-        console.log("sender", sender);
-        console.log("Balance",_balances[sender]);
-        console.log("Amounts",amount);
         _balances[sender] = _balances[sender].sub(amount, Errors.ERC20_TRANSFER_EXCEEDS_BALANCE);
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);

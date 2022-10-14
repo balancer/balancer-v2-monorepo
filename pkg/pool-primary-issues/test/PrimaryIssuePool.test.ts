@@ -132,6 +132,7 @@ describe('PrimaryPool', function () {
       expect(currentBalances[pool.securityIndex]).to.be.equal(0);
       expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
 
+      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
     });
     
     it('cannot be initialized outside of the initialize function', async () => {
@@ -184,7 +185,7 @@ describe('PrimaryPool', function () {
           amount: amount,
           balances: currentBalances,
         });
-        /*
+
         const expected = math.calcBptOutPerSecurityIn(
           amount,
           currentBalances[pool.securityIndex],
@@ -196,7 +197,7 @@ describe('PrimaryPool', function () {
         expect(result).to.be.equals(bn(expected));
 
         currentBalances[pool.securityIndex] = currentBalances[pool.securityIndex].add(amount);
-        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);*/
+        currentBalances[pool.bptIndex] = currentBalances[pool.bptIndex].sub(result);
       });
       /*
       context('when paused', () => {

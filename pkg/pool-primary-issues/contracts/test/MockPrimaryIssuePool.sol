@@ -16,34 +16,24 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../PrimaryIssuePool.sol";
+import "../interfaces/IPrimaryIssuePoolFactory.sol";
 
 contract MockPrimaryIssuePool is PrimaryIssuePool {
-    uint256 internal _wrappedTokenRate = 1e18;
 
     constructor(
         IVault vault,
-        IERC20 security,
-        IERC20 currency,
-        uint256 minimumPrice,
-        uint256 basePrice,
-        uint256 maxSecurityOffered,
-        uint256 swapFeePercentage,
+        IPrimaryIssuePoolFactory.FactoryPoolParams memory _factoryPoolParams,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        uint256 issueCutoffTime,
         address owner
     )
         PrimaryIssuePool(
             vault,
-            security,
-            currency,
-            minimumPrice,
-            basePrice,
-            maxSecurityOffered,
-            swapFeePercentage,
+            _factoryPoolParams.name,
+            _factoryPoolParams.symbol,
+            _factoryPoolParams,
             pauseWindowDuration,
             bufferPeriodDuration,
-            issueCutoffTime,
             owner
         )
     {

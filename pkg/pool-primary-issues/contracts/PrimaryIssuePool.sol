@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
 import "./interfaces/IMarketMaker.sol";
+import "./interfaces/IPrimaryIssuePoolFactory.sol";
 
 contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
@@ -30,6 +31,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
+
+    IPrimaryIssuePoolFactory.FactoryPoolParams factoryPoolParams;
 
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
@@ -49,9 +52,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     uint256 private immutable _currencyIndex;
     uint256 private immutable _bptIndex;
 
-    string NAME = 'Balancer Pool Token';
-    string SYMBOL = 'BPT';
-
     address private _balancerManager;
 
     struct Params {
@@ -60,51 +60,40 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 maxPrice;
     }
 
-     enum JoinKind { 
-        INIT, 
-        EXACT_TOKENS_IN_FOR_BPT_OUT, 
-        TOKEN_IN_FOR_EXACT_BPT_OUT, 
-        ALL_TOKENS_IN_FOR_EXACT_BPT_OUT 
-    }
-
-
     event OpenIssue(address indexed security, uint256 openingPrice, uint256 maxPrice, uint256 securityOffered, uint256 cutoffTime);
     event Subscription(address indexed security, address assetIn, string assetName, uint256 amount, address investor, uint256 price);
 
     constructor(
         IVault vault,
-        IERC20 security,
-        IERC20 currency,
-        uint256 minimumPrice,
-        uint256 basePrice,
-        uint256 maxSecurityOffered,
-        uint256 swapFeePercentage,
+        string memory name,
+        string memory symbol,
+        IPrimaryIssuePoolFactory.FactoryPoolParams memory _factoryPoolParams,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        uint256 issueCutoffTime,
         address owner
     )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
-            NAME,
-            SYMBOL,
-            _sortTokens(security, currency, this),
+            name,
+            symbol,
+            _sortTokens(IERC20(_factoryPoolParams.security), IERC20(_factoryPoolParams.currency), this),
             new address[](_TOTAL_TOKENS),
-            swapFeePercentage,
+            _factoryPoolParams.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
         )
     {
+        factoryPoolParams = _factoryPoolParams;
         // set tokens
-        _security = security;
-        _currency = currency;
+        _security = IERC20(factoryPoolParams.security);
+        _currency = IERC20(factoryPoolParams.currency);
 
         // Set token indexes
         (uint256 securityIndex, uint256 currencyIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            security,
-            currency,
+            IERC20(factoryPoolParams.security),
+            IERC20(factoryPoolParams.currency),
             this
         );
         _securityIndex = securityIndex;
@@ -112,18 +101,18 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         _bptIndex = bptIndex;
 
         // set scaling factors
-        _scalingFactorSecurity = _computeScalingFactor(security);
-        _scalingFactorCurrency = _computeScalingFactor(currency);
+        _scalingFactorSecurity = _computeScalingFactor(IERC20(factoryPoolParams.security));
+        _scalingFactorCurrency = _computeScalingFactor(IERC20(factoryPoolParams.currency));
 
         // set price bounds
-        _minPrice = minimumPrice;
-        _maxPrice = basePrice;
+        _minPrice = factoryPoolParams.minimumPrice;
+        _maxPrice = factoryPoolParams.basePrice;
 
         // set max total balance of securities
-        _MAX_TOKEN_BALANCE = maxSecurityOffered;
+        _MAX_TOKEN_BALANCE = factoryPoolParams.maxAmountsIn;
 
         // set issue time bounds
-        _cutoffTime = issueCutoffTime;
+        _cutoffTime = factoryPoolParams.cutOffTime;
         _startTime = block.timestamp;
 
         //set owner
@@ -180,9 +169,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //assets: _assets,
             assets: _asIAsset(tokens),
             maxAmountsIn: _maxAmountsIn,
-            userData: abi.encode(JoinKind.INIT, _maxAmountsIn),
+            userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
             fromInternalBalance: false
         });
+
         getVault().joinPool(getPoolId(), address(this), address(this), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime);
     }
@@ -201,7 +191,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //assets: _assets,
             assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
-            userData: abi.encode(JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, _INITIAL_BPT_SUPPLY),
+            userData: abi.encode(PrimaryPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
         getVault().exitPool(getPoolId(), address(this), payable(_balancerManager), request);
@@ -462,5 +452,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         scalingFactors[_currencyIndex] = FixedPoint.ONE;
         scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
+    }
+
+    function _getMinimumBpt() internal pure override returns (uint256) {
+        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // mechanism, ensuring initialization only occurs once.
+        return 0;
     }
 }

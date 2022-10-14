@@ -687,4 +687,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade
         orders[counterpartyRef].status = "Filled";
     }
 
+    function _getMinimumBpt() internal pure override returns (uint256) {
+        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // mechanism, ensuring initialization only occurs once.
+        return 0;
+    }
+
 }

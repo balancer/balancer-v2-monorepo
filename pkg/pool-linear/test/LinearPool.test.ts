@@ -137,7 +137,7 @@ describe('LinearPool', function () {
     it('adds bpt to the vault', async () => {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
-      console.log(previousBalances);
+
       await pool.initialize();
 
       const currentBalances = await pool.getBalances();
