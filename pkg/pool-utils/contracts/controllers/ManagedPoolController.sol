@@ -150,6 +150,7 @@ contract ManagedPoolController is BasePoolController {
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
+        IERC20[] calldata tokens,
         uint256[] calldata endWeights
     ) external virtual onlyManager withBoundPool {
         _require(canChangeWeights(), Errors.FEATURE_DISABLED);
@@ -158,7 +159,7 @@ contract ManagedPoolController is BasePoolController {
             Errors.WEIGHT_CHANGE_TOO_FAST
         );
 
-        IControlledManagedPool(pool).updateWeightsGradually(startTime, endTime, endWeights);
+        IControlledManagedPool(pool).updateWeightsGradually(startTime, endTime, tokens, endWeights);
     }
 
     /**
@@ -207,20 +208,6 @@ contract ManagedPoolController is BasePoolController {
      */
     function withdrawCollectedManagementFees(address recipient) external virtual onlyManager withBoundPool {
         IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
-    }
-
-    /**
-     * @dev Pass a call to ManagedPool's setManagementSwapFeePercentage through to the underlying pool.
-     */
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
-        external
-        virtual
-        onlyManager
-        withBoundPool
-    {
-        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
-
-        IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
     }
 
     /**

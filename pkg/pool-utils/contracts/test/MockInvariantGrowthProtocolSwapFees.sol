@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "../protocol-fees/InvariantGrowthProtocolSwapFees.sol";
+import "../external-fees/InvariantGrowthProtocolSwapFees.sol";
 
 contract MockInvariantGrowthProtocolSwapFees {
     function calculateDueProtocolFees(

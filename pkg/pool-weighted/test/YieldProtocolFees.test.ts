@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp, fpDiv, fpMul } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv, fpMul, FP_100_PCT, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { random, range } from 'lodash';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/weighted/math';
@@ -76,6 +76,26 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
         });
       });
 
+      describe('getYieldFeeExemption', () => {
+        it('returns the expected value', async () => {
+          // We force a check of this case as it would otherwise only occur once in every 2**numTokens attempts.
+          const zeroRateProviders = Array.from({ length: numTokens }, () => ZERO_ADDRESS);
+          expect(await pool.getYieldFeeExemption(zeroRateProviders)).to.be.true;
+
+          for (let i = 0; i < 10; i++) {
+            // Randomly create a set of rate providers which are a mix of real or zero addresses.
+            const rateProviders = Array.from({ length: numTokens }, () =>
+              random(0, 1.0) < 0.5 ? ANY_ADDRESS : ZERO_ADDRESS
+            );
+
+            // We expect the pool to be exempt if every rate provider is the zero address
+            const isExempt = rateProviders.every((rateProvider) => rateProvider === ZERO_ADDRESS);
+
+            expect(await pool.getYieldFeeExemption(rateProviders)).to.be.eq(isExempt);
+          }
+        });
+      });
+
       describe('getRateProduct', () => {
         let rates: BigNumber[];
 
@@ -104,7 +124,7 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
 
         context('when pool pays fees on yield', () => {
           sharedBeforeEach('initialize athRateProduct', async () => {
-            const initialRateProduct = await pool.getRateProduct(toNormalizedWeights(rateProviders.map(() => fp(1))));
+            const initialRateProduct = await pool.getRateProduct(toNormalizedWeights(rateProviders.map(() => FP_ONE)));
             await pool.updateATHRateProduct(initialRateProduct);
           });
 
@@ -132,12 +152,12 @@ describe('WeightedPoolProtocolFees (Yield)', () => {
               const { yieldProtocolFees } = await pool.getYieldProtocolFee(normalizedWeights, currentSupply);
 
               const rateProductGrowth = fpDiv(calculateInvariant(rates, normalizedWeights), athRateProduct);
-              const yieldPercentage = fp(1).sub(fpDiv(fp(1), rateProductGrowth));
+              const yieldPercentage = FP_100_PCT.sub(fpDiv(FP_ONE, rateProductGrowth));
               const protocolYieldFeesPercentage = fpMul(yieldPercentage, PROTOCOL_YIELD_FEE_PERCENTAGE);
 
               const expectedProtocolFees = currentSupply
                 .mul(protocolYieldFeesPercentage)
-                .div(fp(1).sub(protocolYieldFeesPercentage));
+                .div(FP_100_PCT.sub(protocolYieldFeesPercentage));
               expect(yieldProtocolFees).to.be.almostEqual(expectedProtocolFees, 0.0001);
             });
           });

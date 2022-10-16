@@ -5,7 +5,7 @@ import { BigNumber, Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -13,6 +13,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 describe('BaseManagedPoolFactory', function () {
   let tokens: TokenList;
@@ -25,7 +26,6 @@ describe('BaseManagedPoolFactory', function () {
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE = fp(0.5);
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
@@ -47,11 +47,7 @@ describe('BaseManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(
-    swapsEnabled = true,
-    mustAllowlistLPs = false,
-    protocolSwapFeePercentage = MAX_UINT256
-  ): Promise<Contract> {
+  async function createPool(swapsEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
@@ -64,9 +60,8 @@ describe('BaseManagedPoolFactory', function () {
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
-      protocolSwapFeePercentage: protocolSwapFeePercentage,
-      managementSwapFeePercentage: POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
+      aumFeeId: ProtocolFee.AUM,
     };
 
     const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
@@ -90,7 +85,7 @@ describe('BaseManagedPoolFactory', function () {
       const poolId = await pool.getPoolId();
       const poolTokens = await vault.getPoolTokens(poolId);
 
-      expect(poolTokens.tokens).to.have.members(tokens.addresses);
+      expect(poolTokens.tokens).to.have.members([pool.address, ...tokens.addresses]);
       expect(poolTokens.balances).to.be.zeros;
     });
 
@@ -114,16 +109,14 @@ describe('BaseManagedPoolFactory', function () {
       expect(await pool.getSwapFeePercentage()).to.equal(POOL_SWAP_FEE_PERCENTAGE);
     });
 
-    it('sets management swap fee', async () => {
-      expect(await pool.getManagementSwapFeePercentage()).to.equal(POOL_MANAGEMENT_SWAP_FEE_PERCENTAGE);
-    });
-
     it('sets management aum fee', async () => {
-      expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      const [aumFeePercentage, lastCollectionTimestamp] = await pool.getManagementAumFeeParams();
+      expect(aumFeePercentage).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      expect(lastCollectionTimestamp).to.equal(0);
     });
 
     it('sets the pool owner', async () => {
-      // Would not do this! The owner for real pools should be a pool controller
+      // Would not do this! The owner for real pools should be a contract, never an EOA.
       expect(await pool.getOwner()).to.equal(manager.address);
     });
 
@@ -196,18 +189,6 @@ describe('BaseManagedPoolFactory', function () {
       const pool = await createPool(true, false);
 
       expect(await pool.getMustAllowlistLPs()).to.be.false;
-    });
-
-    it('pool with delegated protocol fees', async () => {
-      const pool = await createPool(true, false);
-
-      expect(await pool.getProtocolSwapFeeDelegation()).to.be.true;
-    });
-
-    it('pool created with a fixed protocol fee', async () => {
-      const pool = await createPool(true, false, fp(0.1));
-
-      expect(await pool.getProtocolSwapFeeDelegation()).to.be.false;
     });
   });
 });

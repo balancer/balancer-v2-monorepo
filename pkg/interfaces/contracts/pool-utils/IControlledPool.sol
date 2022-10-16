@@ -18,6 +18,4 @@ import "../solidity-utils/openzeppelin/IERC20.sol";
 
 interface IControlledPool {
     function setSwapFeePercentage(uint256 swapFeePercentage) external;
-
-    function setAssetManagerPoolConfig(IERC20 token, bytes memory poolConfig) external;
 }

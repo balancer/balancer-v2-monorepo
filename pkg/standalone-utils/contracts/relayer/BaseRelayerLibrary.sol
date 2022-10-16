@@ -203,6 +203,14 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         // with other state variables this or derived contracts might use.
         // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
 
-        return bytes32(uint256(keccak256(abi.encodePacked(ref, _TEMP_STORAGE_SUFFIX))) - 1);
+        return bytes32(uint256(keccak256(abi.encodePacked(_removeReferencePrefix(ref), _TEMP_STORAGE_SUFFIX))) - 1);
+    }
+
+    /**
+     * @dev Returns a reference without its prefix.
+     * Use this function to calculate the storage slot so that it's the same for temporary and read-only references.
+     */
+    function _removeReferencePrefix(uint256 ref) private pure returns (uint256) {
+        return (ref & 0x0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
     }
 }

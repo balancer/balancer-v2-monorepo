@@ -1,5 +1,5 @@
 import { BigNumber, ethers } from 'ethers';
-import { BigNumberish, bn, fp } from '../../../../pvt/helpers/src/numbers';
+import { BigNumberish, bn, fpMul } from '../../../../pvt/helpers/src/numbers';
 
 export type InvestmentConfig = {
   targetPercentage: BigNumberish;
@@ -26,7 +26,7 @@ export const calcRebalanceAmount = (
   config: InvestmentConfig
 ): BigNumber => {
   const poolAssets = poolCash.add(poolManaged);
-  const targetInvestmentAmount = poolAssets.mul(config.targetPercentage).div(fp(1));
+  const targetInvestmentAmount = fpMul(poolAssets, config.targetPercentage);
 
   const investmentAmount = targetInvestmentAmount.sub(poolManaged);
   return investmentAmount;

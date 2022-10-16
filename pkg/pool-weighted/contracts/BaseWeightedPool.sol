@@ -136,11 +136,12 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * @dev Called before any join or exit operation. Returns the Pool's total supply by default, but derived contracts
      * may choose to add custom behavior at these steps. This often has to do with protocol fee processing.
      */
-    function _beforeJoinExit(
-        uint256[] memory, /* preBalances */
-        uint256[] memory /* normalizedWeights */
-    ) internal virtual returns (uint256) {
-        return totalSupply();
+    function _beforeJoinExit(uint256[] memory preBalances, uint256[] memory normalizedWeights)
+        internal
+        virtual
+        returns (uint256, uint256)
+    {
+        return (totalSupply(), WeightedMath._calculateInvariant(normalizedWeights, preBalances));
     }
 
     /**
@@ -152,6 +153,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
      * This function is free to mutate the `preBalances` array.
      */
     function _afterJoinExit(
+        uint256 preJoinExitInvariant,
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -210,7 +212,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(balances, normalizedWeights);
 
         (uint256 bptAmountOut, uint256[] memory amountsIn) = _doJoin(
             sender,
@@ -221,7 +223,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(balances, amountsIn, normalizedWeights, preJoinExitSupply, preJoinExitSupply.add(bptAmountOut));
+        _afterJoinExit(
+            preJoinExitInvariant,
+            balances,
+            amountsIn,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.add(bptAmountOut)
+        );
 
         return (bptAmountOut, amountsIn);
     }
@@ -331,7 +340,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     ) internal virtual override returns (uint256, uint256[] memory) {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
 
-        uint256 preJoinExitSupply = _beforeJoinExit(balances, normalizedWeights);
+        (uint256 preJoinExitSupply, uint256 preJoinExitInvariant) = _beforeJoinExit(balances, normalizedWeights);
 
         (uint256 bptAmountIn, uint256[] memory amountsOut) = _doExit(
             sender,
@@ -342,7 +351,14 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
             userData
         );
 
-        _afterJoinExit(balances, amountsOut, normalizedWeights, preJoinExitSupply, preJoinExitSupply.sub(bptAmountIn));
+        _afterJoinExit(
+            preJoinExitInvariant,
+            balances,
+            amountsOut,
+            normalizedWeights,
+            preJoinExitSupply,
+            preJoinExitSupply.sub(bptAmountIn)
+        );
 
         return (bptAmountIn, amountsOut);
     }
@@ -435,25 +451,5 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         return (bptAmountIn, amountsOut);
-    }
-
-    // BPT rate
-
-    /**
-     * @notice Returns the appreciation of one BPT relative to the underlying tokens.
-     * @dev The rate starts at 1 when the pool is created, and grows over time.
-     * Note that this base implementation is only accurate for pools that do not accrue
-     * BPT fees (e.g., protocol fees).
-     *
-     * If there are pending BPT fees, the nominal totalSupply will be lower than the actual
-     * total supply, which would make the rate manipulable: the rate could then be affected by
-     * the timing of joins/exits (or any other operation that triggers protocol fee payment).
-     *
-     * Derived contracts must therefore adjust the supply in this equation to incorporate
-     * any pending, unminted BPT.
-     */
-    function getRate() public view virtual returns (uint256) {
-        // The initial BPT supply is equal to the invariant times the number of tokens.
-        return Math.mul(getInvariant(), _getTotalTokens()).divDown(totalSupply());
     }
 }
