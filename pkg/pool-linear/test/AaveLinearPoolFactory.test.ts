@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
@@ -126,7 +126,7 @@ describe('AaveLinearPoolFactory', function () {
 
     it('sets the targets', async () => {
       const targets = await pool.getTargets();
-      expect(targets.lowerTarget).to.be.equal(fp(0));
+      expect(targets.lowerTarget).to.be.equal(FP_ZERO);
       expect(targets.upperTarget).to.be.equal(UPPER_TARGET);
     });
   });

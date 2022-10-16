@@ -28,6 +28,10 @@ contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
         _cacheTokenRateIfNecessary(index);
     }
 
+    function isOwnerOnlyAction(bytes32 actionId) external view returns (bool) {
+        return _isOwnerOnlyAction(actionId);
+    }
+
     function _updateTokenRateCache(
         uint256 index,
         IRateProvider provider,
@@ -64,5 +68,18 @@ contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
         )
     {
         return _beforeJoinExit(registeredBalances);
+    }
+
+    function getVirtualSupply() external view returns (uint256) {
+        // For a 3 token General Pool, it is cheaper to query the balance for a single token than to read all balances,
+        // as getPoolTokenInfo will check for token existence, token balance and Asset Manager (3 reads), while
+        // getPoolTokens will read the number of tokens, their addresses and balances (7 reads).
+        // The more tokens the Pool has, the more expensive `getPoolTokens` becomes, while `getPoolTokenInfo`'s gas
+        // remains constant.
+        (uint256 cash, uint256 managed, , ) = getVault().getPoolTokenInfo(getPoolId(), IERC20(this));
+
+        // Note that unlike all other balances, the Vault's BPT balance does not need scaling as its scaling factor is
+        // ONE. This addition cannot overflow due to the Vault's balance limits.
+        return _getVirtualSupply(cash + managed);
     }
 }

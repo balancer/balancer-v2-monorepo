@@ -45,10 +45,17 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             owner,
             false
         )
-        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
         WeightedPoolProtocolFees(tokens.length, rateProviders)
     {
         _totalTokens = tokens.length;
+    }
+
+    function getYieldFeeExemption(IRateProvider[] memory rateProviders) external pure returns (bool) {
+        return _getYieldFeeExemption(rateProviders);
     }
 
     function getRateProduct(uint256[] memory normalizedWeights) external view returns (uint256) {
@@ -66,7 +73,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     {
         uint256 protocolYieldFeesPoolPercentage;
         (protocolYieldFeesPoolPercentage, athRateProduct) = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
-        yieldProtocolFees = ProtocolFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
+        yieldProtocolFees = ExternalFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
     }
 
     function getPostJoinExitProtocolFees(
@@ -78,6 +85,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     ) external returns (uint256) {
         return
             _getPostJoinExitProtocolFees(
+                WeightedMath._calculateInvariant(normalizedWeights, preBalances),
                 preBalances,
                 balanceDeltas,
                 normalizedWeights,

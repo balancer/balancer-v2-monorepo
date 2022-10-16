@@ -42,7 +42,10 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
                 tokenRateCacheDurations: tokenRateCacheDurations
             })
         )
-        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,

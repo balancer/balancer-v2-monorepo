@@ -17,6 +17,7 @@ import {
   ManagedPoolRights,
 } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { poolConfigs } from './config';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
@@ -68,7 +69,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   });
 
   const swapFeePercentage = fp(0.02); // 2%
-  const managementFee = fp(0.5); // 50%
   const aumFee = 0;
 
   let pool: Contract;
@@ -77,7 +77,6 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
   if (poolName == 'WeightedPool' || poolName == 'ManagedPool') {
     const WEIGHTS = range(10000, 10000 + tokens.length);
     const weights = toNormalizedWeights(WEIGHTS.map(bn)); // Equal weights for all tokens
-    const assetManagers = Array(weights.length).fill(ZERO_ADDRESS);
     let params;
 
     switch (poolName) {
@@ -91,9 +90,8 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
-          protocolSwapFeePercentage: MAX_UINT256,
-          managementSwapFeePercentage: managementFee,
           managementAumFeePercentage: aumFee,
+          aumFeeId: ProtocolFee.AUM,
         };
 
         const basePoolRights: BasePoolRights = {
@@ -117,7 +115,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
       default: {
         const rateProviders = Array(weights.length).fill(ZERO_ADDRESS);
 
-        params = [tokens.addresses, weights, rateProviders, assetManagers, swapFeePercentage];
+        params = [tokens.addresses, weights, rateProviders, swapFeePercentage];
       }
     }
 
@@ -151,7 +149,12 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
   const poolId = await pool.getPoolId();
   const { tokens: allTokens } = await vault.getPoolTokens(poolId);
-  const initialBalances = allTokens.map((t) => (t == pool.address ? 0 : initialPoolBalance));
+
+  // ComposableStablePool needs BPT in the initialize userData but ManagedPool doesn't.
+  const initialBalances = (poolName == 'ManagedPool'
+    ? allTokens.filter((t) => t != pool.address)
+    : allTokens
+  ).map((t) => (t == pool.address ? 0 : initialPoolBalance));
   joinUserData = StablePoolEncoder.joinInit(initialBalances);
 
   await vault.instance.connect(creator).joinPool(poolId, creator.address, creator.address, {

@@ -7,8 +7,24 @@ export function expectEqualWithError(actual: BigNumberish, expected: BigNumberis
   expected = bn(expected);
   const acceptedError = pct(expected, error);
 
-  expect(actual).to.be.at.least(expected.sub(acceptedError));
-  expect(actual).to.be.at.most(expected.add(acceptedError));
+  if (actual.gte(0)) {
+    expect(actual).to.be.at.least(expected.sub(acceptedError));
+    expect(actual).to.be.at.most(expected.add(acceptedError));
+  } else {
+    expect(actual).to.be.at.most(expected.sub(acceptedError));
+    expect(actual).to.be.at.least(expected.add(acceptedError));
+  }
+}
+
+export function expectArrayEqualWithError(
+  actual: Array<BigNumberish>,
+  expected: Array<BigNumberish>,
+  error: BigNumberish = 0.001
+): void {
+  expect(actual.length).to.be.eq(expected.length);
+  for (let i = 0; i < actual.length; i++) {
+    expectEqualWithError(actual[i], expected[i], error);
+  }
 }
 
 export function expectLessThanOrEqualWithError(

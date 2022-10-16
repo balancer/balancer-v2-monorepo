@@ -10,7 +10,7 @@ import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
-import { bn, divCeil, fp, fpMul, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, divCeil, fp, fpMul, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
 import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -113,7 +113,7 @@ describe('Flash Loans', () => {
 
     it('the fees module receives protocol fees', async () => {
       const loan = bn(1e18);
-      const feeAmount = divCeil(loan.mul(feePercentage), FP_SCALING_FACTOR);
+      const feeAmount = divCeil(loan.mul(feePercentage), FP_100_PCT);
 
       await expectBalanceChange(
         () => vault.connect(other).flashLoan(recipient.address, [tokens.DAI.address], [loan], '0x10'),
