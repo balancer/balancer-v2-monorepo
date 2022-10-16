@@ -195,6 +195,7 @@ library Errors {
     uint256 internal constant FRACTIONAL_TARGET = 353;
     uint256 internal constant ADD_OR_REMOVE_BPT = 354;
     uint256 internal constant INVALID_CIRCUIT_BREAKER_BOUNDS = 355;
+    uint256 internal constant CIRCUIT_BREAKER_TRIPPED = 356;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

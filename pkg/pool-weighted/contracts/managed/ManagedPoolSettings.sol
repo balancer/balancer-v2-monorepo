@@ -29,7 +29,7 @@ import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.so
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/CircuitBreakerLib.sol";
+import "../managed/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
 
 import "./vendor/BasePool.sol";
@@ -85,7 +85,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     mapping(IERC20 => bytes32) private _tokenState;
 
     // Store the circuit breaker configuration for each token.
-    // See `CircuitBreakerLib.sol` for data layout.
+    // See `CircuitBreakerStorageLib.sol` for data layout.
     mapping(IERC20 => bytes32) private _circuitBreakerState;
 
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
@@ -148,13 +148,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // Validate and set initial fees
         _setManagementAumFeePercentage(params.managementAumFeePercentage);
 
-        // Write the scaling factors for each token into their token state.
-        // We do this before setting the weights in `_startGradualWeightChange` so we start from a empty token state.
+        // Initialize the tokens' states with their scaling factors and weights.
         for (uint256 i = 0; i < totalTokens; i++) {
             IERC20 token = params.tokens[i];
-            _tokenState[token] = ManagedPoolTokenStorageLib.setTokenScalingFactor(bytes32(0), token);
+            _tokenState[token] = ManagedPoolTokenStorageLib.initializeTokenState(token, params.normalizedWeights[i]);
         }
 
+        // This is technically a noop with regards to the tokens' weights in storage however it performs important
+        // validation of the token weights (normalization / bounds checking) and emits an event for offchain services.
         _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
@@ -185,17 +186,19 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return _tokenState[token];
     }
 
+    function _getCircuitBreakerState(IERC20 token) internal view returns (bytes32) {
+        return _circuitBreakerState[token];
+    }
+
     // Virtual Supply
 
     /**
      * @notice Returns the number of tokens in circulation.
      * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
-     * composable pools premint a large fraction of the BPT supply to place it in the Vault. In this situation we must
-     * override this function to subtract off this balance of BPT to show the real amount of BPT in circulation.
+     * composable pools premint a large fraction of the BPT supply and place it in the Vault. In this situation,
+     * the override would subtract this BPT balance from the total to reflect the actual amount of BPT in circulation.
      */
-    function _getVirtualSupply() internal view virtual returns (uint256) {
-        return totalSupply();
-    }
+    function _getVirtualSupply() internal view virtual returns (uint256);
 
     // Actual Supply
 
@@ -204,7 +207,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
      *
      * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
      * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
-     *  they will effectively be included in any Pool operation that involves BPT.
+     * they will effectively be included in any Pool operation that involves BPT. It is important that we take this BPT
+     * into account, as otherwise users may evade paying fees through exiting the pool before they are paid.
      *
      * In the vast majority of cases, this function should be used instead of `totalSupply()`.
      */
@@ -498,29 +502,39 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Returns whether the allowlist for LPs is enabled.
      */
-    function getMustAllowlistLPs() public view returns (bool) {
+    function getMustAllowlistLPs() external view returns (bool) {
         return ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState);
+    }
+
+    /**
+     * @notice Check whether an LP address is on the allowlist.
+     * @dev This simply checks the list, regardless of whether the allowlist feature is enabled.
+     * @param member - The address to check against the allowlist.
+     * @return true if the given address is on the allowlist.
+     */
+    function isAddressOnAllowlist(address member) public view returns (bool) {
+        return _allowedAddresses[member];
     }
 
     /**
      * @notice Check an LP address against the allowlist.
      * @dev If the allowlist is not enabled, this returns true for every address.
+     * @param poolState - The bytes32 representing the state of the pool.
      * @param member - The address to check against the allowlist.
-     * @return true if the given address is allowed to join the pool.
+     * @return - Whether the given address is allowed to join the pool.
      */
-    function isAllowedAddress(address member) public view returns (bool) {
-        return !getMustAllowlistLPs() || _allowedAddresses[member];
+    function _isAllowedAddress(bytes32 poolState, address member) internal view returns (bool) {
+        return !ManagedPoolStorageLib.getLPAllowlistEnabled(poolState) || isAddressOnAllowlist(member);
     }
 
     /**
      * @notice Adds an address to the LP allowlist.
-     * @dev Will fail if the LP allowlist is not enabled, or the address is already allowlisted.
+     * @dev Will fail if the address is already allowlisted.
      * Emits the AllowlistAddressAdded event. This is a permissioned function.
      * @param member - The address to be added to the allowlist.
      */
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
-        _require(!_allowedAddresses[member], Errors.ADDRESS_ALREADY_ALLOWLISTED);
+        _require(!isAddressOnAllowlist(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
         _allowedAddresses[member] = true;
         emit AllowlistAddressAdded(member);
@@ -528,14 +542,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Removes an address from the LP allowlist.
-     * @dev Will fail if the LP allowlist is not enabled, or the address was not previously allowlisted.
-     * Emits the AllowlistAddressRemoved event. Do not allow removing addresses while the allowlist
-     * is disabled. This is a permissioned function.
+     * @dev Will fail if the address was not previously allowlisted.
+     * Emits the AllowlistAddressRemoved event. This is a permissioned function.
      * @param member - The address to be removed from the allowlist.
      */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
-        _require(getMustAllowlistLPs(), Errors.FEATURE_DISABLED);
-        _require(_allowedAddresses[member], Errors.ADDRESS_NOT_ALLOWLISTED);
+        _require(isAddressOnAllowlist(member), Errors.ADDRESS_NOT_ALLOWLISTED);
 
         delete _allowedAddresses[member];
         emit AllowlistAddressRemoved(member);
@@ -544,7 +556,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     /**
      * @notice Enable or disable the LP allowlist.
      * @dev Note that any addresses added to the allowlist will be retained if the allowlist is toggled off and
-     * back on again, because adding or removing addresses is not allowed while the allowlist is disabled.
+     * back on again, because this action does not affect the list of LP addresses.
      * Emits the MustAllowlistLPsSet event. This is a permissioned function.
      * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
@@ -598,7 +610,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             amount = _collectAumManagementFees(supplyBeforeFeeCollection);
-            _updateAumFeeCollectionTimestamp();
         }
 
         _setManagementAumFeePercentage(managementAumFeePercentage);
@@ -632,15 +643,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
         // Reverting here prevents zero value AUM fee collections causing bogus events.
-        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
-        if (supplyBeforeFeeCollection == 0) _revert(Errors.UNINITIALIZED);
-
-        return _collectAumManagementFees(supplyBeforeFeeCollection);
+        uint256 supply = _getVirtualSupply();
+        _require(supply > 0, Errors.UNINITIALIZED);
+        return _collectAumManagementFees(supply);
     }
 
     /**
-     * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
-     * This function is called automatically on joins and exits.
+     * @notice Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
+     * @dev The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+     * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the
+     * virtual supply of the Pool changes to ensure proper accounting.
+     *
+     * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of
+     * BPT returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is
+     * equal to the actual supply).
+     * @return bptAmount - The amount of BPT minted as AUM fees.
      */
     function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
         (uint256 aumFeePercentage, uint256 lastCollectionTimestamp) = getManagementAumFeeParams();
@@ -651,16 +668,16 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             aumFeePercentage
         );
 
+        // We always update last collection timestamp even when there is nothing to collect to ensure the state is kept
+        // consistent.
+        _updateAumFeeCollectionTimestamp();
+
         // Early return if either:
         // - AUM fee is disabled.
         // - no time has passed since the last collection.
         if (bptAmount == 0) {
             return 0;
         }
-
-        // As we update the AUM fee collection timestamp when updating the AUM fee percentage, we only need to
-        // update the timestamp when non-zero AUM fees are paid. This avoids an SSTORE on zero-length collections.
-        _updateAumFeeCollectionTimestamp();
 
         // Split AUM fees between protocol and Pool manager.
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
@@ -924,7 +941,11 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // not paused.
         _ensureNotPaused();
 
-        _collectAumManagementFees(_getVirtualSupply());
+        // If the Pool doesn't hold any tokens due to being uninitialized then we skip fee collection.
+        uint256 supplyBeforeFeeCollection = _getVirtualSupply();
+        if (supplyBeforeFeeCollection > 0) {
+            _collectAumManagementFees(supplyBeforeFeeCollection);
+        }
     }
 
     // Recovery Mode
@@ -958,7 +979,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Return the full circuit breaker state for the given token.
-     * @dev These are the reference values (BPT price and weight complement) computed when the breaker was set,
+     * @dev These are the reference values (BPT price and normalized weight) passed in when the breaker was set,
      * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
      * the circuit breaker should trip.
      */
@@ -967,7 +988,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         view
         returns (
             uint256 bptPrice,
-            uint256 weightComplement,
+            uint256 referenceWeight,
             uint256 lowerBound,
             uint256 upperBound,
             uint256 lowerBptPriceBound,
@@ -976,14 +997,22 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     {
         bytes32 circuitBreakerState = _circuitBreakerState[token];
 
-        (bptPrice, weightComplement, lowerBound, upperBound) = CircuitBreakerLib.getCircuitBreakerFields(
+        (bptPrice, referenceWeight, lowerBound, upperBound) = CircuitBreakerStorageLib.getCircuitBreakerFields(
             circuitBreakerState
         );
 
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerLib.getCurrentCircuitBreakerBounds(
-            circuitBreakerState,
-            _getNormalizedWeight(token).complement()
-        );
+        uint256 normalizedWeight = _getNormalizedWeight(token);
+
+        lowerBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, true);
+        upperBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, false);
+
+        // Restore the original unscaled BPT price passed in `setCircuitBreakers`.
+        uint256 tokenScalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token));
+        bptPrice = _upscale(bptPrice, tokenScalingFactor);
+
+        // Also render the adjusted bounds as unscaled values.
+        lowerBptPriceBound = _upscale(lowerBptPriceBound, tokenScalingFactor);
+        upperBptPriceBound = _upscale(upperBptPriceBound, tokenScalingFactor);
     }
 
     /**
@@ -1019,14 +1048,23 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // Fail if the token is not in the pool (or is the BPT token)
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
-        // The library will validate the lower/upper bounds
-        _circuitBreakerState[token] = CircuitBreakerLib.setCircuitBreaker(
+        // The incoming BPT price (defined as virtualSupply * weight / balance) will have been calculated dividing
+        // by unscaled token balance, effectively multiplying the result by the scaling factor.
+        // To correct this, we need to divide by it (downscaling).
+        uint256 scaledBptPrice = _downscaleDown(
             bptPrice,
-            normalizedWeight.complement(),
+            ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token))
+        );
+
+        // The library will validate the lower/upper bounds
+        _circuitBreakerState[token] = CircuitBreakerStorageLib.setCircuitBreaker(
+            scaledBptPrice,
+            normalizedWeight,
             lowerBoundPercentage,
             upperBoundPercentage
         );
 
+        // Echo the unscaled BPT price in the event.
         emit CircuitBreakerSet(token, bptPrice, lowerBoundPercentage, upperBoundPercentage);
     }
 
@@ -1051,10 +1089,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Returns the tokens in the Pool and their current balances.
-     * @dev This function is expected to be overridden in cases where some processing needs to happen on these arrays.
-     * A common example of this is in composable pools as we may need to drop the BPT token and its balance.
+     * @dev This function must be overridden to process these arrays according to the specific pool type.
+     * A common example of this is in composable pools, as we may need to drop the BPT token and its balance.
      */
-    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances) {
-        (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
-    }
+    function _getPoolTokens() internal view virtual returns (IERC20[] memory tokens, uint256[] memory balances);
 }

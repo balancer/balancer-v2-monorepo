@@ -15,32 +15,45 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../managed/CircuitBreakerStorageLib.sol";
 import "../lib/CircuitBreakerLib.sol";
 
 contract MockCircuitBreakerLib {
+    using FixedPoint for uint256;
+
     function getCircuitBreakerFields(bytes32 circuitBreakerState)
         external
         pure
         returns (uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
     {
-            return CircuitBreakerLib.getCircuitBreakerFields(circuitBreakerState);
+            return CircuitBreakerStorageLib.getCircuitBreakerFields(circuitBreakerState);
     }
 
-    function getCurrentCircuitBreakerBounds(bytes32 circuitBreakerState, uint256 currentWeightFactor)
+    function getBptPriceBound(bytes32 circuitBreakerState, uint256 currentWeight, bool isLowerBound)
         external
         pure
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        return CircuitBreakerLib.getCurrentCircuitBreakerBounds(circuitBreakerState, currentWeightFactor);
+        return CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, currentWeight, isLowerBound);
     }
 
     function hasCircuitBreakerTripped(
         bytes32 circuitBreakerState,
-        uint256 totalSupply,
+        uint256 virtualSupply,
         uint256 normalizedWeight,
-        uint256 upscaledBalance
-    ) external pure returns (bool, bool) {
-        return CircuitBreakerLib.hasCircuitBreakerTripped(circuitBreakerState, totalSupply, normalizedWeight, upscaledBalance);
+        uint256 upscaledBalance,
+        bool isLowerBound
+    ) external pure returns (bool) {
+        uint256 bptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, isLowerBound);
+
+        return
+            CircuitBreakerLib.hasCircuitBreakerTripped(
+                virtualSupply,
+                normalizedWeight,
+                upscaledBalance,
+                bptPriceBound,
+                isLowerBound
+            );
     }
 
     function setCircuitBreaker(uint256 bptPrice, uint256 weightComplement, uint256 lowerBound, uint256 upperBound)
@@ -48,22 +61,10 @@ contract MockCircuitBreakerLib {
         pure
         returns (bytes32)
     {
-        return CircuitBreakerLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
+        return CircuitBreakerStorageLib.setCircuitBreaker(bptPrice, weightComplement, lowerBound, upperBound);
     }
 
-    function updateBoundRatios(bytes32 circuitBreakerState, uint256 weightComplement) external pure returns (bytes32) {
-        return CircuitBreakerLib.updateBoundRatios(circuitBreakerState, weightComplement);
-    }
-
-    function getBoundaryConversionRatios(
-        uint256 lowerBoundPercentage,
-        uint256 upperBoundPercentage,
-        uint256 currentWeightComplement
-    ) external pure returns (uint256, uint256) {
-        return CircuitBreakerLib.getBoundaryConversionRatios(
-            lowerBoundPercentage,
-            upperBoundPercentage,
-            currentWeightComplement
-        );
+    function updateAdjustedBounds(bytes32 circuitBreakerState, uint256 weight) external pure returns (bytes32) {
+        return CircuitBreakerStorageLib.updateAdjustedBounds(circuitBreakerState, weight);
     }
 }
