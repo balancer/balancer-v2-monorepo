@@ -280,7 +280,7 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
         } else {
-            // In `GIVEN_IN` exitswaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
+            // In `GIVEN_OUT` exitswaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
             // `scalingFactorTokenOut`.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
