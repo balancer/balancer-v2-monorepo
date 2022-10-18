@@ -26,7 +26,7 @@ library SafeERC20 {
         uint256 value
     ) internal {
         // Some contracts need their allowance reduced to 0 before setting it to an arbitrary amount.
-        if (token.allowance(address(this), address(to)) > 0) {
+        if (value != 0 && token.allowance(address(this), address(to)) > 0) {
             _callOptionalReturn(address(token), abi.encodeWithSelector(token.approve.selector, to, 0));
         }
 
