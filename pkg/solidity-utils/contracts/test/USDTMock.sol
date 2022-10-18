@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 /**
  * @dev Partial ERC20-ish token implementation to mock non strictly ERC20 compliant functions.
  * 
- * For example, {approve} will not return a boolean, and will not allow an amount != 0 if there is any allowance
+ * For example, `approve` will not return a boolean, and will not allow an amount != 0 if there is any allowance
  * already for the spender upon calling it.
  */
 contract USDTMock {
