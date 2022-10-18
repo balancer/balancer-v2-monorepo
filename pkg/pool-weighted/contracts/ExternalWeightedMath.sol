@@ -19,8 +19,8 @@ import "./lib/WeightedJoinsLib.sol";
 import "./WeightedMath.sol";
 
 /**
- * @title A contract-wrapper for WeightedMath.
- * @dev Use this contract as an external replacement for WeightedMath library.
+ * @title A contract-wrapper for Weighted Math, Joins and Exits.
+ * @dev Use this contract as an external replacement for WeightedMath, WeightedJoinsLib and WeightedExitsLib libraries.
  */
 contract ExternalWeightedMath {
     /**
@@ -209,6 +209,9 @@ contract ExternalWeightedMath {
         return WeightedMath._calcBptOutAddToken(totalSupply, normalizedWeight);
     }
 
+    /**
+     * @dev See `WeightedJoinsLib.joinExactTokensInForBPTOut`.
+     */
     function joinExactTokensInForBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -228,6 +231,9 @@ contract ExternalWeightedMath {
             );
     }
 
+    /**
+     * @dev See `WeightedJoinsLib.joinTokenInForExactBPTOut`.
+     */
     function joinTokenInForExactBPTOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -245,6 +251,9 @@ contract ExternalWeightedMath {
             );
     }
 
+    /**
+     * @dev See `WeightedJoinsLib.joinAllTokensInForExactBPTOut`.
+     */
     function joinAllTokensInForExactBPTOut(
         uint256[] memory balances,
         uint256 totalSupply,
@@ -253,6 +262,9 @@ contract ExternalWeightedMath {
         return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
     }
 
+    /**
+     * @dev See `WeightedExitsLib.exitExactBPTInForTokenOut`.
+     */
     function exitExactBPTInForTokenOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -270,6 +282,9 @@ contract ExternalWeightedMath {
             );
     }
 
+    /**
+     * @dev See `WeightedExitsLib.exitExactBPTInForTokensOut`.
+     */
     function exitExactBPTInForTokensOut(
         uint256[] memory balances,
         uint256 totalSupply,
@@ -278,6 +293,9 @@ contract ExternalWeightedMath {
         return WeightedExitsLib.exitExactBPTInForTokensOut(balances, totalSupply, userData);
     }
 
+    /**
+     * @dev See `WeightedExitsLib.exitBPTInForExactTokensOut`.
+     */
     function exitBPTInForExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
