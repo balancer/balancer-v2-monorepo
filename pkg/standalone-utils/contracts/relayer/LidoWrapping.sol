@@ -63,11 +63,11 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             _pullToken(sender, _stETH, amount);
         }
 
-        _stETH.safeApprove(address(_wstETH), amount);
+        IERC20(_stETH).safeApprove(address(_wstETH), amount);
         uint256 result = IwstETH(_wstETH).wrap(amount);
 
         if (recipient != address(this)) {
-            _wstETH.safeTransfer(recipient, result);
+            IERC20(_wstETH).safeTransfer(recipient, result);
         }
 
         if (_isChainedReference(outputReference)) {
@@ -96,7 +96,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         uint256 result = _wstETH.unwrap(amount);
 
         if (recipient != address(this)) {
-            _stETH.safeTransfer(recipient, result);
+            IERC20(_stETH).safeTransfer(recipient, result);
         }
 
         if (_isChainedReference(outputReference)) {
@@ -116,7 +116,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         uint256 result = _stETH.submit{ value: amount }(address(this));
 
         if (recipient != address(this)) {
-            _stETH.safeTransfer(recipient, result);
+            IERC20(_stETH).safeTransfer(recipient, result);
         }
 
         if (_isChainedReference(outputReference)) {
@@ -144,7 +144,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
         payable(address(_wstETH)).sendValue(amount);
 
         if (recipient != address(this)) {
-            _wstETH.safeTransfer(recipient, result);
+            IERC20(_wstETH).safeTransfer(recipient, result);
         }
 
         if (_isChainedReference(outputReference)) {
