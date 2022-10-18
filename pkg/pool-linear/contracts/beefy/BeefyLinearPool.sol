@@ -22,7 +22,7 @@ import "../LinearPool.sol";
 contract BeefyLinearPool is LinearPool {
     IBeefyVault private immutable _tokenVault;
 
-    uint256 private immutable _rateScaleFactor;
+    uint256 private immutable _balanceScaleFactor;
 
     struct ConstructorArgs {
         IVault vault;
@@ -67,7 +67,7 @@ contract BeefyLinearPool is LinearPool {
         // represented as 1e18 by the LinearPool. Since the mooUSDC is already 18 decimals,
         // but in a different representation, we need to account for that in our wrappedTokenRate.
         // Since we only accept tokens with <= 18 decimals, we know the smallest this can be is 10^0 === 1
-        _rateScaleFactor = 10**(SafeMath.sub(18, ERC20(want).decimals()));
+        _balanceScaleFactor = 10**(SafeMath.add(18, SafeMath.sub(18, ERC20(want).decimals())));
 
         _require(address(args.mainToken) == want, Errors.TOKENS_MISMATCH);
     }
@@ -82,6 +82,9 @@ contract BeefyLinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        return _tokenVault.balance() * _rateScaleFactor / _tokenVault.totalSupply();
+        uint256 vaultTotalSupply = _tokenVault.totalSupply();
+        return vaultTotalSupply == 0 
+            ? _balanceScaleFactor 
+            : _tokenVault.balance() * _balanceScaleFactor / vaultTotalSupply;
     }
 }

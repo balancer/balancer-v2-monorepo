@@ -16,6 +16,7 @@ import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 describe('BeefyLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
+  let wrappedToken: Token;
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
@@ -38,11 +39,11 @@ describe('BeefyLinearPoolFactory', function () {
 
     const mainToken = await Token.create('DAI');
     const wrappedTokenInstance = await deploy('MockBeefyVault', {
-      args: ['mooDAI', 'mooDAI', 18, mainToken.address, fp(1.05)],
+      args: ['mooDAI', 'mooDAI', 18, mainToken.address],
     });
-    const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
+    wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
-    tokens = new TokenList([mainToken, wrappedToken]).sort();
+    tokens = new TokenList([mainToken]).sort();
   });
 
   async function createPool(): Promise<Contract> {
@@ -50,7 +51,7 @@ describe('BeefyLinearPoolFactory', function () {
       NAME,
       SYMBOL,
       tokens.DAI.address,
-      tokens.mooDAI.address,
+      wrappedToken.address,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
       owner.address
@@ -77,7 +78,7 @@ describe('BeefyLinearPoolFactory', function () {
 
       expect(poolTokens.tokens).to.have.lengthOf(3);
       expect(poolTokens.tokens).to.include(tokens.DAI.address);
-      expect(poolTokens.tokens).to.include(tokens.mooDAI.address);
+      expect(poolTokens.tokens).to.include(wrappedToken.address);
       expect(poolTokens.tokens).to.include(pool.address);
 
       poolTokens.tokens.forEach((token, i) => {
@@ -124,7 +125,7 @@ describe('BeefyLinearPoolFactory', function () {
     });
 
     it('sets wrapped token', async () => {
-      expect(await pool.getWrappedToken()).to.equal(tokens.mooDAI.address);
+      expect(await pool.getWrappedToken()).to.equal(wrappedToken.address);
     });
 
     it('sets the targets', async () => {

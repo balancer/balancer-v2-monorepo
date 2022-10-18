@@ -56,7 +56,7 @@ describe('BeefyLinearPool', function () {
     return LinearPool.deployedAt(event.args.pool);
   }
 
-  describe('usdc vault with 6 decimals tests', () => {
+  describe('USDC vault with 6 decimals tests', () => {
     let usdc: Token;
     let mooUSDC: Token;
     let usdcBeefyVault: Contract;
@@ -65,7 +65,7 @@ describe('BeefyLinearPool', function () {
     sharedBeforeEach('setup tokens, beefy vault and linear pool', async () => {
       usdc = await Token.create({ symbol: 'USDC', name: 'USDC', decimals: 6 });
       usdcBeefyVault = await deploy('MockBeefyVault', {
-        args: ['mooUSDC', 'mooUSDC', 18, usdc.address, fp(1)],
+        args: ['mooUSDC', 'mooUSDC', 18, usdc.address],
       });
       mooUSDC = await Token.deployedAt(usdcBeefyVault.address);
 
@@ -88,12 +88,14 @@ describe('BeefyLinearPool', function () {
     });
 
     it('should return wrapped token rate scaled to 18 decimals for a 6 decimal token', async () => {
-      await usdcBeefyVault.setPricePerFullShare(fp(1.5));
+      await usdcBeefyVault.setTotalSupply(fp(1));;
+      await usdcBeefyVault.setBalance(fp(1.5));
       expect(await bbbUSDC.getWrappedTokenRate()).to.be.eq(fp(1.5e12));
     });
 
-    it('should swap 0.000_000_000_000_800_000 mooUSDC to 1 USDC when the ppfs is 1.25e18', async () => {
-      await usdcBeefyVault.setPricePerFullShare(fp(1.25));
+    it('should swap 0.000_000_000_000_800_000 mooUSDC to about 1 USDC when the ppfs is 1.25e18', async () => {
+      await usdcBeefyVault.setTotalSupply(fp(1_000_000));
+      await usdcBeefyVault.setBalance(fp(1_250_000));
       // we try to rebalance it with some wrapped tokens
       const mooUsdcAmount = bn(8e5);
       await mooUSDC.mint(lp, mooUsdcAmount);
@@ -112,12 +114,13 @@ describe('BeefyLinearPool', function () {
       await vault.instance.connect(lp).swap(rebalanceSwapData, funds, BigNumber.from(0), MAX_UINT256);
       const balanceAfter = await usdc.balanceOf(lp.address);
       const amountReturned = balanceAfter.sub(balanceBefore);
-
-      expect(amountReturned).to.be.eq(bn(1e6));
+      // because of decimals math we will be off by 1 wei.
+      expect(amountReturned).to.be.almostEqual(bn(1e6));
     });
 
-    it('should swap 0.000_000_000_800_000_000 mooUSDC to 1,000 USDC when the ppfs is 1.25e18', async () => {
-      await usdcBeefyVault.setPricePerFullShare(fp(1.25));
+    it('should swap 0.000_000_000_800_000_000 mooUSDC to about 1,0000 USDC when the ppfs is 1.25e18', async () => {
+      await usdcBeefyVault.setTotalSupply(fp(1_000_000));
+      await usdcBeefyVault.setBalance(fp(1_250_000));
       // we try to rebalance it with some wrapped tokens
       const mooUsdcAmount = bn(8e8);
       await mooUSDC.mint(lp, mooUsdcAmount);
@@ -137,7 +140,8 @@ describe('BeefyLinearPool', function () {
       await vault.instance.connect(lp).swap(rebalanceSwapData, funds, BigNumber.from(0), MAX_UINT256);
       const balanceAfter = await usdc.balanceOf(lp.address);
       const amountReturned = balanceAfter.sub(balanceBefore);
-      expect(amountReturned).to.be.eq(1e9);
+      // because of decimals math we will be off by 1 wei.
+      expect(amountReturned).to.be.almostEqual(1e9);
     });
   });
 
@@ -150,7 +154,7 @@ describe('BeefyLinearPool', function () {
     sharedBeforeEach('setup tokens, beefy vault and linear pool', async () => {
       dai = await Token.create({ symbol: 'DAI', name: 'DAI', decimals: 18 });
       daiBeefyVault = await deploy('MockBeefyVault', {
-        args: ['mooDAI', 'mooDAI', 18, dai.address, fp(1)],
+        args: ['mooDAI', 'mooDAI', 18, dai.address],
       });
       mooDAI = await Token.deployedAt(daiBeefyVault.address);
 
@@ -173,12 +177,13 @@ describe('BeefyLinearPool', function () {
     });
 
     it('should return unscaled wrapped token rate for an 18 decimal token', async () => {
-      await daiBeefyVault.setPricePerFullShare(fp(1.5));
+      await daiBeefyVault.setTotalSupply(fp(1));
+      await daiBeefyVault.setBalance(fp(1.5));
       expect(await bbbDAI.getWrappedTokenRate()).to.be.eq(fp(1.5));
     });
 
     it('should swap 1 mooDAI to 2 DAI when the pricePerFullShare is 2e18', async () => {
-      await daiBeefyVault.setPricePerFullShare(fp(2));
+      await daiBeefyVault.setBalance(fp(2));
 
       const mooDAIAmount = fp(1);
       await mooDAI.mint(lp, mooDAIAmount);

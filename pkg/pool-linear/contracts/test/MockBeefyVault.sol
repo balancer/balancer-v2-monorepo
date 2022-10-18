@@ -20,39 +20,43 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 //the TestToken ERC20 implementation
 contract MockBeefyVault is TestToken {
     address public immutable want;
-    uint256 private _pricePerFullShare;
+    uint256 private _balance;
 
     constructor(
         string memory name,
         string memory symbol,
         uint8 decimals,
-        address underlyingAsset,
-        uint256 fullSharePrice
+        address underlyingAsset
     ) TestToken(name, symbol, decimals) {
         want = underlyingAsset;
-        _pricePerFullShare = fullSharePrice;
     }
 
-    function getPricePerFullShare() external view returns (uint256) {
-        return _pricePerFullShare;
+    function balance() external view returns (uint256) {
+        return _balance;
     }
 
-    function setPricePerFullShare(uint256 _newPricePerFullShare) public {
-        _pricePerFullShare = _newPricePerFullShare;
+    function setBalance(uint256 _newBalance) public {
+        _balance = _newBalance;
+    }
+
+    function setTotalSupply(uint256 _newTotalSupply) public {
+        _mint(msg.sender, _newTotalSupply);
     }
 
     function deposit(uint256 _amount) public {
         ERC20(want).transferFrom(msg.sender, address(this), _amount);
 
-        uint256 amountToMint = _amount * 10**18 / _pricePerFullShare;
-
+        uint256 amountToMint = _amount * totalSupply() / _balance;
+        _balance += _amount;
+        
         _mint(msg.sender, amountToMint);
+        
     }
 
     function withdraw(uint256 _shares) public {
+        uint256 amountToReturn = _shares * _balance / totalSupply();
         _burn(msg.sender, _shares);
-
-        uint256 amountToReturn = _shares * _pricePerFullShare / 10**18;
+        _balance -= amountToReturn;
 
         ERC20(want).transfer(msg.sender, amountToReturn);
     }
