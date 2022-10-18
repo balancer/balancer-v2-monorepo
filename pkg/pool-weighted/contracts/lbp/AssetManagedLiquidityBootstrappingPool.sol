@@ -337,7 +337,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool {
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountOut = super._onSwapGivenIn(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = arrayFill(
+        uint256[] memory postSwapBalances = _arrayFill(
             currentBalanceTokenIn.add(_addSwapFeeAmount(swapRequest.amount)),
             currentBalanceTokenOut.sub(amountOut)
         );
@@ -363,7 +363,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool {
         // balances (and swapRequest.amount) are already upscaled by BaseMinimalSwapInfoPool.onSwap
         uint256 amountIn = super._onSwapGivenOut(swapRequest, currentBalanceTokenIn, currentBalanceTokenOut);
 
-        uint256[] memory postSwapBalances = arrayFill(
+        uint256[] memory postSwapBalances = _arrayFill(
             currentBalanceTokenIn.add(_addSwapFeeAmount(amountIn)),
             currentBalanceTokenOut.sub(swapRequest.amount)
         );
@@ -378,12 +378,12 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool {
         uint256 currentBalanceTokenIn,
         uint256 currentBalanceTokenOut
     ) private view returns (uint256[] memory, uint256[] memory) {
-        uint256[] memory normalizedWeights = arrayFill(
+        uint256[] memory normalizedWeights = _arrayFill(
             _getNormalizedWeight(swapRequest.tokenIn),
             _getNormalizedWeight(swapRequest.tokenOut)
         );
 
-        uint256[] memory preSwapBalances = arrayFill(currentBalanceTokenIn, currentBalanceTokenOut);
+        uint256[] memory preSwapBalances = _arrayFill(currentBalanceTokenIn, currentBalanceTokenOut);
 
         return (normalizedWeights, preSwapBalances);
     }
@@ -543,7 +543,7 @@ contract AssetManagedLiquidityBootstrappingPool is BaseWeightedPool {
         return _projectTokenFirst;
     }
 
-    function arrayFill(uint256 a, uint256 b) internal pure returns (uint256[] memory result) {
+    function _arrayFill(uint256 a, uint256 b) internal pure returns (uint256[] memory result) {
         result = new uint256[](2);
         result[0] = a;
         result[1] = b;
