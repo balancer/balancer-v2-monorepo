@@ -49,7 +49,7 @@ abstract contract BeefyWrapping is IBaseRelayerLibrary {
 
         IERC20 underlyingToken = IERC20(vaultToken.want());
 
-        // Burn the rf shares and receive the underlying token.
+        // Burn the mooTokens and receive the underlying token.
         vaultToken.withdraw(amount);
 
         // Determine the amount of underlying returned for the shares burned.
@@ -63,7 +63,7 @@ abstract contract BeefyWrapping is IBaseRelayerLibrary {
         }
     }
 
-    function wrapReaperVaultToken(
+    function wrapBeefyVaultToken(
         IBeefyVault vaultToken,
         address sender,
         address recipient,
@@ -89,10 +89,10 @@ abstract contract BeefyWrapping is IBaseRelayerLibrary {
         // Deposit the tokens into the vault
         vaultToken.deposit(amount);
 
-        // Determine the amount of shares gained from depositing
+        // Determine the amount of mooTokens gained from depositing
         uint256 sharesGained = vaultToken.balanceOf(address(this));
 
-        // Send the shares to the recipient
+        // Send the mooTokens to the recipient
         vaultToken.transfer(recipient, sharesGained);
 
         if (_isChainedReference(outputReference)) {
