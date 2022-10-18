@@ -21,13 +21,13 @@ import "../ExternalWeightedMath.sol";
 contract MockManagedPoolSettings is ManagedPoolSettings {
     using WeightedPoolUserData for bytes;
 
-    ExternalWeightedMath private immutable weightedMath;
+    ExternalWeightedMath private immutable _weightedMath;
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        ExternalWeightedMath externalWeightedMath,
+        ExternalWeightedMath weightedMath,
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -48,7 +48,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         )
         ManagedPoolSettings(params, protocolFeeProvider)
     {
-        weightedMath = externalWeightedMath;
+        _weightedMath = weightedMath;
     }
 
     function getVirtualSupply() external view returns (uint256) {
@@ -66,7 +66,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = weightedMath.calcInvariant(_getNormalizedWeights(tokens), amountsIn);
+        uint256 invariantAfterJoin = _weightedMath.calcInvariant(_getNormalizedWeights(tokens), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
