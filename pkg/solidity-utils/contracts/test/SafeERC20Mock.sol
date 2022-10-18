@@ -23,11 +23,11 @@ contract SafeERC20Mock {
 
     constructor() {}
 
-    function safeApproval(
+    function safeApprove(
         IERC20 token,
         address to,
         uint256 value
     ) external {
-        token.safeApproval(to, value);
+        token.safeApprove(to, value);
     }    
 }

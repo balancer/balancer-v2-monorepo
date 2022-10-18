@@ -36,7 +36,7 @@ contract AaveLinearPoolRebalancer is LinearPoolRebalancer {
     function _wrapTokens(uint256 amount) internal override {
         // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Before we can
         // deposit however, we need to approve the wrapper in the underlying token.
-        _mainToken.safeApproval(address(_wrappedToken), amount);
+        _mainToken.safeApprove(address(_wrappedToken), amount);
         IStaticAToken(address(_wrappedToken)).deposit(address(this), amount, 0, true);
     }
 

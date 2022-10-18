@@ -61,7 +61,7 @@ abstract contract LidoWrapping is IBaseRelayerLibrary {
             _pullToken(sender, _stETH, amount);
         }
 
-        _stETH.approve(address(_wstETH), amount); // ERC20 compliant; no need to use safeApproval.
+        _stETH.approve(address(_wstETH), amount); // ERC20 compliant; no need to use safeApprove.
         uint256 result = IwstETH(_wstETH).wrap(amount);
 
         if (recipient != address(this)) {

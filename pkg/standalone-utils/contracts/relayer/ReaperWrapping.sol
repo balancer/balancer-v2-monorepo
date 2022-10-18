@@ -86,7 +86,7 @@ abstract contract ReaperWrapping is IBaseRelayerLibrary {
         }
 
         // Approve the vault token to spend the amount specified in the wrap
-        underlyingToken.safeApproval(address(vaultToken), amount);
+        underlyingToken.safeApprove(address(vaultToken), amount);
 
         // Deposit the tokens into the vault
         vaultToken.deposit(amount);

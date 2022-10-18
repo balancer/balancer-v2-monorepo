@@ -42,7 +42,7 @@ contract ReaperLinearPoolRebalancer is LinearPoolRebalancer {
     function _wrapTokens(uint256 amount) internal override {
         // Depositing from underlying (i.e. DAI, USDC, etc. instead of rfDAI or rfUSDC). Before we can
         // deposit however, we need to approve the wrapper (reaper vault) in the underlying token.
-        _mainToken.safeApproval(address(_wrappedToken), amount);
+        _mainToken.safeApprove(address(_wrappedToken), amount);
         IReaperTokenVault(address(_wrappedToken)).deposit(amount);
     }
 

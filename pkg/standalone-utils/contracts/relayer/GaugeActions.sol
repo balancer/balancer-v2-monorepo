@@ -60,7 +60,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
             _pullToken(sender, bptToken, amount);
         }
 
-        bptToken.approve(address(gauge), amount); // ERC20 compliant; no need to use safeApproval.
+        bptToken.approve(address(gauge), amount); // ERC20 compliant; no need to use safeApprove.
         gauge.deposit(amount, recipient);
     }
 

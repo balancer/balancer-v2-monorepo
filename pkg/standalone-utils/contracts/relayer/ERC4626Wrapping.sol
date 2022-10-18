@@ -52,7 +52,7 @@ abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, amount);
         }
 
-        underlying.safeApproval(address(wrappedToken), amount);
+        underlying.safeApprove(address(wrappedToken), amount);
         uint256 result = wrappedToken.deposit(amount, recipient);
 
         if (_isChainedReference(outputReference)) {

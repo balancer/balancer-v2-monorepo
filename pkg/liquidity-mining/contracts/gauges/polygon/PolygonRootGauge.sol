@@ -61,7 +61,7 @@ contract PolygonRootGauge is StakelessGauge {
 
     function _postMintAction(uint256 mintAmount) internal override {
         // Token needs to be approved on the predicate NOT the main bridge contract
-        _balToken.approve(_polygonERC20Predicate, mintAmount); // ERC20 compliant; no need to use safeApproval.
+        _balToken.approve(_polygonERC20Predicate, mintAmount); // ERC20 compliant; no need to use safeApprove.
 
         // This will transfer BAL to `_recipient` on the Polygon chain
         _polygonRootChainManager.depositFor(_recipient, _balToken, abi.encode(mintAmount));

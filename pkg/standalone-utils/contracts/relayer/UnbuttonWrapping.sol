@@ -62,7 +62,7 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlyingToken, uAmount);
         }
 
-        underlyingToken.safeApproval(address(wrapperToken), uAmount);
+        underlyingToken.safeApprove(address(wrapperToken), uAmount);
         uint256 mintAmount = wrapperToken.depositFor(recipient, uAmount);
 
         if (_isChainedReference(outputReference)) {

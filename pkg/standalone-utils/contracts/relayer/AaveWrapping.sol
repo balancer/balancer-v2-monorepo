@@ -55,7 +55,7 @@ abstract contract AaveWrapping is IBaseRelayerLibrary {
             _pullToken(sender, dynamicToken, amount);
         }
 
-        dynamicToken.safeApproval(address(staticToken), amount);
+        dynamicToken.safeApprove(address(staticToken), amount);
         // Use 0 for the referral code
         uint256 result = staticToken.deposit(recipient, amount, 0, fromUnderlying);
 

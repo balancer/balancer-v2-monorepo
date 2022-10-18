@@ -30,14 +30,14 @@ describe('SafeERC20', () => {
     function itApproves(amount: BigNumber) {
       context(`when new allowance is ${amount.toHexString().slice(0, 8)}`, () => {
         it('approves the requested amount', async () => {
-          await safeERC20.safeApproval(token.address, spender.address, amount);
+          await safeERC20.safeApprove(token.address, spender.address, amount);
 
           const currentAllowance = await token.allowance(safeERC20.address, spender.address);
           expect(currentAllowance).to.equal(amount);
         });
 
         it('emits an approval event', async () => {
-          const tx = await safeERC20.safeApproval(token.address, spender.address, amount);
+          const tx = await safeERC20.safeApprove(token.address, spender.address, amount);
 
           expectEvent.inIndirectReceipt(await tx.wait(), token.interface, 'Approval', {
             owner: safeERC20.address,
@@ -75,7 +75,7 @@ describe('SafeERC20', () => {
         });
 
         it('reverts', async () => {
-          await expect(safeERC20.safeApproval(token.address, spender.address, fp(1))).to.be.revertedWith(
+          await expect(safeERC20.safeApprove(token.address, spender.address, fp(1))).to.be.revertedWith(
             'SAFE_ERC20_CALL_FAILED'
           );
         });

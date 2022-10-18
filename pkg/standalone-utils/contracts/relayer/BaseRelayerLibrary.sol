@@ -83,7 +83,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
         // TODO: gas golf this a bit
-        token.safeApproval(address(getVault()), amount);
+        token.safeApprove(address(getVault()), amount);
     }
 
     /**
