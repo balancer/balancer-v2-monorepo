@@ -26,7 +26,7 @@ contract ExternalWeightedMath {
     /**
      * @dev See `WeightedMath._calculateInvariant`.
      */
-    function calculateInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
+    function calcInvariant(uint256[] memory normalizedWeights, uint256[] memory balances)
         external
         pure
         returns (uint256)

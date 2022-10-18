@@ -101,6 +101,7 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -118,6 +119,7 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -130,6 +132,8 @@ export default {
         if (mockContractName == undefined) {
           throw new Error('Mock contract name required to deploy mock base pool');
         }
+
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         result = deploy(mockContractName, {
           args: [
             {
@@ -147,6 +151,7 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -221,8 +226,9 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, math.address],
           from,
         });
 

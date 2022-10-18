@@ -34,10 +34,14 @@ import "./ManagedPool.sol";
  * to deploy the pool, passing in that contract address as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
-    {
-        // solhint-disable-previous-line no-empty-blocks
+    ExternalWeightedMath private immutable weightedMath;
+
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        ExternalWeightedMath externalWeightedMath
+    ) BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode) {
+        weightedMath = externalWeightedMath;
     }
 
     /**
@@ -55,6 +59,7 @@ contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     poolParams,
                     getVault(),
                     getProtocolFeePercentagesProvider(),
+                    weightedMath,
                     owner,
                     pauseWindowDuration,
                     bufferPeriodDuration
