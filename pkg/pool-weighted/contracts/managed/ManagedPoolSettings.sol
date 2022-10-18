@@ -157,6 +157,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
         return _tokenState[token];
     }
 
+    function _getCircuitBreakerState(IERC20 token) internal view returns (bytes32) {
+        return _circuitBreakerState[token];
+    }
+
     // Virtual Supply
 
     /**
@@ -512,8 +516,15 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
     }
 
     /**
-     * @dev Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
-     * This function is called automatically on joins and exits.
+     * @notice Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
+     * @dev The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
+     * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the
+     * virtual supply of the Pool changes to ensure proper accounting.
+     *
+     * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of
+     * BPT returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is
+     * equal to the actual supply).
+     * @return bptAmount - The amount of BPT minted as AUM fees.
      */
     function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
         (uint256 aumFeePercentage, uint256 lastCollectionTimestamp) = getManagementAumFeeParams();
@@ -818,14 +829,14 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
             circuitBreakerState
         );
 
+        uint256 normalizedWeight = _getNormalizedWeight(token);
+
+        lowerBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, true);
+        upperBptPriceBound = CircuitBreakerStorageLib.getBptPriceBound(circuitBreakerState, normalizedWeight, false);
+
         // Restore the original unscaled BPT price passed in `setCircuitBreakers`.
         uint256 tokenScalingFactor = ManagedPoolTokenStorageLib.getTokenScalingFactor(_getTokenState(token));
         bptPrice = _upscale(bptPrice, tokenScalingFactor);
-
-        (lowerBptPriceBound, upperBptPriceBound) = CircuitBreakerStorageLib.getBptPriceBounds(
-            circuitBreakerState,
-            _getNormalizedWeight(token)
-        );
 
         // Also render the adjusted bounds as unscaled values.
         lowerBptPriceBound = _upscale(lowerBptPriceBound, tokenScalingFactor);

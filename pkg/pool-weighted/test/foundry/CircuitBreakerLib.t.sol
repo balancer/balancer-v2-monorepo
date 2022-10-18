@@ -72,9 +72,8 @@ contract CircuitBreakerLibTest is Test {
 
         bytes32 poolState = CircuitBreakerStorageLib.setCircuitBreaker(bptPrice, referenceWeight, lowerBound, upperBound);
 
-        // Test that calling it with the reference weight retrieves exact values from the ratio cache
-        (uint256 actualLowerBoundBptPrice, uint256 actualUpperBoundBptPrice) = CircuitBreakerStorageLib
-            .getBptPriceBounds(poolState, referenceWeight);
+        uint256 actualLowerBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(poolState, referenceWeight, true);
+        uint256 actualUpperBoundBptPrice = CircuitBreakerStorageLib.getBptPriceBound(poolState, referenceWeight, false);
 
         assertApproxEqRel(actualLowerBoundBptPrice, expectedLowerBoundBptPrice, _MAX_RELATIVE_ERROR);
         assertApproxEqRel(actualUpperBoundBptPrice, expectedUpperBoundBptPrice, _MAX_RELATIVE_ERROR);
@@ -100,14 +99,12 @@ contract CircuitBreakerLibTest is Test {
             lowerBound,
             upperBound
         );
-        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib
-            .getBptPriceBounds(referencePoolState, newWeight);
+        uint256 lowerBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, true);
+        uint256 upperBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, false);
 
-        (uint256 expectedLowerBptPrice, uint256 expectedUpperBptPrice) = CircuitBreakerLib.calcAdjustedBounds(
-            lowerBound,
-            upperBound,
-            newWeight
-        );
+        uint256 expectedLowerBptPrice = CircuitBreakerLib.calcAdjustedBound(lowerBound, newWeight, true);
+        uint256 expectedUpperBptPrice = CircuitBreakerLib.calcAdjustedBound(upperBound, newWeight, false);
+
         assertApproxEqRel(
             lowerBptPriceBoundary,
             uint256(bptPrice).mulDown(expectedLowerBptPrice),
@@ -144,18 +141,20 @@ contract CircuitBreakerLibTest is Test {
         // We now model the weight of the the token changing so `referenceWeight` becomes `newWeight`.
         // As a result we can't use the cached bound ratios and have to recalculate them on the fly.
         uint256 dynamicCost = gasleft();
-        (uint256 lowerBptPriceBoundary, uint256 upperBptPriceBoundary) = CircuitBreakerStorageLib.getBptPriceBounds(
-            referencePoolState,
-            newWeight
-        );
+
+        uint256 lowerBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, true);
+        uint256 upperBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(referencePoolState, newWeight, false);
+
         dynamicCost -= gasleft();
 
         // This is expensive so we refresh the cached bound ratios using the new weight.
         bytes32 updatedPoolState = CircuitBreakerStorageLib.updateAdjustedBounds(referencePoolState, newWeight);
 
         uint256 cachedCost = gasleft();
-        (uint256 newCachedLowerBptPriceBoundary, uint256 newCachedUpperBptPriceBoundary) = CircuitBreakerStorageLib
-            .getBptPriceBounds(updatedPoolState, newWeight);
+
+        uint256 newCachedLowerBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(updatedPoolState, newWeight, true);
+        uint256 newCachedUpperBptPriceBoundary = CircuitBreakerStorageLib.getBptPriceBound(updatedPoolState, newWeight, false);
+
         cachedCost -= gasleft();
 
         // The new cached values should match what was previously calculated dynamically.
@@ -163,8 +162,8 @@ contract CircuitBreakerLibTest is Test {
         assertApproxEqRel(newCachedLowerBptPriceBoundary, lowerBptPriceBoundary, MAX_ERROR);
         assertApproxEqRel(newCachedUpperBptPriceBoundary, upperBptPriceBoundary, MAX_ERROR);
 
-        // Using the new cached values should reduce costs by over 2/3rds
-        assertLe(cachedCost, dynamicCost / 3);
+        // Using the new cached values should reduce costs by over 1/3rd
+        assertLe(cachedCost, dynamicCost * 2 / 3);
     }
 
     function assertApproxEqRel(

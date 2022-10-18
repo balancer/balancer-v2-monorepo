@@ -82,6 +82,7 @@ const balancerErrorCodes: Record<string, string> = {
   '353': 'FRACTIONAL_TARGET',
   '354': 'ADD_OR_REMOVE_BPT',
   '355': 'INVALID_CIRCUIT_BREAKER_BOUNDS',
+  '356': 'CIRCUIT_BREAKER_TRIPPED',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
