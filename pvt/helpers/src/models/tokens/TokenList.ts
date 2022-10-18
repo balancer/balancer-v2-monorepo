@@ -160,4 +160,8 @@ export default class TokenList {
       this.tokens.sort((tokenA, tokenB) => (tokenA.address.toLowerCase() > tokenB.address.toLowerCase() ? 1 : -1))
     );
   }
+
+  scaleBalances(rawBalances: number[]): BigNumber[] {
+    return this.tokens.map((t, i) => BigNumber.from((rawBalances[i] * 10 ** t.decimals).toString()));
+  }
 }
