@@ -23,12 +23,10 @@ import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, DELEGATE_OWNER, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
-import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { impersonate } from '@balancer-labs/v2-deployments/src/signers';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { expectArrayEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress,
@@ -698,31 +696,29 @@ describe('BasePool', function () {
           };
         });
 
-        it('the recovery mode exit can be used', async () => {
-          // The sole BPT holder is the owner, so they own the initial balances
-          const expectedChanges = tokens.reduce(
-            (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
-            {}
-          );
-          await expectBalanceChange(
-            () => vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request),
-            tokens,
-            { account: recipient, changes: expectedChanges }
-          );
+        it('passes the correct arguments to `_doRecoveryModeExit`', async () => {
+          const totalSupply = await pool.totalSupply();
+          const tx = await vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request);
+          expectEvent.inIndirectReceipt(await tx.wait(), pool.interface, 'RecoveryModeExit', {
+            totalSupply,
+            balances: initialBalances,
+            bptAmountIn: exitBPT,
+          });
+        });
 
-          // Exit BPT was burned
+        it('burns the expected amount of BPT', async () => {
+          await vault.connect(sender).exitPool(poolId, sender.address, recipient.address, request);
+
           const afterExitBalance = await pool.balanceOf(sender.address);
           expect(afterExitBalance).to.equal(preExitBPT.sub(exitBPT));
         });
 
-        it('returns recovery mode amounts out and 0 due protocol fees', async () => {
+        it('returns 0 due protocol fees', async () => {
           const onExitReturn = await pool
             .connect(vaultSigner)
             .callStatic.onExitPool(poolId, sender.address, recipient.address, initialBalances, 0, 0, request.userData);
 
           expect(onExitReturn.length).to.be.eq(2);
-          const expectedAmountsOut = Array.from(initialBalances, (balance) => balance.div(3));
-          expectArrayEqualWithError(onExitReturn[0], expectedAmountsOut);
           expect(onExitReturn[1]).to.deep.eq(Array(tokens.length).fill(bn(0)));
         });
       }
