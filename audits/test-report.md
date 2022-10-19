@@ -398,44 +398,6 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-solidity-utils]:         ✓ returns false when removing keys not in the set
 ➤ [@balancer-labs/v2-solidity-utils]:         ✓ adds and removes multiple keys (535ms)
 ➤ [@balancer-labs/v2-solidity-utils]: 
-➤ [@balancer-labs/v2-solidity-utils]:   LogCompression
-➤ [@balancer-labs/v2-solidity-utils]:     small values
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 1 (307ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 2 (258ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 3 (309ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 4 (262ms)
-➤ [@balancer-labs/v2-solidity-utils]:     medium and large values
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 5 (273ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 6
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 7 (263ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 8 (414ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 9
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 10
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 11 (287ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 12
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 13
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 14
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 15
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 16 (258ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 17 (344ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 18 (269ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 19
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 20
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 21
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 22
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 23
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 24 (270ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 25
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 26
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 27
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 28
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 29 (255ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 30
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 31 (383ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 32 (281ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 33 (316ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 34 (356ms)
-➤ [@balancer-labs/v2-solidity-utils]: 
 ➤ [@balancer-labs/v2-solidity-utils]:   ExpLog
 ➤ [@balancer-labs/v2-solidity-utils]:     exponent zero
 ➤ [@balancer-labs/v2-solidity-utils]:       ✓ handles base zero
