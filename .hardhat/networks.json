@@ -5,6 +5,11 @@
         "accounts": ["0xE06cee4f6BDFe8B0C1D77a00e9AF83B1B266f729"],
         "url": "wss://goerli.infura.io/ws/v3/8151436a27dd4cdab264fa3ebf60a090"
       },
+      "ropsten": {
+        "gasMultiplier": 2,
+        "accounts": ["0x19836182a3786CD592523cAB7445325be26c3334"],
+        "url": "wss://ropsten.infura.io/ws/v3/8151436a27dd4cdab264fa3ebf60a090"
+      },
       "mainnet": {
         "accounts": ["0x12..56","0xab..cd"],
         "url": "wss://mainnet.infura.io/v3/8151436a27dd4cdab264fa3ebf60a090"
