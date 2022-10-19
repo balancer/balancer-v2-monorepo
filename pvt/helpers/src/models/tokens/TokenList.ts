@@ -162,6 +162,6 @@ export default class TokenList {
   }
 
   scaledBalances(rawBalance: () => number): BigNumber[] {
-    return this.tokens.map((t, i) => BigNumber.from((rawBalance() * (10 ** t.decimals)).toString()));
- }
+    return this.tokens.map((t) => BigNumber.from((rawBalance() * 10 ** t.decimals).toString()));
+  }
 }
