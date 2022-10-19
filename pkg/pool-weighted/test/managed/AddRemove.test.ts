@@ -87,9 +87,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
     it('reverts if the pool is at the maximum number of tokens', async () => {
       const { pool, poolTokens } = await createPool(MAX_TOKENS);
       const newToken = await Token.create({ decimals: random(0, 18) });
-      const rawBalances = range(poolTokens.length).map(() => 10 + random(10));
 
-      await pool.init({ from: lp, initialBalances: poolTokens.scaleBalances(rawBalances) });
+      await pool.init({ from: lp, initialBalances: poolTokens.scaledBalances(() => 10 + random(10)) });
 
       await expect(pool.addToken(owner, newToken, ZERO_ADDRESS, newWeight)).to.be.revertedWith('MAX_TOKENS');
     });
@@ -98,9 +97,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
       // Pool with 25/75% weights.
       const { pool, poolTokens } = await createPool(2, [fp(0.25), fp(0.75)]);
       const newToken = await Token.create({ decimals: random(0, 18) });
-      const rawBalances = Array(poolTokens.length).fill(10);
 
-      await pool.init({ from: lp, initialBalances: poolTokens.scaleBalances(rawBalances) });
+      await pool.init({ from: lp, initialBalances: poolTokens.scaledBalances(() => 10) });
 
       // Add a token at 80%
       await pool.addToken(owner, newToken, ZERO_ADDRESS, fp(0.8));
@@ -141,9 +139,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
         context('once initialized', () => {
           sharedBeforeEach('initialize pool', async () => {
             // Random non-zero balances
-            const rawBalances = range(poolTokens.length).map(() => 10 + random(10));
-
-            await pool.init({ from: lp, initialBalances: poolTokens.scaleBalances(rawBalances) });
+            await pool.init({ from: lp, initialBalances: poolTokens.scaledBalances(() => 10 + random(10)) });
           });
 
           describe('failure modes', () => {
@@ -409,9 +405,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
   describe('remove token', () => {
     it('reverts if the pool is at the minimum number of tokens', async () => {
       const { pool, poolTokens } = await createPool(MIN_TOKENS);
-      const rawBalances = range(poolTokens.length).map(() => 10 + random(10));
-
-      await pool.init({ from: lp, initialBalances: poolTokens.scaleBalances(rawBalances) });
+      await pool.init({ from: lp, initialBalances: poolTokens.scaledBalances(() => 10 + random(10)) });
 
       const tokenToRemove = poolTokens.first;
       const { cash } = await pool.vault.getPoolTokenInfo(pool.poolId, tokenToRemove.address);
@@ -422,9 +416,8 @@ describe('ManagedPoolSettings - add/remove token', () => {
     it('remove token (example from comments)', async () => {
       // Pool with 5/15/80% weights.
       const { pool, poolTokens } = await createPool(3, [fp(0.05), fp(0.15), fp(0.8)]);
-      const rawBalances = Array(poolTokens.length).fill(10);
 
-      await pool.init({ from: lp, initialBalances: poolTokens.scaleBalances(rawBalances) });
+      await pool.init({ from: lp, initialBalances: poolTokens.scaledBalances(() => 10) });
 
       // Remove the 80% token
       const tokenToRemove = poolTokens.get(poolTokens.length - 1);
@@ -466,9 +459,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
         context('once initialized', () => {
           sharedBeforeEach('initialize pool', async () => {
             // Random non-zero balances
-            const rawBalances = range(poolTokens.length).map(() => 10 + random(10));
-
-            await pool.init({ from: lp, initialBalances: poolTokens.scaleBalances(rawBalances) });
+            await pool.init({ from: lp, initialBalances: poolTokens.scaledBalances(() => 10 + random(10)) });
           });
 
           sharedBeforeEach('withdraw all tokens', async () => {
