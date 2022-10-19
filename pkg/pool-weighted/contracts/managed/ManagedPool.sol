@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -22,8 +23,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
-
-import "../ExternalWeightedMath.sol";
 
 import "./ManagedPoolSettings.sol";
 
@@ -56,13 +55,13 @@ contract ManagedPool is ManagedPoolSettings {
     // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
     // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
-    ExternalWeightedMath private immutable _weightedMath;
+    IExternalWeightedMath private immutable _weightedMath;
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        ExternalWeightedMath weightedMath,
+        IExternalWeightedMath weightedMath,
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -86,7 +85,7 @@ contract ManagedPool is ManagedPoolSettings {
         _weightedMath = weightedMath;
     }
 
-    function _getWeightedMath() internal view returns (ExternalWeightedMath) {
+    function _getWeightedMath() internal view returns (IExternalWeightedMath) {
         return _weightedMath;
     }
 
@@ -460,7 +459,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = _getWeightedMath().calcInvariant(_getNormalizedWeights(tokens), amountsIn);
+        uint256 invariantAfterJoin = _getWeightedMath().calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.

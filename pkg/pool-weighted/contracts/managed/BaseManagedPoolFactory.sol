@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePerc
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./ManagedPool.sol";
+import "../ExternalWeightedMath.sol";
 
 /**
  * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
@@ -34,14 +35,16 @@ import "./ManagedPool.sol";
  * to deploy the pool, passing in that contract address as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    ExternalWeightedMath private immutable _weightedMath;
+    IExternalWeightedMath private immutable _weightedMath;
 
-    constructor(
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        ExternalWeightedMath weightedMath
-    ) BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode) {
-        _weightedMath = weightedMath;
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
+    {
+        _weightedMath = new ExternalWeightedMath();
+    }
+
+    function getWeightedMath() external view returns (IExternalWeightedMath) {
+        return _weightedMath;
     }
 
     /**

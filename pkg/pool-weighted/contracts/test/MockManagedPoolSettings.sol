@@ -66,7 +66,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = _weightedMath.calcInvariant(_getNormalizedWeights(tokens), amountsIn);
+        uint256 invariantAfterJoin = _weightedMath.calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.

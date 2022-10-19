@@ -41,9 +41,8 @@ describe('BaseManagedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
-    const math = await deploy('ExternalWeightedMath');
     factory = await deploy('BaseManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, math.address],
+      args: [vault.address, vault.getFeesProvider().address],
     });
     createTime = await currentTimestamp();
 

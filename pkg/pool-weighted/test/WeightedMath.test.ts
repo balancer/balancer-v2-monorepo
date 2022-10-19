@@ -22,7 +22,7 @@ describe('WeightedMath', function () {
   context('invariant', () => {
     context('zero invariant', () => {
       it('reverts', async () => {
-        await expect(math.calcInvariant([bn(1)], [0])).to.be.revertedWith('ZERO_INVARIANT');
+        await expect(math.calculateInvariant([bn(1)], [0])).to.be.revertedWith('ZERO_INVARIANT');
       });
     });
 
@@ -31,7 +31,7 @@ describe('WeightedMath', function () {
         const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
         const balances = [bn(10e18), bn(12e18)];
 
-        const result = await math.calcInvariant(normalizedWeights, balances);
+        const result = await math.calculateInvariant(normalizedWeights, balances);
         const expectedInvariant = calculateInvariant(balances, normalizedWeights);
 
         expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
@@ -42,7 +42,7 @@ describe('WeightedMath', function () {
         const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
         const balances = [bn(10e18), bn(12e18), bn(14e18)];
 
-        const result = await math.calcInvariant(normalizedWeights, balances);
+        const result = await math.calculateInvariant(normalizedWeights, balances);
         const expectedInvariant = calculateInvariant(balances, normalizedWeights);
 
         expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);

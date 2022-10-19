@@ -226,9 +226,8 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address, math.address],
+          args: [vault.address, vault.getFeesProvider().address],
           from,
         });
 
