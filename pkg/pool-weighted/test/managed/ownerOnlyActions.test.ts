@@ -16,6 +16,7 @@ describe('ManagedPool owner only actions', () => {
   sharedBeforeEach('deploy pool', async () => {
     const vault = await Vault.create();
     const tokens = await TokenList.create(2, { sorted: true });
+    const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     pool = await deploy('MockManagedPool', {
       args: [
         {
@@ -36,6 +37,9 @@ describe('ManagedPool owner only actions', () => {
         0,
         0,
       ],
+      libraries: {
+        ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+      },
     });
   });
 
