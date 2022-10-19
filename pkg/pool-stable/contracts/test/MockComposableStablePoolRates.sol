@@ -74,7 +74,7 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onJoinPool(
@@ -87,7 +87,7 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onExitPool(
@@ -100,6 +100,6 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 }
