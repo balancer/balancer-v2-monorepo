@@ -27,27 +27,85 @@ export function calcBptOutPerSecurityIn(
   return toFp(tokensOut);
 }
 
-export function calcCashInPerSecurityOut(fpSecurityOut: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
-  const securityOut = fromFp(fpSecurityOut);
+export function calcCashOutPerSecurityIn(fpSecurityIn: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
+  const securityIn = decimal(fpSecurityIn);
+  const securityBalance = decimal(fpSecurityBalance);
+  const cashBalance = decimal(fpCashBalance);
+  const minPrice = decimal(params.minPrice);
+  const maxPrice = decimal(params.maxPrice);
+
+  const postPaidSecurityBalance = securityBalance.add(securityIn.toString());
+  
+  const tokensOut = cashBalance.sub(securityBalance.mul(cashBalance.div(postPaidSecurityBalance)));
+
+  const postPaidCurrencyBalance = cashBalance.sub(tokensOut);
+
+  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
+    return toFp(tokensOut);
+  }
+  else{
+    return toFp(0);
+  }
+
+}
+
+export function calcSecurityOutPerCashIn(fpCashIn: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
+  const cashIn = fromFp(fpCashIn);
   const securityBalance = fromFp(fpSecurityBalance);
   const cashBalance = fromFp(fpCashBalance);
+  const minPrice = decimal(params.minPrice);
+  const maxPrice = decimal(params.maxPrice);
 
-  const tokensIn = securityBalance.mul(securityOut.toString())
-                .div(cashBalance.sub(securityOut.toString()))
-                .toString();
+  const postPaidCurrencyBalance = cashBalance.add(cashIn.toString());
+  const tokensOut = securityBalance.sub(cashBalance.mul(securityBalance.div(postPaidCurrencyBalance)));
+  const postPaidSecurityBalance = securityBalance.sub(tokensOut);
 
-  return toFp(tokensIn);
+  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
+    return toFp(tokensOut);
+  }
+  else{
+    return toFp(0);
+  }
+}
+
+export function calcCashInPerSecurityOut(fpSecurityOut: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
+  const securityOut = decimal(fpSecurityOut);
+  const securityBalance = decimal(fpSecurityBalance);
+  const cashBalance = decimal(fpCashBalance);
+  const minPrice = decimal(params.minPrice);
+  const maxPrice = decimal(params.maxPrice);
+
+  const postPaidSecurityBalance = securityBalance.sub(securityOut.toString());
+  const tokensIn = (securityBalance.mul(cashBalance.div(postPaidSecurityBalance))).sub(cashBalance);
+  const postPaidCurrencyBalance = cashBalance.add(tokensIn)
+
+  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
+    return toFp(tokensIn);
+  }
+  else{
+    return toFp(0);
+  }
+
 }
 
 export function calcSecurityInPerCashOut(fpCashOut: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
   const cashOut = fromFp(fpCashOut);
   const securityBalance = fromFp(fpSecurityBalance);
   const cashBalance = fromFp(fpCashBalance);
+  const minPrice = decimal(params.minPrice);
+  const maxPrice = decimal(params.maxPrice);
 
-  const tokensIn = cashBalance.mul(cashOut.toString())
-                .div(securityBalance.sub(cashOut.toString()))
-                .toString();
+  const postPaidCurrencyBalance = cashBalance.sub(cashOut.toString());
+  const tokensIn = (cashBalance.mul(securityBalance.div(postPaidCurrencyBalance))).sub(securityBalance);
+  const postPaidSecurityBalance = securityBalance.add(tokensIn);
 
-  return toFp(tokensIn);
+  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
+    return toFp(tokensIn);
+  }
+  else{
+    return toFp(0);
+  }
+
+
 }
 

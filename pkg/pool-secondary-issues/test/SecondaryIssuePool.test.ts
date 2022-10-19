@@ -130,7 +130,7 @@ describe('SecondaryPool', function () {
 
     it('cannot be initialized twice', async () => {
       await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_JOIN_KIND');
+      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
     });
   });
   

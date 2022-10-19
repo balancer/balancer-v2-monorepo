@@ -20,16 +20,18 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
 import "./interfaces/IMarketMaker.sol";
+import "./interfaces/IPrimaryIssuePoolFactory.sol";
 
 contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
     using PrimaryPoolUserData for bytes;
     using BokkyPooBahsDateTimeLibrary for uint256;
-    using Math for uint256;
     using FixedPoint for uint256;
 
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
+
+    IPrimaryIssuePoolFactory.FactoryPoolParams factoryPoolParams;
 
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
@@ -62,38 +64,33 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
     constructor(
         IVault vault,
-        address security,
-        address currency,
-        uint256 minimumPrice,
-        uint256 basePrice,
-        uint256 maxSecurityOffered,
-        uint256 issueFeePercentage,
+        IPrimaryIssuePoolFactory.FactoryPoolParams memory _factoryPoolParams,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
-        uint256 issueCutoffTime,
         address owner
     )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
-            ERC20(security).name(),
-            ERC20(security).symbol(),
-            _sortTokens(IERC20(security), IERC20(currency), this),
+            _factoryPoolParams.name,
+            _factoryPoolParams.symbol,
+            _sortTokens(IERC20(_factoryPoolParams.security), IERC20(_factoryPoolParams.currency), this),
             new address[](_TOTAL_TOKENS),
-            issueFeePercentage,
+            _factoryPoolParams.swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
         )
     {
+        factoryPoolParams = _factoryPoolParams;
         // set tokens
-        _security = IERC20(security);
-        _currency = IERC20(currency);
+        _security = IERC20(factoryPoolParams.security);
+        _currency = IERC20(factoryPoolParams.currency);
 
         // Set token indexes
         (uint256 securityIndex, uint256 currencyIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            IERC20(security),
-            IERC20(currency),
+            IERC20(factoryPoolParams.security),
+            IERC20(factoryPoolParams.currency),
             this
         );
         _securityIndex = securityIndex;
@@ -101,18 +98,18 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         _bptIndex = bptIndex;
 
         // set scaling factors
-        _scalingFactorSecurity = _computeScalingFactor(IERC20(security));
-        _scalingFactorCurrency = _computeScalingFactor(IERC20(currency));
+        _scalingFactorSecurity = _computeScalingFactor(IERC20(factoryPoolParams.security));
+        _scalingFactorCurrency = _computeScalingFactor(IERC20(factoryPoolParams.currency));
 
         // set price bounds
-        _minPrice = minimumPrice;
-        _maxPrice = basePrice;
+        _minPrice = factoryPoolParams.minimumPrice;
+        _maxPrice = factoryPoolParams.basePrice;
 
         // set max total balance of securities
-        _MAX_TOKEN_BALANCE = maxSecurityOffered;
+        _MAX_TOKEN_BALANCE = factoryPoolParams.maxAmountsIn;
 
         // set issue time bounds
-        _cutoffTime = issueCutoffTime;
+        _cutoffTime = factoryPoolParams.cutOffTime;
         _startTime = block.timestamp;
 
         //set owner
@@ -169,9 +166,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //assets: _assets,
             assets: _asIAsset(tokens),
             maxAmountsIn: _maxAmountsIn,
-            userData: abi.encode("INIT", _maxAmountsIn),
+            userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
             fromInternalBalance: false
         });
+
         getVault().joinPool(getPoolId(), address(this), address(this), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime);
     }
@@ -190,7 +188,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //assets: _assets,
             assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
-            userData: abi.encode("EXACT_BPT_IN_FOR_TOKENS_OUT", _INITIAL_BPT_SUPPLY),
+            userData: abi.encode(PrimaryPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
         getVault().exitPool(getPoolId(), address(this), payable(_balancerManager), request);
@@ -246,12 +244,12 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // but only if new price of security do not go out of price band
         if (request.tokenOut == _currency) {
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], request.amount);
-            uint256 tokenOutAmt = Math.sub(balances[_currencyIndex], Math.mul(balances[_securityIndex], Math.div(balances[_currencyIndex], postPaidSecurityBalance, false)));
+            uint256 tokenOutAmt = Math.sub(balances[_currencyIndex], balances[_securityIndex].mulDown(balances[_currencyIndex].divDown(postPaidSecurityBalance)));
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], tokenOutAmt);
-
+            
             if (
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice &&
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
                 emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt);
@@ -273,12 +271,12 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // but only if new price of security do not go out of price band
         if (request.tokenOut == _security) {
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-            uint256 tokenOutAmt = Math.sub(balances[_securityIndex], Math.mul(balances[_currencyIndex], Math.div(balances[_securityIndex], postPaidCurrencyBalance, false)));
+            uint256 tokenOutAmt = Math.sub(balances[_securityIndex], balances[_currencyIndex].mulDown(balances[_securityIndex].divDown(postPaidCurrencyBalance)));
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], tokenOutAmt);
 
             if (
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice &&
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
                 emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt);
@@ -314,12 +312,12 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         //returning security to be swapped out for paid in currency
         if (request.tokenIn == _currency) {
             uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
-            uint256 tokenInAmt = Math.sub(Math.mul(balances[_securityIndex], Math.div(balances[_currencyIndex], postPaidSecurityBalance, false)), balances[_currencyIndex]);
+            uint256 tokenInAmt = Math.sub(balances[_securityIndex].mulDown(balances[_currencyIndex].divDown(postPaidSecurityBalance)), balances[_currencyIndex]);
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenInAmt);
 
             if (
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice &&
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
                 emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
@@ -340,12 +338,12 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         //returning currency to be paid in for security paid in
         if (request.tokenIn == _security) {
             uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);
-            uint256 tokenInAmt = Math.sub(Math.mul(balances[_currencyIndex], Math.div(balances[_securityIndex], postPaidCurrencyBalance, false)), balances[_securityIndex]);
+            uint256 tokenInAmt = Math.sub(balances[_currencyIndex].mulDown(balances[_securityIndex].divDown(postPaidCurrencyBalance)), balances[_securityIndex]);
             uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenInAmt);
 
             if (
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) >= params.minPrice &&
-                Math.div(postPaidCurrencyBalance, postPaidSecurityBalance, false) <= params.maxPrice
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice &&
+                postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice
             ){
                 //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
                 emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
@@ -451,5 +449,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         scalingFactors[_currencyIndex] = FixedPoint.ONE;
         scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
+    }
+
+    function _getMinimumBpt() internal pure override returns (uint256) {
+        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // mechanism, ensuring initialization only occurs once.
+        return 0;
     }
 }
