@@ -500,11 +500,13 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256,
         bytes memory userData
     ) internal virtual override returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            registeredBalances,
-            _getVirtualSupply(registeredBalances[getBptIndex()]),
-            userData
-        );
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256[] memory amountsOut = new uint256[](registeredBalances.length);
+
+        uint256 bptRatio = bptAmountIn.divDown(_getVirtualSupply(registeredBalances[getBptIndex()]));
+        for (uint256 i = 0; i < registeredBalances.length; i++) {
+            amountsOut[i] = registeredBalances[i].mulDown(bptRatio);
+        }
 
         // By default the pool will pay out an amount of BPT equivalent to that which the user burns.
         // We zero this amount out, as otherwise a single user could drain the pool.
