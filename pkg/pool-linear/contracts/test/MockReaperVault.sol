@@ -14,11 +14,14 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 //we're unable to implement IYearnTokenVault because it defines the decimals function, which collides with
 //the TestToken ERC20 implementation
 contract MockReaperVault is TestToken {
+    using SafeERC20 for IERC20;
+
     address public immutable token;
     uint256 private _pricePerFullShare;
 
@@ -42,7 +45,7 @@ contract MockReaperVault is TestToken {
     }
 
     function deposit(uint256 _amount) public {
-        ERC20(token).transferFrom(msg.sender, address(this), _amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
 
         uint256 amountToMint = _amount * 10**18 / _pricePerFullShare;
 
@@ -54,6 +57,6 @@ contract MockReaperVault is TestToken {
 
         uint256 amountToReturn = _shares * _pricePerFullShare / 10**18;
 
-        ERC20(token).transfer(msg.sender, amountToReturn);
+        IERC20(token).safeTransfer(msg.sender, amountToReturn);
     }
 }
