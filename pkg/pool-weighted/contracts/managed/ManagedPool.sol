@@ -787,8 +787,7 @@ contract ManagedPool is ManagedPoolSettings {
         // Since this is a swap, we do not have all the tokens, balances, or weights, and need to fetch them.
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
         uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
-        uint256[] memory scalingFactors = _scalingFactors(tokens);
-        _upscaleArray(balances, scalingFactors);
+        _upscaleArray(balances, _scalingFactors(tokens));
 
         // Initialize to all zeros, and set the amount associated with the swap.
         uint256[] memory amounts = new uint256[](tokens.length);
