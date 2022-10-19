@@ -50,7 +50,13 @@ describe('ManagedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
-    baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
+    baseFactory = await deploy('BaseManagedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address],
+      libraries: {
+        ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+      },
+    });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
