@@ -903,9 +903,6 @@ contract ComposableStablePool is
         return (bptAmountIn, amountsOut);
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory registeredBalances,
         uint256,
