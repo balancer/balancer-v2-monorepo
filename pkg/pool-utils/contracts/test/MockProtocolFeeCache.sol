@@ -49,4 +49,12 @@ contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     function _getAuthorizer() internal pure override returns (IAuthorizer) {
         return IAuthorizer(address(0));
     }
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
 }
