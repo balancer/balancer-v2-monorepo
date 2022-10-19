@@ -206,8 +206,9 @@ async function deployPoolFromFactory(
   let factory: Contract;
 
   if (poolName == 'ManagedPool') {
+    const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
     const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, math.address],
     });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
