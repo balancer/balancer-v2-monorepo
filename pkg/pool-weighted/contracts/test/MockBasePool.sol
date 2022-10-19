@@ -128,11 +128,11 @@ contract MockBasePool is BasePool {
     }
 
     function getScalingFactors() external pure override returns (uint256[] memory) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getSwapFeePercentage() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function payProtocolFees(uint256 bptAmount) public {
