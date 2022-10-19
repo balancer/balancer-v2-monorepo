@@ -101,7 +101,7 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
+        const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -134,8 +134,7 @@ export default {
         if (mockContractName == undefined) {
           throw new Error('Mock contract name required to deploy mock base pool');
         }
-        const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
-
+        const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         result = deploy(mockContractName, {
           args: [
             {
@@ -230,7 +229,7 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
+        const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
           args: [vault.address, vault.getFeesProvider().address],
           from,
