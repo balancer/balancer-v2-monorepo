@@ -910,7 +910,7 @@ contract ComposableStablePool is
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
         // adjust the balances array by removing BPT from it.
         // Note that we don't compute the actual supply, which would require a lot of complex calculations and

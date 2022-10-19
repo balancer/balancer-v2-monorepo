@@ -460,7 +460,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
         amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
     }

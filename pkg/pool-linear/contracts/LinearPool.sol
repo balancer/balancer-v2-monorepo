@@ -499,7 +499,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         uint256 bptAmountIn = userData.recoveryModeExit();
         uint256[] memory amountsOut = new uint256[](registeredBalances.length);
 

@@ -107,7 +107,7 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         uint256[] memory,
         uint256,
         bytes memory
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNIMPLEMENTED);
     }
 }
