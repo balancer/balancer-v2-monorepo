@@ -206,8 +206,12 @@ async function deployPoolFromFactory(
   let factory: Contract;
 
   if (poolName == 'ManagedPool') {
+    const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address],
+      libraries: {
+        ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+      },
     });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
