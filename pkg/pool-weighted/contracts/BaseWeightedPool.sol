@@ -31,6 +31,7 @@ import "./WeightedMath.sol";
  */
 abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     constructor(
@@ -451,5 +452,16 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         _require(bptAmountIn <= maxBPTAmountIn, Errors.BPT_IN_MAX_AMOUNT);
 
         return (bptAmountIn, amountsOut);
+    }
+
+    // Recovery Mode
+
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+        bptAmountIn = userData.recoveryModeExit();
+        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
     }
 }

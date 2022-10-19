@@ -146,4 +146,12 @@ contract MockBasePool is BasePool {
     function onlyVaultCallable(bytes32 poolId) public view onlyVault(poolId) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal virtual override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
 }

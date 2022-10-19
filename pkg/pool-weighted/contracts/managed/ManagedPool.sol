@@ -52,6 +52,7 @@ contract ManagedPool is ManagedPoolSettings {
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
@@ -681,9 +682,6 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory balances,
         uint256 totalSupply,
@@ -697,7 +695,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
-        (bptAmountIn, amountsOut) = super._doRecoveryModeExit(balances, virtualSupply, userData);
+        bptAmountIn = userData.recoveryModeExit();
+        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, virtualSupply);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
