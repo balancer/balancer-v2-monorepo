@@ -195,7 +195,7 @@ describe('CircuitBreakerLib', () => {
     itReportsTrippedBreakersCorrectly(lowerBound, upperBound);
   });
 
-  describe('percentage to BPT price conversion ratios', () => {
+  describe('percentages to BPT price bounds', () => {
     let data: string;
 
     sharedBeforeEach('set default values', async () => {
