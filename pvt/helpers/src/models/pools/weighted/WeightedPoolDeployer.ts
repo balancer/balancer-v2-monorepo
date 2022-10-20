@@ -102,6 +102,7 @@ export default {
       }
       case WeightedPoolType.MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -119,6 +120,7 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -135,6 +137,8 @@ export default {
           throw new Error('Mock contract name required to deploy mock base pool');
         }
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
+
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
         result = deploy(mockContractName, {
           args: [
             {
@@ -152,6 +156,7 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
