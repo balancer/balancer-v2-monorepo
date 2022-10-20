@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IRewardTokenDistributor.sol";
 
@@ -24,6 +26,8 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IRewardTokenDist
  * @dev This contract is designed to mock LiquidityGaugeV5's interface for distributing external tokens.
  */
 contract MockRewardTokenDistributor is IRewardTokenDistributor {
+    using SafeERC20 for IERC20;
+
     uint256 private _rewardCount;
     IERC20[8] private _rewardTokens;
     mapping(IERC20 => Reward) private _rewardData;
@@ -57,7 +61,7 @@ contract MockRewardTokenDistributor is IRewardTokenDistributor {
 
     function deposit_reward_token(IERC20 rewardToken, uint256 amount) external override {
         require(_rewardData[rewardToken].distributor == msg.sender, "Only callable by reward distributor");
-        rewardToken.transferFrom(msg.sender, address(this), amount);
+        rewardToken.safeTransferFrom(msg.sender, address(this), amount);
 
         // We don't care about the rest of the update.
     }

@@ -92,20 +92,23 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
 
     // Pure virtual functions
 
-    function _getVirtualSupply() internal view override returns (uint256)  {
+    function _getVirtualSupply() internal view override returns (uint256) {
         return totalSupply();
     }
 
-    function _getPoolTokens()
-        internal
-        view
-        override
-        returns (IERC20[] memory tokens, uint256[] memory balances)
-    {
+    function _getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
         (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
     }
 
     // Unimplemented
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal pure override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
 
     function _onSwapMinimal(
         SwapRequest memory,

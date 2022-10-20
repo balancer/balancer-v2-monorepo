@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
 
 import "./BasePoolController.sol";
@@ -30,6 +32,7 @@ import "./BasePoolController.sol";
  * if the corresponding permission is set.
  */
 contract ManagedPoolController is BasePoolController {
+    using SafeERC20 for IERC20;
     using WordCodec for bytes32;
 
     // There are six managed pool rights: all corresponding to permissioned functions of ManagedPool.
@@ -207,7 +210,7 @@ contract ManagedPoolController is BasePoolController {
      * @dev Transfer any BPT management fees from this contract to the recipient.
      */
     function withdrawCollectedManagementFees(address recipient) external virtual onlyManager withBoundPool {
-        IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
+        IERC20(pool).safeTransfer(recipient, IERC20(pool).balanceOf(address(this)));
     }
 
     /**
