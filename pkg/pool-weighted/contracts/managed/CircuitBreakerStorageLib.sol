@@ -68,9 +68,9 @@ library CircuitBreakerStorageLib {
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
-    // and the current BPT price and normalized weight. Since this value is bounded by 1e18, which fits in ~60 bits,
-    // there is no need for compression. For a bit of extra precision (and to use round numbers), we store the weight
-    // in 64 bits.
+    // and the current BPT price and normalized weight. The weight is bound by 1e18, and fits in ~60 bits, so there
+    // is no need for compression. For a bit of extra precision (and to use round numbers), we store the weight in
+    // 64 bits.
     //
     // We then store the current BPT price, and compute and cache the adjusted lower and upper bounds at the current
     // weight. When multiplied by the stored BPT price, the adjusted bounds define the BPT price trading range: the
