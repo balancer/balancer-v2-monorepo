@@ -22,7 +22,8 @@ describe('CircuitBreakerLib', () => {
   let lib: Contract;
 
   before('deploy lib', async () => {
-    lib = await deploy('MockCircuitBreakerLib');
+    const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    lib = await deploy('MockCircuitBreakerLib', { libraries: { CircuitBreakerLib: circuitBreakerLib.address } });
   });
 
   async function assertCircuitBreakerState(

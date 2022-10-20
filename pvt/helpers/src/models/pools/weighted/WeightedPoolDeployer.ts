@@ -103,6 +103,7 @@ export default {
       case WeightedPoolType.MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -127,6 +128,7 @@ export default {
           ],
           from,
           libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
           },
         });
@@ -139,6 +141,7 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
 
         const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy(mockContractName, {
           args: [
             {
@@ -163,6 +166,7 @@ export default {
           ],
           from,
           libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
           },
         });
@@ -235,10 +239,12 @@ export default {
       }
       case WeightedPoolType.MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
           args: [vault.address, vault.getFeesProvider().address],
           from,
           libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
           },
         });

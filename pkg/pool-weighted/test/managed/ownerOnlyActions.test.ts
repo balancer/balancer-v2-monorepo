@@ -18,6 +18,7 @@ describe('ManagedPool owner only actions', () => {
     const tokens = await TokenList.create(2, { sorted: true });
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const math = await deploy('ExternalWeightedMath');
+    const circuitBreakerLib = await deploy('CircuitBreakerLib');
     pool = await deploy('MockManagedPool', {
       args: [
         {
@@ -40,6 +41,7 @@ describe('ManagedPool owner only actions', () => {
         0,
       ],
       libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
       },
     });
