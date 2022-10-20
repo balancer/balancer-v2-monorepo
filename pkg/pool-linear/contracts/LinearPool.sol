@@ -492,23 +492,22 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            registeredBalances,
-            _getVirtualSupply(registeredBalances[getBptIndex()]),
-            userData
-        );
+    ) internal view override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256[] memory amountsOut = new uint256[](registeredBalances.length);
 
-        // By default the pool will pay out an amount of BPT equivalent to that which the user burns.
-        // We zero this amount out, as otherwise a single user could drain the pool.
-        amountsOut[getBptIndex()] = 0;
+        uint256 bptIndex = getBptIndex();
+
+        uint256 virtualSupply = _getVirtualSupply(registeredBalances[bptIndex]);
+        uint256 bptRatio = bptAmountIn.divDown(virtualSupply);
+
+        for (uint256 i = 0; i < registeredBalances.length; i++) {
+            amountsOut[i] = i != bptIndex ? registeredBalances[i].mulDown(bptRatio) : 0;
+        }
 
         return (bptAmountIn, amountsOut);
     }

@@ -21,7 +21,7 @@ import "./lib/WeightedJoinsLib.sol";
 import "./WeightedMath.sol";
 
 /**
- * @title A contract-wrapper for Weighted Math, Joins and Exits.
+ * @notice A contract-wrapper for Weighted Math, Joins and Exits.
  * @dev Use this contract as an external replacement for WeightedMath, WeightedJoinsLib and WeightedExitsLib libraries.
  */
 contract ExternalWeightedMath is IExternalWeightedMath {
