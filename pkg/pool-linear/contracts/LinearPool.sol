@@ -501,10 +501,10 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256[] memory amountsOut = new uint256[](registeredBalances.length);
 
         uint256 bptIndex = getBptIndex();
-        
+
         uint256 virtualSupply = _getVirtualSupply(registeredBalances[bptIndex]);
         uint256 bptRatio = bptAmountIn.divDown(virtualSupply);
-        
+
         for (uint256 i = 0; i < registeredBalances.length; i++) {
             amountsOut[i] = i != bptIndex ? registeredBalances[i].mulDown(bptRatio) : 0;
         }
