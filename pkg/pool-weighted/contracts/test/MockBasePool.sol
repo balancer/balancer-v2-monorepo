@@ -27,6 +27,7 @@ contract MockBasePool is BasePool {
     uint256 public constant ON_JOIN_RETURN = 0xbbaa11;
     uint256 public constant ON_EXIT_RETURN = 0x11aabb;
 
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     bool private _inRecoveryMode;
@@ -36,6 +37,7 @@ contract MockBasePool is BasePool {
     event InnerOnSwapGeneralCalled(SwapRequest request, uint256[] balances, uint256 indexIn, uint256 indexOut);
     event InnerOnJoinPoolCalled(address sender, uint256[] balances, bytes userData);
     event InnerOnExitPoolCalled(address sender, uint256[] balances, bytes userData);
+    event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
 
     constructor(
         IVault vault,
@@ -145,5 +147,15 @@ contract MockBasePool is BasePool {
 
     function onlyVaultCallable(bytes32 poolId) public view onlyVault(poolId) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        emit RecoveryModeExit(totalSupply, balances, bptAmountIn);
+        return (bptAmountIn, balances);
     }
 }
