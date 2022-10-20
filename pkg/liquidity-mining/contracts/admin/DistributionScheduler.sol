@@ -155,7 +155,7 @@ contract DistributionScheduler {
         // the list)
         rewardsList[_HEAD].nextTimestamp = firstUnprocessedNodeKey;
 
-        token.approve(address(gauge), rewardAmount);
+        token.safeApprove(address(gauge), rewardAmount);
         gauge.deposit_reward_token(token, rewardAmount);
     }
 
