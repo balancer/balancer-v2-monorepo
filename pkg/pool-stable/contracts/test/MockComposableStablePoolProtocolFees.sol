@@ -163,4 +163,12 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
     ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNIMPLEMENTED);
     }
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal pure override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
 }
