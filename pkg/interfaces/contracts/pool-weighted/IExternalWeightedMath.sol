@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 
 /**
- * @title Interface for ExternalWeightedMath, a contract-wrapper for Weighted Math, Joins and Exits.
+ * @notice Interface for ExternalWeightedMath, a contract-wrapper for Weighted Math, Joins and Exits.
  */
 interface IExternalWeightedMath {
     /**
