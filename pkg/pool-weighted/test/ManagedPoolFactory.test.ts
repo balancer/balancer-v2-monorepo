@@ -50,8 +50,10 @@ describe('ManagedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
+    const circuitBreakerLib = await deploy('CircuitBreakerLib');
     baseFactory = await deploy('BaseManagedPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address],
+      libraries: { CircuitBreakerLib: circuitBreakerLib.address },
     });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
 
