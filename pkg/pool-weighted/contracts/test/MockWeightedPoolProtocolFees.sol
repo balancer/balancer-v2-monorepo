@@ -105,19 +105,19 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     }
 
     function _getNormalizedWeight(IERC20) internal pure override returns (uint256) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _getNormalizedWeights() internal pure override returns (uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _scalingFactor(IERC20) internal pure override returns (uint256) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _scalingFactors() internal pure override returns (uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onInitializePool(
@@ -127,7 +127,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onJoinPool(
@@ -140,7 +140,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onExitPool(
@@ -153,6 +153,6 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 }

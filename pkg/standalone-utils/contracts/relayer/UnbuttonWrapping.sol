@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC2
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IUnbuttonToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -34,6 +35,7 @@ import "./IBaseRelayerLibrary.sol";
  */
 abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
     using Address for address payable;
+    using SafeERC20 for IERC20;
 
     /// @param wrapperToken The address of the wrapper.
     /// @param sender The address of sender.
@@ -60,7 +62,7 @@ abstract contract UnbuttonWrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlyingToken, uAmount);
         }
 
-        underlyingToken.approve(address(wrapperToken), uAmount);
+        underlyingToken.safeApprove(address(wrapperToken), uAmount);
         uint256 mintAmount = wrapperToken.depositFor(recipient, uAmount);
 
         if (_isChainedReference(outputReference)) {

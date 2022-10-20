@@ -52,6 +52,7 @@ contract ManagedPool is ManagedPoolSettings {
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
@@ -681,14 +682,11 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
         // total supply to correctly distribute Pool assets proportionally.
         // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
@@ -697,7 +695,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
-        (bptAmountIn, amountsOut) = super._doRecoveryModeExit(balances, virtualSupply, userData);
+        bptAmountIn = userData.recoveryModeExit();
+        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, virtualSupply);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
@@ -787,8 +786,7 @@ contract ManagedPool is ManagedPoolSettings {
         // Since this is a swap, we do not have all the tokens, balances, or weights, and need to fetch them.
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
         uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
-        uint256[] memory scalingFactors = _scalingFactors(tokens);
-        _upscaleArray(balances, scalingFactors);
+        _upscaleArray(balances, _scalingFactors(tokens));
 
         // Initialize to all zeros, and set the amount associated with the swap.
         uint256[] memory amounts = new uint256[](tokens.length);
