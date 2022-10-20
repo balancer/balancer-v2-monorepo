@@ -476,7 +476,7 @@ describe('LinearPool', function () {
 
       before('calculate expected rate', async () => {
         const nominalMainBalance = math.toNominal(mainBalance, params);
-        const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance);
+        const invariant = math.calculateInvariant(nominalMainBalance, wrappedBalance);
         expectedRate = invariant.div(bptBalance);
       });
 

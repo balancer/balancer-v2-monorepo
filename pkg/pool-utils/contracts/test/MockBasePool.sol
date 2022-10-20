@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     uint256 private immutable _totalTokens;
@@ -28,6 +29,7 @@ contract MockBasePool is BasePool {
 
     event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
     event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
+    event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
 
     constructor(
         IVault vault,
@@ -157,5 +159,15 @@ contract MockBasePool is BasePool {
 
     function onlyCallableInRecovery() external view {
         _ensureInRecoveryMode();
+    }
+
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        emit RecoveryModeExit(totalSupply, balances, bptAmountIn);
+        return (bptAmountIn, balances);
     }
 }

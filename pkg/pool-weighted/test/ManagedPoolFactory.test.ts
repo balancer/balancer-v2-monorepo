@@ -50,7 +50,9 @@ describe('ManagedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
-    baseFactory = await deploy('BaseManagedPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    baseFactory = await deploy('BaseManagedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address],
+    });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
@@ -159,7 +161,9 @@ describe('ManagedPoolFactory', function () {
     });
 
     it('sets management aum fee', async () => {
-      expect(await pool.getManagementAumFeePercentage()).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      const [aumFeePercentage, lastCollectionTimestamp] = await pool.getManagementAumFeeParams();
+      expect(aumFeePercentage).to.equal(POOL_MANAGEMENT_AUM_FEE_PERCENTAGE);
+      expect(lastCollectionTimestamp).to.equal(0);
     });
 
     it('sets the pool manager ', async () => {
