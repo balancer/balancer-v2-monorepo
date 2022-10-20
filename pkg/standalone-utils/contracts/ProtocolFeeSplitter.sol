@@ -16,11 +16,10 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeeSplitter.sol";
-
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/VaultHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IProtocolFeesCollector.sol";
 
 interface Pool {
     function getOwner() external returns (address);
@@ -47,10 +46,13 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     uint256 private constant _MAX_REVENUE_SHARING_FEE_PERCENTAGE = 50e16; // 50%
     address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
 
-    IProtocolFeesCollector public immutable protocolFeesCollector;
+    IProtocolFeesWithdrawer public immutable protocolFeesWithdrawer;
+
+    // Balancer vault
+    IVault public immutable vault;
 
     // Balancer DAO Multisig
-    address public immutable treasury;
+    address public treasury;
 
     // Can be updated by BAL governance (1e18 = 100%, 1e16 = 1%).
     uint256 public defaultRevenueSharingFeePercentage;
@@ -58,13 +60,14 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     // poolId => PoolSettings
     mapping(bytes32 => RevenueShareSettings) public poolSettings;
 
-    constructor(IProtocolFeesCollector _protocolFeesCollector, address _treasury)
+    constructor(IProtocolFeesWithdrawer _protocolFeesWithdrawer, address _treasury)
         // The ProtocolFeeSplitter is a singleton, so it simply uses its own address to disambiguate action
         // identifiers.
         Authentication(bytes32(uint256(address(this))))
     {
-        protocolFeesCollector = _protocolFeesCollector;
+        protocolFeesWithdrawer = _protocolFeesWithdrawer;
         treasury = _treasury;
+        vault = _protocolFeesWithdrawer.getProtocolFeesCollector().vault();
     }
 
     function setRevenueSharingFeePercentage(bytes32 poolId, uint256 newSwapFeePercentage)
@@ -72,7 +75,6 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         override
         authenticate
     {
-        _require(newSwapFeePercentage >= _MIN_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_LOW);
         _require(newSwapFeePercentage <= _MAX_REVENUE_SHARING_FEE_PERCENTAGE, Errors.SPLITTER_FEE_PERCENTAGE_TOO_HIGH);
         poolSettings[poolId].revenueSharePercentageOverride = uint96(newSwapFeePercentage);
         emit PoolRevenueShareChanged(poolId, newSwapFeePercentage);
@@ -84,18 +86,26 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         emit DefaultRevenueSharingFeePercentageChanged(feePercentage);
     }
 
+    function setTreasury(address newTreasury) external override authenticate {
+        treasury = newTreasury;
+        emit TreasuryChanged(newTreasury);
+    }
+
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external override {
-        _require(msg.sender == Pool(VaultHelpers.toPoolAddress(poolId)).getOwner(), Errors.SENDER_NOT_ALLOWED);
+        (address pool, ) = vault.getPool(poolId);
+        _require(msg.sender == Pool(pool).getOwner(), Errors.SENDER_NOT_ALLOWED);
         poolSettings[poolId].beneficiary = newBeneficiary;
         emit PoolBeneficiaryChanged(poolId, newBeneficiary);
     }
 
     function collectFees(bytes32 poolId) external override {
-        address pool = VaultHelpers.toPoolAddress(poolId);
+        (address pool, ) = vault.getPool(poolId);
         IERC20 bpt = IERC20(pool);
 
-        IProtocolFeesCollector protocolFeesCollectorMemory = protocolFeesCollector;
-        uint256 feeCollectorBptBalance = bpt.balanceOf(address(protocolFeesCollectorMemory));
+        IProtocolFeesWithdrawer protocolFeesWithdrawerMemory = protocolFeesWithdrawer;
+        uint256 feeCollectorBptBalance = bpt.balanceOf(
+            address(protocolFeesWithdrawerMemory.getProtocolFeesCollector())
+        );
         if (feeCollectorBptBalance == 0) {
             _revert(Errors.NO_BPT_FEES_COLLECTED);
         }
@@ -109,7 +119,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         if (beneficiary == address(0)) {
             uint256[] memory amounts = new uint256[](1);
             amounts[0] = feeCollectorBptBalance;
-            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasury);
+            protocolFeesWithdrawerMemory.withdrawCollectedFees(tokens, amounts, treasury);
             emit FeesCollected(poolId, beneficiary, 0, treasury, feeCollectorBptBalance);
         } else {
             uint256[] memory amounts = new uint256[](1);
@@ -123,12 +133,12 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
             if (ownerAmount > 0) {
                 // mutate array, and set the owner amount for owner withdrawal
                 amounts[0] = ownerAmount;
-                protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, beneficiary);
+                protocolFeesWithdrawerMemory.withdrawCollectedFees(tokens, amounts, beneficiary);
             }
 
             // mutate array, and set the treasury amount for treasury withdrawal
             amounts[0] = treasuryAmount;
-            protocolFeesCollectorMemory.withdrawCollectedFees(tokens, amounts, treasury);
+            protocolFeesWithdrawerMemory.withdrawCollectedFees(tokens, amounts, treasury);
             emit FeesCollected(poolId, beneficiary, ownerAmount, treasury, treasuryAmount);
         }
     }
@@ -147,6 +157,6 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
     }
 
     function _getAuthorizer() internal view returns (IAuthorizer) {
-        return protocolFeesCollector.getAuthorizer();
+        return protocolFeesWithdrawer.getProtocolFeesCollector().getAuthorizer();
     }
 }
