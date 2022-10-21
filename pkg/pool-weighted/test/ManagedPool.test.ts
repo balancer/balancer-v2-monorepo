@@ -43,7 +43,7 @@ describe('ManagedPool', function () {
   });
 
   const MAX_TOKENS = 50;
-  const TOKEN_COUNT = 20;
+  const TOKEN_COUNT = 40;
 
   const BPT_INDEX = 0;
 
@@ -54,7 +54,7 @@ describe('ManagedPool', function () {
 
   sharedBeforeEach('deploy tokens and AUMProtocolFeeCollector', async () => {
     allTokens = await TokenList.create(MAX_TOKENS + 1, { sorted: true, varyDecimals: true });
-    poolTokens = allTokens.subset(20);
+    poolTokens = allTokens.subset(TOKEN_COUNT);
     await allTokens.mint({ to: [other, owner], amount: fp(2000) });
 
     vault = await Vault.create({ admin });
