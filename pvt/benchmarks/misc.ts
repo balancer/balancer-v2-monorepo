@@ -208,7 +208,7 @@ async function deployPoolFromFactory(
   if (poolName == 'ManagedPool') {
     const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
-    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+    const baseFactory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,

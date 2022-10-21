@@ -15,57 +15,58 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/controllers/ManagedPoolController.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
+import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
-import "./BaseManagedPoolFactory.sol";
+import "./ManagedPool.sol";
+import "../ExternalWeightedMath.sol";
 
 /**
- * @dev Deploys a new `ManagedPool` owned by a ManagedPoolController with the specified rights.
- * It uses the BaseManagedPoolFactory to deploy the pool.
+ * @dev This is a base factory designed to be called from other factories to deploy a ManagedPool
+ * with a particular contract as the owner. This contract might have a privileged or admin account
+ * to perform permissioned actions: this account is often called the pool manager.
+ *
+ * This factory should NOT be used directly to deploy ManagedPools owned by EOAs. ManagedPools
+ * owned by EOAs would be very dangerous for LPs. There are no restrictions on what the owner
+ * can do, so a malicious owner could easily manipulate prices and drain the pool.
+ *
+ * In this design, other client-specific factories will deploy a contract, then call this factory
+ * to deploy the pool, passing in that contract address as the owner.
  */
-contract ManagedPoolFactory {
-    // The address of the BaseManagedPoolFactory used to deploy the ManagedPool
-    address public immutable baseManagedPoolFactory;
+contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+    IExternalWeightedMath private immutable _weightedMath;
 
-    mapping(address => bool) private _isPoolFromFactory;
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
+        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
+    {
+        _weightedMath = new ExternalWeightedMath();
+    }
 
-    event ManagedPoolCreated(address indexed pool, address indexed poolController);
-
-    constructor(address baseFactory) {
-        baseManagedPoolFactory = baseFactory;
+    function getWeightedMath() external view returns (IExternalWeightedMath) {
+        return _weightedMath;
     }
 
     /**
-     * @dev Deploys a new `ManagedPool`.
+     * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
-    function create(
-        ManagedPoolSettings.NewPoolParams memory poolParams,
-        BasePoolController.BasePoolRights calldata basePoolRights,
-        ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
-        uint256 minWeightChangeDuration,
-        address manager
-    ) external returns (address pool) {
-        ManagedPoolController poolController = new ManagedPoolController(
-            basePoolRights,
-            managedPoolRights,
-            minWeightChangeDuration,
-            manager
-        );
+    function create(ManagedPoolSettings.NewPoolParams memory poolParams, address owner)
+        external
+        returns (address pool)
+    {
+        (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        // Let the base factory deploy the pool (owner is the controller)
-        pool = BaseManagedPoolFactory(baseManagedPoolFactory).create(poolParams, address(poolController));
-
-        // Finally, initialize the controller
-        poolController.initialize(pool);
-
-        _isPoolFromFactory[pool] = true;
-        emit ManagedPoolCreated(pool, address(poolController));
-    }
-
-    /**
-     * @dev Returns true if `pool` was created by this factory.
-     */
-    function isPoolFromFactory(address pool) external view returns (bool) {
-        return _isPoolFromFactory[pool];
+        return
+            _create(
+                abi.encode(
+                    poolParams,
+                    getVault(),
+                    getProtocolFeePercentagesProvider(),
+                    _weightedMath,
+                    owner,
+                    pauseWindowDuration,
+                    bufferPeriodDuration
+                )
+            );
     }
 }
