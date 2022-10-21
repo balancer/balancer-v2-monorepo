@@ -163,7 +163,7 @@ library ManagedPoolAddRemoveTokenLib {
         uint256[] memory currentWeights,
         IERC20 tokenToRemove,
         uint256 tokenToRemoveNormalizedWeight
-    ) public returns (IERC20[] memory newTokens, uint256[] memory newWeights) {
+    ) external returns (IERC20[] memory newTokens, uint256[] memory newWeights) {
         // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
         // functions.
         _require(tokenToRemove != IERC20(address(this)), Errors.ADD_OR_REMOVE_BPT);
