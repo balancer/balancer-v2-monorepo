@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IManagedPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -37,11 +37,12 @@ import "./vendor/BasePool.sol";
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolAumStorageLib.sol";
 import "./ManagedPoolTokenStorageLib.sol";
+import "./ManagedPoolAddRemoveTokenLib.sol";
 
 /**
  * @title Managed Pool Settings
  */
-abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlledManagedPool {
+abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -91,35 +92,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
-    // Event declarations
-
-    event GradualSwapFeeUpdateScheduled(
-        uint256 startTime,
-        uint256 endTime,
-        uint256 startSwapFeePercentage,
-        uint256 endSwapFeePercentage
-    );
-    event GradualWeightUpdateScheduled(
-        uint256 startTime,
-        uint256 endTime,
-        uint256[] startWeights,
-        uint256[] endWeights
-    );
-    event SwapEnabledSet(bool swapEnabled);
-    event MustAllowlistLPsSet(bool mustAllowlistLPs);
-    event ManagementAumFeePercentageChanged(uint256 managementAumFeePercentage);
-    event ManagementAumFeeCollected(uint256 bptAmount);
-    event AllowlistAddressAdded(address indexed member);
-    event AllowlistAddressRemoved(address indexed member);
-    event TokenAdded(IERC20 indexed token, uint256 normalizedWeight);
-    event TokenRemoved(IERC20 indexed token);
-    event CircuitBreakerSet(
-        IERC20 indexed token,
-        uint256 bptPrice,
-        uint256 lowerBoundPercentage,
-        uint256 upperBoundPercentage
-    );
-
     struct NewPoolParams {
         string name;
         string symbol;
@@ -154,8 +126,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             _tokenState[token] = ManagedPoolTokenStorageLib.initializeTokenState(token, params.normalizedWeights[i]);
         }
 
-        // This is technically a noop with regards to the tokens' weights in storage however it performs important
-        // validation of the token weights (normalization / bounds checking) and emits an event for offchain services.
+        // This is technically a noop with regards to the tokens' weights in storage. However, it performs important
+        // validation of the token weights (normalization / bounds checking), and emits an event for offchain services.
         _startGradualWeightChange(
             block.timestamp,
             block.timestamp,
@@ -194,7 +166,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Returns the number of tokens in circulation.
-     * @dev For the majority of Pools this will simply be a wrapper around the `totalSupply` function, however
+     * @dev For the majority of Pools, this will simply be a wrapper around the `totalSupply` function. However,
      * composable pools premint a large fraction of the BPT supply and place it in the Vault. In this situation,
      * the override would subtract this BPT balance from the total to reflect the actual amount of BPT in circulation.
      */
@@ -202,17 +174,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Actual Supply
 
-    /**
-     * @notice Returns the effective BPT supply.
-     *
-     * @dev The Pool owes debt to the Protocol and the Pool's owner in the form of unminted BPT, which will be minted
-     * immediately before the next join or exit. We need to take these into account since, even if they don't yet exist,
-     * they will effectively be included in any Pool operation that involves BPT. It is important that we take this BPT
-     * into account, as otherwise users may evade paying fees through exiting the pool before they are paid.
-     *
-     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
-     */
-    function getActualSupply() external view returns (uint256) {
+    function getActualSupply() external view override returns (uint256) {
         return _getActualSupply(_getVirtualSupply());
     }
 
@@ -238,17 +200,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return ManagedPoolStorageLib.getSwapFeePercentage(_poolState);
     }
 
-    /**
-     * @notice Returns the current gradual swap fee update parameters.
-     * @dev The current swap fee can be retrieved via `getSwapFeePercentage()`.
-     * @return startTime - The timestamp when the swap fee update will begin.
-     * @return endTime - The timestamp when the swap fee update will end.
-     * @return startSwapFeePercentage - The starting swap fee percentage (could be different from the current value).
-     * @return endSwapFeePercentage - The final swap fee percentage, when the current timestamp >= endTime.
-     */
     function getGradualSwapFeeUpdateParams()
         external
         view
+        override
         returns (
             uint256 startTime,
             uint256 endTime,
@@ -259,22 +214,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return ManagedPoolStorageLib.getSwapFeeFields(_poolState);
     }
 
-    /**
-     * @notice Schedule a gradual swap fee update.
-     * @dev The swap fee will change from the given starting value (which may or may not be the current
-     * value) to the given ending fee percentage, over startTime to endTime.
-     *
-     * Note that calling this with a starting swap fee different from the current value will immediately change the
-     * current swap fee to `startSwapFeePercentage`, before commencing the gradual change at `startTime`.
-     * Emits the GradualSwapFeeUpdateScheduled event.
-     * This is a permissioned function.
-     *
-     * @param startTime - The timestamp when the swap fee change will begin.
-     * @param endTime - The timestamp when the swap fee change will end (must be >= startTime).
-     * @param startSwapFeePercentage - The starting value for the swap fee change.
-     * @param endSwapFeePercentage - The ending value for the swap fee change. If the current timestamp >= endTime,
-     * `getSwapFeePercentage()` will return this value.
-     */
     function updateSwapFeeGradually(
         uint256 startTime,
         uint256 endTime,
@@ -340,10 +279,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         }
     }
 
-    /**
-     * @notice Returns all normalized weights, in the same order as the Pool's tokens.
-     */
-    function getNormalizedWeights() external view returns (uint256[] memory) {
+    function getNormalizedWeights() external view override returns (uint256[] memory) {
         (IERC20[] memory tokens, ) = _getPoolTokens();
         return _getNormalizedWeights(tokens);
     }
@@ -359,17 +295,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             );
     }
 
-    /**
-     * @notice Returns the current gradual weight change update parameters.
-     * @dev The current weights can be retrieved via `getNormalizedWeights()`.
-     * @return startTime - The timestamp when the weight update will begin.
-     * @return endTime - The timestamp when the weight update will end.
-     * @return startWeights - The starting weights, when the weight change was initiated.
-     * @return endWeights - The final weights, when the current timestamp >= endTime.
-     */
     function getGradualWeightUpdateParams()
         external
         view
+        override
         returns (
             uint256 startTime,
             uint256 endTime,
@@ -391,32 +320,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         }
     }
 
-    function _ensureNoWeightChange() private view {
-        (uint256 startTime, uint256 endTime) = ManagedPoolStorageLib.getWeightChangeFields(_poolState);
-
-        if (block.timestamp < endTime) {
-            _revert(
-                block.timestamp < startTime
-                    ? Errors.CHANGE_TOKENS_PENDING_WEIGHT_CHANGE
-                    : Errors.CHANGE_TOKENS_DURING_WEIGHT_CHANGE
-            );
-        }
-    }
-
-    /**
-     * @notice Schedule a gradual weight change.
-     * @dev The weights will change from their current values to the given endWeights, over startTime to endTime.
-     * This is a permissioned function.
-     *
-     * Since, unlike with swap fee updates, we generally do not want to allow instantaneous weight changes,
-     * the weights always start from their current values. This also guarantees a smooth transition when
-     * updateWeightsGradually is called during an ongoing weight change.
-     * @param startTime - The timestamp when the weight change will begin.
-     * @param endTime - The timestamp when the weight change will end (can be >= startTime).
-     * @param tokens - The tokens associated with the target weights (must match the current pool tokens).
-     * @param endWeights - The target weights. If the current timestamp >= endTime, `getNormalizedWeights()`
-     * will return these values.
-     */
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
@@ -440,8 +343,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     /**
-     * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
-     * if necessary.
+     * @dev Validate the end weights, and set the start weights. `updateWeightsGradually` passes in the current weights
+     * as the start weights, so that calling updateWeightsGradually again during an update will not result in any
+     * abrupt weight changes. Also update the pool state with the start and end times.
      */
     function _startGradualWeightChange(
         uint256 startTime,
@@ -475,18 +379,10 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Swap Enabled
 
-    /**
-     * @notice Returns whether swaps are enabled.
-     */
-    function getSwapEnabled() external view returns (bool) {
+    function getSwapEnabled() external view override returns (bool) {
         return ManagedPoolStorageLib.getSwapsEnabled(_poolState);
     }
 
-    /**
-     * @notice Enable or disable trading.
-     * @dev Emits the SwapEnabledSet event. This is a permissioned function.
-     * @param swapEnabled - The new value of the swap enabled flag.
-     */
     function setSwapEnabled(bool swapEnabled) external override authenticate whenNotPaused {
         _setSwapEnabled(swapEnabled);
     }
@@ -499,20 +395,18 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // LP Allowlist
 
-    /**
-     * @notice Returns whether the allowlist for LPs is enabled.
-     */
-    function getMustAllowlistLPs() external view returns (bool) {
+    function getMustAllowlistLPs() external view override returns (bool) {
         return ManagedPoolStorageLib.getLPAllowlistEnabled(_poolState);
     }
 
     /**
      * @notice Check whether an LP address is on the allowlist.
-     * @dev This simply checks the list, regardless of whether the allowlist feature is enabled.
+     * @dev This simply checks the list, regardless of whether the allowlist feature is enabled, so that the allowlist
+     * can be inspected at any time.
      * @param member - The address to check against the allowlist.
      * @return true if the given address is on the allowlist.
      */
-    function isAddressOnAllowlist(address member) public view returns (bool) {
+    function isAddressOnAllowlist(address member) public view override returns (bool) {
         return _allowedAddresses[member];
     }
 
@@ -527,12 +421,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         return !ManagedPoolStorageLib.getLPAllowlistEnabled(poolState) || isAddressOnAllowlist(member);
     }
 
-    /**
-     * @notice Adds an address to the LP allowlist.
-     * @dev Will fail if the address is already allowlisted.
-     * Emits the AllowlistAddressAdded event. This is a permissioned function.
-     * @param member - The address to be added to the allowlist.
-     */
     function addAllowedAddress(address member) external override authenticate whenNotPaused {
         _require(!isAddressOnAllowlist(member), Errors.ADDRESS_ALREADY_ALLOWLISTED);
 
@@ -540,12 +428,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit AllowlistAddressAdded(member);
     }
 
-    /**
-     * @notice Removes an address from the LP allowlist.
-     * @dev Will fail if the address was not previously allowlisted.
-     * Emits the AllowlistAddressRemoved event. This is a permissioned function.
-     * @param member - The address to be removed from the allowlist.
-     */
     function removeAllowedAddress(address member) external override authenticate whenNotPaused {
         _require(isAddressOnAllowlist(member), Errors.ADDRESS_NOT_ALLOWLISTED);
 
@@ -553,13 +435,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit AllowlistAddressRemoved(member);
     }
 
-    /**
-     * @notice Enable or disable the LP allowlist.
-     * @dev Note that any addresses added to the allowlist will be retained if the allowlist is toggled off and
-     * back on again, because this action does not affect the list of LP addresses.
-     * Emits the MustAllowlistLPsSet event. This is a permissioned function.
-     * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
-     */
     function setMustAllowlistLPs(bool mustAllowlistLPs) external override authenticate whenNotPaused {
         _setMustAllowlistLPs(mustAllowlistLPs);
     }
@@ -572,31 +447,21 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // AUM management fees
 
-    /**
-     * @notice Returns the management AUM fee percentage as an 18-decimal fixed point number and the timestamp of the
-     * last collection of AUM fees.
-     */
     function getManagementAumFeeParams()
         public
         view
+        override
         returns (uint256 aumFeePercentage, uint256 lastCollectionTimestamp)
     {
         (aumFeePercentage, lastCollectionTimestamp) = ManagedPoolAumStorageLib.getAumFeeFields(_aumState);
 
-        // If we're in recovery mode then we bypass any fee logic by setting the fee percentage to zero.
+        // If we're in recovery mode, set the fee percentage to zero so that we bypass any fee logic that might fail
+        // and prevent LPs from exiting the pool.
         if (ManagedPoolStorageLib.getRecoveryModeEnabled(_poolState)) {
             aumFeePercentage = 0;
         }
     }
 
-    /**
-     * @notice Setter for the yearly percentage AUM management fee, which is payable to the pool manager.
-     * @dev Attempting to collect AUM fees in excess of the maximum permitted percentage will revert.
-     * To avoid retroactive fee increases, we force collection at the current fee percentage before processing
-     * the update. Emits the ManagementAumFeePercentageChanged event. This is a permissioned function.
-     * @param managementAumFeePercentage - The new management AUM fee percentage.
-     * @return amount - The amount of BPT minted to the manager before the update, if any.
-     */
     function setManagementAumFeePercentage(uint256 managementAumFeePercentage)
         external
         override
@@ -633,12 +498,6 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         _aumState = ManagedPoolAumStorageLib.setLastCollectionTimestamp(_aumState, block.timestamp);
     }
 
-    /**
-     * @notice Collect any accrued AUM fees and send them to the pool manager.
-     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
-     * joins and exits.
-     * @return The amount of BPT minted to the manager.
-     */
     function collectAumManagementFees() external override whenNotPaused returns (uint256) {
         // It only makes sense to collect AUM fees after the pool is initialized (as before then the AUM is zero).
         // We can query if the pool is initialized by checking for a nonzero total supply.
@@ -650,13 +509,13 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     /**
      * @notice Calculates the AUM fees accrued since the last collection and pays it to the pool manager.
-     * @dev The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate.
-     * This assumes a constant virtual supply between fee collections, we must then collect AUM fees whenever the
-     * virtual supply of the Pool changes to ensure proper accounting.
+     * @dev The AUM fee calculation is based on inflating the Pool's BPT supply by a target rate. This assumes
+     * a constant virtual supply between fee collections. To ensure proper accounting, we must therefore collect
+     * AUM fees whenever the virtual supply of the Pool changes.
      *
      * This collection mints the difference between the virtual supply and the actual supply. By adding the amount of
-     * BPT returned by this functino to the passed virtual supply, we may calculate the updated virtual supply (which is
-     * equal to the actual supply).
+     * BPT returned by this function to the virtual supply passed in, we may calculate the updated virtual supply
+     * (which is equal to the actual supply).
      * @return bptAmount - The amount of BPT minted as AUM fees.
      */
     function _collectAumManagementFees(uint256 virtualSupply) internal returns (uint256) {
@@ -679,7 +538,9 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
             return 0;
         }
 
-        // Split AUM fees between protocol and Pool manager.
+        // Split AUM fees between protocol and Pool manager. In low liquidity situations, rounding may result in a
+        // managerBPTAmount of zero. In general, when splitting fees, LPs come first, followed by the protocol,
+        // followed by the manager.
         uint256 protocolBptAmount = bptAmount.mulUp(getProtocolFeePercentageCache(ProtocolFeeType.AUM));
         uint256 managerBPTAmount = bptAmount.sub(protocolBptAmount);
 
@@ -694,64 +555,40 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
 
     // Add/Remove tokens
 
-    /**
-     * @notice Adds a token to the Pool's list of tradeable tokens. This is a permissioned function.
-     *
-     * @dev By adding a token to the Pool's composition, the weights of all other tokens will be decreased. The new
-     * token will have no balance - it is up to the owner to provide some immediately after calling this function.
-     * Note however that regular join functions will not work while the new token has no balance: the only way to
-     * deposit an initial amount is by using an Asset Manager.
-     *
-     * Token addition is forbidden during a weight change, or if one is scheduled to happen in the future.
-     *
-     * The caller may additionally pass a non-zero `mintAmount` to have some BPT be minted for them, which might be
-     * useful in some scenarios to account for the fact that the Pool will have more tokens.
-     *
-     * Emits the TokenAdded event.
-     *
-     * @param tokenToAdd - The ERC20 token to be added to the Pool.
-     * @param assetManager - The Asset Manager for the token.
-     * @param tokenToAddNormalizedWeight - The normalized weight of `token` relative to the other tokens in the Pool.
-     * @param mintAmount - The amount of BPT to be minted as a result of adding `token` to the Pool.
-     * @param recipient - The address to receive the BPT minted by the Pool.
-     */
     function addToken(
         IERC20 tokenToAdd,
         address assetManager,
         uint256 tokenToAddNormalizedWeight,
         uint256 mintAmount,
         address recipient
-    ) external authenticate whenNotPaused {
-        // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens before
-        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
-        // changes. For consistency, we do this always, even if the amount to mint is zero.
-        uint256 supply = _getVirtualSupply();
-        _require(supply > 0, Errors.UNINITIALIZED);
-        _collectAumManagementFees(supply);
+    ) external override authenticate whenNotPaused {
+        {
+            // This complex operation might mint BPT, altering the supply. For simplicity, we forbid adding tokens
+            // before initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the
+            // BPT supply changes. For consistency, we do this always, even if the amount to mint is zero.
+            uint256 supply = _getVirtualSupply();
+            _require(supply > 0, Errors.UNINITIALIZED);
+            _collectAumManagementFees(supply);
+        }
 
-        // BPT cannot be added using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
-        // functions.
-        _require(tokenToAdd != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
-
-        // Tokens cannot be added during or before a weight change, since a) adding a token already involves a weight
-        // change and would override an existing one, and b) any previous weight changes would be incomplete since they
-        // wouldn't include the new token.
-        _ensureNoWeightChange();
-
-        // We first register the token in the Vault. This makes the Pool enter an invalid state, since one of its tokens
-        // has a balance of zero (making the invariant also zero). The Asset Manager must be used to deposit some
-        // initial balance and restore regular operation.
-        //
-        // We don't need to check that the new token is not already in the Pool, as the Vault will simply revert if we
-        // try to register it again.
-        PoolRegistrationLib.registerToken(getVault(), getPoolId(), tokenToAdd, assetManager);
-
-        // With the token registered, we fetch the new list of Pool tokens (which will include it). This is also a good
-        // opportunity to check we have not added too many tokens.
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        _require(tokens.length <= _MAX_TOKENS, Errors.MAX_TOKENS);
+        _require(tokens.length + 1 <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
-        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // `ManagedPoolAddRemoveTokenLib.addToken` performs any necessary state updates in the Vault and returns
+        // values necessary for the Pool to update its own state.
+        (bytes32 tokenToAddState, IERC20[] memory newTokens, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib
+            .addToken(
+            getVault(),
+            getPoolId(),
+            _poolState,
+            tokens,
+            _getNormalizedWeights(tokens),
+            tokenToAdd,
+            assetManager,
+            tokenToAddNormalizedWeight
+        );
+
+        // Once we've updated the state in the Vault, we also need to update our own state. This is a two-step process,
         // since we need to:
         //  a) initialize the state of the new token
         //  b) adjust the weights of all other tokens
@@ -760,45 +597,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // (and relies instead on the Vault for this), so we simply store the new token-specific information.
         // Note that we don't need to check here that the weight is valid. We'll later call `_startGradualWeightChange`,
         // which will check the entire set of weights for correctness.
-        _tokenState[tokenToAdd] = ManagedPoolTokenStorageLib.initializeTokenState(
-            tokenToAdd,
-            tokenToAddNormalizedWeight
-        );
-
-        // Adjusting the weights is a bit more involved however. We need to reduce all other weights to make room for
-        // the new one. This is achieved by multipliyng them by a factor of `1 - new token weight`.
-        // For example, if a  0.25/0.75 Pool gets added a token with a weight of 0.80, the final weights would be
-        // 0.05/0.15/0.80, where 0.05 = 0.25 * (1 - 0.80) and 0.15 = 0.75 * (1 - 0.80).
-        uint256[] memory currentWeights = _getNormalizedWeights(tokens);
-        uint256[] memory newWeights = new uint256[](tokens.length);
-        uint256 newWeightSum = 0;
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            if (tokens[i] == tokenToAdd) {
-                newWeights[i] = tokenToAddNormalizedWeight;
-            } else {
-                newWeights[i] = currentWeights[i].mulDown(FixedPoint.ONE.sub(tokenToAddNormalizedWeight));
-            }
-
-            newWeightSum = newWeightSum.add(newWeights[i]);
-        }
-
-        // It is possible that the new weights don't add up to 100% due to rounding errors - the sum might be slightly
-        // smaller since we round the weights down. In that case, we adjust the last weight so that the sum is exact.
-        //
-        // This error is negligible, since the error introduced in the weight of the last token equals the number of
-        // tokens in the worst case (as each weight can be off by one at most), and the minimum weight is 1e16, meaning
-        // there's ~15 orders of magnitude between the smallest weight and the error. It is important however that the
-        // weights do add up to 100% exactly, as that property is relied on in some parts of the WeightedMath
-        // computations.
-        if (newWeightSum != FixedPoint.ONE) {
-            newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
-        }
+        _tokenState[tokenToAdd] = tokenToAddState;
 
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
         // Note that this call will set the weight for `tokenToAdd`, which we've already done - that'll just be a no-op.
-        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, newTokens);
 
         if (mintAmount > 0) {
             _mintPoolTokens(recipient, mintAmount);
@@ -807,97 +611,56 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         emit TokenAdded(tokenToAdd, tokenToAddNormalizedWeight);
     }
 
-    /**
-     * @notice Removes a token from the Pool's list of tradeable tokens.
-     * @dev Tokens can only be removed if the Pool has more than 2 tokens, as it can never have fewer than 2. Token
-     * removal is also forbidden during a weight change, or if one is scheduled to happen in the future.
-     *
-     * Emits the TokenRemoved event. This is a permissioned function.
-     *
-     * The caller may additionally pass a non-zero `burnAmount` to burn some of their BPT, which might be useful
-     * in some scenarios to account for the fact that the Pool now has fewer tokens. This is a permissioned function.
-     * @param tokenToRemove - The ERC20 token to be removed from the Pool.
-     * @param burnAmount - The amount of BPT to be burned after removing `token` from the Pool.
-     * @param sender - The address to burn BPT from.
-     */
     function removeToken(
         IERC20 tokenToRemove,
         uint256 burnAmount,
         address sender
-    ) external authenticate whenNotPaused {
-        // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens before
-        // initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the BPT supply
-        // changes. For consistency, we do this always, even if the amount to burn is zero.
-        uint256 supply = _getVirtualSupply();
-        _require(supply > 0, Errors.UNINITIALIZED);
-        _collectAumManagementFees(supply);
+    ) external override authenticate whenNotPaused {
+        {
+            // Add new scope to avoid stack too deep.
 
-        // BPT cannot be removed using this mechanism: Composable Pools manage it via dedicated PoolRegistrationLib
-        // functions.
-        _require(tokenToRemove != IERC20(this), Errors.ADD_OR_REMOVE_BPT);
+            // This complex operation might burn BPT, altering the supply. For simplicity, we forbid removing tokens
+            // before initialization (i.e. before BPT is first minted). We must also collect AUM fees every time the
+            // BPT supply changes. For consistency, we do this always, even if the amount to burn is zero.
+            uint256 supply = _getVirtualSupply();
+            _require(supply > 0, Errors.UNINITIALIZED);
+            _collectAumManagementFees(supply);
+        }
 
-        // Tokens cannot be removed during or before a weight change, since a) removing a token already involves a
-        // weight change and would override an existing one, and b) any previous weight changes would be incorrect since
-        // they would include the removed token.
-        _ensureNoWeightChange();
-
-        // Before this function is called, the caller must have withdrawn all balance for `token` from the Pool. This
-        // means that the Pool is in an invalid state, since among other things the invariant is zero. Because we're not
-        // in a valid state and all value-changing operations will revert, we are free to modify the Pool state (e.g.
-        // alter weights).
-        //
-        // We don't need to test the zero balance since the Vault will simply revert on deregistration if this is not
-        // the case, or if the token is not currently registered.
-        PoolRegistrationLib.deregisterToken(getVault(), getPoolId(), tokenToRemove);
-
-        // With the token deregistered, we fetch the new list of Pool tokens (which will not include it). This is also a
-        // good opportunity to check we didn't end up with too few tokens.
         (IERC20[] memory tokens, ) = _getPoolTokens();
-        _require(tokens.length >= 2, Errors.MIN_TOKENS);
+        _require(tokens.length - 1 >= 2, Errors.MIN_TOKENS);
 
-        // Once we've updated the state in the Vault, we need to also update our own state. This is a two-step process,
+        // Token removal is forbidden during a weight change or if one is scheduled so we can assume that
+        // the weight change progress is 100%.
+        uint256 tokenToRemoveNormalizedWeight = ManagedPoolTokenStorageLib.getTokenWeight(
+            _tokenState[tokenToRemove],
+            FixedPoint.ONE
+        );
+
+        // `ManagedPoolAddRemoveTokenLib.removeToken` performs any necessary state updates in the Vault and returns
+        // values necessary for the Pool to update its own state.
+        (IERC20[] memory newTokens, uint256[] memory newWeights) = ManagedPoolAddRemoveTokenLib.removeToken(
+            getVault(),
+            getPoolId(),
+            _poolState,
+            tokens,
+            _getNormalizedWeights(tokens),
+            tokenToRemove,
+            tokenToRemoveNormalizedWeight
+        );
+
+        // Once we've updated the state in the Vault, we also need to update our own state. This is a two-step process,
         // since we need to:
         //  a) delete the state of the removed token
         //  b) adjust the weights of all other tokens
 
         // Deleting the old token is straightforward. The Pool itself doesn't track how many or which tokens it uses
-        // (and relies instead on the Vault for this), so we simply delete the token-specific information. We first read
-        // its weight however, since we'll need it later.
-        // We've ensured that the most recent weight change is complete.
-        uint256 tokenToRemoveWeight = ManagedPoolTokenStorageLib.getTokenWeight(
-            _tokenState[tokenToRemove],
-            FixedPoint.ONE
-        );
+        // (and relies instead on the Vault for this), so we simply delete the token-specific information.
         delete _tokenState[tokenToRemove];
-
-        // Adjusting the weights is a bit more involved however. We need to increase all other weights so that they add
-        // up to 100%. This is achieved by dividing them by a factor of `1 - old token weight`.
-        // For example, if a  0.05/0.15/0.80 Pool has its 80% token removed, the final weights would be 0.25/0.75, where
-        // 0.25 = 0.05 / (1 - 0.80) and 0.75 = 0.15 / (1 - 0.80).
-        uint256[] memory currentWeights = _getNormalizedWeights(tokens);
-        uint256[] memory newWeights = new uint256[](tokens.length);
-        uint256 newWeightSum = 0;
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            newWeights[i] = currentWeights[i].divDown(FixedPoint.ONE.sub(tokenToRemoveWeight));
-            newWeightSum = newWeightSum.add(newWeights[i]);
-        }
-
-        // It is possible that the new weights don't add up to 100% due to rounding errors - the sum might be slightly
-        // smaller since we round the weights down. In that case, we adjust the last weight so that the sum is exact.
-        //
-        // This error is negligible, since the error introduced in the weight of the last token equals the number of
-        // tokens in the worst case (as each weight can be off by one at most), and the minimum weight is 1e16, meaning
-        // there's ~15 orders of magnitude between the smallest weight and the error. It is important however that the
-        // weights do add up to 100% exactly, as that property is relied on in some parts of the WeightedMath
-        // computations.
-        if (newWeightSum != FixedPoint.ONE) {
-            newWeights[tokens.length - 1] = newWeights[tokens.length - 1].add(FixedPoint.ONE.sub(newWeightSum));
-        }
 
         // `_startGradualWeightChange` will perform all required validation on the new weights, including minimum
         // weights, sum, etc., so we don't need to worry about that ourselves.
-        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, tokens);
+        _startGradualWeightChange(block.timestamp, block.timestamp, newWeights, newWeights, newTokens);
 
         if (burnAmount > 0) {
             // We disallow burning from the zero address, as that would allow potentially returning the Pool to the
@@ -941,7 +704,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // not paused.
         _ensureNotPaused();
 
-        // If the Pool doesn't hold any tokens due to being uninitialized then we skip fee collection.
+        // We skip fee collection until the Pool is initialized.
         uint256 supplyBeforeFeeCollection = _getVirtualSupply();
         if (supplyBeforeFeeCollection > 0) {
             _collectAumManagementFees(supplyBeforeFeeCollection);
@@ -964,28 +727,23 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         _poolState = ManagedPoolStorageLib.setRecoveryModeEnabled(_poolState, enabled);
 
         // Some pools need to update their state when leaving recovery mode to ensure proper functioning of the Pool.
-        // We do not perform any state updates when entering recovery mode as this may jeopardize the ability to enable
-        // Recovery mode.
+        // We do not perform any state updates when entering recovery mode, as this may jeopardize the ability to
+        // enable Recovery mode.
         if (!enabled) {
-            // Recovery mode exits bypass the AUM fee calculation which means that in the case where the Pool is paused
-            // and in Recovery mode for a period of time and then later returns to normal operation then AUM fees will
-            // be charged to the remaining LPs for the full period. We then update the collection timestamp so that no
-            // AUM fees are accrued over this period.
+            // Recovery mode exits bypass the AUM fee calculation. This means that if the Pool is paused and in
+            // Recovery mode for a period of time, then later returns to normal operation, AUM fees will be charged
+            // to the remaining LPs for the full period. We then update the collection timestamp so that no AUM fees
+            // are accrued over this period.
             _updateAumFeeCollectionTimestamp();
         }
     }
 
     // Circuit Breakers
 
-    /**
-     * @notice Return the full circuit breaker state for the given token.
-     * @dev These are the reference values (BPT price and normalized weight) passed in when the breaker was set,
-     * along with the percentage bounds. It also returns the current BPT price bounds, needed to check whether
-     * the circuit breaker should trip.
-     */
     function getCircuitBreakerState(IERC20 token)
         external
         view
+        override
         returns (
             uint256 bptPrice,
             uint256 referenceWeight,
@@ -1015,19 +773,12 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         upperBptPriceBound = _upscale(upperBptPriceBound, tokenScalingFactor);
     }
 
-    /**
-     * @notice Set a circuit breaker for one or more tokens.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
-     * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
-     * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
-     * more relative to the rest of the pool.
-     */
     function setCircuitBreakers(
         IERC20[] memory tokens,
         uint256[] memory bptPrices,
         uint256[] memory lowerBoundPercentages,
         uint256[] memory upperBoundPercentages
-    ) external authenticate whenNotPaused {
+    ) external override authenticate whenNotPaused {
         InputHelpers.ensureInputLengthMatch(tokens.length, lowerBoundPercentages.length, upperBoundPercentages.length);
         InputHelpers.ensureInputLengthMatch(tokens.length, bptPrices.length);
 
@@ -1037,7 +788,8 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
     }
 
     // Compute the reference values, then pass them along with the bounds to the library. The bptPrice must be
-    // passed in from the caller, or it would be manipulable.
+    // passed in from the caller, or it would be manipulable. We assume the bptPrice from the caller was computed
+    // using the native (i.e., unscaled) token balance.
     function _setCircuitBreaker(
         IERC20 token,
         uint256 bptPrice,
@@ -1048,7 +800,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IControlled
         // Fail if the token is not in the pool (or is the BPT token)
         _require(normalizedWeight != 0, Errors.INVALID_TOKEN);
 
-        // The incoming BPT price (defined as virtualSupply * weight / balance) will have been calculated dividing
+        // The incoming BPT price (defined as actualSupply * weight / balance) will have been calculated dividing
         // by unscaled token balance, effectively multiplying the result by the scaling factor.
         // To correct this, we need to divide by it (downscaling).
         uint256 scaledBptPrice = _downscaleDown(

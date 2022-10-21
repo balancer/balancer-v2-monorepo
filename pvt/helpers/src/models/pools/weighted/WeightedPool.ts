@@ -408,8 +408,8 @@ export default class WeightedPool extends BasePool {
     });
 
     const receipt = await tx.wait();
-    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFeeAmounts, receipt };
   }
 
   async queryExit(params: JoinExitWeightedPool): Promise<ExitQueryResult> {
@@ -435,8 +435,8 @@ export default class WeightedPool extends BasePool {
     });
 
     const receipt = await tx.wait();
-    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees, receipt };
+    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts, receipt };
   }
 
   private async _executeQuery(params: JoinExitWeightedPool, fn: ContractFunction): Promise<PoolQueryResult> {

@@ -43,7 +43,7 @@ contract MockVault is IPoolSwapStructs {
         address indexed liquidityProvider,
         IERC20[] tokens,
         int256[] deltas,
-        uint256[] protocolFees
+        uint256[] protocolFeeAmounts
     );
 
     constructor(IAuthorizer authorizer) {
