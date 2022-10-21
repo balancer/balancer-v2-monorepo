@@ -256,7 +256,7 @@ interface IManagedPool is IBasePool {
         view
         returns (
             uint256 bptPrice,
-            uint256 weightComplement,
+            uint256 referenceWeight,
             uint256 lowerBound,
             uint256 upperBound,
             uint256 lowerBptPriceBound,
