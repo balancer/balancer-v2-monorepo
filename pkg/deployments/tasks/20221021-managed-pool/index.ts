@@ -9,8 +9,11 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   const circuitBreakerLib = await task.deployAndVerify('CircuitBreakerLib');
 
   const args = [input.Vault, input.ProtocolFeePercentagesProvider];
-  await task.deployAndVerify('ManagedPoolFactory', args, from, force, {
+  const factory = await task.deployAndVerify('ManagedPoolFactory', args, from, force, {
     CircuitBreakerLib: circuitBreakerLib.address,
     ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
   });
+
+  const math = await factory.getWeightedMath();
+  await task.verify('ExternalWeightedMath', math.address, []);
 };
