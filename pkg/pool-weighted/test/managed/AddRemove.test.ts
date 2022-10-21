@@ -55,10 +55,10 @@ describe('ManagedPoolSettings - add/remove token', () => {
     if (weights == undefined) {
       // We pick random weights, but ones that are not so far apart as to cause issues due to minimum weights. The
       // deployer will normalize them.
-      // The largest Pool will have 38 tokens, and we'll add tokens with a weight of ~10%, decreasing all other weights
+      // The largest Pool will have 50 tokens, and we'll add tokens with a weight of ~10%, decreasing all other weights
       // by ~90%. By having the denormalized weights vary between 100 and 150, in the worst case all weights will be
       // 150 except for a single 100 one, which is roughly equivalent to a Pool with 58 tokens and equal 1% weights,
-      // making the smallest weight be ~1.7%. That provides enough space to add a new ~10% weight token without causing
+      // making the smallest weight be ~1.3%. That provides enough space to add a new ~10% weight token without causing
       // for the smallest weight to drop below the minimum.
       weights = range(numberOfTokens).map(() => fp(100 + random(50)));
     }
