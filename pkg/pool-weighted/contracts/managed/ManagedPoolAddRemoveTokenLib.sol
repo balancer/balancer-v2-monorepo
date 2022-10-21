@@ -75,7 +75,7 @@ library ManagedPoolAddRemoveTokenLib {
         address assetManager,
         uint256 tokenToAddNormalizedWeight
     )
-        public
+        external
         returns (
             bytes32 tokenToAddState,
             IERC20[] memory newTokens,
