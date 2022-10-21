@@ -29,7 +29,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
   });
 
   const MIN_TOKENS = 2;
-  const MAX_TOKENS = 38;
+  const MAX_TOKENS = 50;
 
   sharedBeforeEach('deploy vault', async () => {
     vault = await Vault.create({ admin });
@@ -113,6 +113,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
     itAddsATokenAtTokenCount(MIN_TOKENS);
     itAddsATokenAtTokenCount(10);
     itAddsATokenAtTokenCount(30);
+    itAddsATokenAtTokenCount(40);
     itAddsATokenAtTokenCount(MAX_TOKENS - 1);
 
     function itAddsATokenAtTokenCount(poolTokenCount: number) {
@@ -435,6 +436,7 @@ describe('ManagedPoolSettings - add/remove token', () => {
     itRemovesATokenAtTokenCount(MIN_TOKENS + 1);
     itRemovesATokenAtTokenCount(10);
     itRemovesATokenAtTokenCount(30);
+    itRemovesATokenAtTokenCount(40);
     itRemovesATokenAtTokenCount(MAX_TOKENS);
 
     function itRemovesATokenAtTokenCount(poolTokenCount: number) {

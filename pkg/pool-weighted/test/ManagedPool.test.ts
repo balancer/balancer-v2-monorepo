@@ -42,7 +42,7 @@ describe('ManagedPool', function () {
     [, admin, owner, other] = await ethers.getSigners();
   });
 
-  const MAX_TOKENS = 38;
+  const MAX_TOKENS = 50;
   const TOKEN_COUNT = 20;
 
   const BPT_INDEX = 0;
