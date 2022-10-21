@@ -51,9 +51,10 @@ describe('ManagedPoolFactory', function () {
     vault = await Vault.create({ admin });
 
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    const weightedMathLib = await deploy('ExternalWeightedMath');
     baseFactory = await deploy('BaseManagedPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address],
-      libraries: { CircuitBreakerLib: circuitBreakerLib.address },
+      libraries: { CircuitBreakerLib: circuitBreakerLib.address, ExternalWeightedMath: weightedMathLib.address },
     });
     factory = await deploy('ManagedPoolFactory', { args: [baseFactory.address] });
 

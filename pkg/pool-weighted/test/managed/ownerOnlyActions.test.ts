@@ -16,7 +16,7 @@ describe('ManagedPool owner only actions', () => {
   sharedBeforeEach('deploy pool', async () => {
     const vault = await Vault.create();
     const tokens = await TokenList.create(2, { sorted: true });
-    const math = await deploy('ExternalWeightedMath');
+    const externalMathLib = await deploy('ExternalWeightedMath');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     pool = await deploy('MockManagedPool', {
       args: [
@@ -34,12 +34,11 @@ describe('ManagedPool owner only actions', () => {
         },
         vault.address,
         vault.getFeesProvider().address,
-        math.address,
         ZERO_ADDRESS,
         0,
         0,
       ],
-      libraries: { CircuitBreakerLib: circuitBreakerLib.address },
+      libraries: { CircuitBreakerLib: circuitBreakerLib.address, ExternalWeightedMath: externalMathLib.address },
     });
   });
 

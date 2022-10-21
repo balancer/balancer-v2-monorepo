@@ -101,7 +101,7 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const externalMathLib = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
@@ -120,13 +120,12 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
-            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
           ],
           from,
-          libraries: { CircuitBreakerLib: circuitBreakerLib.address },
+          libraries: { CircuitBreakerLib: circuitBreakerLib.address, ExternalWeightedMath: externalMathLib.address },
         });
         break;
       }
@@ -135,7 +134,7 @@ export default {
           throw new Error('Mock contract name required to deploy mock base pool');
         }
 
-        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const externalMathLib = await deploy('v2-pool-weighted/ExternalWeightedMath');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy(mockContractName, {
           args: [
@@ -154,13 +153,12 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
-            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
           ],
           from,
-          libraries: { CircuitBreakerLib: circuitBreakerLib.address },
+          libraries: { CircuitBreakerLib: circuitBreakerLib.address, ExternalWeightedMath: externalMathLib.address },
         });
         break;
       }

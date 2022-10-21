@@ -35,16 +35,10 @@ import "../ExternalWeightedMath.sol";
  * to deploy the pool, passing in that contract address as the owner.
  */
 contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    IExternalWeightedMath private immutable _weightedMath;
-
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
         BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
     {
-        _weightedMath = new ExternalWeightedMath();
-    }
-
-    function getWeightedMath() external view returns (IExternalWeightedMath) {
-        return _weightedMath;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**
@@ -62,7 +56,6 @@ contract BaseManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     poolParams,
                     getVault(),
                     getProtocolFeePercentagesProvider(),
-                    _weightedMath,
                     owner,
                     pauseWindowDuration,
                     bufferPeriodDuration
