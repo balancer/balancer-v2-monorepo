@@ -168,7 +168,6 @@ interface IManagedPool is IBasePool {
      * Emits the MustAllowlistLPsSet event. This is a permissioned function.
      * @param mustAllowlistLPs - The new value of the mustAllowlistLPs flag.
      */
-
     function setMustAllowlistLPs(bool mustAllowlistLPs) external;
 
     /**
