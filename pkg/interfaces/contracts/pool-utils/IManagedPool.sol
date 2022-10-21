@@ -185,7 +185,6 @@ interface IManagedPool is IBasePool {
      * Emits the AllowlistAddressRemoved event. This is a permissioned function.
      * @param member - The address to be removed from the allowlist.
      */
-
     function removeAllowedAddress(address member) external;
 
     /**
