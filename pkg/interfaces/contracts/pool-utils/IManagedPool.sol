@@ -233,7 +233,7 @@ interface IManagedPool is IBasePool {
 
     /**
      * @notice Set a circuit breaker for one or more tokens.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The lower and upper bounds
+     * @dev This is a permissioned function. The lower and upper bounds
      * are percentages, corresponding to a *relative* change in the token's spot price: e.g., a lower bound
      * of 0.8 means the breaker should prevent trades that result in the value of the token dropping 20% or
      * more relative to the rest of the pool.
