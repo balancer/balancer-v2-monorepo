@@ -203,8 +203,9 @@ interface IManagedPool is IBasePool {
 
     /**
      * @notice Collect any accrued AUM fees and send them to the pool manager.
-     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically on
-     * joins and exits.
+     * @dev This can be called by anyone to collect accrued AUM fees - and will be called automatically
+     * whenever the supply changes (e.g., joins and exits, add and remove token), and before the fee
+     * percentage is changed by the manager, to prevent fees from being applied retroactively.
      * @return The amount of BPT minted to the manager.
      */
     function collectAumManagementFees() external returns (uint256);
