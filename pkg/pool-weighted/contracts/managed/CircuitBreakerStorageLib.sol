@@ -68,7 +68,7 @@ library CircuitBreakerStorageLib {
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
-    // and the current BPT price and normalized weight. The weight is bound by 1e18, and fits in ~60 bits, so there
+    // the current BPT price, and the normalized weight. The weight is bound by 1e18, and fits in ~60 bits, so there
     // is no need for compression. We store the weight in 64 bits, just to use round numbers for all the bit lengths.
     //
     // We then store the current BPT price, and compute and cache the adjusted lower and upper bounds at the current
@@ -149,7 +149,7 @@ library CircuitBreakerStorageLib {
      * (1 - 0.8) = 0.2, so the lower adjusted bound would be (0.9 ** 0.2) ~ 0.9791. For the WETH token at 20%,
      * the bound would be (0.9 ** 0.8) ~ 0.9192.
      *
-     * With unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
+     * With unequal weights (assuming a balanced pool), the balance of a higher-weight token will respond less
      * to a proportional change in spot price than a lower weight token, which we might call "balance inertia".
      *
      * If the external price drops, all else being equal, the pool would be arbed until the percent drop in spot
