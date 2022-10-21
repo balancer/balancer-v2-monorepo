@@ -326,7 +326,9 @@ export default class WeightedPool extends BasePool {
       );
       receipt = await tx.wait();
     }
-    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
+    const { amountIn, amountOut } = expectEvent.inReceipt(receipt, 'Swap').args;
+    const amount = params.kind == SwapKind.GivenIn ? amountOut : amountIn;
+
     return { amount, receipt };
   }
 
