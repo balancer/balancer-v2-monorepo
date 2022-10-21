@@ -118,10 +118,10 @@ contract MockVault is IPoolSwapStructs {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) external {
-        uint256 swapAmount = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
+        uint256 amountCalculated = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
         (uint256 amountIn, uint256 amountOut) = request.kind == IVault.SwapKind.GIVEN_IN
-            ? (request.amount, swapAmount)
-            : (swapAmount, request.amount);
+            ? (request.amount, amountCalculated)
+            : (amountCalculated, request.amount);
         emit Swap(request.poolId, request.tokenIn, request.tokenOut, amountIn, amountOut);
     }
 
@@ -132,10 +132,10 @@ contract MockVault is IPoolSwapStructs {
         uint256 indexIn,
         uint256 indexOut
     ) external {
-        uint256 swapAmount = IGeneralPool(pool).onSwap(request, balances, indexIn, indexOut);
+        uint256 amountCalculated = IGeneralPool(pool).onSwap(request, balances, indexIn, indexOut);
         (uint256 amountIn, uint256 amountOut) = request.kind == IVault.SwapKind.GIVEN_IN
-            ? (request.amount, swapAmount)
-            : (swapAmount, request.amount);
+            ? (request.amount, amountCalculated)
+            : (amountCalculated, request.amount);
         emit Swap(request.poolId, request.tokenIn, request.tokenOut, amountIn, amountOut);
     }
 
