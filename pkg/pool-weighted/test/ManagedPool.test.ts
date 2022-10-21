@@ -2,7 +2,7 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, ContractReceipt } from 'ethers';
 
-import { BigNumberish, bn, fp, FP_ONE, FP_ZERO, pct } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish, bn, fp, fpDiv, fpMul, FP_ONE, FP_ZERO, pct } from '@balancer-labs/v2-helpers/src/numbers';
 import {
   DAY,
   advanceTime,
@@ -16,7 +16,9 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import {
+  ExitResult,
   JoinQueryResult,
+  JoinResult,
   RawWeightedPoolDeployment,
   SwapResult,
   WeightedPoolType,
@@ -27,6 +29,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
+import { random } from 'lodash';
 
 describe('ManagedPool', function () {
   let allTokens: TokenList;
@@ -71,6 +74,24 @@ describe('ManagedPool', function () {
       ...overrides,
     };
     return WeightedPool.create(params);
+  }
+
+  async function getUnscaledBptPrice(tokenIndex: number): Promise<BigNumber> {
+    const totalSupply = await pool.getActualSupply();
+
+    return fpDiv(fpMul(totalSupply, poolWeights[tokenIndex]), initialBalances[tokenIndex]);
+  }
+
+  async function setCircuitBreaker(tokenIndex: number, isLowerBound: boolean): Promise<void> {
+    const tokenBptPrice = await getUnscaledBptPrice(tokenIndex);
+    const bptPrices = initialBalances.map((_, i) => (i == tokenIndex ? tokenBptPrice : bn(0)));
+    const lowerBounds = Array(poolTokens.length).fill(bn(0));
+    const upperBounds = Array(poolTokens.length).fill(bn(0));
+
+    // Set the bound to 1 so that any trade will trigger it
+    (isLowerBound ? lowerBounds : upperBounds)[tokenIndex] = FP_ONE;
+
+    await pool.setCircuitBreakers(owner, poolTokens.tokens, bptPrices, lowerBounds, upperBounds);
   }
 
   describe('construction', () => {
@@ -134,9 +155,94 @@ describe('ManagedPool', function () {
             .reverted;
         });
       });
+
+      context('circuit breakers', () => {
+        let tokenInIndex: number;
+        let tokenOutIndex: number;
+
+        sharedBeforeEach('set token indices', async () => {
+          // BPT_INDEX is always zero, so valid token indices will be 1 - numTokens
+          tokenInIndex = random(poolTokens.length - 1);
+          tokenOutIndex = tokenInIndex == poolTokens.length - 1 ? 0 : tokenInIndex + 1;
+        });
+
+        function itChecksCircuitBreakersOnRegularSwaps(
+          isGivenIn: boolean,
+          setCircuitBreaker: () => Promise<void>,
+          doSwap: () => Promise<SwapResult>
+        ) {
+          it(`reverts on Given${isGivenIn ? 'In' : 'Out'}`, async () => {
+            await setCircuitBreaker();
+            await expect(doSwap()).to.be.revertedWith('CIRCUIT_BREAKER_TRIPPED');
+          });
+        }
+
+        context('check lower bound', () => {
+          itChecksCircuitBreakersOnRegularSwaps(
+            true, // indicate GivenIn
+            () => setCircuitBreaker(tokenInIndex, true),
+            () =>
+              pool.swapGivenIn({
+                in: poolTokens.tokens[tokenInIndex],
+                out: poolTokens.tokens[tokenOutIndex],
+                amount: fp(0.1),
+                from: other,
+                recipient: other,
+              })
+          );
+
+          itChecksCircuitBreakersOnRegularSwaps(
+            false, // indicate GivenOut
+            () => setCircuitBreaker(tokenInIndex, true),
+            () =>
+              pool.swapGivenOut({
+                in: poolTokens.tokens[tokenInIndex],
+                out: poolTokens.tokens[tokenOutIndex],
+                amount: fp(0.1),
+                from: other,
+                recipient: other,
+              })
+          );
+        });
+
+        context('check upper bound', () => {
+          itChecksCircuitBreakersOnRegularSwaps(
+            true, // indicate GivenIn
+            () => setCircuitBreaker(tokenOutIndex, false),
+            () =>
+              pool.swapGivenIn({
+                in: poolTokens.tokens[tokenInIndex],
+                out: poolTokens.tokens[tokenOutIndex],
+                amount: fp(0.1),
+                from: other,
+                recipient: other,
+              })
+          );
+
+          itChecksCircuitBreakersOnRegularSwaps(
+            false, // indicate GivenOut
+            () => setCircuitBreaker(tokenOutIndex, false),
+            () =>
+              pool.swapGivenOut({
+                in: poolTokens.tokens[tokenInIndex],
+                out: poolTokens.tokens[tokenOutIndex],
+                amount: fp(0.1),
+                from: other,
+                recipient: other,
+              })
+          );
+        });
+      });
     });
 
     context('join swaps', () => {
+      let tokenInIndex: number;
+
+      sharedBeforeEach('set token index', async () => {
+        // BPT_INDEX is always zero, so valid token indices will be 1 - numTokens
+        tokenInIndex = random(poolTokens.length - 1);
+      });
+
       function itPerformsAJoinSwapCorrectly(
         joinTokenIndex: number,
         doJoinSwap: () => Promise<SwapResult>,
@@ -212,6 +318,16 @@ describe('ManagedPool', function () {
         });
       }
 
+      function itChecksCircuitBreakersOnJoinSwaps(
+        setCircuitBreaker: () => Promise<void>,
+        doJoinSwap: () => Promise<SwapResult>
+      ) {
+        it('checks circuit breakers on joinSwap', async () => {
+          await setCircuitBreaker();
+          await expect(doJoinSwap()).to.be.revertedWith('CIRCUIT_BREAKER_TRIPPED');
+        });
+      }
+
       const JOIN_TOKEN_INDEX = 1;
 
       context('given in', () => {
@@ -235,6 +351,18 @@ describe('ManagedPool', function () {
             pool.queryJoinGivenIn({
               // `amountsIn` and `poolTokens` don't include BPT so we subtract 1 from JOIN_TOKEN_INDEX
               amountsIn: poolTokens.map((_, i) => (i == JOIN_TOKEN_INDEX - 1 ? fp(0.1) : FP_ZERO)),
+              from: other,
+              recipient: other,
+            })
+        );
+
+        itChecksCircuitBreakersOnJoinSwaps(
+          () => setCircuitBreaker(tokenInIndex, true),
+          () =>
+            pool.swapGivenIn({
+              in: poolTokens.tokens[tokenInIndex],
+              out: BPT_INDEX,
+              amount: fp(0.1),
               from: other,
               recipient: other,
             })
@@ -267,10 +395,36 @@ describe('ManagedPool', function () {
               recipient: other,
             })
         );
+
+        // Need enough BPT to move the price (don't need much) - 0.01% of the holdings
+        let bptOut: BigNumber;
+
+        sharedBeforeEach('set BPT out amount', async () => {
+          bptOut = pct(await pool.balanceOf(other), 0.0001);
+        });
+
+        itChecksCircuitBreakersOnJoinSwaps(
+          () => setCircuitBreaker(tokenInIndex, true),
+          () =>
+            pool.swapGivenOut({
+              in: poolTokens.tokens[tokenInIndex],
+              out: BPT_INDEX,
+              amount: bptOut,
+              from: other,
+              recipient: other,
+            })
+        );
       });
     });
 
     context('exit swaps', () => {
+      let tokenOutIndex: number;
+
+      sharedBeforeEach('set token index', async () => {
+        // BPT_INDEX is always zero, so valid token indices will be 1 - numTokens
+        tokenOutIndex = random(poolTokens.length - 1);
+      });
+
       function itPerformsAnExitSwapCorrectly(
         exitTokenIndex: number,
         doExitSwap: () => Promise<SwapResult>,
@@ -342,6 +496,16 @@ describe('ManagedPool', function () {
         });
       }
 
+      function itChecksCircuitBreakersOnExitSwaps(
+        setCircuitBreaker: () => Promise<void>,
+        doExitSwap: () => Promise<SwapResult>
+      ) {
+        it('checks circuit breakers on exitSwap', async () => {
+          await setCircuitBreaker();
+          await expect(doExitSwap()).to.be.revertedWith('CIRCUIT_BREAKER_TRIPPED');
+        });
+      }
+
       const EXIT_TOKEN_INDEX = 1;
 
       context('given in', () => {
@@ -369,6 +533,18 @@ describe('ManagedPool', function () {
               recipient: other,
             })
         );
+
+        itChecksCircuitBreakersOnExitSwaps(
+          () => setCircuitBreaker(tokenOutIndex, false),
+          () =>
+            pool.swapGivenIn({
+              in: BPT_INDEX,
+              out: poolTokens.tokens[tokenOutIndex],
+              amount: fp(0.1),
+              from: other,
+              recipient: other,
+            })
+        );
       });
 
       context('given out', () => {
@@ -392,6 +568,18 @@ describe('ManagedPool', function () {
             pool.queryExitGivenOut({
               // `amountsIn` and `poolTokens` don't include BPT so we subtract 1 from JOIN_TOKEN_INDEX
               amountsOut: poolTokens.map((_, i) => (i == EXIT_TOKEN_INDEX - 1 ? fp(0.1) : FP_ZERO)),
+              from: other,
+              recipient: other,
+            })
+        );
+
+        itChecksCircuitBreakersOnExitSwaps(
+          () => setCircuitBreaker(tokenOutIndex, false),
+          () =>
+            pool.swapGivenOut({
+              in: BPT_INDEX,
+              out: poolTokens.tokens[tokenOutIndex],
+              amount: fp(0.1),
               from: other,
               recipient: other,
             })
@@ -513,6 +701,55 @@ describe('ManagedPool', function () {
         });
       });
     });
+
+    context('circuit breakers', () => {
+      let tokenInIndex: number;
+      let amountsIn: BigNumber[];
+
+      function itChecksCircuitBreakersOnJoins(
+        setCircuitBreaker: () => Promise<void>,
+        doJoin: () => Promise<JoinResult>
+      ) {
+        it('checks circuit breakers on join', async () => {
+          await setCircuitBreaker();
+          await expect(doJoin()).to.be.revertedWith('CIRCUIT_BREAKER_TRIPPED');
+        });
+      }
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool();
+
+        await pool.init({ from: other, initialBalances });
+      });
+
+      sharedBeforeEach('set token index', async () => {
+        // BPT_INDEX is always zero, so valid token indices will be 1 - numTokens
+        tokenInIndex = random(poolTokens.length - 1);
+        amountsIn = Array(poolTokens.length).fill(0);
+        amountsIn[tokenInIndex] = fp(0.1);
+      });
+
+      context('given in', () => {
+        itChecksCircuitBreakersOnJoins(
+          () => setCircuitBreaker(tokenInIndex, true),
+          () => pool.joinGivenIn({ from: other, amountsIn })
+        );
+      });
+
+      // Need enough BPT to move the price (don't need much) - 0.01% of the holdings
+      let bptOut: BigNumber;
+
+      sharedBeforeEach('set BPT out amount', async () => {
+        bptOut = pct(await pool.balanceOf(other), 0.0001);
+      });
+
+      context('given out', () => {
+        itChecksCircuitBreakersOnJoins(
+          () => setCircuitBreaker(tokenInIndex, true),
+          () => pool.joinGivenOut({ from: other, bptOut, token: poolTokens.tokens[tokenInIndex] })
+        );
+      });
+    });
   });
 
   describe('exitPool', () => {
@@ -580,6 +817,72 @@ describe('ManagedPool', function () {
             'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
           );
         });
+      });
+    });
+
+    context('circuit breakers', () => {
+      let tokenOutIndex: number;
+      let amountsOut: BigNumber[];
+
+      function itChecksCircuitBreakersOnExits(
+        setCircuitBreaker: () => Promise<void>,
+        doExit: () => Promise<ExitResult>
+      ) {
+        it('checks circuit breakers on exit', async () => {
+          await setCircuitBreaker();
+          await expect(doExit()).to.be.revertedWith('CIRCUIT_BREAKER_TRIPPED');
+        });
+      }
+
+      function itDoesNotCheckCircuitBreakersOnProportionalExits(
+        setCircuitBreaker: () => Promise<void>,
+        doExit: () => Promise<ExitResult>
+      ) {
+        it('does not check circuit breakers on exit', async () => {
+          await setCircuitBreaker();
+          await expect(doExit()).to.not.be.reverted;
+        });
+      }
+
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool();
+
+        await pool.init({ from: other, initialBalances });
+      });
+
+      sharedBeforeEach('set token index', async () => {
+        // BPT_INDEX is always zero, so valid token indices will be 1 - numTokens
+        tokenOutIndex = random(poolTokens.length - 1);
+        amountsOut = Array(poolTokens.length).fill(0);
+        amountsOut[tokenOutIndex] = fp(0.1);
+      });
+
+      // Need enough BPT to move the price (don't need much) - 0.01% of the holdings
+      let bptIn: BigNumber;
+
+      sharedBeforeEach('set BPT out amount', async () => {
+        bptIn = pct(await pool.balanceOf(other), 0.0001);
+      });
+
+      context('given in (proportional)', () => {
+        itDoesNotCheckCircuitBreakersOnProportionalExits(
+          () => setCircuitBreaker(tokenOutIndex, false),
+          () => pool.multiExitGivenIn({ from: other, bptIn })
+        );
+      });
+
+      context('given in (non-proportional)', () => {
+        itChecksCircuitBreakersOnExits(
+          () => setCircuitBreaker(tokenOutIndex, false),
+          () => pool.singleExitGivenIn({ from: other, bptIn, token: poolTokens.get(tokenOutIndex) })
+        );
+      });
+
+      context('given out', () => {
+        itChecksCircuitBreakersOnExits(
+          () => setCircuitBreaker(tokenOutIndex, false),
+          () => pool.exitGivenOut({ from: other, amountsOut })
+        );
       });
     });
   });
