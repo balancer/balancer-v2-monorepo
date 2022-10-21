@@ -14,14 +14,16 @@
 
 pragma solidity ^0.7.0;
 
-import "../helpers/LogCompression.sol";
+import "../openzeppelin/ERC20.sol";
 
-contract MockLogCompression {
-    function toLowResLog(uint256 value) external pure returns (int256) {
-        return LogCompression.toLowResLog(value);
-    }
+/**
+ * @dev ERC20 with a modified `approve` function, which always returns false.
+ */
+contract ERC20FalseApprovalMock is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-    function fromLowResLog(int256 value) external pure returns (uint256) {
-        return LogCompression.fromLowResLog(value);
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+        _approve(msg.sender, spender, amount);
+        return false;
     }
 }

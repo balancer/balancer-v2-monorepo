@@ -13,16 +13,16 @@ import { expect } from 'chai';
 const MAX_RELATIVE_ERROR = 0.0001; //Max relative error
 
 describe('WeightedMath', function () {
-  let mock: Contract;
+  let math: Contract;
 
   before(async function () {
-    mock = await deploy('MockWeightedMath');
+    math = await deploy('ExternalWeightedMath');
   });
 
   context('invariant', () => {
     context('zero invariant', () => {
       it('reverts', async () => {
-        await expect(mock.invariant([bn(1)], [0])).to.be.revertedWith('ZERO_INVARIANT');
+        await expect(math.calculateInvariant([bn(1)], [0])).to.be.revertedWith('ZERO_INVARIANT');
       });
     });
 
@@ -31,7 +31,7 @@ describe('WeightedMath', function () {
         const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
         const balances = [bn(10e18), bn(12e18)];
 
-        const result = await mock.invariant(normalizedWeights, balances);
+        const result = await math.calculateInvariant(normalizedWeights, balances);
         const expectedInvariant = calculateInvariant(balances, normalizedWeights);
 
         expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
@@ -42,7 +42,7 @@ describe('WeightedMath', function () {
         const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
         const balances = [bn(10e18), bn(12e18), bn(14e18)];
 
-        const result = await mock.invariant(normalizedWeights, balances);
+        const result = await math.calculateInvariant(normalizedWeights, balances);
         const expectedInvariant = calculateInvariant(balances, normalizedWeights);
 
         expectEqualWithError(result, bn(expectedInvariant), MAX_RELATIVE_ERROR);
@@ -65,7 +65,7 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await mock.outGivenIn(
+      const outAmountPool = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -89,7 +89,7 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountOut
       );
-      const inAmountPool = await mock.inGivenOut(
+      const inAmountPool = await math.calcInGivenOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -115,7 +115,7 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await mock.outGivenIn(
+      const outAmountPool = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -140,7 +140,7 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountOut
       );
-      const inAmountPool = await mock.inGivenOut(
+      const inAmountPool = await math.calcInGivenOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -169,7 +169,7 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await mock.outGivenIn(
+      const outAmountPool = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -195,7 +195,7 @@ describe('WeightedMath', function () {
         tokenWeightOut,
         tokenAmountIn
       );
-      const outAmountPool = await mock.outGivenIn(
+      const outAmountPool = await math.calcOutGivenIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,

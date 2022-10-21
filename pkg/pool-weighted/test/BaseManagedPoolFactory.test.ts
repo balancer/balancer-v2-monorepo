@@ -41,7 +41,11 @@ describe('BaseManagedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create({ admin });
 
-    factory = await deploy('BaseManagedPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    const circuitBreakerLib = await deploy('CircuitBreakerLib');
+    factory = await deploy('BaseManagedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address],
+      libraries: { CircuitBreakerLib: circuitBreakerLib.address },
+    });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });

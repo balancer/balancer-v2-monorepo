@@ -176,7 +176,7 @@ contract MerkleOrchard {
         );
         token.safeTransferFrom(distributor, address(this), amount);
 
-        token.approve(address(getVault()), amount);
+        token.safeApprove(address(getVault()), amount);
         IVault.UserBalanceOp[] memory ops = new IVault.UserBalanceOp[](1);
 
         ops[0] = IVault.UserBalanceOp({

@@ -101,6 +101,8 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -118,11 +120,13 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
           ],
           from,
+          libraries: { CircuitBreakerLib: circuitBreakerLib.address },
         });
         break;
       }
@@ -130,6 +134,9 @@ export default {
         if (mockContractName == undefined) {
           throw new Error('Mock contract name required to deploy mock base pool');
         }
+
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy(mockContractName, {
           args: [
             {
@@ -147,11 +154,13 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
           ],
           from,
+          libraries: { CircuitBreakerLib: circuitBreakerLib.address },
         });
         break;
       }
@@ -221,9 +230,11 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
           args: [vault.address, vault.getFeesProvider().address],
           from,
+          libraries: { CircuitBreakerLib: circuitBreakerLib.address },
         });
 
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
