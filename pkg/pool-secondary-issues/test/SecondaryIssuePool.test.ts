@@ -23,7 +23,7 @@ describe('SecondaryPool', function () {
         admin: SignerWithAddress,
         owner: SignerWithAddress,
         other: SignerWithAddress;
-
+  
   const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
 
@@ -133,6 +133,143 @@ describe('SecondaryPool', function () {
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
     });
   });
-  
 
+  describe('swaps', () => {
+    let currentBalances: BigNumber[];
+    let params: math.Params;
+
+    sharedBeforeEach('deploy and initialize pool', async () => {
+
+      await deployPool({ securityToken, currencyToken }, true);
+
+      await setBalances(pool, { securityBalance: BigNumber.from("20"), currencyBalance: BigNumber.from("35"), bptBalance: MAX_UINT112 });
+      
+      const poolId = await pool.getPoolId();
+      currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
+
+      params = {
+        fee: POOL_SWAP_FEE_PERCENTAGE,
+      };
+    });
+
+    const setBalances = async (
+      pool: SecondaryPool,
+      balances: { securityBalance?: BigNumber; currencyBalance?: BigNumber; bptBalance?: BigNumber }
+    ) => {
+
+      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+        i == pool.securityIndex
+          ? balances.securityBalance ?? bn(0)
+          : i == pool.currencyIndex
+          ? balances.currencyBalance ?? bn(0)
+          : i == pool.bptIndex
+          ? balances.bptBalance ?? bn(0)
+          : bn(0)
+      );
+      const poolId = await pool.getPoolId();
+      await pool.vault.updateBalances(poolId, updateBalances);
+    };
+   
+
+    context('placing sell and buy order', () => {
+      let sell_amount: BigNumber;
+      let buy_amount: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        sell_amount = BigNumber.from("10"); //qty
+        buy_amount = BigNumber.from("5"); //qty
+      });
+      
+      it('accepts buy order', async () => {
+        const sell_order = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_amount,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Sell 15@price
+        });
+
+        const buy_order = await pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_amount,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Buy 15@price
+        });
+
+        const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+        const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+
+        
+        expect(buy_order.toString()).to.be.equals(request_amount.toString());
+      });
+    });
+
+    context('Placing Limit Order', () => {
+      let sell_amount: BigNumber;
+      let buy_amount: BigNumber;
+
+      sharedBeforeEach('initialize values ', async () => {
+        sell_amount = BigNumber.from("10"); //qty
+        buy_amount = BigNumber.from("15"); //qty
+      });
+      
+      it('accepts limit order', async () => {
+        const sell_order = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_amount,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit12')) // Limit Order Sell@price12
+        });
+
+        const buy_order = await pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_amount,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market14')) // MarketOrder Buy@price12
+        });
+
+        const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+        const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+
+        expect(buy_order.toString()).to.be.equals(request_amount.toString());
+      });
+    });
+
+
+  context('Placing Stop Loss Order', () => {
+    let sell_amount: BigNumber;
+    let buy_amount: BigNumber;
+
+    sharedBeforeEach('initialize values ', async () => {
+      sell_amount = BigNumber.from("10"); //qty
+      buy_amount = BigNumber.from("25"); //qty
+    });
+    
+    it('accepts sell order', async () => {
+      const stop_order = await pool.swapGivenOut({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop12')) // Stop Order Sell@price12
+      });
+
+      const buy_order = await pool.swapGivenOut({
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_amount,
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market12')) // MarketOrder Buy@price12
+      });
+
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+
+      expect(buy_order.toString()).to.be.equals(request_amount.toString());
+    });
+  });
+});
 });
