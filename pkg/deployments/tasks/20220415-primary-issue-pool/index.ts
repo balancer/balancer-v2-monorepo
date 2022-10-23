@@ -4,6 +4,6 @@ import { PrimaryIssuePoolDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as PrimaryIssuePoolDeployment;
-  const args = [input.Vault];
+  const args = [input.Vault, input.ProtocolFeePercentagesProvider];
   await task.deployAndVerify('PrimaryIssuePoolFactory', args, from, force);
 };

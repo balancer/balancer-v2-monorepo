@@ -4,6 +4,6 @@ import { SecondaryIssuePoolDeployment } from './input';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as SecondaryIssuePoolDeployment;
-  const args = [input.Vault];
+  const args = [input.Vault, input.ProtocolFeePercentagesProvider];
   await task.deployAndVerify('SecondaryIssuePoolFactory', args, from, force);
 };
