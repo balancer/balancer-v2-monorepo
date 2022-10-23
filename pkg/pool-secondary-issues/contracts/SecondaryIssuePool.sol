@@ -628,7 +628,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             "Pending",
             _executionDt
         );
-        bytes32 _transfereeDPID = ISettlor(balancerManager).getTransferAgent(_transferee);
+        //commenting out Settlement callback below as this needs to be implemented by whoever is connecting the pools to their settlement system
+        /*bytes32 _transfereeDPID = ISettlor(balancerManager).getTransferAgent(_transferee);
         bytes32 _transferorDPID = ISettlor(balancerManager).getTransferAgent(_transferor);
         ISettlor.settlement memory tradeToSettle = ISettlor.settlement({
             transferor: _transferor,
@@ -646,7 +647,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             transfereeDPID: _transfereeDPID,
             orderPool: address(this)
         });
-        ISettlor(balancerManager).postSettlement(tradeToSettle, _tradeRef);
+        ISettlor(balancerManager).postSettlement(tradeToSettle, _tradeRef);*/
     }
 
     function getTrade(bytes32 ref) external view override returns (uint256 b, uint256 a) {

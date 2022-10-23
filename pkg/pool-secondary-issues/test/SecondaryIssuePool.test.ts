@@ -136,7 +136,7 @@ describe('SecondaryPool', function () {
 
   describe('swaps', () => {
     let currentBalances: BigNumber[];
-    let params: math.Params;
+    let params: {};
 
     sharedBeforeEach('deploy and initialize pool', async () => {
 
@@ -171,7 +171,7 @@ describe('SecondaryPool', function () {
     };
    
 
-    context('placing sell and buy order', () => {
+    context('Placing Market order', () => {
       let sell_amount: BigNumber;
       let buy_amount: BigNumber;
 
@@ -205,7 +205,7 @@ describe('SecondaryPool', function () {
       });
     });
 
-    context('Placing Limit Order', () => {
+    context('Placing Limit order', () => {
       let sell_amount: BigNumber;
       let buy_amount: BigNumber;
 
@@ -239,7 +239,7 @@ describe('SecondaryPool', function () {
     });
 
 
-  context('Placing Stop Loss Order', () => {
+  context('Placing Stop Loss order', () => {
     let sell_amount: BigNumber;
     let buy_amount: BigNumber;
 
