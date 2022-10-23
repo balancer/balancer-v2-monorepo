@@ -136,7 +136,7 @@ describe('SecondaryPool', function () {
 
   describe('swaps', () => {
     let currentBalances: BigNumber[];
-    let params: math.Params;
+    let params: {};
 
     sharedBeforeEach('deploy and initialize pool', async () => {
 
