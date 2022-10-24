@@ -15,5 +15,5 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
   });
 
   const math = await factory.getWeightedMath();
-  await task.verify('ExternalWeightedMath', math.address, []);
+  await task.verify('ExternalWeightedMath', math, []);
 };
