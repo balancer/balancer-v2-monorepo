@@ -88,7 +88,7 @@ describe('BeefyLinearPool', function () {
     });
 
     it('should return wrapped token rate scaled to 18 decimals for a 6 decimal token', async () => {
-      await usdcBeefyVault.setTotalSupply(fp(1));;
+      await usdcBeefyVault.setTotalSupply(fp(1));
       await usdcBeefyVault.setBalance(fp(1.5));
       expect(await bbbUSDC.getWrappedTokenRate()).to.be.eq(fp(1.5e12));
     });

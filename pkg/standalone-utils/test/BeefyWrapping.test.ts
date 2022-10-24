@@ -147,12 +147,12 @@ describe('BeefyWrapping', function () {
   describe('unwrapping', () => {
     const amount = fp(1);
     let daiForAmount = fp(0);
-   
+
     sharedBeforeEach('deposit tokens to vault', async () => {
-        const balance = await mooDAI.balance();
-        const totalSupply = await mooDAI.totalSupply();
-        daiForAmount = amount.mul(balance).div(totalSupply);
-        await mooDAI.connect(user).deposit(daiForAmount);
+      const balance = await mooDAI.balance();
+      const totalSupply = await mooDAI.totalSupply();
+      daiForAmount = amount.mul(balance).div(totalSupply);
+      await mooDAI.connect(user).deposit(daiForAmount);
     });
 
     it('should withdraw underlying tokens from a beefy vault on unwrap', async () => {

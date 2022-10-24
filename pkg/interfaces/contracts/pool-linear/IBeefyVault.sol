@@ -33,7 +33,7 @@ interface IBeefyVault is IERC20 {
      */
     function getPricePerFullShare() external view returns (uint256);
 
-     /**
+    /**
      * @dev total amount of underlying want that is in the Beefy Strategy
      */
     function balance() external view returns (uint256);

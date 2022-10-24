@@ -53,7 +53,7 @@ contract BeefyLinearPoolRebalancer is LinearPoolRebalancer {
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
         // We round up to ensure the returned value will always be enough to get `wrappedAmount` when unwrapping.
         // This might result in some dust being left in the Rebalancer.
-        // Manually calculated ppfs based on the balance in the vault divided by the total supply of mooTokens. 
+        // Manually calculated ppfs based on the balance in the vault divided by the total supply of mooTokens.
         IBeefyVault beefyVault = IBeefyVault(address(_wrappedToken));
         return wrappedAmount.mul(beefyVault.balance()).divUp(beefyVault.totalSupply());
     }
