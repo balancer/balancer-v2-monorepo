@@ -21,6 +21,14 @@ const contractSettings: ContractSettings = {
     version: '0.7.1',
     runs: 200,
   },
+  '@balancer-labs/v2-pool-weighted/contracts/managed/ManagedPool.sol': {
+    version: '0.7.1',
+    runs: 200,
+  },
+  '@balancer-labs/v2-pool-weighted/contracts/test/MockManagedPool.sol': {
+    version: '0.7.1',
+    runs: 200,
+  },
 };
 
 type SolcConfig = {
