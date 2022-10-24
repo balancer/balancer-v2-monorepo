@@ -55,7 +55,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
     uint256 private constant _MIN_TOKENS = 2;
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
-    uint256 private constant _MAX_TOKENS = 38;
+    uint256 private constant _MAX_TOKENS = 50;
 
     // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
     // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee
