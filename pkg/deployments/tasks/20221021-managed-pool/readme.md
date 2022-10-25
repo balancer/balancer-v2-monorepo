@@ -15,5 +15,4 @@ A Managed Pool is a Weighted Pool with mutable tokens and weights, designed to b
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
 - [`ManagedPool` ABI](./abi/ManagedPool.json)
-- [`BaseManagedPoolFactory` ABI](./abi/BaseManagedPoolFactory.json)
 - [`ManagedPoolFactory` ABI](./abi/ManagedPoolFactory.json)
