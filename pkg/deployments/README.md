@@ -94,6 +94,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
+| Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
 
 ## Scripts
 
