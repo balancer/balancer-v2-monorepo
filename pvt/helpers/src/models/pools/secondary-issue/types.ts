@@ -43,6 +43,13 @@ export type SwapSecondaryPool = {
   data?: string;
 };
 
+export type EditOrder = {
+  ref?: string;
+  amount: BigNumberish;
+  price: BigNumberish;
+
+};
+
 export type ExitResult = {
   amountsOut: BigNumber[];
   dueProtocolFeeAmounts: BigNumber[];

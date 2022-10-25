@@ -4,6 +4,7 @@
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
+import "hardhat/console.sol";
 
 import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
@@ -325,6 +326,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         require(_order == "Buy" || _order == "Sell");
         bytes32 ref = keccak256(abi.encodePacked(_request.from, block.timestamp));
         //fill up order details
+        console.log("_request.from",_request.from);
+        console.log("msg.sender", msg.sender);
         orders[ref].party = _request.from;
         orders[ref].price = _params.price;
         orders[ref].orderno = orderRefs.length;
@@ -628,8 +631,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             "Pending",
             _executionDt
         );
-        bytes32 _transfereeDPID = ISettlor(balancerManager).getTransferAgent(_transferee);
-        bytes32 _transferorDPID = ISettlor(balancerManager).getTransferAgent(_transferor);
+        // bytes32 _transfereeDPID = ISettlor(balancerManager).getTransferAgent(_transferee);
+        // bytes32 _transferorDPID = ISettlor(balancerManager).getTransferAgent(_transferor);
         ISettlor.settlement memory tradeToSettle = ISettlor.settlement({
             transferor: _transferor,
             transferee: _transferee,
@@ -642,11 +645,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             executionDate: _executionDt,
             partyRef: _pregRef,
             counterpartyRef: _cpregRef,
-            transferorDPID: _transferorDPID,
-            transfereeDPID: _transfereeDPID,
+            transferorDPID: 0x0,
+            transfereeDPID: 0x0,
             orderPool: address(this)
         });
-        ISettlor(balancerManager).postSettlement(tradeToSettle, _tradeRef);
+        // ISettlor(balancerManager).postSettlement(tradeToSettle, _tradeRef);
     }
 
     function getTrade(bytes32 ref) external view override returns (uint256 b, uint256 a) {
@@ -703,7 +706,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {
-        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // Secondary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
         // mechanism, ensuring initialization only occurs once.
         return 0;
     }

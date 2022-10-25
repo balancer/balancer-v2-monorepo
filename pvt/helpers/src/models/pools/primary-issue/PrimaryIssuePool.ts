@@ -152,8 +152,8 @@ export default class PrimaryPool extends BasePool{
     return this.instance.maxSecurityOffered();
   }
 
-  async getissueCutoffTime(): Promise<BigNumber> {
-    return this.instance.getissueCutoffTime()();
+  async getIssueCutoffTime(): Promise<BigNumber> {
+    return this.instance.getIssueCutoffTime();
   }
 
   async balanceOf(account: Account): Promise<BigNumber> {
