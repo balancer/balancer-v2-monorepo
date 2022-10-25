@@ -29,6 +29,10 @@ Import `@balancer-labs/v2-deployments` to access the different ABIs and deployed
 
 Past deployments that are currently not in use or have been superseded can be accessed in the [Deprecated Deployments](#deprecated-deployments) section. Use `deprecated/` as prefix when referring to a deprecated task ID.
 
+> ⚠️ Exercise care when interacting with deprecated deployments: there's often a very good reason why they're no longer active.
+>
+> You can find information on why each deployment has been deprecated in their corresponding readme file.
+
 ---
 
 - **async function getBalancerContract(taskID, contract, network)**
