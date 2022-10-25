@@ -50,7 +50,7 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 15634000, function () {
     task = new Task('20221021-managed-pool', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     factory = await task.deployedInstance('ManagedPoolFactory');
-    math = await deployedAt('v2-pool-weighted/ExternalWeightedMath', await factory.getWeightedMath());
+    math = await task.instanceAt('ExternalWeightedMath', await factory.getWeightedMath());
   });
 
   before('load signers', async () => {
