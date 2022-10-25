@@ -12,7 +12,6 @@ import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
@@ -91,7 +90,7 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 15634000, function () {
     const receipt = await (await factory.connect(owner).create(newPoolParams, owner.address)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-    return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
+    return task.instanceAt('ManagedPool', event.args.pool);
   }
 
   describe('create and swap', () => {
