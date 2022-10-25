@@ -22,7 +22,7 @@ This package can be used in multiple ways, including interacting with already de
 ```solidity
 pragma solidity ^0.7.0;
 
-// Import external library interface, error messages, and library for decoding join/exit data.
+// Import Vault interface, error messages, and library for decoding join/exit data.
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
