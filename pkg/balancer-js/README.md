@@ -39,7 +39,7 @@ await bptToken.approve("0x012345....", "10000")
 
 #### Encoding userData
 
-To provide liquidity to a Balancer pool, various fields must be provided in an encoded form as the `userData` field within the `joinPool` call. Balancer.js exposes functions to simplify encoding the `userData` field used for joining and exiting various pool types to prevent errors. Similar utilities are available for `exitPool`. Note that different pool types may support a different set of join and exit calls, so make sure you're using the correct encoder. Note that the encoder for Recovery Mode exits is in /pool-utils.
+To provide liquidity to a Balancer pool, various fields must be provided in an encoded form as the `userData` field within the `joinPool` call. Balancer.js exposes functions to simplify encoding the `userData` field used for joining and exiting various pool types to prevent errors. Similar utilities are available for `exitPool`. Note that different pool types may support a different set of join and exit calls, so make sure you're using the correct encoder.
 
 Sample code that provides the initial liquidity to a WeightedPool:
 
