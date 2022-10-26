@@ -91,6 +91,11 @@ interface IBasePool is IPoolSwapStructs {
      * @dev Returns this Pool's ID, used when interacting with the Vault (to e.g. join the Pool or swap with it).
      */
     function getPoolId() external view returns (bytes32);
+    
+    /**
+     * @dev Returns this Pool's owner address.
+     */
+    function getOwner() external view returns (address);
 
     /**
      * @dev Returns the current swap fee percentage as a 18 decimal fixed point number, so e.g. 1e17 corresponds to a

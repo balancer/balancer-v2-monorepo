@@ -31,13 +31,14 @@ describe('ProtocolFeeSplitter', function () {
     poolOwner: SignerWithAddress,
     treasury: SignerWithAddress,
     newTreasury: SignerWithAddress,
-    liquidityProvider: SignerWithAddress;
+    liquidityProvider: SignerWithAddress,
+    randomSigner: SignerWithAddress;
   let assetManagers: string[];
   let tokens: TokenList;
   let poolId: string;
 
   before(async () => {
-    [, admin, poolOwner, liquidityProvider, treasury, newTreasury] = await ethers.getSigners();
+    [, admin, poolOwner, liquidityProvider, treasury, newTreasury, randomSigner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, protocol fees collector & tokens', async () => {
@@ -120,26 +121,43 @@ describe('ProtocolFeeSplitter', function () {
 
   describe('constructor', () => {
     it('sets the protocolFeesWithdrawer', async () => {
-      expect(await protocolFeeSplitter.protocolFeesWithdrawer()).to.be.eq(protocolFeesWithdrawer.address);
+      expect(await protocolFeeSplitter.getProtocolFeesWithdrawer()).to.be.eq(protocolFeesWithdrawer.address);
     });
     it('sets the treasury', async () => {
-      expect(await protocolFeeSplitter.treasury()).to.be.eq(treasury.address);
+      expect(await protocolFeeSplitter.getTreasury()).to.be.eq(treasury.address);
     });
   });
 
-  it('changes the treasury', async () => {
-    const receipt = await (await protocolFeeSplitter.connect(admin).setTreasury(newTreasury.address)).wait();
-    expectEvent.inReceipt(receipt, 'TreasuryChanged', { newTreasury: newTreasury.address });
+  describe('treasury', async () => {
+    it('changes the treasury', async () => {
+      const receipt = await (await protocolFeeSplitter.connect(admin).setTreasury(newTreasury.address)).wait();
+      expectEvent.inReceipt(receipt, 'TreasuryChanged', { newTreasury: newTreasury.address });
+      expect(await protocolFeeSplitter.getTreasury()).to.eq(newTreasury.address);
+    });
+
+    it('reverts if caller is unauthorized', async () => {
+      await expect(protocolFeeSplitter.connect(randomSigner).setTreasury(newTreasury.address)).to.be.revertedWith(
+        'SENDER_NOT_ALLOWED'
+      );
+    });
   });
 
   describe('default revenue sharing fee', async () => {
     it('sets default fee', async () => {
+      expect(await protocolFeeSplitter.getDefaultRevenueSharingFeePercentage()).to.be.eq(0);
       const newFee = bn(10e16); // 10%
       const receipt = await (
         await protocolFeeSplitter.connect(admin).setDefaultRevenueSharingFeePercentage(newFee)
       ).wait();
       expectEvent.inReceipt(receipt, 'DefaultRevenueSharingFeePercentageChanged', { revenueSharePercentage: newFee });
-      expect(await protocolFeeSplitter.defaultRevenueSharingFeePercentage()).to.be.eq(newFee);
+      expect(await protocolFeeSplitter.getDefaultRevenueSharingFeePercentage()).to.be.eq(newFee);
+    });
+
+    it('reverts if caller is not authorized', async () => {
+      const newFee = bn(10e16); // 10%
+      await expect(
+        protocolFeeSplitter.connect(liquidityProvider).setDefaultRevenueSharingFeePercentage(newFee)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 
@@ -150,6 +168,8 @@ describe('ProtocolFeeSplitter', function () {
         await protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, newFee)
       ).wait();
       expectEvent.inReceipt(receipt, 'PoolRevenueShareChanged', { poolId: poolId, revenueSharePercentage: newFee });
+      const poolSettings = await protocolFeeSplitter.getPoolSettings(poolId);
+      expect(poolSettings.revenueSharePercentageOverride).to.be.eq(newFee);
     });
 
     it('reverts with invalid input', async () => {
@@ -157,6 +177,13 @@ describe('ProtocolFeeSplitter', function () {
       await expect(
         protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, newFee)
       ).to.be.revertedWith('SPLITTER_FEE_PERCENTAGE_TOO_HIGH');
+    });
+
+    it('reverts if caller is not authorized', async () => {
+      const newFee = bn(10e16); // 10%
+      await expect(
+        protocolFeeSplitter.connect(randomSigner).setRevenueSharingFeePercentage(poolId, newFee)
+      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
   });
 
@@ -166,64 +193,86 @@ describe('ProtocolFeeSplitter', function () {
         protocolFeeSplitter.connect(liquidityProvider).setPoolBeneficiary(poolId, liquidityProvider.address)
       ).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
+
+    it('sets pool beneficiary', async () => {
+      const receipt = await (
+        await protocolFeeSplitter.connect(poolOwner).setPoolBeneficiary(poolId, randomSigner.address)
+      ).wait();
+      expectEvent.inReceipt(receipt, 'PoolBeneficiaryChanged', {
+        poolId: poolId,
+        newBeneficiary: randomSigner.address,
+      });
+      const poolSettings = await protocolFeeSplitter.getPoolSettings(poolId);
+      expect(poolSettings.beneficiary).to.be.eq(randomSigner.address);
+    });
   });
 
-  describe('collect fees', async () => {
-    it('reverts if no BPT collected', async () => {
-      expect(await pool.balanceOf(protocolFeesCollector.address)).to.equal(0);
-      await expect(protocolFeeSplitter.collectFees(poolId)).to.be.revertedWith('NO_BPT_FEES_COLLECTED');
-    });
+  context('when the fee collector holds BPT', async () => {
+    let bptBalanceOfLiquidityProvider: number;
 
-    it('distributes collected BPT fees to owner and treasury (fee percentage not defined)', async () => {
+    sharedBeforeEach('sets pool beneficiary and transfers BPT', async () => {
       // transfer BPT tokens to feesCollector
-      const bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
+      bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
       await pool.connect(liquidityProvider).transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
-
-      await protocolFeeSplitter.collectFees(poolId);
-
-      const poolOwnerBalance = await pool.balanceOf(poolOwner.address);
-      const treasuryBalance = await pool.balanceOf(treasury.address);
-
-      // pool owner should get 0, and treasury everything if fee is not defined
-      expectEqualWithError(poolOwnerBalance, 0);
-      expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
     });
 
-    it('distributes collected BPT fees to pool beneficiary and treasury (fee percentage defined)', async () => {
-      // set fee for a pool
-      await protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, bn(10e16)); // 10%
+    describe('collect fees', async () => {
+      it('distributes collected BPT fees to treasury (beneficiary is not set for a pool)', async () => {
+        await protocolFeeSplitter.collectFees(poolId);
 
-      // set pool beneficiary to own address
-      await protocolFeeSplitter.connect(poolOwner).setPoolBeneficiary(poolId, poolOwner.address);
-
-      // transfer BPT tokens to feesCollector
-      const bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
-      await pool.connect(liquidityProvider).transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
-
-      await protocolFeeSplitter.collectFees(poolId);
-
-      // 10% of bptBalanceOfLiquidityProvider should go to owner
-      const poolOwnerExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(10e16)).div(bn(1e18));
-      // 90% goes to treasury
-      const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(90e16)).div(bn(1e18));
-
-      const poolOwnerBalance = await pool.balanceOf(poolOwner.address);
-      const treasuryBalance = await pool.balanceOf(treasury.address);
-
-      expectEqualWithError(poolOwnerBalance, poolOwnerExpectedBalance);
-      expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
+        const treasuryBalance = await pool.balanceOf(treasury.address);
+        expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+      });
     });
 
-    it('distributes collected BPT fees to treasury (beneficiary is not set for a pool)', async () => {
-      // We transfer LP's BPT token to collector
-      // treasury should get everything because pool has no owner
-      const bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
-      await pool.connect(liquidityProvider).transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
+    context('fee percentage defined', async () => {
+      sharedBeforeEach('sets pool beneficiary & fee percentage', async () => {
+        await protocolFeeSplitter.connect(poolOwner).setPoolBeneficiary(poolId, poolOwner.address);
 
-      await protocolFeeSplitter.collectFees(poolId);
+        await protocolFeeSplitter.connect(admin).setRevenueSharingFeePercentage(poolId, bn(10e16)); // 10%
+      });
 
-      const treasuryBalance = await pool.balanceOf(treasury.address);
-      expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+      describe('get amounts', async () => {
+        it('returns correct amounts for beneficiary and treasury', async () => {
+          const amounts = await protocolFeeSplitter.getAmounts(poolId);
+
+          // 10% of bptBalanceOfLiquidityProvider should go to owner
+          const poolOwnerExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(10e16)).div(bn(1e18));
+          // 90% goes to treasury
+          const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(90e16)).div(bn(1e18));
+
+          expectEqualWithError(amounts.beneficiaryAmount, poolOwnerExpectedBalance);
+          expectEqualWithError(amounts.treasuryAmount, treasuryExpectedBalance);
+        });
+      });
+
+      it('distributes collected BPT fees to pool beneficiary and treasury', async () => {
+        await protocolFeeSplitter.collectFees(poolId);
+
+        // 10% of bptBalanceOfLiquidityProvider should go to owner
+        const poolOwnerExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(10e16)).div(bn(1e18));
+        // 90% goes to treasury
+        const treasuryExpectedBalance = bptBalanceOfLiquidityProvider.mul(bn(90e16)).div(bn(1e18));
+
+        const poolOwnerBalance = await pool.balanceOf(poolOwner.address);
+        const treasuryBalance = await pool.balanceOf(treasury.address);
+
+        expectEqualWithError(poolOwnerBalance, poolOwnerExpectedBalance);
+        expectEqualWithError(treasuryBalance, treasuryExpectedBalance);
+      });
+    });
+
+    describe('collect fees', async () => {
+      it('distributes collected BPT fees to owner and treasury (fee percentage not defined)', async () => {
+        await protocolFeeSplitter.collectFees(poolId);
+
+        const poolOwnerBalance = await pool.balanceOf(poolOwner.address);
+        const treasuryBalance = await pool.balanceOf(treasury.address);
+
+        // pool owner should get 0, and treasury everything if fee is not defined
+        expectEqualWithError(poolOwnerBalance, 0);
+        expectEqualWithError(treasuryBalance, bptBalanceOfLiquidityProvider);
+      });
     });
   });
 });

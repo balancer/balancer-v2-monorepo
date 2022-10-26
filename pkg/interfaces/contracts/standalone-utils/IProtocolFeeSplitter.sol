@@ -12,8 +12,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
 
 /**
  * @title ProtocolFeeSplitter
@@ -23,6 +25,13 @@ pragma experimental ABIEncoderV2;
  * otherwise all BPT tokens go to Balancer's DAO treasury
  */
 interface IProtocolFeeSplitter {
+    // Packed to use 1 storage slot
+    // 1e18 (100% - maximum fee value) can fit in uint96
+    struct RevenueShareSettings {
+        uint96 revenueSharePercentageOverride;
+        address beneficiary;
+    }
+
     event FeesCollected(
         bytes32 indexed poolId,
         address indexed beneficiary,
@@ -64,8 +73,42 @@ interface IProtocolFeeSplitter {
 
     /**
      * @notice Collects and distributes fees for a `poolId`
-     * @dev Use multicall contract for batchCollectFees
      * @param poolId - the poolId of the pool for which we collect fees
+     * @return beneficiaryAmount The amount of tokens sent to pool's beneficiary
+     * @return treasuryAmount The amount of tokens sent to Balancer's treasury
      */
-    function collectFees(bytes32 poolId) external;
+    function collectFees(bytes32 poolId) external returns (uint256 beneficiaryAmount, uint256 treasuryAmount);
+
+    /**
+     * @notice Returns default revenue sharing fee percentage
+     */
+    function getDefaultRevenueSharingFeePercentage() external returns (uint256);
+
+    /**
+     * @notice Returns amounts that can be colected
+     * @param poolId - the poolId of the pool for which we collect fees
+     * @return beneficiaryAmount The amount of tokens sent to pool's beneficiary
+     * @return treasuryAmount The amount of tokens sent to Balancer's treasury
+     */
+    function getAmounts(bytes32 poolId) external returns (uint256 beneficiaryAmount, uint256 treasuryAmount);
+
+    /**
+     * @notice Returns Balancer's treasury address
+     */
+    function getTreasury() external returns (address);
+
+    /**
+     * @notice Returns Protocol Fees Withdrawer
+     */
+    function getProtocolFeesWithdrawer() external returns (IProtocolFeesWithdrawer);
+
+    /**
+     * @notice Returns Balancer's vault address
+     */
+    function getVault() external returns (IVault);
+
+    /**
+     * @notice Returns Balancer's vault address
+     */
+    function getPoolSettings(bytes32 poolId) external returns (RevenueShareSettings memory);
 }
