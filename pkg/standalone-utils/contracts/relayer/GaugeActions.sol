@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IStakingLiquidit
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -29,6 +30,7 @@ import "./IBaseRelayerLibrary.sol";
  */
 abstract contract GaugeActions is IBaseRelayerLibrary {
     using Address for address payable;
+    using SafeERC20 for IERC20;
 
     IBalancerMinter private immutable _balancerMinter;
 
@@ -60,7 +62,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
             _pullToken(sender, bptToken, amount);
         }
 
-        bptToken.approve(address(gauge), amount);
+        bptToken.safeApprove(address(gauge), amount);
         gauge.deposit(amount, recipient);
     }
 
@@ -89,7 +91,7 @@ abstract contract GaugeActions is IBaseRelayerLibrary {
         if (recipient != address(this)) {
             IERC20 bptToken = gauge.lp_token();
 
-            bptToken.transfer(recipient, amount);
+            bptToken.safeTransfer(recipient, amount);
         }
     }
 

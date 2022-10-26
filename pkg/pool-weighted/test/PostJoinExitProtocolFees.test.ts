@@ -42,7 +42,7 @@ describe('PostJoinExitProtocolFees', () => {
   });
 
   sharedBeforeEach('deploy math', async () => {
-    math = await deploy('MockWeightedMath');
+    math = await deploy('ExternalWeightedMath');
   });
 
   sharedBeforeEach('grant permissions to admin', async () => {
@@ -120,7 +120,7 @@ describe('PostJoinExitProtocolFees', () => {
         preBalances = tokens.map(() => fp(random(MIN_POOL_TOKEN_BALANCE, MAX_POOL_TOKEN_BALANCE)));
         balanceDeltas = tokens.map(() => fp(random(0, MIN_POOL_TOKEN_BALANCE / 100)));
 
-        preInvariant = await math.invariant(poolWeights, preBalances);
+        preInvariant = await math.calculateInvariant(poolWeights, preBalances);
 
         // The supply is some factor of the invariant
         preSupply = fpMul(preInvariant, fp(random(1.5, 10)));
@@ -201,7 +201,7 @@ describe('PostJoinExitProtocolFees', () => {
               const currentBalances =
                 op == Operation.JOIN ? arrayAdd(preBalances, balanceDeltas) : arraySub(preBalances, balanceDeltas);
 
-              postInvariant = await math.invariant(poolWeights, currentBalances);
+              postInvariant = await math.calculateInvariant(poolWeights, currentBalances);
             });
           }
 
@@ -232,7 +232,7 @@ describe('PostJoinExitProtocolFees', () => {
                 balanceDeltas = arraySub(preBalances, currentBalances);
               }
 
-              postInvariant = await math.invariant(poolWeights, currentBalances);
+              postInvariant = await math.calculateInvariant(poolWeights, currentBalances);
             });
           }
 

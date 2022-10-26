@@ -53,7 +53,7 @@ describe('ManagedPoolSettings', function () {
     [, admin, owner, other] = await ethers.getSigners();
   });
 
-  const MAX_TOKENS = 38;
+  const MAX_TOKENS = 50;
   const TOKEN_COUNT = 20;
 
   const MIN_SWAP_FEE = fp(0.000001);
@@ -175,7 +175,7 @@ describe('ManagedPoolSettings', function () {
         });
       }
 
-      for (const numTokens of [2, 3, 17, 32, MAX_TOKENS]) {
+      for (const numTokens of [2, 3, 17, 32, 45, MAX_TOKENS]) {
         itComputesWeightsAndScalingFactors(numTokens);
       }
 

@@ -130,36 +130,5 @@ abstract contract RecoveryMode is IRecoveryMode, BasePoolAuthorization {
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal virtual returns (uint256, uint256[] memory) {
-        uint256 bptAmountIn = userData.recoveryModeExit();
-
-        uint256[] memory amountsOut = _computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
-
-        return (bptAmountIn, amountsOut);
-    }
-
-    function _computeProportionalAmountsOut(
-        uint256[] memory balances,
-        uint256 totalSupply,
-        uint256 bptAmountIn
-    ) internal pure returns (uint256[] memory amountsOut) {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = tokenAmountOut             /        bptIn         \                                  //
-        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
-        // bpt = bptTotalSupply                                                                      //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptRatio = bptAmountIn.divDown(totalSupply);
-
-        amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-    }
+    ) internal virtual returns (uint256, uint256[] memory);
 }

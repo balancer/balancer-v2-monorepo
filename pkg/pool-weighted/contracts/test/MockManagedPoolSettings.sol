@@ -16,14 +16,18 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "../managed/ManagedPoolSettings.sol";
+import "../ExternalWeightedMath.sol";
 
 contract MockManagedPoolSettings is ManagedPoolSettings {
     using WeightedPoolUserData for bytes;
+
+    ExternalWeightedMath private immutable _weightedMath;
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
+        ExternalWeightedMath weightedMath,
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -44,7 +48,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         )
         ManagedPoolSettings(params, protocolFeeProvider)
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _weightedMath = weightedMath;
     }
 
     function getVirtualSupply() external view returns (uint256) {
@@ -62,7 +66,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
+        uint256 invariantAfterJoin = _weightedMath.calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
@@ -92,20 +96,23 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
 
     // Pure virtual functions
 
-    function _getVirtualSupply() internal view override returns (uint256)  {
+    function _getVirtualSupply() internal view override returns (uint256) {
         return totalSupply();
     }
 
-    function _getPoolTokens()
-        internal
-        view
-        override
-        returns (IERC20[] memory tokens, uint256[] memory balances)
-    {
+    function _getPoolTokens() internal view override returns (IERC20[] memory tokens, uint256[] memory balances) {
         (tokens, balances, ) = getVault().getPoolTokens(getPoolId());
     }
 
     // Unimplemented
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal pure override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
 
     function _onSwapMinimal(
         SwapRequest memory,

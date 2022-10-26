@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -22,10 +23,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
-
-import "../lib/WeightedExitsLib.sol";
-import "../lib/WeightedJoinsLib.sol";
-import "../WeightedMath.sol";
 
 import "./ManagedPoolSettings.sol";
 
@@ -52,17 +49,20 @@ contract ManagedPool is ManagedPoolSettings {
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
     // We are only minting half of the maximum value - already an amount many orders of magnitude greater than any
     // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
+    IExternalWeightedMath private immutable _weightedMath;
 
     constructor(
         NewPoolParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
+        IExternalWeightedMath weightedMath,
         address owner,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
@@ -83,7 +83,11 @@ contract ManagedPool is ManagedPoolSettings {
         )
         ManagedPoolSettings(params, protocolFeeProvider)
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _weightedMath = weightedMath;
+    }
+
+    function _getWeightedMath() internal view returns (IExternalWeightedMath) {
+        return _weightedMath;
     }
 
     // Virtual Supply
@@ -203,7 +207,7 @@ contract ManagedPool is ManagedPoolSettings {
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
             // Once fees are removed we can then calculate the equivalent BPT amount.
-            amountCalculated = WeightedMath._calcBptOutGivenExactTokenIn(
+            amountCalculated = _getWeightedMath().calcBptOutGivenExactTokenIn(
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
@@ -213,7 +217,7 @@ contract ManagedPool is ManagedPoolSettings {
         } else {
             // In `GIVEN_OUT` joinswaps, `request.amount` is the amount of BPT leaving the pool, which does not need any
             // scaling.
-            amountCalculated = WeightedMath._calcTokenInGivenExactBptOut(
+            amountCalculated = _getWeightedMath().calcTokenInGivenExactBptOut(
                 balanceTokenIn,
                 tokenInWeight,
                 request.amount,
@@ -272,7 +276,7 @@ contract ManagedPool is ManagedPoolSettings {
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // In `GIVEN_IN` exitswaps, `request.amount` is the amount of BPT entering the pool, which does not need any
             // scaling.
-            amountCalculated = WeightedMath._calcTokenOutGivenExactBptIn(
+            amountCalculated = _getWeightedMath().calcTokenOutGivenExactBptIn(
                 balanceTokenOut,
                 tokenOutWeight,
                 request.amount,
@@ -280,11 +284,11 @@ contract ManagedPool is ManagedPoolSettings {
                 swapFeePercentage
             );
         } else {
-            // In `GIVEN_IN` exitswaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
+            // In `GIVEN_OUT` exitswaps, `request.amount` is the amount of tokens leaving the pool so we upscale with
             // `scalingFactorTokenOut`.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            amountCalculated = WeightedMath._calcBptInGivenExactTokenOut(
+            amountCalculated = _getWeightedMath().calcBptInGivenExactTokenOut(
                 balanceTokenOut,
                 tokenOutWeight,
                 request.amount,
@@ -356,7 +360,7 @@ contract ManagedPool is ManagedPoolSettings {
             uint256 amountInMinusFees = request.amount.mulDown(swapFeeComplement);
 
             // Once fees are removed we can then calculate the equivalent amount of `tokenOut`.
-            amountCalculated = WeightedMath._calcOutGivenIn(
+            amountCalculated = _getWeightedMath().calcOutGivenIn(
                 balanceTokenIn,
                 tokenData.tokenInWeight,
                 balanceTokenOut,
@@ -370,7 +374,7 @@ contract ManagedPool is ManagedPoolSettings {
 
             // We first calculate how many tokens must be sent in order to receive `request.amount` tokens out.
             // This calculation does not yet include fees.
-            uint256 amountInMinusFees = WeightedMath._calcInGivenOut(
+            uint256 amountInMinusFees = _getWeightedMath().calcInGivenOut(
                 balanceTokenIn,
                 tokenData.tokenInWeight,
                 balanceTokenOut,
@@ -456,7 +460,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256[] memory scalingFactors = _scalingFactors(tokens);
         _upscaleArray(amountsIn, scalingFactors);
 
-        uint256 invariantAfterJoin = WeightedMath._calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
+        uint256 invariantAfterJoin = _getWeightedMath().calculateInvariant(_getNormalizedWeights(tokens), amountsIn);
 
         // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
         // consistent in Pools with similar compositions but different number of tokens.
@@ -553,7 +557,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
             return
-                WeightedJoinsLib.joinExactTokensInForBPTOut(
+                _getWeightedMath().joinExactTokensInForBPTOut(
                     balances,
                     normalizedWeights,
                     scalingFactors,
@@ -563,7 +567,7 @@ contract ManagedPool is ManagedPoolSettings {
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return
-                WeightedJoinsLib.joinTokenInForExactBPTOut(
+                _getWeightedMath().joinTokenInForExactBPTOut(
                     balances,
                     normalizedWeights,
                     totalSupply,
@@ -571,7 +575,7 @@ contract ManagedPool is ManagedPoolSettings {
                     userData
                 );
         } else if (kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
-            return WeightedJoinsLib.joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
+            return _getWeightedMath().joinAllTokensInForExactBPTOut(balances, totalSupply, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
@@ -657,7 +661,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return
-                WeightedExitsLib.exitExactBPTInForTokenOut(
+                _getWeightedMath().exitExactBPTInForTokenOut(
                     balances,
                     normalizedWeights,
                     totalSupply,
@@ -665,10 +669,10 @@ contract ManagedPool is ManagedPoolSettings {
                     userData
                 );
         } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return WeightedExitsLib.exitExactBPTInForTokensOut(balances, totalSupply, userData);
+            return _getWeightedMath().exitExactBPTInForTokensOut(balances, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return
-                WeightedExitsLib.exitBPTInForExactTokensOut(
+                _getWeightedMath().exitBPTInForExactTokensOut(
                     balances,
                     normalizedWeights,
                     scalingFactors,
@@ -681,14 +685,11 @@ contract ManagedPool is ManagedPoolSettings {
         }
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
-    ) internal virtual override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
+    ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
         // total supply to correctly distribute Pool assets proportionally.
         // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
@@ -697,7 +698,8 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 virtualSupply;
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
-        (bptAmountIn, amountsOut) = super._doRecoveryModeExit(balances, virtualSupply, userData);
+        bptAmountIn = userData.recoveryModeExit();
+        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, virtualSupply);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
@@ -787,8 +789,7 @@ contract ManagedPool is ManagedPoolSettings {
         // Since this is a swap, we do not have all the tokens, balances, or weights, and need to fetch them.
         (IERC20[] memory tokens, uint256[] memory balances) = _getPoolTokens();
         uint256[] memory normalizedWeights = _getNormalizedWeights(tokens);
-        uint256[] memory scalingFactors = _scalingFactors(tokens);
-        _upscaleArray(balances, scalingFactors);
+        _upscaleArray(balances, _scalingFactors(tokens));
 
         // Initialize to all zeros, and set the amount associated with the swap.
         uint256[] memory amounts = new uint256[](tokens.length);

@@ -11,7 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -23,7 +23,6 @@ const METADATA = '0x4b04c67fb743403d339729f8438ecad295a3a015ca144a0945bb6bb9abe3
 let admin: SignerWithAddress;
 let manager: SignerWithAddress;
 let other: SignerWithAddress;
-let assetManager: Contract;
 let pool: WeightedPool;
 let allTokens: TokenList;
 let vault: Vault;
@@ -42,8 +41,6 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
 
   allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   await allTokens.mint({ to: manager, amount: fp(100) });
-
-  assetManager = await deploy('MockAssetManager', { args: [allTokens.DAI.address] });
 });
 
 async function deployControllerAndPool(canTransfer = true, canChangeSwapFee = true, canUpdateMetadata = true) {
@@ -57,7 +54,7 @@ async function deployControllerAndPool(canTransfer = true, canChangeSwapFee = tr
 
   poolController = await deploy('BasePoolController', { from: manager, args: [controllerState, manager.address] });
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
-  assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
+  assetManagers[allTokens.indexOf(allTokens.DAI)] = await randomAddress();
 
   const params = {
     vault,

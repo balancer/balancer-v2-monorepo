@@ -101,6 +101,9 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy('v2-pool-weighted/ManagedPool', {
           args: [
             {
@@ -118,11 +121,16 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
           ],
           from,
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+            ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+          },
         });
         break;
       }
@@ -130,6 +138,10 @@ export default {
         if (mockContractName == undefined) {
           throw new Error('Mock contract name required to deploy mock base pool');
         }
+        const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
+
+        const math = await deploy('v2-pool-weighted/ExternalWeightedMath');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         result = deploy(mockContractName, {
           args: [
             {
@@ -147,11 +159,16 @@ export default {
             },
             vault.address,
             vault.protocolFeesProvider.address,
+            math.address,
             owner,
             pauseWindowDuration,
             bufferPeriodDuration,
           ],
           from,
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+            ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+          },
         });
         break;
       }
@@ -221,13 +238,19 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
-        const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+        const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
+        const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
+        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
           args: [vault.address, vault.getFeesProvider().address],
           from,
+          libraries: {
+            CircuitBreakerLib: circuitBreakerLib.address,
+            ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+          },
         });
 
-        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-          args: [baseFactory.address],
+        const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
+          args: [factory.address],
           from,
         });
 
@@ -259,7 +282,7 @@ export default {
           canChangeMgmtFees: true,
         };
 
-        const tx = await factory
+        const tx = await controlledFactory
           .connect(from || ZERO_ADDRESS)
           .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();

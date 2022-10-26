@@ -51,7 +51,7 @@ contract MockStaticATokenLM is ERC20Mock, IStaticATokenLM {
 
     // solhint-disable-next-line func-name-mixedcase
     function LENDING_POOL() external pure override returns (address) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function rate() public pure override returns (uint256) {
@@ -94,11 +94,11 @@ contract MockStaticATokenLM is ERC20Mock, IStaticATokenLM {
         bytes32,
         bytes32
     ) public pure override {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getDomainSeparator() public pure override returns (bytes32) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function withdrawDynamicAmount(
@@ -106,7 +106,7 @@ contract MockStaticATokenLM is ERC20Mock, IStaticATokenLM {
         uint256,
         bool
     ) external pure override returns (uint256, uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function metaDeposit(
@@ -118,7 +118,7 @@ contract MockStaticATokenLM is ERC20Mock, IStaticATokenLM {
         uint256,
         SignatureParams calldata
     ) external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function metaWithdraw(
@@ -130,15 +130,15 @@ contract MockStaticATokenLM is ERC20Mock, IStaticATokenLM {
         uint256,
         SignatureParams calldata
     ) external pure override returns (uint256, uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function dynamicBalanceOf(address) external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function collectAndUpdateRewards() external pure override {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function claimRewardsOnBehalf(
@@ -146,50 +146,50 @@ contract MockStaticATokenLM is ERC20Mock, IStaticATokenLM {
         address,
         bool
     ) external pure override {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function claimRewards(address, bool) external pure override {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function claimRewardsToSelf(bool) external pure override {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getTotalClaimableRewards() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getClaimableRewards(address) external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getUnclaimedRewards(address) external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getAccRewardsPerToken() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getLifetimeRewardsClaimed() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getLifetimeRewards() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getLastRewardBlock() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function INCENTIVES_CONTROLLER() external pure override returns (address) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function REWARD_TOKEN() external pure override returns (IERC20) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 }
