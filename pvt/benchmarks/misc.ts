@@ -206,12 +206,16 @@ async function deployPoolFromFactory(
   let factory: Contract;
 
   if (poolName == 'ManagedPool') {
+    const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
-    const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+    const baseFactory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address],
-      libraries: { CircuitBreakerLib: circuitBreakerLib.address },
+      libraries: {
+        CircuitBreakerLib: circuitBreakerLib.address,
+        ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
+      },
     });
-    factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
+    factory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   } else {

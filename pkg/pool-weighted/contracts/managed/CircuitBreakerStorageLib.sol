@@ -68,8 +68,8 @@ library CircuitBreakerStorageLib {
 
     // Store circuit breaker information per token
     // When the circuit breaker is set, the caller passes in the lower and upper bounds (expressed as percentages),
-    // and the current BPT price and normalized weight. Since this value is bounded by 1e18, which fits in ~60 bits,
-    // there is no need for compression.
+    // the current BPT price, and the normalized weight. The weight is bound by 1e18, and fits in ~60 bits, so there
+    // is no need for compression. We store the weight in 64 bits, just to use round numbers for all the bit lengths.
     //
     // We then store the current BPT price, and compute and cache the adjusted lower and upper bounds at the current
     // weight. When multiplied by the stored BPT price, the adjusted bounds define the BPT price trading range: the
@@ -146,11 +146,11 @@ library CircuitBreakerStorageLib {
      * given as: (boundaryPercentage)**(1 - weight).
      *
      * For instance, given the 80/20 BAL/WETH pool with a 90% lower bound, the weight complement would be
-     * (1 - 0.8) = 0.2, so the lower adjusted bound would be (0.9 ** 0.2) ~ 0.9791.
+     * (1 - 0.8) = 0.2, so the lower adjusted bound would be (0.9 ** 0.2) ~ 0.9791. For the WETH token at 20%,
+     * the bound would be (0.9 ** 0.8) ~ 0.9192.
      *
-     * With unequal weights (assuming a balance pool), the balance of a higher-weight token will respond less
-     * to a proportional change in spot price than a lower weight token. In the simulations, Integrations
-     * coined the term "balance inertia".
+     * With unequal weights (assuming a balanced pool), the balance of a higher-weight token will respond less
+     * to a proportional change in spot price than a lower weight token, which we might call "balance inertia".
      *
      * If the external price drops, all else being equal, the pool would be arbed until the percent drop in spot
      * price equaled the external price drop. Since during this process the *internal* pool price would be
@@ -170,13 +170,21 @@ library CircuitBreakerStorageLib {
      * So we see that the "conversion factor" between the spot price ratio and BPT Price ratio can be written
      * as above BPT1 = BPT0 * (1/k), or more simply: (BPT price) * (priceRatio)**(1 - weight).
      *
+     * Another way to think of it is in terms of "BPT Value". Assuming a balanced pool, a token with a weight
+     * of 80% represents 80% of the value of the BPT. An uncorrelated drop in that token's value would drop
+     * the value of LP shares much faster than a similar drop in the value of a 20% token. Whatever the value
+     * of the bound percentage, as the adjustment factor - B ** (1 - weight) - approaches 1, less adjustment
+     * is necessary: it tracks the relative price movement more closely. Intuitively, this is wny we use the
+     * complement of the weight. Higher weight = lower exponent = adjustment factor closer to 1.0 = "faster"
+     * tracking of value changes.
+     *
      * If the value of the weight has not changed, we can use the cached adjusted bounds stored when the breaker
      * was set. Otherwise, we need to calculate them.
      *
      * As described in the general comments above, the weight adjustment calculation attempts to isolate changes
-     * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by an
-     * ongoing weight update, or changes to the pool composition. There is a non-linear relationship between "spot"
-     * price changes and BPT price changes. This calculation transforms one into the other.
+     * in the balance due to arbitrageurs responding to external prices, from internal price changes caused by
+     * weight changes. There is a non-linear relationship between "spot" price changes and BPT price changes.
+     * This calculation transforms one into the other.
      * @param circuitBreakerState - The bytes32 state of the token of interest.
      * @param currentWeight - The token's current normalized weight.
      * @param isLowerBound - Flag indicating whether this is the lower bound.
