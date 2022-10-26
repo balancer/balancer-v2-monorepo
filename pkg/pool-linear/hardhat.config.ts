@@ -16,4 +16,5 @@ export default {
     compilers: hardhatBaseConfig.compilers,
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
+  warnings: hardhatBaseConfig.warnings,
 };
