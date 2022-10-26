@@ -25,17 +25,19 @@ describe('ProtocolFeeSplitter', function () {
   let factory: Contract;
   let protocolFeesCollector: Contract;
   let protocolFeeSplitter: Contract;
+  let protocolFeesWithdrawer: Contract;
   let pool: Contract;
   let admin: SignerWithAddress,
     poolOwner: SignerWithAddress,
     treasury: SignerWithAddress,
+    newTreasury: SignerWithAddress,
     liquidityProvider: SignerWithAddress;
   let assetManagers: string[];
   let tokens: TokenList;
   let poolId: string;
 
   before(async () => {
-    [, admin, poolOwner, liquidityProvider, treasury] = await ethers.getSigners();
+    [, admin, poolOwner, liquidityProvider, treasury, newTreasury] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, protocol fees collector & tokens', async () => {
@@ -48,7 +50,9 @@ describe('ProtocolFeeSplitter', function () {
   });
 
   sharedBeforeEach('deploy tokens, pools & gives initial liquidity', async () => {
-    factory = await deploy('v2-pool-weighted/WeightedPoolFactory', { args: [vault.address] });
+    factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address],
+    });
     assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
     pool = await createPool(poolOwner.address);
     poolId = await pool.getPoolId();
@@ -67,9 +71,13 @@ describe('ProtocolFeeSplitter', function () {
       .joinPool(poolId, liquidityProvider.address, liquidityProvider.address, request);
   });
 
-  sharedBeforeEach('deploy ProtocolFeeSplitter & grant permissions', async () => {
+  sharedBeforeEach('deploy ProtocolFeeSplitter, ProtocolFeesWithdrawer & grant permissions', async () => {
+    protocolFeesWithdrawer = await deploy('ProtocolFeesWithdrawer', {
+      args: [vault.address, []],
+    });
+
     protocolFeeSplitter = await deploy('ProtocolFeeSplitter', {
-      args: [protocolFeesCollector.address, treasury.address],
+      args: [protocolFeesWithdrawer.address, treasury.address],
     });
 
     const setRevenueSharingFeeRole = await actionId(protocolFeeSplitter, 'setRevenueSharingFeePercentage');
@@ -81,8 +89,16 @@ describe('ProtocolFeeSplitter', function () {
     );
     await vault.grantPermissionsGlobally([setDefaultRevenueSharingFeePercentageRole], admin);
 
+    // Allow withdrawer to pull from collector
     const withdrawCollectedFeesRole = await actionId(protocolFeesCollector, 'withdrawCollectedFees');
-    await vault.grantPermissionsGlobally([withdrawCollectedFeesRole], protocolFeeSplitter);
+    await vault.grantPermissionsGlobally([withdrawCollectedFeesRole], protocolFeesWithdrawer);
+
+    // Allow fee splitter to pull from withdrawer
+    const withdrawCollectedFeesWithdrawerRole = await actionId(protocolFeesWithdrawer, 'withdrawCollectedFees');
+    await vault.grantPermissionsGlobally([withdrawCollectedFeesWithdrawerRole], protocolFeeSplitter);
+
+    const setTreasuryRole = await actionId(protocolFeeSplitter, 'setTreasury');
+    await vault.grantPermissionsGlobally([setTreasuryRole], admin);
   });
 
   async function createPool(poolOwnerAddress: string): Promise<Contract> {
@@ -103,12 +119,17 @@ describe('ProtocolFeeSplitter', function () {
   }
 
   describe('constructor', () => {
-    it('sets the protocolFeesCollector', async () => {
-      expect(await protocolFeeSplitter.protocolFeesCollector()).to.be.eq(protocolFeesCollector.address);
+    it('sets the protocolFeesWithdrawer', async () => {
+      expect(await protocolFeeSplitter.protocolFeesWithdrawer()).to.be.eq(protocolFeesWithdrawer.address);
     });
     it('sets the treasury', async () => {
       expect(await protocolFeeSplitter.treasury()).to.be.eq(treasury.address);
     });
+  });
+
+  it('changes the treasury', async () => {
+    const receipt = await (await protocolFeeSplitter.connect(admin).setTreasury(newTreasury.address)).wait();
+    expectEvent.inReceipt(receipt, 'TreasuryChanged', { newTreasury: newTreasury.address });
   });
 
   describe('default revenue sharing fee', async () => {
