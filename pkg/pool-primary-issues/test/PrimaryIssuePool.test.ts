@@ -363,5 +363,42 @@ describe('PrimaryPool', function () {
       });
     });
   });
+
+  describe('joins and exits', () => {
+    sharedBeforeEach('deploy pool', async () => {
+    await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, false);
+    await pool.initialize();
+    });
+
+    it('regular joins should revert', async () => {
+    const { tokens: allTokens } = await pool.getTokens();
+    
+    const tx = pool.vault.joinPool({
+      poolAddress: pool.address,
+      poolId: await pool.getPoolId(),
+      recipient: lp.address,
+      tokens: allTokens,
+      data: '0x',
+      });
+    
+    await expect(tx).to.be.revertedWith('UNHANDLED_BY_PRIMARY_POOL');
+    });
+    
+    it('regular exits should revert', async () => {
+      // await pool.pause();
+      await pool.exitPool();  
+    // const tx = pool.vault.exitPool({
+    //   poolAddress: pool.address,
+    //   poolId: await pool.getPoolId(),
+    //   recipient: lp.address,
+    //   tokens: allTokens,
+    //   data: data,
+    //   });
+
+    // console.log("mama",tx);
+    
+    // await expect(tx).to.be.revertedWith('UNHANDLED_BY_PRIMARY_POOL');
+    });
+  });
   
 });
