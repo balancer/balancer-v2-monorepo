@@ -14,7 +14,7 @@ import {
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { currentTimestamp, MONTH, DAY, HOUR } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { ZERO_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, MAX_UINT256, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -26,7 +26,6 @@ const MIN_WEIGHT_CHANGE_DURATION = DAY;
 let admin: SignerWithAddress;
 let manager: SignerWithAddress;
 let other: SignerWithAddress;
-let assetManager: Contract;
 let pool: WeightedPool;
 let allTokens: TokenList;
 let vault: Vault;
@@ -50,8 +49,6 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
   allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   await allTokens.mint({ to: manager, amount: fp(100) });
   await allTokens.mint({ to: other, amount: fp(100) });
-
-  assetManager = await deploy('MockAssetManager', { args: [allTokens.DAI.address] });
 });
 
 async function deployControllerAndPool(
@@ -87,7 +84,7 @@ async function deployControllerAndPool(
     args: [basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address],
   });
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
-  assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
+  assetManagers[allTokens.indexOf(allTokens.DAI)] = await randomAddress();
 
   const params = {
     vault,
