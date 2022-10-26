@@ -44,7 +44,7 @@ export function checkArtifact(task: Task): void {
       const fileName = path.parse(buildInfoFileName).name;
       const contractName = fileName;
 
-      const expectedArtifact = extractContractArtifact(task, contractName, contractName);
+      const expectedArtifact = extractContractArtifact(task, fileName, contractName);
       const { abi, bytecode } = readContractABIAndBytecode(task, contractName);
 
       const bytecodeMatch = bytecode === expectedArtifact.evm.bytecode.object;
