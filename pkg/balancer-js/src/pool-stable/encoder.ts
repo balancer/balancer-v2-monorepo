@@ -10,8 +10,8 @@ export enum StablePoolJoinKind {
 
 export enum StablePoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
-  BPT_IN_FOR_EXACT_TOKENS_OUT,
   EXACT_BPT_IN_FOR_TOKENS_OUT,
+  BPT_IN_FOR_EXACT_TOKENS_OUT
 }
 
 export class StablePoolEncoder {
