@@ -22,9 +22,9 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
-import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
-import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
+import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
@@ -47,7 +47,7 @@ import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is
+abstract contract NewBasePool is
     IBasePool,
     IGeneralPool,
     IMinimalSwapInfoPool,

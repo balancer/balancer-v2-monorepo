@@ -28,7 +28,7 @@ import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
-describe('BasePool', function () {
+describe('NewBasePool', function () {
   let admin: SignerWithAddress,
     poolOwner: SignerWithAddress,
     deployer: SignerWithAddress,
@@ -85,7 +85,7 @@ describe('BasePool', function () {
     if (!owner) owner = ZERO_ADDRESS;
     if (!from) from = deployer;
 
-    return deploy('v2-pool-weighted/MockBasePool', {
+    return deploy('MockNewBasePool', {
       from,
       args: [
         vault.address,

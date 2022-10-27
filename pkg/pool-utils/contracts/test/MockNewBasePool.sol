@@ -17,11 +17,10 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+import "../lib/PoolRegistrationLib.sol";
+import "../NewBasePool.sol";
 
-import "../managed/vendor/BasePool.sol";
-
-contract MockBasePool is BasePool {
+contract MockNewBasePool is NewBasePool {
     uint256 public constant ON_SWAP_MINIMAL_RETURN = 0xa987654321;
     uint256 public constant ON_SWAP_GENERAL_RETURN = 0x123456789a;
     uint256 public constant ON_JOIN_RETURN = 0xbbaa11;
@@ -50,7 +49,7 @@ contract MockBasePool is BasePool {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        NewBasePool(
             vault,
             PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers),
             name,

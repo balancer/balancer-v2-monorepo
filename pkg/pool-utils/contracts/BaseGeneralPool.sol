@@ -22,9 +22,9 @@ import "./BasePool.sol";
 /**
  * @dev Extension of `BasePool`, adding a handler for `IGeneralPool.onSwap`.
  *
- * Derived contracts must call `BasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut` along with
- * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the General
- * specialization setting.
+ * Derived contracts must call `BasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut`
+ * along with `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the
+ * General specialization setting.
  */
 abstract contract BaseGeneralPool is IGeneralPool, BasePool {
     // Swap Hooks

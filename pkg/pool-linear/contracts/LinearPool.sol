@@ -38,8 +38,8 @@ import "./LinearMath.sol";
  * The Pool will register three tokens in the Vault however: the two assets and the BPT itself,
  * so that BPT can be exchanged (effectively joining and exiting) via swaps.
  *
- * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins and
- * exits, as the initial BPT supply is 'preminted' during initialization. No further BPT can be minted, and BPT can
+ * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins
+ * and exits, as the initial BPT supply is 'preminted' during initialization. No further BPT can be minted, and BPT can
  * only be burned if governance enables Recovery Mode and LPs use it to exit proportionally.
  *
  * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
@@ -86,8 +86,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    // The lower and upper targets are in BasePool's misc data field, which has 192 bits available (as it shares the
-    // same storage slot as the swap fee percentage and recovery mode flag, which together take up 64 bits).
+    // The lower and upper targets are in BasePool's misc data field, which has 192 bits available (as it shares
+    // the same storage slot as the swap fee percentage and recovery mode flag, which together take up 64 bits).
     // We use 64 of these 192 for the targets (32 for each).
     //
     // The targets are already scaled by the main token's scaling factor (which makes the token behave as if it had 18
