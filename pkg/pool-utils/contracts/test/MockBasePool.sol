@@ -17,25 +17,18 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
-import "../lib/PoolRegistrationLib.sol";
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
-    uint256 public constant ON_SWAP_MINIMAL_RETURN = 0xa987654321;
-    uint256 public constant ON_SWAP_GENERAL_RETURN = 0x123456789a;
-    uint256 public constant ON_JOIN_RETURN = 0xbbaa11;
-    uint256 public constant ON_EXIT_RETURN = 0x11aabb;
-
     using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
-    bool private _inRecoveryMode;
+    uint256 private immutable _totalTokens;
 
-    event InnerOnInitializePoolCalled(bytes userData);
-    event InnerOnSwapMinimalCalled(SwapRequest request, uint256 balanceTokenIn, uint256 balanceTokenOut);
-    event InnerOnSwapGeneralCalled(SwapRequest request, uint256[] balances, uint256 indexIn, uint256 indexOut);
-    event InnerOnJoinPoolCalled(address sender, uint256[] balances, bytes userData);
-    event InnerOnExitPoolCalled(address sender, uint256[] balances, bytes userData);
+    bool private _failBeforeSwapJoinExit;
+
+    event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
+    event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
     event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
 
     constructor(
@@ -45,24 +38,43 @@ contract MockBasePool is BasePool {
         string memory symbol,
         IERC20[] memory tokens,
         address[] memory assetManagers,
+        uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration,
         address owner
     )
         BasePool(
             vault,
-            PoolRegistrationLib.registerPoolWithAssetManagers(vault, specialization, tokens, assetManagers),
+            specialization,
             name,
             symbol,
+            tokens,
+            assetManagers,
+            swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
         )
-    {}
+    {
+        _failBeforeSwapJoinExit = false;
+        _totalTokens = tokens.length;
+    }
 
-    function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
-        emit InnerOnInitializePoolCalled(userData);
+    function setMiscData(bytes32 data) external {
+        _setMiscData(data);
+    }
 
+    function getMiscData() external view returns (bytes32) {
+        return _getMiscData();
+    }
+
+    function _onInitializePool(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        bytes memory userData
+    ) internal pure override returns (uint256, uint256[] memory) {
         uint256[] memory amountsIn = userData.initialAmountsIn();
         uint256 bptAmountOut;
 
@@ -73,79 +85,80 @@ contract MockBasePool is BasePool {
         return (bptAmountOut, amountsIn);
     }
 
-    function _onSwapMinimal(
-        SwapRequest memory request,
-        uint256 balanceTokenIn,
-        uint256 balanceTokenOut
-    ) internal override returns (uint256) {
-        emit InnerOnSwapMinimalCalled(request, balanceTokenIn, balanceTokenOut);
-        return ON_SWAP_MINIMAL_RETURN;
-    }
-
-    function _onSwapGeneral(
-        SwapRequest memory request,
-        uint256[] memory balances,
-        uint256 indexIn,
-        uint256 indexOut
-    ) internal override returns (uint256) {
-        emit InnerOnSwapGeneralCalled(request, balances, indexIn, indexOut);
-        return ON_SWAP_GENERAL_RETURN;
-    }
-
     function _onJoinPool(
-        address sender,
+        bytes32,
+        address,
+        address,
         uint256[] memory balances,
-        bytes memory userData
+        uint256,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory,
+        bytes memory
     ) internal override returns (uint256, uint256[] memory) {
-        emit InnerOnJoinPoolCalled(sender, balances, userData);
+        emit InnerOnJoinPoolCalled(protocolSwapFeePercentage);
 
-        uint256[] memory amountsIn = new uint256[](balances.length);
-        for (uint256 i = 0; i < amountsIn.length; ++i) {
-            amountsIn[i] = ON_JOIN_RETURN;
-        }
-        return (0, amountsIn);
+        return (0, new uint256[](balances.length));
     }
 
     function _onExitPool(
-        address sender,
+        bytes32,
+        address,
+        address,
         uint256[] memory balances,
-        bytes memory userData
+        uint256,
+        uint256 protocolSwapFeePercentage,
+        uint256[] memory,
+        bytes memory
     ) internal override returns (uint256, uint256[] memory) {
-        emit InnerOnExitPoolCalled(sender, balances, userData);
+        emit InnerOnExitPoolCalled(protocolSwapFeePercentage);
 
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < amountsOut.length; ++i) {
-            amountsOut[i] = ON_EXIT_RETURN;
-        }
-        return (0, amountsOut);
+        return (0, new uint256[](balances.length));
     }
 
-    function inRecoveryMode() public view override returns (bool) {
-        return _inRecoveryMode;
+    function setFailBeforeSwapJoinExit(bool fail) external {
+        _failBeforeSwapJoinExit = fail;
     }
 
-    function _setRecoveryMode(bool enabled) internal override {
-        _inRecoveryMode = enabled;
-    }
-
-    function getScalingFactors() external pure override returns (uint256[] memory) {
-        _revert(Errors.UNIMPLEMENTED);
-    }
-
-    function getSwapFeePercentage() external pure override returns (uint256) {
-        _revert(Errors.UNIMPLEMENTED);
+    function _beforeSwapJoinExit() internal override {
+        require(!_failBeforeSwapJoinExit, "FAIL_BEFORE_SWAP_JOIN_EXIT");
+        super._beforeSwapJoinExit();
     }
 
     function payProtocolFees(uint256 bptAmount) public {
         _payProtocolFees(bptAmount);
     }
 
-    function getMinimumBpt() external pure returns (uint256) {
-        return _getMinimumBpt();
+    function _getMaxTokens() internal pure override returns (uint256) {
+        return 8;
     }
 
-    function onlyVaultCallable(bytes32 poolId) public view onlyVault(poolId) {
+    function _getTotalTokens() internal view override returns (uint256) {
+        return _totalTokens;
+    }
+
+    function _scalingFactor(IERC20) internal pure override returns (uint256) {
+        return FixedPoint.ONE;
+    }
+
+    function _scalingFactors() internal view override returns (uint256[] memory scalingFactors) {
+        uint256 numTokens = _getTotalTokens();
+
+        scalingFactors = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; i++) {
+            scalingFactors[i] = FixedPoint.ONE;
+        }
+    }
+
+    function doNotCallInRecovery() external view whenNotInRecoveryMode {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function notCallableInRecovery() external view {
+        _ensureNotInRecoveryMode();
+    }
+
+    function onlyCallableInRecovery() external view {
+        _ensureInRecoveryMode();
     }
 
     function _doRecoveryModeExit(

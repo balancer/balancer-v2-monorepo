@@ -46,7 +46,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         address owner,
         bool mutableTokens
     )
-        LegacyBasePool(
+        BasePool(
             vault,
             // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
             // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free

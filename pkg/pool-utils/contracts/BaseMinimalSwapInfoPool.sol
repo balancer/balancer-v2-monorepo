@@ -17,16 +17,16 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
-import "./LegacyBasePool.sol";
+import "./BasePool.sol";
 
 /**
- * @dev Extension of `LegacyBasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
+ * @dev Extension of `BasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
  *
- * Derived contracts must call `LegacyBasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut`
- * along with `LegacyBasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the
+ * Derived contracts must call `BasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut`
+ * along with `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the
  * Two Token or Minimal Swap Info specialization settings.
  */
-abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, LegacyBasePool {
+abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     // Swap Hooks
 
     function onSwap(

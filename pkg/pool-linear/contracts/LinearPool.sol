@@ -21,7 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -38,7 +38,7 @@ import "./LinearMath.sol";
  * The Pool will register three tokens in the Vault however: the two assets and the BPT itself,
  * so that BPT can be exchanged (effectively joining and exiting) via swaps.
  *
- * Despite inheriting from LegacyBasePool, much of the basic behavior changes. This Pool does not support regular joins
+ * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins
  * and exits, as the initial BPT supply is 'preminted' during initialization. No further BPT can be minted, and BPT can
  * only be burned if governance enables Recovery Mode and LPs use it to exit proportionally.
  *
@@ -51,7 +51,7 @@ import "./LinearMath.sol";
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  * Accordingly, this Pool does not pay any protocol fees.
  */
-abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, LegacyBasePool {
+abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePool {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -86,7 +86,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, Legacy
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    // The lower and upper targets are in LegacyBasePool's misc data field, which has 192 bits available (as it shares
+    // The lower and upper targets are in BasePool's misc data field, which has 192 bits available (as it shares
     // the same storage slot as the swap fee percentage and recovery mode flag, which together take up 64 bits).
     // We use 64 of these 192 for the targets (32 for each).
     //
@@ -124,7 +124,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, Legacy
         uint256 bufferPeriodDuration,
         address owner
     )
-        LegacyBasePool(
+        BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
             name,
