@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT112, MAX_UINT96, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
@@ -203,6 +203,22 @@ describe('SecondaryPool', function () {
         
         expect(buy_order.toString()).to.be.equals(request_amount.toString());
       });
+
+      context('when pool paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.currencyIndex,
+              out: pool.securityIndex,
+              amount: buy_amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
     });
 
     context('Placing Limit order', () => {
@@ -235,6 +251,22 @@ describe('SecondaryPool', function () {
         const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
 
         expect(buy_order.toString()).to.be.equals(request_amount.toString());
+      });
+
+      context('when pool paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.currencyIndex,
+              out: pool.securityIndex,
+              amount: buy_amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
       });
     });
 
@@ -270,6 +302,133 @@ describe('SecondaryPool', function () {
 
       expect(buy_order.toString()).to.be.equals(request_amount.toString());
     });
+
+    context('when pool paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.pause();
+      });
+      it('reverts', async () => {
+        await expect(
+          pool.swapGivenOut({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: buy_amount,
+            balances: currentBalances,
+          })
+        ).to.be.revertedWith('PAUSED');
+      });
+    });
+
+  });
+
+  context('Placing Edit Order Request', () => {
+    let sell_amount: BigNumber;
+    let buy_amount: BigNumber;
+
+    sharedBeforeEach('initialize values ', async () => {
+      sell_amount = BigNumber.from("10"); //qty
+      buy_amount = BigNumber.from("25"); //qty
+    });
+    
+    it('accepts edited order', async () => {
+      const stop_order = await pool.swapGivenIn({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        balances: currentBalances,
+        from: other,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit12')) // Stop Order Sell@price12
+      });
+
+      const _ref = await pool.getOrderRef();
+      console.log(_ref);
+      const edit_order = await pool.editOrder({
+        ref: _ref[0].toString(),
+        price: BigNumber.from("25"), //Changed price from 12 --> 25
+        amount: buy_amount //Changed Qty from 10 --> 25
+      });
+
+      const buy_order = await pool.swapGivenIn({
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_amount, //Qty 25
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market25')) // MarketOrder Buy@price12
+      });
+
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+
+      expect(buy_order.toString()).to.be.equals(request_amount.toString());
+      
+    });
+  });
+
+  context('Placing Cancel Order Request', () => {
+    let sell_amount: BigNumber;
+    let buy_amount: BigNumber;
+
+    sharedBeforeEach('initialize values ', async () => {
+      sell_amount = BigNumber.from("10"); //qty
+      buy_amount = BigNumber.from("25"); //qty
+    });
+    
+    it('order cancelled', async () => {
+
+      const stop_order = await pool.swapGivenIn({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit12')) // Stop Order Sell@price12
+      });
+
+      const _ref = await pool.getOrderRef();
+
+      const cancel_order = await pool.cancelOrder({
+        ref: _ref[0].toString()
+      });
+
+      const _refAfterCancell = await pool.getOrderRef();
+      expect(_refAfterCancell[0]).to.be.equals(ZERO_BYTES32);
+
+      
+    });
   });
 });
+
+  describe('joins and exits', () => {
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ securityToken, currencyToken }, false);
+      await pool.initialize();
+    });
+
+    it('regular joins should revert', async () => {
+      const { tokens: allTokens } = await pool.getTokens();
+
+      const tx = pool.vault.joinPool({
+        poolAddress: pool.address,
+        poolId: await pool.getPoolId(),
+        recipient: lp.address,
+        tokens: allTokens,
+        data: '0x',
+      });
+
+      await expect(tx).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
+    });
+
+    it('regular exits should revert', async () => {
+      const { tokens: allTokens } = await pool.getTokens();
+
+      const tx = pool.vault.exitPool({
+        poolAddress: pool.address,
+        poolId: await pool.getPoolId(),
+        recipient: lp.address,
+        tokens: allTokens,
+        data: '0x',
+      });
+
+      await expect(tx).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
+    });
+  });
 });

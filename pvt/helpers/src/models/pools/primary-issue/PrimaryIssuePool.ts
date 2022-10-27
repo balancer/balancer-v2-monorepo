@@ -145,15 +145,15 @@ export default class PrimaryPool extends BasePool{
   }
 
   async getbasePrice(): Promise<BigNumber> {
-    return this.instance.getBasePrice();
+    return this.instance.getMaximumPrice();
   }
 
   async maxsecurityOffered(): Promise<BigNumber> {
     return this.instance.maxSecurityOffered();
   }
 
-  async getissueCutoffTime(): Promise<BigNumber> {
-    return this.instance.getissueCutoffTime()();
+  async getIssueCutoffTime(): Promise<BigNumber> {
+    return this.instance.getIssueCutoffTime();
   }
 
   async balanceOf(account: Account): Promise<BigNumber> {
@@ -207,6 +207,10 @@ export default class PrimaryPool extends BasePool{
 
   async initialize(): Promise<void> {
     return this.instance.initialize();
+  }
+
+  async exitPool(): Promise<void> {
+    return this.instance.exit();
   }
 
   async swapGivenIn(params: SwapPrimaryPool): Promise<BigNumber> {

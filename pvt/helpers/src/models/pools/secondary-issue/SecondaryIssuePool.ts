@@ -10,7 +10,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapSecondaryPool, RawSecondaryPoolDeployment } from './types';
+import { SwapSecondaryPool, RawSecondaryPoolDeployment, EditOrder } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -142,6 +142,10 @@ export default class SecondaryPool extends BasePool{
     return this.instance.getPoolId();
   }
 
+  async getOrderRef(): Promise<BigNumber[]> {
+    return this.instance.getOrderRef();
+  }
+
   async getSwapFeePercentage(): Promise<BigNumber> {
     return this.instance.getSwapFeePercentage();
   }
@@ -177,6 +181,14 @@ export default class SecondaryPool extends BasePool{
 
   async initialize(): Promise<void> {
     return this.instance.initialize();
+  }
+
+  async editOrder(params: EditOrder): Promise<BigNumber> {
+    return this.instance.editOrder(params.ref, params.price, params.amount);
+  }
+
+  async cancelOrder(params): Promise<BigNumber> {
+    return this.instance.cancelOrder(params.ref);
   }
 
   async swapGivenIn(params: SwapSecondaryPool): Promise<BigNumber> {

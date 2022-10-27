@@ -188,7 +188,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //assets: _assets,
             assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
-            userData: abi.encode(PrimaryPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, _INITIAL_BPT_SUPPLY),
+            userData: abi.encode(PrimaryPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
         getVault().exitPool(getPoolId(), address(this), payable(_balancerManager), request);
@@ -201,8 +201,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 indexOut
     ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         // ensure that swap request is not beyond issue's cut off time
-        require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp);
-
+        require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp, "TimeLimit Over");
         // ensure that price is within price band
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params = Params({ fee: getSwapFeePercentage(), minPrice: _minPrice, maxPrice: _maxPrice });
@@ -403,6 +402,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //unless paused in which case tokens are retrievable by contributors
             _ensurePaused();
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
+
         }
     }
 
@@ -415,7 +415,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
-
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.

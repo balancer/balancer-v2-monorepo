@@ -200,7 +200,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
+    ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         uint256[] memory scalingFactors = _scalingFactors();
         bytes32 userData = string(request.userData).stringToBytes32();
         uint256 tradeType_length = userData.substring(0,1).stringToUint();
@@ -704,7 +704,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {
-        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // Secondary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
         // mechanism, ensuring initialization only occurs once.
         return 0;
     }
