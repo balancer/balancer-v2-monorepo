@@ -210,7 +210,7 @@ describe('ProtocolFeeSplitter', function () {
   context('when the fee collector holds BPT', async () => {
     let bptBalanceOfLiquidityProvider: number;
 
-    sharedBeforeEach('sets pool beneficiary and transfers BPT', async () => {
+    sharedBeforeEach('transfers BPT to fees collector', async () => {
       // transfer BPT tokens to feesCollector
       bptBalanceOfLiquidityProvider = await pool.balanceOf(liquidityProvider.address);
       await pool.connect(liquidityProvider).transfer(protocolFeesCollector.address, bptBalanceOfLiquidityProvider);
