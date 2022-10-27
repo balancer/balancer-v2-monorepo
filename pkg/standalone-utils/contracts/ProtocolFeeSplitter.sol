@@ -21,7 +21,10 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IProtocolFeesCollector.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
+
+interface Pool {
+    function getOwner() external view returns (address);
+}
 
 /**
  * @dev This contract is responsible for splitting the BPT profits collected
@@ -82,7 +85,7 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     function setPoolBeneficiary(bytes32 poolId, address newBeneficiary) external override {
         (address pool, ) = _vault.getPool(poolId);
-        _require(msg.sender == IBasePool(pool).getOwner(), Errors.SENDER_NOT_ALLOWED);
+        _require(msg.sender == Pool(pool).getOwner(), Errors.SENDER_NOT_ALLOWED);
         _poolSettings[poolId].beneficiary = newBeneficiary;
         emit PoolBeneficiaryChanged(poolId, newBeneficiary);
     }
