@@ -18,8 +18,7 @@ describe('WeightedPoolFactory', function () {
   let factory: Contract;
   let vault: Vault;
   let rateProviders: string[];
-  let assetManagers: string[];
-  let assetManager: SignerWithAddress, owner: SignerWithAddress;
+  let owner: SignerWithAddress;
 
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
@@ -32,7 +31,7 @@ describe('WeightedPoolFactory', function () {
   let createTime: BigNumber;
 
   before('setup signers', async () => {
-    [, assetManager, owner] = await ethers.getSigners();
+    [, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
@@ -44,9 +43,6 @@ describe('WeightedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
 
     rateProviders = await tokens.asyncMap(async () => (await deploy('v2-pool-utils/MockRateProvider')).address);
-
-    assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    assetManagers[0] = assetManager.address;
   });
 
   async function createPool(): Promise<Contract> {
@@ -57,7 +53,6 @@ describe('WeightedPoolFactory', function () {
         tokens.addresses,
         WEIGHTS,
         rateProviders,
-        assetManagers,
         POOL_SWAP_FEE_PERCENTAGE,
         owner.address
       )
@@ -95,11 +90,11 @@ describe('WeightedPoolFactory', function () {
       expect(providers).to.deep.eq(rateProviders);
     });
 
-    it('sets the asset managers', async () => {
-      await tokens.asyncEach(async (token, i) => {
+    it('sets the asset managers to zero', async () => {
+      await tokens.asyncEach(async (token) => {
         const poolId = await pool.getPoolId();
         const info = await vault.getPoolTokenInfo(poolId, token);
-        expect(info.assetManager).to.equal(assetManagers[i]);
+        expect(info.assetManager).to.equal(ZERO_ADDRESS);
       });
     });
 

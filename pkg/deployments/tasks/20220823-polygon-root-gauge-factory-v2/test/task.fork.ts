@@ -2,7 +2,7 @@ import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -164,7 +164,7 @@ describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
 
     // Note that instead of the weight, we use the cap (since we expect for the weight to be larger than the cap)
-    const expectedEmissions = weightCap.mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = weightCap.mul(weeklyRate).div(FP_ONE);
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
@@ -215,7 +215,7 @@ describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
     // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
     // Note that instead of the weight, we use the cap (since we expect for the weight to be larger than the cap)
-    const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_ONE);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
     const tx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);

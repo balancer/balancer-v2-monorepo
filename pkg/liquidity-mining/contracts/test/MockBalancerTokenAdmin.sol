@@ -66,4 +66,8 @@ contract MockBalancerTokenAdmin {
         _startEpochTime += 1;
         return _startEpochTime;
     }
+
+    function mint(address to, uint256 amount) external {
+        _balancerToken.mint(to, amount);
+    }
 }

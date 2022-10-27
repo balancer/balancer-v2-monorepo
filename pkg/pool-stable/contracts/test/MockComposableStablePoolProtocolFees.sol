@@ -42,7 +42,10 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
                 tokenRateCacheDurations: tokenRateCacheDurations
             })
         )
-        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
         BasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
@@ -132,7 +135,7 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onJoinPool(
@@ -145,7 +148,7 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onExitPool(
@@ -158,6 +161,14 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
+    }
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal pure override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
     }
 }

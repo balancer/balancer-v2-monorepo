@@ -12,25 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
 
 library WeightedPoolUserData {
     // In order to preserve backwards compatibility, make sure new join and exit kinds are added at the end of the enum.
-    enum JoinKind {
-        INIT,
-        EXACT_TOKENS_IN_FOR_BPT_OUT,
-        TOKEN_IN_FOR_EXACT_BPT_OUT,
-        ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
-        ADD_TOKEN // for Managed Pool
-    }
-    enum ExitKind {
-        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
-        EXACT_BPT_IN_FOR_TOKENS_OUT,
-        BPT_IN_FOR_EXACT_TOKENS_OUT,
-        REMOVE_TOKEN // for ManagedPool
-    }
+    enum JoinKind { INIT, EXACT_TOKENS_IN_FOR_BPT_OUT, TOKEN_IN_FOR_EXACT_BPT_OUT, ALL_TOKENS_IN_FOR_EXACT_BPT_OUT }
+    enum ExitKind { EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, EXACT_BPT_IN_FOR_TOKENS_OUT, BPT_IN_FOR_EXACT_TOKENS_OUT }
 
     function joinKind(bytes memory self) internal pure returns (JoinKind) {
         return abi.decode(self, (JoinKind));
@@ -62,10 +51,6 @@ library WeightedPoolUserData {
         (, bptAmountOut) = abi.decode(self, (JoinKind, uint256));
     }
 
-    function addToken(bytes memory self) internal pure returns (uint256 amountIn) {
-        (, amountIn) = abi.decode(self, (JoinKind, uint256));
-    }
-
     // Exits
 
     function exactBptInForTokenOut(bytes memory self) internal pure returns (uint256 bptAmountIn, uint256 tokenIndex) {
@@ -82,10 +67,5 @@ library WeightedPoolUserData {
         returns (uint256[] memory amountsOut, uint256 maxBPTAmountIn)
     {
         (, amountsOut, maxBPTAmountIn) = abi.decode(self, (ExitKind, uint256[], uint256));
-    }
-
-    // Managed Pool
-    function removeToken(bytes memory self) internal pure returns (uint256 tokenIndex) {
-        (, tokenIndex) = abi.decode(self, (ExitKind, uint256));
     }
 }

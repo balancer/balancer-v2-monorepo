@@ -14,6 +14,7 @@
 
 pragma solidity ^0.7.0;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 
@@ -52,12 +53,17 @@ function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC2
     sorted[i] = token;
 }
 
-function _appendToken(IERC20[] memory tokens, IERC20 newToken) pure returns (IERC20[] memory newTokens) {
-    uint256 numTokens = tokens.length;
-    newTokens = new IERC20[](numTokens + 1);
+function _findTokenIndex(IERC20[] memory tokens, IERC20 token) pure returns (uint256) {
+    // Note that while we know tokens are initially sorted, we cannot assume this will hold throughout
+    // the pool's lifetime, as pools with mutable tokens can append and remove tokens in any order.
+    uint256 tokensLength = tokens.length;
+    for (uint256 i = 0; i < tokensLength; i++) {
+        if (tokens[i] == token) {
+            return i;
+        }
+    }
 
-    for (uint256 i = 0; i < numTokens; ++i) newTokens[i] = tokens[i];
-    newTokens[numTokens] = newToken;
+    _revert(Errors.INVALID_TOKEN);
 }
 
 function _getSortedTokenIndexes(

@@ -38,7 +38,6 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         IRateProvider[] memory rateProviders,
-        address[] memory assetManagers,
         uint256 swapFeePercentage,
         address owner
     ) external returns (address) {
@@ -53,7 +52,7 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                         tokens: tokens,
                         normalizedWeights: normalizedWeights,
                         rateProviders: rateProviders,
-                        assetManagers: assetManagers,
+                        assetManagers: new address[](tokens.length), // Don't allow asset managers,
                         swapFeePercentage: swapFeePercentage
                     }),
                     getVault(),

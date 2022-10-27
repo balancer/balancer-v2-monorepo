@@ -12,10 +12,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
-import "./IControlledPool.sol";
-
-interface IBasePoolController is IControlledPool {
+interface IBasePoolController {
     function initialize(address poolAddress) external;
 }
