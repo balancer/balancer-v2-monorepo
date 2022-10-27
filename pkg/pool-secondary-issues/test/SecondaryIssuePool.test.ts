@@ -203,6 +203,22 @@ describe('SecondaryPool', function () {
         
         expect(buy_order.toString()).to.be.equals(request_amount.toString());
       });
+
+      context('when pool paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.currencyIndex,
+              out: pool.securityIndex,
+              amount: buy_amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
+      });
     });
 
     context('Placing Limit Order', () => {
@@ -235,6 +251,22 @@ describe('SecondaryPool', function () {
         const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
 
         expect(buy_order.toString()).to.be.equals(request_amount.toString());
+      });
+
+      context('when pool paused', () => {
+        sharedBeforeEach('pause pool', async () => {
+          await pool.pause();
+        });
+        it('reverts', async () => {
+          await expect(
+            pool.swapGivenOut({
+              in: pool.currencyIndex,
+              out: pool.securityIndex,
+              amount: buy_amount,
+              balances: currentBalances,
+            })
+          ).to.be.revertedWith('PAUSED');
+        });
       });
     });
 
@@ -270,6 +302,23 @@ describe('SecondaryPool', function () {
 
       expect(buy_order.toString()).to.be.equals(request_amount.toString());
     });
+
+    context('when pool paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.pause();
+      });
+      it('reverts', async () => {
+        await expect(
+          pool.swapGivenOut({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: buy_amount,
+            balances: currentBalances,
+          })
+        ).to.be.revertedWith('PAUSED');
+      });
+    });
+
   });
 
   context('Placing Edit Order Request', () => {

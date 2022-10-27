@@ -4,6 +4,7 @@ import { BigNumber, BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -385,19 +386,46 @@ describe('PrimaryPool', function () {
     });
     
     it('regular exits should revert', async () => {
-      // await pool.pause();
-      await pool.exitPool();  
-    // const tx = pool.vault.exitPool({
-    //   poolAddress: pool.address,
-    //   poolId: await pool.getPoolId(),
-    //   recipient: lp.address,
-    //   tokens: allTokens,
-    //   data: data,
-    //   });
+      it('reverts', async () => {
+        await expect(pool.exitPool()).to.be.revertedWith('NOT_PAUSED');
+      }); 
+    });
+  });
 
-    // console.log("mama",tx);
-    
-    // await expect(tx).to.be.revertedWith('UNHANDLED_BY_PRIMARY_POOL');
+  describe('issueCutoffTime and price check', () => {
+    let currentBalances: BigNumber[];
+    sharedBeforeEach('deploy pool', async () => {
+      await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, false);
+      await pool.initialize();
+      const poolId = await pool.getPoolId();
+      currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
+    });
+
+    context('checks issueCutoffTime', () => {
+      sharedBeforeEach('pause pool', async () => {
+        const time = issueCutoffTime.add(issueCutoffTime);
+        advanceTime(time);
+      });
+
+      it('reverts', async () => {
+        await expect(
+          pool.swapGivenIn({
+            in: pool.securityIndex,
+            out: pool.currencyIndex,
+            amount: BigNumber.from("4"),
+            balances: currentBalances,
+          })
+        ).to.be.revertedWith('TimeLimit Over');
+      });
+    });
+
+
+    it('checks minimum price', async () => {
+      expect(await pool.getminimumPrice()).to.equal(minimumPrice);
+    });
+
+    it('checks maximum price', async () => {
+      expect(await pool.getbasePrice()).to.equal(basePrice);
     });
   });
   

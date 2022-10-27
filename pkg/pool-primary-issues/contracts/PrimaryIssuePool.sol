@@ -4,7 +4,6 @@
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
-import "hardhat/console.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
@@ -176,7 +175,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     }
 
     function exit() external {
-        console.log("Exit func here");
         bytes32 poolId = getPoolId();
         (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
         //IAsset[] memory _assets = new IAsset[](2);
@@ -193,7 +191,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
-        console.log("Hey");
         getVault().exitPool(getPoolId(), address(this), payable(_balancerManager), request);
     }
 
@@ -204,8 +201,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 indexOut
     ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         // ensure that swap request is not beyond issue's cut off time
-        require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp);
-
+        require(BokkyPooBahsDateTimeLibrary.addSeconds(_startTime, _cutoffTime) >= block.timestamp, "TimeLimit Over");
         // ensure that price is within price band
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params = Params({ fee: getSwapFeePercentage(), minPrice: _minPrice, maxPrice: _maxPrice });
@@ -398,15 +394,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256[] memory,
         bytes memory userData
     ) internal view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        console.log("before Kind");
-        console.logBytes(userData);
         PrimaryPoolUserData.ExitKind kind = userData.exitKind();
-        console.log("Kind");
         if (kind != PrimaryPoolUserData.ExitKind.EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT) {
             //usually exit pool reverts
             _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
         } else {
-            console.log("else inside");
             //unless paused in which case tokens are retrievable by contributors
             _ensurePaused();
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
@@ -422,10 +414,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // This proportional exit function is only enabled if the contract is paused, to provide users a way to
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        console.log("check bptAmountIn",bptAmountIn);
-        console.log("Here", totalSupply(), balances[_bptIndex]);
         uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
-        console.log("Here");
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.

@@ -4,7 +4,6 @@
 
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
-import "hardhat/console.sol";
 
 import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
@@ -201,7 +200,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) public override onlyVault(request.poolId) returns (uint256) {
+    ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         uint256[] memory scalingFactors = _scalingFactors();
         bytes32 userData = string(request.userData).stringToBytes32();
         uint256 tradeType_length = userData.substring(0,1).stringToUint();
@@ -326,8 +325,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         require(_order == "Buy" || _order == "Sell");
         bytes32 ref = keccak256(abi.encodePacked(_request.from, block.timestamp));
         //fill up order details
-        console.log("_request.from",_request.from);
-        console.log("msg.sender", msg.sender);
         orders[ref].party = _request.from;
         orders[ref].price = _params.price;
         orders[ref].orderno = orderRefs.length;
@@ -631,8 +628,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             "Pending",
             _executionDt
         );
-        // bytes32 _transfereeDPID = ISettlor(balancerManager).getTransferAgent(_transferee);
-        // bytes32 _transferorDPID = ISettlor(balancerManager).getTransferAgent(_transferor);
+        bytes32 _transfereeDPID = ISettlor(balancerManager).getTransferAgent(_transferee);
+        bytes32 _transferorDPID = ISettlor(balancerManager).getTransferAgent(_transferor);
         ISettlor.settlement memory tradeToSettle = ISettlor.settlement({
             transferor: _transferor,
             transferee: _transferee,
@@ -645,11 +642,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             executionDate: _executionDt,
             partyRef: _pregRef,
             counterpartyRef: _cpregRef,
-            transferorDPID: 0x0,
-            transfereeDPID: 0x0,
+            transferorDPID: _transferorDPID,
+            transfereeDPID: _transfereeDPID,
             orderPool: address(this)
         });
-        // ISettlor(balancerManager).postSettlement(tradeToSettle, _tradeRef);
+        ISettlor(balancerManager).postSettlement(tradeToSettle, _tradeRef);
     }
 
     function getTrade(bytes32 ref) external view override returns (uint256 b, uint256 a) {
