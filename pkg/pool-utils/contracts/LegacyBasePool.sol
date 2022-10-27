@@ -54,7 +54,7 @@ import "./RecoveryMode.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is
+abstract contract LegacyBasePool is
     IBasePool,
     IControlledPool,
     BasePoolAuthorization,

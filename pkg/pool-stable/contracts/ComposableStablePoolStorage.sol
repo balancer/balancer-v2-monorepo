@@ -18,11 +18,11 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/LegacyBasePool.sol";
 
 import "./StableMath.sol";
 
-abstract contract ComposableStablePoolStorage is BasePool {
+abstract contract ComposableStablePoolStorage is LegacyBasePool {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 

@@ -17,9 +17,9 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
-import "../BasePool.sol";
+import "../LegacyBasePool.sol";
 
-contract MockBasePool is BasePool {
+contract MockLegacyBasePool is LegacyBasePool {
     using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
@@ -43,7 +43,7 @@ contract MockBasePool is BasePool {
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        LegacyBasePool(
             vault,
             specialization,
             name,

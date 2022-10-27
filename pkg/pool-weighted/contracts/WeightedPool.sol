@@ -396,7 +396,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         internal
         view
         virtual
-        override(BasePool, WeightedPoolProtocolFees)
+        override(LegacyBasePool, WeightedPoolProtocolFees)
         returns (bool)
     {
         return super._isOwnerOnlyAction(actionId);

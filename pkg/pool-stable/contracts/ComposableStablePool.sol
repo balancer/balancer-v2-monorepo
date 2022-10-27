@@ -82,7 +82,7 @@ contract ComposableStablePool is
     }
 
     constructor(NewPoolParams memory params)
-        BasePool(
+        LegacyBasePool(
             params.vault,
             IVault.PoolSpecialization.GENERAL,
             params.name,
@@ -1136,7 +1136,7 @@ contract ComposableStablePool is
         override(
             // Our inheritance pattern creates a small diamond that requires explicitly listing the parents here.
             // Each parent calls the `super` version, so linearization ensures all implementations are called.
-            BasePool,
+            LegacyBasePool,
             ComposableStablePoolProtocolFees,
             StablePoolAmplification,
             ComposableStablePoolRates

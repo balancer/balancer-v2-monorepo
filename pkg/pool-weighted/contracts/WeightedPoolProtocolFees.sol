@@ -351,7 +351,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         internal
         view
         virtual
-        override(BasePool, BasePoolAuthorization)
+        override(LegacyBasePool, BasePoolAuthorization)
         returns (bool)
     {
         return super._isOwnerOnlyAction(actionId);

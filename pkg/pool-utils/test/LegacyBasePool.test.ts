@@ -16,7 +16,7 @@ import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConv
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 
-describe('BasePool', function () {
+describe('LegacyBasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
@@ -63,7 +63,7 @@ describe('BasePool', function () {
     if (!bufferPeriodDuration) bufferPeriodDuration = 0;
     if (!owner) owner = ZERO_ADDRESS;
 
-    return deploy('MockBasePool', {
+    return deploy('MockLegacyBasePool', {
       from: params.from,
       args: [
         vault.address,

@@ -46,14 +46,14 @@ contract MockComposableStablePoolProtocolFees is ComposableStablePoolProtocolFee
             protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
-        BasePool(
+        LegacyBasePool(
             vault,
             IVault.PoolSpecialization.GENERAL,
             "MockStablePoolStorage",
             "MOCK_BPT",
             _insertSorted(tokens, IERC20(this)),
             new address[](tokens.length + 1),
-            1e12, // BasePool._MIN_SWAP_FEE_PERCENTAGE
+            1e12, // LegacyBasePool._MIN_SWAP_FEE_PERCENTAGE
             0,
             0,
             address(0)
