@@ -85,7 +85,7 @@ describe('BasePool', function () {
     if (!owner) owner = ZERO_ADDRESS;
     if (!from) from = deployer;
 
-    return deploy('v2-pool-weighted/MockBasePool', {
+    return deploy('MockBasePool', {
       from,
       args: [
         vault.address,

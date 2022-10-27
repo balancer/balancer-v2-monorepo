@@ -27,12 +27,11 @@ import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../managed/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
-
-import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolAumStorageLib.sol";

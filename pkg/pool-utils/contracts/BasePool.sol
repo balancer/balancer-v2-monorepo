@@ -22,9 +22,9 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
-import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
-import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
+import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
