@@ -67,7 +67,7 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     )
-        BasePool(
+        NewBasePool(
             vault,
             PoolRegistrationLib.registerComposablePool(
                 vault,

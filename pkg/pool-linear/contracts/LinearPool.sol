@@ -21,7 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
@@ -53,7 +53,7 @@ import "./LinearMath.sol";
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  * Accordingly, this Pool does not pay any protocol fees.
  */
-abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePool {
+abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBasePool {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -137,7 +137,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        NewBasePool(
             vault,
             PoolRegistrationLib.registerComposablePool(
                 vault,

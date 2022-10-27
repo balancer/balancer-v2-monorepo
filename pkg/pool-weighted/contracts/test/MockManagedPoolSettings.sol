@@ -32,7 +32,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     )
-        BasePool(
+        NewBasePool(
             vault,
             PoolRegistrationLib.registerPoolWithAssetManagers(
                 vault,
