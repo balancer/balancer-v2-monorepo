@@ -13,7 +13,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity >=0.7.0 <0.9.0;
-pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeeSplitter.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
@@ -48,6 +47,13 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
     // Can be updated by BAL governance (1e18 = 100%, 1e16 = 1%).
     uint256 private _defaultRevenueSharingFeePercentage;
+
+    // Packed to use 1 storage slot
+    // 1e18 (100% - maximum fee value) can fit in uint96
+    struct RevenueShareSettings {
+        uint96 revenueSharePercentageOverride;
+        address beneficiary;
+    }
 
     // poolId => PoolSettings
     mapping(bytes32 => RevenueShareSettings) private _poolSettings;
@@ -97,11 +103,9 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
 
         (beneficiaryAmount, treasuryAmount) = _getAmounts(bpt, poolId);
 
-        if (beneficiaryAmount != 0) {
-            _withdrawBpt(bpt, beneficiaryAmount, beneficiary);
-        }
-
+        _withdrawBpt(bpt, beneficiaryAmount, beneficiary);
         _withdrawBpt(bpt, treasuryAmount, _treasury);
+
         emit FeesCollected(poolId, beneficiary, beneficiaryAmount, _treasury, treasuryAmount);
     }
 
@@ -133,8 +137,15 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         return _treasury;
     }
 
-    function getPoolSettings(bytes32 poolId) external view override returns (RevenueShareSettings memory) {
-        return _poolSettings[poolId];
+    function getPoolSettings(bytes32 poolId)
+        external
+        view
+        override
+        returns (uint256 revenueSharePercentageOverride, address beneficiary)
+    {
+        RevenueShareSettings memory settings = _poolSettings[poolId];
+
+        return (settings.revenueSharePercentageOverride, settings.beneficiary);
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
@@ -150,18 +161,20 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         uint256 amount,
         address to
     ) private {
+        if (amount == 0) {
+            return;
+        }
+
         IERC20[] memory tokens = new IERC20[](1);
-        uint256[] memory amounts = new uint256[](1);
         tokens[0] = bpt;
+
+        uint256[] memory amounts = new uint256[](1);
         amounts[0] = amount;
+
         _protocolFeesWithdrawer.withdrawCollectedFees(tokens, amounts, to);
     }
 
-    function _getAmounts(IERC20 bpt, bytes32 poolId)
-        private
-        view
-        returns (uint256 beneficiaryAmount, uint256 treasuryAmount)
-    {
+    function _getAmounts(IERC20 bpt, bytes32 poolId) private view returns (uint256, uint256) {
         IProtocolFeesWithdrawer protocolFeesWithdrawer = _protocolFeesWithdrawer;
         uint256 feeCollectorBptBalance = bpt.balanceOf(address(protocolFeesWithdrawer.getProtocolFeesCollector()));
         if (feeCollectorBptBalance == 0) {
@@ -169,14 +182,14 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         }
 
         address beneficiary = _poolSettings[poolId].beneficiary;
-        if (beneficiary == address(0)) {
-            return (0, feeCollectorBptBalance);
-        }
 
-        (beneficiaryAmount, treasuryAmount) = _computeAmounts(
-            feeCollectorBptBalance,
-            _getPoolBeneficiaryFeePercentage(poolId)
-        );
+        if (beneficiary == address(0)) {
+            // If there's no beneficiary, the full amount is sent to the treasury.
+            return (0, feeCollectorBptBalance);
+        } else {
+            // Otherwise, it gets split between the beneficiary and the treasury according to the fee percentage.
+            return _computeAmounts(feeCollectorBptBalance, _getPoolBeneficiaryFeePercentage(poolId));
+        }
     }
 
     function _computeAmounts(uint256 feeCollectorBptBalance, uint256 feePercentage)
@@ -184,13 +197,17 @@ contract ProtocolFeeSplitter is IProtocolFeeSplitter, Authentication {
         pure
         returns (uint256 ownerAmount, uint256 treasuryAmount)
     {
-        ownerAmount = FixedPoint.divDown(FixedPoint.mulDown(feeCollectorBptBalance, feePercentage), 1e18);
+        ownerAmount = feeCollectorBptBalance.mulDown(feePercentage);
         treasuryAmount = feeCollectorBptBalance.sub(ownerAmount);
     }
 
     function _getPoolBeneficiaryFeePercentage(bytes32 poolId) private view returns (uint256) {
         uint256 poolFeeOverride = _poolSettings[poolId].revenueSharePercentageOverride;
-        uint256 feePercentage = poolFeeOverride != 0 ? poolFeeOverride : _defaultRevenueSharingFeePercentage;
-        return feePercentage;
+        if (poolFeeOverride == 0) {
+            // The 'zero' override is a sentinel value that stands for the default fee.
+            return _defaultRevenueSharingFeePercentage;
+        } else {
+            return poolFeeOverride;
+        }
     }
 }

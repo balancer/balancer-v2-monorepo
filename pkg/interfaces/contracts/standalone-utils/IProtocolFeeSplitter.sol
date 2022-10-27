@@ -13,7 +13,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity >=0.7.0 <0.9.0;
-pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
@@ -26,13 +25,6 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWit
  * otherwise all BPT tokens go to Balancer's DAO treasury
  */
 interface IProtocolFeeSplitter {
-    // Packed to use 1 storage slot
-    // 1e18 (100% - maximum fee value) can fit in uint96
-    struct RevenueShareSettings {
-        uint96 revenueSharePercentageOverride;
-        address beneficiary;
-    }
-
     event FeesCollected(
         bytes32 indexed poolId,
         address indexed beneficiary,
@@ -83,7 +75,7 @@ interface IProtocolFeeSplitter {
     /**
      * @notice Returns default revenue sharing fee percentage
      */
-    function getDefaultRevenueSharingFeePercentage() external returns (uint256);
+    function getDefaultRevenueSharingFeePercentage() external view returns (uint256);
 
     /**
      * @notice Returns amounts that can be colected
@@ -91,25 +83,28 @@ interface IProtocolFeeSplitter {
      * @return beneficiaryAmount The amount of tokens sent to pool's beneficiary
      * @return treasuryAmount The amount of tokens sent to Balancer's treasury
      */
-    function getAmounts(bytes32 poolId) external returns (uint256 beneficiaryAmount, uint256 treasuryAmount);
+    function getAmounts(bytes32 poolId) external view returns (uint256 beneficiaryAmount, uint256 treasuryAmount);
 
     /**
-     * @notice Returns Balancer's treasury address
+     * @notice Returns Balancer's treasury address.
      */
-    function getTreasury() external returns (address);
+    function getTreasury() external view returns (address);
 
     /**
-     * @notice Returns Protocol Fees Withdrawer
+     * @notice Returns the Protocol Fees Withdrawer address.
      */
-    function getProtocolFeesWithdrawer() external returns (IProtocolFeesWithdrawer);
+    function getProtocolFeesWithdrawer() external view returns (IProtocolFeesWithdrawer);
 
     /**
-     * @notice Returns Balancer's vault address
+     * @notice Returns Balancer's vault address.
      */
-    function getVault() external returns (IVault);
+    function getVault() external view returns (IVault);
 
     /**
-     * @notice Returns Balancer's vault address
+     * @notice Returns a Pool's settings.
      */
-    function getPoolSettings(bytes32 poolId) external returns (RevenueShareSettings memory);
+    function getPoolSettings(bytes32 poolId)
+        external
+        view
+        returns (uint256 revenueSharePercentageOverride, address beneficiary);
 }

@@ -1,6 +1,6 @@
-# 2022-08-15 - ProtocolFeeSplitter
+# 2022-10-27 - ProtocolFeeSplitter
 
-Deployment of the `ProtocolFeeSplitter` 
+Deployment of the `ProtocolFeeSplitter`, used to split BPT protocol fees between the treasury and Pool owners.
 
 ## Useful Files
 

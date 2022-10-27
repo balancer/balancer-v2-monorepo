@@ -1,15 +1,18 @@
+import Task, { TaskMode } from '../../src/task';
+
 export type FeeSplitterDeployement = {
-  protocolFeesWithdrawer: string;
+  ProtocolFeesWithdrawer: string;
   treasury: string;
 };
 
+const ProtocolFeesWithdrawer = new Task('20220517-protocol-fee-withdrawer', TaskMode.READ_ONLY);
+
 export default {
+  ProtocolFeesWithdrawer,
   mainnet: {
-    protocolFeesWithdrawer: '0x5ef4c5352882b10893b70DbcaA0C000965bd23c5',
     treasury: '0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f',
   },
   goerli: {
-    protocolFeesWithdrawer: '0x85153B639a35d6e6CF8B291Aca237FbE67377154',
     treasury: '0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f',
   },
 };
