@@ -80,7 +80,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     IERC20 private immutable _wrappedToken;
 
     // The indices of each token when registered, which can then be used to access the balances array.
-    uint256 private immutable _bptIndex;
     uint256 private immutable _mainIndex;
     uint256 private immutable _wrappedIndex;
 
@@ -121,6 +120,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     uint256 private constant _MAX_UPPER_TARGET = (2**(32) - 1) * _TARGET_SCALING;
 
+    // Composable Pool registration will put the BPT at index 0, with the main/wrapped following, in sorted order.
+    uint256 private constant _BPT_INDEX = 0;
+
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
 
@@ -156,15 +158,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         _mainToken = mainToken;
         _wrappedToken = wrappedToken;
 
-        // Set token indexes
-        (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            mainToken,
-            wrappedToken,
-            this
-        );
-        _bptIndex = bptIndex;
-        _mainIndex = mainIndex;
-        _wrappedIndex = wrappedIndex;
+        // Set token indexes. BPT is always 0; other tokens follow in sorted order.
+        _mainIndex = mainToken < wrappedToken ? 1 : 2;
+        _wrappedIndex = mainToken < wrappedToken ? 2 : 1;
 
         // Set scaling factors
         _scalingFactorMainToken = _computeScalingFactor(mainToken);
@@ -210,8 +206,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * @notice Return the index of the BPT token.
      * @dev Note that this is an index into the registered token list (with 3 tokens).
      */
-    function getBptIndex() public view override returns (uint256) {
-        return _bptIndex;
+    function getBptIndex() public pure override returns (uint256) {
+        return _BPT_INDEX;
     }
 
     /**
@@ -231,7 +227,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     }
 
     /**
-     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will have
+     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will have//
      * been minted.
      *
      * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit said BPT as
@@ -249,7 +245,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         // Joins typically involve the Pool receiving tokens in exchange for newly-minted BPT. In this case however, the
         // Pool will mint the entire BPT supply to itself, and join itself with it.
         uint256[] memory maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-        maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        maxAmountsIn[_BPT_INDEX] = _INITIAL_BPT_SUPPLY;
 
         // The first time this executes, it will call `_onInitializePool` (as the BPT supply will be zero). Future calls
         // will be routed to `_onJoinPool`, which always reverts, meaning `initialize` will only execute once.
@@ -340,7 +336,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _getVirtualSupply(balances[_bptIndex]),
+                _getVirtualSupply(balances[_BPT_INDEX]),
                 params
             );
     }
@@ -357,7 +353,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params);
@@ -375,7 +371,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
@@ -408,7 +404,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _getVirtualSupply(balances[_bptIndex]),
+                _getVirtualSupply(balances[_BPT_INDEX]),
                 params
             );
     }
@@ -425,7 +421,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params);
@@ -443,7 +439,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
@@ -463,7 +459,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
 
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        amountsIn[_BPT_INDEX] = _INITIAL_BPT_SUPPLY;
 
         return (bptAmountOut, amountsIn);
     }
@@ -544,7 +540,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         // value.
         scalingFactors[_mainIndex] = _scalingFactorMainToken;
         scalingFactors[_wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenRate());
-        scalingFactors[_bptIndex] = FixedPoint.ONE;
+        scalingFactors[_BPT_INDEX] = FixedPoint.ONE;
 
         return scalingFactors;
     }
@@ -575,7 +571,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the
         // only way for that to happen would be for all LPs to exit the Pool, and nothing prevents new LPs from
         // joining it later on.
-        return totalBalance.divUp(_getVirtualSupply(balances[_bptIndex]));
+        return totalBalance.divUp(_getVirtualSupply(balances[_BPT_INDEX]));
     }
 
     /**
