@@ -113,7 +113,7 @@ abstract contract BasePool is
      * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
      * to zero) by overriding this function.
      */
-    function _getMinimumBpt() internal pure returns (uint256) {
+    function _getMinimumBpt() internal pure virtual returns (uint256) {
         return _DEFAULT_MINIMUM_BPT;
     }
 
@@ -214,7 +214,7 @@ abstract contract BasePool is
 
         _ensureNotPaused();
         if (totalSupply() == 0) {
-            (bptAmountOut, amountsIn) = _onInitializePool(sender, userData);
+            (bptAmountOut, amountsIn) = _onInitializePool(sender, recipient, userData);
 
             // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
             // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
@@ -347,7 +347,7 @@ abstract contract BasePool is
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
      * be downscaled (rounding up) before being returned to the Vault.
      */
-    function _onInitializePool(address sender, bytes memory userData)
+    function _onInitializePool(address sender, address recipient, bytes memory userData)
         internal
         virtual
         returns (uint256 bptAmountOut, uint256[] memory amountsIn);

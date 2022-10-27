@@ -438,7 +438,7 @@ contract ManagedPool is ManagedPoolSettings {
 
     // Initialize
 
-    function _onInitializePool(address sender, bytes memory userData)
+    function _onInitializePool(address sender, address, bytes memory userData)
         internal
         override
         returns (uint256 bptAmountOut, uint256[] memory amountsIn)
