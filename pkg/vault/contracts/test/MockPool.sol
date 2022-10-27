@@ -57,7 +57,7 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         _vault.deregisterTokens(_poolId, tokens);
     }
 
-    function getOwner() external returns(address) {
+    function getOwner() external pure override returns(address) {
         return address(0);
     }
 
