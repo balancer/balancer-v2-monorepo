@@ -143,7 +143,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
                 vault,
                 IVault.PoolSpecialization.GENERAL,
                 _insertSortedTokens(mainToken, wrappedToken),
-                _insertNullBptAssetManager(mainToken, wrappedToken, assetManagers)
+                assetManagers
             ),
             name,
             symbol,
@@ -190,31 +190,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         sortedTokens[1] = mainFirst ? wrappedToken : mainToken;
 
         return sortedTokens;
-    }
-
-    /**
-     * @dev Inserts a zero-valued entry in the `assetManagers` array at the BPT token index, ensuring that BPT is not
-     * managed even if the main or wrapped tokens are.
-     */
-    function _insertNullBptAssetManager(
-        IERC20 mainToken,
-        IERC20 wrappedToken,
-        address[] memory assetManagers
-    ) private view returns (address[] memory) {
-        (, , uint256 bptIndex) = _getSortedTokenIndexes(mainToken, wrappedToken, this);
-
-        address[] memory extendedAssetManagers = new address[](assetManagers.length + 1);
-        for (uint256 i = 0; i < extendedAssetManagers.length; ++i) {
-            if (i < bptIndex) {
-                extendedAssetManagers[i] = assetManagers[i];
-            } else if (i > bptIndex) {
-                extendedAssetManagers[i] = assetManagers[i - 1];
-            } else {
-                extendedAssetManagers[i] = address(0);
-            }
-        }
-
-        return extendedAssetManagers;
     }
 
     /**
