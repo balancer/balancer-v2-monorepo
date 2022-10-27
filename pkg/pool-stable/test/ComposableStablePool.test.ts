@@ -393,9 +393,12 @@ describe('ComposableStablePool', () => {
 
         it('returns the pre-join invariant', async () => {
           const { value, precision } = await pool.getAmplificationParameter();
+
+          // We pass a floating point amplification instead of an integer one, to more closely match the behavior in the
+          // Pool.
           const expectedInvariant = calculateInvariant(
             registeredBalances.filter((_, i) => i !== bptIndex),
-            value.div(precision)
+            value.toNumber() / precision.toNumber()
           );
 
           const { preJoinExitInvariant } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
