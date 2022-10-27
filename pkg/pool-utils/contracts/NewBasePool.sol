@@ -219,8 +219,12 @@ abstract contract NewBasePool is
             // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
             // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
             // Pool from ever being fully drained.
+            // Some pool types do not require this mechanism, and the minimum BPT might be zero.
             _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
-            _mintPoolTokens(address(0), _getMinimumBpt());
+            if (_getMinimumBpt() > 0) {
+                _mintPoolTokens(address(0), _getMinimumBpt());
+            }
+
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
         } else {
             (bptAmountOut, amountsIn) = _onJoinPool(sender, balances, userData);
