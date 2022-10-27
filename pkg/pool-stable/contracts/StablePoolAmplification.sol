@@ -193,6 +193,7 @@ abstract contract StablePoolAmplification is BasePoolAuthorization {
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
         return
             (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector));
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
+            super._isOwnerOnlyAction(actionId);
     }
 }

@@ -18,12 +18,15 @@ pragma experimental ABIEncoderV2;
 import "../WeightedPoolProtocolFees.sol";
 
 contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
+    uint256 private immutable _totalTokens;
+
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
+        IRateProvider[] memory rateProviders,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -42,13 +45,38 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
             owner,
             false
         )
-        ProtocolFeeCache(protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
-        WeightedPoolProtocolFees(tokens.length, new IRateProvider[](tokens.length))
+        ProtocolFeeCache(
+            protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
+        WeightedPoolProtocolFees(tokens.length, rateProviders)
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _totalTokens = tokens.length;
     }
 
-    function getJoinExitProtocolFees(
+    function getYieldFeeExemption(IRateProvider[] memory rateProviders) external pure returns (bool) {
+        return _getYieldFeeExemption(rateProviders);
+    }
+
+    function getRateProduct(uint256[] memory normalizedWeights) external view returns (uint256) {
+        return _getRateProduct(normalizedWeights);
+    }
+
+    function updateATHRateProduct(uint256 rateProduct) external {
+        _updateATHRateProduct(rateProduct);
+    }
+
+    function getYieldProtocolFee(uint256[] memory normalizedWeights, uint256 supply)
+        external
+        view
+        returns (uint256 yieldProtocolFees, uint256 athRateProduct)
+    {
+        uint256 protocolYieldFeesPoolPercentage;
+        (protocolYieldFeesPoolPercentage, athRateProduct) = _getYieldProtocolFeesPoolPercentage(normalizedWeights);
+        yieldProtocolFees = ExternalFees.bptForPoolOwnershipPercentage(supply, protocolYieldFeesPoolPercentage);
+    }
+
+    function getPostJoinExitProtocolFees(
         uint256[] memory preBalances,
         uint256[] memory balanceDeltas,
         uint256[] memory normalizedWeights,
@@ -56,7 +84,8 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256 postJoinExitSupply
     ) external returns (uint256) {
         return
-            _getJoinExitProtocolFees(
+            _getPostJoinExitProtocolFees(
+                WeightedMath._calculateInvariant(normalizedWeights, preBalances),
                 preBalances,
                 balanceDeltas,
                 normalizedWeights,
@@ -71,24 +100,24 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         return 8;
     }
 
+    function _getTotalTokens() internal view virtual override returns (uint256) {
+        return _totalTokens;
+    }
+
     function _getNormalizedWeight(IERC20) internal pure override returns (uint256) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _getNormalizedWeights() internal pure override returns (uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
-    }
-
-    function _getTotalTokens() internal pure override returns (uint256) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _scalingFactor(IERC20) internal pure override returns (uint256) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _scalingFactors() internal pure override returns (uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onInitializePool(
@@ -98,7 +127,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onJoinPool(
@@ -111,7 +140,7 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onExitPool(
@@ -124,6 +153,6 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        revert("NOT_IMPLEMENTED");
+        _revert(Errors.UNIMPLEMENTED);
     }
 }

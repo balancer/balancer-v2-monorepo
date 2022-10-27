@@ -32,6 +32,7 @@ export type InitStablePool = {
   from?: SignerWithAddress;
   recipient?: Account;
   protocolFeePercentage?: BigNumberish;
+  skipMint?: boolean;
 };
 
 export type JoinGivenInStablePool = {

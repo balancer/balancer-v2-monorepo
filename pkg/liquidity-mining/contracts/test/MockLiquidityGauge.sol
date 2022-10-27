@@ -12,15 +12,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
-
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ILiquidityGauge.sol";
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 // solhint-disable func-name-mixedcase
-
 contract MockLiquidityGauge is ILiquidityGauge {
     // solhint-disable-next-line var-name-mixedcase
     address public lp_token;
@@ -48,25 +46,24 @@ contract MockLiquidityGauge is ILiquidityGauge {
 
     // Methods below are not implemented; they are present just to comply with ILiquidityGauge.
     // State mutability was set to "pure" to avoid compiler warnings.
-    // solhint-disable func-name-mixedcase
 
     function integrate_fraction(address) external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function user_checkpoint(address) external pure override returns (bool) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function setRelativeWeightCap(uint256) external pure override {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getRelativeWeightCap() external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function getCappedRelativeWeight(uint256) external pure override returns (uint256) {
-        revert("Mock method; not implemented");
+        _revert(Errors.UNIMPLEMENTED);
     }
 }

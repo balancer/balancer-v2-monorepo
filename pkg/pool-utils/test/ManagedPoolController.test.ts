@@ -14,8 +14,7 @@ import {
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { currentTimestamp, MONTH, DAY, HOUR } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { encodeInvestmentConfig } from '@balancer-labs/v2-pool-utils/test/helpers/rebalance';
-import { ZERO_ADDRESS, MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { ZERO_ADDRESS, MAX_UINT256, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
 const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -27,7 +26,6 @@ const MIN_WEIGHT_CHANGE_DURATION = DAY;
 let admin: SignerWithAddress;
 let manager: SignerWithAddress;
 let other: SignerWithAddress;
-let assetManager: Contract;
 let pool: WeightedPool;
 let allTokens: TokenList;
 let vault: Vault;
@@ -51,8 +49,6 @@ sharedBeforeEach('deploy Vault, asset manager, and tokens', async () => {
   allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   await allTokens.mint({ to: manager, amount: fp(100) });
   await allTokens.mint({ to: other, amount: fp(100) });
-
-  assetManager = await deploy('MockAssetManager', { args: [allTokens.DAI.address] });
 });
 
 async function deployControllerAndPool(
@@ -88,7 +84,7 @@ async function deployControllerAndPool(
     args: [basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address],
   });
   const assetManagers = Array(allTokens.length).fill(ZERO_ADDRESS);
-  assetManagers[allTokens.indexOf(allTokens.DAI)] = assetManager.address;
+  assetManagers[allTokens.indexOf(allTokens.DAI)] = await randomAddress();
 
   const params = {
     vault,
@@ -106,8 +102,6 @@ async function deployControllerAndPool(
 
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts
 describe('ManagedPoolController', function () {
-  const NEW_SWAP_FEE = fp(0.05);
-  const NEW_MGMT_SWAP_FEE = fp(0.78);
   const NEW_MGMT_AUM_FEE = fp(0.015);
 
   context('pool controller not initialized', () => {
@@ -121,12 +115,6 @@ describe('ManagedPoolController', function () {
 
     it('sets up the pool controller', async () => {
       expect(await poolController.getManager()).to.equal(manager.address);
-    });
-
-    it('cannot call functions before initialization', async () => {
-      await expect(poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
-        'UNINITIALIZED_POOL_CONTROLLER'
-      );
     });
 
     it('sets base pool permissions', async () => {
@@ -155,39 +143,13 @@ describe('ManagedPoolController', function () {
       await poolController.initialize(pool.address);
     });
 
-    describe('set swap fee percentage', () => {
-      it('lets the manager set the swap fee', async () => {
-        await poolController.connect(manager).setSwapFeePercentage(NEW_SWAP_FEE);
-
-        expect(await pool.getSwapFeePercentage()).to.equal(NEW_SWAP_FEE);
-      });
-
-      it('reverts if non-manager sets the swap fee', async () => {
-        await expect(poolController.connect(other).setSwapFeePercentage(NEW_SWAP_FEE)).to.be.revertedWith(
-          'SENDER_NOT_ALLOWED'
-        );
-      });
-    });
-
-    describe('change management swap fee percentage', () => {
-      it('lets the manager set the management swap fee', async () => {
-        await poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE);
-
-        expect(await pool.getManagementSwapFeePercentage()).to.equal(NEW_MGMT_SWAP_FEE);
-      });
-
-      it('reverts if non-manager sets the management fee', async () => {
-        await expect(
-          poolController.connect(other).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
-        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
-      });
-    });
-
     describe('change management aum fee percentage', () => {
       it('lets the manager set the management AUM fee', async () => {
         await poolController.connect(manager).setManagementAumFeePercentage(NEW_MGMT_AUM_FEE);
 
-        expect(await pool.getManagementAumFeePercentage()).to.equal(NEW_MGMT_AUM_FEE);
+        const [aumFeePercentage] = await pool.getManagementAumFeeParams();
+
+        expect(aumFeePercentage).to.equal(NEW_MGMT_AUM_FEE);
       });
 
       it('reverts if non-manager sets the management AUM fee', async () => {
@@ -222,17 +184,25 @@ describe('ManagedPoolController', function () {
     });
 
     describe('update weights gradually', () => {
+      let tokens: string[];
+
+      sharedBeforeEach('get tokens', async () => {
+        const { tokens: registeredTokens } = await pool.getTokens();
+        // Remove BPT
+        tokens = registeredTokens.slice(1);
+      });
+
       it('lets the manager update weights gradually', async () => {
         const now = await currentTimestamp();
 
-        await poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS);
+        await poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), tokens, END_WEIGHTS);
       });
 
       it('reverts if non-manager updates weights gradually', async () => {
         const now = await currentTimestamp();
 
         await expect(
-          poolController.connect(other).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS)
+          poolController.connect(other).updateWeightsGradually(now, now.add(LONG_UPDATE), tokens, END_WEIGHTS)
         ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
       });
 
@@ -240,30 +210,8 @@ describe('ManagedPoolController', function () {
         const now = await currentTimestamp();
 
         await expect(
-          poolController.connect(manager).updateWeightsGradually(now, now.add(SHORT_UPDATE), END_WEIGHTS)
+          poolController.connect(manager).updateWeightsGradually(now, now.add(SHORT_UPDATE), tokens, END_WEIGHTS)
         ).to.be.revertedWith('WEIGHT_CHANGE_TOO_FAST');
-      });
-    });
-
-    describe('set asset manager config', () => {
-      const poolConfig = {
-        targetPercentage: 3,
-        upperCriticalPercentage: 4,
-        lowerCriticalPercentage: 2,
-      };
-
-      it('lets the manager set the asset manager config', async () => {
-        await poolController
-          .connect(manager)
-          .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig));
-      });
-
-      it('reverts if non-manager sets the asset manager config', async () => {
-        await expect(
-          poolController
-            .connect(other)
-            .setAssetManagerPoolConfig(allTokens.DAI.address, encodeInvestmentConfig(poolConfig))
-        ).to.be.revertedWith('CALLER_IS_NOT_OWNER');
       });
     });
 
@@ -312,9 +260,10 @@ describe('ManagedPoolController', function () {
 
       it('reverts if the manager updates weights', async () => {
         const now = await currentTimestamp();
+        const { tokens } = await pool.getTokens();
 
         await expect(
-          poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), END_WEIGHTS)
+          poolController.connect(manager).updateWeightsGradually(now, now.add(LONG_UPDATE), tokens, END_WEIGHTS)
         ).to.be.revertedWith('FEATURE_DISABLED');
       });
     });
@@ -345,12 +294,6 @@ describe('ManagedPoolController', function () {
       sharedBeforeEach('deploy controller (canChangeMgmtFees false)', async () => {
         await deployControllerAndPool(true, true, true, true, true, false, true, true, false);
         await poolController.initialize(pool.address);
-      });
-
-      it('reverts if the manager tries to change the management swap fee', async () => {
-        await expect(
-          poolController.connect(manager).setManagementSwapFeePercentage(NEW_MGMT_SWAP_FEE)
-        ).to.be.revertedWith('FEATURE_DISABLED');
       });
 
       it('reverts if the manager tries to change the management AUM fee', async () => {

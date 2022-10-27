@@ -2,7 +2,7 @@ import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -156,7 +156,7 @@ describeForkTest('OptimismRootGaugeFactory', 'mainnet', 14850000, function () {
     // The amount of tokens minted should equal the weekly emissions rate times the relative weight of the gauge
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
 
-    const expectedEmissions = gaugeRelativeWeight.mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = gaugeRelativeWeight.mul(weeklyRate).div(FP_ONE);
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
@@ -202,7 +202,7 @@ describeForkTest('OptimismRootGaugeFactory', 'mainnet', 14850000, function () {
     // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
     const expectedEmissions = relativeWeights
-      .map((weight) => weight.mul(weeklyRate).div(FP_SCALING_FACTOR))
+      .map((weight) => weight.mul(weeklyRate).div(FP_ONE))
       .reduce((sum, value) => sum.add(value));
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
