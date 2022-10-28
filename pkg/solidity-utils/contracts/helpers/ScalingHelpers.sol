@@ -15,6 +15,8 @@
 pragma solidity ^0.7.0;
 
 import "../math/FixedPoint.sol";
+import "../math/Math.sol";
+import "../openzeppelin/ERC20.sol";
 import "./InputHelpers.sol";
 
 // solhint-disable
@@ -92,4 +94,13 @@ function _downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFac
     for (uint256 i = 0; i < length; ++i) {
         amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
     }
+}
+
+function _computeScalingFactor(IERC20 token) view returns (uint256) {
+    // Tokens that don't implement the `decimals` method are not supported.
+    uint256 tokenDecimals = ERC20(address(token)).decimals();
+
+    // Tokens with more than 18 decimals are not supported.
+    uint256 decimalsDifference = Math.sub(18, tokenDecimals);
+    return FixedPoint.ONE * 10**decimalsDifference;
 }

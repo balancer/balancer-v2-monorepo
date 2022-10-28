@@ -55,7 +55,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         return _getVirtualSupply();
     }
 
-    function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
+    function _onInitializePool(address, address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 
