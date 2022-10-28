@@ -846,7 +846,7 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
-        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
             return _exitExactBPTInForTokensOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);

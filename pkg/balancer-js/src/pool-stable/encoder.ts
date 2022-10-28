@@ -10,7 +10,7 @@ export enum StablePoolJoinKind {
 
 export enum StablePoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
-  EXACT_BPT_IN_FOR_TOKENS_OUT,
+  EXACT_BPT_IN_FOR_ALL_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
 }
 
@@ -85,5 +85,5 @@ export class StablePoolEncoder {
    * @param bptAmountIn - the amount of BPT to burn in exchange for withdrawn tokens
    */
   static exitExactBptInForTokensOut = (bptAmountIn: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
+    defaultAbiCoder.encode(['uint256', 'uint256'], [StablePoolExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn]);
 }
