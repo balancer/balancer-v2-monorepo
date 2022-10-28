@@ -221,9 +221,7 @@ abstract contract NewBasePool is
             // Pool from ever being fully drained.
             // Some pool types do not require this mechanism, and the minimum BPT might be zero.
             _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
-            if (_getMinimumBpt() > 0) {
-                _mintPoolTokens(address(0), _getMinimumBpt());
-            }
+            _mintPoolTokens(address(0), _getMinimumBpt());
 
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
         } else {
