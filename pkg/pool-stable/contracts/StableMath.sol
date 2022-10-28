@@ -448,7 +448,7 @@ library StableMath {
         _revert(Errors.STABLE_GET_BALANCE_DIDNT_CONVERGE);
     }
 
-    function _calcAllTokensInGivenExactBptOut(
+    function _computeProportionalAmountsIn(
         uint256[] memory balances,
         uint256 bptAmountOut,
         uint256 totalBPT

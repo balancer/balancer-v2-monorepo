@@ -249,7 +249,7 @@ library WeightedMath {
         return nonTaxableAmount.add(taxableAmountPlusFees);
     }
 
-    function _calcAllTokensInGivenExactBptOut(
+    function _computeProportionalAmountsIn(
         uint256[] memory balances,
         uint256 bptAmountOut,
         uint256 totalBPT
