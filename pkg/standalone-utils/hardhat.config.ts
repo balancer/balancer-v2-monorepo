@@ -21,4 +21,5 @@ export default {
       allowUnlimitedContractSize: true,
     },
   },
+  warnings: hardhatBaseConfig.warnings,
 };
