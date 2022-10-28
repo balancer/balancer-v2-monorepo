@@ -227,8 +227,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     }
 
     /**
-     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will have//
-     * been minted.
+     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will
+     * have been minted.
      *
      * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit said BPT as
      * their balance. Unfortunately, this cannot be performed during construction, as a join involves calling the
@@ -753,7 +753,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * @dev Enumerates all ownerOnly functions in Linear Pool.
      */
     function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return actionId == getActionId(this.setTargets.selector) ||
+        return
+            actionId == getActionId(this.setTargets.selector) ||
             actionId == getActionId(this.setSwapFeePercentage.selector);
     }
 }
