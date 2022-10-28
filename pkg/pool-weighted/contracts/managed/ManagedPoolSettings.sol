@@ -27,12 +27,11 @@ import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ExternalAUMFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 
 import "../lib/GradualValueChange.sol";
 import "../managed/CircuitBreakerStorageLib.sol";
 import "../WeightedMath.sol";
-
-import "./vendor/BasePool.sol";
 
 import "./ManagedPoolStorageLib.sol";
 import "./ManagedPoolAumStorageLib.sol";
@@ -42,7 +41,7 @@ import "./ManagedPoolAddRemoveTokenLib.sol";
 /**
  * @title Managed Pool Settings
  */
-abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPool {
+abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -55,7 +54,7 @@ abstract contract ManagedPoolSettings is BasePool, ProtocolFeeCache, IManagedPoo
     uint256 private constant _MIN_TOKENS = 2;
     // The upper bound is WeightedMath.MAX_WEIGHTED_TOKENS, but this is constrained by other factors, such as Pool
     // creation gas consumption.
-    uint256 private constant _MAX_TOKENS = 38;
+    uint256 private constant _MAX_TOKENS = 50;
 
     // The swap fee cannot be 100%: calculations that divide by (1-fee) would revert with division by zero.
     // Swap fees close to 100% can still cause reverts when performing join/exit swaps, if the calculated fee

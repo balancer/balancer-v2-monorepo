@@ -153,8 +153,9 @@ export default class LinearPool extends BasePool {
   async swap(params: GeneralSwap): Promise<BigNumber> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
-    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return amount;
+    const { amountIn, amountOut } = expectEvent.inReceipt(receipt, 'Swap').args;
+
+    return params.kind == SwapKind.GivenIn ? amountOut : amountIn;
   }
 
   private _buildSwapParams(kind: number, params: SwapLinearPool): GeneralSwap {
