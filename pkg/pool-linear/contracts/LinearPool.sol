@@ -665,8 +665,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
      * @dev Validate the swap fee, update storage, and emit an event.
      */
     function _setSwapFeePercentage(uint256 swapFeePercentage) internal {
-        _require(swapFeePercentage >= _getMinSwapFeePercentage(), Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _getMaxSwapFeePercentage(), Errors.MAX_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
 
         _poolState = _poolState.insertUint(
             swapFeePercentage,
@@ -675,14 +675,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         );
 
         emit SwapFeePercentageChanged(swapFeePercentage);
-    }
-
-    function _getMinSwapFeePercentage() internal pure virtual returns (uint256) {
-        return _MIN_SWAP_FEE_PERCENTAGE;
-    }
-
-    function _getMaxSwapFeePercentage() internal pure virtual returns (uint256) {
-        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
     // Virtual Supply
