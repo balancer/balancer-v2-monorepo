@@ -244,7 +244,7 @@ export default {
       case WeightedPoolType.MANAGED_POOL: {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
-        const baseFactory = await deploy('v2-pool-weighted/BaseManagedPoolFactory', {
+        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
           args: [vault.address, vault.getFeesProvider().address],
           from,
           libraries: {
@@ -253,8 +253,8 @@ export default {
           },
         });
 
-        const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-          args: [baseFactory.address],
+        const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
+          args: [factory.address],
           from,
         });
 
@@ -286,7 +286,7 @@ export default {
           canChangeMgmtFees: true,
         };
 
-        const tx = await factory
+        const tx = await controlledFactory
           .connect(from || ZERO_ADDRESS)
           .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();
