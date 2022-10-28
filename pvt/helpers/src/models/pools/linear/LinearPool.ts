@@ -58,14 +58,14 @@ export default class LinearPool extends BasePool {
 
   // Order the tokens the same way the Vault will
   static getTokenList(mainToken: Token, wrappedToken: Token, bptToken: Token): TokenList {
-    let tokens: Token[] = [];
+    const tokens: Token[] = [];
 
     tokens.push(bptToken);
     tokens.push(mainToken.address < wrappedToken.address ? mainToken : wrappedToken);
     tokens.push(mainToken.address < wrappedToken.address ? wrappedToken : mainToken);
 
     return new TokenList(tokens);
-  };
+  }
 
   constructor(
     instance: Contract,
@@ -80,7 +80,14 @@ export default class LinearPool extends BasePool {
     swapFeePercentage: BigNumberish,
     owner?: SignerWithAddress
   ) {
-    super(instance, poolId, vault, LinearPool.getTokenList(mainToken, wrappedToken, bptToken), swapFeePercentage, owner);
+    super(
+      instance,
+      poolId,
+      vault,
+      LinearPool.getTokenList(mainToken, wrappedToken, bptToken),
+      swapFeePercentage,
+      owner
+    );
     this.mainToken = mainToken;
     this.wrappedToken = wrappedToken;
     this.bptToken = bptToken;
