@@ -743,7 +743,7 @@ contract ComposableStablePool is
     }
 
     /**
-     * @dev Proportional join. Pays no protocol fees.
+     * @dev Proportional join. Pays no swap fees.
      */
     function _joinAllTokensInForExactBptOut(
         uint256 actualSupply,
@@ -856,7 +856,9 @@ contract ComposableStablePool is
     }
 
     /**
-     * @dev Proportional exit. Pays no protocol fees.
+     * @dev Proportional exit. Pays no swap fees. This is functionally equivalent to the recovery mode exit,
+     * except this doesn't skip protocol fee collection, calling rate providers, etc., and doesn't require
+     * recovery mode to be enabled.
      */
     function _exitExactBPTInForTokensOut(
         uint256 actualSupply,
