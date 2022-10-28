@@ -142,7 +142,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
             PoolRegistrationLib.registerComposablePool(
                 vault,
                 IVault.PoolSpecialization.GENERAL,
-                _insertSortedTokens(mainToken, wrappedToken),
+                _sortTokens(mainToken, wrappedToken),
                 assetManagers
             ),
             name,
@@ -171,19 +171,6 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
         // Set the initial swap fee percentage.
         _setSwapFeePercentage(swapFeePercentage);
-    }
-
-    /**
-     * @dev Creates the array needed to register tokens.
-     */
-    function _insertSortedTokens(IERC20 mainToken, IERC20 wrappedToken) private pure returns (IERC20[] memory) {
-        bool mainFirst = mainToken < wrappedToken;
-        IERC20[] memory sortedTokens = new IERC20[](2);
-
-        sortedTokens[0] = mainFirst ? mainToken : wrappedToken;
-        sortedTokens[1] = mainFirst ? wrappedToken : mainToken;
-
-        return sortedTokens;
     }
 
     /**
