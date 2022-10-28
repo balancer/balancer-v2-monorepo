@@ -351,10 +351,11 @@ abstract contract NewBasePool is
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
      * be downscaled (rounding up) before being returned to the Vault.
      */
-    function _onInitializePool(address sender, address recipient, bytes memory userData)
-        internal
-        virtual
-        returns (uint256 bptAmountOut, uint256[] memory amountsIn);
+    function _onInitializePool(
+        address sender,
+        address recipient,
+        bytes memory userData
+    ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
     /**
      * @dev Called whenever the Pool is joined after the first initialization join (see `_onInitializePool`).
