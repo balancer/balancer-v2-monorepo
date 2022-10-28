@@ -618,9 +618,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         _require(upperTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
         _require(lowerTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
 
-        _poolState =
-            WordCodec.encodeUint(lowerTarget / _TARGET_SCALING, _LOWER_TARGET_OFFSET, _TARGET_BITS) |
-            WordCodec.encodeUint(upperTarget / _TARGET_SCALING, _UPPER_TARGET_OFFSET, _TARGET_BITS);
+        _poolState = _poolState
+            .insertUint(lowerTarget / _TARGET_SCALING, _LOWER_TARGET_OFFSET, _TARGET_BITS)
+            .insertUint(upperTarget / _TARGET_SCALING, _UPPER_TARGET_OFFSET, _TARGET_BITS);
 
         emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
