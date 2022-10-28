@@ -91,12 +91,10 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    // Store data needed by the pool: swap fee, targets, and recovery mode indicator.
-    bytes32 private _poolState;
-
     // The lower and upper targets are stored in the pool state field, along with the swap fee percentage and recovery
     // mode flag, which together take up 64 bits).
-    //
+    bytes32 private _poolState;
+
     // The targets are already scaled by the main token's scaling factor (which makes the token behave as if it had 18
     // decimals), but we only store the integer part: the targets must be multiplied by 1e18 before being used.
     // This means the targets' resolution does not include decimal places in the main token (so e.g. a target of 500.1
@@ -120,7 +118,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
 
     uint256 private constant _MAX_UPPER_TARGET = (2**(32) - 1) * _TARGET_SCALING;
 
-    // Composable Pool registration will put the BPT at index 0, with the main/wrapped following, in sorted order.
+    // Composable Pool registration will put the BPT at index 0, with the main/wrapped following in sorted order.
     uint256 private constant _BPT_INDEX = 0;
 
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
