@@ -336,12 +336,11 @@ describe('SecondaryPool', function () {
         out: pool.currencyIndex,
         amount: sell_amount,
         balances: currentBalances,
-        from: other,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit12')) // Stop Order Sell@price12
       });
 
       const _ref = await pool.getOrderRef();
-      console.log(_ref);
+
       const edit_order = await pool.editOrder({
         ref: _ref[0].toString(),
         price: BigNumber.from("25"), //Changed price from 12 --> 25

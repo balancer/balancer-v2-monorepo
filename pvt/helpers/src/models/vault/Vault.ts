@@ -100,7 +100,7 @@ export default class Vault {
           {
             kind: params.kind,
             poolId: params.poolId,
-            from: params.from ?? ZERO_ADDRESS,
+            from: params.from ?? sender.address,
             to: params.to,
             tokenIn: params.tokenIn,
             tokenOut: params.tokenOut,
