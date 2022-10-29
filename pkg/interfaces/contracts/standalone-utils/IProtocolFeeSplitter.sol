@@ -14,8 +14,8 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeesWithdrawer.sol";
+import "../vault/IVault.sol";
+import "./IProtocolFeesWithdrawer.sol";
 
 /**
  * @title ProtocolFeeSplitter
