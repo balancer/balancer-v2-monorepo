@@ -6,7 +6,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { bn, fp, fpDiv, FP_ONE, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
-import { DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -30,6 +30,8 @@ describe('ComposableStablePoolRates', () => {
   let vault: Vault;
 
   const INITIAL_CACHE_DURATION = bn(HOUR);
+  const SWAP_FEE_PERCENTAGE = fp(0.01);
+  const BPT_INDEX = 0;
 
   sharedBeforeEach('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();
@@ -50,6 +52,7 @@ describe('ComposableStablePoolRates', () => {
             tokens.map(() => ZERO_ADDRESS),
             tokens.map(() => 0),
             tokens.map(() => false),
+            SWAP_FEE_PERCENTAGE,
             owner.address,
           ],
         })
@@ -84,6 +87,7 @@ describe('ComposableStablePoolRates', () => {
             tokens.map(() => ZERO_ADDRESS),
             tokens.map(() => 0),
             tokens.map(() => false),
+            SWAP_FEE_PERCENTAGE,
             owner.address,
           ],
         })
@@ -91,8 +95,13 @@ describe('ComposableStablePoolRates', () => {
     });
   });
 
+  // The token and rate provider lists do not include BPT, but `getScalingFactors` does. Since we know the BPT token is
+  // always at 0, we need to prepend a ONE for the BPT tokens scaling factor.
   const getExpectedScalingFactors = (tokenList: TokenList, tokenRates: BigNumber[]): BigNumber[] => {
-    return tokenList.map((token, index) => tokenRates[index].mul(bn(10).pow(18 - token.decimals)));
+    const poolTokenFactors = tokenList.map((token, index) => tokenRates[index].mul(bn(10).pow(18 - token.decimals)));
+    // Prepend the BPT token scaling factor.
+    poolTokenFactors.splice(BPT_INDEX, 0, FP_ONE);
+    return poolTokenFactors;
   };
 
   const getRates = async (rateProviderAddresses: string[]): Promise<BigNumber[]> => {
@@ -109,7 +118,6 @@ describe('ComposableStablePoolRates', () => {
 
   function itBehavesAsStablePoolRates(numberOfTokens: number): void {
     let pool: Contract, tokens: TokenList;
-    let bptIndex: number;
 
     sharedBeforeEach('deploy tokens', async () => {
       tokens = await TokenList.create(numberOfTokens, { sorted: true, varyDecimals: true });
@@ -132,10 +140,10 @@ describe('ComposableStablePoolRates', () => {
           newRateProviders,
           newTokenRateCacheDurations,
           newExemptFromYieldProtocolFeeFlags,
+          SWAP_FEE_PERCENTAGE,
           TypesConverter.toAddress(poolOwner),
         ],
       });
-      bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
       exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
@@ -170,17 +178,6 @@ describe('ComposableStablePoolRates', () => {
       );
     }
 
-    async function tokensWithBpt(): Promise<TokenList> {
-      const bpt = await Token.deployedAt(pool);
-      return new TokenList([...tokens.tokens, bpt]).sort();
-    }
-
-    async function rateProvidersWithBpt(): Promise<string[]> {
-      const allRateProviders = rateProviders.slice();
-      allRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-      return allRateProviders;
-    }
-
     describe('constructor', () => {
       context('when the constructor succeeds', () => {
         sharedBeforeEach('deploy pool', async () => {
@@ -189,8 +186,7 @@ describe('ComposableStablePoolRates', () => {
 
         it('emits TokenRateCacheUpdated events for each token with a rate provider', async () => {
           const deploymentTx = await pool.deployTransaction.wait();
-          const allRateProviders = await rateProvidersWithBpt();
-          for (const [index, rateProvider] of allRateProviders.entries()) {
+          for (const [index, rateProvider] of rateProviders.entries()) {
             if (rateProvider !== ZERO_ADDRESS) {
               expectEvent.inIndirectReceipt(deploymentTx, pool.interface, 'TokenRateCacheUpdated', {
                 tokenIndex: index,
@@ -202,8 +198,7 @@ describe('ComposableStablePoolRates', () => {
 
         it('emits TokenRateProviderSet events for each token with a rate provider', async () => {
           const deploymentTx = await pool.deployTransaction.wait();
-          const allRateProviders = await rateProvidersWithBpt();
-          for (const [index, rateProvider] of allRateProviders.entries()) {
+          for (const [index, rateProvider] of rateProviders.entries()) {
             if (rateProvider !== ZERO_ADDRESS) {
               expectEvent.inIndirectReceipt(deploymentTx, pool.interface, 'TokenRateProviderSet', {
                 tokenIndex: index,
@@ -237,24 +232,28 @@ describe('ComposableStablePoolRates', () => {
 
           context("when the token doesn't have a rate provider", () => {
             it('returns ONE', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens with rate providers
-                if (allRateProviders[i] !== ZERO_ADDRESS) return;
+                if (rateProviders[i] !== ZERO_ADDRESS) return;
 
                 expect(await pool.getTokenRate(token.address)).to.be.eq(FP_ONE);
               });
+            });
+
+            it('the BPT token returns ONE', async () => {
+              expect(await pool.getTokenRate(pool.address)).to.be.eq(FP_ONE);
+            });
+
+            it('reverts if called with an invalid token', async () => {
+              await expect(pool.getTokenRate(ANY_ADDRESS)).to.be.revertedWith('INVALID_TOKEN');
             });
           });
 
           context('when the token has a rate provider', () => {
             it('returns the cached value of the current rate', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens without rate providers
-                if (allRateProviders[i] === ZERO_ADDRESS) return;
+                if (rateProviders[i] === ZERO_ADDRESS) return;
 
                 const initialRate = FP_ONE;
                 expect(await pool.getTokenRate(token.address)).to.be.eq(initialRate);
@@ -262,7 +261,7 @@ describe('ComposableStablePoolRates', () => {
                 // We update the rate reported by the rate provider but do not trigger a cache update.
                 // We should see the same rate reported by the pool.
                 const newRate = fp(4.5);
-                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
                 await rateProvider.mockRate(newRate);
 
                 expect(await pool.getTokenRate(token.address)).to.be.eq(initialRate);
@@ -283,11 +282,9 @@ describe('ComposableStablePoolRates', () => {
 
           context("when the token doesn't have a rate provider", () => {
             it('reverts', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens with rate providers
-                if (allRateProviders[i] !== ZERO_ADDRESS) return;
+                if (rateProviders[i] !== ZERO_ADDRESS) return;
 
                 await expect(pool.getTokenRateCache(token.address)).to.be.revertedWith(
                   'TOKEN_DOES_NOT_HAVE_RATE_PROVIDER'
@@ -298,17 +295,15 @@ describe('ComposableStablePoolRates', () => {
 
           context('when the token has a rate provider', () => {
             it('returns the contents of the rate cache', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens without rate providers
-                if (allRateProviders[i] === ZERO_ADDRESS) return;
+                if (rateProviders[i] === ZERO_ADDRESS) return;
 
                 const previousCache = await pool.getTokenRateCache(token.address);
 
                 // We update the rate reported by the rate provider but do not trigger a cache update.
                 const newRate = fp(4.5);
-                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
                 await rateProvider.mockRate(newRate);
 
                 // We don't expect the cache to be updated yet.
@@ -337,16 +332,14 @@ describe('ComposableStablePoolRates', () => {
           const newRate = fp(4.5);
 
           it('updates the cached rate', async () => {
-            const allTokens = await tokensWithBpt();
-            const allRateProviders = await rateProvidersWithBpt();
-            await allTokens.asyncEach(async (token, i) => {
+            await tokens.asyncEach(async (token, i) => {
               // Ignore tokens without rate providers
-              if (allRateProviders[i] === ZERO_ADDRESS) return;
+              if (rateProviders[i] === ZERO_ADDRESS) return;
 
               const previousCache = await pool.getTokenRateCache(token.address);
               expect(previousCache.rate).not.to.be.equal(newRate);
 
-              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
               await rateProvider.mockRate(newRate);
 
               await action(token);
@@ -357,15 +350,13 @@ describe('ComposableStablePoolRates', () => {
           });
 
           it('extends the cache expiry', async () => {
-            const allTokens = await tokensWithBpt();
-            const allRateProviders = await rateProvidersWithBpt();
-            await allTokens.asyncEach(async (token, i) => {
+            await tokens.asyncEach(async (token, i) => {
               // Ignore tokens without rate providers
-              if (allRateProviders[i] === ZERO_ADDRESS) return;
+              if (rateProviders[i] === ZERO_ADDRESS) return;
 
               const previousCache = await pool.getTokenRateCache(token.address);
 
-              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
               await rateProvider.mockRate(newRate);
 
               const tx = await action(token);
@@ -378,15 +369,13 @@ describe('ComposableStablePoolRates', () => {
           });
 
           it("doesn't affect the cached old rate", async () => {
-            const allTokens = await tokensWithBpt();
-            const allRateProviders = await rateProvidersWithBpt();
-            await allTokens.asyncEach(async (token, i) => {
+            await tokens.asyncEach(async (token, i) => {
               // Ignore tokens without rate providers
-              if (allRateProviders[i] === ZERO_ADDRESS) return;
+              if (rateProviders[i] === ZERO_ADDRESS) return;
 
               const previousCache = await pool.getTokenRateCache(token.address);
 
-              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
               await rateProvider.mockRate(newRate);
 
               await action(token);
@@ -397,12 +386,10 @@ describe('ComposableStablePoolRates', () => {
           });
 
           it('emits a TokenRateCacheUpdated event', async () => {
-            const allTokens = await tokensWithBpt();
-            const allRateProviders = await rateProvidersWithBpt();
-            await allTokens.asyncEach(async (token, i) => {
+            await tokens.asyncEach(async (token, i) => {
               // Ignore tokens without rate providers
-              if (allRateProviders[i] === ZERO_ADDRESS) return;
-              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+              if (rateProviders[i] === ZERO_ADDRESS) return;
+              const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
               await rateProvider.mockRate(newRate);
               const receipt = await action(token);
 
@@ -423,11 +410,9 @@ describe('ComposableStablePoolRates', () => {
             const action = async (token: Token) => pool.cacheTokenRateIfNecessary(token.address);
 
             it('does not update the cache', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens without rate providers
-                if (allRateProviders[i] === ZERO_ADDRESS) return;
+                if (rateProviders[i] === ZERO_ADDRESS) return;
 
                 const previousCache = await pool.getTokenRateCache(token.address);
 
@@ -469,19 +454,14 @@ describe('ComposableStablePoolRates', () => {
       });
 
       describe('updateOldRates', () => {
-        let allTokens: TokenList;
-        let allRateProviders: string[];
-
         sharedBeforeEach('deploy pool', async () => {
           await deployPoolSimple(owner, tokens);
-          allTokens = await tokensWithBpt();
-          allRateProviders = await rateProvidersWithBpt();
         });
 
         sharedBeforeEach('mock rates', async () => {
-          await allTokens.asyncEach(async (token, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+          await tokens.asyncEach(async (token, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(fp(Math.random()));
             await pool.updateTokenRateCache(token.address);
 
@@ -492,8 +472,8 @@ describe('ComposableStablePoolRates', () => {
         });
 
         it('writes the current cached rate into the old cached rate', async () => {
-          const previousCaches = await allTokens.asyncMap(async (token, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return null;
+          const previousCaches = await tokens.asyncMap(async (token, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return null;
             return await pool.getTokenRateCache(token.address);
           });
 
@@ -505,8 +485,8 @@ describe('ComposableStablePoolRates', () => {
 
           await pool.updateOldRates();
 
-          const newCaches = await allTokens.asyncMap(async (token, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return null;
+          const newCaches = await tokens.asyncMap(async (token, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return null;
             return await pool.getTokenRateCache(token.address);
           });
 
@@ -528,11 +508,9 @@ describe('ComposableStablePoolRates', () => {
 
           context("when the token doesn't have a rate provider", () => {
             it('reverts', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens with rate providers
-                if (allRateProviders[i] !== ZERO_ADDRESS) return;
+                if (rateProviders[i] !== ZERO_ADDRESS) return;
 
                 await expect(
                   pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration)
@@ -543,16 +521,14 @@ describe('ComposableStablePoolRates', () => {
 
           context('when the token has a rate provider', () => {
             it('updates the cache duration', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens without rate providers
-                if (allRateProviders[i] === ZERO_ADDRESS) return;
+                if (rateProviders[i] === ZERO_ADDRESS) return;
 
                 const previousCache = await pool.getTokenRateCache(token.address);
 
                 const newRate = fp(4.5);
-                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
                 await rateProvider.mockRate(newRate);
                 const forceUpdateAt = await currentTimestamp();
                 await pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration);
@@ -567,31 +543,27 @@ describe('ComposableStablePoolRates', () => {
             });
 
             it('emits a TokenRateProviderSet event', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens without rate providers
-                if (allRateProviders[i] === ZERO_ADDRESS) return;
+                if (rateProviders[i] === ZERO_ADDRESS) return;
 
                 const tx = await pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration);
 
                 expectEvent.inReceipt(await tx.wait(), 'TokenRateProviderSet', {
                   tokenIndex: i,
-                  provider: allRateProviders[i],
+                  provider: rateProviders[i],
                   cacheDuration: newDuration,
                 });
               });
             });
 
             it('emits a TokenRateCacheUpdated event', async () => {
-              const allTokens = await tokensWithBpt();
-              const allRateProviders = await rateProvidersWithBpt();
-              await allTokens.asyncEach(async (token, i) => {
+              await tokens.asyncEach(async (token, i) => {
                 // Ignore tokens without rate providers
-                if (allRateProviders[i] === ZERO_ADDRESS) return;
+                if (rateProviders[i] === ZERO_ADDRESS) return;
 
                 const newRate = fp(Math.floor(Math.random() * 10));
-                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+                const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
                 await rateProvider.mockRate(newRate);
 
                 const tx = await pool.connect(caller).setTokenRateCacheDuration(token.address, newDuration);
@@ -686,40 +658,35 @@ describe('ComposableStablePoolRates', () => {
     });
 
     describe('scaling factors', () => {
-      let allTokens: TokenList;
-      let allRateProviders: string[];
       let expectedScalingFactors: BigNumber[];
 
       sharedBeforeEach('deploy pool', async () => {
         await deployPoolSimple(owner, tokens);
-        allTokens = await tokensWithBpt();
-        allRateProviders = await rateProvidersWithBpt();
       });
 
       const itAdaptsTheScalingFactorsCorrectly = () => {
         it('adapts the scaling factors with the price rate', async () => {
           const scalingFactors = await pool.getScalingFactors();
           expect(scalingFactors).to.be.deep.equal(expectedScalingFactors);
-          expect(scalingFactors[bptIndex]).to.be.equal(FP_ONE);
         });
       };
 
       context('with price rates above 1', () => {
         sharedBeforeEach('mock rates', async () => {
-          await allTokens.asyncEach(async (token, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+          await tokens.asyncEach(async (token, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(fp(1 + i / 10));
             await pool.updateTokenRateCache(token.address);
           });
-          expectedScalingFactors = getExpectedScalingFactors(allTokens, await getRates(allRateProviders));
+          expectedScalingFactors = getExpectedScalingFactors(tokens, await getRates(rateProviders));
 
           // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
-          // This ensures that the pool is using it's cache properly.
-          await allTokens.asyncEach(async (_, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
+          // This ensures that the pool is using its cache properly.
+          await tokens.asyncEach(async (_, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
 
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(FP_ZERO);
           });
         });
@@ -729,21 +696,21 @@ describe('ComposableStablePoolRates', () => {
 
       context('with price rates equal to 1', () => {
         sharedBeforeEach('mock rates', async () => {
-          await allTokens.asyncEach(async (token, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
+          await tokens.asyncEach(async (token, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
 
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(FP_ONE);
             await pool.updateTokenRateCache(token.address);
           });
-          expectedScalingFactors = await getExpectedScalingFactors(allTokens, await getRates(allRateProviders));
+          expectedScalingFactors = await getExpectedScalingFactors(tokens, await getRates(rateProviders));
 
           // Set rates to zero. If the pool is reading from the rate provider directly then this will cause reverts.
           // This ensures that the pool is using it's cache properly.
-          await allTokens.asyncEach(async (_, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
+          await tokens.asyncEach(async (_, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
 
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(FP_ZERO);
           });
         });
@@ -751,23 +718,23 @@ describe('ComposableStablePoolRates', () => {
         itAdaptsTheScalingFactorsCorrectly();
       });
 
-      context('with price rates belows 1', () => {
+      context('with price rates below 1', () => {
         sharedBeforeEach('mock rate', async () => {
-          await allTokens.asyncEach(async (token, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
+          await tokens.asyncEach(async (token, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
 
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(fp(1 - i / 10));
             await pool.updateTokenRateCache(token.address);
           });
-          expectedScalingFactors = await getExpectedScalingFactors(allTokens, await getRates(allRateProviders));
+          expectedScalingFactors = await getExpectedScalingFactors(tokens, await getRates(rateProviders));
 
           // Set rate to zero. If the pool is reading from the rate provider directly then this will cause reverts.
           // This ensures that the pool is using it's cache properly.
-          await allTokens.asyncEach(async (_, i) => {
-            if (allRateProviders[i] === ZERO_ADDRESS) return;
+          await tokens.asyncEach(async (_, i) => {
+            if (rateProviders[i] === ZERO_ADDRESS) return;
 
-            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', allRateProviders[i]);
+            const rateProvider = await deployedAt('v2-pool-utils/MockRateProvider', rateProviders[i]);
             await rateProvider.mockRate(FP_ZERO);
           });
         });
