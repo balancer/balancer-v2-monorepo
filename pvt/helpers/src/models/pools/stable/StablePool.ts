@@ -47,7 +47,6 @@ const PREMINTED_BPT = MAX_UINT112.div(2);
 
 export default class StablePool extends BasePool {
   amplificationParameter: BigNumberish;
-  bptIndex: number;
 
   static async create(params: RawStablePoolDeployment = {}): Promise<StablePool> {
     return StablePoolDeployer.deploy(params);
@@ -58,7 +57,6 @@ export default class StablePool extends BasePool {
     poolId: string,
     vault: Vault,
     tokens: TokenList,
-    bptIndex: BigNumber,
     swapFeePercentage: BigNumberish,
     amplificationParameter: BigNumberish,
     owner?: SignerWithAddress
@@ -66,7 +64,6 @@ export default class StablePool extends BasePool {
     super(instance, poolId, vault, tokens, swapFeePercentage, owner);
 
     this.amplificationParameter = amplificationParameter;
-    this.bptIndex = bptIndex.toNumber();
   }
 
   get bpt(): Token {
@@ -87,10 +84,6 @@ export default class StablePool extends BasePool {
 
   async getAmplificationParameter(): Promise<{ value: BigNumber; isUpdating: boolean; precision: BigNumber }> {
     return this.instance.getAmplificationParameter();
-  }
-
-  async getBptIndex(): Promise<number> {
-    return (await this.instance.getBptIndex()).toNumber();
   }
 
   async getRateProviders(): Promise<string[]> {
@@ -548,15 +541,5 @@ export default class StablePool extends BasePool {
       params.protocolFeePercentage ?? 0,
       params.data ?? '0x'
     );
-  }
-
-  private _skipBptIndex(index: number): number {
-    return index < this.bptIndex ? index : index - 1;
-  }
-
-  private async _dropBptItem(items: BigNumberish[]): Promise<BigNumberish[]> {
-    const result = [];
-    for (let i = 0; i < items.length - 1; i++) result[i] = items[i < this.bptIndex ? i : i + 1];
-    return result;
   }
 }

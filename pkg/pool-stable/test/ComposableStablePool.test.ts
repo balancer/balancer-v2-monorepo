@@ -80,13 +80,14 @@ describe('ComposableStablePool', () => {
 
   function itBehavesAsComposableStablePool(numberOfTokens: number): void {
     let pool: StablePool, tokens: TokenList;
-    let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
+    let deployTimestamp: BigNumber, initialBalances: BigNumberish[];
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
     const exemptFromYieldProtocolFeeFlags: boolean[] = [];
 
     const ZEROS = Array(numberOfTokens + 1).fill(bn(0));
+    const BPT_INDEX = 0;
 
     async function deployPool(
       params: RawStablePoolDeployment = {},
@@ -112,9 +113,8 @@ describe('ComposableStablePool', () => {
         ...params,
       });
 
-      bptIndex = await pool.getBptIndex();
       deployTimestamp = await currentTimestamp();
-      initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? 0 : fp(1 - i / 10)));
+      initialBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == BPT_INDEX ? 0 : fp(1 - i / 10)));
     }
 
     describe('creation', () => {
@@ -219,7 +219,7 @@ describe('ComposableStablePool', () => {
 
             const currentBalances = await tokens.balanceOf(pool.vault);
             currentBalances.forEach((currentBalance, i) => {
-              const initialBalanceIndex = i < bptIndex ? i : i + 1; // initial balances includes BPT
+              const initialBalanceIndex = i + 1; // initial balances includes BPT
               const expectedBalance = previousBalances[i].add(initialBalances[initialBalanceIndex]);
               expect(currentBalance).to.be.equal(expectedBalance);
             });
@@ -259,7 +259,7 @@ describe('ComposableStablePool', () => {
 
             expect(dueProtocolFeeAmounts).to.be.zeros;
             for (let i = 0; i < amountsIn.length; i++) {
-              i === bptIndex
+              i === BPT_INDEX
                 ? expect(amountsIn[i]).to.be.equalWithError(PREMINTED_BPT.sub(invariant), 0.00001)
                 : expect(amountsIn[i]).to.be.equal(initialBalances[i]);
             }
@@ -339,7 +339,7 @@ describe('ComposableStablePool', () => {
 
             sharedBeforeEach(async () => {
               const deltas = range(numberOfTokens + 1).map((_, i) =>
-                i !== bptIndex ? registeredBalances[i].mul(random(1, 10)).div(1000) : 0
+                i !== BPT_INDEX ? registeredBalances[i].mul(random(1, 10)).div(1000) : 0
               );
 
               registeredBalancesWithFees = arrayAdd(registeredBalances, deltas);
@@ -349,7 +349,7 @@ describe('ComposableStablePool', () => {
               // tokens (which is a close approximation while the Pool is balanced).
 
               const deltaSum = bnSum(deltas);
-              const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != bptIndex));
+              const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != BPT_INDEX));
               const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
               const expectedProtocolOwnershipPercentage = fpMul(
@@ -383,7 +383,7 @@ describe('ComposableStablePool', () => {
         });
 
         it('returns the balances array having dropped the BPT balance', async () => {
-          const expectedBalances = registeredBalances.filter((_, i) => i !== bptIndex);
+          const expectedBalances = registeredBalances.filter((_, i) => i !== BPT_INDEX);
           const { balances } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
           expect(balances).to.be.deep.eq(expectedBalances);
         });
@@ -400,7 +400,7 @@ describe('ComposableStablePool', () => {
           // We pass a floating point amplification instead of an integer one, to more closely match the behavior in the
           // Pool.
           const expectedInvariant = calculateInvariant(
-            registeredBalances.filter((_, i) => i !== bptIndex),
+            registeredBalances.filter((_, i) => i !== BPT_INDEX),
             value.toNumber() / precision.toNumber()
           );
 
@@ -494,7 +494,6 @@ describe('ComposableStablePool', () => {
 
         context('when the pool was initialized', () => {
           sharedBeforeEach('initialize pool', async () => {
-            bptIndex = await pool.getBptIndex();
             const sender = (await ethers.getSigners())[0];
             await pool.init({ initialBalances, recipient: sender });
           });
@@ -859,7 +858,7 @@ describe('ComposableStablePool', () => {
           // tokens are sorted, and do not include BPT, so get the last one
           tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
           token = tokens.get(tokenIndexWithoutBpt);
-          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
+          tokenIndexWithBpt = tokenIndexWithoutBpt + 1;
         });
 
         it('fails if caller is not the vault', async () => {
@@ -904,8 +903,7 @@ describe('ComposableStablePool', () => {
 
               sharedBeforeEach('initialize pool', async () => {
                 await pool.init({ recipient, initialBalances });
-                bptIndex = await pool.getBptIndex();
-                amountsIn = ZEROS.map((n, i) => (i != bptIndex ? fp(0.1) : n));
+                amountsIn = ZEROS.map((n, i) => (i != BPT_INDEX ? fp(0.1) : n));
 
                 expectedBptOut = await pool.estimateBptOut(
                   await pool.upscale(amountsIn),
@@ -1102,7 +1100,7 @@ describe('ComposableStablePool', () => {
           // tokens are sorted, and do not include BPT, so get the last one
           tokenIndexWithoutBpt = Math.floor(Math.random() * numberOfTokens);
           token = tokens.get(tokenIndexWithoutBpt);
-          tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
+          tokenIndexWithBpt = tokenIndexWithoutBpt + 1;
         });
 
         it('fails if caller is not the vault', async () => {
@@ -1411,7 +1409,7 @@ describe('ComposableStablePool', () => {
               expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
-            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_ONE);
+            expect(newScalingFactors[BPT_INDEX]).to.be.equal(FP_ONE);
           }
 
           sharedBeforeEach('fund lp and pool', async () => {
@@ -1426,7 +1424,7 @@ describe('ComposableStablePool', () => {
 
             const tokenIndexWithoutBpt = numberOfTokens - 1;
             token = tokens.get(tokenIndexWithoutBpt);
-            tokenIndexWithBpt = tokenIndexWithoutBpt < pool.bptIndex ? tokenIndexWithoutBpt : tokenIndexWithoutBpt + 1;
+            tokenIndexWithBpt = tokenIndexWithoutBpt + 1;
           });
 
           async function expectScalingFactorsToBeUpdated(
@@ -1442,7 +1440,7 @@ describe('ComposableStablePool', () => {
             // Verify the new rates are not yet loaded
             const preOpScalingFactors = await pool.getScalingFactors();
             for (let i = 0; i < preOpScalingFactors.length; i++) {
-              if (i != pool.bptIndex) {
+              if (i != BPT_INDEX) {
                 expect(preOpScalingFactors[i]).to.equal(previousScalingFactors[i]);
               }
             }
@@ -1543,7 +1541,7 @@ describe('ComposableStablePool', () => {
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
-        equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
+        equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == BPT_INDEX ? bn(0) : fp(100)));
         await pool.init({ recipient: lp.address, initialBalances: equalBalances });
 
         await pool.updateProtocolFeePercentageCache();
@@ -1580,7 +1578,7 @@ describe('ComposableStablePool', () => {
         sharedBeforeEach('initialize pool', async () => {
           // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
           const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
-            i == bptIndex ? bn(0) : initialBalance
+            i == BPT_INDEX ? bn(0) : initialBalance
           );
           await pool.init({ recipient: lp.address, initialBalances: equalBalances });
 
@@ -1637,7 +1635,7 @@ describe('ComposableStablePool', () => {
 
             it('rate takes into account unminted protocol fees', async () => {
               const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
-                (_, i) => i != bptIndex
+                (_, i) => i != BPT_INDEX
               );
               const invariant = calculateInvariant(
                 scaledBalances,
@@ -1681,7 +1679,7 @@ describe('ComposableStablePool', () => {
                 // Note that we join with proportional *unscaled* balances - otherwise we'd need to take their different
                 // scaling factors into account.
                 const { balances: unscaledBalances } = await pool.getTokens();
-                const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+                const amountsIn = unscaledBalances.map((balance, i) => (i == BPT_INDEX ? bn(0) : balance.div(100)));
                 await pool.joinGivenIn({ from: lp, amountsIn });
               });
             });
@@ -1694,7 +1692,7 @@ describe('ComposableStablePool', () => {
                 // Note that we exit with proportional *unscaled* balances - otherwise we'd need to take their different
                 // scaling factors into account.
                 const { balances: unscaledBalances } = await pool.getTokens();
-                const amountsOut = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+                const amountsOut = unscaledBalances.map((balance, i) => (i == BPT_INDEX ? bn(0) : balance.div(100)));
                 await pool.exitGivenOut({ from: lp, amountsOut });
               });
             });
@@ -1712,7 +1710,7 @@ describe('ComposableStablePool', () => {
               // We can compute the new rate by computing the ratio of invariant and total supply, not considering any
               // due protocol fees (because there should be none).
               const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
-                (_, i) => i != bptIndex
+                (_, i) => i != BPT_INDEX
               );
               const invariant = calculateInvariant(
                 scaledBalances,
@@ -1843,7 +1841,7 @@ describe('ComposableStablePool', () => {
         sender = (await ethers.getSigners())[0];
 
         const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
-          i == bptIndex ? bn(0) : fp(100)
+          i == BPT_INDEX ? bn(0) : fp(100)
         );
         await pool.init({ recipient: sender, initialBalances: equalBalances });
 
@@ -1881,7 +1879,7 @@ describe('ComposableStablePool', () => {
 
             const currentBalances = await pool.getBalances();
             const expectedAmountsOut = currentBalances.map((balance, i) =>
-              i == pool.bptIndex ? bn(0) : bn(balance).mul(previousSenderBptBalance).div(previousVirtualSupply).div(4)
+              i == BPT_INDEX ? bn(0) : bn(balance).mul(previousSenderBptBalance).div(previousVirtualSupply).div(4)
             );
 
             const result = await pool.recoveryModeExit({
@@ -1935,7 +1933,7 @@ describe('ComposableStablePool', () => {
 
               const currentBalances = await pool.getBalances();
               const expectedAmountsOut = currentBalances.map((balance, i) =>
-                i == pool.bptIndex ? bn(0) : bn(balance).mul(previousLpBptBalance).div(previousVirtualSupply)
+                i == BPT_INDEX ? bn(0) : bn(balance).mul(previousLpBptBalance).div(previousVirtualSupply)
               );
 
               //Exit with all BPT balance
