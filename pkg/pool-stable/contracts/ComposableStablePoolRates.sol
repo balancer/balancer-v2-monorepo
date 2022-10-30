@@ -80,9 +80,14 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
 
     /**
      * @dev Returns the rate for a given token. All token rates are fixed-point values with 18 decimals.
-     * If there is no rate provider for the provided token, it returns FixedPoint.ONE.
+     * If there is no rate provider for the provided token, or this is called with the pool token, it
+     * returns FixedPoint.ONE. It will revert if called with an invalid token.
      */
     function getTokenRate(IERC20 token) external view returns (uint256) {
+        if (token == IERC20(this)) {
+            return FixedPoint.ONE;
+        }
+
         return _getTokenRate(_getPoolTokenIndex(token));
     }
 
