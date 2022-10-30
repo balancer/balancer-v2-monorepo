@@ -118,6 +118,8 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
         // tokens for this contract is actually three, including the BPT).
         uint256 totalPoolTokens = params.tokens.length;
         _require(totalPoolTokens >= _MIN_NON_BPT_TOKENS, Errors.MIN_TOKENS);
+        _require(totalPoolTokens <= StableMath._MAX_STABLE_TOKENS, Errors.MAX_TOKENS);
+
         InputHelpers.ensureInputLengthMatch(
             totalPoolTokens,
             params.tokenRateProviders.length,

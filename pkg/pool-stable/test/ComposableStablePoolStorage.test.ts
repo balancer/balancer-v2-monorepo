@@ -5,10 +5,9 @@ import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { bn, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { every, range } from 'lodash';
@@ -16,6 +15,9 @@ import { every, range } from 'lodash';
 describe('ComposableStablePoolStorage', () => {
   let admin: SignerWithAddress;
   let vault: Vault;
+
+  const SWAP_FEE_PERCENTAGE = fp(0.01);
+  const BPT_INDEX = 0;
 
   sharedBeforeEach('setup signers', async () => {
     [, admin] = await ethers.getSigners();
@@ -30,7 +32,13 @@ describe('ComposableStablePoolStorage', () => {
       const tokens = await TokenList.create(1);
       await expect(
         deploy('MockComposableStablePoolStorage', {
-          args: [vault.address, tokens.addresses, tokens.map(() => ZERO_ADDRESS), tokens.map(() => false)],
+          args: [
+            vault.address,
+            tokens.addresses,
+            tokens.map(() => ZERO_ADDRESS),
+            tokens.map(() => false),
+            SWAP_FEE_PERCENTAGE,
+          ],
         })
       ).to.be.revertedWith('MIN_TOKENS');
     });
@@ -57,7 +65,13 @@ describe('ComposableStablePoolStorage', () => {
       const tokens = await TokenList.create(6, { sorted: true });
       await expect(
         deploy('MockComposableStablePoolStorage', {
-          args: [vault.address, tokens.addresses, tokens.map(() => ZERO_ADDRESS), tokens.map(() => false)],
+          args: [
+            vault.address,
+            tokens.addresses,
+            tokens.map(() => ZERO_ADDRESS),
+            tokens.map(() => false),
+            SWAP_FEE_PERCENTAGE,
+          ],
         })
       ).to.be.revertedWith('MAX_TOKENS');
     });
@@ -65,7 +79,6 @@ describe('ComposableStablePoolStorage', () => {
 
   function itBehavesAsStablePoolStorage(numberOfTokens: number): void {
     let pool: Contract, tokens: TokenList;
-    let bptIndex: number;
 
     sharedBeforeEach('deploy tokens', async () => {
       tokens = await TokenList.create(numberOfTokens, { sorted: true, varyDecimals: true });
@@ -92,9 +105,14 @@ describe('ComposableStablePoolStorage', () => {
       }
 
       pool = await deploy('MockComposableStablePoolStorage', {
-        args: [vault.address, tokens.addresses, newRateProviders, newExemptFromYieldProtocolFeeFlags],
+        args: [
+          vault.address,
+          tokens.addresses,
+          newRateProviders,
+          newExemptFromYieldProtocolFeeFlags,
+          SWAP_FEE_PERCENTAGE,
+        ],
       });
-      bptIndex = (await pool.getBptIndex()).toNumber();
       rateProviders = newRateProviders;
       exemptFromYieldProtocolFeeFlags = newExemptFromYieldProtocolFeeFlags;
     }
@@ -104,15 +122,6 @@ describe('ComposableStablePoolStorage', () => {
     });
 
     describe('constructor', () => {
-      context('when the constructor succeeds', () => {
-        it('sets BPT index correctly', async () => {
-          const bpt = await Token.deployedAt(pool);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
-          const expectedIndex = allTokens.indexOf(bpt);
-          expect(await pool.getBptIndex()).to.be.equal(expectedIndex);
-        });
-      });
-
       context('when the constructor fails', () => {
         it('reverts if there are repeated tokens', async () => {
           const badTokens = new TokenList(Array(numberOfTokens).fill(tokens.first));
@@ -137,7 +146,7 @@ describe('ComposableStablePoolStorage', () => {
 
           await expect(
             deploy('MockComposableStablePoolStorage', {
-              args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags],
+              args: [vault.address, tokenAddresses, rateProviderAddresses, exemptionFlags, SWAP_FEE_PERCENTAGE],
             })
           ).to.be.revertedWith('TOKEN_DOES_NOT_HAVE_RATE_PROVIDER');
         });
@@ -145,73 +154,26 @@ describe('ComposableStablePoolStorage', () => {
     });
 
     describe('array helpers', () => {
-      describe('skipBptIndex', () => {
-        context('when passing index < bptIndex', () => {
-          it('returns index', async () => {
-            // Note that `bptIndex` could equal 0 which would invalidate this test.
-            // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the first position is slim.
-            for (let index = 0; index < bptIndex; index++) {
-              expect(await pool.skipBptIndex(index)).to.be.eq(index);
-            }
-          });
-        });
-
-        context('when passing index == bptIndex', () => {
-          it('reverts', async () => {
-            await expect(pool.skipBptIndex(bptIndex)).to.be.revertedWith('OUT_OF_BOUNDS');
-          });
-        });
-
-        context('when passing index > bptIndex', () => {
-          it('returns index - 1', async () => {
-            // Note that `bptIndex` could equal tokens.length + 1 which would invalidate this test.
-            // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the last position is slim.
-            for (let index = bptIndex + 1; index < tokens.length + 1; index++) {
-              expect(await pool.skipBptIndex(index)).to.be.eq(index - 1);
-            }
-          });
-        });
-      });
-
       describe('dropBptItem', () => {
         it("drops the element at the BPT's index", async () => {
           const array = Array.from({ length: tokens.length + 1 }).map((_, i) => bn(i));
 
           const expectedArray = array.slice();
-          expectedArray.splice(bptIndex, 1);
+          expectedArray.splice(BPT_INDEX, 1);
           expect(await pool.dropBptItem(array)).to.be.deep.eq(expectedArray);
         });
       });
 
-      describe('addBptIndex', () => {
-        context('when passing index < bptIndex', () => {
-          it('returns index', async () => {
-            // Note that `bptIndex` could equal 0 which would invalidate this test.
-            // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the first position is slim.
-            for (let index = 0; index < bptIndex; index++) {
-              expect(await pool.addBptIndex(index)).to.be.eq(index);
-            }
-          });
-        });
+      describe('dropBptItemFromBalances', () => {
+        it("drops the element at the BPT's index, and returns virtual supply", async () => {
+          const array = Array.from({ length: tokens.length + 1 }).map((_, i) => bn(i));
 
-        context('when passing index >= bptIndex', () => {
-          it('returns index + 1', async () => {
-            // Note that `bptIndex` could equal tokens.length + 1 which would invalidate this test.
-            // Unfortunately we can't control the position of BPT index however we run the test with a
-            // range of different pools so the probablity of it always sitting in the last position is slim.
-            for (let index = bptIndex; index < tokens.length; index++) {
-              expect(await pool.addBptIndex(index)).to.be.eq(index + 1);
-            }
-          });
-        });
+          const expectedArray = array.slice();
+          expectedArray.splice(BPT_INDEX, 1);
+          const [virtualSupply, actualArray] = await pool.dropBptItemFromBalances(array);
 
-        context('when passing index >= tokens.length', () => {
-          it('reverts', async () => {
-            await expect(pool.addBptIndex(tokens.length)).to.be.revertedWith('OUT_OF_BOUNDS');
-          });
+          expect(virtualSupply).to.equal(await pool.getVirtualSupply(array[BPT_INDEX]));
+          expect(actualArray).to.be.deep.eq(expectedArray);
         });
       });
 
@@ -221,7 +183,7 @@ describe('ComposableStablePoolStorage', () => {
           const insertedElement = bn(420);
 
           const expectedArray = array.slice();
-          expectedArray.splice(bptIndex, 0, insertedElement);
+          expectedArray.splice(BPT_INDEX, 0, insertedElement);
           expect(await pool.addBptItem(array, insertedElement)).to.be.deep.eq(expectedArray);
         });
       });
@@ -230,14 +192,9 @@ describe('ComposableStablePoolStorage', () => {
     describe('scaling factors', () => {
       describe('getScalingFactorX', () => {
         it('returns the correct scaling factor', async () => {
-          const expectedScalingFactors = tokens.map((token) => FP_ONE.mul(bn(10).pow(18 - token.decimals)));
-          expectedScalingFactors.splice(bptIndex, 0, FP_ONE);
-
-          // There's always 6 getters however not all of them may be used. Unused getters return zero.
-          const paddedScalingFactors = Array.from({ length: 6 }, (_, i) => expectedScalingFactors[i] ?? bn(0));
           await Promise.all(
-            paddedScalingFactors.map(async (expectedScalingFactor, i) => {
-              expect(await pool[`getScalingFactor${i}`]()).to.be.eq(expectedScalingFactor);
+            tokens.map(async (token, i) => {
+              expect(await pool[`getScalingFactor${i}`]()).to.be.eq(FP_ONE.mul(bn(10).pow(18 - token.decimals)));
             })
           );
         });
@@ -247,13 +204,8 @@ describe('ComposableStablePoolStorage', () => {
     describe('rate providers', () => {
       describe('getRateProviderX', () => {
         it('returns the expected rate provider', async () => {
-          const expectedRateProviders = rateProviders.slice();
-          expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-          // There's always 6 getters however not all of them may be used. Unused getters return the zero address.
-          const paddedRateProviders = Array.from({ length: 6 }, (_, i) => expectedRateProviders[i] ?? ZERO_ADDRESS);
-
           await Promise.all(
-            paddedRateProviders.map(async (expectedRateProvider, i) => {
+            rateProviders.map(async (expectedRateProvider, i) => {
               expect(await pool[`getRateProvider${i}`]()).to.be.eq(expectedRateProvider);
             })
           );
@@ -263,15 +215,11 @@ describe('ComposableStablePoolStorage', () => {
       describe('getRateProvider', () => {
         context('when called with a valid index', () => {
           it('returns the rate provider for the token at the provided index', async () => {
-            const bpt = await Token.deployedAt(pool);
-
-            const registeredTokens = new TokenList([...tokens.tokens, bpt]).sort();
-            const expectedRateProviders = rateProviders.slice();
-            expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-
-            for (let index = 0; index < registeredTokens.length; index++) {
-              expect(await pool.getRateProvider(index)).to.be.eq(expectedRateProviders[index]);
-            }
+            await Promise.all(
+              rateProviders.map(async (expectedRateProvider, i) => {
+                expect(await pool.getRateProvider(i)).to.be.eq(expectedRateProvider);
+              })
+            );
           });
         });
 
@@ -286,12 +234,9 @@ describe('ComposableStablePoolStorage', () => {
       describe('getRateProviders', () => {
         it('returns the expected rate providers', async () => {
           const expectedRateProviders = rateProviders.slice();
-          // BPT does not have a rate provider
-          expectedRateProviders.splice(bptIndex, 0, ZERO_ADDRESS);
-
           const providers = await pool.getRateProviders();
 
-          expect(providers).to.have.lengthOf(numberOfTokens + 1);
+          expect(providers).to.have.lengthOf(numberOfTokens);
           expect(providers).to.be.deep.equal(expectedRateProviders);
         });
       });
@@ -301,7 +246,6 @@ describe('ComposableStablePoolStorage', () => {
       describe('isTokenExemptFromYieldProtocolFee(uint256)', () => {
         it('returns whether the token at a particular index is exempt', async () => {
           const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
 
           for (let i = 0; i < expectedExemptFromYieldProtocolFeeFlags.length; i++) {
             const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
@@ -312,16 +256,12 @@ describe('ComposableStablePoolStorage', () => {
 
       describe('isTokenExemptFromYieldProtocolFee(address)', () => {
         it('returns whether the token is exempt', async () => {
-          const bpt = await Token.deployedAt(pool);
-          const allTokens = new TokenList([...tokens.tokens, bpt]).sort();
-
           const expectedExemptFromYieldProtocolFeeFlags = exemptFromYieldProtocolFeeFlags.slice();
-          expectedExemptFromYieldProtocolFeeFlags.splice(bptIndex, 0, false);
 
-          for (let i = 0; i < allTokens.length; i++) {
+          for (let i = 0; i < tokens.length; i++) {
             // Initialized to true for even tokens
             const expectedFlag = expectedExemptFromYieldProtocolFeeFlags[i];
-            const token = allTokens.get(i);
+            const token = tokens.get(i);
 
             expect(await pool.isTokenExemptFromYieldProtocolFee(token.address)).to.equal(expectedFlag);
           }
@@ -360,7 +300,7 @@ describe('ComposableStablePoolStorage', () => {
             }
 
             exemptionPool = await deploy('MockComposableStablePoolStorage', {
-              args: [vault.address, tokens.addresses, rateProviders, exemptionFlags],
+              args: [vault.address, tokens.addresses, rateProviders, exemptionFlags, SWAP_FEE_PERCENTAGE],
             });
           });
         }

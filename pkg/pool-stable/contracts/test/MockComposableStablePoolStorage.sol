@@ -54,14 +54,6 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function addBptItem(uint256[] memory amounts, uint256 bptAmount)
-        external
-        pure
-        returns (uint256[] memory amountsWithBpt)
-    {
-        return _addBptItem(amounts, bptAmount);
-    }
-
     function getRateProvider0() external view returns (IRateProvider) {
         return _rateProvider0;
     }
@@ -117,6 +109,28 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
 
     function areNoTokensExempt() external view returns (bool) {
         return _areNoTokensExempt();
+    }
+
+    // Helpers
+
+    function dropBptItem(uint256[] memory registeredAmounts) external pure returns (uint256[] memory) {
+        return _dropBptItem(registeredAmounts);
+    }
+
+    function dropBptItemFromBalances(uint256[] memory registeredBalances)
+        external
+        view
+        returns (uint256, uint256[] memory)
+    {
+        return _dropBptItemFromBalances(registeredBalances);
+    }
+
+    function addBptItem(uint256[] memory amounts, uint256 bptAmount) external pure returns (uint256[] memory) {
+        return _addBptItem(amounts, bptAmount);
+    }
+
+    function getVirtualSupply(uint256 bptBalance) external view returns (uint256) {
+        return _getVirtualSupply(bptBalance);
     }
 
     // Stubbed functions
