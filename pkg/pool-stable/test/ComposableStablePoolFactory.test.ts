@@ -128,11 +128,10 @@ describe('ComposableStablePoolFactory', function () {
     it('sets the rate providers', async () => {
       const providers = await pool.getRateProviders();
 
-      expect(providers).to.have.lengthOf(4);
+      expect(providers).to.have.lengthOf(3);
       expect(providers).to.include(rateProviders[0]);
       expect(providers).to.include(rateProviders[1]);
       expect(providers).to.include(rateProviders[2]);
-      expect(providers).to.include(ZERO_ADDRESS);
     });
 
     it('sets the cache rate duration', async () => {
