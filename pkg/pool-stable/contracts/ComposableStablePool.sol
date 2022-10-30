@@ -25,7 +25,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
+import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
@@ -50,7 +51,7 @@ import "./StableMath.sol";
  */
 contract ComposableStablePool is
     IRateProvider,
-    BaseGeneralPool,
+    NewBasePool,
     StablePoolAmplification,
     ComposableStablePoolRates,
     ComposableStablePoolProtocolFees
@@ -82,14 +83,16 @@ contract ComposableStablePool is
     }
 
     constructor(NewPoolParams memory params)
-        BasePool(
+        NewBasePool(
             params.vault,
-            IVault.PoolSpecialization.GENERAL,
+            PoolRegistrationLib.registerComposablePool(
+                params.vault,
+                IVault.PoolSpecialization.GENERAL,
+                params.tokens,
+                new address[](params.tokens.length)
+            ),
             params.name,
             params.symbol,
-            _insertSorted(params.tokens, IERC20(this)),
-            new address[](params.tokens.length + 1),
-            params.swapFeePercentage,
             params.pauseWindowDuration,
             params.bufferPeriodDuration,
             params.owner
@@ -109,28 +112,23 @@ contract ComposableStablePool is
     function _extractRatesParams(NewPoolParams memory params)
         private
         pure
-        returns (ComposableStablePoolRates.RatesParams memory)
+        returns (ComposableStablePoolRates.RatesParams memory ratesParams)
     {
-        return
-            ComposableStablePoolRates.RatesParams({
-                tokens: params.tokens,
-                rateProviders: params.rateProviders,
-                tokenRateCacheDurations: params.tokenRateCacheDurations
-            });
+        ratesParams.tokens = params.tokens;
+        ratesParams.rateProviders = params.rateProviders;
+        ratesParams.tokenRateCacheDurations = params.tokenRateCacheDurations;
     }
 
     // Translate parameters to avoid stack-too-deep issues in the constructor
     function _extractStorageParams(NewPoolParams memory params)
         private
-        view
-        returns (ComposableStablePoolStorage.StorageParams memory)
+        pure
+        returns (ComposableStablePoolStorage.StorageParams memory storageParams)
     {
-        return
-            ComposableStablePoolStorage.StorageParams({
-                registeredTokens: _insertSorted(params.tokens, IERC20(this)),
-                tokenRateProviders: params.rateProviders,
-                exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
-            });
+        storageParams.tokens = params.tokens;
+        storageParams.tokenRateProviders = params.rateProviders;
+        storageParams.exemptFromYieldProtocolFeeFlags = params.exemptFromYieldProtocolFeeFlags;
+        storageParams.swapFeePercentage = params.swapFeePercentage;
     }
 
     /**
@@ -147,11 +145,11 @@ contract ComposableStablePool is
     // BasePool hook
 
     /**
-     * @dev Override base pool hook invoked before any swap, join, or exit to ensure rates are updated before
-     * the operation.
+     * @dev Ensure rates are updated before any swap, join, or exit operation.
      */
-    function _beforeSwapJoinExit() internal override {
-        super._beforeSwapJoinExit();
+    function _beforeSwapJoinExit() internal {
+        // All joins, exits and swaps are disabled (except recovery mode exits).
+        _ensureNotPaused();
 
         // Before the scaling factors are read, we must update the cached rates, as those will be used to compute the
         // scaling factors.
@@ -161,6 +159,31 @@ contract ComposableStablePool is
     }
 
     // Swap Hooks
+
+    function _onSwapMinimal(
+        SwapRequest memory,
+        uint256,
+        uint256
+    ) internal virtual override returns (uint256) {
+        _revert(Errors.UNHANDLED_BY_STABLE_POOL);
+    }
+
+    function _onSwapGeneral(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        uint256 registeredIndexIn,
+        uint256 registeredIndexOut
+    ) internal virtual override returns (uint256) {
+        _beforeSwapJoinExit();
+
+        _require(registeredIndexIn < _getTotalTokens() && registeredIndexOut < _getTotalTokens(), Errors.OUT_OF_BOUNDS);
+        uint256[] memory scalingFactors = getScalingFactors();
+
+        return
+            request.kind == IVault.SwapKind.GIVEN_IN
+                ? _swapGivenIn(request, balances, registeredIndexIn, registeredIndexOut, scalingFactors)
+                : _swapGivenOut(request, balances, registeredIndexIn, registeredIndexOut, scalingFactors);
+    }
 
     /**
      * @dev Override this hook called by the base class `onSwap`, to check whether we are doing a regular swap,
@@ -180,17 +203,21 @@ contract ComposableStablePool is
         uint256 registeredIndexIn,
         uint256 registeredIndexOut,
         uint256[] memory scalingFactors
-    ) internal virtual override returns (uint256) {
-        return
-            (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
-                ? _swapWithBpt(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut, scalingFactors)
-                : super._swapGivenIn(
-                    swapRequest,
-                    registeredBalances,
-                    registeredIndexIn,
-                    registeredIndexOut,
-                    scalingFactors
-                );
+    ) internal virtual returns (uint256) {
+        if (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this)) {
+            return _swapWithBpt(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut, scalingFactors);
+        } else {
+            // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
+            swapRequest.amount = _subtractSwapFeeAmount(swapRequest.amount);
+
+            _upscaleArray(registeredBalances, scalingFactors);
+            swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[registeredIndexIn]);
+
+            uint256 amountOut = _onSwapGivenIn(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut);
+
+            // amountOut tokens are exiting the Pool, so we round down.
+            return _downscaleDown(amountOut, scalingFactors[registeredIndexOut]);
+        }
     }
 
     /**
@@ -211,17 +238,38 @@ contract ComposableStablePool is
         uint256 registeredIndexIn,
         uint256 registeredIndexOut,
         uint256[] memory scalingFactors
-    ) internal virtual override returns (uint256) {
-        return
-            (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this))
-                ? _swapWithBpt(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut, scalingFactors)
-                : super._swapGivenOut(
-                    swapRequest,
-                    registeredBalances,
-                    registeredIndexIn,
-                    registeredIndexOut,
-                    scalingFactors
-                );
+    ) internal virtual returns (uint256) {
+        if (swapRequest.tokenIn == IERC20(this) || swapRequest.tokenOut == IERC20(this)) {
+            return _swapWithBpt(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut, scalingFactors);
+        } else {
+            _upscaleArray(registeredBalances, scalingFactors);
+            swapRequest.amount = _upscale(swapRequest.amount, scalingFactors[registeredIndexOut]);
+
+            uint256 amountIn = _onSwapGivenOut(swapRequest, registeredBalances, registeredIndexIn, registeredIndexOut);
+
+            // amountIn tokens are entering the Pool, so we round up.
+            amountIn = _downscaleUp(amountIn, scalingFactors[registeredIndexIn]);
+
+            // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
+            return _addSwapFeeAmount(amountIn);
+        }
+    }
+
+    /**
+     * @dev Adds swap fee amount to `amount`, returning a higher value.
+     */
+    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+        return amount.divUp(getSwapFeePercentage().complement());
+    }
+
+    /**
+     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
+     */
+    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
+        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
+        return amount.sub(feeAmount);
     }
 
     /**
@@ -234,7 +282,7 @@ contract ComposableStablePool is
         uint256[] memory registeredBalances,
         uint256 registeredIndexIn,
         uint256 registeredIndexOut
-    ) internal virtual override returns (uint256) {
+    ) internal virtual returns (uint256) {
         return
             _onRegularSwap(
                 true, // given in
@@ -255,7 +303,7 @@ contract ComposableStablePool is
         uint256[] memory registeredBalances,
         uint256 registeredIndexIn,
         uint256 registeredIndexOut
-    ) internal virtual override returns (uint256) {
+    ) internal virtual returns (uint256) {
         return
             _onRegularSwap(
                 false, // given out
@@ -277,10 +325,13 @@ contract ComposableStablePool is
         uint256 registeredIndexIn,
         uint256 registeredIndexOut
     ) private view returns (uint256) {
-        // Adjust indices and balances for BPT token
+        // Adjust indices and balances for BPT token. This mutates registeredBalances, which can no longer be used.
         uint256[] memory balances = _dropBptItem(registeredBalances);
-        uint256 indexIn = _skipBptIndex(registeredIndexIn);
-        uint256 indexOut = _skipBptIndex(registeredIndexOut);
+
+        // We need to convert from registeredIndex (including BPT) to index (excluding BPT).
+        // Since we know the BPT_INDEX is always 0, simply subtract one.
+        uint256 indexIn = registeredIndexIn - 1;
+        uint256 indexOut = registeredIndexOut - 1;
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
         uint256 invariant = StableMath._calculateInvariant(currentAmp, balances);
@@ -324,12 +375,14 @@ contract ComposableStablePool is
         ) = _beforeJoinExit(registeredBalances);
 
         // These calls mutate `balances` so that it holds the post join-exit balances.
+        // We need to convert from registeredIndex (including BPT) to index (excluding BPT).
+        // Since we know the BPT_INDEX is always 0, simply subtract one.
         (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut == getBptIndex()
             ? _doJoinSwap(
                 isGivenIn,
                 swapRequest.amount,
                 balances,
-                _skipBptIndex(registeredIndexIn),
+                registeredIndexIn - 1,
                 currentAmp,
                 preJoinExitSupply,
                 preJoinExitInvariant
@@ -338,7 +391,7 @@ contract ComposableStablePool is
                 isGivenIn,
                 swapRequest.amount,
                 balances,
-                _skipBptIndex(registeredIndexOut),
+                registeredIndexOut - 1,
                 currentAmp,
                 preJoinExitSupply,
                 preJoinExitInvariant
@@ -559,10 +612,8 @@ contract ComposableStablePool is
      * BPT except the joiner's.
      */
     function _onInitializePool(
-        bytes32,
         address sender,
         address,
-        uint256[] memory scalingFactors,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
         StablePoolUserData.JoinKind kind = userData.joinKind();
@@ -570,6 +621,8 @@ contract ComposableStablePool is
 
         // AmountsIn usually does not include the BPT token; initialization is the one time it has to.
         uint256[] memory amountsInIncludingBpt = userData.initialAmountsIn();
+        uint256[] memory scalingFactors = getScalingFactors();
+
         InputHelpers.ensureInputLengthMatch(amountsInIncludingBpt.length, scalingFactors.length);
         _upscaleArray(amountsInIncludingBpt, scalingFactors);
 
@@ -602,16 +655,11 @@ contract ComposableStablePool is
      * @dev Base pool hook called from `onJoinPool`. Forward to `onJoinExitPool` with `isJoin` set to true.
      */
     function _onJoinPool(
-        bytes32,
         address,
-        address,
-        uint256[] memory registeredBalances,
-        uint256,
-        uint256,
-        uint256[] memory scalingFactors,
+        uint256[] memory balances,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
-        return _onJoinExitPool(true, registeredBalances, scalingFactors, userData);
+        return _onJoinExitPool(true, balances, getScalingFactors(), userData);
     }
 
     /**
@@ -619,16 +667,11 @@ contract ComposableStablePool is
      * Note that recovery mode exits do not call `_onExitPool`.
      */
     function _onExitPool(
-        bytes32,
         address,
-        address,
-        uint256[] memory registeredBalances,
-        uint256,
-        uint256,
-        uint256[] memory scalingFactors,
+        uint256[] memory balances,
         bytes memory userData
     ) internal override returns (uint256, uint256[] memory) {
-        return _onJoinExitPool(false, registeredBalances, scalingFactors, userData);
+        return _onJoinExitPool(false, balances, getScalingFactors(), userData);
     }
 
     /**
@@ -957,7 +1000,7 @@ contract ComposableStablePool is
         // First we query the Vault for current registered balances (which includes preminted BPT), to then calculate
         // the current scaled balances and virtual supply.
         (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(registeredBalances, _scalingFactors());
+        _upscaleArray(registeredBalances, getScalingFactors());
         (virtualSupply, balances) = _dropBptItemFromBalances(registeredBalances);
 
         // Now we need to calculate any BPT due in the form of protocol fees. This requires data from the last join or
@@ -1085,7 +1128,7 @@ contract ComposableStablePool is
         _updatePostJoinExit(currentAmp, currentInvariant);
     }
 
-    function _onDisableRecoveryMode() internal override {
+    function _onDisableRecoveryMode() internal {
         // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
         // increasing the return value of `getRate()` and effectively forfeiting due protocol fees.
 
@@ -1094,7 +1137,7 @@ contract ComposableStablePool is
         // retroactively accrued, which would be incorrect and could lead to the value of `getRate` decreasing.
 
         (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(registeredBalances, _scalingFactors());
+        _upscaleArray(registeredBalances, getScalingFactors());
         uint256[] memory balances = _dropBptItem(registeredBalances);
 
         (uint256 currentAmp, ) = _getAmplificationParameter();
@@ -1126,23 +1169,21 @@ contract ComposableStablePool is
     // Permissioned functions
 
     /**
-     * @dev Inheritance rules still require us to override this in the most derived contract, even though
-     * it only calls super.
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function.
      */
-    function _isOwnerOnlyAction(bytes32 actionId)
-        internal
-        view
-        virtual
-        override(
-            // Our inheritance pattern creates a small diamond that requires explicitly listing the parents here.
-            // Each parent calls the `super` version, so linearization ensures all implementations are called.
-            BasePool,
-            ComposableStablePoolProtocolFees,
-            StablePoolAmplification,
-            ComposableStablePoolRates
-        )
-        returns (bool)
-    {
-        return super._isOwnerOnlyAction(actionId);
+    function setSwapFeePercentage(uint256 swapFeePercentage) external authenticate {
+        _setSwapFeePercentage(swapFeePercentage);
+    }
+
+    /**
+     * @dev Enumerates all ownerOnly functions in Composable Stable Pool.
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            (actionId == getActionId(ComposableStablePool.setSwapFeePercentage.selector)) ||
+            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
+            (actionId == getActionId(this.setTokenRateCacheDuration.selector));
     }
 }

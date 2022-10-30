@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
@@ -56,30 +57,14 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
             rateParams.tokenRateCacheDurations.length
         );
 
-        IERC20[] memory registeredTokens = _insertSorted(rateParams.tokens, IERC20(this));
-        uint256 bptIndex;
-        for (
-            bptIndex = registeredTokens.length - 1;
-            bptIndex > 0 && registeredTokens[bptIndex] > IERC20(this);
-            bptIndex--
-        ) {
-            // solhint-disable-previous-line no-empty-blocks
-        }
-
-        uint256 skipBpt = 0;
         for (uint256 i = 0; i < rateParams.tokens.length; i++) {
-            if (i == bptIndex) {
-                skipBpt = 1;
-            }
-
-            uint256 k = i + skipBpt;
             if (rateParams.rateProviders[i] != IRateProvider(0)) {
-                _updateTokenRateCache(k, rateParams.rateProviders[i], rateParams.tokenRateCacheDurations[i]);
+                _updateTokenRateCache(i, rateParams.rateProviders[i], rateParams.tokenRateCacheDurations[i]);
 
-                emit TokenRateProviderSet(k, rateParams.rateProviders[i], rateParams.tokenRateCacheDurations[i]);
+                emit TokenRateProviderSet(i, rateParams.rateProviders[i], rateParams.tokenRateCacheDurations[i]);
 
                 // Initialize the old rates as well, in case they are referenced before the first join.
-                _updateOldRate(k);
+                _updateOldRate(i);
             }
         }
     }
@@ -100,17 +85,17 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         return _getTokenRate(_getTokenIndex(token));
     }
 
-    function _getTokenRate(uint256 index) internal view virtual returns (uint256) {
+    function _getTokenRate(uint256 registeredIndex) internal view virtual returns (uint256) {
         // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
         // provider). Therefore, we return early if `token` is the BPT, and otherwise optimistically read the cache
         // expecting that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since
         // we don't need the provider at all).
 
-        if (index == getBptIndex()) {
+        if (registeredIndex == getBptIndex()) {
             return FixedPoint.ONE;
         }
 
-        bytes32 tokenRateCache = _tokenRateCaches[index];
+        bytes32 tokenRateCache = _tokenRateCaches[registeredIndex - 1];
         return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
     }
 
@@ -254,7 +239,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     /**
      * @dev Overrides scaling factor getter to compute the tokens' rates.
      */
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+    function getScalingFactors() public view virtual override returns (uint256[] memory) {
         // There is no need to check the arrays length since both are based on `_getTotalTokens`
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory scalingFactors = new uint256[](totalTokens);
@@ -264,12 +249,5 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         }
 
         return scalingFactors;
-    }
-
-    /**
-     * @dev Overrides only owner action to allow setting the cache duration for the token rates
-     */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return (actionId == getActionId(this.setTokenRateCacheDuration.selector)) || super._isOwnerOnlyAction(actionId);
     }
 }

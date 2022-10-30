@@ -13,8 +13,10 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "../ComposableStablePoolRates.sol";
 
@@ -25,23 +27,26 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         IRateProvider[] memory tokenRateProviders,
         uint256[] memory tokenRateCacheDurations,
         bool[] memory exemptFromYieldProtocolFeeFlags,
+        uint256 swapFeePercentage,
         address owner
     )
         ComposableStablePoolRates(RatesParams(tokens, tokenRateProviders, tokenRateCacheDurations))
         ComposableStablePoolStorage(
-            StorageParams(_insertSorted(tokens, IERC20(this)), tokenRateProviders, exemptFromYieldProtocolFeeFlags)
+            StorageParams(tokens, tokenRateProviders, exemptFromYieldProtocolFeeFlags, swapFeePercentage)
         )
-        BasePool(
+        NewBasePool(
             vault,
-            IVault.PoolSpecialization.GENERAL,
+            PoolRegistrationLib.registerComposablePool(
+                vault,
+                IVault.PoolSpecialization.GENERAL,
+                tokens,
+                new address[](tokens.length)
+            ),
             "MockStablePoolStorage",
             "MOCK_BPT",
-            _insertSorted(tokens, IERC20(this)),
-            new address[](tokens.length + 1),
-            1e12, // BasePool._MIN_SWAP_FEE_PERCENTAGE
             0,
             0,
-            owner
+            address(0)
         )
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -67,23 +72,33 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
         return _getAdjustedBalances(balances, ignoreExemptFlags);
     }
 
-    function _onInitializePool(
-        bytes32,
-        address,
-        address,
+     function _onSwapMinimal(
+        SwapRequest memory,
+        uint256,
+        uint256
+    ) internal virtual override returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
+
+    function _onSwapGeneral(
+        SwapRequest memory,
         uint256[] memory,
+        uint256,
+        uint256 
+    ) internal virtual override  returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
+    }  
+
+    function _onInitializePool(
+        address,
+        address,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
         _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onJoinPool(
-        bytes32,
         address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
@@ -91,12 +106,7 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
     }
 
     function _onExitPool(
-        bytes32,
         address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {

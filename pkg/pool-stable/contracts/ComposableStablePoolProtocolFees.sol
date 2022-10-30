@@ -305,24 +305,4 @@ abstract contract ComposableStablePoolProtocolFees is
             _LAST_POST_JOIN_EXIT_INVARIANT_SIZE
         );
     }
-
-    /**
-     * @dev Inheritance rules still require us to override this in the most derived contract, even though
-     * it only calls super.
-     */
-    function _isOwnerOnlyAction(bytes32 actionId)
-        internal
-        view
-        virtual
-        override(
-            // Our inheritance pattern creates a small diamond that requires explicitly listing the parents here.
-            // Each parent calls the `super` version, so linearization ensures all implementations are called.
-            BasePool,
-            BasePoolAuthorization,
-            ComposableStablePoolRates
-        )
-        returns (bool)
-    {
-        return super._isOwnerOnlyAction(actionId);
-    }
 }
