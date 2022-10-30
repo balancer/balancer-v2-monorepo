@@ -46,7 +46,7 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
             "MOCK_BPT",
             0,
             0,
-            address(0)
+            owner
         )
     {
         // solhint-disable-previous-line no-empty-blocks
