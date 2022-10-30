@@ -110,7 +110,11 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
             uint256 expires
         )
     {
-        bytes32 cache = _tokenRateCaches[_getPoolTokenIndex(token)];
+        bytes32 cache;
+
+        if (token != IERC20(this)) {
+            cache = _tokenRateCaches[_getPoolTokenIndex(token)];
+        }
 
         // A zero cache indicates that the token doesn't have a rate provider associated with it.
         _require(cache != bytes32(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -126,9 +130,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        uint256 poolTokenIndex = _getPoolTokenIndex(token);
-        IRateProvider provider = _getRateProvider(poolTokenIndex);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        (uint256 poolTokenIndex, IRateProvider provider) = _getTokenIndexAndRateProvider(token);
 
         _updateTokenRateCache(poolTokenIndex, provider, duration);
         emit TokenRateProviderSet(poolTokenIndex, provider, duration);
@@ -139,14 +141,24 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * It will revert if the requested token does not have an associated rate provider.
      */
     function updateTokenRateCache(IERC20 token) external {
-        uint256 poolTokenIndex = _getPoolTokenIndex(token);
-        IRateProvider provider = _getRateProvider(poolTokenIndex);
-        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+        (uint256 poolTokenIndex, IRateProvider provider) = _getTokenIndexAndRateProvider(token);
 
         uint256 duration = _tokenRateCaches[poolTokenIndex].getDuration();
         _updateTokenRateCache(poolTokenIndex, provider, duration);
     }
 
+    function _getTokenIndexAndRateProvider(IERC20 token) private view returns (uint256, IRateProvider) {
+        uint256 poolTokenIndex;
+        IRateProvider provider;
+
+        if (token != IERC20(this)) {
+            poolTokenIndex = _getPoolTokenIndex(token);
+            provider = _getRateProvider(poolTokenIndex);
+        }
+        _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
+
+        return (poolTokenIndex, provider);
+    }
     /**
      * @dev Internal function to update a token rate cache for a known provider and duration.
      * It trusts the given values, and does not perform any checks.
