@@ -377,7 +377,8 @@ contract ComposableStablePool is
         // These calls mutate `balances` so that it holds the post join-exit balances.
         // We need to convert from registeredIndex (including BPT) to index (excluding BPT).
         // Since we know the BPT_INDEX is always 0, simply subtract one.
-        (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut == getBptIndex()
+        (uint256 amountCalculated, uint256 postJoinExitSupply) = registeredIndexOut ==
+            PoolRegistrationLib.COMPOSABLE_BPT_INDEX
             ? _doJoinSwap(
                 isGivenIn,
                 swapRequest.amount,
@@ -643,7 +644,7 @@ contract ComposableStablePool is
         uint256 initialBpt = _PREMINTED_TOKEN_BALANCE.sub(bptAmountOut);
 
         _mintPoolTokens(sender, initialBpt);
-        amountsInIncludingBpt[getBptIndex()] = initialBpt;
+        amountsInIncludingBpt[PoolRegistrationLib.COMPOSABLE_BPT_INDEX] = initialBpt;
 
         // Initialization is still a join, so we need to do post-join work.
         _updatePostJoinExit(amp, invariantAfterJoin);

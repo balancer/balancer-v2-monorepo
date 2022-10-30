@@ -43,6 +43,8 @@ describe('ComposableStablePoolProtocolFees', () => {
   const AMPLIFICATION_PRECISION = 1e3;
   const AMPLIFICATION_FACTOR = bn(200).mul(AMPLIFICATION_PRECISION);
 
+  const SWAP_FEE_PERCENTAGE = fp(0.01);
+
   sharedBeforeEach('setup signers', async () => {
     [, admin] = await ethers.getSigners();
   });
@@ -136,6 +138,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               rateProviders.map((x) => x.address),
               rateCacheDurations,
               exemptFromYieldProtocolFeeFlags,
+              SWAP_FEE_PERCENTAGE,
             ],
           });
         });
@@ -294,9 +297,9 @@ describe('ComposableStablePoolProtocolFees', () => {
 
       const MIN_SWAP_BALANCE_DELTA = 1.5e3;
       const MAX_SWAP_BALANCE_DELTA = 20e3;
+      const BPT_INDEX = 0;
 
       let pool: Contract, tokens: TokenList;
-      let bptIndex: number;
 
       let rateProviders: Contract[];
       let exemptFromYieldProtocolFeeFlags: boolean[];
@@ -326,12 +329,11 @@ describe('ComposableStablePoolProtocolFees', () => {
             rateProviders.map((x) => x.address),
             rateCacheDurations,
             exemptFromYieldProtocolFeeFlags,
+            SWAP_FEE_PERCENTAGE,
           ],
         });
 
         await pool.setTotalSupply(PREMINTED_BPT);
-
-        bptIndex = (await pool.getBptIndex()).toNumber();
       });
 
       let preBalances: BigNumber[];
@@ -523,7 +525,7 @@ describe('ComposableStablePoolProtocolFees', () => {
 
             sharedBeforeEach(async () => {
               currentBalancesWithBpt = [...currentBalances];
-              currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
+              currentBalancesWithBpt.splice(BPT_INDEX, 0, PREMINTED_BPT.sub(preVirtualSupply));
             });
 
             it('returns zero protocol ownership percentage', async () => {
@@ -566,7 +568,7 @@ describe('ComposableStablePoolProtocolFees', () => {
 
             sharedBeforeEach(async () => {
               currentBalancesWithBpt = [...currentBalances];
-              currentBalancesWithBpt.splice(bptIndex, 0, PREMINTED_BPT.sub(preVirtualSupply));
+              currentBalancesWithBpt.splice(BPT_INDEX, 0, PREMINTED_BPT.sub(preVirtualSupply));
 
               // protocol ownership = to mint / (supply + to mint)
               // to mint = supply * protocol ownership / (1 - protocol ownership)

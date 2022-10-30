@@ -20,6 +20,8 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 library PoolRegistrationLib {
+    uint256 public constant COMPOSABLE_BPT_INDEX = 0;
+
     function registerPool(
         IVault vault,
         IVault.PoolSpecialization specialization,
@@ -63,14 +65,14 @@ library PoolRegistrationLib {
         // When deregistering a token, the token at the end of the array is moved into the index of the deregistered
         // token, changing its index. By placing BPT at the beginning of the tokens array we can be sure that its index
         // will never change unless it is deregistered itself (something which composable pools must prevent anyway).
-        composableTokens[0] = IERC20(address(this));
+        composableTokens[COMPOSABLE_BPT_INDEX] = IERC20(address(this));
         for (uint256 i = 0; i < tokens.length; i++) {
             composableTokens[i + 1] = tokens[i];
         }
 
         address[] memory composableAssetManagers = new address[](assetManagers.length + 1);
         // We do not allow an asset manager for the Pool's BPT.
-        composableAssetManagers[0] = address(0);
+        composableAssetManagers[COMPOSABLE_BPT_INDEX] = address(0);
         for (uint256 i = 0; i < assetManagers.length; i++) {
             composableAssetManagers[i + 1] = assetManagers[i];
         }

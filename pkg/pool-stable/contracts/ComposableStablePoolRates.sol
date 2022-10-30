@@ -21,6 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "./ComposableStablePoolStorage.sol";
 
@@ -42,7 +43,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     // [ uint32  |  uint32  |  uint96  |   uint96     ]
 
     // Since we never need just one cache but all of them at once, instead of making the mapping go from token address
-    // to cache, we go from token index (including BPT), i.e. an array. We use a mapping however instead of a native
+    // to cache, we go from token index (not including BPT), i.e. an array. We use a mapping however instead of a native
     // array to skip the extra read associated with the out-of-bounds check, as we have cheaper ways to guarantee the
     // indices are valid.
     mapping(uint256 => bytes32) internal _tokenRateCaches;
@@ -70,11 +71,11 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     }
 
     /**
-     * @dev Updates the old rate for the token at `index` (including BPT). Assumes `index` is valid.
+     * @dev Updates the old rate for the token at `poolTokenIndex` (not including BPT). Assumes index is valid.
      */
-    function _updateOldRate(uint256 index) internal {
-        bytes32 cache = _tokenRateCaches[index];
-        _tokenRateCaches[index] = cache.updateOldRate();
+    function _updateOldRate(uint256 poolTokenIndex) internal {
+        bytes32 cache = _tokenRateCaches[poolTokenIndex];
+        _tokenRateCaches[poolTokenIndex] = cache.updateOldRate();
     }
 
     /**
@@ -82,20 +83,11 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * If there is no rate provider for the provided token, it returns FixedPoint.ONE.
      */
     function getTokenRate(IERC20 token) external view returns (uint256) {
-        return _getTokenRate(_getTokenIndex(token));
+        return _getTokenRate(_getPoolTokenIndex(token));
     }
 
-    function _getTokenRate(uint256 registeredIndex) internal view virtual returns (uint256) {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if `token` is the BPT, and otherwise optimistically read the cache
-        // expecting that it will not be empty (instead of e.g. fetching the provider to avoid a cache read, since
-        // we don't need the provider at all).
-
-        if (registeredIndex == getBptIndex()) {
-            return FixedPoint.ONE;
-        }
-
-        bytes32 tokenRateCache = _tokenRateCaches[registeredIndex - 1];
+    function _getTokenRate(uint256 poolTokenIndex) internal view virtual returns (uint256) {
+        bytes32 tokenRateCache = _tokenRateCaches[poolTokenIndex];
         return tokenRateCache == bytes32(0) ? FixedPoint.ONE : tokenRateCache.getCurrentRate();
     }
 
@@ -113,7 +105,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
             uint256 expires
         )
     {
-        bytes32 cache = _tokenRateCaches[_getTokenIndex(token)];
+        bytes32 cache = _tokenRateCaches[_getPoolTokenIndex(token)];
 
         // A zero cache indicates that the token doesn't have a rate provider associated with it.
         _require(cache != bytes32(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
@@ -129,11 +121,12 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * @param duration Number of seconds until the current token rate is fetched again.
      */
     function setTokenRateCacheDuration(IERC20 token, uint256 duration) external authenticate {
-        uint256 index = _getTokenIndex(token);
-        IRateProvider provider = _getRateProvider(index);
+        uint256 poolTokenIndex = _getPoolTokenIndex(token);
+        IRateProvider provider = _getRateProvider(poolTokenIndex);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        _updateTokenRateCache(index, provider, duration);
-        emit TokenRateProviderSet(index, provider, duration);
+
+        _updateTokenRateCache(poolTokenIndex, provider, duration);
+        emit TokenRateProviderSet(poolTokenIndex, provider, duration);
     }
 
     /**
@@ -141,12 +134,12 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * It will revert if the requested token does not have an associated rate provider.
      */
     function updateTokenRateCache(IERC20 token) external {
-        uint256 index = _getTokenIndex(token);
-
-        IRateProvider provider = _getRateProvider(index);
+        uint256 poolTokenIndex = _getPoolTokenIndex(token);
+        IRateProvider provider = _getRateProvider(poolTokenIndex);
         _require(address(provider) != address(0), Errors.TOKEN_DOES_NOT_HAVE_RATE_PROVIDER);
-        uint256 duration = _tokenRateCaches[index].getDuration();
-        _updateTokenRateCache(index, provider, duration);
+
+        uint256 duration = _tokenRateCaches[poolTokenIndex].getDuration();
+        _updateTokenRateCache(poolTokenIndex, provider, duration);
     }
 
     /**
@@ -154,24 +147,24 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      * It trusts the given values, and does not perform any checks.
      */
     function _updateTokenRateCache(
-        uint256 index,
+        uint256 poolTokenIndex,
         IRateProvider provider,
         uint256 duration
     ) internal virtual {
         uint256 rate = provider.getRate();
-        bytes32 cache = _tokenRateCaches[index];
+        bytes32 cache = _tokenRateCaches[poolTokenIndex];
 
-        _tokenRateCaches[index] = cache.updateRateAndDuration(rate, duration);
+        _tokenRateCaches[poolTokenIndex] = cache.updateRateAndDuration(rate, duration);
 
-        emit TokenRateCacheUpdated(index, rate);
+        emit TokenRateCacheUpdated(poolTokenIndex, rate);
     }
 
     /**
-     * @dev Caches the rates of all tokens if necessary
+     * @dev Caches the rates of all pool tokens, if necessary.
      */
     function _cacheTokenRatesIfNecessary() internal {
-        uint256 totalTokens = _getTotalTokens();
-        for (uint256 i = 0; i < totalTokens; ++i) {
+        uint256 totaPoollTokens = _getTotalPoolTokens();
+        for (uint256 i = 0; i < totaPoollTokens; ++i) {
             _cacheTokenRateIfNecessary(i);
         }
     }
@@ -179,20 +172,13 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     /**
      * @dev Caches the rate for a token if necessary. It ignores the call if there is no provider set.
      */
-    function _cacheTokenRateIfNecessary(uint256 index) internal {
-        // We optimize for the scenario where all tokens have rate providers, except the BPT (which never has a rate
-        // provider). Therefore, we return early if token is BPT, and otherwise optimistically read the cache expecting
-        // that it will not be empty (instead of e.g. fetching the provider to avoid a cache read in situations where
-        // we might not need the provider if the cache is still valid).
-
-        if (index == getBptIndex()) return;
-
-        bytes32 cache = _tokenRateCaches[index];
+    function _cacheTokenRateIfNecessary(uint256 poolTokenIndex) internal {
+        bytes32 cache = _tokenRateCaches[poolTokenIndex];
         if (cache != bytes32(0)) {
             (uint256 duration, uint256 expires) = cache.getTimestamps();
             if (block.timestamp > expires) {
                 // solhint-disable-previous-line not-rely-on-time
-                _updateTokenRateCache(index, _getRateProvider(index), duration);
+                _updateTokenRateCache(poolTokenIndex, _getRateProvider(poolTokenIndex), duration);
             }
         }
     }
@@ -200,8 +186,8 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
     // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
     function _updateOldRates() internal {
-        uint256 totalTokens = _getTotalTokens();
-        for (uint256 i = 0; i < totalTokens; ++i) {
+        uint256 totalPoolTokens = _getTotalPoolTokens();
+        for (uint256 i = 0; i < totalPoolTokens; ++i) {
             if (_hasRateProvider(i)) _updateOldRate(i);
         }
     }
@@ -215,14 +201,12 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         view
         returns (uint256[] memory)
     {
-        uint256 totalTokensWithoutBpt = balances.length;
-        uint256[] memory adjustedBalances = new uint256[](totalTokensWithoutBpt);
+        uint256 totalPoolTokens = balances.length;
+        uint256[] memory adjustedBalances = new uint256[](totalPoolTokens);
 
-        for (uint256 i = 0; i < totalTokensWithoutBpt; ++i) {
-            uint256 skipBptIndex = i >= getBptIndex() ? i + 1 : i;
-            adjustedBalances[i] = _isTokenExemptFromYieldProtocolFee(skipBptIndex) ||
-                (ignoreExemptFlags && _hasRateProvider(skipBptIndex))
-                ? _adjustedBalance(balances[i], _tokenRateCaches[skipBptIndex])
+        for (uint256 i = 0; i < totalPoolTokens; ++i) {
+            adjustedBalances[i] = _isTokenExemptFromYieldProtocolFee(i) || (ignoreExemptFlags && _hasRateProvider(i))
+                ? _adjustedBalance(balances[i], _tokenRateCaches[i])
                 : balances[i];
         }
 
@@ -237,15 +221,18 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     // Scaling Factors
 
     /**
-     * @dev Overrides scaling factor getter to compute the tokens' rates.
+     * @dev Overrides scaling factor getter to compute the tokens' rates. This is the rare exception where we
+     * need to include the BPT token.
      */
     function getScalingFactors() public view virtual override returns (uint256[] memory) {
-        // There is no need to check the arrays length since both are based on `_getTotalTokens`
-        uint256 totalTokens = _getTotalTokens();
-        uint256[] memory scalingFactors = new uint256[](totalTokens);
+        uint256 totalPoolTokens = _getTotalPoolTokens();
+        uint256[] memory scalingFactors = new uint256[](totalPoolTokens + 1);
+        // Set the BPT scaling factor to ONE.
+        scalingFactors[PoolRegistrationLib.COMPOSABLE_BPT_INDEX] = FixedPoint.ONE;
 
-        for (uint256 i = 0; i < totalTokens; ++i) {
-            scalingFactors[i] = _getScalingFactor(i).mulDown(_getTokenRate(i));
+        // Set the scaling factors of the pool tokens.
+        for (uint256 i = 0; i < totalPoolTokens; ++i) {
+            scalingFactors[i + 1] = _getScalingFactor(i).mulDown(_getTokenRate(i));
         }
 
         return scalingFactors;

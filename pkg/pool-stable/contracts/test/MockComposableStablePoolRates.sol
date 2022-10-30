@@ -57,7 +57,7 @@ contract MockComposableStablePoolRates is ComposableStablePoolRates {
     }
 
     function cacheTokenRateIfNecessary(IERC20 token) external {
-        _cacheTokenRateIfNecessary(_getTokenIndex(token));
+        _cacheTokenRateIfNecessary(_getPoolTokenIndex(token));
     }
 
     function updateOldRates() external {

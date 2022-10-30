@@ -22,6 +22,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 
 import "./StableMath.sol";
@@ -42,13 +43,15 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
     uint256 private constant _MIN_NON_BPT_TOKENS = 2;
 
     // The Pool will register n+1 tokens, where n are the actual tokens in the Pool, and the other one is the BPT
-    // itself. `_totalTokens` is the token count including BPT.
-    uint256 private immutable _totalTokens;
+    // itself. `_poolTokens` is the token count NOT including BPT. In general, "pool tokens" and "pool token index"
+    // refer to the tokens passed in by and visible to the user. These 0-4 indices correspond to the array storage
+    // in this contract.
+    //
+    // In the rare cases when we need to include BPT (e.g., certain external functions, scaling factors), we refer
+    // to the "registered tokens" and "registered index".
+    uint256 private immutable _totalPoolTokens;
 
-    // Composable Pool registration will put the BPT at index 0, with the main/wrapped following in sorted order.
-    uint256 private constant _BPT_INDEX = 0;
-
-    // These are the registered tokens, not including BPT
+    // These are the pool tokens (not including BPT)
     IERC20 private immutable _token0;
     IERC20 private immutable _token1;
     IERC20 private immutable _token2;
@@ -121,8 +124,7 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
             params.exemptFromYieldProtocolFeeFlags.length
         );
 
-        // Include BPT in the count
-        _totalTokens = totalPoolTokens + 1;
+        _totalPoolTokens = totalPoolTokens;
 
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _token0 = params.tokens[0];
@@ -186,24 +188,23 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
 
     // Tokens
 
-    // Return the total count, including the BPT.
-    function _getTotalTokens() internal view virtual returns (uint256) {
-        return _totalTokens;
+    // Return the token count, including the BPT.
+    function _getTotalTokens() internal view returns (uint256) {
+        return _totalPoolTokens + 1;
     }
 
-    function getBptIndex() public pure returns (uint256) {
-        return _BPT_INDEX;
+    // Return the token count, NOT including the BPT.
+    function _getTotalPoolTokens() internal view returns (uint256) {
+        return _totalPoolTokens;
     }
 
-    // The BPT index is always 0, and the pool tokens follow.
-    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
-        if (token == IERC20(this)) return 0;
-
-        if (token == _token0) return 1;
-        if (token == _token1) return 2;
-        if (token == _token2) return 3;
-        if (token == _token3) return 4;
-        if (token == _token4) return 5;
+    // Returns the pool token index of the given token. Should not be called with BPT.
+    function _getPoolTokenIndex(IERC20 token) internal view returns (uint256) {
+        if (token == _token0) return 0;
+        if (token == _token1) return 1;
+        if (token == _token2) return 2;
+        if (token == _token3) return 3;
+        if (token == _token4) return 4;
 
         _revert(Errors.INVALID_TOKEN);
     }
@@ -237,7 +238,10 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
         view
         returns (uint256, uint256[] memory)
     {
-        return (_getVirtualSupply(registeredBalances[_BPT_INDEX]), _dropBptItem(registeredBalances));
+        return (
+            _getVirtualSupply(registeredBalances[PoolRegistrationLib.COMPOSABLE_BPT_INDEX]),
+            _dropBptItem(registeredBalances)
+        );
     }
 
     /**
@@ -260,53 +264,52 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
         }
     }
 
-    // Rate Providers
-
-    function _getScalingFactor(uint256 registeredIndex) internal view returns (uint256) {
-        if (registeredIndex == 0) return FixedPoint.ONE; // This is the BPT index
-        if (registeredIndex == 1) return _scalingFactor0;
-        if (registeredIndex == 2) return _scalingFactor1;
-        if (registeredIndex == 3) return _scalingFactor2;
-        if (registeredIndex == 4) return _scalingFactor3;
-        if (registeredIndex == 5) return _scalingFactor4;
+    /**
+     * @dev Get the scaling factor for the token at the given pool token index (not including BPT).
+     */
+    function _getScalingFactor(uint256 poolTokenIndex) internal view returns (uint256) {
+        if (poolTokenIndex == 0) return _scalingFactor0;
+        if (poolTokenIndex == 1) return _scalingFactor1;
+        if (poolTokenIndex == 2) return _scalingFactor2;
+        if (poolTokenIndex == 3) return _scalingFactor3;
+        if (poolTokenIndex == 4) return _scalingFactor4;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
+    // Rate Providers
+
     /**
-     * @dev Returns the rate providers configured for each token (in the same order as registered).
+     * @dev Returns the rate providers configured for each token (not including BPT).
      */
     function getRateProviders() external view returns (IRateProvider[] memory) {
-        uint256 totalRegisteredTokens = _getTotalTokens();
-        IRateProvider[] memory providers = new IRateProvider[](totalRegisteredTokens);
+        uint256 totalPoolTokens = _getTotalPoolTokens();
+        IRateProvider[] memory providers = new IRateProvider[](totalPoolTokens);
 
-        // Start from index 1; the first element is the BPT token, which has no provider.
-        for (uint256 i = 1; i < totalRegisteredTokens; ++i) {
+        for (uint256 i = 0; i < totalPoolTokens; ++i) {
             providers[i] = _getRateProvider(i);
         }
 
         return providers;
     }
 
-    function _getRateProvider(uint256 registeredIndex) internal view returns (IRateProvider) {
-        if (registeredIndex == 0) return IRateProvider(0); // This is the BPT registeredIndex.
-        if (registeredIndex == 1) return _rateProvider0;
-        if (registeredIndex == 2) return _rateProvider1;
-        if (registeredIndex == 3) return _rateProvider2;
-        if (registeredIndex == 4) return _rateProvider3;
-        if (registeredIndex == 5) return _rateProvider4;
+    function _getRateProvider(uint256 poolTokenIndex) internal view returns (IRateProvider) {
+        if (poolTokenIndex == 0) return _rateProvider0;
+        if (poolTokenIndex == 1) return _rateProvider1;
+        if (poolTokenIndex == 2) return _rateProvider2;
+        if (poolTokenIndex == 3) return _rateProvider3;
+        if (poolTokenIndex == 4) return _rateProvider4;
         else {
             _revert(Errors.INVALID_TOKEN);
         }
     }
 
     /**
-     * @notice Return true if the token at this index has a rate provider
+     * @notice Return true if the token at this pool token index has a rate provider.
      */
-    function _hasRateProvider(uint256 registeredTokenIndex) internal view returns (bool) {
-        // `rateProviderInfoBitmap` does not include the BPT token, so its indices are 1-based.
-        return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + registeredTokenIndex - 1);
+    function _hasRateProvider(uint256 poolTokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(_RATE_PROVIDER_FLAGS_OFFSET + poolTokenIndex);
     }
 
     /**
@@ -331,13 +334,12 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
      * since it is a valid pool token), the corresponding flag will be false.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
-        return _isTokenExemptFromYieldProtocolFee(_getTokenIndex(token));
+        return _isTokenExemptFromYieldProtocolFee(_getPoolTokenIndex(token));
     }
 
-    // This assumes the tokenIndex is valid. If it's not, it will just return false.
-    function _isTokenExemptFromYieldProtocolFee(uint256 registeredTokenIndex) internal view returns (bool) {
-        // `rateProviderInfoBitmap` does not include the BPT token, so its indices are 1-based.
-        return _rateProviderInfoBitmap.decodeBool(registeredTokenIndex - 1);
+    // This assumes the poolTokenIndex (not including BPT) is valid. If it's not, it will just return false.
+    function _isTokenExemptFromYieldProtocolFee(uint256 poolTokenIndex) internal view returns (bool) {
+        return _rateProviderInfoBitmap.decodeBool(poolTokenIndex);
     }
 
     // Virtual Supply
