@@ -1177,13 +1177,22 @@ contract ComposableStablePool is
     }
 
     /**
-     * @dev Enumerates all ownerOnly functions in Composable Stable Pool.
+     * @dev Overrides only owner action to allow setting the swap fee percentage, and calls super to check for others.
      */
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+    function _isOwnerOnlyAction(bytes32 actionId)
+        internal
+        view
+        virtual
+        override(
+            BasePoolAuthorization,
+            StablePoolAmplification,
+            ComposableStablePoolRates,
+            ComposableStablePoolProtocolFees
+        )
+        returns (bool)
+    {
         return
             (actionId == getActionId(ComposableStablePool.setSwapFeePercentage.selector)) ||
-            (actionId == getActionId(this.startAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.stopAmplificationParameterUpdate.selector)) ||
-            (actionId == getActionId(this.setTokenRateCacheDuration.selector));
+            super._isOwnerOnlyAction(actionId);
     }
 }
