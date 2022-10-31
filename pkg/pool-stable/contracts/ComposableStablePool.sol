@@ -685,6 +685,8 @@ contract ComposableStablePool is
         uint256[] memory scalingFactors,
         bytes memory userData
     ) internal returns (uint256, uint256[] memory) {
+        _beforeSwapJoinExit();
+
         (
             uint256 preJoinExitSupply,
             uint256[] memory balances,
