@@ -342,11 +342,12 @@ describe('UnbuttonWrapping', function () {
   });
 
   describe('complex actions', () => {
+    const BPT_INDEX = 0;
+
     let WETH: Token;
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
-    let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
@@ -354,7 +355,6 @@ describe('UnbuttonWrapping', function () {
 
       pool = await StablePool.create({ tokens: poolTokens, vault });
       poolId = pool.poolId;
-      bptIndex = await pool.getBptIndex();
 
       await WETH.mint(senderUser, fp(2));
       await WETH.approve(vault, MAX_UINT256, { from: senderUser });
@@ -370,7 +370,7 @@ describe('UnbuttonWrapping', function () {
       const wethIndex = allTokens.indexOf(WETH.address);
 
       const initialBalances = Array.from({ length: 3 }).map((_, i) =>
-        i == bptIndex ? 0 : i == wethIndex ? fp(2) : fp(6)
+        i == BPT_INDEX ? 0 : i == wethIndex ? fp(2) : fp(6)
       );
 
       // Seed liquidity in pool

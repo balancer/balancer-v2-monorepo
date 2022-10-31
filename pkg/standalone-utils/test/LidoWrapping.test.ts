@@ -504,11 +504,12 @@ describe('LidoWrapping', function () {
   });
 
   describe('complex actions', () => {
+    const BPT_INDEX = 0;
+
     let WETH: Token;
     let poolTokens: TokenList;
     let poolId: string;
     let pool: StablePool;
-    let bptIndex: number;
 
     sharedBeforeEach('deploy pool', async () => {
       WETH = await Token.deployedAt(await vault.instance.WETH());
@@ -529,8 +530,7 @@ describe('LidoWrapping', function () {
       await wstETH.instance.connect(admin).wrap(fp(150));
       await wstETH.approve(vault, MAX_UINT256, { from: admin });
 
-      bptIndex = await pool.getBptIndex();
-      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == bptIndex ? 0 : fp(100)));
+      const initialBalances = Array.from({ length: 3 }).map((_, i) => (i == BPT_INDEX ? 0 : fp(100)));
 
       await pool.init({ initialBalances, from: admin });
     });
