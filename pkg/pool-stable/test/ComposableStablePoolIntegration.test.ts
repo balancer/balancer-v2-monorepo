@@ -36,13 +36,13 @@ describe('ComposableStablePoolIntegration', () => {
 
   function itPerformsIntegrationTests(totalTokens: number) {
     let pool: StablePool, tokens: TokenList;
-    let bptIndex: number;
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
     const exemptFromYieldProtocolFeeFlags: boolean[] = [];
     const swapFeePercentage = fp(0.1); // 10 %
     const protocolFeePercentage = fp(0.5); // 50 %
+    const BPT_INDEX = 0;
 
     async function deployPool(
       numberOfTokens: number,
@@ -68,8 +68,6 @@ describe('ComposableStablePoolIntegration', () => {
         admin,
         ...params,
       });
-
-      bptIndex = await pool.getBptIndex();
     }
 
     describe('protocol fee minting vs value extraction', () => {
@@ -82,7 +80,7 @@ describe('ComposableStablePoolIntegration', () => {
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
-        equalBalances = Array.from({ length: totalTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
+        equalBalances = Array.from({ length: totalTokens + 1 }).map((_, i) => (i == BPT_INDEX ? bn(0) : fp(100)));
         await pool.init({ recipient: lp.address, initialBalances: equalBalances });
 
         await pool.updateProtocolFeePercentageCache();
@@ -108,12 +106,11 @@ describe('ComposableStablePoolIntegration', () => {
         await otherToken.mint(lp, fp(10000));
         await otherToken.mint(other, fp(10000));
 
-        const bptIdx = await poolNested.getBptIndex();
         const { tokens: allTokens } = await poolNested.getTokens();
 
         const bptBalance = await pool.balanceOf(lp);
         const initialBalances = allTokens.map((token, i) =>
-          i == bptIdx ? bn(0) : token == pool.bpt.address ? bptBalance.div(2) : fp(10)
+          i == BPT_INDEX ? bn(0) : token == pool.bpt.address ? bptBalance.div(2) : fp(10)
         );
 
         await tokens.approve({ from: [lp, other], to: pool.vault });
@@ -162,7 +159,7 @@ describe('ComposableStablePoolIntegration', () => {
         // Join the downstream pool proportionally, triggering minting protocol fee BPT, but otherwise not accruing any
         // further fees (and therefore not changing the value of the BPT).
         const { balances: unscaledBalances } = await pool.getTokens();
-        const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+        const amountsIn = unscaledBalances.map((balance, i) => (i == BPT_INDEX ? bn(0) : balance.div(100)));
         await pool.joinGivenIn({ from: other, amountsIn });
 
         // Perform the queried reverse swap in the nested pool
