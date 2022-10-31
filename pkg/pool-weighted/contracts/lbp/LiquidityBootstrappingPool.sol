@@ -323,7 +323,7 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
         address sender,
         uint256[] memory balances,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // Only the owner can add liquidity; block public LPs
         _require(sender == getOwner(), Errors.CALLER_IS_NOT_LBP_OWNER);
 
@@ -351,7 +351,7 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
+    ) internal view returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         if (kind == WeightedPoolUserData.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT) {
@@ -448,7 +448,7 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
         address sender,
         uint256[] memory balances,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         return _doExit(sender, balances, _getNormalizedWeights(), getScalingFactors(), totalSupply(), userData);
     }
 
@@ -464,7 +464,7 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
         uint256[] memory scalingFactors,
         uint256 totalSupply,
         bytes memory userData
-    ) internal view virtual returns (uint256, uint256[] memory) {
+    ) internal view returns (uint256, uint256[] memory) {
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
@@ -598,24 +598,6 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
     }
 
     /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
-     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
-        _setSwapFeePercentage(swapFeePercentage);
-    }
-
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
-        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
-        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
-
-        _swapFeePercentage = swapFeePercentage;
-
-        emit SwapFeePercentageChanged(swapFeePercentage);
-    }
-
-    /**
      * @dev Subtracts swap fee amount from `amount`, returning a lower value.
      */
     function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
@@ -658,6 +640,28 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
             );
     }
 
+    // Swap Fees
+
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function, and disabled if the pool is paused. The swap fee must be within the
+     * bounds set by MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual authenticate whenNotPaused {
+        _setSwapFeePercentage(swapFeePercentage);
+    }
+
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+
+        _swapFeePercentage = swapFeePercentage;
+
+        emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    // Gradual weight change
+
     /**
      * @dev When calling updateWeightsGradually again during an update, reset the start weights to the current weights,
      * if necessary.
@@ -693,14 +697,16 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
+    function _getTotalTokens() internal view returns (uint256) {
+        return _totalTokens;
+    }
+
     function _setSwapEnabled(bool swapEnabled) private {
         _poolState = _poolState.insertBool(swapEnabled, _SWAP_ENABLED_OFFSET);
         emit SwapEnabledSet(swapEnabled);
     }
 
-    function _getTotalTokens() internal view returns (uint256) {
-        return _totalTokens;
-    }
+    // Scaling factors
 
     function _scalingFactor(IERC20 token) internal view returns (uint256) {
         // prettier-ignore
