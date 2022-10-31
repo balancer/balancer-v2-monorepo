@@ -336,6 +336,10 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
      * since it is a valid pool token), the corresponding flag will be false.
      */
     function isTokenExemptFromYieldProtocolFee(IERC20 token) external view returns (bool) {
+        if (token == IERC20(this)) {
+            return false;
+        }
+
         return _isTokenExemptFromYieldProtocolFee(_getPoolTokenIndex(token));
     }
 
