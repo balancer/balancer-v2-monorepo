@@ -1723,7 +1723,7 @@ describe('ComposableStablePool', () => {
               expect(newRate).to.be.almostEqual(rateAssumingNoProtocolFees, 1e-6);
             });
 
-            it.skip('rate does not change when disabling recovery mode', async () => {
+            it('rate does not change when disabling recovery mode', async () => {
               await pool.enableRecoveryMode(admin);
 
               await expectNoRateChange(async () => {

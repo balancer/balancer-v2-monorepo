@@ -1131,6 +1131,18 @@ contract ComposableStablePool is
         _updatePostJoinExit(currentAmp, currentInvariant);
     }
 
+    /**
+     * @dev Override this to perform special processing when Recovery Mode is disabled.
+     * See `_onDisableRecoveryMode`.
+     */
+    function _setRecoveryMode(bool enabled) internal virtual override(ComposableStablePoolStorage, RecoveryMode) {
+        super._setRecoveryMode(enabled);
+
+        if (!enabled) {
+            _onDisableRecoveryMode();
+        }
+    }
+
     function _onDisableRecoveryMode() internal {
         // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
         // increasing the return value of `getRate()` and effectively forfeiting due protocol fees.
