@@ -44,6 +44,7 @@ import BasePool from '../base/BasePool';
 import { currentTimestamp, DAY } from '../../../time';
 
 const PREMINTED_BPT = MAX_UINT112.div(2);
+const BPT_INDEX = 0;
 
 export default class StablePool extends BasePool {
   amplificationParameter: BigNumberish;
@@ -71,7 +72,7 @@ export default class StablePool extends BasePool {
   }
 
   async virtualTotalSupply(): Promise<BigNumber> {
-    return PREMINTED_BPT.sub((await this.getBalances())[this.bptIndex]);
+    return PREMINTED_BPT.sub((await this.getBalances())[BPT_INDEX]);
   }
 
   async getTokenIndex(token: Token): Promise<number> {
@@ -541,5 +542,13 @@ export default class StablePool extends BasePool {
       params.protocolFeePercentage ?? 0,
       params.data ?? '0x'
     );
+  }
+
+  private _skipBptIndex(index: number): number {
+    return index - 1;
+  }
+
+  private async _dropBptItem(items: BigNumberish[]): Promise<BigNumberish[]> {
+    return items.slice(1);
   }
 }

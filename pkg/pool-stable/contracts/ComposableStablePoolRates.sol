@@ -159,6 +159,7 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
 
         return (poolTokenIndex, provider);
     }
+
     /**
      * @dev Internal function to update a token rate cache for a known provider and duration.
      * It trusts the given values, and does not perform any checks.

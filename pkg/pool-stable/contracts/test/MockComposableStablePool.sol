@@ -82,4 +82,13 @@ contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
         // ONE. This addition cannot overflow due to the Vault's balance limits.
         return _getVirtualSupply(cash + managed);
     }
+
+    function callOnSwap(
+        SwapRequest memory request,
+        uint256[] memory balances,
+        uint256 indexIn,
+        uint256 indexOut
+    ) external returns (uint256) {
+        return this.onSwap(request, balances, indexIn, indexOut);
+    }
 }
