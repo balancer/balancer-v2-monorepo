@@ -36,7 +36,7 @@ describe('ProtocolFeePercentagesProvider', function () {
 
   sharedBeforeEach('deploy vault', async () => {
     ({ instance: vault, authorizer } = await Vault.create({ admin }));
-    feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
+    feesCollector = await deployedAt('v2-vault/ProtocolFeesCollector', await vault.getProtocolFeesCollector());
   });
 
   describe('construction', () => {
