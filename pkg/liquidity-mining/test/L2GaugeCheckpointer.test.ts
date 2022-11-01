@@ -7,11 +7,11 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expect } from 'chai';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { anyAddressArray } from '@balancer-labs/v2-helpers/src/address';
+import { ANY_ADDRESS, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { GaugeType } from './GaugeAdder.test';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { range } from 'lodash';
 
 describe('L2GaugeCheckpointer', () => {
   let vault: Vault;
@@ -305,7 +305,8 @@ describe('L2GaugeCheckpointer', () => {
    * @returns A promise with the array of addresses corresponding to the created gauges.
    */
   async function createGauges(factory: Contract, seed: number, amount: number): Promise<string[]> {
-    const txArray = await Promise.all(anyAddressArray(seed, amount).map((address) => factory.create(address, fp(1)))); // No weight cap.
+    const randomAddresses = await range(amount).map(randomAddress);
+    const txArray = await Promise.all(randomAddresses.map((address) => factory.create(address, fp(1)))); // No weight cap.
     const receipts = await Promise.all(txArray.map((tx) => tx.wait()));
     return receipts.map((receipt) => expectEvent.inReceipt(receipt, 'GaugeCreated').args.gauge);
   }
