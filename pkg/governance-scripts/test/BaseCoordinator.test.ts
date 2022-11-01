@@ -13,9 +13,7 @@ const NUM_STAGES = 4;
 describe('BaseCoordinator', () => {
   let vault: Vault;
   let adaptor: Contract;
-
   let coordinator: Contract;
-
   let admin: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -25,8 +23,9 @@ describe('BaseCoordinator', () => {
   sharedBeforeEach('deploy vault', async () => {
     vault = await Vault.create({ admin });
     if (!vault.authorizer) throw Error('Vault has no Authorizer');
+    if (!vault.authorizerAdaptor) throw Error('Vault has no AuthorizerAdaptor');
 
-    adaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
+    adaptor = vault.authorizerAdaptor;
   });
 
   sharedBeforeEach('deploy coordinator', async () => {
