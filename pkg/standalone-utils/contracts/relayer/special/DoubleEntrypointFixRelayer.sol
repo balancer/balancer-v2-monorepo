@@ -116,7 +116,7 @@ contract DoubleEntrypointFixRelayer is IFlashLoanRecipient {
         _withdrawFromProtocolFeeCollector(SNX, SNX.balanceOf(address(_protocolFeeCollector)));
 
         // Perform the exit.
-        bytes memory userData = abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        bytes memory userData = abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest(
             _asIAsset(tokens),
             new uint256[](tokens.length),
