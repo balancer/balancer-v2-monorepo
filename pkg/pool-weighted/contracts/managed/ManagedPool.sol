@@ -438,11 +438,11 @@ contract ManagedPool is ManagedPoolSettings {
 
     // Initialize
 
-    function _onInitializePool(address sender, bytes memory userData)
-        internal
-        override
-        returns (uint256 bptAmountOut, uint256[] memory amountsIn)
-    {
+    function _onInitializePool(
+        address sender,
+        address,
+        bytes memory userData
+    ) internal override returns (uint256 bptAmountOut, uint256[] memory amountsIn) {
         // Check allowlist for LPs, if applicable
         _require(_isAllowedAddress(_getPoolState(), sender), Errors.ADDRESS_NOT_ALLOWLISTED);
 
