@@ -7,7 +7,6 @@ import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 
 import { BatchSwapStep, FundManagement, SwapKind } from '@balancer-labs/balancer-js';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
@@ -15,6 +14,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { ANY_ADDRESS, MAX_INT256, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Swap Validation', () => {
   let authorizer: Contract, vault: Contract;
@@ -28,11 +28,13 @@ describe('Swap Validation', () => {
   });
 
   sharedBeforeEach('setup', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
-
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
+
+    ({ instance: vault, authorizer } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+    }));
 
     const totalPools = 5;
     const initialBalance = bn(100e18);

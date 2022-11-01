@@ -21,17 +21,19 @@ export default {
 
     const authorizer = await this._deployAuthorizer(admin, from);
     const vault = await (mocked ? this._deployMocked : this._deployReal)(deployment, authorizer);
+    const authorizerAdaptor = await this._deployAuthorizerAdaptor(vault, from);
     const protocolFeeProvider = await this._deployProtocolFeeProvider(
       vault,
       deployment.maxYieldValue,
       deployment.maxAUMValue
     );
-    return new Vault(mocked, vault, authorizer, protocolFeeProvider, admin);
+    return new Vault(mocked, vault, authorizer, authorizerAdaptor, protocolFeeProvider, admin);
   },
 
   async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {
     const { from, pauseWindowDuration, bufferPeriodDuration } = deployment;
     const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
+
     const args = [authorizer.address, weth.address, pauseWindowDuration, bufferPeriodDuration];
     return deploy('v2-vault/Vault', { args, from });
   },
@@ -42,6 +44,10 @@ export default {
 
   async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
     return deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH], from });
+  },
+
+  async _deployAuthorizerAdaptor(vault: Contract, from?: SignerWithAddress): Promise<Contract> {
+    return deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address], from });
   },
 
   async _deployProtocolFeeProvider(
