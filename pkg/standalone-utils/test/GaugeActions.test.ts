@@ -61,7 +61,7 @@ describe('GaugeActions', function () {
   });
 
   sharedBeforeEach('set up relayer', async () => {
-    adaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
+    adaptor = vault.authorizerAdaptor;
 
     gaugeController = await deploy('v2-liquidity-mining/MockGaugeController', {
       args: [veBAL.address, adaptor.address],

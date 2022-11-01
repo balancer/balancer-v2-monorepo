@@ -3,11 +3,11 @@ import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('ProtocolFeePercentagesProvider', function () {
   let admin: SignerWithAddress, authorized: SignerWithAddress, other: SignerWithAddress;
@@ -35,9 +35,10 @@ describe('ProtocolFeePercentagesProvider', function () {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, 0] });
-    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
-    feesCollector = await deployedAt('v2-vault/ProtocolFeesCollector', await vault.getProtocolFeesCollector());
+    const vaultObj = await Vault.create({ admin });
+    vault = vaultObj.instance;
+    authorizer = vaultObj.authorizer;
+    feesCollector = await vaultObj.getFeesCollector();
   });
 
   describe('construction', () => {
@@ -59,7 +60,7 @@ describe('ProtocolFeePercentagesProvider', function () {
 
     it('emits ProtocolFeeTypeRegistered events for custom types', async () => {
       // We deploy manually instead of using our helper to get the transaction receipt
-      const artifact = await getArtifact('ProtocolFeePercentagesProvider');
+      const artifact = getArtifact('ProtocolFeePercentagesProvider');
       const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, (await ethers.getSigners())[0]);
       const instance = await factory.deploy(vault.address, MAX_YIELD_VALUE, MAX_AUM_VALUE);
       const receipt = await instance.deployTransaction.wait();
@@ -79,7 +80,7 @@ describe('ProtocolFeePercentagesProvider', function () {
 
     it('emits ProtocolFeePercentageChanged events for custom types', async () => {
       // We deploy manually instead of using our helper to get the transaction receipt
-      const artifact = await getArtifact('ProtocolFeePercentagesProvider');
+      const artifact = getArtifact('ProtocolFeePercentagesProvider');
       const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, (await ethers.getSigners())[0]);
       const instance = await factory.deploy(vault.address, MAX_YIELD_VALUE, MAX_AUM_VALUE);
       const receipt = await instance.deployTransaction.wait();
