@@ -5,6 +5,7 @@
 ### New Deployments
 
 - Deployed `ProtocolFeeSplitter` to Mainnet.
+- Deployed `L2GaugeCheckpointer` to Mainnet.
 
 ## 3.0.0 (2022-10-25)
 

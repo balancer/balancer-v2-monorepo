@@ -5,6 +5,7 @@
 ### New Interfaces
 
 - Added `IProtocolFeeSplitter`.
+- Added `IL2GaugeCheckpointer`.
 
 ### New Features
 
