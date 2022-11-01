@@ -6,17 +6,17 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { encodeExit } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { PoolSpecialization, RelayerAuthorization } from '@balancer-labs/balancer-js';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('Exit Pool', () => {
   let admin: SignerWithAddress, creator: SignerWithAddress, lp: SignerWithAddress;
@@ -31,12 +31,10 @@ describe('Exit Pool', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
-
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
-    vault = vault.connect(lp);
-    feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
+    const vaultObj = await Vault.create({ admin, pauseWindowDuration: MONTH, bufferPeriodDuration: MONTH });
+    authorizer = vaultObj.authorizer;
+    vault = vaultObj.instance.connect(lp);
+    feesCollector = await vaultObj.getFeesCollector();
 
     const action = await actionId(feesCollector, 'setSwapFeePercentage');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
