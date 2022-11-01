@@ -252,7 +252,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _doWeightedExactBptInForOneTokenOutReplacements(userData);
-        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
+        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
             return _doWeightedExactBptInForTokensOutReplacements(userData);
         } else {
             // All other exit kinds are 'given out' (i.e the parameter is a token amount),
@@ -278,7 +278,7 @@ abstract contract VaultActions is IBaseRelayerLibrary {
 
         if (_isChainedReference(bptAmountIn)) {
             bptAmountIn = _getChainedReferenceValue(bptAmountIn);
-            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+            return abi.encode(WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn);
         } else {
             // Save gas by only re-encoding the data if we actually performed a replacement
             return userData;

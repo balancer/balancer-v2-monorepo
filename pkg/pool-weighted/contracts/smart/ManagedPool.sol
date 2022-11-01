@@ -1108,7 +1108,7 @@ contract ManagedPool is BaseWeightedPool, ProtocolFeeCache, ReentrancyGuard, ICo
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
         _require(
             getSwapEnabled() ||
-                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT ||
+                kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT ||
                 kind == WeightedPoolUserData.ExitKind.REMOVE_TOKEN,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );

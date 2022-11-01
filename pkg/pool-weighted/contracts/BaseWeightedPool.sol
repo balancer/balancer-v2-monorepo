@@ -380,8 +380,8 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
 
         if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(balances, normalizedWeights, totalSupply, userData);
-        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
-            return _exitExactBPTInForTokensOut(balances, totalSupply, userData);
+        } else if (kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            return _exitExactBPTInForAllTokensOut(balances, totalSupply, userData);
         } else if (kind == WeightedPoolUserData.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT) {
             return _exitBPTInForExactTokensOut(balances, normalizedWeights, scalingFactors, totalSupply, userData);
         } else {
@@ -417,7 +417,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         return (bptAmountIn, amountsOut);
     }
 
-    function _exitExactBPTInForTokensOut(
+    function _exitExactBPTInForAllTokensOut(
         uint256[] memory balances,
         uint256 totalSupply,
         bytes memory userData
