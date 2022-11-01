@@ -29,6 +29,9 @@ export default {
   gnosis: {
     InitialDeniedTokens: [],
   },
+  bsc: {
+    InitialDeniedTokens: [],
+  },
   goerli: {
     InitialDeniedTokens: [],
   },
