@@ -19,12 +19,13 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/IIdleTokenV3_1.sol";
 
-import "./ERC4626LinearPool.sol";
+import "./IdleLinearPool.sol";
 
-contract ERC4626LinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract IdleLinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ERC4626LinearPool).creationCode)
+        BasePoolFactory(vault, protocolFeeProvider, type(IdleLinearPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -36,14 +37,14 @@ contract ERC4626LinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         string memory name,
         string memory symbol,
         IERC20 mainToken,
-        IERC4626 wrappedToken,
+        IIdleTokenV3_1 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         address owner
     ) external returns (LinearPool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        LinearPool pool = ERC4626LinearPool(
+        LinearPool pool = IdleLinearPool(
             _create(
                 abi.encode(
                     getVault(),

@@ -15,14 +15,14 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
-
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ERC20.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/IIdleTokenV3_1.sol";
+
 import "../LinearPool.sol";
 
-contract ERC4626LinearPool is LinearPool {
+contract IdleLinearPool is LinearPool {
     using Math for uint256;
 
     uint256 private immutable _rateScaleFactor;
@@ -32,7 +32,7 @@ contract ERC4626LinearPool is LinearPool {
         string memory name,
         string memory symbol,
         IERC20 mainToken,
-        IERC4626 wrappedToken,
+        IERC20 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
         uint256 pauseWindowDuration,
@@ -69,26 +69,17 @@ contract ERC4626LinearPool is LinearPool {
         // whereas mainToken is DAI. But the 1:1 relationship holds, and
         // the pool is still valid.
 
-        // _getWrappedTokenRate is scaled e18, so we may need to scale IERC4626.convertToAssets()
-        uint256 wrappedTokenDecimals = ERC20(address(wrappedToken)).decimals();
+        // _getWrappedTokenRate is scaled e18, but tokenPrice() is scaled according to mainToken decimals.
+        // Therefore, we need to scale tokenPrice result to have 1e18 decimals.
         uint256 mainTokenDecimals = ERC20(address(mainToken)).decimals();
 
         // This is always positive because we only accept tokens with <= 18 decimals
-        uint256 digitsDifference = Math.add(18, wrappedTokenDecimals).sub(mainTokenDecimals);
+        uint256 digitsDifference = Math.sub(18, mainTokenDecimals);
         _rateScaleFactor = 10**digitsDifference;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        IERC4626 wrappedToken = IERC4626(address(getWrappedToken()));
-
-        // Main tokens per 1e18 wrapped token wei
-        //     decimals: main + (18 - wrapped)
-        uint256 assetsPerShare = wrappedToken.convertToAssets(FixedPoint.ONE);
-
-        // This function returns a 18 decimal fixed point number
-        //     assetsPerShare decimals:   18 + main - wrapped
-        //     _rateScaleFactor decimals: 18 - main + wrapped
-        uint256 rate = assetsPerShare.mul(_rateScaleFactor).divDown(FixedPoint.ONE);
-        return rate;
+        IIdleTokenV3_1 wrappedToken = IIdleTokenV3_1(address(getWrappedToken()));
+        return wrappedToken.tokenPrice() * _rateScaleFactor;
     }
 }
