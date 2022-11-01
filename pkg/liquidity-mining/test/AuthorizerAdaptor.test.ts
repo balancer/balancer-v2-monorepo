@@ -2,7 +2,6 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -22,8 +21,10 @@ describe('AuthorizerAdaptor', () => {
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
     if (!vault.authorizer) throw Error('Vault has no Authorizer');
+    if (!vault.authorizerAdaptor) throw Error('Vault has no AuthorizerAdaptor');
+
     authorizer = vault.authorizer;
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+    adaptor = vault.authorizerAdaptor;
   });
 
   describe('constructor', () => {
