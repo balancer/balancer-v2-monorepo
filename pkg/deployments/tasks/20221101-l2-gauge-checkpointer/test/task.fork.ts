@@ -137,6 +137,20 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
   });
 
   describe('getTotalBridgeCost', () => {
+    function itChecksTotalBridgeCost(minRelativeWeight: BigNumber) {
+      it('checks total bridge cost', async () => {
+        const arbitrumGauge = await task.instanceAt('ArbitrumRootGauge', gauges.get(GaugeType.Arbitrum)![0].address);
+
+        const gaugesAmountAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight).length;
+        const singleGaugeBridgeCost = await arbitrumGauge.getTotalBridgeCost();
+
+        // Bridge cost per gauge is always the same, so total cost is (single gauge cost) * (number of gauges).
+        expect(await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight)).to.be.eq(
+          singleGaugeBridgeCost.mul(gaugesAmountAboveMinWeight)
+        );
+      });
+    }
+
     context('when threshold is 1', () => {
       itChecksTotalBridgeCost(fp(1));
     });
@@ -151,34 +165,34 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
   });
 
   describe('checkpoint', () => {
-    const checkpointedGauges: GaugeData[] = [];
     let gaugeDataAboveMinWeight: GaugeData[] = [];
 
+    sharedBeforeEach(() => {
+      // Gauges that are above a threshold will get another checkpoint attempt when the threshold is lowered.
+      // This block takes a snapshot so that gauges can be repeatedly checkpointed without skipping.
+    });
+
     context('when threshold is 1', () => {
-      itCheckpointsGaugesAboveRelativeWeight(fp(1));
+      itCheckpointsGaugesAboveRelativeWeight(fp(1), 0);
     });
 
     context('when threshold is 0.0001', () => {
-      itCheckpointsGaugesAboveRelativeWeight(fp(0.0001));
+      itCheckpointsGaugesAboveRelativeWeight(fp(0.0001), 12);
     });
 
     context('when threshold is 0', () => {
-      itCheckpointsGaugesAboveRelativeWeight(fp(0));
+      itCheckpointsGaugesAboveRelativeWeight(fp(0), 18);
     });
 
-    function itCheckpointsGaugesAboveRelativeWeight(minRelativeWeight: BigNumber) {
-      // Gauges won't be checkpointed twice, so when the threshold is lowered and more gauges get above the threshold
-      // we need to filter out those that have already been checkpointed.
-      beforeEach('get non-checkpointed gauges above min weight', () => {
+    function itCheckpointsGaugesAboveRelativeWeight(minRelativeWeight: BigNumber, gaugesAboveThreshold: number) {
+      beforeEach('get non-checkpointed gauges above min weight', async () => {
         gaugeDataAboveMinWeight = [
           ...getGaugeDataAboveMinWeight(GaugeType.Polygon, minRelativeWeight),
           ...getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight),
           ...getGaugeDataAboveMinWeight(GaugeType.Optimism, minRelativeWeight),
         ];
-      });
 
-      afterEach('mark checkpointed gauges to consider in the next iteration', () => {
-        checkpointedGauges.push(...gaugeDataAboveMinWeight);
+        expect(gaugeDataAboveMinWeight.length).to.be.eq(gaugesAboveThreshold);
       });
 
       const checkpointInterface = new ethers.utils.Interface([
@@ -192,11 +206,8 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
         });
         const receipt = await tx.wait();
 
-        // Only gauges that haven't been checkpointed so far should have been covered in this test iteration.
-        const gaugesToCheckpoint = gaugeDataAboveMinWeight.filter((data) => !checkpointedGauges.includes(data));
-
         // Check that the right amount of checkpoints were actually performed for every gauge that required them.
-        gaugesToCheckpoint.forEach((gaugeData) => {
+        gaugeDataAboveMinWeight.forEach((gaugeData) => {
           expectEvent.inIndirectReceipt(
             receipt,
             checkpointInterface,
@@ -209,20 +220,6 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
       });
     }
   });
-
-  function itChecksTotalBridgeCost(minRelativeWeight: BigNumber) {
-    it('checks total bridge cost', async () => {
-      const arbitrumGauge = await task.instanceAt('ArbitrumRootGauge', gauges.get(GaugeType.Arbitrum)![0].address);
-
-      const gaugesAmountAboveMinWeight = getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight).length;
-      const singleGaugeBridgeCost = await arbitrumGauge.getTotalBridgeCost();
-
-      // Bridge cost per gauge is always the same, so total cost is (single gauge cost) * (number of gauges).
-      expect(await L2GaugeCheckpointer.getTotalBridgeCost(minRelativeWeight)).to.be.almostEqual(
-        singleGaugeBridgeCost * gaugesAmountAboveMinWeight
-      );
-    });
-  }
 
   function getGaugeDataAboveMinWeight(gaugeType: GaugeType, fpMinRelativeWeight: BigNumber): GaugeData[] {
     return gauges.get(gaugeType)!.filter((addressWeight) => addressWeight.weight.gte(fpMinRelativeWeight));
