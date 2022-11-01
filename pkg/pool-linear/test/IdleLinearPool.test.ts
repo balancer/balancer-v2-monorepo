@@ -70,7 +70,7 @@ describe('IdleLinearPool', function () {
       expect(await pool.getWrappedTokenRate()).to.be.eq(FP_ONE);
 
       // Deposit one asset and check decimals on assets/shares
-      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6), false, trader.address);
+      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6));
       expect(await wrappedYieldTokenInstance.totalSupply()).to.be.eq(bn(1e18));
       expect(await wrappedYieldTokenInstance.totalAssets()).to.be.eq(bn(1e6));
 
@@ -86,7 +86,7 @@ describe('IdleLinearPool', function () {
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
 
       // At this rate we get half as many shares
-      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6), false, trader.address);
+      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6));
       expect(await wrappedYieldTokenInstance.totalSupply()).to.be.eq(bn(5e17));
       await wrappedYieldTokenInstance.redeemIdleToken(bn(5e17));
       expect(await wrappedYieldTokenInstance.totalAssets()).to.be.eq(0);
@@ -98,7 +98,7 @@ describe('IdleLinearPool', function () {
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(0.5));
 
       // At this rate we get twice as many shares
-      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6), false, trader.address);
+      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6));
       expect(await wrappedYieldTokenInstance.totalSupply()).to.be.eq(bn(2e18));
       await wrappedYieldTokenInstance.redeemIdleToken(bn(2e18));
       expect(await wrappedYieldTokenInstance.totalAssets()).to.be.eq(0);
@@ -110,7 +110,7 @@ describe('IdleLinearPool', function () {
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1.25));
 
       // At this rate we get 20% fewer shares
-      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6), false, trader.address);
+      await wrappedYieldTokenInstance.mintIdleToken(bn(1e6));
       expect(await wrappedYieldTokenInstance.totalSupply()).to.be.eq(bn(8e17));
       await wrappedYieldTokenInstance.redeemIdleToken(bn(8e17));
       expect(await wrappedYieldTokenInstance.totalAssets()).to.be.eq(0);

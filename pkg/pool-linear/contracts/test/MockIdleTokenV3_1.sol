@@ -29,7 +29,7 @@ contract MockIdleTokenV3_1 is TestToken, IIdleTokenV3_1 {
     uint256 private _scaleSharesToFP;
     uint256 private _totalAssets;
     address private immutable _asset;
-    address private referral;
+    address private immutable _vaultAddress;
 
     constructor(
         string memory name,
@@ -38,6 +38,7 @@ contract MockIdleTokenV3_1 is TestToken, IIdleTokenV3_1 {
         address asset
     ) TestToken(name, symbol, decimals) {
         _asset = asset;
+        _vaultAddress = address(0x00000000000000000001);
 
         uint256 assetDecimals = TestToken(asset).decimals();
         uint256 assetDecimalsDifference = Math.sub(18, assetDecimals);
@@ -47,6 +48,7 @@ contract MockIdleTokenV3_1 is TestToken, IIdleTokenV3_1 {
         _scaleSharesToFP = FixedPoint.ONE * 10**shareDecimalsDifference;
     }
 
+    // IMPORTANT: the rate must have the same number of decimals than the MAIN TOKEN.
     function setRate(uint256 newRate) external {
         _rate = newRate;
     }
@@ -63,17 +65,16 @@ contract MockIdleTokenV3_1 is TestToken, IIdleTokenV3_1 {
         return _rate;
     }
 
-    function mintIdleToken(uint256 _amount, bool, address _referral) external override returns (uint256) {
+    function mintIdleToken(uint256 _amount) external override returns (uint256) {
         uint256 shares = _convertToShares(_amount);
-        _mint(_referral, shares);
+        _mint(_vaultAddress, shares);
         _totalAssets = _totalAssets.add(_amount);
-        referral = _referral;
         return shares;
     }
 
     function redeemIdleToken(uint256 _amount) external override returns (uint256 redeemedTokens) {
         uint256 assets = _convertToAssets(_amount);
-        _burn(referral, _amount);
+        _burn(_vaultAddress, _amount);
         _totalAssets = _totalAssets.sub(assets);
         return assets;
     }
