@@ -11,7 +11,7 @@ import { encodeExit } from '@balancer-labs/v2-helpers/src/models/pools/mockPool'
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { arrayAdd, arraySub, BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -31,10 +31,13 @@ describe('Exit Pool', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const vaultObj = await Vault.create({ admin, pauseWindowDuration: MONTH, bufferPeriodDuration: MONTH });
-    authorizer = vaultObj.authorizer;
-    vault = vaultObj.instance.connect(lp);
-    feesCollector = await vaultObj.getFeesCollector();
+    ({ instance: vault, authorizer } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+    }));
+    vault = vault.connect(lp);
+    feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
 
     const action = await actionId(feesCollector, 'setSwapFeePercentage');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);

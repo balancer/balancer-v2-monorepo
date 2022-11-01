@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, BigNumberish, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { fp, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
@@ -35,10 +35,8 @@ describe('ProtocolFeePercentagesProvider', function () {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    const vaultObj = await Vault.create({ admin });
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
-    feesCollector = await vaultObj.getFeesCollector();
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
+    feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
   });
 
   describe('construction', () => {

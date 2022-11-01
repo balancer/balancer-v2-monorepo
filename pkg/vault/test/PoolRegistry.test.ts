@@ -24,8 +24,7 @@ describe('PoolRegistry', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const vaultObj = await Vault.create({ admin });
-    vault = vaultObj.instance;
+    vault = (await Vault.create({ admin })).instance;
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await allTokens.mint({ to: lp, amount: 50000 });

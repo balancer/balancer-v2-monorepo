@@ -33,9 +33,7 @@ describe('BasePool', function () {
   });
 
   sharedBeforeEach(async () => {
-    const vaultObj = await Vault.create({ admin });
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 

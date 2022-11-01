@@ -6,7 +6,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { bn, divCeil, fp, fpMul, FP_100_PCT } from '@balancer-labs/v2-helpers/src/numbers';
@@ -23,11 +23,8 @@ describe('Flash Loans', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const vaultObj = await Vault.create({ admin });
-
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
-    feesCollector = await vaultObj.getFeesCollector();
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
+    feesCollector = await deployedAt('ProtocolFeesCollector', await vault.getProtocolFeesCollector());
     recipient = await deploy('MockFlashLoanRecipient', { from: other, args: [vault.address] });
 
     const action = await actionId(feesCollector, 'setFlashLoanFeePercentage');

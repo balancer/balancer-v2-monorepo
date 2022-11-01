@@ -30,9 +30,11 @@ describe('Swap Validation', () => {
   sharedBeforeEach('setup', async () => {
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX', 'BAT'], { sorted: true });
 
-    const vaultObj = await Vault.create({ admin, pauseWindowDuration: MONTH, bufferPeriodDuration: MONTH });
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
+    ({ instance: vault, authorizer } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+    }));
 
     const totalPools = 5;
     const initialBalance = bn(100e18);

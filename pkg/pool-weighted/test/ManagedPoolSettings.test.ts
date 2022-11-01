@@ -73,6 +73,7 @@ describe('ManagedPoolSettings', function () {
     await allTokens.mint({ to: [other, owner], amount: fp(2000) });
 
     vault = await Vault.create({ admin });
+
     await allTokens.approve({ from: other, to: vault });
     await allTokens.approve({ from: owner, to: vault });
   });
@@ -1470,7 +1471,6 @@ describe('ManagedPoolSettings', function () {
   describe('non-zero AUM protocol fees', () => {
     let protocolFeesProvider: Contract;
     let authorizer: Contract;
-    let vault: Vault;
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
@@ -1479,7 +1479,12 @@ describe('ManagedPoolSettings', function () {
     const maxAUMValue = fp(1);
 
     sharedBeforeEach('deploy and set protocol AUM fee', async () => {
-      vault = await Vault.create({ admin, maxYieldValue, maxAUMValue });
+      vault = await Vault.create({
+        admin,
+        maxYieldValue,
+        maxAUMValue,
+      });
+
       authorizer = vault.authorizer;
       protocolFeesProvider = vault.protocolFeesProvider;
 

@@ -64,9 +64,7 @@ describe('Swaps', () => {
   sharedBeforeEach('deploy vault and tokens', async () => {
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX']);
 
-    const vaultObj = await Vault.create({ admin });
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
 
     // Contortions required to get the Vault's version of WETH to be in tokens
     const wethContract = await deployedAt('v2-standalone-utils/TestWETH', await vault.WETH());

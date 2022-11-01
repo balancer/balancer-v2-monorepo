@@ -40,6 +40,7 @@ describe('GaugeActions', function () {
 
   sharedBeforeEach('deploy token mocks', async () => {
     vault = await Vault.create({ admin });
+    adaptor = vault.authorizerAdaptor;
 
     BAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
       args: [admin.address, 'Balancer', 'BAL'],
@@ -61,8 +62,6 @@ describe('GaugeActions', function () {
   });
 
   sharedBeforeEach('set up relayer', async () => {
-    adaptor = vault.authorizerAdaptor;
-
     gaugeController = await deploy('v2-liquidity-mining/MockGaugeController', {
       args: [veBAL.address, adaptor.address],
     });

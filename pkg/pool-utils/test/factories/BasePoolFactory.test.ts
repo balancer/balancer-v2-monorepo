@@ -23,13 +23,13 @@ describe('BasePoolFactory', function () {
   });
 
   sharedBeforeEach(async () => {
-    const vaultObj = await Vault.create({ admin, pauseWindowDuration: MONTH, bufferPeriodDuration: MONTH });
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
-
-    protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
-      args: [vault.address, fp(1), fp(1)],
-    });
+    ({ instance: vault, authorizer, protocolFeesProvider } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+      maxYieldValue: fp(1),
+      maxAUMValue: fp(1),
+    }));
 
     factory = await deploy('MockPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
 

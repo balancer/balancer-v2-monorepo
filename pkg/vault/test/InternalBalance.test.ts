@@ -35,15 +35,16 @@ describe('Internal Balance', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const vaultObj = await Vault.create({ admin, pauseWindowDuration: MONTH, bufferPeriodDuration: MONTH });
-    vault = vaultObj.instance;
+    ({ instance: vault, authorizer } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+    }));
 
     // Need the Vault's WETH (address must match later)
     const wethContract = await deployedAt('v2-standalone-utils/TestWETH', await vault.WETH());
     // And also need a real Token, in order to call mint
     weth = new Token('Wrapped Ether', 'WETH', 18, wethContract);
-
-    authorizer = vaultObj.authorizer;
     tokens = await TokenList.create(['DAI', 'MKR'], { sorted: true });
   });
 

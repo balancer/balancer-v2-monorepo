@@ -34,9 +34,6 @@ describe('ChildChainGaugeTokenAdder', () => {
 
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    if (!vault.authorizerAdaptor) throw Error('Vault has no AuthorizerAdaptor');
-
     adaptor = vault.authorizerAdaptor;
 
     token = await Token.create({ symbol: 'BPT' });

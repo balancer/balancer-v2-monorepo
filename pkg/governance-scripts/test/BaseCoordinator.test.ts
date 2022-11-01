@@ -11,7 +11,6 @@ import { advanceTime, DAY, receiptTimestamp } from '@balancer-labs/v2-helpers/sr
 const NUM_STAGES = 4;
 
 describe('BaseCoordinator', () => {
-  let vault: Vault;
   let adaptor: Contract;
   let coordinator: Contract;
   let admin: SignerWithAddress;
@@ -21,11 +20,7 @@ describe('BaseCoordinator', () => {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    if (!vault.authorizerAdaptor) throw Error('Vault has no AuthorizerAdaptor');
-
-    adaptor = vault.authorizerAdaptor;
+    ({ authorizerAdaptor: adaptor } = await Vault.create({ admin }));
   });
 
   sharedBeforeEach('deploy coordinator', async () => {

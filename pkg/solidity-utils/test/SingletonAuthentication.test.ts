@@ -10,7 +10,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 describe('SingletonAuthentication', () => {
   let singleton: Contract;
   let authorizer: Contract;
-  let vault: Vault;
+  let vault: Contract;
   let admin: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -18,10 +18,9 @@ describe('SingletonAuthentication', () => {
   });
 
   sharedBeforeEach('deploy Vault and singleton', async () => {
-    vault = await Vault.create({ admin });
-    authorizer = vault.authorizer;
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
 
-    const action = await actionId(vault.instance, 'setAuthorizer');
+    const action = await actionId(vault, 'setAuthorizer');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
 
     singleton = await deploy('SingletonAuthenticationMock', { args: [vault.address] });
@@ -37,7 +36,7 @@ describe('SingletonAuthentication', () => {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      await vault.instance.connect(admin).setAuthorizer(other.address);
+      await vault.connect(admin).setAuthorizer(other.address);
 
       expect(await singleton.getAuthorizer()).to.equal(other.address);
     });

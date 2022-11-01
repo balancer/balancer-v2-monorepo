@@ -33,9 +33,11 @@ describe('Asset Management', function () {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    const vaultObj = await Vault.create({ admin, pauseWindowDuration: MONTH, bufferPeriodDuration: MONTH });
-    vault = vaultObj.instance;
-    authorizer = vaultObj.authorizer;
+    ({ instance: vault, authorizer } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+    }));
   });
 
   context('with general pool', () => {
