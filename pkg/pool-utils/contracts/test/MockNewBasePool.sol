@@ -60,7 +60,7 @@ contract MockNewBasePool is NewBasePool {
         )
     {}
 
-    function _onInitializePool(address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
+    function _onInitializePool(address, address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
         emit InnerOnInitializePoolCalled(userData);
 
         uint256[] memory amountsIn = userData.initialAmountsIn();
