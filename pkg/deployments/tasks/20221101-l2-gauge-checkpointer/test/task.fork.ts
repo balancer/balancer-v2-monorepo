@@ -12,7 +12,7 @@ import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 
 // This block number is before the manual weekly checkpoint. This ensures gauges will actually be checkpointed.
-describeForkTest('L2GaugeCheckpointer', 'mainnet', 15272610, function () {
+describeForkTest('L2GaugeCheckpointer', 'mainnet', 15835800, function () {
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
   let L2GaugeCheckpointer: Contract;
