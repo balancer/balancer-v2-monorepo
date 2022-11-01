@@ -35,8 +35,8 @@ describe('GaugeRelativeWeightCap', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
+    adaptor = vault.authorizerAdaptor;
 
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     // Type weight is ignored in the mock controller.
