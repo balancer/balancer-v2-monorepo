@@ -12,7 +12,8 @@ import { getForkedNetwork } from '../../../src/test';
 import { impersonate } from '../../../src/signers';
 
 // This block number is before the manual weekly checkpoint. This ensures gauges will actually be checkpointed.
-describeForkTest('L2GaugeCheckpointer', 'mainnet', 15835800, function () {
+// This test verifies the checkpointer against the manual transactions for the given period.
+describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
   let L2GaugeCheckpointer: Contract;
@@ -22,39 +23,36 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15835800, function () {
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
-  // Gauges that are NOT killed.
+  // Gauges that are NOT killed for the given test block number.
+  // See tx: 0xd505f3d18eda2684635890b8272ba155edaf003c4988417837b1367aa888afaf
   const polygonRootGauges: [address: string, expectedCheckpoints: number][] = [
+    ['0xcf5938ca6d9f19c73010c7493e19c02acfa8d24d', 1],
+    ['0xf7c3b4e1edcb00f0230bfe03d937e26a5e654fd4', 1],
+    ['0x2c967d6611c60274db45e0bb34c64fb5f504ede7', 1],
+    ['0xbbcd2045ac43f79e8494600e72ca8af455e309dd', 8],
+    ['0xfbf87d2c22d1d298298ab5b0ec957583a2731d15', 1],
     ['0xa5a0b6598b90d214eaf4d7a6b72d5a89c3b9a72c', 1],
     ['0x88d07558470484c03d3bb44c3ecc36cafcf43253', 1],
-    ['0xfbf87d2c22d1d298298ab5b0ec957583a2731d15', 1],
-    ['0xc6fb8c72d3bd24fc4891c51c2cb3a13f49c11335', 1],
+    ['0xa9c6045636eaaa81836a874964dd3aa6486b0913', 1],
     ['0x5a3970e3145bbba4838d1a3a31c79bcd35a16a9e', 1],
-    ['0xc3bb46b8196c3f188c6a373a6c4fde792ca78653', 1],
     ['0xa80d514734e57691f45af76bb44d1202858fd1f0', 1],
-    ['0x211c27a32e686659566c3cee6035c2343d823aab', 1],
-    ['0x397649ff00de6d90578144103768aaa929ef683d', 1],
-    ['0xd27cb689083e97847dc91c64efc91c4445d46d47', 1],
-    ['0xf01541837cf3a64bc957f53678b0ab113e92911b', 1],
-    ['0xead3c3b6c829d54ad0a4c18762c567f728ef0535', 1],
-    ['0xcf5938ca6d9f19c73010c7493e19c02acfa8d24d', 1],
-    ['0xd13a839bb48d69a296a1fa6d615b6c39b170096b', 2],
   ];
 
+  // See tx: 0x3dc3431df6a9850905292a9d3be012c48496efb7e06d327c81b82f37d05d47e0
   const arbitrumRootGauges: [address: string, expectedCheckpoints: number][] = [
-    ['0xF0ea3559Cf098455921d74173dA83fF2f6979495', 1],
-    ['0xB0de49429fBb80c635432bbAD0B3965b28560177', 1],
-    ['0x359EA8618c405023Fc4B98dAb1B01F373792a126', 1],
-    ['0xc77E5645Dbe48d54afC06655e39D3Fe17eB76C1c', 1],
-    ['0x899F737750db562b88c1E412eE1902980D3a4844', 1],
-    ['0x6cb1A77AB2e54d4560fda893E9c738ad770da0B0', 1],
-    ['0x6823DcA6D70061F2AE2AAA21661795A2294812bF', 1],
-    ['0xACFDA9Fd773C23c01f5d0CAE304CBEbE6b449677', 1],
-    ['0x68EBB057645258Cc62488fD198A0f0fa3FD6e8fb', 1],
+    ['0x6f825c8bbf67ebb6bc35cf2071dacd2864c3258e', 6],
+    ['0x359ea8618c405023fc4b98dab1b01f373792a126', 1],
+    ['0x87ae77a8270f223656d9dc40ad51aabfab424b30', 6],
+    ['0x68ebb057645258cc62488fd198a0f0fa3fd6e8fb', 1],
+    ['0xf0ea3559cf098455921d74173da83ff2f6979495', 1],
   ];
 
-  // This one was not added to the GaugeController, so we will not be using it. Adding it here for completion only.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const optimismRootGauges = ['0x0256B02F3b19e71AF03B4e2A6731ca35106f5439'];
+  // See tx: 0xd505f3d18eda2684635890b8272ba155edaf003c4988417837b1367aa888afaf
+  const optimismRootGauges: [address: string, expectedCheckpoints: number][] = [
+    ['0xfb0265841c49a6b19d70055e596b212b0da3f606', 1],
+    ['0x8f5f5b412da3cb958c4d26444d9fa7ed11fd3f27', 5],
+    ['0xec6ba3d9d9045997552155599e6cc89aa08ffd76', 2], // Skipped in TX, but emissions are 0 for the 2 periods.
+  ];
 
   type GaugeData = {
     address: string;
@@ -101,10 +99,11 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15835800, function () {
     };
     const polygonRootGaugesData: GaugeData[] = await getGaugesData(polygonRootGauges);
     const arbitrumRootGaugesData: GaugeData[] = await getGaugesData(arbitrumRootGauges);
+    const optimismRootGaugesData: GaugeData[] = await getGaugesData(optimismRootGauges);
 
-    // There are no optimism gauges that are correctly added to the Gauge Adder and the Gauge Controller at this point.
     gauges.set(GaugeType.Polygon, polygonRootGaugesData);
     gauges.set(GaugeType.Arbitrum, arbitrumRootGaugesData);
+    gauges.set(GaugeType.Optimism, optimismRootGaugesData);
   });
 
   before('add gauges to checkpointer', async () => {
@@ -154,37 +153,34 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15835800, function () {
   describe('checkpoint', () => {
     const checkpointedGauges: GaugeData[] = [];
     let gaugeDataAboveMinWeight: GaugeData[] = [];
-    let minRelativeWeight: BigNumber;
-
-    // Gauges won't be checkpointed twice, so when the threshold is lowered and more gauges get above the threshold
-    // we need to filter out those that have already been checkpointed.
-    beforeEach('get non-checkpointed gauges above min weight', () => {
-      gaugeDataAboveMinWeight = [
-        ...getGaugeDataAboveMinWeight(GaugeType.Polygon, minRelativeWeight),
-        ...getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight),
-      ];
-    });
-
-    afterEach('mark checkpointed gauges to consider in the next iteration', () => {
-      checkpointedGauges.push(...gaugeDataAboveMinWeight);
-    });
 
     context('when threshold is 1', () => {
-      minRelativeWeight = fp(1);
-      itCheckpointsGaugesAboveRelativeWeight();
+      itCheckpointsGaugesAboveRelativeWeight(fp(1));
     });
 
     context('when threshold is 0.0001', () => {
-      minRelativeWeight = fp(0.0001);
-      itCheckpointsGaugesAboveRelativeWeight();
+      itCheckpointsGaugesAboveRelativeWeight(fp(0.0001));
     });
 
     context('when threshold is 0', () => {
-      minRelativeWeight = fp(0);
-      itCheckpointsGaugesAboveRelativeWeight();
+      itCheckpointsGaugesAboveRelativeWeight(fp(0));
     });
 
-    function itCheckpointsGaugesAboveRelativeWeight() {
+    function itCheckpointsGaugesAboveRelativeWeight(minRelativeWeight: BigNumber) {
+      // Gauges won't be checkpointed twice, so when the threshold is lowered and more gauges get above the threshold
+      // we need to filter out those that have already been checkpointed.
+      beforeEach('get non-checkpointed gauges above min weight', () => {
+        gaugeDataAboveMinWeight = [
+          ...getGaugeDataAboveMinWeight(GaugeType.Polygon, minRelativeWeight),
+          ...getGaugeDataAboveMinWeight(GaugeType.Arbitrum, minRelativeWeight),
+          ...getGaugeDataAboveMinWeight(GaugeType.Optimism, minRelativeWeight),
+        ];
+      });
+
+      afterEach('mark checkpointed gauges to consider in the next iteration', () => {
+        checkpointedGauges.push(...gaugeDataAboveMinWeight);
+      });
+
       const checkpointInterface = new ethers.utils.Interface([
         'function checkpoint()',
         'event Checkpoint(uint256 indexed periodTime, uint256 periodEmissions)',
