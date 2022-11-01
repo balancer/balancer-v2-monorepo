@@ -5,6 +5,7 @@
 ### New Deployments
 
 - Deployed `ProtocolFeeSplitter` to Mainnet.
+- Deployed core infrastructure (`Authorizer`, `Vault`, `AuthorizerAdaptor`, `ProtocolFeeWithdrawer`, `ProtocolFeePercentagesProvider` and `BatchRelayer`) to Gnosis.
 
 ## 3.0.0 (2022-10-25)
 
