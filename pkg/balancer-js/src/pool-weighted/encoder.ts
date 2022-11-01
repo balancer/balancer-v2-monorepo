@@ -11,7 +11,7 @@ export enum WeightedPoolJoinKind {
 
 export enum WeightedPoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
-  EXACT_BPT_IN_FOR_TOKENS_OUT,
+  EXACT_BPT_IN_FOR_ALL_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
   REMOVE_TOKEN,
 }
@@ -79,7 +79,7 @@ export class WeightedPoolEncoder {
    * @param bptAmountIn - the amount of BPT to be burned
    */
   static exitExactBPTInForTokensOut = (bptAmountIn: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
+    defaultAbiCoder.encode(['uint256', 'uint256'], [WeightedPoolExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn]);
 
   /**
    * Encodes the userData parameter for exiting a WeightedPool by removing exact amounts of tokens
