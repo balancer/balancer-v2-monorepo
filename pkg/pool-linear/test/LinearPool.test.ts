@@ -201,11 +201,13 @@ describe('LinearPool', function () {
   describe('set targets', () => {
     const originalLowerTarget = fp(1000);
     const originalUpperTarget = fp(5000);
+    const originalSwapFee = fp(0.057);
 
     sharedBeforeEach('deploy pool and set initial targets', async () => {
       await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
       await setBalances(pool, { mainBalance: originalLowerTarget.add(originalUpperTarget).div(2) });
       await pool.setTargets(originalLowerTarget, originalUpperTarget);
+      await pool.setSwapFeePercentage(originalSwapFee);
     });
 
     const setBalances = async (
@@ -327,6 +329,15 @@ describe('LinearPool', function () {
             lowerTarget: newLowerTarget,
             upperTarget: newUpperTarget,
           });
+        });
+
+        it('does not overwrite other state', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget.mul(2);
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
+          expect(await pool.getSwapFeePercentage()).to.equal(originalSwapFee);
         });
 
         it('reverts if the lower target is fractional', async () => {
