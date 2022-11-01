@@ -138,7 +138,7 @@ __metadata:
     eslint-plugin-mocha-no-only: ^1.1.1
     eslint-plugin-prettier: ^3.1.4
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
     lodash.range: ^3.2.0
@@ -182,7 +182,7 @@ __metadata:
     eslint: ^7.9.0
     eslint-plugin-prettier: ^3.1.4
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-local-networks-config-plugin: 0.0.5
     lodash.range: ^3.2.0
     node-fetch: ^2.6.1
@@ -218,7 +218,7 @@ __metadata:
     ethereum-waffle: ^3.0.2
     ethereumjs-util: ^7.0.10
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -259,7 +259,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     mocha: ^8.2.1
     nodemon: ^2.0.4
@@ -285,7 +285,7 @@ __metadata:
     eslint: ^7.9.0
     eslint-plugin-prettier: ^3.1.4
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     lodash.frompairs: ^4.0.1
     prettier: ^2.1.2
     ts-node: ^8.10.2
@@ -312,7 +312,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -354,7 +354,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     mocha: ^8.2.1
     nodemon: ^2.0.4
@@ -397,7 +397,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -439,7 +439,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -481,7 +481,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -524,7 +524,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -565,7 +565,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -608,7 +608,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash: ^4.17.21
     mocha: ^8.2.1
@@ -646,7 +646,7 @@ __metadata:
     eslint-plugin-prettier: ^3.1.4
     ethereum-waffle: ^3.0.2
     ethers: ^5.4.1
-    hardhat: ^2.11.1
+    hardhat: ^2.12.2
     hardhat-ignore-warnings: ^0.2.3
     lodash.frompairs: ^4.0.1
     lodash.pick: ^4.4.0
@@ -1701,7 +1701,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-block@npm:^4.0.0, @nomicfoundation/ethereumjs-block@npm:^4.0.0-rc.3":
+"@nomicfoundation/ethereumjs-block@npm:^4.0.0":
   version: 4.0.0
   resolution: "@nomicfoundation/ethereumjs-block@npm:4.0.0"
   dependencies:
@@ -1715,7 +1715,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-blockchain@npm:^6.0.0, @nomicfoundation/ethereumjs-blockchain@npm:^6.0.0-rc.3":
+"@nomicfoundation/ethereumjs-blockchain@npm:^6.0.0":
   version: 6.0.0
   resolution: "@nomicfoundation/ethereumjs-blockchain@npm:6.0.0"
   dependencies:
@@ -1735,7 +1735,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-common@npm:^3.0.0, @nomicfoundation/ethereumjs-common@npm:^3.0.0-rc.3":
+"@nomicfoundation/ethereumjs-common@npm:^3.0.0":
   version: 3.0.0
   resolution: "@nomicfoundation/ethereumjs-common@npm:3.0.0"
   dependencies:
@@ -1759,7 +1759,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-evm@npm:^1.0.0, @nomicfoundation/ethereumjs-evm@npm:^1.0.0-rc.3":
+"@nomicfoundation/ethereumjs-evm@npm:^1.0.0":
   version: 1.0.0
   resolution: "@nomicfoundation/ethereumjs-evm@npm:1.0.0"
   dependencies:
@@ -1775,7 +1775,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-rlp@npm:^4.0.0, @nomicfoundation/ethereumjs-rlp@npm:^4.0.0-beta.2, @nomicfoundation/ethereumjs-rlp@npm:^4.0.0-rc.3":
+"@nomicfoundation/ethereumjs-rlp@npm:^4.0.0, @nomicfoundation/ethereumjs-rlp@npm:^4.0.0-beta.2":
   version: 4.0.0
   resolution: "@nomicfoundation/ethereumjs-rlp@npm:4.0.0"
   bin:
@@ -1784,7 +1784,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-statemanager@npm:^1.0.0, @nomicfoundation/ethereumjs-statemanager@npm:^1.0.0-rc.3":
+"@nomicfoundation/ethereumjs-statemanager@npm:^1.0.0":
   version: 1.0.0
   resolution: "@nomicfoundation/ethereumjs-statemanager@npm:1.0.0"
   dependencies:
@@ -1799,7 +1799,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-trie@npm:^5.0.0, @nomicfoundation/ethereumjs-trie@npm:^5.0.0-rc.3":
+"@nomicfoundation/ethereumjs-trie@npm:^5.0.0":
   version: 5.0.0
   resolution: "@nomicfoundation/ethereumjs-trie@npm:5.0.0"
   dependencies:
@@ -1811,7 +1811,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-tx@npm:^4.0.0, @nomicfoundation/ethereumjs-tx@npm:^4.0.0-rc.3":
+"@nomicfoundation/ethereumjs-tx@npm:^4.0.0":
   version: 4.0.0
   resolution: "@nomicfoundation/ethereumjs-tx@npm:4.0.0"
   dependencies:
@@ -1823,7 +1823,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-util@npm:^8.0.0, @nomicfoundation/ethereumjs-util@npm:^8.0.0-rc.3":
+"@nomicfoundation/ethereumjs-util@npm:^8.0.0":
   version: 8.0.0
   resolution: "@nomicfoundation/ethereumjs-util@npm:8.0.0"
   dependencies:
@@ -1833,7 +1833,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-vm@npm:^6.0.0-rc.3":
+"@nomicfoundation/ethereumjs-vm@npm:^6.0.0":
   version: 6.0.0
   resolution: "@nomicfoundation/ethereumjs-vm@npm:6.0.0"
   dependencies:
@@ -1857,90 +1857,90 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-darwin-arm64@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-darwin-arm64@npm:0.0.3"
-  checksum: f87575ef1676d2403d46b5a375f0f43a54b1b5c0c4a89002ea6b838b5018e1dd50ad1512ef15f6649ed03b5e43b7867889b061d0c5b147b277c7c8a82b4c7327
+"@nomicfoundation/solidity-analyzer-darwin-arm64@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-darwin-arm64@npm:0.1.0"
+  checksum: e6db014b5c63c5d32bbde1370dea6201f62d1def69cf5387b0280b95c0046e491cbe85fc6a835bea30590ed62ef972319f1a70097cc208a8bd88dd983a93d23b
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-darwin-x64@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-darwin-x64@npm:0.0.3"
-  checksum: 6cab810d9b4a229737a10da90ef6b7a399b28e8cfa1429e91510645f74c64eeb1a198eb7bba412e6ea2d7d52e2f47d4b8d14bbf3a685e5b283fdca7e0716bfe0
+"@nomicfoundation/solidity-analyzer-darwin-x64@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-darwin-x64@npm:0.1.0"
+  checksum: 1f5c8a592e70b93fc25de560460e23dd5fea90c51196d5d480c0c2f5b758de7fb409fe34f2c9c5edf9f80ad2bb9dfd96a3dbbffbda5819a1da80a6d31590f45a
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-freebsd-x64@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-freebsd-x64@npm:0.0.3"
-  checksum: 40f61f38bf425f41e9a7f8b1311384d4753d25e1868d85fac5131465317181be23adb9674956ecfbfe567b33e465a55c0484019b5b174575835c030e1b53afd9
+"@nomicfoundation/solidity-analyzer-freebsd-x64@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-freebsd-x64@npm:0.1.0"
+  checksum: 6e697edc5a68f62eeac141dfe26ed3ba21fd363b3c061ce8b7a00b154d372d3d627c3deb71609788af66a542a8570f9418dbb8de969489110279daa6bf8d8040
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-linux-arm64-gnu@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-linux-arm64-gnu@npm:0.0.3"
-  checksum: 3827b714a89786c67aa921cfb1e35073409fff925f5a78527cd27ee8254c4f57cb4592e717d60ff7ca6792a4e3f332e2c86624bf09f168b1c9a548e847558787
+"@nomicfoundation/solidity-analyzer-linux-arm64-gnu@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-linux-arm64-gnu@npm:0.1.0"
+  checksum: 2c7d290e4d89164a7b695343a04462ebd6ce0d3dfa39151bd2c53f515fbc968d41a0850a3e1a8ae70dc1ff12ecd1c2b49d34b07b0ecb3866210cc81123ac3a48
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-linux-arm64-musl@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-linux-arm64-musl@npm:0.0.3"
-  checksum: 0ff15c1c115840fa43140760b8c539d529516159cb9d37d0e24af2ec01d777f4f36145b159ab1de8e7c9822bf2bbe752cc54b16aa268e7cc5043aa6a95fb111c
+"@nomicfoundation/solidity-analyzer-linux-arm64-musl@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-linux-arm64-musl@npm:0.1.0"
+  checksum: 07cf45eba4cd5ff29ee627dbea848b9cada734f19895f88934b772608893a31af0535c5e6971624ab95b53ab4fa6668271ece06c6d514a2c751d47973a3bfdd1
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-linux-x64-gnu@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-linux-x64-gnu@npm:0.0.3"
-  checksum: 46b2410a671e131d3be3581497ed7048be13dfef7a22a8ffc2fd161ae28e40639961fc53bda7446e2c2f4fd0a3ece7d8da23f0cc9d44a496a996d5148a7630b4
+"@nomicfoundation/solidity-analyzer-linux-x64-gnu@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-linux-x64-gnu@npm:0.1.0"
+  checksum: 13af17479644b1cc95f8c6c572e113aef1abbab153e3ce92c1090e89989235ed77e8ff64ceb2dd9531542529f89ac052aa733db65fc063238190cb14c04c4181
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-linux-x64-musl@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-linux-x64-musl@npm:0.0.3"
-  checksum: 92bcf15e7bca54affbc6250b8a269943aea562377c6b75b0d023d211a3523de39468eb729642484dda873549e110a0d7297a85a7fc9819ac769e9748d20e1d96
+"@nomicfoundation/solidity-analyzer-linux-x64-musl@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-linux-x64-musl@npm:0.1.0"
+  checksum: 1fd982bc50141113280af5c396f54d142b16dd78978b1e63292858ad79f303d686a19c1266f269ff7d65c213484bf656b762496b4843b46acadcdfbe6c49700c
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-win32-arm64-msvc@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-win32-arm64-msvc@npm:0.0.3"
-  checksum: b1536d095f4ade367177f1e6f7fb7193f9348dbd0703bc33cfd59d309415ff4f73e5b83e4ec3da81b64f4ed96096bc4416fcf96a7108083ece5ab8d2bc1ebf5a
+"@nomicfoundation/solidity-analyzer-win32-arm64-msvc@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-win32-arm64-msvc@npm:0.1.0"
+  checksum: 628d798d809c92e1148ce3c57f12dfecb71fbfc6c8373a5da14a70992c68c88a9ae4338dbf124c24bd1efd7b065af2e6ba89a4c57daf2267546ca6d7792a8741
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-win32-ia32-msvc@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-win32-ia32-msvc@npm:0.0.3"
-  checksum: 13cef79ee2e0e7380f80555514bd214816caecff01eddb4cb9a3eb93189a36806052fae3f64bfe0cf3923f01114b6cf48f8ce2d13e01ffbfb95eb157de6a0f98
+"@nomicfoundation/solidity-analyzer-win32-ia32-msvc@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-win32-ia32-msvc@npm:0.1.0"
+  checksum: 4c6d8fcff9a20bb82d4689b2c985214cfce44a8c9a66a7351a410a594a6a7b90368309855f878948a315bad1c6c93f73097dafb5b70790ea8db8838aa2563d86
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer-win32-x64-msvc@npm:0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer-win32-x64-msvc@npm:0.0.3"
-  checksum: 54fa7807b3996b584a5090f05bcd826ac98e26459d42c938595ae1cc220c18fba1cb8297c1fe15efe9691a3e371068ece6bae8cde4972f233cdf9c9e4b8d6b5c
+"@nomicfoundation/solidity-analyzer-win32-x64-msvc@npm:0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer-win32-x64-msvc@npm:0.1.0"
+  checksum: f0b0d3ddea8472ca34db682cc913905743ef95bef01418c94b039f9245bc7fa863bb029ab6e681fcaa44d4db54d03e6987135040c5ff0fb796c7e5d5387c2d86
   languageName: node
   linkType: hard
 
-"@nomicfoundation/solidity-analyzer@npm:^0.0.3":
-  version: 0.0.3
-  resolution: "@nomicfoundation/solidity-analyzer@npm:0.0.3"
+"@nomicfoundation/solidity-analyzer@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "@nomicfoundation/solidity-analyzer@npm:0.1.0"
   dependencies:
-    "@nomicfoundation/solidity-analyzer-darwin-arm64": 0.0.3
-    "@nomicfoundation/solidity-analyzer-darwin-x64": 0.0.3
-    "@nomicfoundation/solidity-analyzer-freebsd-x64": 0.0.3
-    "@nomicfoundation/solidity-analyzer-linux-arm64-gnu": 0.0.3
-    "@nomicfoundation/solidity-analyzer-linux-arm64-musl": 0.0.3
-    "@nomicfoundation/solidity-analyzer-linux-x64-gnu": 0.0.3
-    "@nomicfoundation/solidity-analyzer-linux-x64-musl": 0.0.3
-    "@nomicfoundation/solidity-analyzer-win32-arm64-msvc": 0.0.3
-    "@nomicfoundation/solidity-analyzer-win32-ia32-msvc": 0.0.3
-    "@nomicfoundation/solidity-analyzer-win32-x64-msvc": 0.0.3
+    "@nomicfoundation/solidity-analyzer-darwin-arm64": 0.1.0
+    "@nomicfoundation/solidity-analyzer-darwin-x64": 0.1.0
+    "@nomicfoundation/solidity-analyzer-freebsd-x64": 0.1.0
+    "@nomicfoundation/solidity-analyzer-linux-arm64-gnu": 0.1.0
+    "@nomicfoundation/solidity-analyzer-linux-arm64-musl": 0.1.0
+    "@nomicfoundation/solidity-analyzer-linux-x64-gnu": 0.1.0
+    "@nomicfoundation/solidity-analyzer-linux-x64-musl": 0.1.0
+    "@nomicfoundation/solidity-analyzer-win32-arm64-msvc": 0.1.0
+    "@nomicfoundation/solidity-analyzer-win32-ia32-msvc": 0.1.0
+    "@nomicfoundation/solidity-analyzer-win32-x64-msvc": 0.1.0
   dependenciesMeta:
     "@nomicfoundation/solidity-analyzer-darwin-arm64":
       optional: true
@@ -1962,7 +1962,7 @@ __metadata:
       optional: true
     "@nomicfoundation/solidity-analyzer-win32-x64-msvc":
       optional: true
-  checksum: f5a03f8795ea8044ef1991d97f695a4bb99fbe5eabfaa920bff872b66df0b0b78c83c18ff629c104cf1c1c48ab247fa26962241a62f5ee8afb7f2c7b77391ebd
+  checksum: 6bc08ce289b9818817b54d480f8c4520035cb1a45dbbb4ee65834296ccb69e3566586318b99e18b4b87ac461c77222a5e915511492a12e0bd90c96410d841458
   languageName: node
   linkType: hard
 
@@ -7503,23 +7503,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hardhat@npm:^2.11.1":
-  version: 2.11.1
-  resolution: "hardhat@npm:2.11.1"
+"hardhat@npm:^2.12.2":
+  version: 2.12.2
+  resolution: "hardhat@npm:2.12.2"
   dependencies:
     "@ethersproject/abi": ^5.1.2
     "@metamask/eth-sig-util": ^4.0.0
-    "@nomicfoundation/ethereumjs-block": ^4.0.0-rc.3
-    "@nomicfoundation/ethereumjs-blockchain": ^6.0.0-rc.3
-    "@nomicfoundation/ethereumjs-common": ^3.0.0-rc.3
-    "@nomicfoundation/ethereumjs-evm": ^1.0.0-rc.3
-    "@nomicfoundation/ethereumjs-rlp": ^4.0.0-rc.3
-    "@nomicfoundation/ethereumjs-statemanager": ^1.0.0-rc.3
-    "@nomicfoundation/ethereumjs-trie": ^5.0.0-rc.3
-    "@nomicfoundation/ethereumjs-tx": ^4.0.0-rc.3
-    "@nomicfoundation/ethereumjs-util": ^8.0.0-rc.3
-    "@nomicfoundation/ethereumjs-vm": ^6.0.0-rc.3
-    "@nomicfoundation/solidity-analyzer": ^0.0.3
+    "@nomicfoundation/ethereumjs-block": ^4.0.0
+    "@nomicfoundation/ethereumjs-blockchain": ^6.0.0
+    "@nomicfoundation/ethereumjs-common": ^3.0.0
+    "@nomicfoundation/ethereumjs-evm": ^1.0.0
+    "@nomicfoundation/ethereumjs-rlp": ^4.0.0
+    "@nomicfoundation/ethereumjs-statemanager": ^1.0.0
+    "@nomicfoundation/ethereumjs-trie": ^5.0.0
+    "@nomicfoundation/ethereumjs-tx": ^4.0.0
+    "@nomicfoundation/ethereumjs-util": ^8.0.0
+    "@nomicfoundation/ethereumjs-vm": ^6.0.0
+    "@nomicfoundation/solidity-analyzer": ^0.1.0
     "@sentry/node": ^5.18.1
     "@types/bn.js": ^5.1.0
     "@types/lru-cache": ^5.1.0
@@ -7567,7 +7567,7 @@ __metadata:
       optional: true
   bin:
     hardhat: internal/cli/cli.js
-  checksum: afdd845ed8314101d5cf2540c89a6e07ebb88e5c87e78077a176114ce40e50b42d1d9167d76b6cef0e30e0226a26096c239cc18eea15eb99e858016c35acde77
+  checksum: 2a1d9f239593216e066882a045727514b349534045805f69285f720aad9b896c53c71699998c3ad8cf61804df7356a8f67eb3eb8da9af7f511475ea37aad8fd8
   languageName: node
   linkType: hard
 
