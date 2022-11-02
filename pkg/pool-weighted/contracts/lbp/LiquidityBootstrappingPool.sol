@@ -550,7 +550,7 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
         uint256,
         uint256
     ) internal virtual override returns (uint256) {
-        _revert(Errors.UNHANDLED_BY_LBP);
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onSwapMinimal(

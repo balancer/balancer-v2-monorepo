@@ -83,7 +83,6 @@ const balancerErrorCodes: Record<string, string> = {
   '354': 'ADD_OR_REMOVE_BPT',
   '355': 'INVALID_CIRCUIT_BREAKER_BOUNDS',
   '356': 'CIRCUIT_BREAKER_TRIPPED',
-  '357': 'UNHANDLED_BY_LBP',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
