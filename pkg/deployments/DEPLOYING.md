@@ -44,7 +44,7 @@ To generate the artifacts from build info files:
 - From the `deployments` workspace, run `extract-artifacts` task using the task ID as parameter. Optionally, the contract name and the target file can be specified if e.g. the contract name doesn't match the file name, or if the contract is present in more than one file with different compilation settings. For example:
 
 ```
-yarn extract-artifacts 20221021-managed-pool --name ManagedPool --file ManagedPoolFactory
+yarn extract-artifacts --id 20221021-managed-pool --name ManagedPool --file ManagedPoolFactory
 ```
 
 The `abi` and `bytecode` folders should have been populated with the created artifacts at this point.
