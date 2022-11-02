@@ -159,7 +159,7 @@ describe('LinearPool', function () {
 
     it('cannot be initialized twice', async () => {
       await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(pool.initialize()).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
@@ -180,7 +180,7 @@ describe('LinearPool', function () {
         data: '0x',
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
 
     it('regular exits should revert', async () => {
@@ -194,7 +194,7 @@ describe('LinearPool', function () {
         data: '0x',
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
