@@ -69,7 +69,8 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptor, ReentrancyGuard {
      * This means that contracts with the same function selector will have a matching action ID:
      * if granularity is required then permissions must not be granted globally in the Authorizer.
      *
-     * The adaptor entrypoint does not hold a disambiguator of its own.
+     * The adaptor entrypoint does not hold a disambiguator of its own; this function just forwards the call to the
+     * adaptor itself.
      *
      * @param selector - The 4 byte selector of the function to be called using `performAction`
      * @return The associated action ID
@@ -81,7 +82,8 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptor, ReentrancyGuard {
     /**
      * @notice Performs an arbitrary function call on a target contract, provided the caller is authorized to do so.
      * @param target - Address of the contract to be called
-     * @param data - Calldata to be sent to the target contract. It should be at least 4 bytes long (function selector)
+     * @param data - Calldata to be sent to the target contract. It should be at least 4 bytes long (i.e. the length of
+     * the selector corresponding to the function to be called)
      * @return The bytes encoded return value from the performed function call
      */
     function performAction(address target, bytes calldata data)
