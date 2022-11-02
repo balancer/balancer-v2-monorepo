@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -30,8 +30,8 @@ describe('BALTokenHolder', function () {
 
     // Deploy BAL token
     tokens = await TokenList.create([{ symbol: 'BAL' }, { symbol: 'DAI' }]);
-    BAL = await tokens.findBySymbol('BAL');
-    DAI = await tokens.findBySymbol('DAI');
+    BAL = tokens.findBySymbol('BAL');
+    DAI = tokens.findBySymbol('DAI');
 
     holder = await deploy('BALTokenHolder', { args: [BAL.address, vault.address, holderName] });
 
@@ -50,9 +50,10 @@ describe('BALTokenHolder', function () {
   describe('withdrawFunds', () => {
     context('when the caller is authorized', () => {
       sharedBeforeEach(async () => {
-        const authorizer = await deployedAt('v2-vault/TimelockAuthorizer', await vault.instance.getAuthorizer());
         const withdrawActionId = await actionId(holder, 'withdrawFunds');
-        await authorizer.connect(admin).grantPermissions([withdrawActionId], authorized.address, [holder.address]);
+        await vault.authorizer
+          .connect(admin)
+          .grantPermissions([withdrawActionId], authorized.address, [holder.address]);
       });
 
       it('sends funds to the recipient', async () => {
@@ -73,9 +74,8 @@ describe('BALTokenHolder', function () {
   describe('sweepTokens', () => {
     context('when the caller is authorized', () => {
       sharedBeforeEach(async () => {
-        const authorizer = await deployedAt('v2-vault/TimelockAuthorizer', await vault.instance.getAuthorizer());
         const sweepActionId = await actionId(holder, 'sweepTokens');
-        await authorizer.connect(admin).grantPermissions([sweepActionId], authorized.address, [holder.address]);
+        await vault.authorizer.connect(admin).grantPermissions([sweepActionId], authorized.address, [holder.address]);
       });
 
       context('when the token is not BAL', () => {

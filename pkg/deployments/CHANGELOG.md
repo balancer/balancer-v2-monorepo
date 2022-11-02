@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### New Deployments
+
+- Deployed `ProtocolFeeSplitter` to Mainnet.
+
 ## 3.0.0 (2022-10-25)
 
 ### New Deployments

@@ -22,9 +22,9 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BalancerPoolToken.sol";
-import "@balancer-labs/v2-pool-utils/contracts/BasePoolAuthorization.sol";
-import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
+import "./BalancerPoolToken.sol";
+import "./BasePoolAuthorization.sol";
+import "./RecoveryMode.sol";
 
 // solhint-disable max-states-count
 
@@ -47,7 +47,7 @@ import "@balancer-labs/v2-pool-utils/contracts/RecoveryMode.sol";
  * BaseGeneralPool or BaseMinimalSwapInfoPool. Otherwise, subclasses must inherit from the corresponding interfaces
  * and implement the swap callbacks themselves.
  */
-abstract contract BasePool is
+abstract contract NewBasePool is
     IBasePool,
     IGeneralPool,
     IMinimalSwapInfoPool,
@@ -113,7 +113,7 @@ abstract contract BasePool is
      * This is useful to make sure Pool initialization happens only once, but derived Pools can change this value (even
      * to zero) by overriding this function.
      */
-    function _getMinimumBpt() internal pure returns (uint256) {
+    function _getMinimumBpt() internal pure virtual returns (uint256) {
         return _DEFAULT_MINIMUM_BPT;
     }
 
@@ -214,13 +214,15 @@ abstract contract BasePool is
 
         _ensureNotPaused();
         if (totalSupply() == 0) {
-            (bptAmountOut, amountsIn) = _onInitializePool(sender, userData);
+            (bptAmountOut, amountsIn) = _onInitializePool(sender, recipient, userData);
 
             // On initialization, we lock _getMinimumBpt() by minting it for the zero address. This BPT acts as a
             // minimum as it will never be burned, which reduces potential issues with rounding, and also prevents the
             // Pool from ever being fully drained.
+            // Some pool types do not require this mechanism, and the minimum BPT might be zero.
             _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
             _mintPoolTokens(address(0), _getMinimumBpt());
+
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
         } else {
             (bptAmountOut, amountsIn) = _onJoinPool(sender, balances, userData);
@@ -347,10 +349,11 @@ abstract contract BasePool is
      * The tokens granted to the Pool will be transferred from `sender`. These amounts are considered upscaled and will
      * be downscaled (rounding up) before being returned to the Vault.
      */
-    function _onInitializePool(address sender, bytes memory userData)
-        internal
-        virtual
-        returns (uint256 bptAmountOut, uint256[] memory amountsIn);
+    function _onInitializePool(
+        address sender,
+        address recipient,
+        bytes memory userData
+    ) internal virtual returns (uint256 bptAmountOut, uint256[] memory amountsIn);
 
     /**
      * @dev Called whenever the Pool is joined after the first initialization join (see `_onInitializePool`).

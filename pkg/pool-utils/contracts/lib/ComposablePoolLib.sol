@@ -18,6 +18,8 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC2
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
+// solhint-disable no-inline-assembly
+
 library ComposablePoolLib {
     using FixedPoint for uint256;
 

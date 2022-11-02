@@ -27,8 +27,9 @@ import { impersonate } from '@balancer-labs/v2-deployments/src/signers';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
-describe('BasePool', function () {
+describe('NewBasePool', function () {
   let admin: SignerWithAddress,
     poolOwner: SignerWithAddress,
     deployer: SignerWithAddress,
@@ -48,8 +49,8 @@ describe('BasePool', function () {
   });
 
   sharedBeforeEach(async () => {
-    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
+
     vaultSigner = await impersonate(vault.address, fp(100));
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
@@ -85,7 +86,7 @@ describe('BasePool', function () {
     if (!owner) owner = ZERO_ADDRESS;
     if (!from) from = deployer;
 
-    return deploy('v2-pool-weighted/MockBasePool', {
+    return deploy('MockNewBasePool', {
       from,
       args: [
         vault.address,

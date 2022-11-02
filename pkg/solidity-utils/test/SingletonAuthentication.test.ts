@@ -3,15 +3,14 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('SingletonAuthentication', () => {
   let singleton: Contract;
   let authorizer: Contract;
-  let authorizedVault: Contract;
+  let vault: Contract;
   let admin: SignerWithAddress, other: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -19,20 +18,17 @@ describe('SingletonAuthentication', () => {
   });
 
   sharedBeforeEach('deploy Vault and singleton', async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
 
-    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    authorizedVault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
-
-    const action = await actionId(authorizedVault, 'setAuthorizer');
+    const action = await actionId(vault, 'setAuthorizer');
     await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
 
-    singleton = await deploy('SingletonAuthenticationMock', { args: [authorizedVault.address] });
+    singleton = await deploy('SingletonAuthenticationMock', { args: [vault.address] });
   });
 
   describe('constructor', () => {
     it('sets the vault address', async () => {
-      expect(await singleton.getVault()).to.be.eq(authorizedVault.address);
+      expect(await singleton.getVault()).to.be.eq(vault.address);
     });
 
     it('uses the authorizer of the vault', async () => {
@@ -40,7 +36,7 @@ describe('SingletonAuthentication', () => {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      await authorizedVault.connect(admin).setAuthorizer(other.address);
+      await vault.connect(admin).setAuthorizer(other.address);
 
       expect(await singleton.getAuthorizer()).to.equal(other.address);
     });
@@ -51,7 +47,7 @@ describe('SingletonAuthentication', () => {
     let secondOne: Contract;
 
     sharedBeforeEach('deploy second singleton', async () => {
-      secondOne = await deploy('SingletonAuthenticationMock', { args: [authorizedVault.address] });
+      secondOne = await deploy('SingletonAuthenticationMock', { args: [vault.address] });
     });
 
     it('disambiguates selectors', async () => {
