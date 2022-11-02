@@ -15,11 +15,13 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { lastBlockNumber, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { PoolSpecialization } from '../../balancer-js/dist';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 const OP_KIND = { WITHDRAW: 0, DEPOSIT: 1, UPDATE: 2 };
 
 describe('Asset Management', function () {
-  let authorizer: Contract, vault: Contract;
+  let vault: Contract;
+  let authorizer: Contract;
   let admin: SignerWithAddress,
     lp: SignerWithAddress,
     assetManager: SignerWithAddress,
@@ -31,8 +33,11 @@ describe('Asset Management', function () {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('Vault', { args: [authorizer.address, ZERO_ADDRESS, MONTH, MONTH] });
+    ({ instance: vault, authorizer } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+    }));
   });
 
   context('with general pool', () => {

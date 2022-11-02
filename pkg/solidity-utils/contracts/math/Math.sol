@@ -9,6 +9,8 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
  * Adapted from OpenZeppelin's SafeMath library.
  */
 library Math {
+    // solhint-disable no-inline-assembly
+
     /**
      * @dev Returns the absolute value of a signed integer.
      */
