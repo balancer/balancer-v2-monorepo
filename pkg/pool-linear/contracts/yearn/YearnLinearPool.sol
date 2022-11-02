@@ -54,7 +54,7 @@ contract YearnLinearPool is LinearPool {
         )
     {
         IYearnTokenVault tokenVault = IYearnTokenVault(address(args.wrappedToken));
-        
+
         _tokenVault = tokenVault;
 
         // The decimals of the vault token reflect that of the mainToken. So a USDC token vault has decimals = 6.

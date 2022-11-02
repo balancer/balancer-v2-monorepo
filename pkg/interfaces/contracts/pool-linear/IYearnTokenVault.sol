@@ -23,35 +23,29 @@ interface IYearnTokenVault is IERC20 {
     function token() external view returns (address);
 
     /**
-     * @dev returns the price for a single Vault share (ie yvDAI). The pricePerShare is represented 
+     * @dev returns the price for a single Vault share (ie yvDAI). The pricePerShare is represented
      * in the same decimals as the underlying asset (ie: 6 decimals for USDC)
      */
     function pricePerShare() external view returns (uint256);
 
     /**
-     * @notice Deposits `_amount` `token`, issuing shares to `recipient`. 
+     * @notice Deposits `_amount` `token`, issuing shares to `recipient`.
      * If the Vault is in Emergency Shutdown, deposits will not be accepted and this call will fail.
      * @param _amount The quantity of tokens to deposit, defaults to all.
      * @param recipient The address to issue the shares in this Vault to. Defaults to the caller's address.
      * @return The issued Vault shares.
      */
-    function deposit(
-        uint256 _amount,
-        address recipient
-    ) external returns (uint256);
+    function deposit(uint256 _amount, address recipient) external returns (uint256);
 
     /**
-     * @notice Withdraws the calling account's tokens from this Vault, 
+     * @notice Withdraws the calling account's tokens from this Vault,
      * redeeming amount `_shares` for an appropriate amount of tokens.
      * See note on `setWithdrawalQueue` for further details of withdrawal ordering and behavior.
      * @param maxShares How many shares to try and redeem for tokens, defaults to all.
      * @param recipient The address to issue the shares in this Vault to. Defaults to the caller's address.
      * @return redeemed: The quantity of tokens redeemed for `_shares`.
      */
-    function withdraw(
-        uint256 maxShares,
-        address recipient
-    ) external returns (uint256);
+    function withdraw(uint256 maxShares, address recipient) external returns (uint256);
 
     /**
      * @dev returns the number of decimals for this vault token
