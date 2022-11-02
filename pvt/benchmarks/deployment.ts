@@ -17,7 +17,7 @@ async function main() {
 async function measureDeployment(name: string) {
   console.log(`\n# ${name}`);
 
-  const artifact = await getArtifact(name);
+  const artifact = getArtifact(name);
   const bytecodeSizeBytes = artifact.deployedBytecode.slice(2).length / 2;
 
   console.log(`Deployed bytecode size is ${bytecodeSizeBytes} bytes`);
