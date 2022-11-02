@@ -67,12 +67,7 @@ function extractContractArtifact(task: Task, fileName: string, contractName: str
   const buildInfo = task.buildInfo(fileName);
 
   // Read ABI and bytecode from build-info file.
-  let contractSourceName: string;
-  try {
-    contractSourceName = findContractSourceName(buildInfo, contractName);
-  } catch (e) {
-    throw new Error(`Could not find a unique source for ${contractName} in the file ${fileName}`);
-  }
+  const contractSourceName = findContractSourceName(buildInfo, contractName);
   return buildInfo.output.contracts[contractSourceName][contractName];
 }
 
