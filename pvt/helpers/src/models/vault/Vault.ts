@@ -19,6 +19,7 @@ export default class Vault {
   mocked: boolean;
   instance: Contract;
   authorizer: Contract;
+  authorizerAdaptor: Contract;
   protocolFeesProvider: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
@@ -35,12 +36,14 @@ export default class Vault {
     mocked: boolean,
     instance: Contract,
     authorizer: Contract,
+    authorizerAdaptor: Contract,
     protocolFeesProvider: Contract,
     admin?: SignerWithAddress
   ) {
     this.mocked = mocked;
     this.instance = instance;
     this.authorizer = authorizer;
+    this.authorizerAdaptor = authorizerAdaptor;
     this.protocolFeesProvider = protocolFeesProvider;
     this.admin = admin;
   }

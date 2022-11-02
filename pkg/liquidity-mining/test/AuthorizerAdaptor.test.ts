@@ -2,7 +2,6 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
@@ -10,7 +9,7 @@ import { defaultAbiCoder } from 'ethers/lib/utils';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('AuthorizerAdaptor', () => {
-  let vault: Vault;
+  let vault: Contract;
   let authorizer: Contract;
   let adaptor: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress;
@@ -20,10 +19,7 @@ describe('AuthorizerAdaptor', () => {
   });
 
   sharedBeforeEach('deploy authorizer', async () => {
-    vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-    authorizer = vault.authorizer;
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+    ({ instance: vault, authorizer, authorizerAdaptor: adaptor } = await Vault.create({ admin }));
   });
 
   describe('constructor', () => {
@@ -36,10 +32,10 @@ describe('AuthorizerAdaptor', () => {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault.instance, 'setAuthorizer');
+      const action = await actionId(vault, 'setAuthorizer');
       await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
 
-      await vault.instance.connect(admin).setAuthorizer(other.address);
+      await vault.connect(admin).setAuthorizer(other.address);
 
       expect(await adaptor.getAuthorizer()).to.equal(other.address);
     });
@@ -57,7 +53,7 @@ describe('AuthorizerAdaptor', () => {
       target = vault.address;
       calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
 
-      expectedResult = defaultAbiCoder.encode(['address'], [await vault.instance.getProtocolFeesCollector()]);
+      expectedResult = defaultAbiCoder.encode(['address'], [await vault.getProtocolFeesCollector()]);
     });
 
     context('when caller is authorized globally', () => {

@@ -45,7 +45,8 @@ describe('L2GaugeCheckpointer', () => {
   before('deploy dependencies: gauge controller and gauge factories', async () => {
     // Basics: vault, authorizer adaptor and gauge controller.
     vault = await Vault.create({ admin });
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+    adaptor = vault.authorizerAdaptor;
+
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
     // Allow all gauge types in the controller.
     await Promise.all(GAUGE_TYPES.concat(UNSUPPORTED_GAUGE_TYPES).map(() => gaugeController.add_type('0x', 0)));

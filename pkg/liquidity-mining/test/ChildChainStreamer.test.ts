@@ -32,9 +32,7 @@ describe('ChildChainStreamer', () => {
 
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+    adaptor = vault.authorizerAdaptor;
 
     token = await Token.create({ symbol: 'BPT' });
     balToken = await Token.create({ symbol: 'BAL' });
