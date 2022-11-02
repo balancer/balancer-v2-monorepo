@@ -43,4 +43,6 @@ interface IGaugeController {
     function gauge_types(address gauge) external view returns (int128);
 
     function admin() external view returns (IAuthorizerAdaptor);
+
+    function gauge_exists(address gauge) external view returns (bool);
 }

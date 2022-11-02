@@ -48,7 +48,7 @@ export function itBehavesAsWeightedPool(
     vault = await Vault.create();
 
     const tokenAmounts = fp(100);
-    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
+    allTokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT', 'GRT'], { sorted: true });
     await allTokens.mint({ to: lp, amount: tokenAmounts });
     await allTokens.approve({ to: vault.address, from: lp, amount: tokenAmounts });
   });
@@ -430,7 +430,7 @@ export function itBehavesAsWeightedPool(
           // Calculate bpt amount in so that the invariant ratio
           // ((bptTotalSupply - bptAmountIn / bptTotalSupply))
           // is more than 0.7
-          const bptIn = (await pool.getMaxInvariantDecrease()).add(5);
+          const bptIn = (await pool.getMaxInvariantDecrease()).add(10);
           await expect(pool.singleExitGivenIn({ bptIn, token })).to.be.revertedWith('MIN_BPT_IN_FOR_TOKEN_OUT');
         });
 
@@ -616,13 +616,13 @@ export function itBehavesAsWeightedPool(
         });
 
         it('reverts if token in is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: allTokens.BAT, out: 0, amount: 1, from: lp })).to.be.revertedWith(
+          await expect(pool.swapGivenIn({ in: allTokens.GRT, out: 0, amount: 1, from: lp })).to.be.revertedWith(
             'TOKEN_NOT_REGISTERED'
           );
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenIn({ in: 1, out: allTokens.BAT, amount: 1, from: lp })).to.be.revertedWith(
+          await expect(pool.swapGivenIn({ in: 1, out: allTokens.GRT, amount: 1, from: lp })).to.be.revertedWith(
             'TOKEN_NOT_REGISTERED'
           );
         });
@@ -680,13 +680,13 @@ export function itBehavesAsWeightedPool(
         });
 
         it('reverts if token in is not in the pool when given out', async () => {
-          await expect(pool.swapGivenOut({ in: allTokens.BAT, out: 0, amount: 1, from: lp })).to.be.revertedWith(
+          await expect(pool.swapGivenOut({ in: allTokens.GRT, out: 0, amount: 1, from: lp })).to.be.revertedWith(
             'TOKEN_NOT_REGISTERED'
           );
         });
 
         it('reverts if token out is not in the pool', async () => {
-          await expect(pool.swapGivenOut({ in: 1, out: allTokens.BAT, amount: 1, from: lp })).to.be.revertedWith(
+          await expect(pool.swapGivenOut({ in: 1, out: allTokens.GRT, amount: 1, from: lp })).to.be.revertedWith(
             'TOKEN_NOT_REGISTERED'
           );
         });
