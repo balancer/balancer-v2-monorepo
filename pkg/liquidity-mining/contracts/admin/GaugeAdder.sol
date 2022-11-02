@@ -51,7 +51,7 @@ contract GaugeAdder is IGaugeAdder, SingletonAuthentication, ReentrancyGuard {
     /**
      * @notice Returns the address of the Authorizer adaptor contract.
      */
-    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor) {
+    function getAuthorizerAdaptor() external view override returns (IAuthorizerAdaptor) {
         return _authorizerAdaptor;
     }
 

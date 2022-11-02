@@ -10,12 +10,15 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-enum GaugeType {
+export enum GaugeType {
   LiquidityMiningCommittee = 0,
   veBAL,
   Ethereum,
   Polygon,
   Arbitrum,
+  Optimism,
+  Gnosis,
+  ZkSync,
 }
 
 describe('GaugeAdder', () => {
@@ -34,8 +37,8 @@ describe('GaugeAdder', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
+    adaptor = vault.authorizerAdaptor;
 
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     gaugeImplementation = await deploy('MockLiquidityGauge');

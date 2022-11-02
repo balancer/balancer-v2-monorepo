@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 import "./IAuthorizerAdaptor.sol";
 import "./IGaugeController.sol";
@@ -24,6 +24,11 @@ interface IGaugeAdder is IAuthentication {
     enum GaugeType { LiquidityMiningCommittee, veBAL, Ethereum, Polygon, Arbitrum, Optimism, Gnosis, ZKSync }
 
     event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
+
+    /**
+     * @notice Returns the address of the Authorizer adaptor contract.
+     */
+    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor);
 
     /**
      * @notice Returns the address of the Gauge Controller

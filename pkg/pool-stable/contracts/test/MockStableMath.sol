@@ -151,12 +151,4 @@ contract MockStableMath {
                 tokenIndex
             );
     }
-
-    function getRate(
-        uint256[] memory balances,
-        uint256 amp,
-        uint256 supply
-    ) external pure returns (uint256) {
-        return StableMath._getRate(balances, amp, supply);
-    }
 }

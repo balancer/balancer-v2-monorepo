@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 // solhint-disable
 
@@ -29,7 +29,11 @@ function _require(bool condition, uint256 errorCode) pure {
  * @dev Reverts if `condition` is false, with a revert reason containing `errorCode`. Only codes up to 999 are
  * supported.
  */
-function _require(bool condition, uint256 errorCode, bytes3 prefix) pure {
+function _require(
+    bool condition,
+    uint256 errorCode,
+    bytes3 prefix
+) pure {
     if (!condition) _revert(errorCode, prefix);
 }
 
@@ -189,6 +193,9 @@ library Errors {
     uint256 internal constant UNAUTHORIZED_JOIN = 351;
     uint256 internal constant MAX_MANAGEMENT_AUM_FEE_PERCENTAGE = 352;
     uint256 internal constant FRACTIONAL_TARGET = 353;
+    uint256 internal constant ADD_OR_REMOVE_BPT = 354;
+    uint256 internal constant INVALID_CIRCUIT_BREAKER_BOUNDS = 355;
+    uint256 internal constant CIRCUIT_BREAKER_TRIPPED = 356;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -235,6 +242,7 @@ library Errors {
     uint256 internal constant MALFORMED_SIGNATURE = 441;
     uint256 internal constant SAFE_CAST_VALUE_CANT_FIT_UINT64 = 442;
     uint256 internal constant UNHANDLED_FEE_TYPE = 443;
+    uint256 internal constant BURN_FROM_ZERO = 444;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;
@@ -272,6 +280,9 @@ library Errors {
     uint256 internal constant FLASH_LOAN_FEE_PERCENTAGE_TOO_HIGH = 601;
     uint256 internal constant INSUFFICIENT_FLASH_LOAN_FEE_AMOUNT = 602;
     uint256 internal constant AUM_FEE_PERCENTAGE_TOO_HIGH = 603;
+
+    // FeeSplitter
+    uint256 internal constant SPLITTER_FEE_PERCENTAGE_TOO_HIGH = 700;
 
     // Misc
     uint256 internal constant UNIMPLEMENTED = 998;

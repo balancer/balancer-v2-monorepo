@@ -74,6 +74,10 @@ contract MockGaugeController is IGaugeController {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    function gauge_exists(address gauge) external view override returns (bool) {
+        return _validGauge[gauge];
+    }
+
     function setGaugeWeight(address gauge, uint256 weight) external {
         require(_validGauge[gauge], "Gauge does not exist on controller");
         _weights[gauge] = weight;

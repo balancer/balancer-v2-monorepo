@@ -1,6 +1,6 @@
 {
   "name": "@balancer-labs/v2-interfaces",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "V2 Interfaces",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/interfaces#readme",
@@ -24,7 +24,7 @@
     "lint:typescript": "eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@types/chai": "^4.2.12",
     "@types/lodash": "^4.14.161",
@@ -39,7 +39,8 @@
     "eslint-plugin-prettier": "^3.1.4",
     "ethereum-waffle": "^3.0.2",
     "ethers": "^5.4.1",
-    "hardhat": "^2.8.3",
+    "hardhat": "^2.11.1",
+    "hardhat-ignore-warnings": "^0.2.3",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",

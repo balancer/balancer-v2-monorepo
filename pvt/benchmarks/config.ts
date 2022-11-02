@@ -16,7 +16,7 @@ export const poolConfigs: Record<PoolType, PoolConfig> = {
   },
   [PoolType.MANAGED_POOL]: {
     minTokens: 2,
-    maxTokens: 38,
+    maxTokens: 50,
   },
   [PoolType.STABLE_POOL]: {
     minTokens: 2,

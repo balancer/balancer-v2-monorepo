@@ -186,21 +186,9 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
      */
     function _cacheTokenRatesIfNecessary() internal {
         uint256 totalTokens = _getTotalTokens();
-
-        // The Pool will always have at least 3 tokens so we always try to update these three caches.
-        _cacheTokenRateIfNecessary(0);
-        _cacheTokenRateIfNecessary(1);
-        _cacheTokenRateIfNecessary(2);
-
-        // Before we update the remaining caches we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return;
-        _cacheTokenRateIfNecessary(3);
-
-        if (totalTokens == 4) return;
-        _cacheTokenRateIfNecessary(4);
-
-        if (totalTokens == 5) return;
-        _cacheTokenRateIfNecessary(5);
+        for (uint256 i = 0; i < totalTokens; ++i) {
+            _cacheTokenRateIfNecessary(i);
+        }
     }
 
     /**
@@ -227,13 +215,10 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
     // To compute the yield protocol fees, we need the oldRate for all tokens, even if the exempt flag is not set.
     // We do need to ensure the token has a rate provider before updating; otherwise it will not be in the cache.
     function _updateOldRates() internal {
-        // _hasRateProvider returns false for unused indices so we don't need to check for token existence.
-        if (_hasRateProvider(0)) _updateOldRate(0);
-        if (_hasRateProvider(1)) _updateOldRate(1);
-        if (_hasRateProvider(2)) _updateOldRate(2);
-        if (_hasRateProvider(3)) _updateOldRate(3);
-        if (_hasRateProvider(4)) _updateOldRate(4);
-        if (_hasRateProvider(5)) _updateOldRate(5);
+        uint256 totalTokens = _getTotalTokens();
+        for (uint256 i = 0; i < totalTokens; ++i) {
+            if (_hasRateProvider(i)) _updateOldRate(i);
+        }
     }
 
     /**
@@ -274,21 +259,9 @@ abstract contract ComposableStablePoolRates is ComposableStablePoolStorage {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory scalingFactors = new uint256[](totalTokens);
 
-        // The Pool will always have at least 3 tokens so we always load these three scaling factors.
-        // Given there is no generic direction for this rounding, it follows the same strategy as the BasePool.
-        scalingFactors[0] = _getScalingFactor0().mulDown(_getTokenRate(0));
-        scalingFactors[1] = _getScalingFactor1().mulDown(_getTokenRate(1));
-        scalingFactors[2] = _getScalingFactor2().mulDown(_getTokenRate(2));
-
-        // Before we load the remaining scaling factors we must check that the Pool contains enough tokens.
-        if (totalTokens == 3) return scalingFactors;
-        scalingFactors[3] = _getScalingFactor3().mulDown(_getTokenRate(3));
-
-        if (totalTokens == 4) return scalingFactors;
-        scalingFactors[4] = _getScalingFactor4().mulDown(_getTokenRate(4));
-
-        if (totalTokens == 5) return scalingFactors;
-        scalingFactors[5] = _getScalingFactor5().mulDown(_getTokenRate(5));
+        for (uint256 i = 0; i < totalTokens; ++i) {
+            scalingFactors[i] = _getScalingFactor(i).mulDown(_getTokenRate(i));
+        }
 
         return scalingFactors;
     }

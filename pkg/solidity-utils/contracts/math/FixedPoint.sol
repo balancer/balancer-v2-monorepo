@@ -21,6 +21,8 @@ import "./LogExpMath.sol";
 /* solhint-disable private-vars-leading-underscore */
 
 library FixedPoint {
+    // solhint-disable no-inline-assembly
+
     uint256 internal constant ONE = 1e18; // 18 decimal places
     uint256 internal constant TWO = 2 * ONE;
     uint256 internal constant FOUR = 4 * ONE;
@@ -52,52 +54,48 @@ library FixedPoint {
         return product / ONE;
     }
 
-    function mulUp(uint256 a, uint256 b) internal pure returns (uint256) {
+    function mulUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         uint256 product = a * b;
         _require(a == 0 || product / a == b, Errors.MUL_OVERFLOW);
 
-        if (product == 0) {
-            return 0;
-        } else {
-            // The traditional divUp formula is:
-            // divUp(x, y) := (x + y - 1) / y
-            // To avoid intermediate overflow in the addition, we distribute the division and get:
-            // divUp(x, y) := (x - 1) / y + 1
-            // Note that this requires x != 0, which we already tested for.
-
-            return ((product - 1) / ONE) + 1;
+        // The traditional divUp formula is:
+        // divUp(x, y) := (x + y - 1) / y
+        // To avoid intermediate overflow in the addition, we distribute the division and get:
+        // divUp(x, y) := (x - 1) / y + 1
+        // Note that this requires x != 0, if x == 0 then the result is zero
+        //
+        // Equivalent to:
+        // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
+        assembly {
+            result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
         }
     }
 
     function divDown(uint256 a, uint256 b) internal pure returns (uint256) {
         _require(b != 0, Errors.ZERO_DIVISION);
 
-        if (a == 0) {
-            return 0;
-        } else {
-            uint256 aInflated = a * ONE;
-            _require(aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
+        uint256 aInflated = a * ONE;
+        _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
-            return aInflated / b;
-        }
+        return aInflated / b;
     }
 
-    function divUp(uint256 a, uint256 b) internal pure returns (uint256) {
+    function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
         _require(b != 0, Errors.ZERO_DIVISION);
 
-        if (a == 0) {
-            return 0;
-        } else {
-            uint256 aInflated = a * ONE;
-            _require(aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
+        uint256 aInflated = a * ONE;
+        _require(a == 0 || aInflated / a == ONE, Errors.DIV_INTERNAL); // mul overflow
 
-            // The traditional divUp formula is:
-            // divUp(x, y) := (x + y - 1) / y
-            // To avoid intermediate overflow in the addition, we distribute the division and get:
-            // divUp(x, y) := (x - 1) / y + 1
-            // Note that this requires x != 0, which we already tested for.
-
-            return ((aInflated - 1) / b) + 1;
+        // The traditional divUp formula is:
+        // divUp(x, y) := (x + y - 1) / y
+        // To avoid intermediate overflow in the addition, we distribute the division and get:
+        // divUp(x, y) := (x - 1) / y + 1
+        // Note that this requires x != 0, if x == 0 then the result is zero
+        //
+        // Equivalent to:
+        // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
+        assembly {
+            result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
         }
     }
 
@@ -155,7 +153,11 @@ library FixedPoint {
      * Useful when computing the complement for values with some level of relative error, as it strips this error and
      * prevents intermediate negative values.
      */
-    function complement(uint256 x) internal pure returns (uint256) {
-        return (x < ONE) ? (ONE - x) : 0;
+    function complement(uint256 x) internal pure returns (uint256 result) {
+        // Equivalent to:
+        // result = (x < ONE) ? (ONE - x) : 0;
+        assembly {
+            result := mul(lt(x, ONE), sub(ONE, x))
+        }
     }
 }

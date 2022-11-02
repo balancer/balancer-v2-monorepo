@@ -97,15 +97,15 @@ describe('OptionalOnlyCaller', function () {
   describe('optionalOnlyCaller modifier', () => {
     context('when the only caller check is disabled', () => {
       it('allows the user to call', async () => {
-        const tx = await optionalOnlyCaller.connect(user).testFunction(user.address);
+        const tx = await optionalOnlyCaller.connect(user).checkFunction(user.address);
         const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'TestFunctionCalled');
+        expectEvent.inReceipt(receipt, 'CheckFunctionCalled');
       });
 
       it('allows other accounts to call', async () => {
-        const tx = await optionalOnlyCaller.connect(other).testFunction(user.address);
+        const tx = await optionalOnlyCaller.connect(other).checkFunction(user.address);
         const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'TestFunctionCalled');
+        expectEvent.inReceipt(receipt, 'CheckFunctionCalled');
       });
     });
 
@@ -115,13 +115,13 @@ describe('OptionalOnlyCaller', function () {
       });
 
       it('allows the user to call', async () => {
-        const tx = await optionalOnlyCaller.connect(user).testFunction(user.address);
+        const tx = await optionalOnlyCaller.connect(user).checkFunction(user.address);
         const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'TestFunctionCalled');
+        expectEvent.inReceipt(receipt, 'CheckFunctionCalled');
       });
 
       it('reverts when the caller is other account', async () => {
-        await expect(optionalOnlyCaller.connect(other).testFunction(user.address)).to.be.revertedWith(
+        await expect(optionalOnlyCaller.connect(other).checkFunction(user.address)).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
         );
       });

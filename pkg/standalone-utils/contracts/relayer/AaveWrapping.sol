@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IStaticATokenLM.
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -29,6 +30,7 @@ import "./IBaseRelayerLibrary.sol";
  */
 abstract contract AaveWrapping is IBaseRelayerLibrary {
     using Address for address payable;
+    using SafeERC20 for IERC20;
 
     function wrapAaveDynamicToken(
         IStaticATokenLM staticToken,
@@ -53,7 +55,7 @@ abstract contract AaveWrapping is IBaseRelayerLibrary {
             _pullToken(sender, dynamicToken, amount);
         }
 
-        dynamicToken.approve(address(staticToken), amount);
+        dynamicToken.safeApprove(address(staticToken), amount);
         // Use 0 for the referral code
         uint256 result = staticToken.deposit(recipient, amount, 0, fromUnderlying);
 

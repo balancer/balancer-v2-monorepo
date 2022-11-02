@@ -6,7 +6,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
-import { arrayAdd, BigNumberish, bn, fp, FP_SCALING_FACTOR, arraySub } from '@balancer-labs/v2-helpers/src/numbers';
+import { arrayAdd, BigNumberish, bn, fp, arraySub, fpMul, fpDiv, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -42,7 +42,7 @@ describe('PostJoinExitProtocolFees', () => {
   });
 
   sharedBeforeEach('deploy math', async () => {
-    math = await deploy('MockWeightedMath');
+    math = await deploy('ExternalWeightedMath');
   });
 
   sharedBeforeEach('grant permissions to admin', async () => {
@@ -120,10 +120,10 @@ describe('PostJoinExitProtocolFees', () => {
         preBalances = tokens.map(() => fp(random(MIN_POOL_TOKEN_BALANCE, MAX_POOL_TOKEN_BALANCE)));
         balanceDeltas = tokens.map(() => fp(random(0, MIN_POOL_TOKEN_BALANCE / 100)));
 
-        preInvariant = await math.invariant(poolWeights, preBalances);
+        preInvariant = await math.calculateInvariant(poolWeights, preBalances);
 
         // The supply is some factor of the invariant
-        preSupply = preInvariant.mul(fp(random(1.5, 10))).div(FP_SCALING_FACTOR);
+        preSupply = fpMul(preInvariant, fp(random(1.5, 10)));
       });
 
       describe('getPostJoinExitProtocolFees', () => {
@@ -189,19 +189,19 @@ describe('PostJoinExitProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              balanceDeltas = preBalances.map((balance) => balance.mul(ratio).div(fp(1)));
+              balanceDeltas = preBalances.map((balance) => fpMul(balance, ratio));
 
               // increase/decrease the virtual proportionally
               if (op == Operation.JOIN) {
-                currentSupply = preSupply.mul(fp(1).add(ratio)).div(fp(1));
+                currentSupply = fpMul(preSupply, FP_ONE.add(ratio));
               } else {
-                currentSupply = preSupply.mul(fp(1).sub(ratio)).div(fp(1));
+                currentSupply = fpMul(preSupply, FP_ONE.sub(ratio));
               }
 
               const currentBalances =
                 op == Operation.JOIN ? arrayAdd(preBalances, balanceDeltas) : arraySub(preBalances, balanceDeltas);
 
-              postInvariant = await math.invariant(poolWeights, currentBalances);
+              postInvariant = await math.calculateInvariant(poolWeights, currentBalances);
             });
           }
 
@@ -210,29 +210,29 @@ describe('PostJoinExitProtocolFees', () => {
               const ratio = fp(random(0.1, 0.9));
 
               // Generate amounts for a proportional join/exit
-              const proportionalAmounts = preBalances.map((balance) => balance.mul(ratio).div(fp(1)));
+              const proportionalAmounts = preBalances.map((balance) => fpMul(balance, ratio));
 
               // Compute deltas that are going to modify the proportional amounts. These will be swap fees.
-              const deltas = proportionalAmounts.map((amount) => fp(random(0.05, 0.1)).mul(amount).div(fp(1)));
+              const deltas = proportionalAmounts.map((amount) => fpMul(amount, fp(random(0.05, 0.1))));
               let currentBalances: BigNumber[];
 
               // Compute the balances with the added deltas, and the supply without taking them into account
               // (because they are fees).
               if (op == Operation.JOIN) {
                 const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
-                currentSupply = preSupply.mul(fp(1).add(ratio)).div(fp(1));
+                currentSupply = fpMul(preSupply, FP_ONE.add(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
                 balanceDeltas = arraySub(currentBalances, preBalances);
               } else {
                 const proportionalBalances = arraySub(preBalances, proportionalAmounts);
-                currentSupply = preSupply.mul(fp(1).sub(ratio)).div(fp(1));
+                currentSupply = fpMul(preSupply, FP_ONE.sub(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
                 balanceDeltas = arraySub(preBalances, currentBalances);
               }
 
-              postInvariant = await math.invariant(poolWeights, currentBalances);
+              postInvariant = await math.calculateInvariant(poolWeights, currentBalances);
             });
           }
 
@@ -268,7 +268,7 @@ describe('PostJoinExitProtocolFees', () => {
                 currentSupply
               );
 
-              const invariantGrowthRatio = postInvariant.mul(fp(1)).div(preInvariant);
+              const invariantGrowthRatio = fpDiv(postInvariant, preInvariant);
               const expectedBptAmount = calculateBPTSwapFeeAmount(
                 invariantGrowthRatio,
                 preSupply,

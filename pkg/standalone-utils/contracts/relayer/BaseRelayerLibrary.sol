@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerRelayer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 import "./BalancerRelayer.sol";
@@ -38,6 +39,7 @@ import "./BalancerRelayer.sol";
  */
 contract BaseRelayerLibrary is IBaseRelayerLibrary {
     using Address for address;
+    using SafeERC20 for IERC20;
 
     IVault private immutable _vault;
     IBalancerRelayer private immutable _entrypoint;
@@ -81,7 +83,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
             amount = _getChainedReferenceValue(amount);
         }
         // TODO: gas golf this a bit
-        token.approve(address(getVault()), amount);
+        token.safeApprove(address(getVault()), amount);
     }
 
     /**
@@ -203,6 +205,14 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
         // with other state variables this or derived contracts might use.
         // See https://docs.soliditylang.org/en/v0.8.9/internals/layout_in_storage.html
 
-        return bytes32(uint256(keccak256(abi.encodePacked(ref, _TEMP_STORAGE_SUFFIX))) - 1);
+        return bytes32(uint256(keccak256(abi.encodePacked(_removeReferencePrefix(ref), _TEMP_STORAGE_SUFFIX))) - 1);
+    }
+
+    /**
+     * @dev Returns a reference without its prefix.
+     * Use this function to calculate the storage slot so that it's the same for temporary and read-only references.
+     */
+    function _removeReferencePrefix(uint256 ref) private pure returns (uint256) {
+        return (ref & 0x0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
     }
 }

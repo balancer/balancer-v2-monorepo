@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### New Deployments
+
+- Deployed `ProtocolFeeSplitter` to Mainnet.
+
+## 3.0.0 (2022-10-25)
+
+### New Deployments
+
+- All deployments that occurred since September 2021, including Linear Pools, Liquidity Mining, Composable Stable Pools and Managed Pools.
+
+### Breaking Changes
+
+- Introduced the `deprecated` directory. Deployments may be moved to that directory in minor releases - this will not be considered a breaking change.
+
 ## 2.3.0 (2021-09-24)
 
 ### New Deployments

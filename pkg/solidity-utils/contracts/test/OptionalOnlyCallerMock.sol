@@ -25,9 +25,9 @@ import "../helpers/OptionalOnlyCaller.sol";
 contract OptionalOnlyCallerMock is OptionalOnlyCaller {
     constructor() EIP712("OptionalOnlyCallerMock", "1") {}
 
-    event TestFunctionCalled();
+    event CheckFunctionCalled();
 
-    function testFunction(address user) external optionalOnlyCaller(user) {
-        emit TestFunctionCalled();
+    function checkFunction(address user) external optionalOnlyCaller(user) {
+        emit CheckFunctionCalled();
     }
 }

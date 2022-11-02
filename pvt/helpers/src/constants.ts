@@ -1,5 +1,4 @@
-import { BigNumber } from 'ethers';
-
+import { BigNumber, ethers } from 'ethers';
 import { maxUint, maxInt, minInt } from './numbers';
 
 export const MAX_UINT256: BigNumber = maxUint(256);
@@ -24,3 +23,10 @@ export const ONES_BYTES32 = '0xfffffffffffffffffffffffffffffffffffffffffffffffff
 
 export const MAX_GAS_LIMIT = 8e6;
 export const MAX_WEIGHTED_TOKENS = 100;
+
+export const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
+
+// This is not quite a constant, but it fits here given we also have ZERO_ADDRESS, etc.
+export function randomAddress(): Promise<string> {
+  return ethers.Wallet.createRandom().getAddress();
+}
