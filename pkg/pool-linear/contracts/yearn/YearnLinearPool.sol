@@ -22,6 +22,8 @@ import "../LinearPool.sol";
 contract YearnLinearPool is LinearPool {
     IYearnTokenVault private immutable _tokenVault;
 
+    uint256 private immutable _rateScaleFactor;
+
     struct ConstructorArgs {
         IVault vault;
         string name;
@@ -55,6 +57,10 @@ contract YearnLinearPool is LinearPool {
         
         _tokenVault = tokenVault;
 
+        // The decimals of the vault token reflect that of the mainToken. So a USDC token vault has decimals = 6.
+        // This operation will revert if the token has decimals > 18, which is unsupported by the vault.
+        _rateScaleFactor = 10**(SafeMath.sub(18, tokenVault.decimals()));
+
         _require(address(args.mainToken) == tokenVault.token(), Errors.TOKENS_MISMATCH);
     }
 
@@ -67,20 +73,7 @@ contract YearnLinearPool is LinearPool {
         return assetManagers;
     }
 
-    //_getWrappedTokenRate is expected to return the rate scaled to 18 decimal points, regardless of underlying decimals
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        //the decimals of the vault token reflect that of the mainToken. So a USDC token vault has decimals = 6
-        uint8 vaultDecimals = _tokenVault.decimals();
-        uint256 pps = _tokenVault.pricePerShare();
-
-        if (vaultDecimals > 18) {
-            //scale down to 18
-            return pps / 10**(vaultDecimals - 18);
-        }else if (vaultDecimals < 18) {
-            //scale up to 18
-            return pps * 10**(18 - vaultDecimals);
-        }
-
-        return pps;
+        return _tokenVault.pricePerShare() * _rateScaleFactor;
     }
 }
