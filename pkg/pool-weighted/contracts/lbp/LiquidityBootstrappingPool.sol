@@ -82,7 +82,7 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
     // Offsets for data elements in _poolState
     uint256 private constant _SWAP_ENABLED_OFFSET = 0;
     uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 1;
-    uint256 private constant _START_WEIGHT_OFFSET = _RECOVERY_MODE_BIT_OFFSET + 2;
+    uint256 private constant _START_WEIGHT_OFFSET = _RECOVERY_MODE_BIT_OFFSET + 3;
     uint256 private constant _END_WEIGHT_OFFSET = _START_WEIGHT_OFFSET + _MAX_LBP_TOKENS * _START_WEIGHT_BIT_LENGTH;
     uint256 private constant _START_TIME_OFFSET = _END_WEIGHT_OFFSET + _MAX_LBP_TOKENS * _END_WEIGHT_BIT_LENGTH;
     uint256 private constant _END_TIME_OFFSET = _START_TIME_OFFSET + _TIMESTAMP_BIT_LENGTH;
@@ -744,12 +744,11 @@ contract LiquidityBootstrappingPool is IMinimalSwapInfoPool, NewBasePool {
     }
 
     /**
-     * @dev Sets the recoveryMode state, and emits the corresponding event.
+     * @dev Sets the recoveryMode state. The RecoveryModeStateChanged event is emitted in the RecoveryMode
+     * base contract, in `enableRecoveryMode` or `disabledRecoveryMode`, before calling this hook.
      */
     function _setRecoveryMode(bool enabled) internal virtual override {
         _poolState = _poolState.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
-
-        emit RecoveryModeStateChanged(enabled);
     }
 
     function _doRecoveryModeExit(
