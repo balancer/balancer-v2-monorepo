@@ -27,30 +27,33 @@ contract IdleLinearPool is LinearPool {
 
     uint256 private immutable _rateScaleFactor;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20 mainToken,
-        IERC20 wrappedToken,
-        uint256 upperTarget,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
+    struct ConstructorArgs {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20 mainToken;
+        IERC20 wrappedToken;
+        address assetManager;
+        uint256 upperTarget;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+    }
+
+    constructor(ConstructorArgs memory args)
         LinearPool(
-            vault,
-            name,
-            symbol,
-            mainToken,
-            wrappedToken,
-            upperTarget,
-            new address[](2),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            args.vault,
+            args.name,
+            args.symbol,
+            args.mainToken,
+            args.wrappedToken,
+            args.upperTarget,
+            _toAssetManagerArray(args),
+            args.swapFeePercentage,
+            args.pauseWindowDuration,
+            args.bufferPeriodDuration,
+            args.owner
         )
     {
         // We do NOT enforce mainToken == wrappedToken.asset() even
@@ -61,21 +64,32 @@ contract IdleLinearPool is LinearPool {
         // respected, or the pool will not function as intended.
         //
         // This allows for use cases where the wrappedToken is
-        // double-wrapped into an ERC-4626 token. For example, consider
-        // a linear pool whose goal is to pair DAI with aDAI. Because
-        // aDAI is a rebasing token, it needs to be wrapped, and let's
-        // say an ERC-4626 wrapper is chosen for compatibility with this
-        // linear pool. Then wrappedToken.asset() will return aDAI,
+        // double-wrapped into an $IDLE token. For example, consider
+        // a linear pool whose goal is to pair DAI with idleDAI. Because
+        // idleDAI is a rebasing token, it needs to be wrapped, and let's
+        // say an $IDLE wrapper is chosen for compatibility with this
+        // linear pool. Then wrappedToken.asset() will return idleDAI,
         // whereas mainToken is DAI. But the 1:1 relationship holds, and
         // the pool is still valid.
 
         // _getWrappedTokenRate is scaled e18, but tokenPrice() is scaled according to mainToken decimals.
         // Therefore, we need to scale tokenPrice result to have 1e18 decimals.
-        uint256 mainTokenDecimals = ERC20(address(mainToken)).decimals();
+        _require(address(args.mainToken) == IIdleTokenV3_1(address(args.wrappedToken)).token(), Errors.TOKENS_MISMATCH);
+        
+        uint256 mainTokenDecimals = ERC20(address(args.mainToken)).decimals();
 
         // This is always positive because we only accept tokens with <= 18 decimals
         uint256 digitsDifference = Math.sub(18, mainTokenDecimals);
         _rateScaleFactor = 10**digitsDifference;
+    }
+
+    function _toAssetManagerArray(ConstructorArgs memory args) private pure returns (address[] memory) {
+        // We assign the same asset manager to both the main and wrapped tokens.
+        address[] memory assetManagers = new address[](2);
+        assetManagers[0] = args.assetManager;
+        assetManagers[1] = args.assetManager;
+
+        return assetManagers;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {

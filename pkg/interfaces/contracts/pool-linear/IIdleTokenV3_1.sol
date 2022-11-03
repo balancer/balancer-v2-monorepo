@@ -27,6 +27,7 @@ interface IIdleTokenV3_1 is IERC20 {
 
     /**
      * @dev returns the current $IDLE token price, in underlying (e.g. DAI) terms.
+     * I.e., tokenPrice() is scaled according to mainToken decimals
      * https://docs.idle.finance/developers/best-yield/methods/tokenprice
      */
     function tokenPrice() external view returns (uint256);
