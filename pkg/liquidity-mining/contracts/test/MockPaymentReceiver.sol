@@ -19,7 +19,6 @@ pragma experimental ABIEncoderV2;
  * @notice Simple mock with a payable function to test value transfers.
  */
 contract MockPaymentReceiver {
-
     function receivePayment() external payable returns (uint256) {
         return msg.value;
     }
