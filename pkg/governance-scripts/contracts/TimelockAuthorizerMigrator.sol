@@ -53,6 +53,7 @@ contract TimelockAuthorizerMigrator {
      */
     constructor(
         IVault _vault,
+        IAuthorizerAdaptorEntrypoint _authorizerAdaptorEntrypoint,
         address _root,
         IBasicAuthorizer _oldAuthorizer,
         RoleData[] memory _rolesData,
@@ -63,7 +64,7 @@ contract TimelockAuthorizerMigrator {
     ) {
         // At creation, the migrator will be the root of the TimelockAuthorizer.
         // Once the migration is complete, the root permission will be transferred to `_root`.
-        TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(address(this), _vault, CHANGE_ROOT_DELAY);
+        TimelockAuthorizer _newAuthorizer = new TimelockAuthorizer(address(this), _vault, _authorizerAdaptorEntrypoint, CHANGE_ROOT_DELAY);
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
         root = _root;
