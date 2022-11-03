@@ -27,6 +27,7 @@ import "../lib/WeightedExitsLib.sol";
 import "../lib/WeightedJoinsLib.sol";
 
 import "./LiquidityBootstrappingPoolSettings.sol";
+import "./LiquidityBootstrappingPoolStorageLib.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
@@ -151,6 +152,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         return amount.sub(feeAmount);
     }
 
+    // Initialize hook
+
     function _onInitializePool(
         address sender,
         address,
@@ -177,6 +180,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
         return (bptAmountOut, amountsIn);
     }
+
+    // Join hook
 
     /**
      * @dev Called whenever the Pool is joined after the first initialization join (see `_onInitializePool`).
@@ -252,6 +257,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
     }
+
+    // Exit hook
 
     /**
      * @dev Called whenever the Pool is exited.
