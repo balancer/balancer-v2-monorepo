@@ -17,6 +17,7 @@ import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpe
 describe('ChildChainGaugeTokenAdder', () => {
   let vault: Vault;
   let adaptor: Contract;
+  let entrypoint: Contract;
 
   let token: Token;
   let balToken: Token;
@@ -35,6 +36,7 @@ describe('ChildChainGaugeTokenAdder', () => {
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
     adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
 
     token = await Token.create({ symbol: 'BPT' });
     balToken = await Token.create({ symbol: 'BAL' });
@@ -53,7 +55,9 @@ describe('ChildChainGaugeTokenAdder', () => {
     gauge = await deployedAt('RewardsOnlyGauge', await factory.getPoolGauge(token.address));
     streamer = await deployedAt('ChildChainStreamer', await factory.getPoolStreamer(token.address));
 
-    gaugeTokenAdder = await deploy('ChildChainGaugeTokenAdder', { args: [factory.address, adaptor.address] });
+    gaugeTokenAdder = await deploy('ChildChainGaugeTokenAdder', {
+      args: [factory.address, entrypoint.address],
+    });
   });
 
   sharedBeforeEach('set up permissions', async () => {
@@ -163,7 +167,7 @@ describe('ChildChainGaugeTokenAdder', () => {
           const addTokenToGaugeRole = await actionId(adaptor, 'set_rewards', gauge.interface);
           await vault.grantPermissionsGlobally([addTokenToGaugeRole], admin);
 
-          await adaptor
+          await entrypoint
             .connect(admin)
             .performAction(
               gauge.address,

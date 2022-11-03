@@ -43,7 +43,9 @@ describe('GaugeAdder', () => {
 
     gaugeImplementation = await deploy('MockLiquidityGauge');
     gaugeFactory = await deploy('MockLiquidityGaugeFactory', { args: [gaugeImplementation.address] });
-    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, ZERO_ADDRESS] });
+    gaugeAdder = await deploy('GaugeAdder', {
+      args: [gaugeController.address, ZERO_ADDRESS, vault.authorizerAdaptorEntrypoint.address],
+    });
 
     await gaugeController.add_type('LiquidityMiningCommittee', 0);
     await gaugeController.add_type('veBAL', 0);
@@ -206,7 +208,9 @@ describe('GaugeAdder', () => {
           });
 
           sharedBeforeEach('add gauge factory to new GaugeAdder', async () => {
-            newGaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, gaugeAdder.address] });
+            newGaugeAdder = await deploy('GaugeAdder', {
+              args: [gaugeController.address, gaugeAdder.address, vault.authorizerAdaptorEntrypoint.address],
+            });
 
             const addGaugeFactoryAction = await actionId(newGaugeAdder, 'addGaugeFactory');
             await vault.grantPermissionsGlobally([addGaugeFactoryAction], admin);
