@@ -304,18 +304,26 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
 
             newPoolState = newPoolState
-                .insertUint(startWeights[i].compress(31), _START_WEIGHT_OFFSET + i * 31, 31)
-                .insertUint(endWeight.compress(16), _END_WEIGHT_OFFSET + i * 16, 16);
+                .insertUint(
+                startWeights[i].compress(_START_WEIGHT_BIT_LENGTH),
+                _START_WEIGHT_OFFSET + i * _START_WEIGHT_BIT_LENGTH,
+                _START_WEIGHT_BIT_LENGTH
+            )
+                .insertUint(
+                endWeight.compress(_END_WEIGHT_BIT_LENGTH),
+                _END_WEIGHT_OFFSET + i * _END_WEIGHT_BIT_LENGTH,
+                _END_WEIGHT_BIT_LENGTH
+            );
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = newPoolState.insertUint(startTime, _START_TIME_OFFSET, 32).insertUint(
+        _poolState = newPoolState.insertUint(startTime, _START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH).insertUint(
             endTime,
             _END_TIME_OFFSET,
-            32
+            _TIMESTAMP_BIT_LENGTH
         );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
