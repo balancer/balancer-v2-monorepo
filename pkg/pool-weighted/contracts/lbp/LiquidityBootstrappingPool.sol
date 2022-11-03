@@ -71,7 +71,7 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         )
     {}
 
-    // Swap overrides - revert unless swaps are enabled
+    // Swap Hooks
 
     function _onSwapGeneral(
         SwapRequest memory,

@@ -179,13 +179,15 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
         // Load current pool state from storage
         bytes32 poolState = _poolState;
 
-        startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
-        endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
+        startTime = poolState.decodeUint(_START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
+        endTime = poolState.decodeUint(_END_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
         uint256 totalTokens = _getTotalTokens();
         endWeights = new uint256[](totalTokens);
 
         for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 16, 16).decompress(16);
+            endWeights[i] = poolState
+                .decodeUint(_END_WEIGHT_OFFSET + i * _END_WEIGHT_BIT_LENGTH, _END_WEIGHT_BIT_LENGTH)
+                .decompress(_END_WEIGHT_BIT_LENGTH);
         }
     }
 
@@ -231,10 +233,14 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
     }
 
     function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState.decodeUint(_START_WEIGHT_OFFSET + i * 31, 31).decompress(31);
-        uint256 endWeight = poolState.decodeUint(_END_WEIGHT_OFFSET + i * 16, 16).decompress(16);
-        uint256 startTime = poolState.decodeUint(_START_TIME_OFFSET, 32);
-        uint256 endTime = poolState.decodeUint(_END_TIME_OFFSET, 32);
+        uint256 startWeight = poolState
+            .decodeUint(_START_WEIGHT_OFFSET + i * _START_WEIGHT_BIT_LENGTH, _START_WEIGHT_BIT_LENGTH)
+            .decompress(_START_WEIGHT_BIT_LENGTH);
+        uint256 endWeight = poolState
+            .decodeUint(_END_WEIGHT_OFFSET + i * _END_WEIGHT_BIT_LENGTH, _END_WEIGHT_BIT_LENGTH)
+            .decompress(_END_WEIGHT_BIT_LENGTH);
+        uint256 startTime = poolState.decodeUint(_START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
+        uint256 endTime = poolState.decodeUint(_END_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
 
         return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
     }
