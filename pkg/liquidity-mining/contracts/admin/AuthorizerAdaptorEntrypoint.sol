@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAuthorizer.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
@@ -30,7 +30,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
  * to be called on the authorizer adaptor. This can be done by passing the function selector to the `getActionId`
  * function.
  */
-contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptor, ReentrancyGuard {
+contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint, ReentrancyGuard {
     using Address for address;
 
     IAuthorizerAdaptor private immutable _adaptor;
@@ -55,6 +55,13 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptor, ReentrancyGuard {
         return getVault().getAuthorizer();
     }
 
+    /**
+     * @notice Returns the Authorizer Adaptor
+     */
+    function getAuthorizerAdaptor() public view override returns (IAuthorizerAdaptor) {
+        return _adaptor;
+    }
+
     function _canPerform(
         bytes32 actionId,
         address account,
@@ -76,7 +83,7 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptor, ReentrancyGuard {
      * @return The associated action ID
      */
     function getActionId(bytes4 selector) public view override returns (bytes32) {
-        return _adaptor.getActionId(selector);
+        return getAuthorizerAdaptor().getActionId(selector);
     }
 
     /**
@@ -98,9 +105,11 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptor, ReentrancyGuard {
         // Note that if `data` is less than 4 bytes long this will revert.
         bytes4 selector = data[0] | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
 
+        // This call to `canPerform` will validate the actual action ID and sender in the authorizer.
         _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
-        // We don't check that `target` is a contract so all calls to an EOA will succeed.
-        return target.functionCallWithValue(data, msg.value);
+        // Contracts using the adaptor expect it to be the caller of the actions to perform, so we forward
+        // the call to `performAction` to the adaptor instead of performing it directly.
+        return getAuthorizerAdaptor().performAction{ value: msg.value }(target, data);
     }
 }

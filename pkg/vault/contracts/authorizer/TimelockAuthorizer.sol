@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
@@ -106,6 +107,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
+    IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
@@ -162,10 +165,13 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     constructor(
         address admin,
         IAuthentication vault,
+        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
         uint256 rootTransferDelay
     ) {
         _setRoot(admin);
         _vault = vault;
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+        _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
@@ -351,12 +357,29 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     /**
      * @notice Returns true if `account` can perform action `actionId` in target `where`.
+     * @dev For actions that require the authorizer adaptor, this function shall be called by the authorizer adaptor
+     * entrypoint first. Calling it via the authorizer adaptor only shall return false for any action ID / account.
      */
     function canPerform(
         bytes32 actionId,
         address account,
         address where
     ) public view override returns (bool) {
+        // When called via adaptor entrypoint, `canPerform` will be called twice.
+        // - The first time the sender will be the adaptor entrypoint, so the first check will be skipped.
+        //   The account will be the EOA or contract that wants to perform the action, so the actual
+        //   delay + permission check shall be performed, and the entrypoint will forward the call to
+        //   the adaptor.
+        // - The second time the sender will be the adaptor, and the account the entrypoint. Since the account
+        //   that wants to perform the action has already been validated, we'll return true.
+        //
+        // When called by the adaptor directly, all accounts but the entrypoint shall be rejected.
+        // Since the entrypoint can't perform any permissioned action, no account will be able to perform an
+        // action using the adaptor directly.
+        if (msg.sender == address(_authorizerAdaptor)) {
+            return account == address(_authorizerAdaptorEntrypoint);
+        }
+
         return
             _delaysPerActionId[actionId] > 0 ? account == address(_executor) : hasPermission(actionId, account, where);
     }
