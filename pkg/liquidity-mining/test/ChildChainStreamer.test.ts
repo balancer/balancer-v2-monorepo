@@ -17,6 +17,7 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 describe('ChildChainStreamer', () => {
   let vault: Vault;
   let adaptor: Contract;
+  let entrypoint: Contract;
 
   let token: Token;
   let balToken: Token;
@@ -33,6 +34,7 @@ describe('ChildChainStreamer', () => {
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
     adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
 
     token = await Token.create({ symbol: 'BPT' });
     balToken = await Token.create({ symbol: 'BAL' });
@@ -62,7 +64,7 @@ describe('ChildChainStreamer', () => {
 
     it('allows tokens to be recovered', async () => {
       const tokenBalanceBefore = await balToken.balanceOf(streamer);
-      const tx = await adaptor
+      const tx = await entrypoint
         .connect(admin)
         .performAction(
           streamer.address,
@@ -92,7 +94,7 @@ describe('ChildChainStreamer', () => {
         balToken.address,
         distributor.address,
       ]);
-      await adaptor.connect(admin).performAction(streamer.address, calldata);
+      await entrypoint.connect(admin).performAction(streamer.address, calldata);
     });
 
     function itUpdatesTimestamp() {

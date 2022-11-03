@@ -19,6 +19,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 describe('RewardsOnlyGauge', () => {
   let vault: Vault;
   let adaptor: Contract;
+  let entrypoint: Contract;
 
   let token: Token;
   let balToken: Token;
@@ -39,6 +40,7 @@ describe('RewardsOnlyGauge', () => {
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
     adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
 
     token = await Token.create({ symbol: 'BPT' });
     balToken = await Token.create({ symbol: 'BAL' });
@@ -174,7 +176,7 @@ describe('RewardsOnlyGauge', () => {
         balToken.address,
         distributor.address,
       ]);
-      await adaptor.connect(admin).performAction(streamer.address, calldata);
+      await entrypoint.connect(admin).performAction(streamer.address, calldata);
     });
 
     sharedBeforeEach('send tokens to streamer', async () => {

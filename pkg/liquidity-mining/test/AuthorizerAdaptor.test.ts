@@ -5,7 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
-import { defaultAbiCoder } from 'ethers/lib/utils';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('AuthorizerAdaptor', () => {
@@ -45,15 +44,12 @@ describe('AuthorizerAdaptor', () => {
     let action: string;
     let target: string;
     let calldata: string;
-    let expectedResult: string;
 
     sharedBeforeEach('prepare action', async () => {
       action = await actionId(adaptor, 'getProtocolFeesCollector', vault.interface);
 
       target = vault.address;
       calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
-
-      expectedResult = defaultAbiCoder.encode(['address'], [await vault.getProtocolFeesCollector()]);
     });
 
     context('when caller is authorized globally', () => {
@@ -61,9 +57,10 @@ describe('AuthorizerAdaptor', () => {
         await authorizer.connect(admin).grantPermissions([action], grantee.address, [ANY_ADDRESS]);
       });
 
-      it('performs the expected function call', async () => {
-        const value = await adaptor.connect(grantee).callStatic.performAction(target, calldata);
-        expect(value).to.be.eq(expectedResult);
+      it('rejects direct calls from the adaptor (requires AuthorizerAdaptorEntrypoint)', async () => {
+        await expect(adaptor.connect(grantee).callStatic.performAction(target, calldata)).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
       });
     });
 
@@ -72,10 +69,10 @@ describe('AuthorizerAdaptor', () => {
         await authorizer.connect(admin).grantPermissions([action], grantee.address, [vault.address]);
       });
 
-      it('performs the expected function call', async () => {
-        const value = await adaptor.connect(grantee).callStatic.performAction(target, calldata);
-
-        expect(value).to.be.eq(expectedResult);
+      it('rejects direct calls from the adaptor (requires AuthorizerAdaptorEntrypoint)', async () => {
+        await expect(adaptor.connect(grantee).callStatic.performAction(target, calldata)).to.be.revertedWith(
+          'SENDER_NOT_ALLOWED'
+        );
       });
     });
 

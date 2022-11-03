@@ -27,6 +27,7 @@ describe('GaugeActions', function () {
   let admin: SignerWithAddress, userSender: SignerWithAddress, other: SignerWithAddress;
 
   let adaptor: Contract, gaugeController: Contract, balMinter: Contract;
+  let entrypoint: Contract;
   let BAL: Contract, veBAL: Contract, rewardToken: Contract, lpToken: Contract;
 
   let liquidityGaugeFactory: Contract, childChainGaugeFactory: Contract;
@@ -41,6 +42,7 @@ describe('GaugeActions', function () {
   sharedBeforeEach('deploy token mocks', async () => {
     vault = await Vault.create({ admin });
     adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
 
     BAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
       args: [admin.address, 'Balancer', 'BAL'],
@@ -220,7 +222,7 @@ describe('GaugeActions', function () {
         await rewardToken.connect(admin).approve(gauge.address, rewardAmount);
 
         const calldata = gauge.interface.encodeFunctionData('add_reward', [rewardToken.address, admin.address]);
-        await adaptor.connect(admin).performAction(gauge.address, calldata);
+        await entrypoint.connect(admin).performAction(gauge.address, calldata);
         await gauge.connect(admin).deposit_reward_token(rewardToken.address, rewardAmount);
       });
 

@@ -9,6 +9,7 @@ import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 describe('AuthorizerAdaptorEntrypoint', () => {
   let vault: Contract;

@@ -18,6 +18,7 @@ describe('ChildChainGaugeRewardHelper', () => {
 
   let vault: Vault;
   let adaptor: Contract;
+  let entrypoint: Contract;
 
   let balToken: Token;
   let tokens: TokenList;
@@ -41,6 +42,7 @@ describe('ChildChainGaugeRewardHelper', () => {
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
     adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
 
     tokens = await TokenList.create([{ symbol: 'BPT' }, { symbol: 'BPT2' }]);
     balToken = await Token.create({ symbol: 'BAL' });
@@ -85,8 +87,8 @@ describe('ChildChainGaugeRewardHelper', () => {
       balToken.address,
       distributor.address,
     ]);
-    await adaptor.connect(admin).performAction(streamerOne.address, calldata);
-    await adaptor.connect(admin).performAction(streamerTwo.address, calldata);
+    await entrypoint.connect(admin).performAction(streamerOne.address, calldata);
+    await entrypoint.connect(admin).performAction(streamerTwo.address, calldata);
   });
 
   sharedBeforeEach('send tokens to streamer', async () => {
