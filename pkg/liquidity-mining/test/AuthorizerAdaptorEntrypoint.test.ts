@@ -6,7 +6,6 @@ import { expect } from 'chai';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
@@ -22,11 +21,12 @@ describe('AuthorizerAdaptorEntrypoint', () => {
   });
 
   sharedBeforeEach('deploy vault with entrypoint', async () => {
-    ({ instance: vault, authorizer, authorizerAdaptor: adaptor } = await Vault.create({ admin }));
-
-    // TODO(@jubeira): initialize entrypoint and adaptor inside helpers.
-    entrypoint = await deploy('AuthorizerAdaptorEntrypoint', { args: [adaptor.address] });
-    await authorizer.setAdaptorEntrypoint(entrypoint.address);
+    ({
+      instance: vault,
+      authorizer,
+      authorizerAdaptor: adaptor,
+      authorizerAdaptorEntrypoint: entrypoint,
+    } = await Vault.create({ admin }));
   });
 
   describe('constructor', () => {
@@ -55,7 +55,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
     let expectedResult: string;
 
     sharedBeforeEach('prepare action', async () => {
-      action = await actionId(adaptor, 'getProtocolFeesCollector', vault.interface);
+      action = await actionId(entrypoint, 'getProtocolFeesCollector', vault.interface);
 
       target = vault.address;
       calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
@@ -96,6 +96,10 @@ describe('AuthorizerAdaptorEntrypoint', () => {
           'SENDER_NOT_ALLOWED'
         );
       });
+    });
+
+    it('rejects direct calls from the adaptor', async () => {
+      await expect(adaptor.connect(other).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
 
     context('when caller is not authorized', () => {
