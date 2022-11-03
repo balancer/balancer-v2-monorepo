@@ -10,7 +10,6 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('AuthorizerAdaptorEntrypoint', () => {
   let vault: Contract;
@@ -77,9 +76,10 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       payableTarget = paymentReceiver.address;
       payableCalldata = paymentReceiver.interface.encodeFunctionData('receivePayment');
 
-      const tx = await paymentReceiver.connect(admin).receivePayment({ value: payment });
-      const event = expectEvent.inReceipt(await tx.wait(), 'PaymentReceived');
-      payableExpectedResult = event.args.amount;
+      payableExpectedResult = defaultAbiCoder.encode(
+        ['uint256'],
+        [await paymentReceiver.callStatic.receivePayment({ value: payment })]
+      );
     });
 
     context('when caller is authorized globally', () => {
