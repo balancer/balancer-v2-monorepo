@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IChildChainLiquidityGaugeFactory.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
@@ -32,13 +32,13 @@ contract ChildChainGaugeTokenAdder is SingletonAuthentication {
     uint256 private constant _MAX_TOKENS = 8;
     uint256 private constant _REWARD_DURATION = 1 weeks;
 
-    IAuthorizerAdaptor private immutable _authorizerAdaptor;
+    IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IChildChainLiquidityGaugeFactory private immutable _gaugeFactory;
 
-    constructor(IChildChainLiquidityGaugeFactory gaugeFactory, IAuthorizerAdaptor authorizerAdaptor)
-        SingletonAuthentication(authorizerAdaptor.getVault())
+    constructor(IChildChainLiquidityGaugeFactory gaugeFactory, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint)
+        SingletonAuthentication(authorizerAdaptorEntrypoint.getVault())
     {
-        _authorizerAdaptor = authorizerAdaptor;
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _gaugeFactory = gaugeFactory;
     }
 
@@ -46,7 +46,7 @@ contract ChildChainGaugeTokenAdder is SingletonAuthentication {
      * @notice Returns the address of the Authorizer adaptor contract.
      */
     function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor) {
-        return _authorizerAdaptor;
+        return _authorizerAdaptorEntrypoint;
     }
 
     /**
@@ -81,7 +81,7 @@ contract ChildChainGaugeTokenAdder is SingletonAuthentication {
         IERC20 rewardToken,
         address distributor
     ) private {
-        _authorizerAdaptor.performAction(
+        _authorizerAdaptorEntrypoint.performAction(
             address(streamer),
             abi.encodeWithSelector(IChildChainStreamer.add_reward.selector, rewardToken, distributor, _REWARD_DURATION)
         );
@@ -92,7 +92,7 @@ contract ChildChainGaugeTokenAdder is SingletonAuthentication {
         IChildChainStreamer streamer,
         IERC20[_MAX_TOKENS] memory rewardTokens
     ) private {
-        _authorizerAdaptor.performAction(
+        _authorizerAdaptorEntrypoint.performAction(
             address(gauge),
             abi.encodeWithSelector(IRewardsOnlyGauge.set_rewards.selector, streamer, _CLAIM_SIG, rewardTokens)
         );

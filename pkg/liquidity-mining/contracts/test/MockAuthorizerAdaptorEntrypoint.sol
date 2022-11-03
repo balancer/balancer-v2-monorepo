@@ -18,6 +18,6 @@ import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdapt
 
 contract MockAuthorizerAdaptorEntrypoint {
     function getAuthorizerAdaptor() external pure returns (IAuthorizerAdaptor) {
-      return IAuthorizerAdaptor(0);
+        return IAuthorizerAdaptor(0);
     }
 }
