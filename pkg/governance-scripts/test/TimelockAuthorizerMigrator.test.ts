@@ -15,7 +15,6 @@ describe('TimelockAuthorizerMigrator', () => {
   let user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let granter1: SignerWithAddress, granter2: SignerWithAddress, granter3: SignerWithAddress;
   let vault: Contract, oldAuthorizer: Contract, newAuthorizer: Contract, migrator: Contract;
-  let adaptorEntrypoint: Contract;
 
   before('set up signers', async () => {
     [, user1, user2, user3, granter1, granter2, granter3, root] = await ethers.getSigners();
@@ -44,11 +43,6 @@ describe('TimelockAuthorizerMigrator', () => {
   sharedBeforeEach('set up vault', async () => {
     oldAuthorizer = await deploy('v2-vault/MockBasicAuthorizer');
     vault = await deploy('v2-vault/Vault', { args: [oldAuthorizer.address, ZERO_ADDRESS, 0, 0] });
-
-    const authorizerAdaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
-    adaptorEntrypoint = await deploy('v2-liquidity-mining/AuthorizerAdaptorEntrypoint', {
-      args: [authorizerAdaptor.address],
-    });
   });
 
   sharedBeforeEach('set up permissions', async () => {
@@ -87,7 +81,6 @@ describe('TimelockAuthorizerMigrator', () => {
   sharedBeforeEach('deploy migrator', async () => {
     const args = [
       vault.address,
-      adaptorEntrypoint.address,
       root.address,
       oldAuthorizer.address,
       rolesData,
@@ -113,7 +106,6 @@ describe('TimelockAuthorizerMigrator', () => {
       it('reverts', async () => {
         const args = [
           vault.address,
-          adaptorEntrypoint.address,
           root.address,
           tempAuthorizer.address,
           rolesData,
