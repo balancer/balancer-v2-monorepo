@@ -6,17 +6,31 @@ import logger from './logger';
 import Task from './task';
 
 /**
- * Reads each of the task's build-info files and extract the ABI and bytecode for the matching contract.
+ * Extracts the ABI and bytecode for the matching contract.
+ * @param task - The task for which to extract the ABI and bytecode artifacts.
+ * @param file - Name of the file within `build-info` where to look for the contract. All files within `build-info`
+ * directory will be checked if undefined.
+ * @param contract - Name of the contract to match. Filename shall be used if undefined.
  */
-export function extractArtifact(task: Task): void {
+export function extractArtifact(task: Task, file?: string, contract?: string): void {
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
-    for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
-      const contractName = path.parse(buildInfoFileName).name;
-      const artifact = extractContractArtifact(task, contractName);
-      writeContractArtifact(task, contractName, artifact);
+    if (file) {
+      _extractArtifact(task, file, contract);
+    } else {
+      for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
+        const fileName = path.parse(buildInfoFileName).name;
+        _extractArtifact(task, fileName, contract);
+      }
     }
   }
+}
+
+function _extractArtifact(task: Task, file: string, contract?: string) {
+  contract = contract ?? file;
+  const artifact = extractContractArtifact(task, file, contract);
+  writeContractArtifact(task, contract, artifact);
+  logger.success(`Artifacts created for ${contract} contract found in ${file} build-info file`);
 }
 
 /**
@@ -27,9 +41,10 @@ export function checkArtifact(task: Task): void {
   const buildInfoDirectory = path.resolve(task.dir(), 'build-info');
   if (existsSync(buildInfoDirectory) && statSync(buildInfoDirectory).isDirectory()) {
     for (const buildInfoFileName of readdirSync(buildInfoDirectory)) {
-      const contractName = path.parse(buildInfoFileName).name;
+      const fileName = path.parse(buildInfoFileName).name;
+      const contractName = fileName;
 
-      const expectedArtifact = extractContractArtifact(task, contractName);
+      const expectedArtifact = extractContractArtifact(task, fileName, contractName);
       const { abi, bytecode } = readContractABIAndBytecode(task, contractName);
 
       const bytecodeMatch = bytecode === expectedArtifact.evm.bytecode.object;
@@ -48,8 +63,8 @@ export function checkArtifact(task: Task): void {
 /**
  * Read the build-info file for the contract `contractName` and extract the ABI and bytecode.
  */
-function extractContractArtifact(task: Task, contractName: string): CompilerOutputContract {
-  const buildInfo = task.buildInfo(contractName);
+function extractContractArtifact(task: Task, fileName: string, contractName: string): CompilerOutputContract {
+  const buildInfo = task.buildInfo(fileName);
 
   // Read ABI and bytecode from build-info file.
   const contractSourceName = findContractSourceName(buildInfo, contractName);
