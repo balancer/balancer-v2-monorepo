@@ -2,11 +2,13 @@ import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { expect } from 'chai';
-import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { defaultAbiCoder } from 'ethers/lib/utils';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('AuthorizerAdaptorEntrypoint', () => {
   let vault: Contract;
@@ -20,12 +22,11 @@ describe('AuthorizerAdaptorEntrypoint', () => {
   });
 
   sharedBeforeEach('deploy vault with entrypoint', async () => {
-    ({
-      instance: vault,
-      authorizer,
-      authorizerAdaptor: adaptor,
-      authorizerAdaptorEntrypoint: entrypoint,
-    } = await Vault.create({ admin }));
+    ({ instance: vault, authorizer, authorizerAdaptor: adaptor } = await Vault.create({ admin }));
+
+    // TODO(@jubeira): initialize entrypoint and adaptor inside helpers.
+    entrypoint = await deploy('AuthorizerAdaptorEntrypoint', { args: [adaptor.address] });
+    await authorizer.setAdaptorEntrypoint(entrypoint.address);
   });
 
   describe('constructor', () => {

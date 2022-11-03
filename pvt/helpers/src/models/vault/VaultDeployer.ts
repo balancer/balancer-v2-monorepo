@@ -10,7 +10,6 @@ import { RawVaultDeployment, VaultDeployment } from './types';
 import Vault from './Vault';
 import TypesConverter from '../types/TypesConverter';
 import TokensDeployer from '../tokens/TokensDeployer';
-import { actionId } from '../misc/actions';
 
 export default {
   async deploy(params: RawVaultDeployment): Promise<Vault> {
@@ -20,25 +19,15 @@ export default {
     const { from, mocked } = deployment;
     if (!admin) admin = from || (await ethers.getSigners())[0];
 
-    // This sequence breaks the circular dependency between authorizer, vault, adaptor and entrypoint.
-    // First we deploy the vault, adaptor and entrypoint with a basic authorizer.
-    const basicAuthorizer = await this._deployBasicAuthorizer(admin, from);
-    const vault = await (mocked ? this._deployMocked : this._deployReal)(deployment, basicAuthorizer);
+    const authorizer = await this._deployAuthorizer(admin, from);
+    const vault = await (mocked ? this._deployMocked : this._deployReal)(deployment, authorizer);
     const authorizerAdaptor = await this._deployAuthorizerAdaptor(vault, from);
-    const entrypoint = await this._deployAuthorizerAdaptorEntrypoint(authorizerAdaptor);
     const protocolFeeProvider = await this._deployProtocolFeeProvider(
       vault,
       deployment.maxYieldValue,
       deployment.maxAUMValue
     );
-
-    // Then, with the entrypoint correctly deployed, we create the actual authorizer to be used and set it in the vault.
-    const authorizer = await this._deployAuthorizer(admin, entrypoint, from);
-    const setAuthorizerActionId = await actionId(vault, 'setAuthorizer');
-    await basicAuthorizer.grantRolesToMany([setAuthorizerActionId], [admin.address]);
-    await vault.connect(admin).setAuthorizer(authorizer.address);
-
-    return new Vault(mocked, vault, authorizer, authorizerAdaptor, entrypoint, protocolFeeProvider, admin);
+    return new Vault(mocked, vault, authorizer, authorizerAdaptor, protocolFeeProvider, admin);
   },
 
   async _deployReal(deployment: VaultDeployment, authorizer: Contract): Promise<Contract> {
@@ -53,28 +42,12 @@ export default {
     return deploy('v2-pool-utils/MockVault', { from, args: [authorizer.address] });
   },
 
-  async _deployBasicAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
-    from = from ?? admin;
-    return deploy('v2-vault/MockBasicAuthorizer', { args: [], from });
-  },
-
-  async _deployAuthorizer(
-    admin: SignerWithAddress,
-    authorizerAdaptorEntrypoint: Contract,
-    from?: SignerWithAddress
-  ): Promise<Contract> {
-    return deploy('v2-vault/TimelockAuthorizer', {
-      args: [admin.address, ZERO_ADDRESS, authorizerAdaptorEntrypoint.address, MONTH],
-      from,
-    });
+  async _deployAuthorizer(admin: SignerWithAddress, from?: SignerWithAddress): Promise<Contract> {
+    return deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH], from });
   },
 
   async _deployAuthorizerAdaptor(vault: Contract, from?: SignerWithAddress): Promise<Contract> {
     return deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address], from });
-  },
-
-  async _deployAuthorizerAdaptorEntrypoint(authorizerAdaptor: Contract): Promise<Contract> {
-    return deploy('v2-liquidity-mining/AuthorizerAdaptorEntrypoint', { args: [authorizerAdaptor.address] });
   },
 
   async _deployProtocolFeeProvider(
