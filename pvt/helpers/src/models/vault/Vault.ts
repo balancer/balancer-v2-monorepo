@@ -20,7 +20,6 @@ export default class Vault {
   instance: Contract;
   authorizer: Contract;
   authorizerAdaptor: Contract;
-  authorizerAdaptorEntrypoint: Contract;
   protocolFeesProvider: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
