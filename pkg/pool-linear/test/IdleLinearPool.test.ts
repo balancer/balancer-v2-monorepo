@@ -17,9 +17,9 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('IdleLinearPool', function () {  
   let vault: Vault;
-  let pool: LinearPool, tokens: TokenList, token: Token, wrappedYieldToken: Token;
+  let pool: LinearPool, tokens: TokenList, mainToken: Token, idleToken: Token;
   let poolFactory: Contract;
-  let wrappedYieldTokenInstance: Contract;
+  let idleTokenInstance: Contract;
   let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -29,13 +29,13 @@ describe('IdleLinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    token = await Token.create({ symbol: 'USDC', decimals: 6 });
-    wrappedYieldTokenInstance = await deploy('MockIdleTokenV3_1', {
-      args: ['idleUSDC', 'idleUSDC', 18, token.address],
+    mainToken = await Token.create({ symbol: 'USDC', decimals: 6 });
+    idleTokenInstance = await deploy('MockIdleTokenV3_1', {
+      args: ['idleUSDC', 'idleUSDC', 18, mainToken.address],
     });
-    wrappedYieldToken = await Token.deployedAt(wrappedYieldTokenInstance.address);
+    idleToken = await Token.deployedAt(idleTokenInstance.address);
 
-    tokens = new TokenList([token, wrappedYieldToken]).sort();
+    tokens = new TokenList([mainToken, idleToken]).sort();
 
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
   });
@@ -52,8 +52,8 @@ describe('IdleLinearPool', function () {
     const tx = await poolFactory.create(
       'Balancer Pool Token',
       'BPT',
-      token.address,
-      wrappedYieldToken.address,
+      mainToken.address,
+      idleToken.address,
       bn(0),
       POOL_SWAP_FEE_PERCENTAGE,
       owner.address
@@ -85,11 +85,11 @@ describe('IdleLinearPool', function () {
   describe('getWrappedTokenRate', () => {
     it('returns the expected value', async () => {
       // Rate must be set with same decimals as the MAIN TOKEN
-      await wrappedYieldTokenInstance.setRate(bn(1e6));
+      await idleTokenInstance.setRate(bn(1e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
       // We now double the the exchange rate to 2:1
-      await wrappedYieldTokenInstance.setRate(bn(2e6));
+      await idleTokenInstance.setRate(bn(2e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
     });
   });
@@ -103,7 +103,7 @@ describe('IdleLinearPool', function () {
           'Balancer Pool Token',
           'BPT',
           otherToken.address,
-          wrappedYieldToken.address,
+          idleToken.address,
           bn(0),
           POOL_SWAP_FEE_PERCENTAGE,
           owner.address

@@ -37,11 +37,14 @@ contract IdleLinearPoolRebalancer is LinearPoolRebalancer {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    // Receives amount with MAIN TOKEN decimals, due to mintIdleToken function
     function _wrapTokens(uint256 amount) internal override {
-        // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of idleDAI or idleUSDC). Before we can
+        // Depositing from underlying (i.e. DAI, USDC, etc. instead of idleDAI or idleUSDC). Before we can
         // deposit however, we need to approve the wrapper in the underlying token.
         _mainToken.safeApprove(address(_wrappedToken), amount);
-        IIdleTokenV3_1(address(_wrappedToken)).mintIdleToken(amount);
+        // Although mintIdleToken needs to receive 3 arguments, only the first one is useful. 
+        // The boolean is not used and the referral address is not implemented yet in $IDLE.
+        IIdleTokenV3_1(address(_wrappedToken)).mintIdleToken(amount, false, address(0x0));
     }
 
     function _unwrapTokens(uint256 amount) internal override {
@@ -50,14 +53,12 @@ contract IdleLinearPoolRebalancer is LinearPoolRebalancer {
         IIdleTokenV3_1(address(_wrappedToken)).redeemIdleToken(amount);
     }
 
+    // Needs to return MAIN TOKEN decimals so _wrapTokens receive the correct amount to mint.
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
-        uint256 mainTokenDecimals = ERC20(address(_mainToken)).decimals();
-        
         // Precision of Main Token Decimals
         uint256 wrappedTokenPrice = IIdleTokenV3_1(address(_wrappedToken)).tokenPrice();
-
         // wrappedTokenPrice * wrappedAmount will result in main token + 18 decimals
-        // We divide by main token decimals to have a precision of 18 decimals
-        return ((wrappedTokenPrice * wrappedAmount) / 10**mainTokenDecimals) + 1;
+        // We divide by 18 decimals to have a precision of main token decimals
+        return ((wrappedTokenPrice * wrappedAmount) / 10**18) + 1;
     }
 }

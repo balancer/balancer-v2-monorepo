@@ -37,7 +37,9 @@ interface IIdleTokenV3_1 is IERC20 {
      * https://docs.idle.finance/developers/best-yield/methods/mintidletoken
      */
     function mintIdleToken(
-        uint256 _amount
+        uint256 _amount,
+        bool _skipWholeRebalance, 
+        address _referral
     ) external returns (uint256 mintedTokens);
 
     /**

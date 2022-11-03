@@ -65,7 +65,11 @@ contract MockIdleTokenV3_1 is TestToken, IIdleTokenV3_1 {
         return _rate;
     }
 
-    function mintIdleToken(uint256 _amount) external override returns (uint256) {
+    function mintIdleToken(
+        uint256 _amount,
+        bool,
+        address
+    ) external override returns (uint256) {
         uint256 shares = _convertToShares(_amount);
         _mint(_vaultAddress, shares);
         _totalAssets = _totalAssets.add(_amount);
