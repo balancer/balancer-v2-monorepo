@@ -84,12 +84,11 @@ describe('IdleLinearPool', function () {
 
   describe('getWrappedTokenRate', () => {
     it('returns the expected value', async () => {
-      // Reserve's normalised income is stored with 27 decimals (i.e. a 'ray' value)
-      // 1e27 implies a 1:1 exchange rate between main and wrapped token
+      // Rate must be set with same decimals as the MAIN TOKEN
       await wrappedYieldTokenInstance.setRate(bn(1e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
-      // We now double the reserve's normalised income to change the exchange rate to 2:1
+      // We now double the the exchange rate to 2:1
       await wrappedYieldTokenInstance.setRate(bn(2e6));
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
     });
