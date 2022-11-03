@@ -85,6 +85,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal virtual override returns (uint256) {
+        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
 
@@ -98,7 +100,13 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
-            uint256 amountOut = _onSwapGivenIn(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountOut = WeightedMath._calcOutGivenIn(
+                balanceTokenIn,
+                _getNormalizedWeight(request.tokenIn),
+                balanceTokenOut,
+                _getNormalizedWeight(request.tokenOut),
+                request.amount
+            );
 
             // amountOut tokens are exiting the Pool, so we round down.
             return _downscaleDown(amountOut, scalingFactorTokenOut);
@@ -106,7 +114,13 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenOut);
 
-            uint256 amountIn = _onSwapGivenOut(request, balanceTokenIn, balanceTokenOut);
+            uint256 amountIn = WeightedMath._calcInGivenOut(
+                balanceTokenIn,
+                _getNormalizedWeight(request.tokenIn),
+                balanceTokenOut,
+                _getNormalizedWeight(request.tokenOut),
+                request.amount
+            );
 
             // amountIn tokens are entering the Pool, so we round up.
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
@@ -114,40 +128,6 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
             return _addSwapFeeAmount(amountIn);
         }
-    }
-
-    function _onSwapGivenIn(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal view returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
-
-        return
-            WeightedMath._calcOutGivenIn(
-                currentBalanceTokenIn,
-                _getNormalizedWeight(swapRequest.tokenIn),
-                currentBalanceTokenOut,
-                _getNormalizedWeight(swapRequest.tokenOut),
-                swapRequest.amount
-            );
-    }
-
-    function _onSwapGivenOut(
-        SwapRequest memory swapRequest,
-        uint256 currentBalanceTokenIn,
-        uint256 currentBalanceTokenOut
-    ) internal view returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
-
-        return
-            WeightedMath._calcInGivenOut(
-                currentBalanceTokenIn,
-                _getNormalizedWeight(swapRequest.tokenIn),
-                currentBalanceTokenOut,
-                _getNormalizedWeight(swapRequest.tokenOut),
-                swapRequest.amount
-            );
     }
 
     /**
