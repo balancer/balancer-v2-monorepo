@@ -371,8 +371,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
     ) public view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
             // We special case the situation where the caller is the authorizer adaptor.
-            // We do this as it doesn't properly calculate the value of `actionId` to pass to the authorizer, potentially
-            // allowing addresses to perform privilege escalations.
+            // We do this as it doesn't properly calculate the value of `actionId` to pass to the authorizer,
+            // potentially allowing addresses to perform privilege escalations.
             //
             // To remedy this we force all calls to the authorizer adaptor be through a singleton entrypoint contract
             // This contract correctly checks whether `account` can perform `actionId` on `where`  and forwards the call

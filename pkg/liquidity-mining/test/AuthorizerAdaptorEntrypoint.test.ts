@@ -109,6 +109,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       });
 
       it('rejects direct calls from the adaptor', async () => {
+        // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
@@ -133,6 +134,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       });
 
       it('rejects direct calls from the adaptor', async () => {
+        // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
