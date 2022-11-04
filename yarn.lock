@@ -169,14 +169,14 @@ __metadata:
     "@types/node": ^14.14.31
     "@typescript-eslint/eslint-plugin": ^5.41.0
     "@typescript-eslint/parser": ^5.41.0
-    chalk: ^5.1.2
+    chalk: ^4.1.2
     eslint: ^8.26.0
     eslint-plugin-prettier: ^4.2.1
     ethers: ^5.7.2
     hardhat: ^2.12.2
     hardhat-local-networks-config-plugin: ^0.0.6
     lodash.range: ^3.2.0
-    node-fetch: ^3.2.10
+    node-fetch: ^2.6.7
     prettier: ^2.7.1
     ts-node: ^10.9.1
     typescript: ^4.0.2
@@ -4819,20 +4819,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:^4.1.0":
+"chalk@npm:^4.1.0, chalk@npm:^4.1.2":
   version: 4.1.2
   resolution: "chalk@npm:4.1.2"
   dependencies:
     ansi-styles: ^4.1.0
     supports-color: ^7.1.0
   checksum: e3901b97d953991712bf0b941d586175be7ca5da56a97d25187e07453c6b26cae0ac8d9c7aa9e87e7c5c986fff870771b3a8e2705b3becda868829e2e12c2a65
-  languageName: node
-  linkType: hard
-
-"chalk@npm:^5.1.2":
-  version: 5.1.2
-  resolution: "chalk@npm:5.1.2"
-  checksum: 0a2a4dc837962a60f5d84967ac7ae1cd97b287b6e2c38306b4e5b76be4d2a62f49087e6cdea008aa1f2c4ce4f357174f48e9bda289400424cda1ea494ce6842e
   languageName: node
   linkType: hard
 
@@ -5406,13 +5399,6 @@ __metadata:
   dependencies:
     assert-plus: ^1.0.0
   checksum: 5959409ee42dc4bdbf3fa384b801ece580ca336658bb0342ffab0099b3fc6bf9b3e239e1b82dcc4fcaeee315353e08f2eae47b0928a6a579391598c44958afa1
-  languageName: node
-  linkType: hard
-
-"data-uri-to-buffer@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "data-uri-to-buffer@npm:4.0.0"
-  checksum: 51e8ba73a4a01a71e7df0c6fc60c85b281211642a1d888c6a9bfefc598769f484630697ccb1d977ff825f80848d9736445c666c8bf933e2eb6bddf164b55f38b
   languageName: node
   linkType: hard
 
@@ -7051,16 +7037,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fetch-blob@npm:^3.1.2, fetch-blob@npm:^3.1.4":
-  version: 3.2.0
-  resolution: "fetch-blob@npm:3.2.0"
-  dependencies:
-    node-domexception: ^1.0.0
-    web-streams-polyfill: ^3.0.3
-  checksum: 2d1fc14c66f945ed20c22c7f7f2bcf02b87c57f172e562f8a427cf34b2eb2dc8811c0c9ada755cec9d657fc45d1023970889e79e040c0f09e983858e89aebbd2
-  languageName: node
-  linkType: hard
-
 "fetch-ponyfill@npm:^4.0.0":
   version: 4.1.0
   resolution: "fetch-ponyfill@npm:4.1.0"
@@ -7294,15 +7270,6 @@ __metadata:
     combined-stream: ^1.0.6
     mime-types: ^2.1.12
   checksum: 862e686b105634222db77138d5f5ae08ba85f88c04925de5be86b2b9d03cf671d86566ad10f1dd5217634c0f1634069dfc1a663a1cc13e8fbac0ce8f670ad070
-  languageName: node
-  linkType: hard
-
-"formdata-polyfill@npm:^4.0.10":
-  version: 4.0.10
-  resolution: "formdata-polyfill@npm:4.0.10"
-  dependencies:
-    fetch-blob: ^3.1.2
-  checksum: 525e045498be835665b7721f8a4b5b0fee10dc221247de977e89c20e4a91df8637f917d299bc30bd4b1dc2ff26e9d61f0aad75d1e7cb40e24eb9388e2c1fe903
   languageName: node
   linkType: hard
 
@@ -10270,13 +10237,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-domexception@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "node-domexception@npm:1.0.0"
-  checksum: b014e8200542bfa2a811d6bea6f7766b9c64884e8f219369986af1a5726abfc76186e72e612cd606df4040b298781a454fea1c7152d2c7515c37f388c8a5d67e
-  languageName: node
-  linkType: hard
-
 "node-fetch@npm:2.1.2":
   version: 2.1.2
   resolution: "node-fetch@npm:2.1.2"
@@ -10291,14 +10251,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:^3.2.10":
-  version: 3.2.10
-  resolution: "node-fetch@npm:3.2.10"
+"node-fetch@npm:^2.6.7":
+  version: 2.6.7
+  resolution: "node-fetch@npm:2.6.7"
   dependencies:
-    data-uri-to-buffer: ^4.0.0
-    fetch-blob: ^3.1.4
-    formdata-polyfill: ^4.0.10
-  checksum: 11e57ea32a13cfe55646976bb5624f4f9cd6141de6c5b9a69ef9f2cbf9aa2d0688240c69eb3e8f98f7cb062be889749989eab6440c7c4c0b2cae3c385e50c15b
+    whatwg-url: ^5.0.0
+  peerDependencies:
+    encoding: ^0.1.0
+  peerDependenciesMeta:
+    encoding:
+      optional: true
+  checksum: 9eef3f9934c690719ece12c1a7e97109bbdbb90a63bbcca57da93a7ee1aa03723ee3d2fffbbea937d7c1ec6e2ba9beb659ab232a9ae6acc42f1a646e0284c136
   languageName: node
   linkType: hard
 
@@ -13284,6 +13247,13 @@ resolve@^1.22.1:
   languageName: node
   linkType: hard
 
+"tr46@npm:~0.0.3":
+  version: 0.0.3
+  resolution: "tr46@npm:0.0.3"
+  checksum: 37bdfff7c5b5f8feeb0d06d3fda1d8474d8b08a9f0bf453fd339eb0dc13939ed5a2b24d29d9a308674d6a7267a3a4f3a95e91538b87d0e76c14d83c33899a29f
+  languageName: node
+  linkType: hard
+
 "trim-right@npm:^1.0.1":
   version: 1.0.1
   resolution: "trim-right@npm:1.0.1"
@@ -13900,13 +13870,6 @@ typescript@^4.0.2:
   languageName: node
   linkType: hard
 
-"web-streams-polyfill@npm:^3.0.3":
-  version: 3.2.1
-  resolution: "web-streams-polyfill@npm:3.2.1"
-  checksum: a74a711a1325cdbf495b827076136047160033b3888435ef61e5661d1b0b9f74885bbf195e61a597edc357b42ab422903f23d73e6aab1717ab26f6a81bd78f86
-  languageName: node
-  linkType: hard
-
 "web3-bzz@npm:1.2.11":
   version: 1.2.11
   resolution: "web3-bzz@npm:1.2.11"
@@ -14232,6 +14195,13 @@ typescript@^4.0.2:
   languageName: node
   linkType: hard
 
+"webidl-conversions@npm:^3.0.0":
+  version: 3.0.1
+  resolution: "webidl-conversions@npm:3.0.1"
+  checksum: 25ef547ff199f5a942f367f86c92b79bad77c27ad9baa51ed994de4ee91834d6246a120e24c4d6f2c6aba6b940238a5f6a0ed5f5ab0f24f6a863a2be75dd7644
+  languageName: node
+  linkType: hard
+
 "websocket@npm:1.0.32":
   version: 1.0.32
   resolution: "websocket@npm:1.0.32"
@@ -14264,6 +14234,16 @@ typescript@^4.0.2:
   version: 2.0.4
   resolution: "whatwg-fetch@npm:2.0.4"
   checksum: 47339b6d2919a71459bef766d32cf54e678391cafdf334a40722320abfe156262f034654e296daa598b9e5f70ffd1ff1037212edc78eed347038ba30e9287a46
+  languageName: node
+  linkType: hard
+
+"whatwg-url@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "whatwg-url@npm:5.0.0"
+  dependencies:
+    tr46: ~0.0.3
+    webidl-conversions: ^3.0.0
+  checksum: 55eca009f57013000f73721611e14cf7215bf2f19e9950b06f3214cfbd29f06eeea759748fa09016a05dca72a2213e49333ef4cbc911ba236a427a0b0060f415
   languageName: node
   linkType: hard
 
