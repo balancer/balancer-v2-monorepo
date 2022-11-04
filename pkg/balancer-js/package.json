@@ -20,8 +20,8 @@
     "dist/"
   ],
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
+    "build": "rollup --config rollup.config.ts --configPlugin typescript",
+    "dev": "rollup --config rollup.config.ts --configPlugin typescript -w",
     "test": "mocha --extension test.ts -r ts-node/register --recursive",
     "lint": "eslint ./src --ext .ts --max-warnings 0"
   },
