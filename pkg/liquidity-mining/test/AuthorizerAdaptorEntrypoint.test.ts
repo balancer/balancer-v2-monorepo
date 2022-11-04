@@ -41,12 +41,12 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       expect(await entrypoint.getVault()).to.be.eq(vault.address);
     });
 
-    it('uses the authorizer of the vault', async () => {
-      expect(await entrypoint.getAuthorizer()).to.equal(authorizer.address);
+    it('sets the adaptor address', async () => {
+      expect(await entrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
     });
 
-    it('uses the adaptor of the vault', async () => {
-      expect(await entrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
+    it('uses the authorizer of the vault', async () => {
+      expect(await entrypoint.getAuthorizer()).to.equal(authorizer.address);
     });
 
     it('returns the same action ID as the adaptor', async () => {
@@ -110,6 +110,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       });
 
       it('rejects direct calls from the adaptor', async () => {
+        // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
@@ -134,6 +135,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       });
 
       it('rejects direct calls from the adaptor', async () => {
+        // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });

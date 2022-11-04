@@ -365,18 +365,15 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address account,
         address where
     ) public view override returns (bool) {
-        // When called via adaptor entrypoint, `canPerform` will be called twice.
-        // - The first time the sender will be the adaptor entrypoint, so the first check will be skipped.
-        //   The account will be the EOA or contract that wants to perform the action, so the actual
-        //   delay + permission check shall be performed, and the entrypoint will forward the call to
-        //   the adaptor.
-        // - The second time the sender will be the adaptor, and the account the entrypoint. Since the account
-        //   that wants to perform the action has already been validated, we'll return true.
-        //
-        // When called by the adaptor directly, all accounts but the entrypoint shall be rejected.
-        // Since the entrypoint can't perform any permissioned action, no account will be able to perform an
-        // action using the adaptor directly.
         if (msg.sender == address(_authorizerAdaptor)) {
+            // We special case the situation where the caller is the authorizer adaptor.
+            // We do this as it doesn't properly calculate the value of `actionId` to pass to the authorizer,
+            // potentially allowing addresses to perform privilege escalations.
+            //
+            // To remedy this we force all calls to the authorizer adaptor be through a singleton entrypoint contract
+            // This contract correctly checks whether `account` can perform `actionId` on `where`  and forwards the call
+            // onto the authorizer adaptor to execute.
+            // The authorizer must then reject calls to the authorizer adaptor which aren't made through the entrypoint.
             return account == address(_authorizerAdaptorEntrypoint);
         }
 
