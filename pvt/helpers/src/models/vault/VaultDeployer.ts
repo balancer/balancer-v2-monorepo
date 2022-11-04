@@ -4,7 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { deploy } from '../../contract';
 import { MONTH } from '../../time';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '../../constants';
+import { ANY_ADDRESS } from '../../constants';
 import { RawVaultDeployment, VaultDeployment } from './types';
 
 import Vault from './Vault';
@@ -21,7 +21,7 @@ export default {
     if (!admin) admin = from || (await ethers.getSigners())[0];
 
     // Needed so that the getAuthorizerAdaptor() call in the Authorizer constructor will not revert
-    const mockEntrypoint = await deploy('v2-liquidity-mining/MockAuthorizerAdaptorEntrypoint');
+    const mockEntrypoint = await deploy('v2-vault/MockAuthorizerAdaptorEntrypoint');
 
     // Deploy the Vault with a placeholder authorizer
     const authorizer = await this._deployAuthorizer(admin, mockEntrypoint, from);
@@ -29,10 +29,10 @@ export default {
 
     // Deploy the authorizer adaptor and entrypoint
     const authorizerAdaptor = await this._deployAuthorizerAdaptor(vault, from);
-    const authorizerAdaptorEntrypoint = await this._deployAuthorizerAdaptorEntrypoint(vault, authorizerAdaptor, from);
+    const authorizerAdaptorEntrypoint = await this._deployAuthorizerAdaptorEntrypoint(authorizerAdaptor, from);
 
     // Redeploy the authorizer with the entrypoint
-    const newAuthorizer = await this._deployAuthorizer(admin, authorizerAdaptorEntrypoint, from, vault.address);
+    const newAuthorizer = await this._deployAuthorizer(admin, authorizerAdaptorEntrypoint, from);
 
     // Change authorizer to the one with the entrypoint
     const action = await actionId(vault, 'setAuthorizer');
@@ -71,11 +71,10 @@ export default {
   async _deployAuthorizer(
     admin: SignerWithAddress,
     authorizerAdaptorEntrypoint: Contract,
-    from?: SignerWithAddress,
-    vault?: string
+    from?: SignerWithAddress
   ): Promise<Contract> {
     return deploy('v2-vault/TimelockAuthorizer', {
-      args: [admin.address, vault || ZERO_ADDRESS, authorizerAdaptorEntrypoint.address ?? ZERO_ADDRESS, MONTH],
+      args: [admin.address, authorizerAdaptorEntrypoint.address, MONTH],
       from,
     });
   },
@@ -84,11 +83,7 @@ export default {
     return deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address], from });
   },
 
-  async _deployAuthorizerAdaptorEntrypoint(
-    vault: Contract,
-    adaptor: Contract,
-    from?: SignerWithAddress
-  ): Promise<Contract> {
+  async _deployAuthorizerAdaptorEntrypoint(adaptor: Contract, from?: SignerWithAddress): Promise<Contract> {
     return deploy('v2-liquidity-mining/AuthorizerAdaptorEntrypoint', { args: [adaptor.address], from });
   },
 
