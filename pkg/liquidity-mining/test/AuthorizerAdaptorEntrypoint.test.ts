@@ -6,10 +6,10 @@ import { expect } from 'chai';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 describe('AuthorizerAdaptorEntrypoint', () => {
   let vault: Contract;
@@ -71,7 +71,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
     const payment = fp(0.3141516);
 
     sharedBeforeEach('prepare action', async () => {
-      action = await actionId(entrypoint, 'getProtocolFeesCollector', vault.interface);
+      action = await actionId(adaptor, 'getProtocolFeesCollector', vault.interface);
 
       target = vault.address;
       calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
