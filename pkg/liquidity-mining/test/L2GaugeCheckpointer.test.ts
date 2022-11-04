@@ -83,7 +83,7 @@ describe('L2GaugeCheckpointer', () => {
 
   sharedBeforeEach('deploy L2 gauge checkpointer', async () => {
     L2GaugeCheckpointer = await deploy('L2GaugeCheckpointer', {
-      args: [gaugeAdder.address, vault.authorizerAdaptorEntrypoint.address],
+      args: [gaugeAdder.address, entrypoint.address],
     });
   });
 

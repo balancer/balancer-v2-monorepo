@@ -27,6 +27,7 @@ describe('GaugeAdder', () => {
   let gaugeImplementation: Contract;
   let gaugeFactory: Contract;
   let adaptor: Contract;
+  let entrypoint: Contract;
   let gaugeAdder: Contract;
 
   let admin: SignerWithAddress, other: SignerWithAddress;
@@ -38,13 +39,14 @@ describe('GaugeAdder', () => {
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
     adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
 
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     gaugeImplementation = await deploy('MockLiquidityGauge');
     gaugeFactory = await deploy('MockLiquidityGaugeFactory', { args: [gaugeImplementation.address] });
     gaugeAdder = await deploy('GaugeAdder', {
-      args: [gaugeController.address, ZERO_ADDRESS, vault.authorizerAdaptorEntrypoint.address],
+      args: [gaugeController.address, ZERO_ADDRESS, entrypoint.address],
     });
 
     await gaugeController.add_type('LiquidityMiningCommittee', 0);
@@ -209,7 +211,7 @@ describe('GaugeAdder', () => {
 
           sharedBeforeEach('add gauge factory to new GaugeAdder', async () => {
             newGaugeAdder = await deploy('GaugeAdder', {
-              args: [gaugeController.address, gaugeAdder.address, vault.authorizerAdaptorEntrypoint.address],
+              args: [gaugeController.address, gaugeAdder.address, entrypoint.address],
             });
 
             const addGaugeFactoryAction = await actionId(newGaugeAdder, 'addGaugeFactory');
