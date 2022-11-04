@@ -94,16 +94,6 @@ chai.use(function (chai, utils) {
   });
 
   Assertion.overwriteMethod('revertedWith', function (_super) {
-    function checkErrorMessage(regExps: RegExp[], message: string): RegExpMatchArray {
-      for (const regExp of regExps) {
-        const matches = message.match(regExp);
-        if (matches && matches.length === 6) {
-          return matches;
-        }
-      }
-      throw Error(message);
-    }
-
     return async function (this: any) {
       // eslint-disable-next-line prefer-rest-params
       const assertion = _super.apply(this, arguments);
@@ -129,13 +119,10 @@ chai.use(function (chai, utils) {
           // If the catch didn't throw because another reason was expected, re-throw the error
           if (!error.message.includes('but other exception was thrown')) throw error;
 
-          // Errors might match any of the following regular expressions.
-          const regExps = [
-            /(Expected transaction to be reverted with )(.*)(, but other exception was thrown: .*Error: VM Exception while processing transaction: reverted with reason string ')(.*)(')/,
-            /(Expected transaction to be reverted with )(.*)(, but other exception was thrown: .*Error: call revert exception; VM Exception while processing transaction: reverted with reason string )"(.*)" (.*)/,
-          ];
           // Decode the actual revert reason and look for it in the balancer errors list
-          const matches = checkErrorMessage(regExps, error.message);
+          const regExp = /(Expected transaction to be reverted with )(.*)(, but other exception was thrown: .*VM Exception while processing transaction: reverted with reason string (?:"|'))(.*)(?:" |')(.*)/;
+          const matches = error.message.match(regExp);
+          if (!matches || matches.length !== 6) throw error;
 
           const expectedReason: string = matches[2];
           const actualErrorCode: string = matches[4];
