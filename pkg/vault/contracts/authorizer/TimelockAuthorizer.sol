@@ -164,14 +164,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     constructor(
         address admin,
-        IAuthentication vault,
         IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
         uint256 rootTransferDelay
     ) {
         _setRoot(admin);
-        _vault = vault;
-        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
+
+        _vault = authorizerAdaptorEntrypoint.getVault();
         _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
