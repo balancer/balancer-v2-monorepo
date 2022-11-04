@@ -57,16 +57,18 @@ task('verify-contract', `Verify a task's deployment on a block explorer`)
 
 task('extract-artifacts', `Extract contract artifacts from their build-info`)
   .addOptionalParam('id', 'Specific task ID')
-  .setAction(async (args: { id?: string; verbose?: boolean }) => {
+  .addOptionalParam('file', 'Target build-info file name')
+  .addOptionalParam('name', 'Contract name')
+  .setAction(async (args: { id?: string; file?: string; name?: string; verbose?: boolean }) => {
     Logger.setDefaults(false, args.verbose || false);
 
     if (args.id) {
       const task = new Task(args.id, TaskMode.READ_ONLY);
-      extractArtifact(task);
+      extractArtifact(task, args.file, args.name);
     } else {
       for (const taskID of Task.getAllTaskIds()) {
         const task = new Task(taskID, TaskMode.READ_ONLY);
-        extractArtifact(task);
+        extractArtifact(task, args.file, args.name);
       }
     }
   });
