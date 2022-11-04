@@ -40,12 +40,12 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       expect(await entrypoint.getVault()).to.be.eq(vault.address);
     });
 
-    it('uses the authorizer of the vault', async () => {
-      expect(await entrypoint.getAuthorizer()).to.equal(authorizer.address);
+    it('sets the adaptor address', async () => {
+      expect(await entrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
     });
 
-    it('uses the adaptor of the vault', async () => {
-      expect(await entrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
+    it('uses the authorizer of the vault', async () => {
+      expect(await entrypoint.getAuthorizer()).to.equal(authorizer.address);
     });
 
     it('returns the same action ID as the adaptor', async () => {
