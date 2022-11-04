@@ -39,8 +39,8 @@ contract SecondaryIssuePoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     _symbol,
                     _security,
                     _currency,
-                    _tradeFeePercentage,
                     _maxAmountsIn,
+                    _tradeFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     msg.sender
