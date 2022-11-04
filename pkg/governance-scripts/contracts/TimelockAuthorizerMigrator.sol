@@ -52,10 +52,9 @@ contract TimelockAuthorizerMigrator {
      * @dev Reverts if _rolesData contains a role for an account which doesn't hold the same role on the old Authorizer.
      */
     constructor(
-        IVault _vault,
-        IAuthorizerAdaptorEntrypoint _authorizerAdaptorEntrypoint,
         address _root,
         IBasicAuthorizer _oldAuthorizer,
+        IAuthorizerAdaptorEntrypoint _authorizerAdaptorEntrypoint,
         RoleData[] memory _rolesData,
         RoleData[] memory _grantersData,
         RoleData[] memory _revokersData,
@@ -72,7 +71,7 @@ contract TimelockAuthorizerMigrator {
         newAuthorizer = _newAuthorizer;
         oldAuthorizer = _oldAuthorizer;
         root = _root;
-        vault = _vault;
+        vault = _authorizerAdaptorEntrypoint.getVault();
 
         for (uint256 i = 0; i < _rolesData.length; i++) {
             RoleData memory roleData = _rolesData[i];

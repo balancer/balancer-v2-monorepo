@@ -86,10 +86,9 @@ describe('TimelockAuthorizerMigrator', () => {
 
   sharedBeforeEach('deploy migrator', async () => {
     const args = [
-      vault.address,
-      adaptorEntrypoint.address,
       root.address,
       oldAuthorizer.address,
+      adaptorEntrypoint.address,
       rolesData,
       grantersData,
       revokersData,
@@ -112,10 +111,9 @@ describe('TimelockAuthorizerMigrator', () => {
 
       it('reverts', async () => {
         const args = [
-          vault.address,
-          adaptorEntrypoint.address,
           root.address,
           tempAuthorizer.address,
+          adaptorEntrypoint.address,
           rolesData,
           grantersData,
           revokersData,
