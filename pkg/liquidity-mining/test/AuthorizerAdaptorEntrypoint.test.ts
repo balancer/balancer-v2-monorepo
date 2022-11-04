@@ -45,6 +45,14 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       expect(await entrypoint.getAuthorizer()).to.equal(authorizer.address);
     });
 
+    it('uses the adaptor of the vault', async () => {
+      expect(await entrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
+    });
+
+    it('returns the same action ID as the adaptor', async () => {
+      expect(await entrypoint.getActionId('0xaabbccdd')).to.equal(await adaptor.getActionId('0xaabbccdd'));
+    });
+
     it('tracks authorizer changes in the vault', async () => {
       const action = await actionId(vault, 'setAuthorizer');
       await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
