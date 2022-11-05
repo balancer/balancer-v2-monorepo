@@ -38,6 +38,7 @@
     "@balancer-labs/v2-vault": "workspace:*",
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
+    "@openzeppelin/contracts": "3.4.0",
     "@types/chai": "^4.2.12",
     "@types/lodash": "^4.14.176",
     "@types/mocha": "^8.0.3",
@@ -61,5 +62,8 @@
     "solhint-plugin-prettier": "^0.0.4",
     "ts-node": "^8.10.2",
     "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@balancer-labs/v2-standalone-utils": "^2.0.0"
   }
 }

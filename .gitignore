@@ -25,3 +25,16 @@ pkg/balancer-js/src/typechain/*
 # Forge
 forge-artifacts/
 forge-cache/
+
+.DS_Store
+pkg/.DS_Store
+pkg/interfaces/contracts/solidity-utils/.DS_Store
+pkg/pool-linear/.DS_Store
+pkg/solidity-utils/.DS_Store
+pkg/solidity-utils/contracts/.DS_Store
+pkg/standalone-utils/.DS_Store
+pkg/standalone-utils/contracts/.DS_Store
+pkg/standalone-utils/contracts/test/.DS_Store
+pvt/.DS_Store
+pvt/helpers/.DS_Store
+pvt/helpers/src/.DS_Store

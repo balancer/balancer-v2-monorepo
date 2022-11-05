@@ -27,7 +27,6 @@ class TokensDeployer {
   async deployToken(params: RawTokenDeployment): Promise<Token> {
     const { symbol, name, decimals, from } = TypesConverter.toTokenDeployment(params);
     const sender = from || (await ethers.getSigners())[0];
-
     let instance;
     if (symbol !== 'WETH') {
       instance = await deploy('v2-standalone-utils/TestToken', {

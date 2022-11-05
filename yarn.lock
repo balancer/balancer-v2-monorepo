@@ -583,7 +583,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils":
+"@balancer-labs/v2-standalone-utils@^2.0.0, @balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils":
   version: 0.0.0-use.local
   resolution: "@balancer-labs/v2-standalone-utils@workspace:pkg/standalone-utils"
   dependencies:
@@ -593,9 +593,11 @@ __metadata:
     "@balancer-labs/v2-interfaces": "workspace:*"
     "@balancer-labs/v2-pool-utils": "workspace:*"
     "@balancer-labs/v2-solidity-utils": "workspace:*"
+    "@balancer-labs/v2-standalone-utils": ^2.0.0
     "@balancer-labs/v2-vault": "workspace:*"
     "@nomiclabs/hardhat-ethers": ^2.0.6
     "@nomiclabs/hardhat-waffle": ^2.0.0
+    "@openzeppelin/contracts": 3.4.0
     "@types/chai": ^4.2.12
     "@types/lodash": ^4.14.176
     "@types/mocha": ^8.0.3
@@ -2033,6 +2035,13 @@ __metadata:
     mkdirp: ^1.0.4
     rimraf: ^3.0.2
   checksum: d178d86a0a96e5aa12e6d70c00d50eb3bb9a58c0cf1c36e1d7f240acb4ae3f14642c6314659c438ea409a509f08c2a62e29c9346a033e554c3f6921cdb293219
+  languageName: node
+  linkType: hard
+
+"@openzeppelin/contracts@npm:3.4.0":
+  version: 3.4.0
+  resolution: "@openzeppelin/contracts@npm:3.4.0"
+  checksum: 62774f79ac6479001f8755116693dbaad68c26d65c2efd4725cfbdac287d628d1c9dcc12c19477a092e33722c89a5c3c8e600a1656303a0e02cdff3643744b70
   languageName: node
   linkType: hard
 
