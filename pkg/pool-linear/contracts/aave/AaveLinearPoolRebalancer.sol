@@ -46,6 +46,7 @@ contract AaveLinearPoolRebalancer is LinearPoolRebalancer {
         IStaticAToken(address(_wrappedToken)).withdraw(address(this), amount, true);
     }
 
+
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
         // staticToDynamic returns how many main tokens will be returned when unwrapping. Since there's fixed point
         // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure

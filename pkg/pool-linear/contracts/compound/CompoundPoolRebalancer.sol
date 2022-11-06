@@ -15,14 +15,14 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-//TODO: NEED TO BRING IN ISTATICCTOKEN
-import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
+import "./ICToken";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../LinearPoolRebalancer.sol";
 
 contract CompoundLinearPoolRebalancer is LinearPoolRebalancer {
+    // SafeERC20 wrapper that throw failures when contract returns false
     using SafeERC20 for IERC20;
 
     // These Rebalancers can only be deployed from a factory to work around a circular dependency: the Pool must know
@@ -38,20 +38,23 @@ contract CompoundLinearPoolRebalancer is LinearPoolRebalancer {
         // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Before we can
         // deposit however, we need to approve the wrapper in the underlying token.
         _mainToken.safeApprove(address(_wrappedToken), amount);
-        IStaticAToken(address(_wrappedToken)).deposit(address(this), amount, 0, true);
+        ICToken(address(_wrappedToken))._mint(amount);
     }
 
     function _unwrapTokens(uint256 amount) internal override {
         // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Approvals are not necessary here
         // as the wrapped token is simply burnt.
-        IStaticAToken(address(_wrappedToken)).withdraw(address(this), amount, true);
+        ICToken(address(_wrappedToken))._redeem(amount);
     }
 
-    function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
-        // staticToDynamic returns how many main tokens will be returned when unwrapping. Since there's fixed point
-        // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure
-        // the returned value will always be enough to get `wrappedAmount` when unwrapping. This might result in some
-        // dust being left in the Rebalancer.
-        return IStaticAToken(address(_wrappedToken)).staticToDynamicAmount(wrappedAmount) + 1;
-    }
+    //TODO: Ask for help on this function
+    // Confused on this function
+    // dont think function is needed
+//    function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
+//        // staticToDynamic returns how many main tokens will be returned when unwrapping. Since there's fixed point
+//        // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure
+//        // the returned value will always be enough to get `wrappedAmount` when unwrapping. This might result in some
+//        // dust being left in the Rebalancer.
+//        return ICToken(address(_wrappedToken)).getTokenAmount(wrappedAmount);
+//    }
 }
