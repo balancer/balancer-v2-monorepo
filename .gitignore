@@ -26,6 +26,7 @@ pkg/balancer-js/src/typechain/*
 forge-artifacts/
 forge-cache/
 
+#.DS_Store
 .DS_Store
 pkg/.DS_Store
 pkg/interfaces/contracts/solidity-utils/.DS_Store
@@ -38,3 +39,7 @@ pkg/standalone-utils/contracts/test/.DS_Store
 pvt/.DS_Store
 pvt/helpers/.DS_Store
 pvt/helpers/src/.DS_Store
+
+
+# Jet Brains IDE Settings
+.idea/
