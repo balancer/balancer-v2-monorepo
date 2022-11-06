@@ -39,7 +39,6 @@ class TokensDeployer {
         args: [],
       });
     }
-
     return new Token(name, symbol, decimals, instance);
   }
 

@@ -11,6 +11,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import { sharedBeforeEach } from "@balancer-labs/v2-common/sharedBeforeEach";
 
 describe('ERC4626LinearPoolFactory', function () {
   let mainToken: Token, wrappedToken: Token;
