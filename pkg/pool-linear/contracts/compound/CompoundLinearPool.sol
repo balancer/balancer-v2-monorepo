@@ -67,12 +67,12 @@ contract CompoundLinearPool is LinearPool {
     }
 
     // Returns a 18 decimal fixed point number
-    function _getWrappedTokenRate(uint32 decimals) internal view override returns (uint256) {
+    function _getWrappedTokenRate() internal view override returns (uint256) {
         // Calculate the decimal adjustment to produce a 18 decimal fixed point number
         // Rate is scaled by 1*10^(18 - 8 + token decimals)
-        uint256 decimalDiff = 18 - (10 + decimals);
+        uint256 decimalDiff = 18 - (10 + 8);
 
-        uint256 rate = cToken.exchangeRateCurrent();
+        uint256 rate = _cToken.exchangeRateCurrent();
 
         // Convert rate to get proper output
         return rate / 10**decimalDiff;

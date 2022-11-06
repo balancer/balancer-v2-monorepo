@@ -15,7 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./ICToken";
+import "./ICToken.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
@@ -38,23 +38,20 @@ contract CompoundLinearPoolRebalancer is LinearPoolRebalancer {
         // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Before we can
         // deposit however, we need to approve the wrapper in the underlying token.
         _mainToken.safeApprove(address(_wrappedToken), amount);
-        ICToken(address(_wrappedToken))._mint(amount);
+        ICToken(address(_wrappedToken)).mint(amount);
     }
 
     function _unwrapTokens(uint256 amount) internal override {
         // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Approvals are not necessary here
         // as the wrapped token is simply burnt.
-        ICToken(address(_wrappedToken))._redeem(amount);
+        ICToken(address(_wrappedToken)).redeem(amount);
     }
 
-    //TODO: Ask for help on this function
-    // Confused on this function
-    // dont think function is needed
-//    function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
-//        // staticToDynamic returns how many main tokens will be returned when unwrapping. Since there's fixed point
-//        // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure
-//        // the returned value will always be enough to get `wrappedAmount` when unwrapping. This might result in some
-//        // dust being left in the Rebalancer.
-//        return ICToken(address(_wrappedToken)).getTokenAmount(wrappedAmount);
-//    }
+    //TODO: Figure out this function
+    function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
+
+        uint256 numTokens = ICToken(address(_wrappedToken)).exchangeRateCurrent() * wrappedAmount;
+        return numTokens;
+
+    }
 }

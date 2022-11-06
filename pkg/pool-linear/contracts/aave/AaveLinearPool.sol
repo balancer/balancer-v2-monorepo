@@ -70,7 +70,6 @@ contract AaveLinearPool is LinearPool {
         // solhint-disable-next-line max-line-length
         // see: https://github.com/aave/protocol-v2/blob/ac58fea62bb8afee23f66197e8bce6d79ecda292/contracts/protocol/tokenization/StaticATokenLM.sol#L255-L257
         uint256 rate = _lendingPool.getReserveNormalizedIncome(address(getMainToken()));
-
         // This function returns a 18 decimal fixed point number, but `rate` has 27 decimals (i.e. a 'ray' value)
         // so we need to convert it.
         return rate / 10**9;

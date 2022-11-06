@@ -18,10 +18,9 @@ import "../compound/ICToken.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
-contract MockStaticAToken is TestToken, ICToken /*ILendingPool*/ {
-    // Change rate to be equal to a CToken rate
-    // uint256 private _rate = 1e27;
+contract MockCToken is TestToken, ICToken /*ILendingPool*/ {
     address private immutable _ASSET;
+    uint256 private _rate = 1e8;
 
     constructor(
         string memory name,
@@ -42,26 +41,28 @@ contract MockStaticAToken is TestToken, ICToken /*ILendingPool*/ {
 //        return ILendingPool(this);
 //    }
 
-//
-//    function getReserveNormalizedIncome(address) external view override returns (uint256) {
-//        return _rate;
-//    }
-//
-//    function setReserveNormalizedIncome(uint256 newRate) external {
-//        _rate = newRate;
-//    }
 
-    function _mint(
+    function exchangeRateCurrent() external view override returns (uint256) {
+        return _rate;
+    }
+
+    function setExchangeRateCurrent(uint256 newRate) external {
+        _rate = newRate;
+    }
+
+    function mint(
         uint256
-    ) external override returns (uint256) {
+    ) external pure override returns (uint256) {
         return 0;
     }
 
-    function _redeem(
+    function redeem(
         uint256
-    ) external override returns (uint256) {
+    ) external pure override returns (uint256) {
         return 0;
     }
+
+
 
 
 }
