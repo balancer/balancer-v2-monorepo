@@ -107,9 +107,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
-    // TODO(@jubeira): make adaptor and entrypoint immutable and set in the constructor.
-    IAuthorizerAdaptorEntrypoint private _authorizerAdaptorEntrypoint;
-    IAuthorizerAdaptor private _authorizerAdaptor;
+    IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
@@ -165,11 +164,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     constructor(
         address admin,
-        IAuthentication vault,
+        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
         uint256 rootTransferDelay
     ) {
         _setRoot(admin);
-        _vault = vault;
+
+        _vault = authorizerAdaptorEntrypoint.getVault();
+        _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
@@ -190,12 +192,6 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         SCHEDULE_DELAY_ACTION_ID = getActionId(TimelockAuthorizer.scheduleDelayChange.selector);
         _GENERAL_GRANT_ACTION_ID = generalGrantActionId;
         _GENERAL_REVOKE_ACTION_ID = generalRevokeActionId;
-    }
-
-    // TODO(@jubeira): remove this; send entrypoint in the constructor.
-    function setAdaptorEntrypoint(IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) external {
-        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
-        _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
     }
 
     /**
