@@ -64,7 +64,7 @@ describe('CompoundLinearPool', function () {
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
     pool = await LinearPool.deployedAt(event.args.pool);
-    console.log(pool);
+
   });
 
   describe('asset managers', () => {
@@ -86,8 +86,7 @@ describe('CompoundLinearPool', function () {
 
   describe('getWrappedTokenRate', () => {
     it('returns the expected value', async () => {
-
-      // 1e27 implies a 1:1 exchange rate between main and wrapped token
+      // 1e18 implies a 1:1 exchange rate between main and wrapped token
       console.log(`${pool.mainToken.symbol} decimals:${pool.mainToken.decimals}`);
       await mockLendingPool.setExchangeRateCurrent(bn(1e18));
       console.log(`wrapped token rate: ${await pool.getWrappedTokenRate()}`);

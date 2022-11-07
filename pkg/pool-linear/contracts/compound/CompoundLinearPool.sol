@@ -77,7 +77,7 @@ contract CompoundLinearPool is LinearPool {
         // Convert rate to get proper output
         // oneCTokenInUnderlying = exchangeRateCurrent / (1 * 10 ^ (18 + underlyingDecimals - cTokenDecimals))
         // All cTokens have 8 decimals
-        return rate / (1 * 10 ^ (18 + underlyingDecimals - 8));
+        return rate / (10**(18 + underlyingDecimals - 8));
     }
 
 }
