@@ -134,9 +134,11 @@ describe('AuthorizerAdaptorEntrypoint', () => {
         expect(value).to.be.eq(payableExpectedResult);
       });
 
-      it('rejects direct calls from the adaptor', async () => {
-        // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
-        await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      it('rejects direct calls on the adaptor', async () => {
+        // The authorizer will reject calls that are not initiated from the adaptor entrypoint.
+        await expect(
+          adaptor.connect(grantee).callStatic.performAction(payableTarget, payableCalldata, { value: payment })
+        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     });
 
@@ -150,10 +152,6 @@ describe('AuthorizerAdaptorEntrypoint', () => {
           'SENDER_NOT_ALLOWED'
         );
       });
-    });
-
-    it('rejects direct calls from the adaptor', async () => {
-      await expect(adaptor.connect(other).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
     });
 
     context('when caller is not authorized', () => {
