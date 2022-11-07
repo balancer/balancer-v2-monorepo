@@ -18,7 +18,7 @@ enum GaugeType {
 describe('GaugeRelativeWeightCap', () => {
   let vault: Vault;
   let gaugeController: Contract;
-  let entrypoint: Contract;
+  let adaptorEntrypoint: Contract;
   let admin: SignerWithAddress, other: SignerWithAddress;
   let BAL: Contract, token: Contract;
 
@@ -36,7 +36,7 @@ describe('GaugeRelativeWeightCap', () => {
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
     const adaptor = vault.authorizerAdaptor;
-    entrypoint = vault.authorizerAdaptorEntrypoint;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
@@ -66,7 +66,7 @@ describe('GaugeRelativeWeightCap', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const action = await actionId(entrypoint, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
+    const action = await actionId(adaptorEntrypoint, 'setRelativeWeightCap', liquidityGaugeImplementation.interface);
     await vault.grantPermissionsGlobally([action], admin);
   });
 
@@ -88,7 +88,7 @@ describe('GaugeRelativeWeightCap', () => {
     let gauge: Contract;
     async function setCap(relativeWeightCap: BigNumber): Promise<ContractTransaction> {
       const calldata = gauge.interface.encodeFunctionData('setRelativeWeightCap', [relativeWeightCap]);
-      return entrypoint.connect(admin).performAction(gauge.address, calldata);
+      return adaptorEntrypoint.connect(admin).performAction(gauge.address, calldata);
     }
 
     describe('gauge creation', () => {

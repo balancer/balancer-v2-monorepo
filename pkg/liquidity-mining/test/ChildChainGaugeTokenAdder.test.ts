@@ -16,7 +16,7 @@ import { ANY_ADDRESS, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpe
 
 describe('ChildChainGaugeTokenAdder', () => {
   let vault: Vault;
-  let entrypoint: Contract;
+  let adaptorEntrypoint: Contract;
 
   let token: Token;
   let balToken: Token;
@@ -35,7 +35,7 @@ describe('ChildChainGaugeTokenAdder', () => {
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
     const adaptor = vault.authorizerAdaptor;
-    entrypoint = vault.authorizerAdaptorEntrypoint;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
     token = await Token.create({ symbol: 'BPT' });
     balToken = await Token.create({ symbol: 'BAL' });
@@ -55,14 +55,14 @@ describe('ChildChainGaugeTokenAdder', () => {
     streamer = await deployedAt('ChildChainStreamer', await factory.getPoolStreamer(token.address));
 
     gaugeTokenAdder = await deploy('ChildChainGaugeTokenAdder', {
-      args: [factory.address, entrypoint.address],
+      args: [factory.address, adaptorEntrypoint.address],
     });
   });
 
   sharedBeforeEach('set up permissions', async () => {
     // Allow the ChildChainGaugeTokenAdder to call the relevant functions on the AuthorizerAdaptor.
-    const addRewardRole = await actionId(entrypoint, 'add_reward', streamer.interface);
-    const setRewardsRole = await actionId(entrypoint, 'set_rewards', gauge.interface);
+    const addRewardRole = await actionId(adaptorEntrypoint, 'add_reward', streamer.interface);
+    const setRewardsRole = await actionId(adaptorEntrypoint, 'set_rewards', gauge.interface);
 
     await vault.grantPermissionsGlobally([addRewardRole, setRewardsRole], gaugeTokenAdder);
   });
@@ -76,8 +76,8 @@ describe('ChildChainGaugeTokenAdder', () => {
       expect(await gaugeTokenAdder.getAuthorizer()).to.equal(vault.authorizer?.address);
     });
 
-    it('sets the entrypoint', async () => {
-      expect(await gaugeTokenAdder.getAuthorizerAdaptorEntrypoint()).to.be.eq(entrypoint.address);
+    it('sets the adaptorEntrypoint', async () => {
+      expect(await gaugeTokenAdder.getAuthorizerAdaptorEntrypoint()).to.be.eq(adaptorEntrypoint.address);
     });
 
     it('tracks authorizer changes in the vault', async () => {
@@ -164,10 +164,10 @@ describe('ChildChainGaugeTokenAdder', () => {
 
       context("when the gauge's streamer has been changed from the original", () => {
         sharedBeforeEach("change the gauge's streamer", async () => {
-          const addTokenToGaugeRole = await actionId(entrypoint, 'set_rewards', gauge.interface);
+          const addTokenToGaugeRole = await actionId(adaptorEntrypoint, 'set_rewards', gauge.interface);
           await vault.grantPermissionsGlobally([addTokenToGaugeRole], admin);
 
-          await entrypoint
+          await adaptorEntrypoint
             .connect(admin)
             .performAction(
               gauge.address,
