@@ -44,7 +44,6 @@ contract ChildChainGaugeTokenAdder is SingletonAuthentication {
 
     /**
      * @notice Returns the address of the Authorizer adaptor entrypoint contract.
-     * @return - address of the entrypoint.
      */
     function getAuthorizerAdaptorEntrypoint() external view returns (IAuthorizerAdaptorEntrypoint) {
         return _authorizerAdaptorEntrypoint;

@@ -15,7 +15,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
   let vault: Vault;
   let authorizer: Contract;
   let adaptor: Contract;
-  let entrypoint: Contract;
+  let adaptorEntrypoint: Contract;
   let paymentReceiver: Contract;
   let admin: SignerWithAddress, grantee: SignerWithAddress, other: SignerWithAddress;
 
@@ -23,11 +23,11 @@ describe('AuthorizerAdaptorEntrypoint', () => {
     [, admin, grantee, other] = await ethers.getSigners();
   });
 
-  sharedBeforeEach('deploy vault with entrypoint', async () => {
+  sharedBeforeEach('deploy vault with adaptorEntrypoint', async () => {
     vault = await Vault.create({ admin });
     authorizer = vault.authorizer;
     adaptor = vault.authorizerAdaptor;
-    entrypoint = vault.authorizerAdaptorEntrypoint;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
   });
 
   sharedBeforeEach('deploy mock to receive payments', async () => {
@@ -36,25 +36,25 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
   describe('constructor', () => {
     it('sets the vault address', async () => {
-      expect(await entrypoint.getVault()).to.be.eq(vault.address);
+      expect(await adaptorEntrypoint.getVault()).to.be.eq(vault.address);
     });
 
     it('sets the adaptor address', async () => {
-      expect(await entrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
+      expect(await adaptorEntrypoint.getAuthorizerAdaptor()).to.equal(adaptor.address);
     });
 
     it('uses the authorizer of the vault', async () => {
-      expect(await entrypoint.getAuthorizer()).to.equal(authorizer.address);
+      expect(await adaptorEntrypoint.getAuthorizer()).to.equal(authorizer.address);
     });
 
     it('returns the same action ID as the adaptor', async () => {
-      expect(await entrypoint.getActionId('0xaabbccdd')).to.equal(await adaptor.getActionId('0xaabbccdd'));
+      expect(await adaptorEntrypoint.getActionId('0xaabbccdd')).to.equal(await adaptor.getActionId('0xaabbccdd'));
     });
 
     it('tracks authorizer changes in the vault', async () => {
       await vault.setAuthorizer(other);
 
-      expect(await entrypoint.getAuthorizer()).to.equal(other.address);
+      expect(await adaptorEntrypoint.getAuthorizer()).to.equal(other.address);
     });
   });
 
@@ -88,27 +88,26 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     function itHandlesFunctionCallsCorrectly() {
       it('performs the expected function call', async () => {
-        const value = await entrypoint.connect(grantee).callStatic.performAction(target, calldata);
+        const value = await adaptorEntrypoint.connect(grantee).callStatic.performAction(target, calldata);
         expect(value).to.be.eq(expectedResult);
       });
 
       it('sends value to target contract correctly', async () => {
-        const value = await entrypoint
+        const value = await adaptorEntrypoint
           .connect(grantee)
           .callStatic.performAction(payableTarget, payableCalldata, { value: payment });
         expect(value).to.be.eq(payableExpectedResult);
       });
 
       it('rejects direct calls from the adaptor', async () => {
-        // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
+        // The authorizer will reject calls that are not initiated in the adaptor adaptorEntrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
     }
 
     context('when caller is authorized globally', () => {
       sharedBeforeEach('authorize caller globally', async () => {
-        await authorizer.connect(admin).grantPermissions([action], grantee.address, [ANY_ADDRESS]);
-        await authorizer.connect(admin).grantPermissions([payableAction], grantee.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).grantPermissions([action, payableAction], grantee.address, [ANY_ADDRESS, ANY_ADDRESS]);
       });
 
       itHandlesFunctionCallsCorrectly();
@@ -116,8 +115,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when caller is authorized locally on target', () => {
       sharedBeforeEach('authorize caller on target locally', async () => {
-        await authorizer.connect(admin).grantPermissions([action], grantee.address, [vault.address]);
-        await authorizer.connect(admin).grantPermissions([payableAction], grantee.address, [paymentReceiver.address]);
+        await authorizer.connect(admin).grantPermissions([action, payableAction], grantee.address, [vault.address, paymentReceiver.address]);
       });
 
       itHandlesFunctionCallsCorrectly();
@@ -129,7 +127,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       });
 
       it('reverts', async () => {
-        await expect(entrypoint.connect(grantee).performAction(target, calldata)).to.be.revertedWith(
+        await expect(adaptorEntrypoint.connect(grantee).performAction(target, calldata)).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
         );
       });
@@ -137,7 +135,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when caller is not authorized', () => {
       it('reverts', async () => {
-        await expect(entrypoint.connect(other).performAction(target, calldata)).to.be.revertedWith(
+        await expect(adaptorEntrypoint.connect(other).performAction(target, calldata)).to.be.revertedWith(
           'SENDER_NOT_ALLOWED'
         );
       });
@@ -145,7 +143,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when calldata is invalid', () => {
       it('reverts', async () => {
-        await expect(entrypoint.connect(other).performAction(target, '0x')).to.be.reverted;
+        await expect(adaptorEntrypoint.connect(other).performAction(target, '0x')).to.be.reverted;
       });
     });
   });
