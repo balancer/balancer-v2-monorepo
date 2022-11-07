@@ -81,10 +81,7 @@ describe('ChildChainGaugeTokenAdder', () => {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault.instance, 'setAuthorizer');
-      await vault.grantPermissionsGlobally([action], admin.address);
-
-      await vault.instance.connect(admin).setAuthorizer(ANY_ADDRESS);
+      await vault.setAuthorizer(ANY_ADDRESS);
 
       expect(await gaugeTokenAdder.getAuthorizer()).to.equal(ANY_ADDRESS);
     });
