@@ -43,14 +43,19 @@ contract ChildChainGaugeTokenAdder is SingletonAuthentication {
     }
 
     /**
-     * @notice Returns the address of the Authorizer adaptor contract.
+     * @notice Returns the address of the Authorizer adaptor entrypoint contract.
+     * @return - address of the entrypoint.
      */
-    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor) {
+    function getAuthorizerAdaptorEntrypoint() external view returns (IAuthorizerAdaptorEntrypoint) {
         return _authorizerAdaptorEntrypoint;
     }
 
     /**
      * @notice Adds a new token to a RewardsOnlyGauge.
+     * @dev This is a permissioned function.
+     * @param gauge - The gauge we are modifying
+     * @param rewardToken - The token to be added.
+     * @param distributor - The distributor for the rewards.
      */
     function addTokenToGauge(
         IRewardsOnlyGauge gauge,
