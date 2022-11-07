@@ -64,7 +64,9 @@ describe('L2GaugeCheckpointer', () => {
     );
 
     // Gauge adder & add factories to gauge adder.
-    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, ZERO_ADDRESS, adaptorEntrypoint.address] });
+    gaugeAdder = await deploy('GaugeAdder', {
+      args: [gaugeController.address, ZERO_ADDRESS, adaptorEntrypoint.address],
+    });
     const action = await actionId(gaugeAdder, 'addGaugeFactory');
     await vault.grantPermissionsGlobally([action], admin);
 
