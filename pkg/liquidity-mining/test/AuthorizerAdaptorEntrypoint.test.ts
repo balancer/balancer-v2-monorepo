@@ -12,7 +12,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 describe('AuthorizerAdaptorEntrypoint', () => {
-  let vault: Contract;
+  let vault: Vault;
   let authorizer: Contract;
   let adaptor: Contract;
   let entrypoint: Contract;
@@ -24,12 +24,10 @@ describe('AuthorizerAdaptorEntrypoint', () => {
   });
 
   sharedBeforeEach('deploy vault with entrypoint', async () => {
-    ({
-      instance: vault,
-      authorizer,
-      authorizerAdaptor: adaptor,
-      authorizerAdaptorEntrypoint: entrypoint,
-    } = await Vault.create({ admin }));
+    vault = await Vault.create({ admin });
+    authorizer = vault.authorizer;
+    adaptor = vault.authorizerAdaptor;
+    entrypoint = vault.authorizerAdaptorEntrypoint;
   });
 
   sharedBeforeEach('deploy mock to receive payments', async () => {
@@ -54,10 +52,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
     });
 
     it('tracks authorizer changes in the vault', async () => {
-      const action = await actionId(vault, 'setAuthorizer');
-      await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
-
-      await vault.connect(admin).setAuthorizer(other.address);
+      await vault.setAuthorizer(other);
 
       expect(await entrypoint.getAuthorizer()).to.equal(other.address);
     });
@@ -76,7 +71,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       target = vault.address;
       calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
 
-      expectedResult = defaultAbiCoder.encode(['address'], [await vault.getProtocolFeesCollector()]);
+      expectedResult = defaultAbiCoder.encode(['address'], [await vault.instance.getProtocolFeesCollector()]);
     });
 
     sharedBeforeEach('prepare payable action', async () => {
