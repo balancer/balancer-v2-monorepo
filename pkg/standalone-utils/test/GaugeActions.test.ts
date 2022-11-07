@@ -41,7 +41,6 @@ describe('GaugeActions', function () {
 
   sharedBeforeEach('deploy token mocks', async () => {
     vault = await Vault.create({ admin });
-    const adaptor = vault.authorizerAdaptor;
     entrypoint = vault.authorizerAdaptorEntrypoint;
 
     BAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
