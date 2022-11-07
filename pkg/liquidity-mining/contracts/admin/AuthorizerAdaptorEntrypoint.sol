@@ -62,11 +62,11 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
         return _adaptor;
     }
 
-    function _canPerform(
+    function canPerform(
         bytes32 actionId,
         address account,
         address where
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         return getAuthorizer().canPerform(actionId, account, where);
     }
 
@@ -93,20 +93,14 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
      * the selector corresponding to the function to be called)
      * @return The bytes encoded return value from the performed function call
      */
-    function performAction(address target, bytes calldata data)
-        external
-        payable
-        override
-        nonReentrant
-        returns (bytes memory)
-    {
+    function performAction(address target, bytes calldata data) external payable override returns (bytes memory) {
         // We want to check that the caller is authorized to call the function on the target rather than this function.
         // We must then pull the function selector from `data` rather than `msg.sig`.
         // Note that if `data` is less than 4 bytes long this will revert.
         bytes4 selector = data[0] | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
 
         // This call to `canPerform` will validate the actual action ID and sender in the authorizer.
-        _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
+        _require(canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
         // Contracts using the adaptor expect it to be the caller of the actions to perform, so we forward
         // the call to `performAction` to the adaptor instead of performing it directly.
