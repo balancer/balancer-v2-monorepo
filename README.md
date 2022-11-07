@@ -29,6 +29,10 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v2-liquidity-mining`](./pkg/liquidity-mining): contracts that compose the liquidity mining (veBAL) system.
 - [`v2-governance-scripts`](./pkg/governance-scripts): contracts that execute complex governance actions.
 
+## Pre-requisites
+
+The build & test instructions below should work out of the box with Node 14.x and Yarn 2.
+
 ## Clone
 
 This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
