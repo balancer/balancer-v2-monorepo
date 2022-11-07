@@ -371,7 +371,7 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // potentially allowing addresses to perform privilege escalations.
             //
             // To remedy this we force all calls to the authorizer adaptor be through a singleton entrypoint contract
-            // This contract correctly checks whether `account` can perform `actionId` on `where`  and forwards the call
+            // This contract correctly checks whether `account` can perform `actionId` on `where` and forwards the call
             // onto the authorizer adaptor to execute.
             // The authorizer must then reject calls to the authorizer adaptor which aren't made through the entrypoint.
             return account == address(_authorizerAdaptorEntrypoint);

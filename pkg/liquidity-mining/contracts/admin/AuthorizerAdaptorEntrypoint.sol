@@ -30,7 +30,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
  * to be called on the authorizer adaptor. This can be done by passing the function selector to the `getActionId`
  * function.
  */
-contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint, ReentrancyGuard {
+contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
     using Address for address;
 
     IAuthorizerAdaptor private immutable _adaptor;
