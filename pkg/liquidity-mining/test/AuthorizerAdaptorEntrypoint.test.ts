@@ -91,12 +91,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       );
     });
 
-    context('when caller is authorized globally', () => {
-      sharedBeforeEach('authorize caller globally', async () => {
-        await authorizer.connect(admin).grantPermissions([action], grantee.address, [ANY_ADDRESS]);
-        await authorizer.connect(admin).grantPermissions([payableAction], grantee.address, [ANY_ADDRESS]);
-      });
-
+    function itHandlesFunctionCallsCorrectly() {
       it('performs the expected function call', async () => {
         const value = await entrypoint.connect(grantee).callStatic.performAction(target, calldata);
         expect(value).to.be.eq(expectedResult);
@@ -113,6 +108,15 @@ describe('AuthorizerAdaptorEntrypoint', () => {
         // The authorizer will reject calls that are not initiated in the adaptor entrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
       });
+    }
+
+    context('when caller is authorized globally', () => {
+      sharedBeforeEach('authorize caller globally', async () => {
+        await authorizer.connect(admin).grantPermissions([action], grantee.address, [ANY_ADDRESS]);
+        await authorizer.connect(admin).grantPermissions([payableAction], grantee.address, [ANY_ADDRESS]);
+      });
+
+      itHandlesFunctionCallsCorrectly();
     });
 
     context('when caller is authorized locally on target', () => {
@@ -121,25 +125,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
         await authorizer.connect(admin).grantPermissions([payableAction], grantee.address, [paymentReceiver.address]);
       });
 
-      it('performs the expected function call', async () => {
-        const value = await entrypoint.connect(grantee).callStatic.performAction(target, calldata);
-
-        expect(value).to.be.eq(expectedResult);
-      });
-
-      it('sends value to target contract correctly', async () => {
-        const value = await entrypoint
-          .connect(grantee)
-          .callStatic.performAction(payableTarget, payableCalldata, { value: payment });
-        expect(value).to.be.eq(payableExpectedResult);
-      });
-
-      it('rejects direct calls on the adaptor', async () => {
-        // The authorizer will reject calls that are not initiated from the adaptor entrypoint.
-        await expect(
-          adaptor.connect(grantee).callStatic.performAction(payableTarget, payableCalldata, { value: payment })
-        ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-      });
+      itHandlesFunctionCallsCorrectly();
     });
 
     context('when caller is authorized locally on a different target', () => {
