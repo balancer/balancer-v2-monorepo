@@ -64,7 +64,6 @@ describe('CompoundLinearPool', function () {
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
     pool = await LinearPool.deployedAt(event.args.pool);
-
   });
 
   describe('asset managers', () => {
@@ -86,15 +85,17 @@ describe('CompoundLinearPool', function () {
 
   describe('getWrappedTokenRate', () => {
     it('returns the expected value', async () => {
-      // 1e18 implies a 1:1 exchange rate between main and wrapped token
-      console.log(`${pool.mainToken.symbol} decimals:${pool.mainToken.decimals}`);
-      await mockLendingPool.setExchangeRateCurrent(bn(1e18));
-      console.log(`wrapped token rate: ${await pool.getWrappedTokenRate()}`);
+      // Exchange rates are returned as uint256 scaled by 10**(18-8 + underlying token decimal)
+      // First test will be a 1:1 exchange rate (1*10^(18-8+decimal))
+      const scaledValue = 18 - 8 + pool.mainToken.decimals;
+
+      const mockExchange = bn(10 ** scaledValue);
+      await mockLendingPool.setExchangeRateCurrent(mockExchange);
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
       // We now double the reserve's normalised income to change the exchange rate to 2:1
-      await mockLendingPool.setExchangeRateCurrent(bn(2e18));
-      console.log(`wrapped token rate: ${await pool.getWrappedTokenRate()}`);
+      const doubleMockExchange = bn(2 * 10 ** scaledValue);
+      await mockLendingPool.setExchangeRateCurrent(doubleMockExchange);
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
     });
   });

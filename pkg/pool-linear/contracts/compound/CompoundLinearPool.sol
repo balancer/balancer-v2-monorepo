@@ -69,15 +69,19 @@ contract CompoundLinearPool is LinearPool {
         return assetManagers;
     }
 
-    // Returns a 18 decimal fixed point number
+    // This function needs to return a 18 decimal fixed point number in order to incorporate properly with the Linear Pool & Linear Pool Math Contracts
     function _getWrappedTokenRate() internal view override returns (uint256) {
-
+        // _cToken.exchangeRateCurrent() returns a integer that is scaled by 10 ** (18 - 8 + underlying token decimals)
         uint256 rate = _cToken.exchangeRateCurrent();
-        uint256 underlyingDecimals = ERC20(address(_mainToken)).decimals();
-        // Convert rate to get proper output
-        // oneCTokenInUnderlying = exchangeRateCurrent / (1 * 10 ^ (18 + underlyingDecimals - cTokenDecimals))
-        // All cTokens have 8 decimals
-        return rate / (10**(18 + underlyingDecimals - 8));
+
+        // We set our scaling factor to 10 due to the variability in size of our rate variable.
+        // Explanation on how we get 10 as our scale factor:
+        //// Wrapped token rate is the exchange rate for 1 wrappedToken in main tokens.
+        //// The underlying tokens available to be traded with compound have a range of decimals between 6 and 18
+        //// This causes a rate variable that can be anywhere from a 16 to a 28 decimal fixed point number
+        //// If you scale down any rate by the compound scaling factor minus the underlying token decimals you get a 18 decimal fixed point number
+        //// In all circumstances that ends up being 10 due to the cancellation of the underlying decimals in the equation
+        return rate / 10**10;
     }
 
 }

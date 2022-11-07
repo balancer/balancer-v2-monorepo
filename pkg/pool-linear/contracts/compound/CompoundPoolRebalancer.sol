@@ -47,7 +47,6 @@ contract CompoundLinearPoolRebalancer is LinearPoolRebalancer {
         ICToken(address(_wrappedToken)).redeem(amount);
     }
 
-    //TODO: Figure out this function
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
 
         uint256 numTokens = ICToken(address(_wrappedToken)).exchangeRateCurrent() * wrappedAmount;
