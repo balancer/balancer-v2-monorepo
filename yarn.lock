@@ -220,8 +220,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -256,8 +256,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -314,8 +314,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -351,8 +351,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -399,8 +399,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -441,8 +441,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -483,8 +483,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -526,8 +526,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -567,8 +567,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -606,8 +606,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -648,8 +648,8 @@ __metadata:
     nodemon: ^2.0.20
     prettier: ^2.7.1
     prettier-plugin-solidity: v1.0.0-alpha.59
-    solhint: ^3.3.7
-    solhint-plugin-prettier: ^0.0.5
+    solhint: ^3.2.0
+    solhint-plugin-prettier: ^0.0.4
     ts-node: ^10.9.1
     typescript: ^4.0.2
   languageName: unknown
@@ -12447,19 +12447,19 @@ resolve@^1.22.1:
   languageName: node
   linkType: hard
 
-"solhint-plugin-prettier@npm:^0.0.5":
-  version: 0.0.5
-  resolution: "solhint-plugin-prettier@npm:0.0.5"
+"solhint-plugin-prettier@npm:^0.0.4":
+  version: 0.0.4
+  resolution: "solhint-plugin-prettier@npm:0.0.4"
   dependencies:
     prettier-linter-helpers: ^1.0.0
   peerDependencies:
-    prettier: ^1.15.0 || ^2.0.0
+    prettier: ^1.15.0
     prettier-plugin-solidity: ^1.0.0-alpha.14
-  checksum: c00c99c87df8fe30714031eb31187c862ac6dbf9027a7d809db9b5f5faa1f514f3d6b4f75e961a094a90ded411fcc6d1dc025a360dd9b0d86b89b0c639aca430
+  checksum: 09c862fe9a2bf40817a648904306a8cf94ae58e64af1b29744352f8ef24398a33ef19ec65e94a6705cc745904275f0eaa8f2677004062d86c906f172edcd0dce
   languageName: node
   linkType: hard
 
-"solhint@npm:^3.3.7":
+"solhint@npm:^3.2.0":
   version: 3.3.7
   resolution: "solhint@npm:3.3.7"
   dependencies:
