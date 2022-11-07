@@ -1,7 +1,8 @@
 import { Contract } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { decimal, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
+import Decimal from 'decimal.js';
 
 describe('FixedPoint', () => {
   let lib: Contract;
@@ -20,8 +21,8 @@ describe('FixedPoint', () => {
     ...valuesPow4,
     8382392893832.1,
     38859321075205.1,
-    848205610278492.2383,
-    371328129389320282.3783289,
+    decimal('848205610278492.2383'),
+    decimal('371328129389320282.3783289'),
   ];
 
   const valuesPow1 = [
@@ -29,24 +30,24 @@ describe('FixedPoint', () => {
     1.7e-15,
     1.7e-11,
     ...valuesPow2,
-    701847104729761867823532.139,
-    175915239864219235419349070.947,
+    decimal('701847104729761867823532.139'),
+    decimal('175915239864219235419349070.947'),
   ];
 
   sharedBeforeEach('deploy lib', async () => {
     lib = await deploy('FixedPointMock', { args: [] });
   });
 
-  const checkPow = async (x: number, pow: number) => {
-    const result = fp(x ** pow);
+  const checkPow = async (x: Decimal, pow: number) => {
+    const result = fp(x.pow(pow));
     expectEqualWithError(await lib.powDown(fp(x), fp(pow)), result, EXPECTED_RELATIVE_ERROR);
     expectEqualWithError(await lib.powUp(fp(x), fp(pow)), result, EXPECTED_RELATIVE_ERROR);
   };
 
-  const checkPows = async (pow: number, values: number[]) => {
+  const checkPows = async (pow: number, values: (Decimal | number)[]) => {
     for (const value of values) {
       it(`handles ${value}`, async () => {
-        await checkPow(value, pow);
+        await checkPow(decimal(value), pow);
       });
     }
   };
