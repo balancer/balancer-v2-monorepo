@@ -16,7 +16,6 @@ import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBal
 
 describe('ChildChainStreamer', () => {
   let vault: Vault;
-  let adaptor: Contract;
   let entrypoint: Contract;
 
   let token: Token;
@@ -33,7 +32,7 @@ describe('ChildChainStreamer', () => {
 
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
-    adaptor = vault.authorizerAdaptor;
+    const adaptor = vault.authorizerAdaptor;
     entrypoint = vault.authorizerAdaptorEntrypoint;
 
     token = await Token.create({ symbol: 'BPT' });
@@ -57,8 +56,7 @@ describe('ChildChainStreamer', () => {
   describe('remove_reward', () => {
     sharedBeforeEach('send tokens to streamer', async () => {
       await balToken.mint(streamer, 100);
-
-      const removeRewardRole = await actionId(adaptor, 'remove_reward', streamer.interface);
+      const removeRewardRole = await actionId(entrypoint, 'remove_reward', streamer.interface);
       await vault.grantPermissionsGlobally([removeRewardRole], admin);
     });
 
@@ -87,7 +85,7 @@ describe('ChildChainStreamer', () => {
     const rewardAmount = parseFixed('1', 18);
 
     sharedBeforeEach('set up distributor on streamer', async () => {
-      const setDistributorActionId = await actionId(adaptor, 'set_reward_distributor', streamer.interface);
+      const setDistributorActionId = await actionId(entrypoint, 'set_reward_distributor', streamer.interface);
       await vault.grantPermissionsGlobally([setDistributorActionId], admin);
 
       const calldata = streamer.interface.encodeFunctionData('set_reward_distributor', [

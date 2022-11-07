@@ -17,7 +17,6 @@ describe('ChildChainGaugeRewardHelper', () => {
   const rewardAmount = parseFixed('1', 18);
 
   let vault: Vault;
-  let adaptor: Contract;
   let entrypoint: Contract;
 
   let balToken: Token;
@@ -41,7 +40,7 @@ describe('ChildChainGaugeRewardHelper', () => {
 
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
-    adaptor = vault.authorizerAdaptor;
+    const adaptor = vault.authorizerAdaptor;
     entrypoint = vault.authorizerAdaptorEntrypoint;
 
     tokens = await TokenList.create([{ symbol: 'BPT' }, { symbol: 'BPT2' }]);
@@ -80,7 +79,7 @@ describe('ChildChainGaugeRewardHelper', () => {
   });
 
   sharedBeforeEach('set up distributor on streamer', async () => {
-    const setDistributorActionId = await actionId(adaptor, 'set_reward_distributor', streamerOne.interface);
+    const setDistributorActionId = await actionId(entrypoint, 'set_reward_distributor', streamerOne.interface);
     await vault.grantPermissionsGlobally([setDistributorActionId], admin);
 
     const calldata = streamerOne.interface.encodeFunctionData('set_reward_distributor', [

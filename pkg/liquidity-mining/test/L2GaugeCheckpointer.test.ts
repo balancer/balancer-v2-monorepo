@@ -15,7 +15,6 @@ import { range } from 'lodash';
 
 describe('L2GaugeCheckpointer', () => {
   let vault: Vault;
-  let adaptor: Contract;
   let entrypoint: Contract;
   let gaugeController: Contract;
   let gaugeAdder: Contract;
@@ -46,7 +45,7 @@ describe('L2GaugeCheckpointer', () => {
   before('deploy dependencies: gauge controller and gauge factories', async () => {
     // Basics: vault, authorizer adaptor and gauge controller.
     vault = await Vault.create({ admin });
-    adaptor = vault.authorizerAdaptor;
+    const adaptor = vault.authorizerAdaptor;
     entrypoint = vault.authorizerAdaptorEntrypoint;
 
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });

@@ -26,7 +26,7 @@ describe('GaugeActions', function () {
   let relayer: Contract, relayerLibrary: Contract;
   let admin: SignerWithAddress, userSender: SignerWithAddress, other: SignerWithAddress;
 
-  let adaptor: Contract, gaugeController: Contract, balMinter: Contract;
+  let gaugeController: Contract, balMinter: Contract;
   let entrypoint: Contract;
   let BAL: Contract, veBAL: Contract, rewardToken: Contract, lpToken: Contract;
 
@@ -41,7 +41,7 @@ describe('GaugeActions', function () {
 
   sharedBeforeEach('deploy token mocks', async () => {
     vault = await Vault.create({ admin });
-    adaptor = vault.authorizerAdaptor;
+    const adaptor = vault.authorizerAdaptor;
     entrypoint = vault.authorizerAdaptorEntrypoint;
 
     BAL = await deploy('v2-liquidity-mining/TestBalancerToken', {
@@ -64,6 +64,7 @@ describe('GaugeActions', function () {
   });
 
   sharedBeforeEach('set up relayer', async () => {
+    const adaptor = vault.authorizerAdaptor;
     gaugeController = await deploy('v2-liquidity-mining/MockGaugeController', {
       args: [veBAL.address, adaptor.address],
     });
@@ -96,6 +97,7 @@ describe('GaugeActions', function () {
   });
 
   sharedBeforeEach('set up liquidity gauge factory', async () => {
+    const adaptor = vault.authorizerAdaptor;
     const veBalDelegation = await deploy('v2-liquidity-mining/MockVeDelegation');
 
     const veBalDelegationProxy = await deploy('v2-liquidity-mining/VotingEscrowDelegationProxy', {
@@ -111,6 +113,7 @@ describe('GaugeActions', function () {
   });
 
   sharedBeforeEach('set up child chain liquiidity gauge factory', async () => {
+    const adaptor = vault.authorizerAdaptor;
     const rewardsOnlyGaugeImplementation = await deploy('v2-liquidity-mining/RewardsOnlyGauge', {
       args: [BAL.address, vault.address, adaptor.address],
     });
@@ -214,7 +217,7 @@ describe('GaugeActions', function () {
 
     describe('gaugeClaimRewards', () => {
       sharedBeforeEach('setup and deposit reward tokens in gauge', async () => {
-        const action = await actionId(adaptor, 'add_reward', gauge.interface);
+        const action = await actionId(entrypoint, 'add_reward', gauge.interface);
         await vault.grantPermissionsGlobally([action], admin);
 
         const rewardAmount = fp(500);

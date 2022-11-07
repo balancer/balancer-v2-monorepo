@@ -26,7 +26,6 @@ describe('GaugeAdder', () => {
   let gaugeController: Contract;
   let gaugeImplementation: Contract;
   let gaugeFactory: Contract;
-  let adaptor: Contract;
   let entrypoint: Contract;
   let gaugeAdder: Contract;
 
@@ -38,7 +37,7 @@ describe('GaugeAdder', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
-    adaptor = vault.authorizerAdaptor;
+    const adaptor = vault.authorizerAdaptor;
     entrypoint = vault.authorizerAdaptorEntrypoint;
 
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
@@ -55,7 +54,7 @@ describe('GaugeAdder', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const action = await actionId(adaptor, 'add_gauge', gaugeController.interface);
+    const action = await actionId(entrypoint, 'add_gauge', gaugeController.interface);
     await vault.grantPermissionsGlobally([action], gaugeAdder);
   });
 
