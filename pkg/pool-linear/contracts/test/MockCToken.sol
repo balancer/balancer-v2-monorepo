@@ -36,12 +36,6 @@ contract MockCToken is TestToken, ICToken /*ILendingPool*/ {
         return _ASSET;
     }
 
-    // solhint-disable-next-line func-name-mixedcase
-//    function LENDING_POOL() external view override returns (ILendingPool) {
-//        return ILendingPool(this);
-//    }
-
-
     function exchangeRateCurrent() external view override returns (uint256) {
         return _rate;
     }

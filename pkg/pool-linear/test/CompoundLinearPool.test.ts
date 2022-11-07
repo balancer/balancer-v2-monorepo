@@ -29,15 +29,14 @@ describe('CompoundLinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    mainToken = await Token.create('USDC');
+    mainToken = await Token.create('WBTC');
     const wrappedTokenInstance = await deploy('MockCToken', {
-      args: ['cUSDC', 'cUSDC', 8, mainToken.address],
+      args: ['cWBTC', 'cWBTC', 8, mainToken.address],
     });
 
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
     tokens = new TokenList([mainToken, wrappedToken]).sort();
     mockLendingPool = wrappedTokenInstance;
-    console.log(`Mock Lending Pool ${mockLendingPool}`);
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
   });
 
@@ -82,6 +81,22 @@ describe('CompoundLinearPool', function () {
       const poolId = await pool.getPoolId();
       const { assetManager } = await vault.instance.getPoolTokenInfo(poolId, pool.address);
       expect(assetManager).to.equal(ZERO_ADDRESS);
+    });
+  });
+
+  describe('getWrappedTokenRate', () => {
+    it('returns the expected value', async () => {
+
+      // 1e27 implies a 1:1 exchange rate between main and wrapped token
+      console.log(`${pool.mainToken.symbol} decimals:${pool.mainToken.decimals}`);
+      await mockLendingPool.setExchangeRateCurrent(bn(1e18));
+      console.log(`wrapped token rate: ${await pool.getWrappedTokenRate()}`);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
+
+      // We now double the reserve's normalised income to change the exchange rate to 2:1
+      await mockLendingPool.setExchangeRateCurrent(bn(2e18));
+      console.log(`wrapped token rate: ${await pool.getWrappedTokenRate()}`);
+      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
     });
   });
 
