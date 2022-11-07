@@ -31,7 +31,7 @@ Active development occurs in this repository, which means some contracts in it m
 
 ## Pre-requisites
 
-The build & test instructions below should work out of the box with Node 14.x and Yarn 2. (Please note that it needs Node 14 specifically, and will NOT work with Node 16 or higher.)
+The build & test instructions below should work out of the box with Node 14.x. (Please note that it needs Node 14 specifically, and will NOT work with Node 16 or higher.)
 
 ## Clone
 
