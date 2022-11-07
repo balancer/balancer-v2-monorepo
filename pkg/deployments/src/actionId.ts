@@ -82,9 +82,8 @@ export function checkActionIdUniqueness(network: string): void {
   const duplicateActionIdsMapping = getDuplicateActionIds(actionIdFileContents);
 
   const expectedCollisionsFilePath = path.join(actionIdsDir, 'expected-collisions.json');
-  const expectedDuplicateActionIdsMapping = safeReadJsonFile<Record<string, ContractActionIdData>>(
-    expectedCollisionsFilePath
-  );
+  const expectedDuplicateActionIdsMapping =
+    safeReadJsonFile<Record<string, ContractActionIdData>>(expectedCollisionsFilePath);
 
   if (JSON.stringify(duplicateActionIdsMapping) === JSON.stringify(expectedDuplicateActionIdsMapping)) {
     logger.success(`Verified that no contracts unexpectedly share action IDs`);
