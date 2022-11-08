@@ -34,7 +34,7 @@ describe('TimelockAuthorizer', () => {
 
   const MIN_DELAY = 5 * DAY;
 
-  sharedBeforeEach('real authorizer (with entrypoint)', async () => {
+  sharedBeforeEach('deploy authorizer', async () => {
     let authorizerContract: Contract;
 
     ({ instance: vault, authorizer: authorizerContract } = await Vault.create({ admin: root }));
