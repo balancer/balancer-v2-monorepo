@@ -7,6 +7,7 @@
 - Deployed `ProtocolFeeSplitter` to Mainnet.
 - Deployed `AuthorizerAdaptorEntrypoint` to Mainnet.
 - Deployed `TimelockAuthorizer` to Mainnet.
+- Deployed `L2GaugeCheckpointer` to Mainnet.
 
 ## 3.0.0 (2022-10-25)
 

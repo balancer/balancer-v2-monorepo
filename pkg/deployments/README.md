@@ -104,6 +104,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol Fee Splitter                                   | [`20221027-fee-splitter`](./tasks/20221027-fee-splitter)                                             |
 | Authorizer Adaptor entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
 | Timelock Authorizer, governance contract                | [`20221111-timelock-authorizer`](./tasks/20221111-timelock-authorizer)                               |
+| L2 Gauge Checkpointer                                   | [`20221111-l2-gauge-checkpointer`](./tasks/20221111-l2-gauge-checkpointer)                           |
 
 ## Scripts
 
