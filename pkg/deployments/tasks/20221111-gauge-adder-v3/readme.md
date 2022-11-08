@@ -7,4 +7,4 @@ Authorizer Adapter Entrypoint.
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [`GaugeAdder` ABI](./abi/GaugeAdder.json)
-- [Previous `GaugeAdder` deployment](deprecated/20220628-gauge-adder-v2/)
+- [Previous `GaugeAdder` deployment](../deprecated/20220628-gauge-adder-v2/)
