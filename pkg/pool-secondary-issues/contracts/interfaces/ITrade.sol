@@ -3,6 +3,9 @@
 
 pragma solidity 0.7.1;
 pragma experimental ABIEncoderV2;
+
+import "./IOrder.sol";
+
 interface ITrade {
 
     /*enum DataType{ Bid, Offer, Trade, OpeningPrice }
@@ -18,8 +21,8 @@ interface ITrade {
         uint256 price;
         uint256 askprice;
         address currency;
-        bytes32 order;
-        bytes32 stype;
+        IOrder.Order order;
+        IOrder.OrderType stype;
         uint256 qty;
         uint dt;
     }

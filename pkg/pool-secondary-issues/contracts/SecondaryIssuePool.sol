@@ -21,7 +21,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 
-
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     using Math for uint256;
     using FixedPoint for uint256;
@@ -43,12 +42,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     address payable private balancerManager;
 
     struct Params {
-        bytes32 trade;
+        OrderType trade;
         uint256 price;
     }
 
-    //security trading status
-    bool status = true;
+    //counter for block timestamp nonce for creating unique order references
+    uint256 private previousTs = 0;
 
     //order references
     bytes32[] private orderRefs;
@@ -104,7 +103,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     //mapping order ref to trade reference
     mapping(bytes32 => bytes32) private tradeRefs;
 
-    event tradeReport(
+    event TradeReport(
         address indexed security,
         address party,
         address counterparty,
@@ -116,7 +115,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256 executionDate
     );
 
-    event bestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
+    event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
     event Offer(address indexed security, uint256 secondaryOffer);
 
@@ -166,11 +165,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     }
 
     function getSecurity() external view returns (address) {
-        return address(_security);
+        return _security;
     }
 
     function getCurrency() external view returns (address) {
-        return address(_currency);
+        return _currency;
     }
 
     function getSecurityOffered() external view returns (uint256) {
@@ -179,7 +178,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
 
     function initialize() external {
         bytes32 poolId = getPoolId();
-        (IERC20[] memory tokens, , ) = getVault().getPoolTokens(poolId);
+        IVault vault = getVault();
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
 
         uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
@@ -190,7 +190,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             userData: "",
             fromInternalBalance: false
         });
-        getVault().joinPool(getPoolId(), address(this), address(this), request);
+        vault.joinPool(getPoolId(), address(this), address(this), request);
         emit Offer(_security, _MAX_TOKEN_BALANCE);
     }
 
@@ -201,12 +201,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256 indexOut
     ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
         uint256[] memory scalingFactors = _scalingFactors();
-        bytes32 userData = string(request.userData).stringToBytes32();
-        uint256 tradeType_length = userData.substring(0,1).stringToUint();
+        
+        uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
+        bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
 
         Params memory params = Params({
-            trade: userData.substring(1, tradeType_length + 1).stringToBytes32(),
-            price: userData.substring(tradeType_length, request.userData.length).stringToUint()
+            trade: otype=="Market" ? OrderType.Market:(otype=="Limit" ? OrderType.Limit : OrderType.Stop),
+            price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
         });
 
         uint256 amount = 0;
@@ -215,15 +216,15 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             request.amount = _upscale(request.amount, scalingFactors[indexIn]);
             if (request.tokenOut == IERC20(_currency)) {
-                (price, amount) = newOrder(request, params, "Sell", balances);
-                if (params.trade == "Market") 
+                (price, amount) = newOrder(request, params, Order.Sell, balances);
+                if (params.trade == OrderType.Market) 
                 return _downscaleDown(price, scalingFactors[indexOut]);
             } 
             else if (request.tokenOut == IERC20(_security)) {
                 uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
                 request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-                (price, amount) = newOrder(request, params, "Buy", balances);
-                if (params.trade == "Market") 
+                (price, amount) = newOrder(request, params, Order.Buy, balances);
+                if (params.trade == OrderType.Market) 
                 return _downscaleDown(amount, scalingFactors[indexOut]);
             }
         } 
@@ -232,12 +233,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             if (request.tokenIn == IERC20(_currency)) {
                 uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
                 request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-                (price, amount) = newOrder(request, params, "Buy", balances);
-                if (params.trade == "Market") 
+                (price, amount) = newOrder(request, params, Order.Buy, balances);
+                if (params.trade == OrderType.Market) 
                 return _downscaleDown(amount, scalingFactors[indexOut]);
             } else if (request.tokenIn == IERC20(_security)) {
-                (price, amount) = newOrder(request, params, "Sell", balances);
-                if (params.trade == "Market") 
+                (price, amount) = newOrder(request, params, Order.Sell, balances);
+                if (params.trade == OrderType.Market) 
                 return _downscaleDown(price, scalingFactors[indexOut]);
             }
         }
@@ -317,44 +318,52 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function newOrder(
         SwapRequest memory _request,
         Params memory _params,
-        bytes32 _order,
+        Order _order,
         uint256[] memory _balances
     ) private returns (uint256, uint256) {
-        require(_params.trade == "Market" || _params.trade == "Limit" || _params.trade == "Stop");
-        require(_order == "Buy" || _order == "Sell");
-        bytes32 ref = keccak256(abi.encodePacked(_request.from, block.timestamp));
+        require(_params.trade == OrderType.Market || _params.trade == OrderType.Limit || _params.trade == OrderType.Stop);
+        require(_order == Order.Buy || _order == Order.Sell);
+        if(block.timestamp == previousTs)
+            previousTs = previousTs + 1;
+        else
+            previousTs = block.timestamp;
+        bytes32 ref = keccak256(abi.encodePacked(_request.from, previousTs));
         //fill up order details
-        orders[ref].party = _request.from;
-        orders[ref].price = _params.price;
-        orders[ref].orderno = orderRefs.length;
-        orders[ref].qty = _request.amount;
-        orders[ref].order = _order;
-        orders[ref].otype = _params.trade;
-        orders[ref].currencyBalance = _balances[_currencyIndex];
-        orders[ref].securityBalance = _balances[_securityIndex];
-        orders[ref].dt = block.timestamp;
+        IOrder.order memory nOrder = IOrder.order({
+            orderno: orderRefs.length,
+            otype: _params.trade,
+            order: _order,
+            status: OrderStatus.Open,
+            qty: _request.amount,
+            dt: previousTs,
+            party: _request.from,
+            price: _params.price,  
+            currencyBalance: _balances[_currencyIndex],  
+            securityBalance: _balances[_securityIndex]  
+        });
+        orders[ref] = nOrder;
         //fill up indexes
         orderIndex[ref] = orderRefs.length;
         orderRefs.push(ref);
         userOrderIndex[ref] = userOrderRefs[_request.from].length;
         userOrderRefs[_request.from].push(ref);
-        if (_params.trade == "Market") {
-            orders[ref].status = "Filled";
+        if (_params.trade == OrderType.Market) {
+            orders[ref].status = OrderStatus.Open;
             marketOrders[orders[ref].orderno] = ref;
             marketOrderbook = marketOrderbook + 1;
-            return matchOrders(ref, "market");
-        } else if (_params.trade == "Limit") {
-            orders[ref].status = "Open";
+            return matchOrders(ref, OrderType.Market);
+        } else if (_params.trade == OrderType.Limit) {
+            orders[ref].status = OrderStatus.Open;
             limitOrders[orders[ref].orderno] = ref;
             limitOrderbook = limitOrderbook + 1;
             checkLimitOrders(_params.price);
-        } else if (_params.trade == "Stop") {
-            orders[ref].status = "Open";
+        } else if (_params.trade == OrderType.Stop) {
+            orders[ref].status = OrderStatus.Open;
             stopOrders[orders[ref].orderno] = ref;
             stopOrderbook = stopOrderbook + 1;
             checkStopOrders(_params.price);
         }
-        return (0, 0);
+        return(0,0);
     }
 
     function getOrderRef() external view override returns (bytes32[] memory) {
@@ -366,19 +375,18 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256 _price,
         uint256 _qty
     ) external override {
-        require(orders[ref].status == "Open");
-        if (orders[ref].party == msg.sender) {
-            orders[ref].price = _price;
-            orders[ref].qty = _qty;
-            orders[ref].dt = block.timestamp;
-            if (orders[ref].otype == "Limit") {
-                limitOrders[orders[ref].orderno] = ref;
-                checkLimitOrders(_price);
-            } else if (orders[ref].otype == "Stop") {
-                stopOrders[orders[ref].orderno] = ref;
-                checkStopOrders(_price);
-            }
-        }
+        require(orders[ref].status == OrderStatus.Open, "Order is already filled");
+        require(orders[ref].party == msg.sender, "Sender is not order creator"); 
+        orders[ref].price = _price;
+        orders[ref].qty = _qty;
+        orders[ref].dt = block.timestamp;
+        if (orders[ref].otype == OrderType.Limit) {
+            limitOrders[orders[ref].orderno] = ref;
+            checkLimitOrders(_price);
+        } else if (orders[ref].otype == OrderType.Stop) {
+            stopOrders[orders[ref].orderno] = ref;
+            checkStopOrders(_price);
+        }        
     }
 
     function cancelOrder(bytes32 ref) external override {
@@ -400,19 +408,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function checkLimitOrders(uint256 _priceFilled) private {
         bytes32 ref;
         for (uint256 i = 0; i < limitOrderbook; i++) {
-            if (orders[limitOrders[i]].order == "Buy" && orders[limitOrders[i]].price >= _priceFilled) {
+            if ((orders[limitOrders[i]].order == Order.Buy && orders[limitOrders[i]].price >= _priceFilled) ||
+                (orders[limitOrders[i]].order == Order.Sell && orders[limitOrders[i]].price <= _priceFilled)){
                 marketOrders[orders[limitOrders[i]].orderno] = limitOrders[i];
                 marketOrderbook = marketOrderbook + 1;
                 ref = limitOrders[i];
-                reorder(i, "limit");
-                matchOrders(ref, "limit");
-            } else if (orders[limitOrders[i]].order == "Sell" && orders[limitOrders[i]].price <= _priceFilled) {
-                marketOrders[orders[limitOrders[i]].orderno] = limitOrders[i];
-                marketOrderbook = marketOrderbook + 1;
-                ref = limitOrders[i];
-                reorder(i, "limit");
-                matchOrders(ref, "limit");
-            }
+                reorder(i, OrderType.Limit);
+                matchOrders(ref, OrderType.Limit);
+            } 
         }
     }
 
@@ -421,38 +424,39 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function checkStopOrders(uint256 _priceFilled) private {
         bytes32 ref;
         for (uint256 i = 0; i < stopOrderbook; i++) {
-            if (orders[stopOrders[i]].order == "Buy" && orders[stopOrders[i]].price <= _priceFilled) {
+            if ((orders[stopOrders[i]].order == Order.Buy && orders[stopOrders[i]].price <= _priceFilled) ||
+                (orders[stopOrders[i]].order == Order.Sell && orders[stopOrders[i]].price >= _priceFilled)){
                 marketOrders[orders[stopOrders[i]].orderno] = stopOrders[i];
                 marketOrderbook = marketOrderbook + 1;
                 ref = stopOrders[i];
-                reorder(i, "stop");
-                matchOrders(ref, "stop");
-            } else if (orders[stopOrders[i]].order == "Sell" && orders[stopOrders[i]].price >= _priceFilled) {
-                marketOrders[orders[stopOrders[i]].orderno] = stopOrders[i];
-                marketOrderbook = marketOrderbook + 1;
-                ref = stopOrders[i];
-                reorder(i, "stop");
-                matchOrders(ref, "stop");
-            }
+                reorder(i, OrderType.Stop);
+                matchOrders(ref, OrderType.Stop);
+            } 
         }
     }
 
-    function reorder(uint256 position, bytes32 list) private {
-        if (list == "market") {
+    function reorder(uint256 position, OrderType list) private {
+        if (list == OrderType.Market) {
             for (uint256 i = position; i < marketOrderbook; i++) {
-                if (i == marketOrderbook - 1) delete marketOrders[position];
+                if (i == marketOrderbook - 1){ 
+                    delete marketOrders[position];
+                }
                 else marketOrders[position] = marketOrders[position + 1];
             }
             marketOrderbook = marketOrderbook - 1;
-        } else if (list == "limit") {
+        } else if (list == OrderType.Limit) {
             for (uint256 i = position; i < limitOrderbook; i++) {
-                if (i == limitOrderbook - 1) delete limitOrders[position];
+                if (i == limitOrderbook - 1) {
+                    delete limitOrders[position];
+                }
                 else limitOrders[position] = limitOrders[position + 1];
             }
             limitOrderbook = limitOrderbook - 1;
-        } else if (list == "stop") {
+        } else if (list == OrderType.Stop) {
             for (uint256 i = position; i < stopOrderbook; i++) {
-                if (i == stopOrderbook - 1) delete stopOrders[position];
+                if (i == stopOrderbook - 1) {
+                    delete stopOrders[position];
+                }
                 else stopOrders[position] = stopOrders[position + 1];
             }
             stopOrderbook = stopOrderbook - 1;
@@ -461,16 +465,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
 
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at.
-    function matchOrders(bytes32 _ref, bytes32 _trade) private returns (uint256, uint256) {
+    function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
 
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
-                marketOrders[i] != _ref
-                // orders[marketOrders[i]].party != orders[_ref].party 
-                // orders[marketOrders[i]].status != "Filled"
+                marketOrders[i] != _ref &&
+                //orders[marketOrders[i]].party != orders[_ref].party && 
+                orders[marketOrders[i]].status != OrderStatus.Filled
             ) {
                 
-                if (orders[marketOrders[i]].order == "Buy" && orders[_ref].order == "Sell") {
+                if (orders[marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
                     if (orders[marketOrders[i]].price >= orders[_ref].price) {
                         if (orders[marketOrders[i]].price > bestBidPrice) {
                             bestUnfilledBid = bestBidPrice;
@@ -479,7 +483,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                             bidIndex = i;
                         }
                     }
-                } else if (orders[marketOrders[i]].order == "Sell" && orders[_ref].order == "Buy") {
+                } else if (orders[marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
                     if (orders[marketOrders[i]].price <= orders[_ref].price) {
                         if (orders[marketOrders[i]].price < bestOfferPrice || bestOfferPrice == 0) {
                             bestUnfilledOffer = bestOfferPrice;
@@ -491,14 +495,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }
         }
-        if (orders[_ref].order == "Sell") {
+        if (orders[_ref].order == Order.Sell) {
             if (bestBid != "") {
                 if (orders[bestBid].qty >= orders[_ref].qty) {
                     orders[bestBid].qty = orders[bestBid].qty - orders[_ref].qty;
                     uint256 qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
-                    orders[bestBid].status = "Filled";
-                    orders[_ref].status = "Filled";
+                    orders[bestBid].status = OrderStatus.Filled;
+                    orders[_ref].status = OrderStatus.Filled;
                     reportTrade(
                         _ref,
                         orders[_ref].party,
@@ -509,14 +513,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    reorder(bidIndex, "market");
-                    if (_trade == "market") return (orders[_ref].price, qty);
+                    reorder(bidIndex, OrderType.Market);
+                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[bestBid].qty;
                     uint256 qty = orders[bestBid].qty;
                     orders[bestBid].qty = 0;
-                    orders[bestBid].status = "PartlyFilled";
-                    orders[_ref].status = "PartlyFilled";
+                    orders[bestBid].status = OrderStatus.PartlyFilled;
+                    orders[_ref].status = OrderStatus.PartlyFilled;
                     reportTrade(
                         _ref,
                         orders[_ref].party,
@@ -527,23 +531,23 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    if (_trade == "market") return (orders[_ref].price, qty);
+                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
                 }
-                emit bestAvailableTrades(bestUnfilledBid, bestUnfilledOffer);
+                emit BestAvailableTrades(bestUnfilledBid, bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
-            return (0, 0);
-        } else if (orders[_ref].order == "Buy") {
+            return(0,0);
+        } else if (orders[_ref].order == Order.Buy) {
             if (bestOffer != "") {
                 if (orders[bestOffer].qty >= orders[_ref].qty) {
                     orders[bestOffer].qty = orders[bestOffer].qty - orders[_ref].qty;
                     uint256 qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
-                    orders[bestOffer].status = "Filled";
-                    orders[_ref].status = "Filled";
+                    orders[bestOffer].status = OrderStatus.Filled;
+                    orders[_ref].status = OrderStatus.Filled;
                     reportTrade(
                         bestOffer,
                         orders[bestOffer].party,
@@ -554,14 +558,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    reorder(bidIndex, "market");
-                    if (_trade == "market") return (orders[_ref].price, qty);
+                    reorder(bidIndex, OrderType.Market);
+                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[bestOffer].qty;
                     uint256 qty = orders[bestOffer].qty;
                     orders[bestOffer].qty = 0;
-                    orders[bestOffer].status = "PartlyFilled";
-                    orders[_ref].status = "PartlyFilled";
+                    orders[bestOffer].status = OrderStatus.PartlyFilled;
+                    orders[_ref].status = OrderStatus.PartlyFilled;
                     reportTrade(
                         bestOffer,
                         orders[bestOffer].party,
@@ -572,15 +576,15 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    if (_trade == "market") return (orders[_ref].price, qty);
+                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
                 }
-                emit bestAvailableTrades(bestUnfilledBid, bestUnfilledOffer);
+                emit BestAvailableTrades(bestUnfilledBid, bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
-            return (0, 0);
+            return(0,0);
         }
     }
 
@@ -591,13 +595,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         address _transferee,
         uint256 _price,
         uint256 _qty,
-        bytes32 _order,
-        bytes32 _type
+        Order _order,
+        OrderType _type
     ) private {
         uint256 _askprice = 0;
-        if (_order == "Buy") {
+        if (_order == Order.Buy) {
             _askprice = orders[_pregRef].price;
-        } else if (_order == "Sell") {
+        } else if (_order == Order.Sell) {
             _askprice = orders[_cpregRef].price;
         }
         bytes32 _tradeRef = keccak256(abi.encodePacked(_pregRef, _cpregRef));
@@ -616,7 +620,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             block.timestamp
         );
         uint256 _executionDt = block.timestamp;
-        emit tradeReport(
+        emit TradeReport(
             _security,
             _transferor,
             _transferee,
@@ -652,11 +656,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function getTrade(bytes32 ref) external view override returns (uint256 b, uint256 a) {
         uint256 bid = 0;
         uint256 ask = 0;
-        if (trades[tradeRefs[ref]].security == _security && trades[tradeRefs[ref]].order == "Buy") {
+        if (trades[tradeRefs[ref]].security == _security && trades[tradeRefs[ref]].order == Order.Buy) {
             bid = trades[tradeRefs[ref]].price;
             ask = trades[tradeRefs[ref]].askprice;
         }
-        if (trades[tradeRefs[ref]].security == _security && trades[tradeRefs[ref]].order == "Sell") {
+        if (trades[tradeRefs[ref]].security == _security && trades[tradeRefs[ref]].order == Order.Sell) {
             ask = trades[tradeRefs[ref]].price;
             bid = trades[tradeRefs[ref]].askprice;
         }
@@ -666,12 +670,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function revertTrade(
         bytes32 _orderRef,
         uint256 _qty,
-        bytes32 _order
+        Order _order
     ) external override {
-        require(_order == "Buy" || _order == "Sell");
         require(balancerManager == msg.sender);
+        require(_order == Order.Buy || _order == Order.Sell);
         orders[_orderRef].qty = orders[_orderRef].qty + _qty;
-        orders[_orderRef].status = "Open";
+        orders[_orderRef].status = OrderStatus.Open;
         orders[_orderRef].orderno = orderRefs.length;
         marketOrders[orders[_orderRef].orderno] = _orderRef;
         marketOrderbook = marketOrderbook + 1;
@@ -698,8 +702,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     ) external override {
         require(balancerManager == msg.sender);
         delete trades[tradeRef];
-        orders[partyRef].status = "Filled";
-        orders[counterpartyRef].status = "Filled";
+        orders[partyRef].status = OrderStatus.Filled;
+        orders[counterpartyRef].status = OrderStatus.Filled;
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {

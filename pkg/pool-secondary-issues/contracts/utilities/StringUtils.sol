@@ -27,13 +27,22 @@ library StringUtils { // Only relevant functions
         return (result); 
     }
 
-    function substring(bytes32 strBytes, uint startIndex, uint endIndex) internal pure returns (string memory) {
+    function substring(string memory str, uint startIndex, uint endIndex) internal pure returns (string memory) {
+        bytes memory strBytes = bytes(str);
         bytes memory result = new bytes(endIndex-startIndex);
         for(uint i = startIndex; i < endIndex; i++) {
             result[i-startIndex] = strBytes[i];
         }
         return string(result);
     }
+
+    /*function substring(bytes32 strBytes, uint startIndex, uint endIndex) internal pure returns (string memory) {
+        bytes memory result = new bytes(endIndex-startIndex);
+        for(uint i = startIndex; i < endIndex; i++) {
+            result[i-startIndex] = strBytes[i];
+        }
+        return string(result);
+    }*/
 
     function substringinbytes(bytes32 strBytes, uint startIndex, uint endIndex) internal pure returns (bytes32 res) {
         bytes memory result = new bytes(endIndex-startIndex);

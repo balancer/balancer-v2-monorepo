@@ -191,6 +191,7 @@ library Errors {
     uint256 internal constant FRACTIONAL_TARGET = 353;
     uint256 internal constant UNHANDLED_BY_PRIMARY_POOL = 354;
     uint256 internal constant UNHANDLED_BY_SECONDARY_POOL = 355;
+    uint256 internal constant DEFERRED_SWAP = 356;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;

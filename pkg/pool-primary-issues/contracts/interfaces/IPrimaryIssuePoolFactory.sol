@@ -6,7 +6,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import '@balancer-labs/v2-interfaces/contracts/vault/IVault.sol';
 interface IPrimaryIssuePoolFactory {
 
     struct FactoryPoolParams{
@@ -19,6 +18,7 @@ interface IPrimaryIssuePoolFactory {
         uint256 maxAmountsIn;
         uint256 swapFeePercentage;
         uint256 cutOffTime;
+        string issueDocs;
     }
 
     function create(
