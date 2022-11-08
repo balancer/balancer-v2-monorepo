@@ -22,11 +22,32 @@ As part of our development process, we frequently alter the source code of contr
 
 ## Creating Tasks
 
-A new task is created by placing a new directory named after the task ID in the `tasks`, and populating the `build-info` directory and writing appropiate `input.ts` and `index.ts` files. The `output`, `abi` and `bytecode` directories are automatically generated and populated.
+To create a new task, these are the recommended steps:
+- Create a new directory named after the task ID in the `tasks` directory
+- Add an entry in the README file with the new task
+- Write appropiate `input.ts` and `index.ts` files, which specify deployment arguments and steps respectively 
+- Populate `build-info` directory with compiled contracts data (see [Generating build info](#generating-build-info) section)
+- Generate `abi` and `bytecode` artifacts from build info files (see [Generating ABI and bytecode files](#generating-abi-and-bytecode-files) section)
 
-The build information should be generated on a clean commit, so that it can be verified by other parties. On the project directory, delete the `artifacts` directory and run `yarn hardhat compile` for a clean compilation. The file will be then be located at `artifacts/build-info`.
 
 Inputs and task instructions are plain TypeScript files that call appropriate functions - there's no DSL. The recommended way to write them is to copy the structure from the `input.ts` and `index.ts` files from a similar task, and then edit those as needed.
+The `output`, `abi` and `bytecode` directories will be automatically generated and populated.
+
+### Generating build info
+
+The build information should be generated on a clean commit, so that it can be verified by other parties. On the project directory, delete the `artifacts` directory and run `yarn hardhat compile` for a clean compilation. The file will then be located at `artifacts/build-info`, and it'll contain the data for all the contracts in the workspace.
+
+### Generating ABI and bytecode files
+
+To generate the artifacts from build info files:
+- Copy the generated build info `json` inside `<repo-root>/pkg/<workspace>/artifacts/build-info` to the new `<repo-root>/pkg/deployments/tasks/<task-id>/build-info` directory.
+- From the `deployments` workspace, run `extract-artifacts` task using the task ID as parameter. Optionally, the contract name and the target file can be specified if e.g. the contract name doesn't match the file name, or if the contract is present in more than one file with different compilation settings. For example:
+
+```
+yarn extract-artifacts --id 20221021-managed-pool --name ManagedPool --file ManagedPoolFactory
+```
+
+The `abi` and `bytecode` folders should have been populated with the created artifacts at this point.
 
 ### Vyper Compilation
 
@@ -81,9 +102,13 @@ This data is accessed via the [`local-networks-config`](https://www.npmjs.com/pa
       "url": "https://optimism.rpc.endpoint/myAPIKey",
       "verificationAPIKey": "optimism-etherscan-API-key"
     },
-    "kovan": {
-      "url": "https://kovan.rpc.endpoint/myAPIKey",
-      "verificationAPIKey": "kovan-etherscan-API-key"
+    "gnosis": {
+      "url": "https://gnosis.rpc.endpoint/myAPIKey",
+      "verificationAPIKey": "gnosis-etherscan-API-key"
+    },
+    "bsc": {
+      "url": "https://bsc.rpc.endpoint/myAPIKey",
+      "verificationAPIKey": "bsc-etherscan-API-key"
     },
     "goerli": {
       "url": "https://goerli.rpc.endpoint/myAPIKey",

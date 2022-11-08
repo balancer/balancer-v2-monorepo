@@ -14,7 +14,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./IAuthorizerAdaptor.sol";
+import "./IAuthorizerAdaptorEntrypoint.sol";
 import "./IGaugeController.sol";
 import "./ILiquidityGauge.sol";
 import "./ILiquidityGaugeFactory.sol";
@@ -26,9 +26,9 @@ interface IGaugeAdder is IAuthentication {
     event GaugeFactoryAdded(GaugeType indexed gaugeType, ILiquidityGaugeFactory gaugeFactory);
 
     /**
-     * @notice Returns the address of the Authorizer adaptor contract.
+     * @notice Returns the address of the Authorizer adaptor entrypoint contract.
      */
-    function getAuthorizerAdaptor() external view returns (IAuthorizerAdaptor);
+    function getAuthorizerAdaptorEntrypoint() external view returns (IAuthorizerAdaptorEntrypoint);
 
     /**
      * @notice Returns the address of the Gauge Controller

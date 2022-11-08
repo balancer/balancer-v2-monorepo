@@ -16,7 +16,7 @@ describe('GaugeAdder', () => {
   let gaugeController: Contract;
   let gaugeImplementation: Contract;
   let gaugeFactory: Contract;
-  let adaptor: Contract;
+  let adaptorEntrypoint: Contract;
   let gaugeAdder: Contract;
 
   let admin: SignerWithAddress, other: SignerWithAddress;
@@ -27,13 +27,16 @@ describe('GaugeAdder', () => {
 
   sharedBeforeEach('deploy authorizer', async () => {
     vault = await Vault.create({ admin });
-    adaptor = vault.authorizerAdaptor;
+    const adaptor = vault.authorizerAdaptor;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
     gaugeController = await deploy('MockGaugeController', { args: [ZERO_ADDRESS, adaptor.address] });
 
     gaugeImplementation = await deploy('MockLiquidityGauge');
     gaugeFactory = await deploy('MockLiquidityGaugeFactory', { args: [gaugeImplementation.address] });
-    gaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, ZERO_ADDRESS] });
+    gaugeAdder = await deploy('GaugeAdder', {
+      args: [gaugeController.address, ZERO_ADDRESS, adaptorEntrypoint.address],
+    });
 
     await gaugeController.add_type('LiquidityMiningCommittee', 0);
     await gaugeController.add_type('veBAL', 0);
@@ -41,7 +44,7 @@ describe('GaugeAdder', () => {
   });
 
   sharedBeforeEach('set up permissions', async () => {
-    const action = await actionId(adaptor, 'add_gauge', gaugeController.interface);
+    const action = await actionId(adaptorEntrypoint, 'add_gauge', gaugeController.interface);
     await vault.grantPermissionsGlobally([action], gaugeAdder);
   });
 
@@ -196,7 +199,9 @@ describe('GaugeAdder', () => {
           });
 
           sharedBeforeEach('add gauge factory to new GaugeAdder', async () => {
-            newGaugeAdder = await deploy('GaugeAdder', { args: [gaugeController.address, gaugeAdder.address] });
+            newGaugeAdder = await deploy('GaugeAdder', {
+              args: [gaugeController.address, gaugeAdder.address, adaptorEntrypoint.address],
+            });
 
             const addGaugeFactoryAction = await actionId(newGaugeAdder, 'addGaugeFactory');
             await vault.grantPermissionsGlobally([addGaugeFactoryAction], admin);
