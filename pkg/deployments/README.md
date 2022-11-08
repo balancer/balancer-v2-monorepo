@@ -103,6 +103,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
 | Protocol Fee Splitter                                   | [`20221027-fee-splitter`](./tasks/20221027-fee-splitter)                                             |
 | Authorizer Adaptor entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
+| Timelock Authorizer, governance contract                | [`20221111-timelock-authorizer`](./tasks/20221111-timelock-authorizer)                               |
 
 ## Scripts
 
