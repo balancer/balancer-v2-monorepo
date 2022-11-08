@@ -23,7 +23,11 @@ describe('BasePoolFactory', function () {
   });
 
   sharedBeforeEach(async () => {
-    ({ instance: vault, authorizer, protocolFeesProvider } = await Vault.create({
+    ({
+      instance: vault,
+      authorizer,
+      protocolFeesProvider,
+    } = await Vault.create({
       admin,
       pauseWindowDuration: MONTH,
       bufferPeriodDuration: MONTH,
