@@ -14,7 +14,7 @@
 
 pragma solidity ^0.7.0;
 
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptor.sol";
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeAdder.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IGaugeController.sol";
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IL2GaugeCheckpointer.sol";
@@ -35,14 +35,14 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(IGaugeAdder.GaugeType => EnumerableSet.AddressSet) private _gauges;
-    IAuthorizerAdaptor private immutable _authorizerAdaptor;
+    IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
     IGaugeController private immutable _gaugeController;
     IGaugeAdder private immutable _gaugeAdder;
 
-    constructor(IGaugeAdder gaugeAdder) {
+    constructor(IGaugeAdder gaugeAdder, IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint) {
         _gaugeAdder = gaugeAdder;
         _gaugeController = gaugeAdder.getGaugeController();
-        _authorizerAdaptor = gaugeAdder.getAuthorizerAdaptor();
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     }
 
     modifier withSupportedGaugeType(IGaugeAdder.GaugeType gaugeType) {
@@ -217,7 +217,7 @@ contract L2GaugeCheckpointer is IL2GaugeCheckpointer, ReentrancyGuard {
                 continue;
             }
 
-            _authorizerAdaptor.performAction{ value: costPerCheckpoint }(
+            _authorizerAdaptorEntrypoint.performAction{ value: costPerCheckpoint }(
                 gauge,
                 abi.encodeWithSelector(IStakelessGauge.checkpoint.selector)
             );
