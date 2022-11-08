@@ -15,6 +15,7 @@ import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('BasePool', function () {
   let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
@@ -32,8 +33,7 @@ describe('BasePool', function () {
   });
 
   sharedBeforeEach(async () => {
-    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 

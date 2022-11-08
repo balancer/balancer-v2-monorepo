@@ -204,4 +204,13 @@ contract MockVault is IPoolSwapStructs {
 
         emit PoolBalanceChanged(poolId, msg.sender, tokens, deltas, dueProtocolFeeAmounts);
     }
+
+    // Needed to support authorizer adaptor entrypoint
+    function getActionId(bytes4 selector) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes32(uint256(address(this))), selector));
+    }
+
+    function setAuthorizer(IAuthorizer newAuthorizer) external {
+        _authorizer = newAuthorizer;
+    }
 }

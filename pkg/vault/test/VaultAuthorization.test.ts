@@ -9,6 +9,7 @@ import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { ANY_ADDRESS, MAX_GAS_LIMIT, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { RelayerAuthorization } from '@balancer-labs/balancer-js';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('VaultAuthorization', function () {
   let authorizer: Contract, vault: Contract;
@@ -22,7 +23,8 @@ describe('VaultAuthorization', function () {
   });
 
   sharedBeforeEach('deploy authorizer', async () => {
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
+    const entrypoint = await deploy('MockAuthorizerAdaptorEntrypoint');
+    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, entrypoint.address, MONTH] });
   });
 
   async function deployVault(authorizer: string): Promise<Contract> {
@@ -243,10 +245,11 @@ describe('VaultAuthorization', function () {
     const BUFFER_PERIOD_DURATION = MONTH;
 
     sharedBeforeEach(async () => {
-      authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-      vault = await deploy('Vault', {
-        args: [authorizer.address, ZERO_ADDRESS, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
-      });
+      ({ instance: vault, authorizer } = await Vault.create({
+        admin,
+        pauseWindowDuration: PAUSE_WINDOW_DURATION,
+        bufferPeriodDuration: BUFFER_PERIOD_DURATION,
+      }));
     });
 
     context('when the sender has the permission to pause and unpause', () => {

@@ -454,7 +454,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         uint256,
         uint256
     ) internal pure override returns (uint256) {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onJoinPool(
@@ -462,7 +462,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onExitPool(
@@ -470,7 +470,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _doRecoveryModeExit(

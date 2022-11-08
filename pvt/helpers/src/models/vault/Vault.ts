@@ -19,6 +19,8 @@ export default class Vault {
   mocked: boolean;
   instance: Contract;
   authorizer: Contract;
+  authorizerAdaptor: Contract;
+  authorizerAdaptorEntrypoint: Contract;
   protocolFeesProvider: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
@@ -35,12 +37,16 @@ export default class Vault {
     mocked: boolean,
     instance: Contract,
     authorizer: Contract,
+    authorizerAdaptor: Contract,
+    authorizerAdaptorEntrypoint: Contract,
     protocolFeesProvider: Contract,
     admin?: SignerWithAddress
   ) {
     this.mocked = mocked;
     this.instance = instance;
     this.authorizer = authorizer;
+    this.authorizerAdaptor = authorizerAdaptor;
+    this.authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     this.protocolFeesProvider = protocolFeesProvider;
     this.admin = admin;
   }
@@ -295,5 +301,15 @@ export default class Vault {
   // Returns asset deltas
   async queryBatchSwap(params: QueryBatchSwap): Promise<BigNumber[]> {
     return await this.instance.queryBatchSwap(params.kind, params.swaps, params.assets, params.funds);
+  }
+
+  async setAuthorizer(newAuthorizer: Account): Promise<ContractTransaction> {
+    // Needed to suppress lint warning. grantPermissionsGlobally will fail if there is no authorizer or admin
+    const admin = this.admin ?? ZERO_ADDRESS;
+
+    const action = await actionId(this.instance, 'setAuthorizer');
+    await this.grantPermissionsGlobally([action], admin);
+
+    return this.instance.connect(admin).setAuthorizer(TypesConverter.toAddress(newAuthorizer));
   }
 }

@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IAuthorizerAdaptorEntrypoint.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
@@ -106,6 +107,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     TimelockExecutor private immutable _executor;
     IAuthentication private immutable _vault;
+    IAuthorizerAdaptorEntrypoint private immutable _authorizerAdaptorEntrypoint;
+    IAuthorizerAdaptor private immutable _authorizerAdaptor;
     uint256 private immutable _rootTransferDelay;
 
     address private _root;
@@ -161,11 +164,14 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     constructor(
         address admin,
-        IAuthentication vault,
+        IAuthorizerAdaptorEntrypoint authorizerAdaptorEntrypoint,
         uint256 rootTransferDelay
     ) {
         _setRoot(admin);
-        _vault = vault;
+
+        _vault = authorizerAdaptorEntrypoint.getVault();
+        _authorizerAdaptor = authorizerAdaptorEntrypoint.getAuthorizerAdaptor();
+        _authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
         _executor = new TimelockExecutor();
         _rootTransferDelay = rootTransferDelay;
 
@@ -351,12 +357,26 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
 
     /**
      * @notice Returns true if `account` can perform action `actionId` in target `where`.
+     * @dev All authentications that require the authorizer adaptor must originate from the authorizer adaptor
+     * entrypoint: requests coming directly from the authorizer adaptor will be rejected.
      */
     function canPerform(
         bytes32 actionId,
         address account,
         address where
     ) public view override returns (bool) {
+        if (msg.sender == address(_authorizerAdaptor)) {
+            // We special case the situation where the caller is the authorizer adaptor.
+            // We do this as it doesn't properly calculate the value of `actionId` to pass to the authorizer,
+            // potentially allowing addresses to perform privilege escalations.
+            //
+            // To remedy this we force all calls to the authorizer adaptor be through a singleton entrypoint contract
+            // This contract correctly checks whether `account` can perform `actionId` on `where` and forwards the call
+            // onto the authorizer adaptor to execute.
+            // The authorizer must then reject calls to the authorizer adaptor which aren't made through the entrypoint.
+            return account == address(_authorizerAdaptorEntrypoint);
+        }
+
         return
             _delaysPerActionId[actionId] > 0 ? account == address(_executor) : hasPermission(actionId, account, where);
     }
