@@ -22,7 +22,7 @@ import "../LinearPool.sol";
 
 contract CompoundLinearPool is LinearPool {
     ICToken private immutable _cToken;
-    IERC20 private immutable _mainToken;
+    ERC20 private immutable _mainToken;
 
     struct ConstructorArgs {
         IVault vault;
@@ -55,7 +55,7 @@ contract CompoundLinearPool is LinearPool {
     {
 
         _cToken = ICToken(address(args.wrappedToken));
-        _mainToken = IERC20(address(args.mainToken));
+        _mainToken = ERC20(address(args.mainToken));
         //_underlyingDecimals = args.mainToken.decimals;
         _require(address(args.mainToken) == ICToken(address(args.wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);
     }
@@ -69,19 +69,33 @@ contract CompoundLinearPool is LinearPool {
         return assetManagers;
     }
 
+    // Wrapped token rate is the exchange rate for 1 wrappedToken in main tokens.
     // This function needs to return a 18 decimal fixed point number in order to incorporate properly with the Linear Pool & Linear Pool Math Contracts
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        // _cToken.exchangeRateCurrent() returns a integer that is scaled by 10 ** (18 - 8 + underlying token decimals)
         uint256 rate = _cToken.exchangeRateCurrent();
+        // _cToken.exchangeRateCurrent() returns a integer that is scaled by 10 ** (18 - 8 + underlying token decimals)
+        // The underlying tokens available to be traded with compound have a range of decimals between 6 and 18
+        // This causes a rate variable that can be anywhere from a 16 to a 28 decimal fixed point number
+        // We set this formula as our initial scaling value to begin the conversion to the return value
+        uint256 compoundScaling = SafeMath.add(10, ERC20(_mainToken).decimals());
+        // We subtract 18 from our compound scaling variable to determine how far we are off from a formula to will produce a 18 fixed point number
+        // SafeMath not needed because we are not dealing with external inputs
+        int256 finalScaling = int256(compoundScaling) - 18;
 
-        // We set our scaling factor to 10 due to the variability in size of our rate variable.
-        // Explanation on how we get 10 as our scale factor:
-        //// Wrapped token rate is the exchange rate for 1 wrappedToken in main tokens.
-        //// The underlying tokens available to be traded with compound have a range of decimals between 6 and 18
-        //// This causes a rate variable that can be anywhere from a 16 to a 28 decimal fixed point number
-        //// If you scale down any rate by the compound scaling factor minus the underlying token decimals you get a 18 decimal fixed point number
-        //// In all circumstances that ends up being 10 due to the cancellation of the underlying decimals in the equation
-        return rate / 10**10;
+        // Solidity does not allow us to calculate exponential value with a negative number so we must have two separate return statements
+        // The final scaling value must be converted to a uint256 due to our return requirements
+        // An absolute value function was created to handle this type conversion due to potential negative integers
+        if (finalScaling < 0) {
+            return rate * 10**abs(finalScaling);
+        } else {
+            return rate / 10**abs(finalScaling);
+        }
+
+    }
+
+    // Returns the absolute value of a int256 and converts to a uint256
+    function abs(int256 number) private pure returns (uint256) {
+        return number >=0 ? uint256(number) : uint256(-number);
     }
 
 }

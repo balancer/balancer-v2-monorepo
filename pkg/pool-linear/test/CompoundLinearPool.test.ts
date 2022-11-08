@@ -29,7 +29,7 @@ describe('CompoundLinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
-    mainToken = await Token.create('WBTC');
+    mainToken = await Token.create({ symbol: 'WBTC', name: 'WBTC', decimals: 8 });
     const wrappedTokenInstance = await deploy('MockCToken', {
       args: ['cWBTC', 'cWBTC', 8, mainToken.address],
     });
@@ -88,9 +88,10 @@ describe('CompoundLinearPool', function () {
       // Exchange rates are returned as uint256 scaled by 10**(18-8 + underlying token decimal)
       // First test will be a 1:1 exchange rate (1*10^(18-8+decimal))
       const scaledValue = 18 - 8 + pool.mainToken.decimals;
-
+      console.log(`underlying decimals: ${pool.mainToken.decimals}`);
       const mockExchange = bn(10 ** scaledValue);
       await mockLendingPool.setExchangeRateCurrent(mockExchange);
+      console.log(`Exchange rate: ${mockExchange}`);
       expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
       // We now double the reserve's normalised income to change the exchange rate to 2:1
