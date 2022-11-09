@@ -86,6 +86,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Child Chain Gauge Token Adder                           | [`20220527-child-chain-gauge-token-adder`](./tasks/20220527-child-chain-gauge-token-adder)           |
 | Preseeded Voting Escrow Delegation                      | [`20220530-preseeded-voting-escrow-delegation`](./tasks/20220530-preseeded-voting-escrow-delegation) |
 | Stable Pools V2 of up to 5 tokens                       | [`20220609-stable-pool-v2`](./tasks/20220609-stable-pool-v2)                                         |
+| Gauge Registrant V2, supporting new networks            | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
 | Distribution Scheduler for reward tokens on gauges      | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                    | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
 | Swap, join and exit simulations (queries)               | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
@@ -148,5 +149,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Polygon Root Gauges, for veBAL voting            | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
 | Fee Distributor for veBAL holders                | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
 | Optimism Root Gauges, for veBAL voting           | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
-| Gauge Registrant V2, supporting new networks     | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                        |
 | Batch Relayer V3                                 | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                         |
