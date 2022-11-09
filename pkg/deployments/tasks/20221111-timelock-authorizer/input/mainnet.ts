@@ -106,8 +106,8 @@ const protocolFeesPermissions: RoleData[] = flatten([
   ]),
 ]);
 
-// TODO(@jubeira): remove linter directive
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// TODO(@jubeira): Review veBAL permissions. Some of them are commented out so as the task does not revert with
+// UNEXPECTED_ROLE. Some permissions might not be necessary (e.g. GaugeAdder is going to be migrated anyways).
 const veBALPermissions: RoleData[] = flatten([
   createRoleData(BalancerMinter.output().BalancerMinter, BalancerTokenAdmin.output().BalancerTokenAdmin, [
     BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)'),
@@ -121,11 +121,11 @@ const veBALPermissions: RoleData[] = flatten([
     GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
     GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
   ]),
-  createRoleData(LM_MULTISIG, EVERYWHERE, [
-    LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'add_reward(address,address)'),
-    LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'set_reward_distributor(address,address)'),
-  ]),
-  createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'killGauge()')]),
+  // createRoleData(LM_MULTISIG, EVERYWHERE, [
+  //   LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'add_reward(address,address)'),
+  //   LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'set_reward_distributor(address,address)'),
+  // ]),
+  // createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'killGauge()')]),
   createRoleData(DAO_MULTISIG, SmartWalletChecker.output().SmartWalletChecker, [
     SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
     SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
@@ -172,8 +172,7 @@ export const roles: RoleData[] = flatten([
   ...lidoRelayerPermissions,
   ...gnosisProtocolRelayerPermissions,
   ...protocolFeesPermissions,
-  // TODO (@jubeira): check current veBAL permissions.
-  //   ...veBALPermissions,
+  ...veBALPermissions,
   ...feesAndTargetsPermissions,
 ]);
 
