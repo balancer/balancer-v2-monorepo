@@ -80,6 +80,12 @@ contract MockERC4626Token is TestToken, IERC4626 {
         return assets;
     }
 
+    function previewMint(uint256 shares) external override view returns (uint256) {
+        uint256 assetsInShareDecimals = shares.divDown(_rate);
+        uint256 assets = assetsInShareDecimals.mulDown(_scaleSharesToFP).divUp(_scaleAssetsToFP);
+        return assets;
+    }
+
     function _convertToAssets(uint256 shares) private view returns (uint256) {
         uint256 assetsInShareDecimals = shares.mulDown(_rate);
         uint256 assets = assetsInShareDecimals.mulDown(_scaleSharesToFP).divDown(_scaleAssetsToFP);

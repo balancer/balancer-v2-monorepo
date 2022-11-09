@@ -69,4 +69,12 @@ interface IERC4626 is IERC20 {
      *      of `assets` provided, in an ideal scenario where all the conditions are met.
      */
     function convertToShares(uint256 assets) external view returns (uint256 shares);
+
+    /**
+     * @dev Allows an on-chain or off-chain user to simulate the effects of their mint at the current block,
+     * given current on-chain conditions. MUST return as close to and no fewer than the exact amount of assets that
+     * would be deposited in a mint call in the same transaction. I.e. mint should return the same or fewer assets
+     * as previewMint if called in the same transaction.
+     */
+    function previewMint(uint256 shares) external view returns (uint256 assets);
 }

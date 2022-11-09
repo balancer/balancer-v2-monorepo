@@ -27,30 +27,33 @@ contract ERC4626LinearPool is LinearPool {
 
     uint256 private immutable _rateScaleFactor;
 
-    constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
-        IERC20 mainToken,
-        IERC4626 wrappedToken,
-        uint256 upperTarget,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
+    struct ConstructorArgs {
+        IVault vault;
+        string name;
+        string symbol;
+        IERC20 mainToken;
+        IERC20 wrappedToken;
+        address assetManager;
+        uint256 upperTarget;
+        uint256 swapFeePercentage;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+    }
+
+    constructor(ConstructorArgs memory args)
         LinearPool(
-            vault,
-            name,
-            symbol,
-            mainToken,
-            wrappedToken,
-            upperTarget,
-            new address[](2),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            args.vault,
+            args.name,
+            args.symbol,
+            args.mainToken,
+            args.wrappedToken,
+            args.upperTarget,
+            _toAssetManagerArray(args),
+            args.swapFeePercentage,
+            args.pauseWindowDuration,
+            args.bufferPeriodDuration,
+            args.owner
         )
     {
         // We do NOT enforce mainToken == wrappedToken.asset() even
@@ -70,12 +73,21 @@ contract ERC4626LinearPool is LinearPool {
         // the pool is still valid.
 
         // _getWrappedTokenRate is scaled e18, so we may need to scale IERC4626.convertToAssets()
-        uint256 wrappedTokenDecimals = ERC20(address(wrappedToken)).decimals();
-        uint256 mainTokenDecimals = ERC20(address(mainToken)).decimals();
+        uint256 wrappedTokenDecimals = ERC20(address(args.wrappedToken)).decimals();
+        uint256 mainTokenDecimals = ERC20(address(args.mainToken)).decimals();
 
         // This is always positive because we only accept tokens with <= 18 decimals
         uint256 digitsDifference = Math.add(18, wrappedTokenDecimals).sub(mainTokenDecimals);
         _rateScaleFactor = 10**digitsDifference;
+    }
+
+    function _toAssetManagerArray(ConstructorArgs memory args) private pure returns (address[] memory) {
+        // We assign the same asset manager to both the main and wrapped tokens.
+        address[] memory assetManagers = new address[](2);
+        assetManagers[0] = args.assetManager;
+        assetManagers[1] = args.assetManager;
+
+        return assetManagers;
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
