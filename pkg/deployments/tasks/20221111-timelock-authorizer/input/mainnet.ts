@@ -16,6 +16,8 @@ const GaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, 'main
 const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'mainnet');
 const VotingEscrowDelegationProxy = new Task('20220325-ve-delegation', TaskMode.READ_ONLY, 'mainnet');
 const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.READ_ONLY, 'mainnet');
+// TODO(@jubeira): remove linter directive // check if this is necessary when reviewing veBAL permissions.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const LiquidityGaugeV5 = new Task('20220325-mainnet-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 const OptimismRootGaugeFactory = new Task('20220628-optimism-root-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
