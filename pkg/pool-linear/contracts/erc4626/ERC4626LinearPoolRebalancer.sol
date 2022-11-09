@@ -18,7 +18,6 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IERC4626.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "hardhat/console.sol";
 
 import "../LinearPoolRebalancer.sol";
 
@@ -30,7 +29,7 @@ contract ERC4626LinearPoolRebalancer is LinearPoolRebalancer {
     // during construction.
     constructor(IVault vault, IBalancerQueries queries)
         LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries)
-    { 
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -42,10 +41,6 @@ contract ERC4626LinearPoolRebalancer is LinearPoolRebalancer {
     }
 
     function _unwrapTokens(uint256 wrappedAmount) internal override {
-        console.log(
-            "_unwrapTokens %s",
-            wrappedAmount
-        );
         // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of vault tokens). Approvals are not necessary
         // here as the wrapped token is simply burnt.
         IERC4626(address(_wrappedToken)).redeem(wrappedAmount, address(this), address(this));
