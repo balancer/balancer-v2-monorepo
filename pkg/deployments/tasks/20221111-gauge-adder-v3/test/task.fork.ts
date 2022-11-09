@@ -3,10 +3,6 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import {
-  advanceTime,
-  DAY,
-} from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { describeForkTest } from '../../../src/forkTests';
@@ -14,19 +10,20 @@ import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 import { getSigner, impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 
 describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
-  let veBALHolder: SignerWithAddress, admin: SignerWithAddress;
+  let admin: SignerWithAddress;
   let factory: Contract, gauge: Contract;
   let adaptorEntrypoint: Contract;
-  let vault: Contract,
-    authorizer: Contract,
-    gaugeController: Contract,
-    gaugeAdder: Contract;
+  let authorizer: Contract;
+  let gaugeController: Contract;
+  let gaugeAdder: Contract;
+  let root: SignerWithAddress;
 
   let task: Task;
 
-  const VEBAL_HOLDER = '0xd519D5704B41511951C8CF9f65Fee9AB9beF2611';
+  const LM_MULTISIG = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
   const LP_TOKEN = '0xbc5F4f9332d8415AAf31180Ab4661c9141CC84E4';
 
@@ -45,6 +42,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     const timelockTask = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
     await timelockTask.run({ force: true, extra: adaptorEntrypoint.address });
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
+    root = await getSigner(await authorizer.getRoot());
 
     task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true, extra: adaptorEntrypoint.address });
@@ -64,23 +62,32 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   });
 
   context('advanced functions', () => {
+    before('load accounts', async () => {
+      admin = await getSigner(0);
+    });
+
     before('load gauge factory', async () => {
       const factoryTask = new Task('20220822-mainnet-gauge-factory-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
       factory = await factoryTask.deployedInstance('LiquidityGaugeFactory');
     });
   
-    before('advance time', async () => {
-      // This causes all voting cooldowns to expire, letting the veBAL holder vote again
-      await advanceTime(DAY * 12);
+    before('grant permissions', async () => {
+      // We need to grant permission to the admin to add the LiquidityGaugeFactory to the GaugeAdder, and also to add
+      // gauges from said factory to the GaugeController.
+      const multisig = await impersonate(LM_MULTISIG, fp(100));
+      
+      //await authorizer.connect(root).grantPermissions([await actionId(gaugeAdder, 'addGaugeFactory(address,uint8)')], admin.address, [TimelockAuthorizer.EVERYWHERE]);
+      //await authorizer.connect(root).grantPermissions([await actionId(gaugeAdder, 'addEthereumGauge(address)')], admin.address, [TimelockAuthorizer.EVERYWHERE]);
+      
+      await Promise.all(
+        ['addGaugeFactory', 'addEthereumGauge'].map(
+          async (method) =>
+            await authorizer.connect(multisig).grantPermissions([await actionId(gaugeAdder, method)], admin.address, [TimelockAuthorizer.EVERYWHERE])
+        )
+      );
     });
-  
-    before('setup accounts', async () => {
-      admin = await getSigner(0);
-      veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
-    });
-  
+
     it('creates gauge', async () => {
-      // Permissions?
       const tx = await factory.create(LP_TOKEN, weightCap);
       const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
   
@@ -88,19 +95,6 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
       expect(await gauge.lp_token()).to.equal(LP_TOKEN);
   
       expect(await factory.isGaugeFromFactory(gauge.address)).to.be.true;
-    });
-  
-    it('grant permissions', async () => {
-      // We need to grant permission to the admin to add the LiquidityGaugeFactory to the GaugeAdder, and also to add
-      // gauges from said factory to the GaugeController.
-      const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
-  
-      await Promise.all(
-        ['addGaugeFactory', 'addEthereumGauge'].map(
-          async (method) =>
-            await authorizer.connect(govMultisig).grantRole(await actionId(gaugeAdder, method), admin.address)
-        )
-      );
     });
   
     it('add gauge to gauge controller', async () => {
