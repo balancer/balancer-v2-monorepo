@@ -44,10 +44,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
 
     task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true, extra: adaptorEntrypoint.address });
-    gaugeAdder = await task.instanceAt(
-      'GaugeAdder',
-      task.output({ network: 'mainnet' }).GaugeAdder
-    );
+    gaugeAdder = await task.deployedInstance('GaugeAdder');
   });
 
   context('construction', () => {
