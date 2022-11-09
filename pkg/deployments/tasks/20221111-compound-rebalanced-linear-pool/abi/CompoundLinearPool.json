@@ -195,6 +195,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "_cToken",
+    "outputs": [
+      {
+        "internalType": "contract ICToken",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
