@@ -42,6 +42,10 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     await adaptorEntrypointTask.run({ force: true });
     adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
 
+    const timelockTask = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
+    await timelockTask.run({ force: true, extra: adaptorEntrypoint.address });
+    authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
+
     task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true, extra: adaptorEntrypoint.address });
     gaugeAdder = await task.deployedInstance('GaugeAdder');
@@ -62,7 +66,6 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   context('advanced functions', () => {
     before('load gauge factory', async () => {
       const factoryTask = new Task('20220822-mainnet-gauge-factory-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
-      await factoryTask.run({ force: true });
       factory = await factoryTask.deployedInstance('LiquidityGaugeFactory');
     });
   
@@ -76,13 +79,8 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
       veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
     });
   
-    before('setup contracts', async () => {
-      const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
-      vault = await vaultTask.instanceAt('Vault', vaultTask.output({ network: 'mainnet' }).Vault);
-      authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
-    });
-  
     it('creates gauge', async () => {
+      // Permissions?
       const tx = await factory.create(LP_TOKEN, weightCap);
       const event = expectEvent.inReceipt(await tx.wait(), 'GaugeCreated');
   
