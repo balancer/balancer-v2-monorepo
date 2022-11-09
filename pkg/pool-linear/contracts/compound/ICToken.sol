@@ -20,11 +20,6 @@ interface ICToken {
      */
     function ASSET() external view returns (address);
 
-//    /**
-//     * @dev returns the address of the CToken's lending pool
-//     */
-//    function LENDING_POOL() external view returns (address);
-
     /**
      * @dev Adds the wrapped tokens to compounds liquidity pool
      */

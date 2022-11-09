@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { /*BigNumber,*/ Contract } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
@@ -13,9 +13,9 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { /*MAX_UINT256,*/ ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-// import { FundManagement, SingleSwap } from '@balancer-labs/balancer-js';
-// import { values, wrap } from 'lodash';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { FundManagement, SingleSwap } from '@balancer-labs/balancer-js';
+import { values, wrap } from 'lodash';
 
 interface testingToken {
   mainTokenName: string;
@@ -27,7 +27,7 @@ describe('CompoundLinearPool', function () {
   let vault: Vault;
   let poolFactory: Contract;
   let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
-  //let funds: FundManagement;
+  let funds: FundManagement;
   const testingTokens: testingToken[] = [
     { mainTokenName: 'SUSHI', wrappedTokenName: 'cSUSHI', underlyingDecimals: 18 },
     { mainTokenName: 'WBTC', wrappedTokenName: 'cWBTC', underlyingDecimals: 8 },
@@ -40,12 +40,12 @@ describe('CompoundLinearPool', function () {
   before('setup', async () => {
     [, lp, trader, owner] = await ethers.getSigners();
 
-    // funds = {
-    //   sender: lp.address,
-    //   fromInternalBalance: false,
-    //   toInternalBalance: false,
-    //   recipient: lp.address,
-    // };
+    funds = {
+      sender: lp.address,
+      fromInternalBalance: false,
+      toInternalBalance: false,
+      recipient: lp.address,
+    };
   });
 
   sharedBeforeEach('deploy pool factory', async () => {
@@ -79,7 +79,7 @@ describe('CompoundLinearPool', function () {
       let wrappedToken: Token;
       let tokens: TokenList;
       let mockLendingPool: Contract;
-      let pool: LinearPool;
+      let boostedPool: LinearPool;
 
       sharedBeforeEach('setup tokens, vault and linear pool', async () => {
         mainToken = await Token.create({
@@ -97,22 +97,22 @@ describe('CompoundLinearPool', function () {
 
         await tokens.mint({ to: [lp, trader], amount: fp(100) });
 
-        pool = await deployPool(mainToken.address, wrappedToken.address);
+        boostedPool = await deployPool(mainToken.address, wrappedToken.address);
       });
 
       describe('asset managers', () => {
         it('sets the same asset manager for main and wrapped token', async () => {
-          const poolId = await pool.getPoolId();
+          const BoostedPoolId = await boostedPool.getPoolId();
 
-          const { assetManager: firstAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
-          const { assetManager: secondAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.second);
+          const { assetManager: firstAssetManager } = await vault.getPoolTokenInfo(BoostedPoolId, tokens.first);
+          const { assetManager: secondAssetManager } = await vault.getPoolTokenInfo(BoostedPoolId, tokens.second);
 
           expect(firstAssetManager).to.equal(secondAssetManager);
         });
 
         it('sets the no asset manager for the BPT', async () => {
-          const poolId = await pool.getPoolId();
-          const { assetManager } = await vault.instance.getPoolTokenInfo(poolId, pool.address);
+          const BoostedPoolId = await boostedPool.getPoolId();
+          const { assetManager } = await vault.instance.getPoolTokenInfo(BoostedPoolId, boostedPool.address);
           expect(assetManager).to.equal(ZERO_ADDRESS);
         });
       });
@@ -121,15 +121,15 @@ describe('CompoundLinearPool', function () {
         it('returns the expected value', async () => {
           // Exchange rates are returned as uint256 scaled by 10**(18-8 + underlying token decimal)
           // First test will be a 1:1 exchange rate (1*10^(18-8+decimal))
-          const scaledValue = 18 - 8 + pool.mainToken.decimals;
+          const scaledValue = 18 - 8 + boostedPool.mainToken.decimals;
           const mockExchange = bn(10 ** scaledValue);
           await mockLendingPool.setExchangeRateCurrent(mockExchange);
-          expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
+          expect(await boostedPool.getWrappedTokenRate()).to.be.eq(fp(1));
 
           // We now double the reserve's normalised income to change the exchange rate to 2:1
           const doubleMockExchange = bn(2 * 10 ** scaledValue);
           await mockLendingPool.setExchangeRateCurrent(doubleMockExchange);
-          expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
+          expect(await boostedPool.getWrappedTokenRate()).to.be.eq(fp(2));
         });
       });
 
@@ -148,6 +148,40 @@ describe('CompoundLinearPool', function () {
               owner.address
             )
           ).to.be.revertedWith('TOKENS_MISMATCH');
+        });
+      });
+
+      describe('Token Swaps', () => {
+        it('Single Swaps', async () => {
+          const wrappedTokenAmount = bn(10 ** boostedPool.mainToken.decimals);
+          await wrappedToken.mint(lp, wrappedTokenAmount);
+          await wrappedToken.approve(vault.address, wrappedTokenAmount, { from: lp });
+
+          const scaledValue = 18 - 8 + boostedPool.mainToken.decimals;
+          const mockExchange = bn(2 * 10 ** scaledValue);
+          await mockLendingPool.setExchangeRateCurrent(mockExchange);
+          console.log('Code Reached 1');
+          const data: SingleSwap = {
+            poolId: boostedPool.poolId,
+            kind: 0,
+            assetIn: wrappedToken.address,
+            assetOut: mainToken.address,
+            amount: wrappedTokenAmount,
+            userData: '0x',
+          };
+          console.log('Code Reached 2');
+          const balanceBefore = await mainToken.balanceOf(lp.address);
+          console.log(`balance before: ${balanceBefore}`);
+          await vault.instance.connect(lp).swap(data, funds, BigNumber.from(0), MAX_UINT256);
+          console.log('Code Reached 3');
+
+          const balanceAfter = await mainToken.balanceOf(lp.address);
+          console.log(`balance after: ${balanceAfter}`);
+          console.log('Code Reached 4');
+          const amountReturned = balanceAfter.sub(balanceBefore);
+          console.log(`amount returned: ${amountReturned}`);
+          console.log('Code Reached 5');
+          expect(amountReturned).to.be.eq(bn(2 * 10 ** boostedPool.mainToken.decimals));
         });
       });
     });
