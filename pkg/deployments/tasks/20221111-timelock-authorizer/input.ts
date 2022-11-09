@@ -12,7 +12,7 @@ import {
 // TODO(@jubeira): uncomment authorizer entrypoint code.
 export type TimelockAuthorizerDeployment = {
   Authorizer: string;
-//   AuthorizerAdaptorEntrypoint: string;
+  //   AuthorizerAdaptorEntrypoint: string;
   Root: string;
   Roles: RoleData[];
   Granters: RoleData[];
@@ -26,7 +26,7 @@ const Authorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
 
 export default {
   Authorizer,
-//   AuthorizerAdaptorEntrypoint,
+  //   AuthorizerAdaptorEntrypoint,
   mainnet: {
     Root: mainnetRoot,
     Roles: mainnetRoles,

@@ -106,6 +106,8 @@ const protocolFeesPermissions: RoleData[] = flatten([
   ]),
 ]);
 
+// TODO(@jubeira): remove linter directive
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const veBALPermissions: RoleData[] = flatten([
   createRoleData(BalancerMinter.output().BalancerMinter, BalancerTokenAdmin.output().BalancerTokenAdmin, [
     BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)'),
@@ -171,7 +173,7 @@ export const roles: RoleData[] = flatten([
   ...gnosisProtocolRelayerPermissions,
   ...protocolFeesPermissions,
   // TODO (@jubeira): check current veBAL permissions.
-//   ...veBALPermissions,
+  //   ...veBALPermissions,
   ...feesAndTargetsPermissions,
 ]);
 
