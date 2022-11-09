@@ -4,7 +4,10 @@
 pragma solidity ^0.7.0;
 
 library PrimaryPoolUserData {
-    enum ExitKind { EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT }
+    enum ExitKind { 
+        EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT
+    }
     
     enum JoinKind { 
         INIT, 

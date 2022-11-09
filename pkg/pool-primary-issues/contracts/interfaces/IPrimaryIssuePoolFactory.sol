@@ -19,6 +19,7 @@ interface IPrimaryIssuePoolFactory {
         uint256 swapFeePercentage;
         uint256 cutOffTime;
         string issueDocs;
+        string offeringDocs;
     }
 
     function create(

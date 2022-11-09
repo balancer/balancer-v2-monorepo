@@ -115,7 +115,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256 executionDate
     );
 
-    event BestAvailableTrades(uint256 _bestUnfilledBid, uint256 _bestUnfilledOffer);
+    event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
     event Offer(address indexed security, uint256 secondaryOffer);
 

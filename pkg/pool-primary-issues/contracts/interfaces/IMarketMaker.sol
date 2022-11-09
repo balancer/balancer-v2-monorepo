@@ -19,6 +19,7 @@ interface IMarketMaker {
         uint amountDesired;
         uint min;
         bytes32 isin;
+        string offeringdocs;
     }
 
     struct lp{
@@ -37,7 +38,7 @@ interface IMarketMaker {
         uint256 price;     
     }
     
-    function offer(address owned, bytes32 isin, uint offered, address tomatch, uint desired, uint min) external;
+    function offer(address owned, bytes32 isin, uint offered, address tomatch, uint desired, uint min, string memory docs) external;
 
     function getOffered(address offered) external view returns(token[] memory);
 

@@ -21,10 +21,10 @@ import Decimal from 'decimal.js';
 describe('PrimaryPool', function () {
   let pool: PrimaryPool, tokens: TokenList, securityToken: Token, currencyToken: Token;
   let trader: SignerWithAddress,
-    lp: SignerWithAddress,
-    admin: SignerWithAddress,
-    owner: SignerWithAddress,
-    other: SignerWithAddress;
+      lp: SignerWithAddress,
+      admin: SignerWithAddress,
+      owner: SignerWithAddress,
+      other: SignerWithAddress;
 
   const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -69,7 +69,7 @@ describe('PrimaryPool', function () {
       it('sets the vault', async () => {
         expect(await pool.getVault()).to.equal(pool.vault.address);
       });
-
+      
       it('uses general specialization', async () => {
         const { address, specialization } = await pool.getRegisteredInfo();
         expect(address).to.equal(pool.address);
@@ -107,7 +107,7 @@ describe('PrimaryPool', function () {
       });
       
     });
-
+    
     context('when the creation fails', () => {
       it('reverts if there are repeated tokens', async () => {
         await expect(
@@ -428,5 +428,5 @@ describe('PrimaryPool', function () {
       expect(await pool.getbasePrice()).to.equal(basePrice);
     });
   });
-  
+    
 });
