@@ -34,6 +34,8 @@ import "../math/Math.sol";
  * unpacking is therefore the preferred approach.
  */
 library WordCodec {
+    // solhint-disable no-inline-assembly
+
     // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
     // or to insert a new one replacing the old.
     uint256 private constant _MASK_1 = 2**(1) - 1;

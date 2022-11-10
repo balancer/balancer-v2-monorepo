@@ -26,6 +26,8 @@ import {
   getVerificationStatus,
 } from '@nomiclabs/hardhat-etherscan/dist/src/etherscan/EtherscanService';
 
+import { EtherscanNetworkEntry } from '@nomiclabs/hardhat-etherscan/dist/src/types';
+
 import * as parser from '@solidity-parser/parser';
 
 import Task from './task';

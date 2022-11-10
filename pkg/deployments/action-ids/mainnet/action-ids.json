@@ -860,5 +860,36 @@
         "updateProtocolFeePercentageCache()": "0x0cf9564bf75d93e4dbfdebc0b29f8ef8bed3f63a500cee9801d9961a8e9a71a5"
       }
     }
+  },
+  "20221021-managed-pool": {
+    "ManagedPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x1201FAa7258A48b820619dD57Cd8FdEb25D49b2c",
+      "actionIds": {
+        "addAllowedAddress(address)": "0xf785443fce86bf27ac344256af4e7a870b17dd9b85a1ba634118a81960129358",
+        "addToken(address,address,uint256,uint256,address)": "0x9754fde95162280a890c1ebc7a9ebcbf6af007b58db6ceb49d47c2f5eb9cf6f6",
+        "collectAumManagementFees()": "0x5a78d18d7b902b65adc6ec3f3d58a3b0549c66e69632adf5f0a0085519422f55",
+        "disableRecoveryMode()": "0x8b53d43ab61c14ae66239259b7a674da533c4447b6a14aff9ce25edbd5374944",
+        "enableRecoveryMode()": "0xf86e8300ce0886736fe2c84ad15f478ef766be40dd0b2558c51e21854946395d",
+        "pause()": "0x12a6d81ce43511e2c59c814fd98e086a91a567ab538799e040230fb960713fc3",
+        "removeAllowedAddress(address)": "0x862dd6a39314eac3d86ba28a2091ade65f09de9587b52025f9fff7edc78ebd7b",
+        "removeToken(address,uint256,address)": "0xfad6c172de4d60503b15c54c305cd128a614721cc79886f30d55e73efa8a6602",
+        "setCircuitBreakers(address[],uint256[],uint256[],uint256[])": "0xce3253c6e7ca8bd5331b5ebf3d6853e9b37d98831343d8edeb128e372f71e3ff",
+        "setManagementAumFeePercentage(uint256)": "0x68ae8c260ac3cd5a2367369b9938c6875380c20bdc245d6fd60b9d7eb7cdea2d",
+        "setMustAllowlistLPs(bool)": "0x7631ccb8743edc2b680dc3c96e4114a450030ea774b69aa7042b9edb7d2c6e6b",
+        "setSwapEnabled(bool)": "0x7da30f23e058a2411b91ae20bed2ce4800f0ff06087c535a053247446092b5d6",
+        "unpause()": "0xa6f1ef4081cd051cd6294dbc5ac629362d45e5daa4c2fbb03f119556c0712b0e",
+        "updateProtocolFeePercentageCache()": "0x0bd681d626d8c03f2d98bc37a4f61ce7a31176d46d1f990ab59eee9ad7a2aa77",
+        "updateSwapFeeGradually(uint256,uint256,uint256,uint256)": "0x9336863d6f3367786d95c0101e4dd59aa92bad26a8918641832ac1a81af52862",
+        "updateWeightsGradually(uint256,uint256,address[],uint256[])": "0x2fd23b6836b83328c91987f3e547981395f3ee36b5038a2134e448a76b5d97cf"
+      }
+    },
+    "ManagedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create((string,string,address[],uint256[],address[],uint256,bool,bool,uint256,uint256),address)": "0x01ed6b1d1a76460295cf1325534f6c4bd3fc1f8717cd0cf9733f493a0821da71",
+        "disable()": "0xa010f28803768154a04542ff29718c73ff40e307b10e5f39fbdff6c90db7b4ec"
+      }
+    }
   }
 }

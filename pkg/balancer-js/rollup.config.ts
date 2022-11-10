@@ -1,8 +1,9 @@
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
-import pkg from './package.json';
+import fs from 'fs';
 
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
 const external = [
   '@ethersproject/abi',
   '@ethersproject/abstract-signer',
