@@ -24,6 +24,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   let gaugeAdder: Contract;
   let daoMultisig: SignerWithAddress;
   let gaugeController: Contract;
+  let migrator: Contract;
   let vault: Contract;
 
   let task: Task;
@@ -49,11 +50,10 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     const timelockTask = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
     await timelockTask.run({ force: true, extra: adaptorEntrypoint.address });
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
+    migrator = await timelockTask.deployedInstance('TimelockAuthorizerMigrator');
   });
 
   before('change authorizer admin to the DAO multisig', async () => {
-    const migrator = await deployedAt('TimelockAuthorizerMigrator', await authorizer.getRoot());
-
     await advanceTime(5 * DAY);
     await migrator.executeDelays();
 
