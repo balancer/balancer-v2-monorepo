@@ -473,7 +473,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
                 _marketOrders[i] != _ref &&
-                orders[_marketOrders[i]].party != orders[_ref].party && 
+                //orders[_marketOrders[i]].party != orders[_ref].party && 
                 orders[_marketOrders[i]].status != OrderStatus.Filled
             ) {
                 
