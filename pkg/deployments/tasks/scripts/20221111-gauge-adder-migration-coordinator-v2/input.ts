@@ -24,7 +24,7 @@ export default {
   mainnet: {
     AuthorizerAdaptor,
     OldGaugeAdder: OldGaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
-    NewGaugeAdder: NewGaugeAdder.output({ network: 'test' }).GaugeAdder,
+    NewGaugeAdder: NewGaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
     ArbitrumRootGaugeFactory,
     OptimismRootGaugeFactory,
     LiquidityMiningMultisig,

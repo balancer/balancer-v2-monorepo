@@ -44,7 +44,8 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function
     const gaugeAdderTask = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
     oldGaugeAdder = await gaugeAdderTask.deployedInstance('GaugeAdder');
 
-    const gaugeAdderV2Task = new Task('20221111-gauge-adder-v3', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    const gaugeAdderV2Task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
+    await gaugeAdderV2Task.run({ force: true });
     newGaugeAdder = await gaugeAdderV2Task.deployedInstance('GaugeAdder');
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
