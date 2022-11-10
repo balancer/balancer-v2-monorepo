@@ -2,13 +2,14 @@ import Task from '../../../src/task';
 import { TaskRunOptions } from '../../../src/types';
 import { GaugeAdderMigrationCoordinatorDeployment } from './input';
 
-export default async (task: Task, { force, from, extra }: TaskRunOptions = {}): Promise<void> => {
+export default async (task: Task, { force, from, extra, extra2 }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as GaugeAdderMigrationCoordinatorDeployment;
 
   const NewGaugeAdder = extra as string;
+  const AuthorizerAdaptor = extra2 as string;
 
   const args = [
-    input.AuthorizerAdaptor,
+    AuthorizerAdaptor,
     NewGaugeAdder,
     input.OldGaugeAdder,
     input.ArbitrumRootGaugeFactory,
