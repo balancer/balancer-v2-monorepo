@@ -89,7 +89,9 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     });
 
     it('stores the gauge controller', async () => {
-      gaugeController = await deployedAt('v2-liquidity-mining/GaugeController', task.input().GaugeController);
+      const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
+      gaugeController = await gaugeControllerTask.instanceAt('GaugeController', gaugeControllerTask.output({ network: 'mainnet' }).GaugeController);
+      //augeController = await deployedAt('GaugeController', task.input().GaugeController);
 
       // Ensure we can call functions on the gaugeController
       const controllerAdmin = await gaugeController.admin();
