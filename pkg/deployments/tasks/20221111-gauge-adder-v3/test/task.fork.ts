@@ -124,23 +124,21 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     before('grant permissions', async () => {
       const addFactoryAction = await actionId(gaugeAdder, 'addGaugeFactory');
       const addGaugeAction = await actionId(gaugeAdder, 'addEthereumGauge');
+      const gaugeControllerAddGaugeAction = await actionId(
+        adaptorEntrypoint,
+        'add_gauge(address,int128)',
+        gaugeController.interface
+      );
 
       await authorizer
         .connect(daoMultisig)
-        .manageGranter(
-          addFactoryAction,
-          lmMultisig.address,
-          TimelockAuthorizer.EVERYWHERE,
-          true
-        );
+        .manageGranter(addFactoryAction, lmMultisig.address, TimelockAuthorizer.EVERYWHERE, true);
       await authorizer
         .connect(daoMultisig)
-        .manageGranter(
-          addGaugeAction,
-          lmMultisig.address,
-          TimelockAuthorizer.EVERYWHERE,
-          true
-        );
+        .manageGranter(addGaugeAction, lmMultisig.address, TimelockAuthorizer.EVERYWHERE, true);
+      await authorizer
+        .connect(daoMultisig)
+        .manageGranter(gaugeControllerAddGaugeAction, lmMultisig.address, TimelockAuthorizer.EVERYWHERE, true);
 
       let tx = await authorizer
         .connect(lmMultisig)
@@ -160,8 +158,27 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
         where: TimelockAuthorizer.EVERYWHERE,
       });
 
+      // Granting `GaugeController#add_gauge` permissions to the entrypoint has a delay, so the permission needs
+      // to be scheduled and executed after the required time passes.
+      tx = await authorizer
+        .connect(lmMultisig)
+        .scheduleGrantPermission(gaugeControllerAddGaugeAction, gaugeAdder.address, TimelockAuthorizer.EVERYWHERE, []);
+      const event = expectEvent.inReceipt(await tx.wait(), 'ExecutionScheduled');
+      const scheduledExecutionId = event.args.scheduledExecutionId;
+
+      // The adder cannot add a gauge in the controller before the delay passes.
+      expect(
+        await authorizer.canPerform(gaugeControllerAddGaugeAction, gaugeAdder.address, TimelockAuthorizer.EVERYWHERE)
+      ).to.be.false;
+
+      await advanceTime(14 * DAY);
+      await authorizer.connect(lmMultisig).execute(scheduledExecutionId);
+
       expect(await authorizer.canPerform(addFactoryAction, admin.address, TimelockAuthorizer.EVERYWHERE)).to.be.true;
       expect(await authorizer.canPerform(addGaugeAction, admin.address, TimelockAuthorizer.EVERYWHERE)).to.be.true;
+      expect(
+        await authorizer.canPerform(gaugeControllerAddGaugeAction, gaugeAdder.address, TimelockAuthorizer.EVERYWHERE)
+      ).to.be.true;
 
       const entrypoint = await gaugeAdder.getAuthorizerAdaptorEntrypoint();
       const gaugeAdderAuthorizer = await adaptorEntrypoint.getAuthorizer();
@@ -185,14 +202,9 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
 
       gauge = await task.instanceAt('LiquidityGaugeV5', event.args.gauge);
 
-      // This still fails with 401 (despite addGaugeFactory succeeding above)
-      //await gaugeAdder.connect(admin).addEthereumGauge(gauge.address);
+      await gaugeAdder.connect(admin).addEthereumGauge(gauge.address);
 
-      // There is something wrong with the gaugeController - all calls fail with "TypeError: gaugeController.<function> is not a function"
-      //await gaugeController.add_gauge(gauge.address, 2);
-      //await gaugeController.setGaugeWeight(gauge.address, fp(0.7));
-
-      //expect(await gaugeController.gauge_exists(gauge.address)).to.be.true;
+      expect(await gaugeController.gauge_exists(gauge.address)).to.be.true;
     });
 
     it('ensure valid factory and gauge', async () => {
