@@ -62,11 +62,16 @@ export function calcCashInPerSecurityOut(fpSecurityOut: BigNumber, fpSecurityBal
   const tokensIn = (securityBalance.mul(cashBalance.div(postPaidSecurityBalance))).sub(cashBalance);
   const postPaidCurrencyBalance = cashBalance.add(tokensIn)
   const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
-
-  if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
+ 
+  if( tokensIn.toString() == "Infinity" )
+  {
+    return decimal(1);
+  }
+  else if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
     return fromFp(tokensIn);
   }
-  else{
+  else
+  {
     return decimal(0);
   }
 
@@ -84,10 +89,14 @@ export function calcSecurityInPerCashOut(fpCashOut: BigNumber, fpSecurityBalance
   const postPaidSecurityBalance = securityBalance.add(tokensIn);
   const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
 
-  if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
+  if( tokensIn.toString() == "Infinity" )
+  {
+    return decimal(1);
+  }
+  else if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
     return fromFp(tokensIn);
   }
-  else{
+  else {
     return decimal(0);
   }
 
