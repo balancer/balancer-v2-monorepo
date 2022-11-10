@@ -2,8 +2,8 @@
   {
     "inputs": [
       {
-        "internalType": "contract IAuthorizerAdaptor",
-        "name": "authorizerAdaptor",
+        "internalType": "contract IAuthorizerAdaptorEntrypoint",
+        "name": "authorizerAdaptorEntrypoint",
         "type": "address"
       },
       {
@@ -113,7 +113,7 @@
   },
   {
     "inputs": [],
-    "name": "getAuthorizerAdaptor",
+    "name": "getAuthorizerAdaptorEntrypoint",
     "outputs": [
       {
         "internalType": "contract IAuthorizerAdaptor",
