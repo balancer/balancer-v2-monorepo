@@ -201,7 +201,16 @@ describe('PrimaryPool', function () {
         amount = fp(30);
         bptSupply = MAX_UINT112.sub(currentBalances[pool.bptIndex]);
       });
-
+      
+      it('Invalid Token', async () => {
+        await expect( pool.swapGivenOut({
+          in: pool.securityIndex,
+          out: pool.securityIndex,
+          amount: amount,
+          balances: currentBalances,
+        })).to.be.revertedWith("INVALID_TOKEN");
+      });
+      
       it('calculate currency out', async () => {
 
         const expected = math.calcCashOutPerSecurityIn(

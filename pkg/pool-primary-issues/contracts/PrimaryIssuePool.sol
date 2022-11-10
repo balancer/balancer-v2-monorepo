@@ -167,7 +167,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
             fromInternalBalance: false
         });
-        vault.joinPool(getPoolId(), address(this), payable(_balancerManager), request);
+        vault.joinPool(getPoolId(), address(this), address(this), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
     }
 
