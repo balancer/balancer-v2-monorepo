@@ -17,6 +17,7 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function
 
   let vault: Contract, authorizer: Contract, authorizerAdaptor: Contract, gaugeController: Contract;
 
+  let adaptorEntrypoint: Contract;
   let oldGaugeAdder: Contract;
   let newGaugeAdder: Contract;
 
@@ -28,8 +29,20 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    const adaptorEntrypointTask = new Task(
+      '20221111-authorizer-adaptor-entrypoint',
+      TaskMode.TEST,
+      getForkedNetwork(hre)
+    );
+    await adaptorEntrypointTask.run({ force: true });
+    adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
+
+    const gaugeAdderV3Task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
+    await gaugeAdderV3Task.run({ force: true, extra: adaptorEntrypoint.address  });
+    newGaugeAdder = await gaugeAdderV3Task.deployedInstance('GaugeAdder');
+
     task = new Task('20221111-gauge-adder-migration-coordinator-v2', TaskMode.TEST, getForkedNetwork(hre));
-    await task.run({ force: true });
+    await task.run({ force: true, extra: newGaugeAdder.address });
     coordinator = await task.deployedInstance('GaugeAdderMigrationCoordinator');
   });
 
@@ -43,10 +56,6 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function
 
     const gaugeAdderTask = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, getForkedNetwork(hre));
     oldGaugeAdder = await gaugeAdderTask.deployedInstance('GaugeAdder');
-
-    const gaugeAdderV2Task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
-    await gaugeAdderV2Task.run({ force: true });
-    newGaugeAdder = await gaugeAdderV2Task.deployedInstance('GaugeAdder');
 
     const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, getForkedNetwork(hre));
     gaugeController = await gaugeControllerTask.deployedInstance('GaugeController');

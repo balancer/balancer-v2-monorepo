@@ -3,7 +3,6 @@ import Task, { TaskMode } from '../../../src/task';
 export type GaugeAdderMigrationCoordinatorDeployment = {
   AuthorizerAdaptor: string;
   OldGaugeAdder: string;
-  NewGaugeAdder: string;
   ArbitrumRootGaugeFactory: string;
   OptimismRootGaugeFactory: string;
   LiquidityMiningMultisig: string;
