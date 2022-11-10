@@ -283,6 +283,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         Params memory params
     ) internal returns (uint256) {
         _require(request.tokenIn == _currency, Errors.INVALID_TOKEN);
+        require(request.amount < balances[_securityIndex], "Insufficient balance");
 
         //returning security to be swapped out for paid in currency
         uint256 postPaidSecurityBalance = Math.sub(balances[_securityIndex], request.amount);
@@ -301,6 +302,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         Params memory params
     ) internal returns (uint256) {
         _require(request.tokenIn == _security, Errors.INVALID_TOKEN);
+        require(request.amount < balances[_currencyIndex], "Insufficient balance");
 
         //returning currency to be paid in for security paid in
         uint256 postPaidCurrencyBalance = Math.sub(balances[_currencyIndex], request.amount);

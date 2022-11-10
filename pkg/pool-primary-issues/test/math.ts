@@ -1,31 +1,13 @@
 import { Decimal } from 'decimal.js';
 import { BigNumber } from 'ethers';
 
-import { decimal, fromFp, toFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { decimal, fromFp, toFp, scaleDown, fp } from '@balancer-labs/v2-helpers/src/numbers';
 
 export type Params = {
   fee: BigNumber;
   minPrice: BigNumber;
   maxPrice: BigNumber;
 };
-
-export function calcBptOutPerSecurityIn(
-  fpSecurityIn: BigNumber,
-  fpSecurityBalance: BigNumber,
-  fpCurrencyBalance: BigNumber,
-  fpBptSupply: BigNumber,
-  params: Params
-): Decimal {
-  const securityIn = fromFp(fpSecurityIn);
-  const securityBalance = fromFp(fpSecurityBalance);
-  const bptSupply = fromFp(fpBptSupply);
-
-  const tokensOut = securityIn.div(
-    securityBalance.add(securityIn.toString()).div(bptSupply).toString()
-  );
-
-  return toFp(tokensOut);
-}
 
 export function calcCashOutPerSecurityIn(fpSecurityIn: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
   const securityIn = decimal(fpSecurityIn);
@@ -37,34 +19,35 @@ export function calcCashOutPerSecurityIn(fpSecurityIn: BigNumber, fpSecurityBala
   const postPaidSecurityBalance = securityBalance.add(securityIn.toString());
   
   const tokensOut = cashBalance.sub(securityBalance.mul(cashBalance.div(postPaidSecurityBalance)));
-
   const postPaidCurrencyBalance = cashBalance.sub(tokensOut);
+  const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
 
-  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
-    return toFp(tokensOut);
+  if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
+    return fromFp(tokensOut);
   }
   else{
-    return toFp(0);
+    return decimal(0);
   }
 
 }
 
 export function calcSecurityOutPerCashIn(fpCashIn: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
-  const cashIn = fromFp(fpCashIn);
-  const securityBalance = fromFp(fpSecurityBalance);
-  const cashBalance = fromFp(fpCashBalance);
+  const cashIn = decimal(fpCashIn);
+  const securityBalance = decimal(fpSecurityBalance);
+  const cashBalance = decimal(fpCashBalance);
   const minPrice = decimal(params.minPrice);
   const maxPrice = decimal(params.maxPrice);
 
   const postPaidCurrencyBalance = cashBalance.add(cashIn.toString());
   const tokensOut = securityBalance.sub(cashBalance.mul(securityBalance.div(postPaidCurrencyBalance)));
   const postPaidSecurityBalance = securityBalance.sub(tokensOut);
+  const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
 
-  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
-    return toFp(tokensOut);
+  if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
+    return fromFp(tokensOut);
   }
   else{
-    return toFp(0);
+    return decimal(0);
   }
 }
 
@@ -78,32 +61,43 @@ export function calcCashInPerSecurityOut(fpSecurityOut: BigNumber, fpSecurityBal
   const postPaidSecurityBalance = securityBalance.sub(securityOut.toString());
   const tokensIn = (securityBalance.mul(cashBalance.div(postPaidSecurityBalance))).sub(cashBalance);
   const postPaidCurrencyBalance = cashBalance.add(tokensIn)
-
-  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
-    return toFp(tokensIn);
+  const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
+ 
+  if( tokensIn.toString() == "Infinity" )
+  {
+    return decimal(1);
   }
-  else{
-    return toFp(0);
+  else if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
+    return fromFp(tokensIn);
+  }
+  else
+  {
+    return decimal(0);
   }
 
 }
 
 export function calcSecurityInPerCashOut(fpCashOut: BigNumber, fpSecurityBalance: BigNumber, fpCashBalance: BigNumber, params: Params): Decimal {
-  const cashOut = fromFp(fpCashOut);
-  const securityBalance = fromFp(fpSecurityBalance);
-  const cashBalance = fromFp(fpCashBalance);
+  const cashOut = decimal(fpCashOut);
+  const securityBalance = decimal(fpSecurityBalance);
+  const cashBalance = decimal(fpCashBalance);
   const minPrice = decimal(params.minPrice);
   const maxPrice = decimal(params.maxPrice);
 
   const postPaidCurrencyBalance = cashBalance.sub(cashOut.toString());
   const tokensIn = (cashBalance.mul(securityBalance.div(postPaidCurrencyBalance))).sub(securityBalance);
   const postPaidSecurityBalance = securityBalance.add(tokensIn);
+  const scaleUp = toFp(postPaidCurrencyBalance.div(postPaidSecurityBalance));
 
-  if( postPaidCurrencyBalance.div(postPaidSecurityBalance) >= minPrice &&  postPaidCurrencyBalance.div(postPaidSecurityBalance) <= maxPrice){
-    return toFp(tokensIn);
+  if( tokensIn.toString() == "Infinity" )
+  {
+    return decimal(1);
   }
-  else{
-    return toFp(0);
+  else if( fromFp(scaleUp) >= fromFp(minPrice) &&  fromFp(scaleUp) <= fromFp(maxPrice)){
+    return fromFp(tokensIn);
+  }
+  else {
+    return decimal(0);
   }
 
 
