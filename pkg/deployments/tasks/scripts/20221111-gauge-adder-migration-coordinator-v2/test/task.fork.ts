@@ -38,7 +38,7 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function
     adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
 
     const gaugeAdderV3Task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
-    await gaugeAdderV3Task.run({ force: true, extra: adaptorEntrypoint.address  });
+    await gaugeAdderV3Task.run({ force: true, extra: adaptorEntrypoint.address });
     newGaugeAdder = await gaugeAdderV3Task.deployedInstance('GaugeAdder');
 
     task = new Task('20221111-gauge-adder-migration-coordinator-v2', TaskMode.TEST, getForkedNetwork(hre));
