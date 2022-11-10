@@ -73,17 +73,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     //mapping limit order no to order reference
     mapping(uint256 => bytes32) private _limitOrders;
 
-    //mapping of limit to market order
-    mapping(uint256 => uint256) private _limitMarket;
-
     //size of limit order book
     uint256 limitOrderbook;
 
     //mapping stop order no to order reference
     mapping(uint256 => bytes32) private _stopOrders;
-
-    //mapping of stop to market order
-    mapping(uint256 => uint256) private _stopMarket;
 
     //size of stop loss order book
     uint256 stopOrderbook;
@@ -200,6 +194,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256 indexIn,
         uint256 indexOut
     ) public override onlyVault(request.poolId) whenNotPaused returns (uint256) {
+        require (request.kind == IVault.SwapKind.GIVEN_IN || request.kind == IVault.SwapKind.GIVEN_OUT, "Invalid swap");
+        require(request.tokenOut == IERC20(_currency) ||
+                request.tokenOut == IERC20(_security) ||
+                request.tokenIn == IERC20(_currency) ||
+                request.tokenIn == IERC20(_security), "Invalid swapped tokens");
         uint256[] memory scalingFactors = _scalingFactors();
         
         uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
@@ -231,34 +230,22 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256 amount = 0;
         uint256 price = 0;
 
-        if (request.kind == IVault.SwapKind.GIVEN_IN) {
+        if (request.kind == IVault.SwapKind.GIVEN_IN) 
             request.amount = _upscale(request.amount, scalingFactors[indexIn]);
-            if (request.tokenOut == IERC20(_currency)) {
-                (price, amount) = newOrder(request, params, Order.Sell, balances);
-                if (params.trade == OrderType.Market) 
-                return _downscaleDown(price, scalingFactors[indexOut]);
-            } 
-            else if (request.tokenOut == IERC20(_security)) {
-                uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-                request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-                (price, amount) = newOrder(request, params, Order.Buy, balances);
-                if (params.trade == OrderType.Market) 
-                return _downscaleDown(amount, scalingFactors[indexOut]);
-            }
-        } 
-        else if (request.kind == IVault.SwapKind.GIVEN_OUT) {
+        else if (request.kind == IVault.SwapKind.GIVEN_OUT)
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
-            if (request.tokenIn == IERC20(_currency)) {
-                uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-                request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
-                (price, amount) = newOrder(request, params, Order.Buy, balances);
-                if (params.trade == OrderType.Market) 
-                return _downscaleDown(amount, scalingFactors[indexOut]);
-            } else if (request.tokenIn == IERC20(_security)) {
-                (price, amount) = newOrder(request, params, Order.Sell, balances);
-                if (params.trade == OrderType.Market) 
-                return _downscaleDown(price, scalingFactors[indexOut]);
-            }
+
+        if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
+            (price, amount) = newOrder(request, params, Order.Sell, balances);
+            if (params.trade == OrderType.Market) 
+            return _downscaleDown(price, scalingFactors[indexOut]);
+        } 
+        else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
+            uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
+            request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
+            (price, amount) = newOrder(request, params, Order.Buy, balances);
+            if (params.trade == OrderType.Market) 
+            return _downscaleDown(amount, scalingFactors[indexOut]);
         }
     }
 
@@ -381,7 +368,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             stopOrderbook = stopOrderbook + 1;
             checkStopOrders(_params.price);
         }
-        return(0,0);
+
     }
 
     function getOrderRef() external view override returns (bytes32[] memory) {
@@ -408,11 +395,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     }
 
     function cancelOrder(bytes32 ref) external override {
-        require(orders[ref].party == msg.sender);
+        require(orders[ref].party == msg.sender, "Sender is not order creator");
         delete _marketOrders[orders[ref].orderno];
-        delete _limitMarket[orders[ref].orderno];
         delete _limitOrders[orders[ref].orderno];
-        delete _stopMarket[orders[ref].orderno];
         delete _stopOrders[orders[ref].orderno];
         delete orders[ref];
         delete _orderRefs[_orderIndex[ref]];
@@ -488,7 +473,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
                 _marketOrders[i] != _ref &&
-                //orders[_marketOrders[i]].party != orders[_ref].party && 
+                orders[_marketOrders[i]].party != orders[_ref].party && 
                 orders[_marketOrders[i]].status != OrderStatus.Filled
             ) {
                 
@@ -557,7 +542,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
-            return(0,0);
+            
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
@@ -602,7 +587,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
-            return(0,0);
+            
         }
     }
 
@@ -671,7 +656,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         ISettlor(_balancerManager).postSettlement(tradeToSettle, _tradeRef);*/
     }
 
-    function getTrade(bytes32 ref) external view override returns (uint256 b, uint256 a) {
+    function getTrade(bytes32 ref) external view override returns (uint256, uint256) {
         uint256 bid = 0;
         uint256 ask = 0;
         if (_trades[_tradeRefs[ref]].security == _security && _trades[_tradeRefs[ref]].order == Order.Buy) {
