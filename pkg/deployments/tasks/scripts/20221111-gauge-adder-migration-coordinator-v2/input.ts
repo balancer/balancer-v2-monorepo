@@ -12,9 +12,6 @@ export type GaugeAdderMigrationCoordinatorDeployment = {
 
 const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY);
 const OldGaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY);
-const NewGaugeAdderTask = new Task('20221111-gauge-adder-v3', TaskMode.TEST);
-await NewGaugeAdderTask.run({ force: true });
-const newGaugeAdder = await NewGaugeAdderTask.deployedInstance('GaugeAdder');
 
 const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY);
 const OptimismRootGaugeFactory = new Task('20220628-optimism-root-gauge-factory', TaskMode.READ_ONLY);
@@ -26,7 +23,6 @@ export default {
   mainnet: {
     AuthorizerAdaptor,
     OldGaugeAdder: OldGaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
-    NewGaugeAdder: newGaugeAdder.address,
     ArbitrumRootGaugeFactory,
     OptimismRootGaugeFactory,
     LiquidityMiningMultisig,
