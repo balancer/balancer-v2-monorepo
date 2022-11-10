@@ -92,17 +92,14 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     });
 
     it('stores the gauge controller', async () => {
-      gaugeController = await task.input().GaugeController;
+      gaugeController = await deployedAt('v2-liquidity-mining/GaugeController', task.input().GaugeController);
 
-      // Fails with "gaugeController.admin is not a function" - somehow this is not a valid GaugeController
-      //const controllerAdmin = await gaugeController.admin();
-      //console.log(`gaugeControllerAdmin: ${controllerAdmin}`);
+      // Ensure we can call functions on the gaugeController
+      const controllerAdmin = await gaugeController.admin();
+      expect(controllerAdmin).to.not.equal(ZERO_ADDRESS);
+      expect(await gaugeController.gauge_exists(ZERO_ADDRESS)).to.be.false;
 
-      // And yes, I even tried deploying it in TEST mode from 20220325-gauge-controller, creating an "extra2" parameter,
-      // and passing it in instead of reading from input: but had issues with it not finding artifacts, even though I
-      // copied them all in and ran extract-artifacts.
-
-      expect(await gaugeAdder.getGaugeController()).to.equal(gaugeController);
+      expect(await gaugeAdder.getGaugeController()).to.equal(gaugeController.address);
     });
   });
 
@@ -125,24 +122,25 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     // We need to grant permission to the admin to add the LiquidityGaugeFactory to the GaugeAdder, and also to add
     // gauges from said factory to the GaugeController.
     before('grant permissions', async () => {
-      await authorizer
-        .connect(daoMultisig)
-        .manageGranter(
-          await actionId(gaugeAdder, 'addGaugeFactory'),
-          lmMultisig.address,
-          TimelockAuthorizer.EVERYWHERE,
-          true
-        );
-      await authorizer
-        .connect(daoMultisig)
-        .manageGranter(
-          await actionId(gaugeAdder, 'addEthereumGauge'),
-          lmMultisig.address,
-          TimelockAuthorizer.EVERYWHERE,
-          true
-        );
-
       const addFactoryAction = await actionId(gaugeAdder, 'addGaugeFactory');
+      const addGaugeAction = await actionId(gaugeAdder, 'addEthereumGauge');
+
+      await authorizer
+        .connect(daoMultisig)
+        .manageGranter(
+          addFactoryAction,
+          lmMultisig.address,
+          TimelockAuthorizer.EVERYWHERE,
+          true
+        );
+      await authorizer
+        .connect(daoMultisig)
+        .manageGranter(
+          addGaugeAction,
+          lmMultisig.address,
+          TimelockAuthorizer.EVERYWHERE,
+          true
+        );
 
       let tx = await authorizer
         .connect(lmMultisig)
@@ -152,8 +150,6 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
         account: admin.address,
         where: TimelockAuthorizer.EVERYWHERE,
       });
-
-      const addGaugeAction = await actionId(gaugeAdder, 'addEthereumGauge');
 
       tx = await authorizer
         .connect(lmMultisig)
