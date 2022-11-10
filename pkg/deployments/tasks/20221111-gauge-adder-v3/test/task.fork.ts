@@ -52,7 +52,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   });
 
   before('change authorizer admin to the DAO multisig', async () => {
-    const migrator = await deployedAt('v2-governance-scripts/TimelockAuthorizerMigrator', await authorizer.getRoot());
+    const migrator = await deployedAt('TimelockAuthorizerMigrator', await authorizer.getRoot());
 
     await advanceTime(5 * DAY);
     await migrator.executeDelays();
