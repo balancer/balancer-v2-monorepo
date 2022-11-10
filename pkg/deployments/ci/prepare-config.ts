@@ -20,10 +20,10 @@ if (process.env.CI) {
         "url": "${process.env.OPTIMISM_RPC_ENDPOINT}"
       },
       "gnosis": {
-        "url": "${process.env.GNOSIS_RPC_ENDPOINT}",
+        "url": "${process.env.GNOSIS_RPC_ENDPOINT}"
       },
       "bsc": {
-        "url": "${process.env.BINANCE_RPC_ENDPOINT}",
+        "url": "${process.env.BINANCE_RPC_ENDPOINT}"
       },
       "goerli": {
         "url": "${process.env.GOERLI_RPC_ENDPOINT}"
