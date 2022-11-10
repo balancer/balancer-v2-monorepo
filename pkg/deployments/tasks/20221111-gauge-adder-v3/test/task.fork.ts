@@ -18,12 +18,10 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   let factory: Contract;
-  let gauge: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
   let oldAuthorizer: Contract;
   let gaugeAdder: Contract;
-  let lmMultisig: SignerWithAddress;
   let daoMultisig: SignerWithAddress;
   let gaugeController: Contract;
   let vault: Contract;
@@ -53,7 +51,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
   });
 
-  before('change root to the DAO multisig', async () => {
+  before('change authorizer admin to the DAO multisig', async () => {
     const migrator = await deployedAt('v2-governance-scripts/TimelockAuthorizerMigrator', await authorizer.getRoot());
 
     await advanceTime(5 * DAY);
@@ -79,8 +77,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
     await migrator.finalizeMigration();
   });
 
-  before('run task', async () => {
-    // Finally, create the GaugeAdder
+  before('run Gauge Adder task', async () => {
     task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true, extra: adaptorEntrypoint.address });
     gaugeAdder = await task.deployedInstance('GaugeAdder');
@@ -104,7 +101,9 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   });
 
   context('advanced functions', () => {
+    let lmMultisig: SignerWithAddress;
     let admin: SignerWithAddress;
+    let gauge: Contract;
 
     before('load accounts', async () => {
       admin = await getSigner(0);
