@@ -33,7 +33,6 @@ import * as parser from '@solidity-parser/parser';
 import Task from './task';
 import logger from './logger';
 import { findContractSourceName, getAllFullyQualifiedNames } from './buildinfo';
-import { EtherscanNetworkEntry } from '@nomiclabs/hardhat-etherscan/dist/src/types';
 
 const MAX_VERIFICATION_INTENTS = 3;
 
