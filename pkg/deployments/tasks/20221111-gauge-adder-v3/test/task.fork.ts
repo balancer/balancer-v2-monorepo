@@ -12,7 +12,6 @@ import { getSigner, impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import TimelockAuthorizer from '@balancer-labs/v2-helpers/src/models/authorizer/TimelockAuthorizer';
 import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
-import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
@@ -90,7 +89,10 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
 
     it('stores the gauge controller', async () => {
       const gaugeControllerTask = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
-      gaugeController = await gaugeControllerTask.instanceAt('GaugeController', gaugeControllerTask.output({ network: 'mainnet' }).GaugeController);
+      gaugeController = await gaugeControllerTask.instanceAt(
+        'GaugeController',
+        gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
+      );
       //augeController = await deployedAt('GaugeController', task.input().GaugeController);
 
       // Ensure we can call functions on the gaugeController
