@@ -21,10 +21,10 @@ import Decimal from 'decimal.js';
 describe('PrimaryPool', function () {
   let pool: PrimaryPool, tokens: TokenList, securityToken: Token, currencyToken: Token;
   let trader: SignerWithAddress,
-      lp: SignerWithAddress,
-      admin: SignerWithAddress,
-      owner: SignerWithAddress,
-      other: SignerWithAddress;
+    lp: SignerWithAddress,
+    admin: SignerWithAddress,
+    owner: SignerWithAddress,
+    other: SignerWithAddress;
 
   const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -33,6 +33,7 @@ describe('PrimaryPool', function () {
   const basePrice = BigNumber.from("21").mul(fp(1));
   const maxSecurityOffered = BigNumber.from("100");
   const issueCutoffTime = BigNumber.from("1672444800");
+  const offeringDocs = "0xB45165ED3CD437B9FFAD02A2AAD22A4DDC69162470E2622982889CE5826F6E3D";
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -69,7 +70,7 @@ describe('PrimaryPool', function () {
       it('sets the vault', async () => {
         expect(await pool.getVault()).to.equal(pool.vault.address);
       });
-      
+
       it('uses general specialization', async () => {
         const { address, specialization } = await pool.getRegisteredInfo();
         expect(address).to.equal(pool.address);
@@ -107,7 +108,7 @@ describe('PrimaryPool', function () {
       });
       
     });
-    
+
     context('when the creation fails', () => {
       it('reverts if there are repeated tokens', async () => {
         await expect(
@@ -119,7 +120,7 @@ describe('PrimaryPool', function () {
   
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
-      await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime}, false);
+      await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs}, false);
     });
     
     it('adds bpt to the vault', async () => {
@@ -158,7 +159,7 @@ describe('PrimaryPool', function () {
 
     sharedBeforeEach('deploy and initialize pool', async () => {
 
-      await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, true);
+      await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs }, true);
       await pool.instance.setTotalSupply(MAX_UINT112);
 
       await setBalances(pool, { securityBalance: BigNumber.from("20"), currencyBalance: BigNumber.from("5"), bptBalance: MAX_UINT112 });
@@ -367,7 +368,7 @@ describe('PrimaryPool', function () {
 
   describe('joins and exits', () => {
     sharedBeforeEach('deploy pool', async () => {
-    await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, false);
+    await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs }, false);
     await pool.initialize();
     });
 
@@ -395,7 +396,7 @@ describe('PrimaryPool', function () {
   describe('issueCutoffTime and price check', () => {
     let currentBalances: BigNumber[];
     sharedBeforeEach('deploy pool', async () => {
-      await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime }, false);
+      await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs }, false);
       await pool.initialize();
       const poolId = await pool.getPoolId();
       currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
@@ -428,5 +429,5 @@ describe('PrimaryPool', function () {
       expect(await pool.getbasePrice()).to.equal(basePrice);
     });
   });
-    
+  
 });

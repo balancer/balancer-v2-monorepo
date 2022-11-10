@@ -30,6 +30,7 @@ export default class PrimaryPool extends BasePool{
   maxSecurityOffered: BigNumberish;
   swapFeePercentage: BigNumberish;
   issueCutoffTime: BigNumberish;
+  offeringDocs: string;
   vault: Vault;
   //owner?: SignerWithAddress;
 
@@ -39,7 +40,7 @@ export default class PrimaryPool extends BasePool{
 
   static async deployedAt(address: Account): Promise<PrimaryPool> {
     const instance = await deployedAt('pool-primary-issues/PrimaryIssuePool', TypesConverter.toAddress(address));
-    const [poolId, vault, securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, swapFee, issueCutoffTime, owner] = await Promise.all([
+    const [poolId, vault, securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, swapFee, issueCutoffTime, offeringDocs, owner] = await Promise.all([
       instance.getPoolId(),
       instance.getVault(),
       instance.getSecurityToken(),
@@ -49,6 +50,7 @@ export default class PrimaryPool extends BasePool{
       instance.maxSecurityOffered(),
       instance.getSwapFeePercentage(),
       instance.getissueCutoffTime(),
+      instance.getofferingDocs(),
       instance.getOwner(),
     ]);
     return new PrimaryPool(
@@ -63,6 +65,7 @@ export default class PrimaryPool extends BasePool{
       maxSecurityOffered,
       swapFee,
       issueCutoffTime,
+      offeringDocs,
       owner
     );
   }
@@ -79,6 +82,7 @@ export default class PrimaryPool extends BasePool{
     maxSecurityOffered: BigNumberish,
     swapFeePercentage: BigNumberish,
     issueCutoffTime: BigNumberish,
+    offeringDocs: string,
     owner?: SignerWithAddress
   ) {
     super(instance, poolId, vault, new TokenList([securityToken, currencyToken, bptToken]).sort(), swapFeePercentage, owner);
@@ -93,6 +97,7 @@ export default class PrimaryPool extends BasePool{
     this.maxSecurityOffered = maxSecurityOffered;
     this.swapFeePercentage = swapFeePercentage;
     this.issueCutoffTime = issueCutoffTime;
+    this.offeringDocs = offeringDocs;
     //this.owner = owner;
   }
 
@@ -154,6 +159,10 @@ export default class PrimaryPool extends BasePool{
 
   async getIssueCutoffTime(): Promise<BigNumber> {
     return this.instance.getIssueCutoffTime();
+  }
+
+  async getofferingDocs(): Promise<BigNumber>{
+    return this.instance.getofferingDocs();
   }
 
   async balanceOf(account: Account): Promise<BigNumber> {

@@ -31,8 +31,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     IERC20 private immutable _security;
     IERC20 private immutable _currency;
 
-    //IPrimaryIssuePoolFactory.FactoryPoolParams private factoryPoolParams;
-
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1; //setting to max BPT allowed in Vault
@@ -154,12 +152,14 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     function getBptIndex() public view override returns (uint256) {
         return _bptIndex;
     }
-
+    
     function initialize() external {
         bytes32 poolId = getPoolId();
         IVault vault = getVault();
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
+        _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
+        _maxAmountsIn[_currencyIndex] = Math.div(_MAX_TOKEN_BALANCE, _minPrice, false);
         _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
@@ -167,26 +167,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
             fromInternalBalance: false
         });
-        vault.joinPool(poolId, address(this), _balancerManager, request);
+        vault.joinPool(getPoolId(), address(this), address(this), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
-    }
-
-    function _onInitializePool(
-        bytes32,
-        address sender,
-        address recipient,
-        uint256[] memory,
-        bytes memory
-    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
-        //the primary issue pool is initialized by the balancer manager contract
-        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
-        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
-        
-        uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
-        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
-
-        return (bptAmountOut, amountsIn);
     }
 
     function exit() external {
@@ -203,7 +185,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         });
         vault.exitPool(poolId, address(this), payable(_balancerManager), request);
     }
-
+    
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
@@ -330,6 +312,24 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
+
+    function _onInitializePool(
+        bytes32,
+        address sender,
+        address recipient,
+        uint256[] memory,
+        bytes memory
+    ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
+        //the primary issue pool is initialized by the balancer manager contract
+        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
+        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
+        
+        uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
+        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
+        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+
+        return (bptAmountOut, amountsIn);
+    }
     
     function _onJoinPool(
         bytes32,
@@ -411,7 +411,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {
-        // Linear Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+        // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
         // mechanism, ensuring initialization only occurs once.
         return 0;
     }

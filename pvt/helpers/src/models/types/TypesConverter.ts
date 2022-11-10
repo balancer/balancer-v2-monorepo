@@ -28,6 +28,7 @@ import {
   TokenDeployment,
   RawTokenDeployment,
 } from '../tokens/types';
+import { string } from 'hardhat/internal/core/params/argumentTypes';
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (18..0)
@@ -133,6 +134,7 @@ export default {
       basePrice,
       maxSecurityOffered,
       issueCutoffTime,
+      offeringDocs,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -145,7 +147,8 @@ export default {
     if (!issueCutoffTime) issueCutoffTime = bn(new Date().getTime() * 2);
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
-
+    if (!offeringDocs) offeringDocs = '';
+    
     return {
       securityToken: params.securityToken,
       currencyToken: params.currencyToken,
@@ -154,6 +157,7 @@ export default {
       maxSecurityOffered,
       swapFeePercentage,
       issueCutoffTime,
+      offeringDocs,
       pauseWindowDuration,
       bufferPeriodDuration,
       owner: params.owner,

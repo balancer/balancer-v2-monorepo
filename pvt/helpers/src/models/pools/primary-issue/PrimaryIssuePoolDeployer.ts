@@ -33,6 +33,7 @@ export default {
       maxSecurityOffered,
       swapFeePercentage,
       issueCutoffTime,
+      offeringDocs,
     } = deployment;
 
     const poolId = await pool.getPoolId();
@@ -53,6 +54,7 @@ export default {
       maxSecurityOffered,
       swapFeePercentage,
       issueCutoffTime,
+      offeringDocs,
       owner
     );
   },
@@ -69,6 +71,7 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       issueCutoffTime,
+      offeringDocs,
       from,
     } = params;
 
@@ -83,7 +86,8 @@ export default {
       basePrice: basePrice,
       maxAmountsIn: maxSecurityOffered,
       swapFeePercentage: swapFeePercentage,
-      cutOffTime: issueCutoffTime
+      cutOffTime: issueCutoffTime,
+      offeringDocs: offeringDocs
   }
 
     return deploy('pool-primary-issues/MockPrimaryIssuePool', {

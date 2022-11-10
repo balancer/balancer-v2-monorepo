@@ -15,6 +15,7 @@ export type RawPrimaryPoolDeployment = {
   maxSecurityOffered?: BigNumber;
   swapFeePercentage?: BigNumberish;
   issueCutoffTime?: BigNumberish;
+  offeringDocs?: string;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   owner?: SignerWithAddress;
@@ -31,6 +32,7 @@ export type PrimaryPoolDeployment = {
   maxSecurityOffered: BigNumber;
   swapFeePercentage: BigNumberish;
   issueCutoffTime: BigNumberish;
+  offeringDocs: string;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
   owner?: SignerWithAddress;
