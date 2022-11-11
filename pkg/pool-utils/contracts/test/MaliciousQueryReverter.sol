@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+pragma solidity ^0.7.0;
+
+contract MaliciousQueryReverter {
+    function spoofQueryRevert() public pure {
+        uint256[] memory tokenAmounts = new uint256[](2);
+        tokenAmounts[0] = 1;
+        tokenAmounts[1] = 2;
+
+        uint256 bptAmount = 420;
+
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            // We will return a raw representation of `bptAmount` and `tokenAmounts` in memory, which is composed of
+            // a 32-byte uint256, followed by a 32-byte for the array length, and finally the 32-byte uint256 values
+            // Because revert expects a size in bytes, we multiply the array length (stored at `tokenAmounts`) by 32
+            let size := mul(mload(tokenAmounts), 32)
+
+            // We store the `bptAmount` in the previous slot to the `tokenAmounts` array. We can make sure there
+            // will be at least one available slot due to how the memory scratch space works.
+            // We can safely overwrite whatever is stored in this slot as we will revert immediately after that.
+            let start := sub(tokenAmounts, 0x20)
+            mstore(start, bptAmount)
+
+            // We send one extra value for the error signature "QueryError(uint256,uint256[])" which is 0x43adbafb
+            // We use the previous slot to `bptAmount`.
+            mstore(sub(start, 0x20), 0x0000000000000000000000000000000000000000000000000000000043adbafb)
+            start := sub(start, 0x04)
+
+            // When copying from `tokenAmounts` into returndata, we copy the additional 68 bytes to also return
+            // the `bptAmount`, the array's length, and the error signature.
+            revert(start, add(size, 68))
+        }
+    }
+
+    function getRate() external pure returns (uint256) {
+        spoofQueryRevert();
+        return 0;
+    }
+}
