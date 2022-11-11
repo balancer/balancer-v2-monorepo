@@ -112,14 +112,14 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
         // means that the AuthorizerAdaptor can be made to check for the permission of any arbitrary selector,
         // regardless of the action encoded in `data`.
         //
-        // In other words, an account that has permission to execute *any* action via de Adaptor can actually execute
+        // In other words, an account that has permission to execute *any* action via the Adaptor can actually execute
         // *all* of them: there's no permission granularity.
         // Note that actually performing this exploit requires the ability to manually craft calldata: as such,
         // Solidity contracts that call into the Adaptor and create the call via the `abi.encode` function are safe to
         // use since they will always use the standard encoding.
         //
         // To work around this issue, the `TimelockAuthorizer` contract contains a special condition that will check
-        // when it is being called by the `AuthrozierAdaptor`, and behave differently when that happens. See the
+        // when it is being called by the `AuthorizerAdaptor`, and behave differently when that happens. See the
         // `TimelockAuthorizer.canPerform` and `AuthorizerAdaptorEntrypoint.performAction` functions for more
         // information.
         //

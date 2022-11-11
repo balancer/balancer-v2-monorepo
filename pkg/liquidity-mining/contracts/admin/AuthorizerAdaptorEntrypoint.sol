@@ -85,7 +85,7 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
         // The `AuthorizerAdaptor` will not check for permissions: it is special-cased in the `TimelockAuthorizer` so
         // that all calls to it that are not made from this entrypoint fail, while those that originate in the
         // entrypoint succeed. This works as we have just checked that the caller has permission to perform the action
-        // encoded by `data`. See `TimelockAuthorizer.canPeform` for more details.
+        // encoded by `data`. See `TimelockAuthorizer.canPerform` for more details.
         return getAuthorizerAdaptor().performAction{ value: msg.value }(target, data);
     }
 }
