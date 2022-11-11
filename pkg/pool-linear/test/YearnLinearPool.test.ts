@@ -122,7 +122,7 @@ describe('YearnLinearPool', function () {
     });
 
     it('should return correct rates for 8 decimal tokens', async () => {
-      const token = await Token.create({ symbol: 'wBTC', decimals: 6 });
+      const token = await Token.create({ symbol: 'wBTC', decimals: 8 });
       const tokenVault = await deploy('MockYearnTokenVault', {
         args: ['yvBTC', 'yvBTC', 8, token.address, 1e8],
       });
