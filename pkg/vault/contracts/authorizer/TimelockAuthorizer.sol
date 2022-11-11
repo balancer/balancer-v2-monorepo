@@ -373,8 +373,8 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
             // contract, called the `AuthorizerAdaptorEntrypoint`. This contract correctly checks whether `account` can
             // perform `actionId` on `where`, and then forwards the call onto the `AuthorizerAdaptor` to execute.
             //
-            // The authorizer then rejects calls to the `AuthorizerAdaptor` which aren't made through the entrypoint, and
-            // approves all calls made through it (since the entrypoint will have already performed any necessary
+            // The authorizer then rejects calls to the `AuthorizerAdaptor` which aren't made through the entrypoint,
+            // and approves all calls made through it (since the entrypoint will have already performed any necessary
             // permission checks).
             return account == address(_authorizerAdaptorEntrypoint);
         }
