@@ -42,9 +42,7 @@ abstract contract BaseCoordinator is SingletonAuthentication, ReentrancyGuard {
     function()[] private _coordinatorStages;
     uint256[] private _stageActivationTime;
 
-    constructor(IAuthorizerAdaptor authorizerAdaptor)
-        SingletonAuthentication(authorizerAdaptor.getVault())
-    {
+    constructor(IAuthorizerAdaptor authorizerAdaptor) SingletonAuthentication(authorizerAdaptor.getVault()) {
         _authorizerAdaptor = authorizerAdaptor;
     }
 

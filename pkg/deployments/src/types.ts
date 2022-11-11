@@ -12,7 +12,6 @@ export type TaskRunOptions = {
   force?: boolean;
   from?: SignerWithAddress;
   extra?: unknown; // TODO(@jubeira): remove this extra argument.
-  extra2?: unknown;
 };
 
 export type NAry<T> = T | Array<T>;
