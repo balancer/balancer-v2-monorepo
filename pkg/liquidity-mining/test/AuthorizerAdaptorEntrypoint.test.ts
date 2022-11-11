@@ -147,7 +147,9 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when calldata is invalid', () => {
       it('reverts', async () => {
-        await expect(adaptorEntrypoint.connect(other).performAction(target, '0x')).to.be.reverted;
+        await expect(adaptorEntrypoint.connect(other).performAction(target, '0x')).to.be.revertedWith(
+          'INSUFFICIENT_DATA'
+        );
       });
     });
   });
