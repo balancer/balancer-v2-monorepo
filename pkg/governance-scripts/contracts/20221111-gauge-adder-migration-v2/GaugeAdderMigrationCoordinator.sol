@@ -61,7 +61,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
 
     function _firstStage() private {
         _grantPermissionsOverBridgeParameters();
-        // _setupOptimismGaugeType();
+        _setupOptimismGaugeType();
         _setupNewGaugeAdder();
         _deprecateOldGaugeAdder();
     }
@@ -91,7 +91,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         );
     }
 
-    /*function _setupOptimismGaugeType() private {
+    function _setupOptimismGaugeType() private {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
 
         bytes32 addGaugeTypeRole = authorizerAdaptor.getActionId(IGaugeController.add_type.selector);
@@ -106,7 +106,7 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
         );
 
         authorizer.renounceRole(addGaugeTypeRole, address(this));
-    }*/
+    }
 
     function _setupNewGaugeAdder() private {
         ICurrentAuthorizer authorizer = ICurrentAuthorizer(address(getAuthorizer()));
