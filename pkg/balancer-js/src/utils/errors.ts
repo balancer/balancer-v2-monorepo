@@ -14,6 +14,7 @@ const balancerErrorCodes: Record<string, string> = {
   '102': 'UNSORTED_TOKENS',
   '103': 'INPUT_LENGTH_MISMATCH',
   '104': 'ZERO_TOKEN',
+  '105': 'INSUFFICIENT_DATA',
   '200': 'MIN_TOKENS',
   '201': 'MAX_TOKENS',
   '202': 'MAX_SWAP_FEE_PERCENTAGE',

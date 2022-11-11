@@ -123,6 +123,7 @@ library Errors {
     uint256 internal constant UNSORTED_TOKENS = 102;
     uint256 internal constant INPUT_LENGTH_MISMATCH = 103;
     uint256 internal constant ZERO_TOKEN = 104;
+    uint256 internal constant INSUFFICIENT_DATA = 105;
 
     // Shared pools
     uint256 internal constant MIN_TOKENS = 200;
