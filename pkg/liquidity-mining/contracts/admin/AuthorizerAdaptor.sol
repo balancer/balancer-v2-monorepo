@@ -87,7 +87,9 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
 
     /**
      * @notice Performs an arbitrary function call on a target contract, provided the caller is authorized to do so.
-     * @dev This function shall not be called directly; see `performAction` in `AuthorizerAdaptorEntrypoint`.
+     *
+     * This function should not be called directly as that will result in an unconditional revert: instead, use
+     * `AuthorizerAdaptorEntrypoint.performAction`.
      * @param target - Address of the contract to be called
      * @param data - Calldata to be sent to the target contract
      * @return The bytes encoded return value from the performed function call
@@ -140,7 +142,9 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
             selector := calldataload(100)
         }
 
-        // This check should only pass if the sender is the authorizer adaptor entrypoint.
+        // NOTE: The `TimelockAuthorizer` special cases the `AuthorizerAdaptor` calling into it, so that the action ID
+        // and `target` values are completely ignored. The following check will only pass if the caller is the
+        // `AuthorizerAdaptorEntrypoint`, which will have already checked for permissions correctly.
         _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
         // We don't check that `target` is a contract so all calls to an EOA will succeed.
