@@ -71,16 +71,12 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
     }
 
     /**
-     * @notice Returns the action ID associated with calling a given function through the authorizer adaptor.
-     * @dev As the contracts managed by the adaptor don't have action ID disambiguators, we use the adaptor's globally.
-     * This means that contracts with the same function selector will have a matching action ID:
-     * if granularity is required then permissions must not be granted globally in the Authorizer.
+     * @notice Returns the action ID associated with calling a given function through the `AuthorizerAdaptor`. Note that
+     * even though the Adaptor's action IDs are not actually used by it (since the Authorizer ignores those values - see
+     * `TimelockAuthorizer.canPerform`), this contract reuses those IDs to simplify migrations and tooling.
      *
-     * The adaptor entrypoint does not hold a disambiguator of its own; this function just forwards the call to the
-     * adaptor itself.
-     *
-     * @param selector - The 4 byte selector of the function to be called using `performAction`
-     * @return The associated action ID
+     * See `AuthorizerAdaptor.getActionId` for more information on how the action IDs are computed, and how functions
+     * with equal selectors are assigned the same action ID.
      */
     function getActionId(bytes4 selector) public view override returns (bytes32) {
         return getAuthorizerAdaptor().getActionId(selector);
