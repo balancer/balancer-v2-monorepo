@@ -35,22 +35,21 @@ contract CompoundLinearPoolRebalancer is LinearPoolRebalancer {
     }
 
     function _wrapTokens(uint256 amount) internal override {
-        // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Before we can
+        // No referral code, depositing from underlying (i.e. DAI, USDC, etc. instead of cDAI or cUSDC). Before we can
         // deposit however, we need to approve the wrapper in the underlying token.
         _mainToken.safeApprove(address(_wrappedToken), amount);
         ICToken(address(_wrappedToken)).mint(amount);
     }
 
     function _unwrapTokens(uint256 amount) internal override {
-        // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of aDAI or aUSDC). Approvals are not necessary here
+        // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of cDAI or cUSDC). Approvals are not necessary here
         // as the wrapped token is simply burnt.
         ICToken(address(_wrappedToken)).redeem(amount);
     }
 
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
 
-        uint256 numTokens = ICToken(address(_wrappedToken)).exchangeRateCurrent() * wrappedAmount;
-        return numTokens;
+        return ICToken(address(_wrappedToken)).exchangeRateStored() * wrappedAmount;
 
     }
 }

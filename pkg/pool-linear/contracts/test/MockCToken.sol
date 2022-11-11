@@ -19,7 +19,7 @@ import "../compound/ICToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 contract MockCToken is TestToken, ICToken /*ILendingPool*/ {
-    address private immutable _ASSET;
+    address private immutable _underlying;
     uint256 private _rate = 1e8;
 
     constructor(
@@ -28,19 +28,18 @@ contract MockCToken is TestToken, ICToken /*ILendingPool*/ {
         uint8 decimals,
         address underlyingAsset
     ) TestToken(name, symbol, decimals) {
-        _ASSET = underlyingAsset;
+        _underlying = underlyingAsset;
     }
 
-    // solhint-disable-next-line func-name-mixedcase
-    function ASSET() external view override returns (address) {
-        return _ASSET;
+    function underlying() external view override returns (address) {
+        return _underlying;
     }
 
-    function exchangeRateCurrent() external view override returns (uint256) {
+    function exchangeRateStored() external view override returns (uint256) {
         return _rate;
     }
 
-    function setExchangeRateCurrent(uint256 newRate) external {
+    function setExchangeRateStored(uint256 newRate) external {
         _rate = newRate;
     }
 

@@ -18,21 +18,23 @@ interface ICToken {
     /**
      * @dev returns the address of the cToken's underlying asset
      */
-    function ASSET() external view returns (address);
+    function underlying() external view returns (address);
 
     /**
-     * @dev Adds the wrapped tokens to compounds liquidity pool
+     * @dev Adds the tokens to compounds liquidity pool. Get back wrapped token in exchange
      */
     function mint(uint256) external returns (uint256);
 
     /**
-     * @dev Withdraws unwrapped tokens from compounds liquidity pool
+     * @dev Withdraws unwrapped tokens from compounds liquidity pool in exchange for wrapped token
      */
-    function redeem(uint256) external returns (uint256);
+    function redeem(uint) external returns (uint);
 
     /**
      * @dev Gets the current exchange rate
      */
-    function exchangeRateCurrent() external view returns (uint);
-    //function getTokenAmount(uint256) external view returns (uint256);
+    function exchangeRateStored() external view returns (uint256);
 }
+
+
+

@@ -21,7 +21,7 @@ import "./ICToken.sol";
 import "../LinearPool.sol";
 
 contract CompoundLinearPool is LinearPool {
-    ICToken private immutable _cToken;
+    ICToken public immutable _cToken;
     ERC20 private immutable _mainToken;
 
     struct ConstructorArgs {
@@ -53,11 +53,12 @@ contract CompoundLinearPool is LinearPool {
             args.owner
         )
     {
-
+        // Set values for state variables
         _cToken = ICToken(address(args.wrappedToken));
         _mainToken = ERC20(address(args.mainToken));
-        //_underlyingDecimals = args.mainToken.decimals;
-        _require(address(args.mainToken) == ICToken(address(args.wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);
+
+        // Check to make sure that the main token is the underlying token for the wrapped Token
+        _require(address(args.mainToken) == ICToken(address(args.wrappedToken)).underlying(), Errors.TOKENS_MISMATCH);
     }
 
     function _toAssetManagerArray(ConstructorArgs memory args) private pure returns (address[] memory) {
@@ -72,12 +73,12 @@ contract CompoundLinearPool is LinearPool {
     // Wrapped token rate is the exchange rate for 1 wrappedToken in main tokens.
     // This function needs to return a 18 decimal fixed point number in order to incorporate properly with the Linear Pool & Linear Pool Math Contracts
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        uint256 rate = _cToken.exchangeRateCurrent();
-        // _cToken.exchangeRateCurrent() returns a integer that is scaled by 10 ** (18 - 8 + underlying token decimals)
+        uint256 rate = _cToken.exchangeRateStored();
+        // _cToken.exchangeRateStored() returns a integer that is scaled by 10 ** (18 - 8 + underlying token decimals)
         // The underlying tokens available to be traded with compound have a range of decimals between 6 and 18
         // This causes a rate variable that can be anywhere from a 16 to a 28 decimal fixed point number
         // We set this formula as our initial scaling value to begin the conversion to the return value
-        uint256 compoundScaling = SafeMath.add(10, ERC20(_mainToken).decimals());
+        uint256 compoundScaling = SafeMath.add(10, _mainToken.decimals());
         // We subtract 18 from our compound scaling variable to determine how far we are off from a formula to will produce a 18 fixed point number
         // SafeMath not needed because we are not dealing with external inputs
         int256 finalScaling = int256(compoundScaling) - 18;
@@ -97,5 +98,7 @@ contract CompoundLinearPool is LinearPool {
     function abs(int256 number) private pure returns (uint256) {
         return number >=0 ? uint256(number) : uint256(-number);
     }
+
+
 
 }

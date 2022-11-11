@@ -118,19 +118,24 @@ describe('CompoundLinearPool', function () {
       });
 
       describe('getWrappedTokenRate', () => {
-        it('returns the expected value', async () => {
+        it('returns the expected value for 1:1', async () => {
           // Exchange rates are returned as uint256 scaled by 10**(18-8 + underlying token decimal)
           // First test will be a 1:1 exchange rate (1*10^(18-8+decimal))
           const scaledValue = 18 - 8 + boostedPool.mainToken.decimals;
           const mockExchange = bn(10 ** scaledValue);
-          await mockLendingPool.setExchangeRateCurrent(mockExchange);
+          await mockLendingPool.setExchangeRateStored(mockExchange);
           expect(await boostedPool.getWrappedTokenRate()).to.be.eq(fp(1));
 
+        });
+
+        it('returns the expected value for 2:1', async () => {
           // We now double the reserve's normalised income to change the exchange rate to 2:1
+          const scaledValue = 18 - 8 + boostedPool.mainToken.decimals;
           const doubleMockExchange = bn(2 * 10 ** scaledValue);
-          await mockLendingPool.setExchangeRateCurrent(doubleMockExchange);
+          await mockLendingPool.setExchangeRateStored(doubleMockExchange);
           expect(await boostedPool.getWrappedTokenRate()).to.be.eq(fp(2));
         });
+
       });
 
       describe('constructor', () => {
@@ -148,40 +153,6 @@ describe('CompoundLinearPool', function () {
               owner.address
             )
           ).to.be.revertedWith('TOKENS_MISMATCH');
-        });
-      });
-
-      describe('Token Swaps', () => {
-        it('Single Swaps', async () => {
-          const wrappedTokenAmount = bn(10 ** boostedPool.mainToken.decimals);
-          await wrappedToken.mint(lp, wrappedTokenAmount);
-          await wrappedToken.approve(vault.address, wrappedTokenAmount, { from: lp });
-
-          const scaledValue = 18 - 8 + boostedPool.mainToken.decimals;
-          const mockExchange = bn(2 * 10 ** scaledValue);
-          await mockLendingPool.setExchangeRateCurrent(mockExchange);
-          console.log('Code Reached 1');
-          const data: SingleSwap = {
-            poolId: boostedPool.poolId,
-            kind: 0,
-            assetIn: wrappedToken.address,
-            assetOut: mainToken.address,
-            amount: wrappedTokenAmount,
-            userData: '0x',
-          };
-          console.log('Code Reached 2');
-          const balanceBefore = await mainToken.balanceOf(lp.address);
-          console.log(`balance before: ${balanceBefore}`);
-          await vault.instance.connect(lp).swap(data, funds, BigNumber.from(0), MAX_UINT256);
-          console.log('Code Reached 3');
-
-          const balanceAfter = await mainToken.balanceOf(lp.address);
-          console.log(`balance after: ${balanceAfter}`);
-          console.log('Code Reached 4');
-          const amountReturned = balanceAfter.sub(balanceBefore);
-          console.log(`amount returned: ${amountReturned}`);
-          console.log('Code Reached 5');
-          expect(amountReturned).to.be.eq(bn(2 * 10 ** boostedPool.mainToken.decimals));
         });
       });
     });

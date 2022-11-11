@@ -11,7 +11,7 @@ import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
 
-describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
+describeForkTest('CompoundLinearPoolFactory', 'mainnet', 15225000, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
   let factory: Contract, vault: Contract, usdc: Contract;
   let rebalancer: Contract;
@@ -38,9 +38,9 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   let poolId: string;
 
   before('run task', async () => {
-    task = new Task('20220817-aave-rebalanced-linear-pool', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221111-compound-rebalanced-linear-pool', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
-    factory = await task.deployedInstance('AaveLinearPoolFactory');
+    factory = await task.deployedInstance('CompoundLinearPoolFactory');
   });
 
   before('load signers', async () => {
@@ -119,7 +119,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       const tx = await factory.create('', '', USDC, waUSDC, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
-      pool = await task.instanceAt('AaveLinearPool', event.args.pool);
+      pool = await task.instanceAt('CompoundLinearPool', event.args.pool);
       expect(await factory.isPoolFromFactory(pool.address)).to.be.true;
 
       poolId = await pool.getPoolId();
@@ -127,7 +127,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       expect(registeredAddress).to.equal(pool.address);
 
       const { assetManager } = await vault.getPoolTokenInfo(poolId, USDC); // We could query for either USDC or waUSDC
-      rebalancer = await task.instanceAt('AaveLinearPoolRebalancer', assetManager);
+      rebalancer = await task.instanceAt('CompoundLinearPoolRebalancer', assetManager);
 
       await usdc.connect(holder).approve(rebalancer.address, MAX_UINT256); // To send extra main on rebalance
     });
