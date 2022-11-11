@@ -21,7 +21,7 @@ import "./ICToken.sol";
 import "../LinearPool.sol";
 
 contract CompoundLinearPool is LinearPool {
-    ICToken public immutable _cToken;
+    ICToken private immutable _cToken;
     ERC20 private immutable _mainToken;
 
     struct ConstructorArgs {
