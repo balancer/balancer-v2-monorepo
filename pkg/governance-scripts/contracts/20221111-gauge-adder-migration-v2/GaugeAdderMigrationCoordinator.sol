@@ -136,8 +136,6 @@ contract GaugeAdderMigrationCoordinator is BaseCoordinator {
                 ILiquidityGaugeFactory(oldGaugeAdder.getFactoryForGaugeType(IGaugeAdder.GaugeType.Optimism, 0)),
                 IGaugeAdder.GaugeType.Optimism
             );
-            // Add the new factory for Optimism gauges.
-            //newGaugeAdder.addGaugeFactory(optimismRootGaugeFactory, IGaugeAdder.GaugeType.Optimism);
 
             authorizer.renounceRole(addFactoryRole, address(this));
         }
