@@ -20,18 +20,27 @@ library ExternalCallLib {
     function checkForMaliciousRevert(bytes memory errorData) internal pure {
         uint256 errorLength = errorData.length;
         assembly {
-            // If the first 4 bytes match the error signature "QueryError(uint256,uint256[])" then this
-            // error is attempting to impersonate the mechanism used by `BasePool._queryAction`, injecting bogus data.
-            // This can result in loss of funds if the return value of `BasePool._queryAction` is then used in a later
-            // calculation.
+            // If the first 4 bytes match the selector for one of the error signatures used by `BasePool._queryAction`
+            // or `Vault.queryBatchSwap` then this error is attempting to impersonate the query mechanism used by these
+            // contracts in order to inject bogus data. This can result in loss of funds if the return value is then
+            // used in a later calculation.
+            //
+            // We then want to reject the following error signatures:
+            // - `QueryError(uint256,uint256[])` (used by `BasePool._queryAction`)
+            // - `QueryError(int256[])` (used by `Vault.queryBatchSwap`)
 
-            // We only forward the revert reason if it doesn't match the error sigature "QueryError(uint256,uint256[])",
+            // We only forward the revert reason if it doesn't match the any of the selectors for these error sigatures,
             // otherwise we return a new error message flagging that the revert was malicious.
             let error := and(
                 mload(add(errorData, 0x20)),
                 0xffffffff00000000000000000000000000000000000000000000000000000000
             )
-            if iszero(eq(error, 0x43adbafb00000000000000000000000000000000000000000000000000000000)) {
+            if iszero(
+                or(
+                    eq(error, 0x43adbafb00000000000000000000000000000000000000000000000000000000), // BasePool._queryAction
+                    eq(error, 0xfa61cc1200000000000000000000000000000000000000000000000000000000) // Vault.queryBatchSwap
+                )
+            ) {
                 revert(add(errorData, 0x20), errorLength)
             }
         }

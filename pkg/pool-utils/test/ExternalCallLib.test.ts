@@ -13,10 +13,33 @@ describe('ExternalCallLib', function () {
     caller = await deploy('MockExternalCaller', { args: [maliciousReverter.address] });
   });
 
-  describe('making external call to a malicious contract', () => {
+  describe('when calling into a malicious contract in a swap', () => {
     context('when call is protected', () => {
       it('reverts with MALICIOUS_QUERY_REVERT', async () => {
-        await expect(caller.protectedExternalCall()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
+        await expect(caller.protectedSwapExternalCall()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
+      });
+    });
+
+    context('when call is unprotected', () => {
+      it('bubbles up original revert data', async () => {
+        const maliciousErrorSignature = solidityKeccak256(['string'], ['QueryError(int256[])']).slice(0, 10);
+
+        try {
+          const tx = await caller.unprotectedSwapExternalCall();
+          await tx.wait();
+        } catch (e: any) {
+          const revertData = e.data;
+
+          expect(revertData.slice(0, 10)).to.be.eq(maliciousErrorSignature);
+        }
+      });
+    });
+  });
+
+  describe('when calling into a malicious contract in a join/exit', () => {
+    context('when call is protected', () => {
+      it('reverts with MALICIOUS_QUERY_REVERT', async () => {
+        await expect(caller.protectedJoinExitExternalCall()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
       });
     });
 
@@ -25,7 +48,7 @@ describe('ExternalCallLib', function () {
         const maliciousErrorSignature = solidityKeccak256(['string'], ['QueryError(uint256,uint256[])']).slice(0, 10);
 
         try {
-          const tx = await caller.unprotectedExternalCall();
+          const tx = await caller.unprotectedJoinExitExternalCall();
           await tx.wait();
         } catch (e: any) {
           const revertData = e.data;
