@@ -23,6 +23,13 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
 
 /**
  * @title Authorizer Adaptor
+ *
+ * WARNING: this contract contains a *critical bug* that can lead into exploits where it checks for permissions
+ * incorrectly. It should *never* be used by itself. We keep a copy of it in the repository, including the bug and all
+ * original comments (some of which are incorrect due to the bug), both for historical reasons and because it is part of
+ * our immutable infrastructure. See the `AuthorizerAdaptorEntrypoint` contract for more information on how we use this
+ * contract safely.
+ *
  * @notice This contract is intended to act as an adaptor between systems which expect a single admin address
  * and the Balancer Authorizer such that the Authorizer may grant/revoke admin powers to unlimited addresses.
  *
@@ -80,7 +87,9 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
 
     /**
      * @notice Performs an arbitrary function call on a target contract, provided the caller is authorized to do so.
-     * @dev This function shall not be called directly; see `performAction` in `AuthorizerAdaptorEntrypoint`.
+     *
+     * This function should not be called directly as that will result in an unconditional revert: instead, use
+     * `AuthorizerAdaptorEntrypoint.performAction`.
      * @param target - Address of the contract to be called
      * @param data - Calldata to be sent to the target contract
      * @return The bytes encoded return value from the performed function call
@@ -92,6 +101,31 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
         nonReentrant
         returns (bytes memory)
     {
+        // WARNING: the following line contains a critical bug that allows the caller to trick this contract into
+        // checking for an incorrect permission.
+        // We unconditionally read memory slot 100, which is where the first four bytes of `data` will reside (i.e. the
+        // function selector) given a standard packed ABI encoding. Both the Solidity compiler and clients such as
+        // ethers.js will do the ABI encoding in such a way that the selector is actually on slot 100, since this is the
+        // way that minimizes gas costs, but it is *not* the only valid way to ABI encode.
+        // In particular, it is possible to choose a larger offset and place `data` much further away in calldata. Under
+        // those conditions, slot 100 will *not* contain the selector, but it can instead be any arbitrary value. This
+        // means that the AuthorizerAdaptor can be made to check for the permission of any arbitrary selector,
+        // regardless of the action encoded in `data`.
+        //
+        // In other words, an account that has permission to execute *any* action via the Adaptor can actually execute
+        // *all* of them: there's no permission granularity.
+        // Note that actually performing this exploit requires the ability to manually craft calldata: as such,
+        // Solidity contracts that call into the Adaptor and create the call via the `abi.encode` function are safe to
+        // use since they will always use the standard encoding.
+        //
+        // To work around this issue, the `TimelockAuthorizer` contract contains a special condition that will check
+        // when it is being called by the `AuthorizerAdaptor`, and behave differently when that happens. See the
+        // `TimelockAuthorizer.canPerform` and `AuthorizerAdaptorEntrypoint.performAction` functions for more
+        // information.
+        //
+        // All comments below are part of the original source code, and as noted above some of them are incorrect. They
+        // are kept for historical reasons.
+
         bytes4 selector;
 
         // We want to check that the caller is authorized to call the function on the target rather than this function.
@@ -108,7 +142,9 @@ contract AuthorizerAdaptor is IAuthorizerAdaptor, ReentrancyGuard {
             selector := calldataload(100)
         }
 
-        // This check should only pass if the sender is the authorizer adaptor entrypoint.
+        // NOTE: The `TimelockAuthorizer` special cases the `AuthorizerAdaptor` calling into it, so that the action ID
+        // and `target` values are completely ignored. The following check will only pass if the caller is the
+        // `AuthorizerAdaptorEntrypoint`, which will have already checked for permissions correctly.
         _require(_canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
 
         // We don't check that `target` is a contract so all calls to an EOA will succeed.
