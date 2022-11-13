@@ -201,15 +201,21 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 request.tokenIn == IERC20(_security), "Invalid swapped tokens");
         uint256[] memory scalingFactors = _scalingFactors();
         
-        uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
-        bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
-
         Params memory params;
-        if(otype!="" && tradeType_length!=0){
-            params = Params({
-                trade: otype=="Market" ? OrderType.Market:(otype=="Limit" ? OrderType.Limit : OrderType.Stop),
-                price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
-            });
+        if(request.userData.length!=0){
+            if(request.userData.length != 4){
+                uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
+                bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
+                if(otype!="" && tradeType_length!=0){
+                    params = Params({
+                        trade: otype== "Limit" ? OrderType.Limit : OrderType.Stop,
+                        price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
+                    });
+                }
+                else{
+                    return _downscaleDown(request.amount, scalingFactors[indexOut]);
+                }
+            }            
         }else{
             if (request.tokenIn == IERC20(_currency) || request.tokenOut == IERC20(_security)){
                 //it is a buy (bid), so need the best offer by a counter party
@@ -238,14 +244,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
             (price, amount) = newOrder(request, params, Order.Sell, balances);
             if (params.trade == OrderType.Market) 
-            return _downscaleDown(price, scalingFactors[indexOut]);
+                return _downscaleDown(price, scalingFactors[indexOut]);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
             request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
             (price, amount) = newOrder(request, params, Order.Buy, balances);
             if (params.trade == OrderType.Market) 
-            return _downscaleDown(amount, scalingFactors[indexOut]);
+                return _downscaleDown(amount, scalingFactors[indexOut]);
         }
     }
 
@@ -336,6 +342,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         //fill up order details
         IOrder.order memory nOrder = IOrder.order({
             orderno: _orderRefs.length,
+            tokenIn: _request.tokenIn,
+            tokenOut: _request.tokenOut,
             otype: _params.trade,
             order: _order,
             status: OrderStatus.Open,
@@ -476,7 +484,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 //orders[_marketOrders[i]].party != orders[_ref].party && 
                 orders[_marketOrders[i]].status != OrderStatus.Filled
             ) {
-                
                 if (orders[_marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice) {
@@ -498,11 +505,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }
         }
-        if (orders[_ref].order == Order.Sell) {
+        bytes32 pid = getPoolId();
+        if (orders[_ref].order == Order.Sell) {            
             if (_bestBid != "") {
+                uint256 qty;
                 if (orders[_bestBid].qty >= orders[_ref].qty) {
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
-                    uint256 qty = orders[_ref].qty;
+                    qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
                     orders[_bestBid].status = OrderStatus.Filled;
                     orders[_ref].status = OrderStatus.Filled;
@@ -516,11 +525,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    reorder(_bidIndex, OrderType.Market);
-                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
+                    reorder(_bidIndex, _trade);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[_bestBid].qty;
-                    uint256 qty = orders[_bestBid].qty;
+                    qty = orders[_bestBid].qty;
                     orders[_bestBid].qty = 0;
                     orders[_bestBid].status = OrderStatus.PartlyFilled;
                     orders[_ref].status = OrderStatus.PartlyFilled;
@@ -533,21 +541,49 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         qty,
                         orders[_ref].order,
                         orders[_ref].otype
-                    );
-                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
+                    );                    
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
-                checkLimitOrders(orders[_ref].price);
-                checkStopOrders(orders[_ref].price);
+                uint256[] memory balances = new uint256[](2);
+                balances[0] = orders[_ref].securityBalance;
+                balances[1] = orders[_ref].currencyBalance;
+                
+                SwapRequest memory nRequest = SwapRequest({
+                    kind: IVault.SwapKind.GIVEN_OUT,
+                    tokenIn: orders[_ref].tokenIn,
+                    tokenOut: orders[_bestBid].tokenOut,
+                    amount: orders[_bestBid].qty,
+                    // Misc data
+                    poolId: pid,
+                    lastChangeBlock: block.number,
+                    from: orders[_bestBid].party,
+                    to: orders[_ref].party,
+                    userData: "self"
+                });
+                onSwap(nRequest, balances, orders[_bestBid].tokenIn==IERC20(_security)?1:2, orders[_bestBid].tokenOut==IERC20(_security)?1:2);
+
+                nRequest = SwapRequest({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    tokenIn: orders[_bestBid].tokenIn,
+                    tokenOut: orders[_ref].tokenOut,
+                    amount: orders[_ref].qty,
+                    // Misc data
+                    poolId: pid,
+                    lastChangeBlock: block.number,
+                    from: orders[_ref].party,
+                    to: orders[_bestBid].party,
+                    userData: "self"
+                });
+                onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);                    
             }
-            
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
+                uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
-                    uint256 qty = orders[_ref].qty;
+                    qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
                     orders[_bestOffer].status = OrderStatus.Filled;
                     orders[_ref].status = OrderStatus.Filled;
@@ -561,11 +597,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    reorder(_bidIndex, OrderType.Market);
-                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
+                    reorder(_bidIndex, _trade);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[_bestOffer].qty;
-                    uint256 qty = orders[_bestOffer].qty;
+                    qty = orders[_bestOffer].qty;
                     orders[_bestOffer].qty = 0;
                     orders[_bestOffer].status = OrderStatus.PartlyFilled;
                     orders[_ref].status = OrderStatus.PartlyFilled;
@@ -579,15 +614,43 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].order,
                         orders[_ref].otype
                     );
-                    if (_trade == OrderType.Market) return (orders[_ref].price, qty);
+                    
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
-                checkLimitOrders(orders[_ref].price);
-                checkStopOrders(orders[_ref].price);
+                uint256[] memory balances = new uint256[](2);
+                balances[0] = orders[_ref].securityBalance;
+                balances[1] = orders[_ref].currencyBalance;
+                
+                SwapRequest memory nRequest = SwapRequest({
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    tokenIn: orders[_bestOffer].tokenIn,
+                    tokenOut: orders[_ref].tokenOut,
+                    amount: orders[_ref].qty,
+                    // Misc data
+                    poolId: pid,
+                    lastChangeBlock: block.number,
+                    from: orders[_bestOffer].party,
+                    to: orders[_ref].party,
+                    userData: "self"
+                });
+                onSwap(nRequest, balances, orders[_bestOffer].tokenIn==IERC20(_security)?1:2, orders[_bestOffer].tokenOut==IERC20(_security)?1:2);
+
+                nRequest = SwapRequest({
+                    kind: IVault.SwapKind.GIVEN_OUT,
+                    tokenIn: orders[_ref].tokenIn,
+                    tokenOut: orders[_bestOffer].tokenOut,
+                    amount: orders[_bestOffer].qty,
+                    // Misc data
+                    poolId: pid,
+                    lastChangeBlock: block.number,
+                    from: orders[_ref].party,
+                    to: orders[_bestOffer].party,
+                    userData: "self"
+                });
+                onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);
             }
-            
         }
     }
 

@@ -3,6 +3,8 @@
 
 pragma solidity 0.7.1;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
+
 interface IOrder {
 
     enum OrderType{ Market, Limit, Stop }
@@ -13,6 +15,8 @@ interface IOrder {
 
     struct order{
         uint256 orderno; 
+        IERC20 tokenIn;
+        IERC20 tokenOut;
         OrderType otype;
         Order order;
         OrderStatus status;
