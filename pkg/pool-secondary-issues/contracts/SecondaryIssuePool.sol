@@ -203,20 +203,20 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         
         Params memory params;
         if(request.userData.length!=0){
-            if(request.userData.length != 4){
+            if(request.userData.length != 4){ //handling swaps from matchOrders function below
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
-                if(otype!="" && tradeType_length!=0){
+                if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = Params({
                         trade: otype== "Limit" ? OrderType.Limit : OrderType.Stop,
                         price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
                     });
                 }
-                else{
+                else{ // returning swap results from matchOrders function below
                     return _downscaleDown(request.amount, scalingFactors[indexOut]);
                 }
             }            
-        }else{
+        }else{ //by default, any order without price specified is a market order
             if (request.tokenIn == IERC20(_currency) || request.tokenOut == IERC20(_security)){
                 //it is a buy (bid), so need the best offer by a counter party
                 params = Params({
@@ -549,7 +549,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
-                
+                // calling onSwap to return results for the buyer
                 SwapRequest memory nRequest = SwapRequest({
                     kind: IVault.SwapKind.GIVEN_OUT,
                     tokenIn: orders[_ref].tokenIn,
@@ -560,10 +560,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     lastChangeBlock: block.number,
                     from: orders[_bestBid].party,
                     to: orders[_ref].party,
-                    userData: "self"
+                    userData: "self" //sending this only to distinguish call from this function to onSwaps, there might be a better way
                 });
                 onSwap(nRequest, balances, orders[_bestBid].tokenIn==IERC20(_security)?1:2, orders[_bestBid].tokenOut==IERC20(_security)?1:2);
-
+                // calling onSwap to return results for the seller
                 nRequest = SwapRequest({
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: orders[_bestBid].tokenIn,
@@ -622,7 +622,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
-                
+                // calling onSwap to return results for the seller
                 SwapRequest memory nRequest = SwapRequest({
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: orders[_bestOffer].tokenIn,
@@ -636,7 +636,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     userData: "self"
                 });
                 onSwap(nRequest, balances, orders[_bestOffer].tokenIn==IERC20(_security)?1:2, orders[_bestOffer].tokenOut==IERC20(_security)?1:2);
-
+                // calling onSwap to return results for the buyer
                 nRequest = SwapRequest({
                     kind: IVault.SwapKind.GIVEN_OUT,
                     tokenIn: orders[_ref].tokenIn,
@@ -647,7 +647,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     lastChangeBlock: block.number,
                     from: orders[_ref].party,
                     to: orders[_bestOffer].party,
-                    userData: "self"
+                    userData: "self" 
                 });
                 onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);
             }
