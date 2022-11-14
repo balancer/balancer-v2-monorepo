@@ -35,8 +35,12 @@ describe('AaveLinearPoolFactory', function () {
     });
     creationTime = await currentTimestamp();
 
+    const mockLendingPool = await deploy('MockAaveLendingPool');
+
     const mainToken = await Token.create('DAI');
-    const wrappedTokenInstance = await deploy('MockStaticAToken', { args: ['cDAI', 'cDAI', 18, mainToken.address] });
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: ['cDAI', 'cDAI', 18, mainToken.address, mockLendingPool.address],
+    });
     const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();

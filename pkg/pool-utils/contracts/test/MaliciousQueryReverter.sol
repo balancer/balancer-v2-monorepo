@@ -15,6 +15,12 @@
 pragma solidity ^0.7.0;
 
 contract MaliciousQueryReverter {
+    bool public revertMaliciously;
+
+    function setRevertMaliciously(bool enabled) external {
+        revertMaliciously = enabled;
+    }
+
     function spoofJoinExitQueryRevert() public pure {
         uint256[] memory tokenAmounts = new uint256[](2);
         tokenAmounts[0] = 1;
@@ -69,10 +75,5 @@ contract MaliciousQueryReverter {
             // length and the error signature.
             revert(start, add(size, 36))
         }
-    }
-
-    function getRate() external pure returns (uint256) {
-        spoofSwapQueryRevert();
-        return 0;
     }
 }

@@ -29,12 +29,15 @@ describe('AaveLinearPool', function () {
   });
 
   sharedBeforeEach('deploy tokens', async () => {
+    mockLendingPool = await deploy('MockAaveLendingPool');
+
     mainToken = await Token.create('DAI');
-    const wrappedTokenInstance = await deploy('MockStaticAToken', { args: ['cDAI', 'cDAI', 18, mainToken.address] });
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: ['cDAI', 'cDAI', 18, mainToken.address, mockLendingPool.address],
+    });
     wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();
-    mockLendingPool = wrappedTokenInstance;
 
     await tokens.mint({ to: [lp, trader], amount: fp(100) });
   });
@@ -82,15 +85,27 @@ describe('AaveLinearPool', function () {
   });
 
   describe('getWrappedTokenRate', () => {
-    it('returns the expected value', async () => {
-      // Reserve's normalised income is stored with 27 decimals (i.e. a 'ray' value)
-      // 1e27 implies a 1:1 exchange rate between main and wrapped token
-      await mockLendingPool.setReserveNormalizedIncome(bn(1e27));
-      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
+    context('under normal operation', () => {
+      it('returns the expected value', async () => {
+        // Reserve's normalised income is stored with 27 decimals (i.e. a 'ray' value)
+        // 1e27 implies a 1:1 exchange rate between main and wrapped token
+        await mockLendingPool.setReserveNormalizedIncome(bn(1e27));
+        expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
 
-      // We now double the reserve's normalised income to change the exchange rate to 2:1
-      await mockLendingPool.setReserveNormalizedIncome(bn(2e27));
-      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
+        // We now double the reserve's normalised income to change the exchange rate to 2:1
+        await mockLendingPool.setReserveNormalizedIncome(bn(2e27));
+        expect(await pool.getWrappedTokenRate()).to.be.eq(fp(2));
+      });
+    });
+
+    context('when Aave reverts maliciously', () => {
+      sharedBeforeEach('make Aave lending pool start reverting', async () => {
+        await mockLendingPool.setRevertMaliciously(true);
+      });
+
+      it('reverts with MALICIOUS_QUERY_REVERT', async () => {
+        await expect(pool.getWrappedTokenRate()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
+      });
     });
   });
 
