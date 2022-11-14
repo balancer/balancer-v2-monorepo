@@ -15,25 +15,23 @@
 pragma solidity ^0.7.0;
 
 contract MaliciousQueryReverter {
-    bool public revertMaliciously;
+    enum RevertType { DoNotRevert, NonMalicious, MaliciousSwapQuery, MaliciousJoinExitQuery }
 
-    function setRevertMaliciously(bool enabled) external {
-        revertMaliciously = enabled;
+    RevertType public revertType = RevertType.DoNotRevert;
+
+    function setRevertType(RevertType newRevertType) external {
+        revertType = newRevertType;
     }
 
-    function maybeSpoofSwapQueryRevert() external view {
-        if (revertMaliciously) {
-            spoofSwapQueryRevert();
-        } else {
+    function maybeRevertMaliciously() public view {
+        if (revertType == RevertType.NonMalicious) {
             revert("NON_MALICIOUS_REVERT");
-        }
-    }
-
-    function maybeSpoofJoinExitQueryRevert() external view {
-        if (revertMaliciously) {
+        } else if (revertType == RevertType.MaliciousSwapQuery) {
+            spoofSwapQueryRevert();
+        } else if (revertType == RevertType.MaliciousJoinExitQuery) {
             spoofJoinExitQueryRevert();
         } else {
-            revert("NON_MALICIOUS_REVERT");
+            // Do nothing
         }
     }
 

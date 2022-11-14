@@ -15,6 +15,13 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
+enum RevertType {
+  DoNotRevert,
+  NonMalicious,
+  MaliciousSwapQuery,
+  MaliciousJoinExitQuery,
+}
+
 describe('AaveLinearPool', function () {
   let vault: Vault;
   let pool: LinearPool, tokens: TokenList, mainToken: Token, wrappedToken: Token;
@@ -98,9 +105,19 @@ describe('AaveLinearPool', function () {
       });
     });
 
-    context('when Aave reverts maliciously', () => {
+    context('when Aave reverts maliciously to impersonate a swap query', () => {
       sharedBeforeEach('make Aave lending pool start reverting', async () => {
-        await mockLendingPool.setRevertMaliciously(true);
+        await mockLendingPool.setRevertType(RevertType.MaliciousSwapQuery);
+      });
+
+      it('reverts with MALICIOUS_QUERY_REVERT', async () => {
+        await expect(pool.getWrappedTokenRate()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
+      });
+    });
+
+    context('when Aave reverts maliciously to impersonate a join/exit query', () => {
+      sharedBeforeEach('make Aave lending pool start reverting', async () => {
+        await mockLendingPool.setRevertType(RevertType.MaliciousJoinExitQuery);
       });
 
       it('reverts with MALICIOUS_QUERY_REVERT', async () => {

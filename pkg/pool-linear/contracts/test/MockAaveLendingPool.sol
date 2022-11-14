@@ -24,7 +24,7 @@ contract MockAaveLendingPool is ILendingPool, MaliciousQueryReverter {
     uint256 private _rate = 1e27;
 
     function getReserveNormalizedIncome(address) external view override returns (uint256) {
-        if (revertMaliciously) spoofSwapQueryRevert();
+        maybeRevertMaliciously();
         return _rate;
     }
 

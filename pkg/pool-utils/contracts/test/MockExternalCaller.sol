@@ -24,23 +24,13 @@ contract MockExternalCaller {
         maliciousCallee = callee;
     }
 
-    function protectedSwapExternalCall() external payable {
-        try maliciousCallee.maybeSpoofSwapQueryRevert()  {} catch (bytes memory revertdata) {
+    function protectedExternalCall() external payable {
+        try maliciousCallee.maybeRevertMaliciously()  {} catch (bytes memory revertdata) {
             ExternalCallLib.bubbleUpNonMaliciousRevert(revertdata);
         }
     }
 
-    function unprotectedSwapExternalCall() external payable {
-        maliciousCallee.maybeSpoofSwapQueryRevert();
-    }
-
-    function protectedJoinExitExternalCall() external payable {
-        try maliciousCallee.maybeSpoofJoinExitQueryRevert()  {} catch (bytes memory revertdata) {
-            ExternalCallLib.bubbleUpNonMaliciousRevert(revertdata);
-        }
-    }
-
-    function unprotectedJoinExitExternalCall() external payable {
-        maliciousCallee.maybeSpoofJoinExitQueryRevert();
+    function unprotectedExternalCall() external payable {
+        maliciousCallee.maybeRevertMaliciously();
     }
 }

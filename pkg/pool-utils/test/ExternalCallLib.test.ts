@@ -5,6 +5,13 @@ import { expect } from 'chai';
 import { solidityKeccak256 } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
+enum RevertType {
+  DoNotRevert,
+  NonMalicious,
+  MaliciousSwapQuery,
+  MaliciousJoinExitQuery,
+}
+
 describe('ExternalCallLib', function () {
   let maliciousReverter: Contract;
   let caller: Contract;
@@ -57,29 +64,29 @@ describe('ExternalCallLib', function () {
 
     context('when revert data is malicious', () => {
       sharedBeforeEach(async () => {
-        await maliciousReverter.setRevertMaliciously(true);
+        await maliciousReverter.setRevertType(RevertType.MaliciousSwapQuery);
       });
 
       context('when call is protected', () => {
-        itCatchesTheMaliciousRevert(() => caller.protectedSwapExternalCall());
+        itCatchesTheMaliciousRevert(() => caller.protectedExternalCall());
       });
 
       context('when call is unprotected', () => {
-        itBubblesUpTheMaliciousRevertReason(() => caller.unprotectedSwapExternalCall(), queryErrorSignature);
+        itBubblesUpTheMaliciousRevertReason(() => caller.unprotectedExternalCall(), queryErrorSignature);
       });
     });
 
     context('when revert data is non-malicious', () => {
       sharedBeforeEach(async () => {
-        await maliciousReverter.setRevertMaliciously(false);
+        await maliciousReverter.setRevertType(RevertType.NonMalicious);
       });
 
       context('when call is protected', () => {
-        itBubblesUpTheRevertReason(() => caller.protectedSwapExternalCall(), 'NON_MALICIOUS_REVERT');
+        itBubblesUpTheRevertReason(() => caller.protectedExternalCall(), 'NON_MALICIOUS_REVERT');
       });
 
       context('when call is unprotected', () => {
-        itBubblesUpTheRevertReason(() => caller.unprotectedSwapExternalCall(), 'NON_MALICIOUS_REVERT');
+        itBubblesUpTheRevertReason(() => caller.unprotectedExternalCall(), 'NON_MALICIOUS_REVERT');
       });
     });
   });
@@ -89,29 +96,29 @@ describe('ExternalCallLib', function () {
 
     context('when revert data is malicious', () => {
       sharedBeforeEach(async () => {
-        await maliciousReverter.setRevertMaliciously(true);
+        await maliciousReverter.setRevertType(RevertType.MaliciousJoinExitQuery);
       });
 
       context('when call is protected', () => {
-        itCatchesTheMaliciousRevert(() => caller.protectedJoinExitExternalCall());
+        itCatchesTheMaliciousRevert(() => caller.protectedExternalCall());
       });
 
       context('when call is unprotected', () => {
-        itBubblesUpTheMaliciousRevertReason(() => caller.unprotectedJoinExitExternalCall(), queryErrorSignature);
+        itBubblesUpTheMaliciousRevertReason(() => caller.unprotectedExternalCall(), queryErrorSignature);
       });
     });
 
     context('when revert data is non-malicious', () => {
       sharedBeforeEach(async () => {
-        await maliciousReverter.setRevertMaliciously(false);
+        await maliciousReverter.setRevertType(RevertType.NonMalicious);
       });
 
       context('when call is protected', () => {
-        itBubblesUpTheRevertReason(() => caller.protectedJoinExitExternalCall(), 'NON_MALICIOUS_REVERT');
+        itBubblesUpTheRevertReason(() => caller.protectedExternalCall(), 'NON_MALICIOUS_REVERT');
       });
 
       context('when call is unprotected', () => {
-        itBubblesUpTheRevertReason(() => caller.unprotectedJoinExitExternalCall(), 'NON_MALICIOUS_REVERT');
+        itBubblesUpTheRevertReason(() => caller.unprotectedExternalCall(), 'NON_MALICIOUS_REVERT');
       });
     });
   });
