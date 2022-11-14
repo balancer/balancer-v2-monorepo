@@ -102,6 +102,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
 | Protocol Fee Splitter                                   | [`20221027-fee-splitter`](./tasks/20221027-fee-splitter)                                             |
+| Authorizer Adaptor Entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
 
 ## Scripts
 
