@@ -37,8 +37,10 @@ library ExternalCallLib {
             )
             if iszero(
                 or(
-                    eq(error, 0x43adbafb00000000000000000000000000000000000000000000000000000000), // BasePool._queryAction
-                    eq(error, 0xfa61cc1200000000000000000000000000000000000000000000000000000000) // Vault.queryBatchSwap
+                    // BasePool._queryAction
+                    eq(error, 0x43adbafb00000000000000000000000000000000000000000000000000000000),
+                    // Vault.queryBatchSwap
+                    eq(error, 0xfa61cc1200000000000000000000000000000000000000000000000000000000)
                 )
             ) {
                 revert(add(errorData, 0x20), errorLength)
