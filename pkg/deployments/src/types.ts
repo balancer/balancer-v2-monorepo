@@ -11,7 +11,6 @@ export type Network = typeof NETWORKS[number];
 export type TaskRunOptions = {
   force?: boolean;
   from?: SignerWithAddress;
-  extra?: unknown; // TODO(@jubeira): remove this extra argument.
 };
 
 export type NAry<T> = T | Array<T>;
