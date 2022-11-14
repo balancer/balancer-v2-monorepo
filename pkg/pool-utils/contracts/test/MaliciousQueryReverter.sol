@@ -21,6 +21,22 @@ contract MaliciousQueryReverter {
         revertMaliciously = enabled;
     }
 
+    function maybeSpoofSwapQueryRevert() external view {
+        if (revertMaliciously) {
+            spoofSwapQueryRevert();
+        } else {
+            revert("NON_MALICIOUS_REVERT");
+        }
+    }
+
+    function maybeSpoofJoinExitQueryRevert() external view {
+        if (revertMaliciously) {
+            spoofJoinExitQueryRevert();
+        } else {
+            revert("NON_MALICIOUS_REVERT");
+        }
+    }
+
     function spoofJoinExitQueryRevert() public pure {
         uint256[] memory tokenAmounts = new uint256[](2);
         tokenAmounts[0] = 1;

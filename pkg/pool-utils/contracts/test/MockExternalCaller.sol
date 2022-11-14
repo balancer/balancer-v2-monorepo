@@ -25,22 +25,22 @@ contract MockExternalCaller {
     }
 
     function protectedSwapExternalCall() external payable {
-        try maliciousCallee.spoofSwapQueryRevert()  {} catch (bytes memory revertdata) {
+        try maliciousCallee.maybeSpoofSwapQueryRevert()  {} catch (bytes memory revertdata) {
             ExternalCallLib.bubbleUpNonMaliciousRevert(revertdata);
         }
     }
 
     function unprotectedSwapExternalCall() external payable {
-        maliciousCallee.spoofSwapQueryRevert();
+        maliciousCallee.maybeSpoofSwapQueryRevert();
     }
 
     function protectedJoinExitExternalCall() external payable {
-        try maliciousCallee.spoofJoinExitQueryRevert()  {} catch (bytes memory revertdata) {
+        try maliciousCallee.maybeSpoofJoinExitQueryRevert()  {} catch (bytes memory revertdata) {
             ExternalCallLib.bubbleUpNonMaliciousRevert(revertdata);
         }
     }
 
     function unprotectedJoinExitExternalCall() external payable {
-        maliciousCallee.spoofJoinExitQueryRevert();
+        maliciousCallee.maybeSpoofJoinExitQueryRevert();
     }
 }
