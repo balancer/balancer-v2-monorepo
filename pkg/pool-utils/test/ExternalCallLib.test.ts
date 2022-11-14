@@ -1,4 +1,4 @@
-import { Contract } from 'ethers';
+import { Contract, ContractTransaction } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { expect } from 'chai';
@@ -13,51 +13,58 @@ describe('ExternalCallLib', function () {
     caller = await deploy('MockExternalCaller', { args: [maliciousReverter.address] });
   });
 
-  describe('when calling into a malicious contract in a swap', () => {
+  async function getRevertDataSelector(contractCall: () => Promise<ContractTransaction>): Promise<string | null> {
+    try {
+      const tx = await contractCall();
+      await tx.wait();
+
+      return null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      const revertData = e.data;
+
+      return revertData.slice(0, 10);
+    }
+  }
+
+  function itCatchesTheMaliciousRevert(contractCall: () => Promise<ContractTransaction>) {
+    it('reverts with MALICIOUS_QUERY_REVERT', async () => {
+      await expect(contractCall()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
+    });
+  }
+
+  function itBubblesUpTheRevertReason(
+    contractCall: () => Promise<ContractTransaction>,
+    expectedRevertSelector: string
+  ) {
+    it('bubbles up original revert data', async () => {
+      const revertDataSelector = await getRevertDataSelector(contractCall);
+
+      expect(revertDataSelector).to.be.eq(expectedRevertSelector);
+    });
+  }
+
+  describe('when an external call in a swap query reverts', () => {
+    const queryErrorSignature = solidityKeccak256(['string'], ['QueryError(int256[])']).slice(0, 10);
+
     context('when call is protected', () => {
-      it('reverts with MALICIOUS_QUERY_REVERT', async () => {
-        await expect(caller.protectedSwapExternalCall()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
-      });
+      itCatchesTheMaliciousRevert(() => caller.protectedSwapExternalCall());
     });
 
     context('when call is unprotected', () => {
-      it('bubbles up original revert data', async () => {
-        const maliciousErrorSignature = solidityKeccak256(['string'], ['QueryError(int256[])']).slice(0, 10);
-
-        try {
-          const tx = await caller.unprotectedSwapExternalCall();
-          await tx.wait();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (e: any) {
-          const revertData = e.data;
-
-          expect(revertData.slice(0, 10)).to.be.eq(maliciousErrorSignature);
-        }
-      });
+      itBubblesUpTheRevertReason(() => caller.unprotectedSwapExternalCall(), queryErrorSignature);
     });
   });
 
-  describe('when calling into a malicious contract in a join/exit', () => {
+  describe('when an external call in a join/exit query reverts', () => {
+    const queryErrorSignature = solidityKeccak256(['string'], ['QueryError(uint256,uint256[])']).slice(0, 10);
+
     context('when call is protected', () => {
-      it('reverts with MALICIOUS_QUERY_REVERT', async () => {
-        await expect(caller.protectedJoinExitExternalCall()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
-      });
+      itCatchesTheMaliciousRevert(() => caller.protectedJoinExitExternalCall());
     });
 
     context('when call is unprotected', () => {
-      it('bubbles up original revert data', async () => {
-        const maliciousErrorSignature = solidityKeccak256(['string'], ['QueryError(uint256,uint256[])']).slice(0, 10);
-
-        try {
-          const tx = await caller.unprotectedJoinExitExternalCall();
-          await tx.wait();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (e: any) {
-          const revertData = e.data;
-
-          expect(revertData.slice(0, 10)).to.be.eq(maliciousErrorSignature);
-        }
-      });
+      itBubblesUpTheRevertReason(() => caller.unprotectedJoinExitExternalCall(), queryErrorSignature);
     });
   });
 });
