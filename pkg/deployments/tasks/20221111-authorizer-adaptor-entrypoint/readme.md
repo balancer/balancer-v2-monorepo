@@ -8,4 +8,6 @@ Deployment of the `AuthorizerAdaptorEntrypoint`, a gateway contract created to a
 - [Polygon mainnet address](./output/polygon.json)
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
+- [BSC mainnet address](./output/bsc.json)
+- [Gnosis mainnet address](./output/gnosis.json)
 - [`AuthorizerAdaptor` ABI](./abi/AuthorizerAdaptor.json))
