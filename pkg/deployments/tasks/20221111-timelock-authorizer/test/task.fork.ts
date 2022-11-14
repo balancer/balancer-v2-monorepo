@@ -14,7 +14,7 @@ import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describeForkTest('TimelockAuthorizer', 'mainnet', 15925800, function () {
+describeForkTest('TimelockAuthorizer', 'mainnet', 15970880, function () {
   let input: TimelockAuthorizerDeployment;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
   let root: SignerWithAddress;
