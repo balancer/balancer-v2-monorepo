@@ -27,6 +27,7 @@ describe('ExternalCallLib', function () {
         try {
           const tx = await caller.unprotectedSwapExternalCall();
           await tx.wait();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           const revertData = e.data;
 
@@ -50,6 +51,7 @@ describe('ExternalCallLib', function () {
         try {
           const tx = await caller.unprotectedJoinExitExternalCall();
           await tx.wait();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
           const revertData = e.data;
 

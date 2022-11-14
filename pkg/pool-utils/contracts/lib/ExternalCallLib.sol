@@ -19,6 +19,8 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 library ExternalCallLib {
     function checkForMaliciousRevert(bytes memory errorData) internal pure {
         uint256 errorLength = errorData.length;
+
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             // If the first 4 bytes match the selector for one of the error signatures used by `BasePool._queryAction`
             // or `Vault.queryBatchSwap` then this error is attempting to impersonate the query mechanism used by these
