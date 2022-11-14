@@ -47,14 +47,14 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       expect(await adaptorEntrypoint.getAuthorizer()).to.equal(authorizer.address);
     });
 
-    it('returns the same action ID as the adaptor', async () => {
-      expect(await adaptorEntrypoint.getActionId('0xaabbccdd')).to.equal(await adaptor.getActionId('0xaabbccdd'));
-    });
-
     it('tracks authorizer changes in the vault', async () => {
       await vault.setAuthorizer(other);
 
       expect(await adaptorEntrypoint.getAuthorizer()).to.equal(other.address);
+    });
+
+    it('returns the same action ID as the adaptor', async () => {
+      expect(await adaptorEntrypoint.getActionId('0xaabbccdd')).to.equal(await adaptor.getActionId('0xaabbccdd'));
     });
   });
 
@@ -147,7 +147,9 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
     context('when calldata is invalid', () => {
       it('reverts', async () => {
-        await expect(adaptorEntrypoint.connect(other).performAction(target, '0x')).to.be.reverted;
+        await expect(adaptorEntrypoint.connect(other).performAction(target, '0x')).to.be.revertedWith(
+          'INSUFFICIENT_DATA'
+        );
       });
     });
   });
