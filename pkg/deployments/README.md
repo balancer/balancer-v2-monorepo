@@ -70,6 +70,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Authorizer, governance contract                         | [`20210418-authorizer`](./tasks/20210418-authorizer)                                                 |
 | Vault, main protocol contract                           | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Rate Provider for wstETH                                | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
+| Liquidity Bootstrapping Pools                           | [`20211202-no-protocol-fee-lbp`](./tasks/20211202-no-protocol-fee-lbp)                               |
 | Authorizer Adaptor for extending governance             | [`20220325-authorizer-adaptor`](./tasks/20220325-authorizer-adaptor)                                 |
 | Wallet for the BAL token                                | [`20220325-bal-token-holder-factory`](./tasks/20220325-bal-token-holder-factory)                     |
 | Admin of the BAL token                                  | [`20220325-balancer-token-admin`](./tasks/20220325-balancer-token-admin)                             |

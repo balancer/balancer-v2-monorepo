@@ -5,7 +5,6 @@ import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
 
-// Deployment smoke test; `performAction` requires a new version of the authorizer that is aware of the entrypoint.
 describeForkTest('AuthorizerAdaptorEntrypoint', 'mainnet', 15925800, function () {
   let adaptorEntrypoint: Contract, vault: Contract, authorizerAdaptor: Contract, authorizer: Contract;
 
