@@ -5,7 +5,7 @@
 ### New Deployments
 
 - Deployed `ProtocolFeeSplitter` to Mainnet.
-- Deployed `AuthorizerAdaptorEntrypoint` to Mainnet.
+- Deployed `AuthorizerAdaptorEntrypoint` to all networks.
 
 ## 3.0.0 (2022-10-25)
 
