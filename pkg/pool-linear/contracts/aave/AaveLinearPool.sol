@@ -78,7 +78,7 @@ contract AaveLinearPool is LinearPool {
             // By maliciously reverting here, Aave (or any other contract in the call stack) could trick the Pool into
             // reporting invalid data to the query mechanism for swaps/joins/exits.
             // We then check the revert data to ensure this doesn't occur.
-            ExternalCallLib.checkForMaliciousRevert(revertData);
+            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
         }
     }
 }

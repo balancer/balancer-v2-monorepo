@@ -17,7 +17,7 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 library ExternalCallLib {
-    function checkForMaliciousRevert(bytes memory errorData) internal pure {
+    function bubbleUpNonMaliciousRevert(bytes memory errorData) internal pure {
         uint256 errorLength = errorData.length;
 
         // solhint-disable-next-line no-inline-assembly

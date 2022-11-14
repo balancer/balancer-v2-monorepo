@@ -26,7 +26,7 @@ contract MockExternalCaller {
 
     function protectedSwapExternalCall() external payable {
         try maliciousCallee.spoofSwapQueryRevert()  {} catch (bytes memory revertdata) {
-            ExternalCallLib.checkForMaliciousRevert(revertdata);
+            ExternalCallLib.bubbleUpNonMaliciousRevert(revertdata);
         }
     }
 
@@ -36,7 +36,7 @@ contract MockExternalCaller {
 
     function protectedJoinExitExternalCall() external payable {
         try maliciousCallee.spoofJoinExitQueryRevert()  {} catch (bytes memory revertdata) {
-            ExternalCallLib.checkForMaliciousRevert(revertdata);
+            ExternalCallLib.bubbleUpNonMaliciousRevert(revertdata);
         }
     }
 
