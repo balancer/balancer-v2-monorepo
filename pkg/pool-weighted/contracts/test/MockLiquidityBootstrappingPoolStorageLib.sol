@@ -20,6 +20,14 @@ import "../lbp/LiquidityBootstrappingPoolStorageLib.sol";
 contract MockLiquidityBootstrappingPoolStorageLib {
     // Getters
 
+    function getSwapEnabled(bytes32 poolState) external pure returns (bool) {
+        return LiquidityBootstrappingPoolStorageLib.getSwapEnabled(poolState);
+    }
+
+    function getRecoveryMode(bytes32 poolState) external pure returns (bool) {
+        return LiquidityBootstrappingPoolStorageLib.getRecoveryMode(poolState);
+    }
+
     function getGradualWeightUpdateParams(bytes32 poolState, uint256 totalTokens)
         external
         pure
@@ -34,6 +42,14 @@ contract MockLiquidityBootstrappingPoolStorageLib {
     }
 
     // Setters
+
+    function setSwapEnabled(bytes32 poolState, bool swapEnabled) external pure returns (bytes32) {
+        return LiquidityBootstrappingPoolStorageLib.setSwapEnabled(poolState, swapEnabled);
+    }
+
+    function setRecoveryMode(bytes32 poolState, bool enabled) external pure returns (bytes32) {
+        return LiquidityBootstrappingPoolStorageLib.setRecoveryMode(poolState, enabled);
+    }
 
     function setNormalizedWeights(
         bytes32 poolState,

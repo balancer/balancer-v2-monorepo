@@ -62,6 +62,20 @@ contract LiquidityBootstrappingPoolStorageLibTest is Test {
         assertEq(clearedOldState, clearedNewState);
     }
 
+    function testSetRecoveryMode(bytes32 poolState, bool enabled) external {
+        bytes32 newPoolState = mock.setRecoveryMode(poolState, enabled);
+        assertOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_BIT_OFFSET, 1);
+
+        assertEq(mock.getRecoveryMode(newPoolState), enabled);
+    }
+
+    function testSwapsEnabled(bytes32 poolState, bool enabled) external {
+        bytes32 newPoolState = mock.setSwapEnabled(poolState, enabled);
+        assertOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1);
+
+        assertEq(mock.getSwapEnabled(newPoolState), enabled);
+    }
+
     function testWeightChangeFields(
         bytes32 poolState,
         uint32 startTime,
