@@ -31,7 +31,7 @@ import "../WeightedMath.sol";
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
  */
 abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, NewBasePool {
-    // LiquidityBootstrappingPool change their weights over time: these periods are expected to be long enough (e.g.
+    // LiquidityBootstrappingPools change their weights over time: these periods are expected to be long enough (e.g.
     // days) that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
 
