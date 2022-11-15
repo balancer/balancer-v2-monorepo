@@ -11,21 +11,21 @@ import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSig
 
 describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
-  let factory: Contract, vault: Contract, usdc: Contract;
+  let factory: Contract, vault: Contract, usdt: Contract;
   let rebalancer: Contract;
 
   let task: Task;
 
-  const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-  const waUSDC = '0xd093fA4Fb80D09bB30817FDcd442d4d02eD3E5de';
+  const USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+  const waUSDT = '0xf8Fd466F12e236f4c96F7Cce6c79EAdB819abF58';
 
-  const USDC_SCALING = bn(1e12); // USDC has 6 decimals, so its scaling factor is 1e12
+  const USDT_SCALING = bn(1e12); // USDT has 6 decimals, so its scaling factor is 1e12
 
-  const USDC_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
+  const USDT_HOLDER = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
 
   const SWAP_FEE_PERCENTAGE = fp(0.01); // 1%
 
-  // The targets are set using 18 decimals, even if the token has fewer (as is the case for USDC);
+  // The targets are set using 18 decimals, even if the token has fewer (as is the case for USDT);
   const INITIAL_UPPER_TARGET = fp(1e7);
 
   // The initial midpoint (upper target / 2) must be between the final lower and upper targets
@@ -44,14 +44,14 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   before('load signers', async () => {
     [, owner, other] = await getSigners();
 
-    holder = await impersonate(USDC_HOLDER, fp(100));
+    holder = await impersonate(USDT_HOLDER, fp(100));
   });
 
   before('setup contracts', async () => {
     vault = await new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance('Vault');
 
-    usdc = await task.instanceAt('IERC20', USDC);
-    await usdc.connect(holder).approve(vault.address, MAX_UINT256);
+    usdt = await task.instanceAt('IERC20', USDT);
+    await usdt.connect(holder).approve(vault.address, MAX_UINT256);
   });
 
   enum LinearPoolState {
@@ -64,8 +64,8 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
     it('rebalance the pool', async () => {
       const { lowerTarget, upperTarget } = await pool.getTargets();
 
-      const { cash } = await vault.getPoolTokenInfo(poolId, USDC);
-      const scaledCash = cash.mul(USDC_SCALING);
+      const { cash } = await vault.getPoolTokenInfo(poolId, USDT);
+      const scaledCash = cash.mul(USDT_SCALING);
 
       let fees;
       if (scaledCash.gt(upperTarget)) {
@@ -84,19 +84,19 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
         fees = 0;
       }
 
-      const initialRecipientMainBalance = await usdc.balanceOf(other.address);
+      const initialRecipientMainBalance = await usdt.balanceOf(other.address);
       if (expectedState != LinearPoolState.BALANCED) {
         await rebalancer.connect(holder).rebalance(other.address);
       } else {
         await rebalancer.connect(holder).rebalanceWithExtraMain(other.address, 5);
       }
-      const finalRecipientMainBalance = await usdc.balanceOf(other.address);
+      const finalRecipientMainBalance = await usdt.balanceOf(other.address);
 
       if (fees > 0) {
         // The recipient of the rebalance call should get the fees that were collected (though there's some rounding
         // error in the main-wrapped conversion).
         expect(finalRecipientMainBalance.sub(initialRecipientMainBalance)).to.be.almostEqual(
-          fees.div(USDC_SCALING),
+          fees.div(USDT_SCALING),
           0.00000001
         );
       } else {
@@ -104,17 +104,17 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
         expect(finalRecipientMainBalance).to.be.almostEqual(initialRecipientMainBalance, 0.00000001);
       }
 
-      const mainInfo = await vault.getPoolTokenInfo(poolId, USDC);
+      const mainInfo = await vault.getPoolTokenInfo(poolId, USDT);
 
       const expectedMainBalance = lowerTarget.add(upperTarget).div(2);
-      expect(mainInfo.cash.mul(USDC_SCALING)).to.equal(expectedMainBalance);
+      expect(mainInfo.cash.mul(USDT_SCALING)).to.equal(expectedMainBalance);
       expect(mainInfo.managed).to.equal(0);
     });
   }
 
   describe('create, join, and rebalance', () => {
     it('deploy a linear pool', async () => {
-      const tx = await factory.create('', '', USDC, waUSDC, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
+      const tx = await factory.create('', '', USDT, waUSDT, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
       pool = await task.instanceAt('AaveLinearPool', event.args.pool);
@@ -124,32 +124,32 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       const [registeredAddress] = await vault.getPool(poolId);
       expect(registeredAddress).to.equal(pool.address);
 
-      const { assetManager } = await vault.getPoolTokenInfo(poolId, USDC); // We could query for either USDC or waUSDC
+      const { assetManager } = await vault.getPoolTokenInfo(poolId, USDT); // We could query for either USDT or waUSDT
       rebalancer = await task.instanceAt('AaveLinearPoolRebalancer', assetManager);
 
-      await usdc.connect(holder).approve(rebalancer.address, MAX_UINT256); // To send extra main on rebalance
+      await usdt.connect(holder).approve(rebalancer.address, MAX_UINT256); // To send extra main on rebalance
     });
 
     it('join the pool', async () => {
       // We're going to join with enough main token to bring the Pool above its upper target, which will let us later
       // rebalance.
 
-      const joinAmount = INITIAL_UPPER_TARGET.mul(2).div(USDC_SCALING);
+      const joinAmount = INITIAL_UPPER_TARGET.mul(2).div(USDT_SCALING);
 
       await vault
         .connect(holder)
         .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: USDC, assetOut: pool.address, amount: joinAmount, userData: '0x' },
+          { kind: SwapKind.GivenIn, poolId, assetIn: USDT, assetOut: pool.address, amount: joinAmount, userData: '0x' },
           { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
           0,
           MAX_UINT256
         );
 
       // Assert join amount - some fees will be collected as we're going over the upper target.
-      const excess = joinAmount.mul(USDC_SCALING).sub(INITIAL_UPPER_TARGET);
+      const excess = joinAmount.mul(USDT_SCALING).sub(INITIAL_UPPER_TARGET);
       const joinCollectedFees = excess.mul(SWAP_FEE_PERCENTAGE).div(FP_ONE);
 
-      const expectedBPT = joinAmount.mul(USDC_SCALING).sub(joinCollectedFees);
+      const expectedBPT = joinAmount.mul(USDT_SCALING).sub(joinCollectedFees);
       expect(await pool.balanceOf(holder.address)).to.equal(expectedBPT);
     });
 
@@ -166,12 +166,12 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       // rebalance.
 
       const { upperTarget } = await pool.getTargets();
-      const joinAmount = upperTarget.mul(5).div(USDC_SCALING);
+      const joinAmount = upperTarget.mul(5).div(USDT_SCALING);
 
       await vault
         .connect(holder)
         .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: USDC, assetOut: pool.address, amount: joinAmount, userData: '0x' },
+          { kind: SwapKind.GivenIn, poolId, assetIn: USDT, assetOut: pool.address, amount: joinAmount, userData: '0x' },
           { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
           0,
           MAX_UINT256
@@ -186,18 +186,18 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       // We're going to withdraw enough man token to bring the Pool below its lower target, which will let us later
       // rebalance.
 
-      const { cash } = await vault.getPoolTokenInfo(poolId, USDC);
-      const scaledCash = cash.mul(USDC_SCALING);
+      const { cash } = await vault.getPoolTokenInfo(poolId, USDT);
+      const scaledCash = cash.mul(USDT_SCALING);
       const { lowerTarget } = await pool.getTargets();
 
-      const exitAmount = scaledCash.sub(lowerTarget.div(3)).div(USDC_SCALING);
+      const exitAmount = scaledCash.sub(lowerTarget.div(3)).div(USDT_SCALING);
 
       await vault.connect(holder).swap(
         {
           kind: SwapKind.GivenOut,
           poolId,
           assetIn: pool.address,
-          assetOut: USDC,
+          assetOut: USDT,
           amount: exitAmount,
           userData: '0x',
         },
@@ -217,12 +217,12 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       const { lowerTarget, upperTarget } = await pool.getTargets();
       const midpoint = lowerTarget.add(upperTarget).div(2);
 
-      const joinAmount = midpoint.div(100).div(USDC_SCALING);
+      const joinAmount = midpoint.div(100).div(USDT_SCALING);
 
       await vault
         .connect(holder)
         .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: USDC, assetOut: pool.address, amount: joinAmount, userData: '0x' },
+          { kind: SwapKind.GivenIn, poolId, assetIn: USDT, assetOut: pool.address, amount: joinAmount, userData: '0x' },
           { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
           0,
           MAX_UINT256
@@ -239,14 +239,14 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       const { lowerTarget, upperTarget } = await pool.getTargets();
       const midpoint = lowerTarget.add(upperTarget).div(2);
 
-      const exitAmount = midpoint.div(100).div(USDC_SCALING);
+      const exitAmount = midpoint.div(100).div(USDT_SCALING);
 
       await vault.connect(holder).swap(
         {
           kind: SwapKind.GivenOut,
           poolId,
           assetIn: pool.address,
-          assetOut: USDC,
+          assetOut: USDT,
           amount: exitAmount,
           userData: '0x',
         },
