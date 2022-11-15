@@ -69,7 +69,9 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
             owner,
             swapEnabledOnStart
         )
-    {}
+    {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     // Swap Hooks
 
