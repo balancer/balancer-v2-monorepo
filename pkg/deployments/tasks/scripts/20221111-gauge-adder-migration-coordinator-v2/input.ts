@@ -1,6 +1,7 @@
 import Task, { TaskMode } from '../../../src/task';
 
 export type GaugeAdderMigrationCoordinatorDeployment = {
+  AuthorizerAdaptorEntrypoint: string;
   OldGaugeAdder: string;
   ArbitrumRootGaugeFactory: string;
   OptimismRootGaugeFactory: string;
@@ -8,6 +9,7 @@ export type GaugeAdderMigrationCoordinatorDeployment = {
   GaugeCheckpointingMultisig: string;
 };
 
+const AuthorizerAdaptorEntrypoint = new Task('20221111-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
 const OldGaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY);
 
 const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY);
@@ -18,6 +20,7 @@ const GaugeCheckpointingMultisig = '0x02f35dA6A02017154367Bc4d47bb6c7D06C7533B';
 
 export default {
   mainnet: {
+    AuthorizerAdaptorEntrypoint,
     OldGaugeAdder: OldGaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
     ArbitrumRootGaugeFactory,
     OptimismRootGaugeFactory,

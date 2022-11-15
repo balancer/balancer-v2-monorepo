@@ -11,13 +11,12 @@ import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15947812, function () {
+describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15970880, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
   let vault: Contract, authorizer: Contract, authorizerAdaptor: Contract, gaugeController: Contract;
 
-  let adaptorEntrypoint: Contract;
   let oldGaugeAdder: Contract;
   let newGaugeAdder: Contract;
 
@@ -29,20 +28,12 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15947812, function
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
-    const adaptorEntrypointTask = new Task(
-      '20221111-authorizer-adaptor-entrypoint',
-      TaskMode.TEST,
-      getForkedNetwork(hre)
-    );
-    await adaptorEntrypointTask.run({ force: true });
-    adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
-
     const gaugeAdderV3Task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
-    await gaugeAdderV3Task.run({ force: true, extra: adaptorEntrypoint.address });
+    await gaugeAdderV3Task.run({ force: true });
     newGaugeAdder = await gaugeAdderV3Task.deployedInstance('GaugeAdder');
 
     task = new Task('20221111-gauge-adder-migration-coordinator-v2', TaskMode.TEST, getForkedNetwork(hre));
-    await task.run({ force: true, extra: newGaugeAdder.address, extra2: adaptorEntrypoint.address });
+    await task.run({ force: true, extra: newGaugeAdder.address });
     coordinator = await task.deployedInstance('GaugeAdderMigrationCoordinator');
   });
 
