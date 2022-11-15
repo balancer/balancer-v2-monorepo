@@ -23,7 +23,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 
 /**
- * @dev This contract allows anyone to check a given Pool's rate providers and put the Pool into recovery mode 
+ * @dev This contract allows anyone to check a given Pool's rate providers and put the Pool into recovery mode
  * if any are reverting on `getRate`. This allows LPs to exit promptly, and also helps off-chain mechanisms
  * identify failed pools and prevent further traffic from being routed to them (since in this state swap operations
  * would fail).
