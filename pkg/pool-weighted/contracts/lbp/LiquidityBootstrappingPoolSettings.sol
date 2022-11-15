@@ -23,7 +23,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/ValueCompression.sol";
 import "../WeightedMath.sol";
 
 import "./LiquidityBootstrappingPoolStorageLib.sol";
@@ -37,7 +36,6 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
-    using ValueCompression for uint256;
 
     // LBPs often involve only two tokens - we support up to four since we're able to pack the entire config in a single
     // storage slot.
