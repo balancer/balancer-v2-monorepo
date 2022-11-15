@@ -5,13 +5,10 @@ import { Contract } from 'ethers';
 import { defaultAbiCoder } from '@ethersproject/abi';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
+
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () {
   let govMultisig: SignerWithAddress;
