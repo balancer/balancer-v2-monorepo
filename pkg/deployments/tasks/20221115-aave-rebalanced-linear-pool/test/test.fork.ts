@@ -214,7 +214,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
 
   describe('join below upper target and rebalance', () => {
     it('deposit main tokens', async () => {
-      // We're going to join with few tokens, causing for the Pool to not reach its upper target.
+      // We're going to join with few tokens, causing the Pool to not reach its upper target.
 
       const { lowerTarget, upperTarget } = await pool.getTargets();
       const midpoint = lowerTarget.add(upperTarget).div(2);
