@@ -74,6 +74,24 @@ describe('AaveLinearPool', function () {
     pool = await LinearPool.deployedAt(event.args.pool);
   });
 
+  describe('constructor', () => {
+    it('reverts if the mainToken is not the ASSET of the wrappedToken', async () => {
+      const otherToken = await Token.create('USDC');
+
+      await expect(
+        poolFactory.create(
+          'Balancer Pool Token',
+          'BPT',
+          otherToken.address,
+          wrappedToken.address,
+          bn(0),
+          POOL_SWAP_FEE_PERCENTAGE,
+          owner.address
+        )
+      ).to.be.revertedWith('TOKENS_MISMATCH');
+    });
+  });
+
   describe('asset managers', () => {
     it('sets the same asset manager for main and wrapped token', async () => {
       const poolId = await pool.getPoolId();
@@ -123,24 +141,6 @@ describe('AaveLinearPool', function () {
       it('reverts with MALICIOUS_QUERY_REVERT', async () => {
         await expect(pool.getWrappedTokenRate()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
       });
-    });
-  });
-
-  describe('constructor', () => {
-    it('reverts if the mainToken is not the ASSET of the wrappedToken', async () => {
-      const otherToken = await Token.create('USDC');
-
-      await expect(
-        poolFactory.create(
-          'Balancer Pool Token',
-          'BPT',
-          otherToken.address,
-          wrappedToken.address,
-          bn(0),
-          POOL_SWAP_FEE_PERCENTAGE,
-          owner.address
-        )
-      ).to.be.revertedWith('TOKENS_MISMATCH');
     });
   });
 });
