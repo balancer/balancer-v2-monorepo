@@ -151,7 +151,6 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         return amount.sub(feeAmount);
     }
 
-    // Prevent any account other than the owner from joining the pool
     function _onInitializePool(
         address sender,
         address,
@@ -172,8 +171,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         uint256[] memory normalizedWeights = _getNormalizedWeights();
         uint256 invariantAfterJoin = WeightedMath._calculateInvariant(normalizedWeights, amountsIn);
 
-        // Set the initial BPT to the value of the invariant times the number of tokens. This makes BPT supply more
-        // consistent in Pools with similar compositions but different number of tokens.
+        // Set the initial BPT to the value of the invariant times the number of tokens. This makes the BPT supply
+        // more consistent in Pools with similar token composition, but a different number of tokens.
         uint256 bptAmountOut = Math.mul(invariantAfterJoin, amountsIn.length);
 
         return (bptAmountOut, amountsIn);
