@@ -3,16 +3,13 @@ import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
-
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { impersonate } from '../../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { defaultAbiCoder } from '@ethersproject/abi/lib/abi-coder';
+
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 describeForkTest('BatchRelayerLibrary', 'mainnet', 15150000, function () {
   let task: Task;
