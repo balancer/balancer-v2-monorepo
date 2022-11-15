@@ -8,7 +8,7 @@ import { advanceToTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-l
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
-import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 describeForkTest('FeeDistributor', 'mainnet', 14623150, function () {
   let veBALHolder: SignerWithAddress, veBALHolder2: SignerWithAddress, feeCollector: SignerWithAddress;
