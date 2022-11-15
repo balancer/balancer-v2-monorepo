@@ -79,9 +79,7 @@ export default class TimelockAuthorizer {
     return this.instance.getActionIdDelay(action);
   }
 
-  async getScheduledExecution(
-    id: BigNumberish
-  ): Promise<{
+  async getScheduledExecution(id: BigNumberish): Promise<{
     executed: boolean;
     cancelled: boolean;
     protected: boolean;

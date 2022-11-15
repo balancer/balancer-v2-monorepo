@@ -15,13 +15,13 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProviderPool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
 import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
 
 import "./BaseWeightedPool.sol";
 
-abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache {
+abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache, IRateProviderPool {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 
@@ -103,10 +103,7 @@ abstract contract WeightedPoolProtocolFees is BaseWeightedPool, ProtocolFeeCache
         return _athRateProduct;
     }
 
-    /**
-     * @dev Returns the rate providers configured for each token (in the same order as registered).
-     */
-    function getRateProviders() external view returns (IRateProvider[] memory) {
+    function getRateProviders() external view override returns (IRateProvider[] memory) {
         uint256 totalTokens = _getTotalTokens();
         IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
