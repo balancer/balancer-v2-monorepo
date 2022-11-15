@@ -237,15 +237,28 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
 
         uint256 pctProgress = LiquidityBootstrappingPoolStorageLib.getWeightChangeProgress(poolState);
 
-        // prettier-ignore
-        {
-            normalizedWeights[0] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(poolState, 0, pctProgress);
-            normalizedWeights[1] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(poolState, 1, pctProgress);
-            if (totalTokens == 2) return normalizedWeights;
-            normalizedWeights[2] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(poolState, 2, pctProgress);
-            if (totalTokens == 3) return normalizedWeights;
-            normalizedWeights[3] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(poolState, 3, pctProgress);
-        }
+        normalizedWeights[0] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            0,
+            pctProgress
+        );
+        normalizedWeights[1] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            1,
+            pctProgress
+        );
+        if (totalTokens == 2) return normalizedWeights;
+        normalizedWeights[2] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            2,
+            pctProgress
+        );
+        if (totalTokens == 3) return normalizedWeights;
+        normalizedWeights[3] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            3,
+            pctProgress
+        );
 
         return normalizedWeights;
     }
