@@ -11,9 +11,10 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/LinearPool';
 
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { SwapKind } from '@balancer-labs/balancer-js';
 
 enum RevertType {
   DoNotRevert,
@@ -141,6 +142,44 @@ describe('AaveLinearPool', function () {
 
       it('reverts with MALICIOUS_QUERY_REVERT', async () => {
         await expect(pool.getWrappedTokenRate()).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
+      });
+    });
+  });
+
+  describe('rebalancing', () => {
+    context('when Aave reverts maliciously to impersonate a swap query', () => {
+      let rebalancer: Contract;
+      sharedBeforeEach('provide initial liquidity to pool', async () => {
+        const poolId = await pool.getPoolId();
+
+        await tokens.approve({ to: vault, amount: fp(100), from: lp });
+        await vault.instance.connect(lp).swap(
+          {
+            poolId,
+            kind: SwapKind.GivenIn,
+            assetIn: mainToken.address,
+            assetOut: pool.address,
+            amount: fp(10),
+            userData: '0x',
+          },
+          { sender: lp.address, fromInternalBalance: false, recipient: lp.address, toInternalBalance: false },
+          0,
+          MAX_UINT256
+        );
+      });
+
+      sharedBeforeEach('deploy and initialize pool', async () => {
+        const poolId = await pool.getPoolId();
+        const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
+        rebalancer = await deployedAt('AaveLinearPoolRebalancer', assetManager);
+      });
+
+      sharedBeforeEach('make Aave lending pool start reverting', async () => {
+        await mockLendingPool.setRevertType(RevertType.MaliciousSwapQuery);
+      });
+
+      it('reverts with MALICIOUS_QUERY_REVERT', async () => {
+        await expect(rebalancer.rebalance(trader.address)).to.be.revertedWith('MALICIOUS_QUERY_REVERT');
       });
     });
   });
