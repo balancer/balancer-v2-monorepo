@@ -6,12 +6,9 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceToTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
-
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { impersonate } from '../../../../src/signers';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 describeForkTest('FeeDistributor', 'mainnet', 14623150, function () {
   let veBALHolder: SignerWithAddress, veBALHolder2: SignerWithAddress, feeCollector: SignerWithAddress;

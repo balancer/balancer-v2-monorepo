@@ -4,14 +4,21 @@ import { BigNumber, Contract } from 'ethers';
 
 import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { getSigner, impersonate, impersonateWhale, setBalance } from '../../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { RelayerAuthorization, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+
+import {
+  describeForkTest,
+  getSigner,
+  impersonate,
+  impersonateWhale,
+  getForkedNetwork,
+  setBalance,
+  Task,
+  TaskMode,
+} from '../../../../src';
 
 describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
   let task: Task;
