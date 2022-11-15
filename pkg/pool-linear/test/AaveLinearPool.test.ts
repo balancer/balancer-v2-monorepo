@@ -99,6 +99,7 @@ describe('AaveLinearPool', function () {
       const { assetManager: firstAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.first);
       const { assetManager: secondAssetManager } = await vault.getPoolTokenInfo(poolId, tokens.second);
 
+      expect(firstAssetManager).to.not.equal(ZERO_ADDRESS);
       expect(firstAssetManager).to.equal(secondAssetManager);
     });
 
