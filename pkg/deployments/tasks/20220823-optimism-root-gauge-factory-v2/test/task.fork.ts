@@ -50,7 +50,7 @@ describeForkTest('OptimismRootGaugeFactoryV2', 'mainnet', 15397200, function () 
     admin = await getSigner(0);
     recipient = await getSigner(1);
 
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
   });
 
   before('setup contracts', async () => {
@@ -85,7 +85,7 @@ describeForkTest('OptimismRootGaugeFactoryV2', 'mainnet', 15397200, function () 
   it('grant permissions', async () => {
     // We need to grant permission to the admin to add the Optimism factory to the GaugeAdder, and also to then add
     // gauges from said factory to the GaugeController.
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
 
     await Promise.all(
       ['addGaugeFactory', 'addOptimismGauge'].map(

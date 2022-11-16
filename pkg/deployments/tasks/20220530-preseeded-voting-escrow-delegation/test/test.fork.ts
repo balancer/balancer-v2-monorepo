@@ -2,7 +2,6 @@ import hre from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -47,7 +46,7 @@ describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, functio
       getForkedNetwork(hre)
     ).deployedInstance('Authorizer');
 
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
     await authorizer
       .connect(govMultisig)
       .grantRole(await actionId(delegationProxy, 'setDelegation'), govMultisig.address);
@@ -111,7 +110,7 @@ describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, functio
     const TRIBE_DAO = '0xc4EAc760C2C631eE0b064E39888b89158ff808B2';
     const TRIBE_OPERATOR = '0x66977ce30049cd0e443216bf26377966c3a109e2';
 
-    const operator = await impersonate(TRIBE_OPERATOR, fp(100));
+    const operator = await impersonate(TRIBE_OPERATOR);
 
     const receipt = await (
       await delegation.connect(operator).create_boost(TRIBE_DAO, receiver.address, 1000, 0, await fromNow(MONTH), 0)
