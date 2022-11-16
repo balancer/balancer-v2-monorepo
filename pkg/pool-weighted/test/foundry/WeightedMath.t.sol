@@ -26,23 +26,12 @@ contract WeightedMathTest is Test {
     // Match the minimum supply defined in `BasePool`.
     uint256 private constant _DEFAULT_MINIMUM_BPT = 1e6;
 
-    function testJoinSwaps(
-        uint256[20] memory balancesFixed,
-        uint256[20] memory normalizedWeightsFixed,
-        uint256 arrayLength,
-        uint256 tokenIndex,
-        uint256 amountIn,
-        uint256 bptTotalSupply,
-        uint256 swapFeePercentage
-    ) external {
+    function prepareValues(uint256[20] memory normalizedWeightsFixed, uint256 arrayLength)
+        private
+        view
+        returns (uint256, uint256[] memory)
+    {
         arrayLength = bound(arrayLength, 2, 20);
-        tokenIndex = bound(tokenIndex, 0, arrayLength - 1);
-
-        uint256[] memory balances = new uint256[](arrayLength);
-        for (uint256 i = 0; i < arrayLength; i++) {
-            // Zero balances are not possible, as they make the invariant equal zero.
-            balances[i] = bound(balancesFixed[i], 1, type(uint96).max);
-        }
 
         uint256 denormalizedWeightSum;
         for (uint256 i = 0; i < arrayLength; i++) {
@@ -59,11 +48,32 @@ contract WeightedMathTest is Test {
         }
 
         // Note: Due to compression errors, this normalization property of weights may not always hold.
-        // This causes the two forms of join to produce slightly different outputs due to
-        // `WeightedMath._calcBptOutGivenExactTokenIn` assuming perfect normalization.
         // We therefore adjust the last weight to produce a scenario in which the two functions should match exactly.
         if (normalizedWeightSum < FixedPoint.ONE) {
             normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
+        }
+
+        return (arrayLength, normalizedWeights);
+    }
+
+    function testJoinSwaps(
+        uint256[20] memory balancesFixed,
+        uint256[20] memory normalizedWeightsFixed,
+        uint256 arrayLength,
+        uint256 tokenIndex,
+        uint256 amountIn,
+        uint256 bptTotalSupply,
+        uint256 swapFeePercentage
+    ) external {
+        uint256[] memory normalizedWeights;
+        (arrayLength, normalizedWeights) = prepareValues(normalizedWeightsFixed, arrayLength);
+
+        tokenIndex = bound(tokenIndex, 0, arrayLength - 1);
+
+        uint256[] memory balances = new uint256[](arrayLength);
+        for (uint256 i = 0; i < arrayLength; i++) {
+            // Zero balances are not possible, as they make the invariant equal zero.
+            balances[i] = bound(balancesFixed[i], 1, type(uint96).max);
         }
 
         amountIn = bound(amountIn, 0, balances[tokenIndex]);
@@ -112,35 +122,14 @@ contract WeightedMathTest is Test {
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
     ) external {
-        arrayLength = bound(arrayLength, 2, 20);
+        uint256[] memory normalizedWeights;
+        (arrayLength, normalizedWeights) = prepareValues(normalizedWeightsFixed, arrayLength);
+
         tokenIndex = bound(tokenIndex, 0, arrayLength - 1);
 
         uint256[] memory balances = new uint256[](arrayLength);
         for (uint256 i = 0; i < arrayLength; i++) {
             balances[i] = bound(balancesFixed[i], 1e10, type(uint96).max);
-        }
-
-        uint256 denormalizedWeightSum;
-        for (uint256 i = 0; i < arrayLength; i++) {
-            normalizedWeightsFixed[i] = bound(normalizedWeightsFixed[i], 1, type(uint64).max);
-            denormalizedWeightSum += normalizedWeightsFixed[i];
-        }
-
-        uint256[] memory normalizedWeights = new uint256[](arrayLength);
-        uint256 normalizedWeightSum;
-        for (uint256 i = 0; i < arrayLength; i++) {
-            normalizedWeights[i] = normalizedWeightsFixed[i].divDown(denormalizedWeightSum);
-            vm.assume(normalizedWeights[i] >= WeightedMath._MIN_WEIGHT);
-            normalizedWeightSum += normalizedWeights[i];
-        }
-
-        // Note: Due to compression errors, this normalization property of weights may not always hold. This causes the
-        // two forms of exit to produce slightly different outputs due to `WeightedMath._calcBptInGivenExactTokenOut`
-        // assuming perfect normalization.
-        // We therefore adjust the last weight to produce a scenario in which the two functions should yield the same
-        // exact result.
-        if (normalizedWeightSum < FixedPoint.ONE) {
-            normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
         }
 
         bptTotalSupply = bound(bptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
