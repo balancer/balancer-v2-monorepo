@@ -50,7 +50,7 @@ describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
     owner = await getSigner();
     whale = await impersonateWhale(fp(100));
 
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
   });
 
   before('setup contracts', async () => {

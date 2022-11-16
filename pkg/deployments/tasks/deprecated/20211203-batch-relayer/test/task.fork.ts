@@ -2,7 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { RelayerAuthorization, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -54,16 +54,16 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
   before('load signers', async () => {
     // We impersonate a whale that holds large token amounts, but can't use it directly as impersonation doesn't let us
     // sign messages. Therefore, we transfer its tokens to our sender.
-    const whale = await impersonate(LARGE_TOKEN_HOLDER, fp(100));
+    const whale = await impersonate(LARGE_TOKEN_HOLDER);
 
     // The sender begins with just USDC and ETH
     const senderAddress = await randomAddress();
     await usdc.connect(whale).transfer(senderAddress, await usdc.balanceOf(whale.address));
-    sender = await impersonate(senderAddress, fp(100));
+    sender = await impersonate(senderAddress);
 
     // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
     // such an account exists.
-    admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0), fp(100));
+    admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
   });
 
   before('approve tokens by sender', async () => {

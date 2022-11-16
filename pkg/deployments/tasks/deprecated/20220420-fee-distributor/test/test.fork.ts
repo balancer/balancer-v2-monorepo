@@ -37,9 +37,9 @@ describeForkTest('FeeDistributor', 'mainnet', 14623150, function () {
   });
 
   before('setup accounts', async () => {
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
-    veBALHolder2 = await impersonate(VEBAL_HOLDER_2, fp(100));
-    feeCollector = await impersonate(PROTOCOL_FEE_COLLECTOR, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
+    veBALHolder2 = await impersonate(VEBAL_HOLDER_2);
+    feeCollector = await impersonate(PROTOCOL_FEE_COLLECTOR);
   });
 
   before('setup contracts', async () => {

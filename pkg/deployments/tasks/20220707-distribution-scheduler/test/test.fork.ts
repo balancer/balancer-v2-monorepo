@@ -35,8 +35,8 @@ describeForkTest('DistributionScheduler', 'mainnet', 14850000, function () {
   });
 
   before('setup accounts', async () => {
-    lmCommittee = await impersonate(LM_COMMITTEE_ADDRESS, fp(100));
-    distributor = await impersonate(DISTRIBUTOR_ADDRESS, fp(100));
+    lmCommittee = await impersonate(LM_COMMITTEE_ADDRESS);
+    distributor = await impersonate(DISTRIBUTOR_ADDRESS);
   });
 
   before('setup contracts', async () => {

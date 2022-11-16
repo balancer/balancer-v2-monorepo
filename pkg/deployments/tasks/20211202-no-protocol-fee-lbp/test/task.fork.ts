@@ -164,7 +164,7 @@ describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 'mainnet', 14
     const authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
     const DEFAULT_ADMIN_ROLE = await authorizer.DEFAULT_ADMIN_ROLE();
-    const admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0), fp(100));
+    const admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0));
 
     await authorizer.connect(admin).grantRole(await actionId(factory, 'disable'), admin.address);
     await factory.connect(admin).disable();
