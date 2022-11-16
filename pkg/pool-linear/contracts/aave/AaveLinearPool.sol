@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 
 import "../LinearPool.sol";
 
@@ -69,10 +70,15 @@ contract AaveLinearPool is LinearPool {
         // except avoiding storing relevant variables in storage for gas reasons.
         // solhint-disable-next-line max-line-length
         // see: https://github.com/aave/protocol-v2/blob/ac58fea62bb8afee23f66197e8bce6d79ecda292/contracts/protocol/tokenization/StaticATokenLM.sol#L255-L257
-        uint256 rate = _lendingPool.getReserveNormalizedIncome(address(getMainToken()));
-
-        // This function returns a 18 decimal fixed point number, but `rate` has 27 decimals (i.e. a 'ray' value)
-        // so we need to convert it.
-        return rate / 10**9;
+        try _lendingPool.getReserveNormalizedIncome(address(getMainToken())) returns (uint256 rate) {
+            // This function returns a 18 decimal fixed point number, but `rate` has 27 decimals (i.e. a 'ray' value)
+            // so we need to convert it.
+            return rate / 10**9;
+        } catch (bytes memory revertData) {
+            // By maliciously reverting here, Aave (or any other contract in the call stack) could trick the Pool into
+            // reporting invalid data to the query mechanism for swaps/joins/exits.
+            // We then check the revert data to ensure this doesn't occur.
+            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
+        }
     }
 }
