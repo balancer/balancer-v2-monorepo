@@ -21,7 +21,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
 
   const USDT_SCALING = bn(1e12); // USDT has 6 decimals, so its scaling factor is 1e12
 
-  const USDT_HOLDER = '0xdAC17F958D2ee523a2206206994597C13D831ec7';
+  const USDT_HOLDER = '0x5754284f345afc66a98fbb0a0afe71e0f007b949';
 
   const SWAP_FEE_PERCENTAGE = fp(0.01); // 1%
 
