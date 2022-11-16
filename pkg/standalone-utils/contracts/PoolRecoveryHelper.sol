@@ -69,7 +69,7 @@ contract PoolRecoveryHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Returns true if the Pool has been creatd at a known factory (passed to `addPoolFactory()`).
+     * @notice Returns true if the Pool has been created from a known factory (passed to `addPoolFactory()`).
      */
     function isPoolFromKnownFactory(address pool) public view returns (bool) {
         uint256 totalFactories = _factories.length();
@@ -88,12 +88,12 @@ contract PoolRecoveryHelper is SingletonAuthentication {
      * @notice Enables Recovery Mode in a Pool, provided some of its rate providers are failing (i.e. `getRate()`
      * reverts).
      *
-     * Pools that are in Recovery Mode can be exited by LPs via the special Recovery Mode Exit, which avoid any complex
+     * Pools that are in Recovery Mode can be exited by LPs via the special Recovery Mode Exit, which avoids any complex
      * computations and does not call into any external contracts, which makes it a very dependable way to retrieve the
      * underlying tokens.
      *
-     * However, while Recovery Mode is enabled the Pool pays no protocol fees. Additionally, any protocol fees pending
-     * payment before enabling Recovery Mode will be forfeited.
+     * However, while Recovery Mode is enabled the Pool pays no protocol fees. Additionally, any protocol fees
+     * accrued before enabling Recovery Mode will be forfeited.
      *
      * The Pool must have been created via a known Pool Factory contract.
      */
@@ -103,7 +103,7 @@ contract PoolRecoveryHelper is SingletonAuthentication {
         // IRecoveryMode interfaces.
         require(isPoolFromKnownFactory(pool), "Pool is not from known factory");
 
-        // The Pool will be placed in recovery mode if any of its non-zero rate providers reverts.
+        // The Pool will be placed in recovery mode if any of its rate providers reverts.
         IRateProvider[] memory rateProviders = IRateProviderPool(pool).getRateProviders();
         for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (rateProviders[i] != IRateProvider(0)) {
