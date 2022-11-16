@@ -28,7 +28,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/EnumerableSet.so
  * identify failed pools and prevent further traffic from being routed to them (since in this state swap operations
  * would fail).
  */
-contract PoolRecoveryEnabler is SingletonAuthentication {
+contract PoolRecoveryHelper is SingletonAuthentication {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _factories;
@@ -68,7 +68,7 @@ contract PoolRecoveryEnabler is SingletonAuthentication {
         return false;
     }
 
-    function enableRecoveryModeInPool(address pool) external {
+    function enableRecoveryMode(address pool) external {
         // We require that the Pools come from known factories as a sanity check, since this function is permissionless.
         // This ensures we're actually calling legitimate Pools, and that they support both the IRateProviderPool and
         // IRecoveryMode interfaces.
