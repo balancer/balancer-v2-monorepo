@@ -302,4 +302,12 @@ export const grantDelays: DelayData[] = [
     actionId: Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
     newDelay: 7 * DAY,
   },
+  {
+    actionId: ComposableStablePool.actionId('ComposableStablePool', 'unpause()'),
+    newDelay: 7 * DAY,
+  },
+  {
+    actionId: WeightedPoolV2.actionId('WeightedPool', 'unpause()'),
+    newDelay: 7 * DAY,
+  },
 ];
