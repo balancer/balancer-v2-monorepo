@@ -9,6 +9,11 @@ const EVERYWHERE = ANY_ADDRESS;
 const Vault = new Task('20210418-vault', TaskMode.READ_ONLY, 'mainnet');
 const ProtocolFeesCollector = new Task('20210418-vault', TaskMode.READ_ONLY, 'mainnet');
 const ProtocolFeesWithdrawer = new Task('20220517-protocol-fee-withdrawer', TaskMode.READ_ONLY, 'mainnet');
+const ProtocolFeePercentagesProvider = new Task(
+  '20220725-protocol-fee-percentages-provider',
+  TaskMode.READ_ONLY,
+  'mainnet'
+);
 
 const BalancerTokenAdmin = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, 'mainnet');
 const BalancerMinter = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'mainnet');
@@ -16,8 +21,6 @@ const GaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY, 'main
 const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY, 'mainnet');
 const VotingEscrowDelegationProxy = new Task('20220325-ve-delegation', TaskMode.READ_ONLY, 'mainnet');
 const SmartWalletChecker = new Task('20220420-smart-wallet-checker', TaskMode.READ_ONLY, 'mainnet');
-// TODO(@jubeira): remove linter directive // check if this is necessary when reviewing veBAL permissions.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const LiquidityGaugeV5 = new Task('20220325-mainnet-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 const OptimismRootGaugeFactory = new Task('20220628-optimism-root-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
@@ -25,6 +28,7 @@ const OptimismRootGaugeFactory = new Task('20220628-optimism-root-gauge-factory'
 const BalancerRelayer = new Task('20211203-batch-relayer', TaskMode.READ_ONLY, 'mainnet');
 // BalancerRelayerV2 is not used on mainnet
 const BalancerRelayerV3 = new Task('20220720-batch-relayer-v3', TaskMode.READ_ONLY, 'mainnet');
+const BalancerRelayerV4 = new Task('20220916-batch-relayer-v4', TaskMode.READ_ONLY, 'mainnet');
 const LidoRelayer = new Task('20210812-lido-relayer', TaskMode.READ_ONLY, 'mainnet');
 // https://forum.balancer.fi/t/proposal-balancer-v2-authorize-gnosis-protocol-v2-contracts-as-a-vault-relayer/1938
 // https://etherscan.io/address/0xc92e8bdf79f0507f65a392b0ab4667716bfe0110#code
@@ -33,9 +37,12 @@ const GnosisProtocolRelayer = '0xc92e8bdf79f0507f65a392b0ab4667716bfe0110';
 const SingleRecipientGauge = new Task('20220325-single-recipient-gauge-factory', TaskMode.READ_ONLY, 'mainnet');
 
 const StablePool = new Task('20210624-stable-pool', TaskMode.READ_ONLY, 'mainnet');
+const StablePoolV2 = new Task('20220609-stable-pool-v2', TaskMode.READ_ONLY, 'mainnet');
 const MetaStablePool = new Task('20210727-meta-stable-pool', TaskMode.READ_ONLY, 'mainnet');
 const StablePhantomPool = new Task('20211208-stable-phantom-pool', TaskMode.READ_ONLY, 'mainnet');
+const ComposableStablePool = new Task('20220906-composable-stable-pool', TaskMode.READ_ONLY, 'mainnet');
 const WeightedPool = new Task('20210418-weighted-pool', TaskMode.READ_ONLY, 'mainnet');
+const WeightedPoolV2 = new Task('20220908-weighted-pool-v2', TaskMode.READ_ONLY, 'mainnet');
 const AaveLinearPool = new Task('20211208-aave-linear-pool', TaskMode.READ_ONLY, 'mainnet');
 
 const createRoleData = (grantee: string, target: string, actionIds: string[]): RoleData[] =>
@@ -43,6 +50,7 @@ const createRoleData = (grantee: string, target: string, actionIds: string[]): R
 
 const DAO_MULTISIG = '0x10a19e7ee7d7f8a52822f6817de8ea18204f2e4f';
 const BALLERS_MULTISIG = '0x75a52c0e32397a3fc0c052e2ceb3479802713cf4';
+const BALLERS_MULTISIG_GAUTLET = '0xf4a80929163c5179ca042e1b292f5efbbe3d89e6';
 const LM_MULTISIG = '0xc38c5f97b34e175ffd35407fc91a937300e33860';
 const TREASURY_MULTISIG = '0x7c68c42de679ffb0f16216154c996c354cf1161b';
 const EMERGENCY_SUBDAO_MULTISIG = '0xa29f61256e948f3fb707b4b3b138c5ccb9ef9888';
@@ -55,6 +63,7 @@ export const root = DAO_MULTISIG;
 const batchRelayerPermissions = [
   BalancerRelayer.output().BalancerRelayer,
   BalancerRelayerV3.output().BalancerRelayer,
+  BalancerRelayerV4.output().BalancerRelayer,
 ].flatMap((relayer) =>
   createRoleData(relayer, Vault.output().Vault, [
     Vault.actionId('Vault', 'setRelayerApproval(address,address,bool)'),
@@ -108,8 +117,6 @@ const protocolFeesPermissions: RoleData[] = flatten([
   ]),
 ]);
 
-// TODO(@jubeira): Review veBAL permissions. Some of them are commented out so as the task does not revert with
-// UNEXPECTED_ROLE. Some permissions might not be necessary (e.g. GaugeAdder is going to be migrated anyways).
 const veBALPermissions: RoleData[] = flatten([
   createRoleData(BalancerMinter.output().BalancerMinter, BalancerTokenAdmin.output().BalancerTokenAdmin, [
     BalancerTokenAdmin.actionId('BalancerTokenAdmin', 'mint(address,uint256)'),
@@ -123,11 +130,7 @@ const veBALPermissions: RoleData[] = flatten([
     GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
     GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
   ]),
-  // createRoleData(LM_MULTISIG, EVERYWHERE, [
-  //   LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'add_reward(address,address)'),
-  //   LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'set_reward_distributor(address,address)'),
-  // ]),
-  // createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'killGauge()')]),
+  createRoleData(DAO_MULTISIG, EVERYWHERE, [LiquidityGaugeV5.actionId('LiquidityGaugeV5', 'killGauge()')]),
   createRoleData(DAO_MULTISIG, SmartWalletChecker.output().SmartWalletChecker, [
     SmartWalletChecker.actionId('SmartWalletChecker', 'denylistAddress(address)'),
     SmartWalletChecker.actionId('SmartWalletChecker', 'allowlistAddress(address)'),
@@ -155,17 +158,49 @@ const feesAndTargetsPermissions: RoleData[] = flatten([
   createRoleData(DAO_MULTISIG, ProtocolFeesCollector.output().ProtocolFeesCollector, [
     ProtocolFeesCollector.actionId('ProtocolFeesCollector', 'setSwapFeePercentage(uint256)'),
   ]),
+  createRoleData(DAO_MULTISIG, ProtocolFeePercentagesProvider.output().ProtocolFeePercentagesProvider, [
+    ProtocolFeePercentagesProvider.actionId('ProtocolFeePercentagesProvider', 'setFeeTypePercentage(uint256,uint256)'),
+  ]),
+  createRoleData(DAO_MULTISIG, VotingEscrowDelegationProxy.output().VotingEscrowDelegationProxy, [
+    VotingEscrowDelegationProxy.actionId('VotingEscrowDelegationProxy', 'setDelegation(address)'),
+  ]),
+  createRoleData(
+    ProtocolFeePercentagesProvider.output().ProtocolFeePercentagesProvider,
+    ProtocolFeesCollector.output().ProtocolFeesCollector,
+    [
+      ProtocolFeesCollector.actionId('ProtocolFeesCollector', 'setSwapFeePercentage(uint256)'),
+      ProtocolFeesCollector.actionId('ProtocolFeesCollector', 'setFlashLoanFeePercentage(uint256)'),
+    ]
+  ),
   createRoleData(GAUNTLET_FEE_SETTER, EVERYWHERE, [
     StablePool.actionId('StablePool', 'setSwapFeePercentage(uint256)'),
+    StablePoolV2.actionId('StablePool', 'setSwapFeePercentage(uint256)'),
     MetaStablePool.actionId('MetaStablePool', 'setSwapFeePercentage(uint256)'),
     StablePhantomPool.actionId('StablePhantomPool', 'setSwapFeePercentage(uint256)'),
+    ComposableStablePool.actionId('ComposableStablePool', 'setSwapFeePercentage(uint256)'),
     WeightedPool.actionId('WeightedPool', 'setSwapFeePercentage(uint256)'),
     WeightedPool.actionId('WeightedPool2Tokens', 'setSwapFeePercentage(uint256)'),
+    WeightedPoolV2.actionId('WeightedPool', 'setSwapFeePercentage(uint256)'),
   ]),
   createRoleData(BALLERS_MULTISIG, EVERYWHERE, [
     StablePhantomPool.actionId('StablePhantomPool', 'setTokenRateCacheDuration(address,uint256)'),
     AaveLinearPool.actionId('AaveLinearPool', 'setSwapFeePercentage(uint256)'),
     AaveLinearPool.actionId('AaveLinearPool', 'setTargets(uint256,uint256)'),
+  ]),
+  createRoleData(BALLERS_MULTISIG_GAUTLET, EVERYWHERE, [
+    ComposableStablePool.actionId('ComposableStablePool', 'startAmplificationParameterUpdate(uint256,uint256)'),
+    ComposableStablePool.actionId('ComposableStablePool', 'stopAmplificationParameterUpdate()'),
+    StablePoolV2.actionId('StablePool', 'startAmplificationParameterUpdate(uint256,uint256)'),
+    StablePoolV2.actionId('StablePool', 'stopAmplificationParameterUpdate()'),
+  ]),
+]);
+
+const emergencyPermissions: RoleData[] = flatten([
+  createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [
+    ComposableStablePool.actionId('ComposableStablePool', 'pause()'),
+    ComposableStablePool.actionId('ComposableStablePool', 'unpause()'),
+    WeightedPoolV2.actionId('WeightedPool', 'pause()'),
+    WeightedPoolV2.actionId('WeightedPool', 'unpause()'),
   ]),
 ]);
 
@@ -176,6 +211,7 @@ export const roles: RoleData[] = flatten([
   ...protocolFeesPermissions,
   ...veBALPermissions,
   ...feesAndTargetsPermissions,
+  ...emergencyPermissions,
 ]);
 
 export const granters: RoleData[] = flatten([
