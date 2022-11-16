@@ -9,7 +9,7 @@
     "url": "https://github.com/balancer-labs/balancer-v2-monorepo/issues"
   },
   "engines": {
-    "node": ">=14.18.0 <15"
+    "node": ">=18 <19"
   },
   "packageManager": "yarn@3.3.0",
   "contributors": [
