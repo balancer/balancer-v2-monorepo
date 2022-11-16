@@ -5,15 +5,13 @@ import { expect } from 'chai';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, function () {
   let oldDelegation: Contract;
