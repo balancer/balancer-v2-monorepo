@@ -23,11 +23,11 @@ import { BigNumberish, bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { ANY_ADDRESS, DELEGATE_OWNER, MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
-import { impersonate } from '@balancer-labs/v2-deployments/src/signers';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { impersonateAccount, setBalance } from '@nomicfoundation/hardhat-network-helpers';
 
 describe('NewBasePool', function () {
   let admin: SignerWithAddress,
@@ -51,7 +51,12 @@ describe('NewBasePool', function () {
   sharedBeforeEach(async () => {
     ({ instance: vault, authorizer } = await Vault.create({ admin }));
 
-    vaultSigner = await impersonate(vault.address, fp(100));
+    // We want to call Pools manually from the Vault address for some tests, so we impersonate the Vault and send it
+    // some ETH in order to be able to have it send transactions.
+    await impersonateAccount(vault.address);
+    await setBalance(vault.address, fp(100));
+    vaultSigner = await SignerWithAddress.create(ethers.provider.getSigner(vault.address));
+
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 
