@@ -39,22 +39,38 @@ contract PoolRecoveryHelper is SingletonAuthentication {
         }
     }
 
+    /**
+     * @notice Adds a Pool Factory to the helper. Only Pools created from factories added via this function can be
+     * passed to `enableRecoveryMode()`.
+     */
     function addPoolFactory(address factory) external authenticate {
         require(_factories.add(factory), "Duplicate factory");
     }
 
+    /**
+     * @notice Removes a Pool Factory from the helper.
+     */
     function removePoolFactory(address factory) external authenticate {
         require(_factories.remove(factory), "Non-existent factory");
     }
 
-    function getFactoryAt(uint256 index) external view returns (IBasePoolFactory) {
-        return IBasePoolFactory(_factories.at(index));
-    }
-
+    /**
+     * @notice Returns the total number of Pool Factories.
+     */
     function getFactoryCount() external view returns (uint256) {
         return _factories.length();
     }
 
+    /**
+     * @notice Returns the address of a Pool Factory at an index between 0 and the return value of `getFactoryCount()`.
+     */
+    function getFactoryAtIndex(uint256 index) external view returns (IBasePoolFactory) {
+        return IBasePoolFactory(_factories.at(index));
+    }
+
+    /**
+     * @notice Returns true if the Pool has been creatd at a known factory (passed to `addPoolFactory()`).
+     */
     function isPoolFromKnownFactory(address pool) public view returns (bool) {
         uint256 totalFactories = _factories.length();
         for (uint256 i = 0; i < totalFactories; ++i) {
@@ -68,6 +84,19 @@ contract PoolRecoveryHelper is SingletonAuthentication {
         return false;
     }
 
+    /**
+     * @notice Enables Recovery Mode in a Pool, provided some of its rate providers are failing (i.e. `getRate()`
+     * reverts).
+     *
+     * Pools that are in Recovery Mode can be exited by LPs via the special Recovery Mode Exit, which avoid any complex
+     * computations and does not call into any external contracts, which makes it a very dependable way to retrieve the
+     * underlying tokens.
+     *
+     * However, while Recovery Mode is enabled the Pool pays no protocol fees. Additionally, any protocol fees pending
+     * payment before enabling Recovery Mode will be forfeited.
+     *
+     * The Pool must have been created via a known Pool Factory contract.
+     */
     function enableRecoveryMode(address pool) external {
         // We require that the Pools come from known factories as a sanity check, since this function is permissionless.
         // This ensures we're actually calling legitimate Pools, and that they support both the IRateProviderPool and

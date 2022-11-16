@@ -26,7 +26,7 @@ describe('PoolRecoveryHelper', function () {
   async function expectFactories(helper: Contract, expectedFactories: Array<string>): Promise<void> {
     expect(await helper.getFactoryCount()).to.equal(expectedFactories.length);
     for (let i = 0; i < expectedFactories.length; ++i) {
-      expect(await helper.getFactoryAt(i)).to.equal(expectedFactories[i]);
+      expect(await helper.getFactoryAtIndex(i)).to.equal(expectedFactories[i]);
     }
   }
 
