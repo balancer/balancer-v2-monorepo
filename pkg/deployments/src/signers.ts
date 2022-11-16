@@ -2,6 +2,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { getForkedNetwork } from './test';
+import { impersonateAccount, setBalance as setAccountBalance } from '@nomicfoundation/hardhat-network-helpers';
 
 const WHALES: { [key: string]: string } = {
   mainnet: '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503',
@@ -40,10 +41,6 @@ export async function impersonateWhale(balance?: BigNumber): Promise<SignerWithA
 }
 
 export async function setBalance(address: string, balance: BigNumber): Promise<void> {
-  const hre = await import('hardhat');
-  await hre.network.provider.request({ method: 'hardhat_impersonateAccount', params: [address] });
-
-  const rawHexBalance = hre.ethers.utils.hexlify(balance);
-  const hexBalance = rawHexBalance.replace('0x0', '0x');
-  await hre.network.provider.request({ method: 'hardhat_setBalance', params: [address, hexBalance] });
+  await impersonateAccount(address);
+  await setAccountBalance(address, balance);
 }

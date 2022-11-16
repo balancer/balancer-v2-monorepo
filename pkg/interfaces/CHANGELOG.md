@@ -7,6 +7,7 @@
 - Added `IProtocolFeeSplitter`.
 - Added `IL2GaugeCheckpointer`.
 - Added `IAuthorizerAdaptorEntrypoint`.
+- Added `IRateProviderPool`.
 
 ### New Features
 
