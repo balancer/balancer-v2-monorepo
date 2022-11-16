@@ -44,7 +44,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   before('load signers', async () => {
     [, owner, other] = await getSigners();
 
-    holder = await impersonate(USDC_HOLDER, fp(100));
+    holder = await impersonate(USDC_HOLDER);
   });
 
   before('setup contracts', async () => {

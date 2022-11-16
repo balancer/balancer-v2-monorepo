@@ -10,15 +10,7 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import {
-  describeForkTest,
-  getSigner,
-  impersonate,
-  impersonateWhale,
-  getForkedNetwork,
-  Task,
-  TaskMode,
-} from '../../../src';
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress, govMultisig: SignerWithAddress;
@@ -39,6 +31,7 @@ describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
   const upscaledInitialBalances = [initialBalanceDAI, initialBalanceUSDC.mul(1e12)];
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
 
   before('run task', async () => {
     task = new Task('20220609-stable-pool-v2', TaskMode.TEST, getForkedNetwork(hre));
@@ -48,9 +41,9 @@ describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
 
   before('load signers', async () => {
     owner = await getSigner();
-    whale = await impersonateWhale(fp(100));
+    whale = await impersonate(LARGE_TOKEN_HOLDER);
 
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
   });
 
   before('setup contracts', async () => {
