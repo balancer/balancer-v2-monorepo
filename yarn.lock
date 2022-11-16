@@ -2150,7 +2150,7 @@ __metadata:
     ethereumjs-util: ^7.1.4
   peerDependencies:
     hardhat: ^2.9.5
-  checksum: e237b65fbcbe9deb97080c389ca3a778fe004b41d9e9e4c31d92557ccc10b3da19a10316b25ee6acc63729ba48aee46494cce76b3abfd6d957cfed8380191059
+  checksum: 196e0273563edd232b8e663a73a9cf60d3e6ce3c00c1b8a7d9b4d9173b01b02ab5a0202eaea0658180318e14773290e226f95ae3626c89e46f8c699f2fd46b2f
   languageName: node
   linkType: hard
 
@@ -6499,7 +6499,7 @@ __metadata:
   dependencies:
     bn.js: ^4.11.8
     ethereumjs-util: ^6.0.0
-  checksum: 06142cd1eca1200f8cc6d3fb636ccab70d34ab43f1d633aeb8bd9f18d500b9e7a2facb74e32359838855fe9a5567651478b4713f4cfb9fbfa8d37dd7fabbc1dd
+  checksum: ddad3e3b7a405f47a40bc04f2a2e4ee21171ed96e62674ba941b31392312f0e57cdc4f2d21f7a5b577d2b3b63a63aa73d52328a32c9e70fd5a5dcb01137dbbb8
   languageName: node
   linkType: hard
 
