@@ -42,5 +42,5 @@ export async function impersonateWhale(balance?: BigNumber): Promise<SignerWithA
 
 export async function setBalance(address: string, balance: BigNumber): Promise<void> {
   await impersonateAccount(address);
-  await setBalance(address, balance);
+  await setAccountBalance(address, balance);
 }

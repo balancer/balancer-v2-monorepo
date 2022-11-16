@@ -146,6 +146,7 @@ __metadata:
   resolution: "@balancer-labs/v2-common@workspace:pvt/common"
   dependencies:
     "@balancer-labs/v2-helpers": "workspace:*"
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.6
     "@typescript-eslint/eslint-plugin": ^5.41.0
     "@typescript-eslint/parser": ^5.41.0
     eslint: ^8.26.0
