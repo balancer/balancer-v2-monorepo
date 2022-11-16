@@ -3,13 +3,11 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigners, impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { SwapKind } from '@balancer-labs/balancer-js';
+
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigners } from '../../../src';
 
 describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   let owner: SignerWithAddress, holder: SignerWithAddress, other: SignerWithAddress;
@@ -46,7 +44,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   before('load signers', async () => {
     [, owner, other] = await getSigners();
 
-    holder = await impersonate(USDC_HOLDER, fp(100));
+    holder = await impersonate(USDC_HOLDER);
   });
 
   before('setup contracts', async () => {
