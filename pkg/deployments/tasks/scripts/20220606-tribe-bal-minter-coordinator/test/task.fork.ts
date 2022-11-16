@@ -2,7 +2,6 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { describeForkTest } from '../../../../src/forkTests';
@@ -47,7 +46,7 @@ describeForkTest('TribeBALMinterCoordinator', 'mainnet', 14850000, function () {
   });
 
   before('grant permissions', async () => {
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
 
     const balancerTokenAdminTask = new Task('20220325-balancer-token-admin', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const balancerTokenAdmin = await balancerTokenAdminTask.deployedInstance('BalancerTokenAdmin');

@@ -33,7 +33,7 @@ describeForkTest('MerkleRedeem', 'arbitrum', 1731663, function () {
   before('load signers and transfer ownership', async () => {
     lp = await getSigner(2);
     other = await getSigner(3);
-    whale = await impersonate(REWARD_WHALE_ADDRESS, fp(100));
+    whale = await impersonate(REWARD_WHALE_ADDRESS);
     token = await task.instanceAt('IERC20', REWARD_TOKEN_ADDRESS);
 
     await distributor.transferOwnership(whale.address);

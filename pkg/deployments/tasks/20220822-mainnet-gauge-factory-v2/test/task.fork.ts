@@ -58,8 +58,8 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
 
   before('setup accounts', async () => {
     admin = await getSigner(0);
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
-    lpTokenHolder = await impersonate(LP_TOKEN_HOLDER, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
+    lpTokenHolder = await impersonate(LP_TOKEN_HOLDER);
   });
 
   before('setup contracts', async () => {
@@ -110,7 +110,7 @@ describeForkTest('LiquidityGaugeFactoryV2', 'mainnet', 15397200, function () {
   it('grant permissions', async () => {
     // We need to grant permission to the admin to add the LiquidityGaugeFactory to the GaugeAdder, and also to add
     // gauges from said factory to the GaugeController.
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
 
     await Promise.all(
       ['addGaugeFactory', 'addEthereumGauge'].map(
