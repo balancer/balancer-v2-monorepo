@@ -7,9 +7,9 @@ import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { RelayerAuthorization, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
-import { MAX_UINT256, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 
-import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../../src';
 
 describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
   let task: Task;
@@ -57,9 +57,8 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
     const whale = await impersonate(LARGE_TOKEN_HOLDER);
 
     // The sender begins with just USDC and ETH
-    const senderAddress = await randomAddress();
-    await usdc.connect(whale).transfer(senderAddress, await usdc.balanceOf(whale.address));
-    sender = await impersonate(senderAddress);
+    sender = await getSigner();
+    await usdc.connect(whale).transfer(sender.address, await usdc.balanceOf(whale.address));
 
     // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
     // such an account exists.
