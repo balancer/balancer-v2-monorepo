@@ -7,18 +7,9 @@ import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { RelayerAuthorization, SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { fromNow, MINUTE } from '@balancer-labs/v2-helpers/src/time';
-import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+import { MAX_UINT256, randomAddress } from '@balancer-labs/v2-helpers/src/constants';
 
-import {
-  describeForkTest,
-  getSigner,
-  impersonate,
-  impersonateWhale,
-  getForkedNetwork,
-  setBalance,
-  Task,
-  TaskMode,
-} from '../../../../src';
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
   let task: Task;
@@ -29,6 +20,8 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
 
   const DAI = '0x6b175474e89094c44da98b954eedeac495271d0f';
   const USDC = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
 
   const DAI_USDC_USDT_POOL = '0x06df3b2bbb68adc8b0e302443692037ed9f91b42000000000000000000000063';
   const ETH_DAI_POOL = '0x0b09dea16768f0799065c475be02919503cb2a3500020000000000000000001a';
@@ -61,12 +54,12 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 14850000, function () {
   before('load signers', async () => {
     // We impersonate a whale that holds large token amounts, but can't use it directly as impersonation doesn't let us
     // sign messages. Therefore, we transfer its tokens to our sender.
-    const whale = await impersonateWhale(fp(100));
+    const whale = await impersonate(LARGE_TOKEN_HOLDER, fp(100));
 
     // The sender begins with just USDC and ETH
-    sender = await getSigner();
-    await usdc.connect(whale).transfer(sender.address, await usdc.balanceOf(whale.address));
-    await setBalance(sender.address, fp(100));
+    const senderAddress = await randomAddress();
+    await usdc.connect(whale).transfer(senderAddress, await usdc.balanceOf(whale.address));
+    sender = await impersonate(senderAddress, fp(100));
 
     // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
     // such an account exists.
