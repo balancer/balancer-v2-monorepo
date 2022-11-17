@@ -69,7 +69,7 @@ contract PoolRecoveryHelper is SingletonAuthentication {
     }
 
     /**
-     * @notice Returns true if the Pool has been created from a known factory (passed to `addPoolFactory()`).
+     * @notice Returns true if the Pool has been created from a known factory.
      */
     function isPoolFromKnownFactory(address pool) public view returns (bool) {
         uint256 totalFactories = _factories.length();
@@ -98,7 +98,7 @@ contract PoolRecoveryHelper is SingletonAuthentication {
      * The Pool must have been created via a known Pool Factory contract.
      */
     function enableRecoveryMode(address pool) external {
-        // We require that the Pools come from known factories as a sanity check, since this function is permissionless.
+        // We require that the Pools come from known factories as a sanity check since this function is permissionless.
         // This ensures we're actually calling legitimate Pools, and that they support both the IRateProviderPool and
         // IRecoveryMode interfaces.
         require(isPoolFromKnownFactory(pool), "Pool is not from known factory");
@@ -107,7 +107,7 @@ contract PoolRecoveryHelper is SingletonAuthentication {
         IRateProvider[] memory rateProviders = IRateProviderPool(pool).getRateProviders();
         for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (rateProviders[i] != IRateProvider(0)) {
-                try rateProviders[i].getRate()  {
+                try rateProviders[i].getRate() {
                     // On success, we simply keep processing rate providers
                     continue;
                 } catch {
