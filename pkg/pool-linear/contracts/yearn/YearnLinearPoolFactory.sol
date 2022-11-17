@@ -37,7 +37,7 @@ contract YearnLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Ree
     // The IYearnShareValueHelper provides a more precise conversion between shares to underlying token
     // (wrappedTokenRate) and is used in place of the standard price per share (pps).
     // We provide the IYearnShareValueHelper when deploying the factory, which is then passed to the
-    // YearnLinearPool and YearnLinearPoolRebalancer on every call to create. This ensures that every 
+    // YearnLinearPool and YearnLinearPoolRebalancer on every call to create. This ensures that every
     // pool created by this factory uses the same IYearnShareValueHelper.
     IYearnShareValueHelper private immutable _shareValueHelper;
 

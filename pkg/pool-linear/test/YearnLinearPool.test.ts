@@ -27,8 +27,7 @@ describe('YearnLinearPool', function () {
   sharedBeforeEach('deploy pool factory', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
-    shareValueHelper  = await deploy('MockYearnShareValueHelper');
-    
+    shareValueHelper = await deploy('MockYearnShareValueHelper');
 
     poolFactory = await deploy('YearnLinearPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address, queries.address, shareValueHelper.address],

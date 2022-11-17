@@ -162,7 +162,7 @@ describeForkTest('YearnLinearPoolFactory', 'optimism', 38556442, function () {
 
     it('set final targets', async () => {
       await pool.connect(owner).setTargets(FINAL_LOWER_TARGET, FINAL_UPPER_TARGET);
-    }); 
+    });
   });
 
   describe('generate excess of main token and rebalance', () => {

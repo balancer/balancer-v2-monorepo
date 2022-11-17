@@ -31,7 +31,7 @@ describe('YearnLinearPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
-    
+
     const mainToken = await Token.create('DAI');
     const wrappedTokenInstance = await deploy('MockYearnTokenVault', {
       args: ['cDAI', 'cDAI', 18, mainToken.address, fp(1.05)],
@@ -40,14 +40,12 @@ describe('YearnLinearPoolFactory', function () {
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();
 
-    shareValueHelper  = await deploy('MockYearnShareValueHelper');
-    
+    shareValueHelper = await deploy('MockYearnShareValueHelper');
+
     factory = await deploy('YearnLinearPoolFactory', {
       args: [vault.address, vault.getFeesProvider().address, queries.address, shareValueHelper.address],
     });
     creationTime = await currentTimestamp();
-
-    
   });
 
   async function createPool(): Promise<Contract> {
