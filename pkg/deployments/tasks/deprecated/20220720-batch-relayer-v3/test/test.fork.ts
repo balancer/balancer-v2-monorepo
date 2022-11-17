@@ -2,7 +2,7 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Contract } from 'ethers';
 
-import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 
@@ -52,7 +52,7 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15150000, function () {
 
   before('load signers', async () => {
     // We impersonate an account that holds staked BPT for the ETH_STETH Pool.
-    sender = await impersonate(STAKED_ETH_STETH_HOLDER, fp(100));
+    sender = await impersonate(STAKED_ETH_STETH_HOLDER);
   });
 
   before('approve relayer at the authorizer', async () => {
@@ -64,7 +64,7 @@ describeForkTest('BatchRelayerLibrary', 'mainnet', 15150000, function () {
 
     // We impersonate an account with the default admin role in order to be able to approve the relayer. This assumes
     // such an account exists.
-    const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0), fp(100));
+    const admin = await impersonate(await authorizer.getRoleMember(await authorizer.DEFAULT_ADMIN_ROLE(), 0));
 
     // Grant relayer permission to call all relayer functions
     await authorizer.connect(admin).grantRoles(relayerActionIds, relayer.address);
