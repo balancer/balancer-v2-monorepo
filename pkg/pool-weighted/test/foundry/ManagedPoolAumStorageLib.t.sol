@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
 
 import "../../contracts/managed/ManagedPoolAumStorageLib.sol";
 
@@ -34,7 +34,7 @@ contract ManagedPoolAumStorageLibTest is Test {
         vm.assume(expectedAumFeePercentage <= _MAX_AUM_FEE);
 
         bytes32 newAumState = ManagedPoolAumStorageLib.setAumFeePercentage(aumState, expectedAumFeePercentage);
-        assertTrue(WordCodec.isOtherStateUnchanged(aumState, newAumState, _AUM_FEE_PERCENTAGE_OFFSET, _AUM_FEE_PCT_WIDTH));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(aumState, newAumState, _AUM_FEE_PERCENTAGE_OFFSET, _AUM_FEE_PCT_WIDTH));
 
         (uint256 actualAumFeePercentage, ) = ManagedPoolAumStorageLib.getAumFeeFields(newAumState);
         assertEq(actualAumFeePercentage, expectedAumFeePercentage);
@@ -47,7 +47,7 @@ contract ManagedPoolAumStorageLibTest is Test {
             aumState,
             expectedLastCollectionTimestamp
         );
-        assertTrue(WordCodec.isOtherStateUnchanged(aumState, newAumState, _LAST_COLLECTION_TIMESTAMP_OFFSET, _TIMESTAMP_WIDTH));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(aumState, newAumState, _LAST_COLLECTION_TIMESTAMP_OFFSET, _TIMESTAMP_WIDTH));
 
         (, uint256 actualLastCollectionTimestamp) = ManagedPoolAumStorageLib.getAumFeeFields(newAumState);
         assertEq(actualLastCollectionTimestamp, expectedLastCollectionTimestamp);

@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
 
 import "../../contracts/managed/ManagedPoolStorageLib.sol";
 
@@ -38,21 +38,21 @@ contract ManagedPoolStorageLibTest is Test {
 
     function testSetRecoveryMode(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setRecoveryModeEnabled(poolState, enabled);
-        assertTrue(WordCodec.isOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_OFFSET, 1));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_OFFSET, 1));
 
         assertEq(ManagedPoolStorageLib.getRecoveryModeEnabled(newPoolState), enabled);
     }
 
     function testSwapsEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapsEnabled(poolState, enabled);
-        assertTrue(WordCodec.isOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1));
 
         assertEq(ManagedPoolStorageLib.getSwapsEnabled(newPoolState), enabled);
     }
 
     function testLPAllowlistEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setLPAllowlistEnabled(poolState, enabled);
-        assertTrue(WordCodec.isOtherStateUnchanged(poolState, newPoolState, _MUST_ALLOWLIST_LPS_OFFSET, 1));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _MUST_ALLOWLIST_LPS_OFFSET, 1));
 
         assertEq(ManagedPoolStorageLib.getLPAllowlistEnabled(newPoolState), enabled);
     }
@@ -63,7 +63,7 @@ contract ManagedPoolStorageLibTest is Test {
         uint32 endTime
     ) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
-        assertTrue(WordCodec.isOtherStateUnchanged(poolState, newPoolState, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH * 2));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH * 2));
 
         (uint256 actualStartTime, uint256 actualEndTime) = ManagedPoolStorageLib.getWeightChangeFields(newPoolState);
         assertEq(actualStartTime, startTime);
@@ -109,7 +109,7 @@ contract ManagedPoolStorageLibTest is Test {
             startSwapFeePercentage,
             endSwapFeePercentage
         );
-        assertTrue(WordCodec.isOtherStateUnchanged(
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(
             poolState,
             newPoolState,
             _SWAP_FEE_START_TIME_OFFSET,

@@ -22,7 +22,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "../../contracts/lib/GradualValueChange.sol";
 import "../../contracts/WeightedMath.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
 
 import "../../contracts/test/MockManagedPoolTokenStorageLib.sol";
 
@@ -48,7 +48,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
 
             bytes32 newTokenState = mock.setTokenScalingFactor(tokenState, token);
-            assertTrue(WordCodec.isOtherStateUnchanged(tokenState, newTokenState, _DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH));
+            assertTrue(WordCodecHelpers.isOtherStateUnchanged(tokenState, newTokenState, _DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH));
 
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(newTokenState);
             assertEq(tokenScalingFactor, expectedScalingFactor);
@@ -76,7 +76,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
 
         bytes32 newTokenState = mock.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
 
-        assertTrue(WordCodec.isOtherStateUnchanged(tokenState, newTokenState, _START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH * 2));
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(tokenState, newTokenState, _START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH * 2));
 
         (uint256 recoveredStartWeight, uint256 recoveredEndWeight) = mock.getTokenStartAndEndWeights(newTokenState);
 
@@ -127,7 +127,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
         ERC20 token = new TestToken("Test", "TEST", decimals);
         if (decimals <= 18) {
             bytes32 tokenState = mock.initializeTokenState(token, normalizedWeight);
-            assertTrue(WordCodec.isOtherStateUnchanged(
+            assertTrue(WordCodecHelpers.isOtherStateUnchanged(
                 bytes32(0),
                 tokenState,
                 _START_NORM_WEIGHT_OFFSET,
