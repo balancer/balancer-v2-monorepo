@@ -66,4 +66,21 @@ contract MockWordCodec {
     ) external pure returns (int256) {
         return WordCodec.decodeInt(value, offset, bitLength);
     }
+
+    function clearWordAtPosition(
+        bytes32 word,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (bytes32) {
+        return WordCodec.clearWordAtPosition(word, offset, bitLength);
+    }
+
+    function isOtherStateUnchanged(
+        bytes32 oldPoolState,
+        bytes32 newPoolState,
+        uint256 offset,
+        uint256 bitLength
+    ) external pure returns (bool) {
+        return WordCodec.isOtherStateUnchanged(oldPoolState, newPoolState, offset, bitLength);
+    }
 }
