@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 
 import { defaultAbiCoder } from '@ethersproject/abi';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -60,7 +59,7 @@ describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () 
   });
 
   before('grant permissions', async () => {
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
 
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
@@ -71,10 +70,10 @@ describeForkTest('DoubleEntrypointFixRelayer', 'mainnet', 14770592, function () 
     await authorizer.connect(govMultisig).grantRoles([exitPoolRole, withdrawCollectedFeesRole], relayer.address);
 
     // User approval for relayer
-    btcBptHolder = await impersonate(BTC_STABLE_POOL_GAUGE, fp(100));
+    btcBptHolder = await impersonate(BTC_STABLE_POOL_GAUGE);
     await vault.connect(btcBptHolder).setRelayerApproval(btcBptHolder.address, relayer.address, true);
 
-    snxBptHolder = await impersonate(SNX_WEIGHTED_POOL_GAUGE, fp(100));
+    snxBptHolder = await impersonate(SNX_WEIGHTED_POOL_GAUGE);
     await vault.connect(snxBptHolder).setRelayerApproval(snxBptHolder.address, relayer.address, true);
   });
 

@@ -42,7 +42,7 @@ describeForkTest('ProtocolFeePercentagesProvider', 'mainnet', 15130000, function
 
   before('setup admin', async () => {
     const DEFAULT_ADMIN_ROLE = await authorizer.DEFAULT_ADMIN_ROLE();
-    admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0), fp(100));
+    admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0));
   });
 
   context('without permissions', () => {
