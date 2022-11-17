@@ -142,7 +142,7 @@ describe('SecondaryPool', function () {
 
       await deployPool({ securityToken, currencyToken }, true);
 
-      await setBalances(pool, { securityBalance: BigNumber.from("20"), currencyBalance: BigNumber.from("35"), bptBalance: MAX_UINT112 });
+      await setBalances(pool, { securityBalance: fp(20), currencyBalance: fp(35), bptBalance: MAX_UINT112 });
       
       const poolId = await pool.getPoolId();
       currentBalances = (await pool.vault.getPoolTokens(poolId)).balances;
@@ -174,10 +174,15 @@ describe('SecondaryPool', function () {
     context('Placing Market order', () => {
       let sell_amount: BigNumber;
       let buy_amount: BigNumber;
+      let sell_price: BigNumber;
+      let buy_price: BigNumber;
+
 
       sharedBeforeEach('initialize values ', async () => {
-        sell_amount = BigNumber.from("10"); //qty
-        buy_amount = BigNumber.from("5"); //qty
+        sell_amount = fp(10); // sell qty
+        buy_amount = fp(15); // buy qty
+        buy_price = fp(14); // Buying price
+        sell_price = fp(12); // Selling price
       });
       
       it('accepts buy order', async () => {
@@ -186,7 +191,7 @@ describe('SecondaryPool', function () {
           out: pool.currencyIndex,
           amount: sell_amount,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Sell 15@price
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market'+sell_price.toString())) // MarketOrder Sell 15@price
         });
 
         const buy_order = await pool.swapGivenIn({
@@ -194,14 +199,18 @@ describe('SecondaryPool', function () {
           out: pool.securityIndex,
           amount: buy_amount,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Buy 15@price
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market'+buy_price.toString())) // MarketOrder Buy 15@price
         });
+        console.log("buy_order", buy_order.toString());
 
-        const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
-        const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+        // console.log("buy balance", );
+        // console.log("sell balance", );
+
+        // const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+        // const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
 
         
-        expect(buy_order.toString()).to.be.equals(request_amount.toString());
+        expect(buy_order.toString()).to.be.equals(sell_order.toString());
       });
 
       context('when pool paused', () => {
