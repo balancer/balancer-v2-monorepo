@@ -88,10 +88,6 @@ describeForkTest('YearnLinearPoolFactory', 'optimism', 38556442, function () {
       const initialRecipientMainBalance = await usdc.balanceOf(other.address);
       if (expectedState != LinearPoolState.BALANCED) {
         await rebalancer.connect(holder).rebalance(other.address);
-        /*
-        wrappedAmount 14_646_397_625_122
-        _getRequiredTokensToWrap 14_900_000_ 000_001
-        */
       } else {
         await rebalancer.connect(holder).rebalanceWithExtraMain(other.address, 5);
       }
