@@ -16,7 +16,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('YearnLinearPool', function () {
-  let poolFactory: Contract;
+  let poolFactory: Contract, shareValueHelper: Contract;
   let owner: SignerWithAddress;
   let vault: Vault;
 
@@ -27,8 +27,11 @@ describe('YearnLinearPool', function () {
   sharedBeforeEach('deploy pool factory', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    shareValueHelper  = await deploy('MockYearnShareValueHelper');
+    
+
     poolFactory = await deploy('YearnLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address, shareValueHelper.address],
     });
   });
 

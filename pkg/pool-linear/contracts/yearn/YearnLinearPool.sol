@@ -16,13 +16,13 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IYearnShareValueHelper.sol";
 
 import "../LinearPool.sol";
 
 contract YearnLinearPool is LinearPool {
-    IYearnTokenVault private immutable _tokenVault;
-
-    uint256 private immutable _rateScaleFactor;
+    IYearnShareValueHelper private immutable _shareValueHelper;
+    IERC20 private immutable _wrappedToken;
 
     struct ConstructorArgs {
         IVault vault;
@@ -36,6 +36,7 @@ contract YearnLinearPool is LinearPool {
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
+        IYearnShareValueHelper shareValueHelper;
     }
 
     constructor(ConstructorArgs memory args)
@@ -53,15 +54,13 @@ contract YearnLinearPool is LinearPool {
             args.owner
         )
     {
-        IYearnTokenVault tokenVault = IYearnTokenVault(address(args.wrappedToken));
-
-        _tokenVault = tokenVault;
-
-        // The decimals of the vault token reflect that of the mainToken. So a USDC token vault has decimals = 6.
-        // This operation will revert if the token has decimals > 18, which is unsupported by the vault.
-        _rateScaleFactor = 10**(SafeMath.sub(18, tokenVault.decimals()));
-
-        _require(address(args.mainToken) == tokenVault.token(), Errors.TOKENS_MISMATCH);
+        _shareValueHelper = args.shareValueHelper;
+        _wrappedToken = args.wrappedToken;
+      
+        _require(
+            address(args.mainToken) == IYearnTokenVault(address(args.wrappedToken)).token(),
+            Errors.TOKENS_MISMATCH
+        );
     }
 
     function _toAssetManagerArray(ConstructorArgs memory args) private pure returns (address[] memory) {
@@ -74,6 +73,8 @@ contract YearnLinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        return _tokenVault.pricePerShare() * _rateScaleFactor;
+        // _getWrappedTokenRate is expected to be scaled to 1e18 regardless of the underlying decimals.
+        // By fetching sharesToAmount with 1e18 we ensure we scale to the appropriate precision.
+        return _shareValueHelper.sharesToAmount(address(_wrappedToken), 1e18);
     }
 }
