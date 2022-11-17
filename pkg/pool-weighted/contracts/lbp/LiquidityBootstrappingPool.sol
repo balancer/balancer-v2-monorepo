@@ -90,7 +90,25 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal virtual override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+        uint256 weightTokenIn;
+        uint256 weightTokenOut;
+        {
+            bytes32 poolState = _getPoolState();
+            _require(LiquidityBootstrappingPoolStorageLib.getSwapEnabled(poolState), Errors.SWAPS_DISABLED);
+
+            uint256 pctProgress = LiquidityBootstrappingPoolStorageLib.getWeightChangeProgress(poolState);
+
+            weightTokenIn = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+                poolState,
+                _getTokenIndex(request.tokenIn),
+                pctProgress
+            );
+            weightTokenOut = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+                poolState,
+                _getTokenIndex(request.tokenOut),
+                pctProgress
+            );
+        }
 
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
@@ -107,9 +125,9 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
             uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                _getNormalizedWeight(request.tokenIn),
+                weightTokenIn,
                 balanceTokenOut,
-                _getNormalizedWeight(request.tokenOut),
+                weightTokenOut,
                 request.amount
             );
 
@@ -121,9 +139,9 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
             uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                _getNormalizedWeight(request.tokenIn),
+                weightTokenIn,
                 balanceTokenOut,
-                _getNormalizedWeight(request.tokenOut),
+                weightTokenOut,
                 request.amount
             );
 

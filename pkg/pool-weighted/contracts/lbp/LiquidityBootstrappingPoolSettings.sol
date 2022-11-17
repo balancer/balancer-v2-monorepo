@@ -137,8 +137,20 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
         _setSwapEnabled(swapEnabledOnStart);
     }
 
+    function _getPoolState() internal view returns (bytes32) {
+        return _poolState;
+    }
+
     function _getTotalTokens() internal view returns (uint256) {
         return _totalTokens;
+    }
+
+    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+        if (token == _token0) return 0;
+        else if (token == _token1) return 1;
+        else if (token == _token2) return 2;
+        else if (token == _token3) return 3;
+        else _revert(Errors.INVALID_TOKEN);
     }
 
     // External functions
@@ -146,7 +158,7 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
     /**
      * @notice Return whether swaps are enabled or not for the given pool.
      */
-    function getSwapEnabled() public view returns (bool) {
+    function getSwapEnabled() external view returns (bool) {
         return LiquidityBootstrappingPoolStorageLib.getSwapEnabled(_poolState);
     }
 
@@ -207,25 +219,6 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
     }
 
     // Internal functions
-
-    function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
-        uint256 i;
-
-        // First, convert token address to a token index
-
-        // prettier-ignore
-        if (token == _token0) { i = 0; }
-        else if (token == _token1) { i = 1; }
-        else if (token == _token2) { i = 2; }
-        else if (token == _token3) { i = 3; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        bytes32 poolState = _poolState;
-        uint256 pctProgress = LiquidityBootstrappingPoolStorageLib.getWeightChangeProgress(poolState);
-        return LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(poolState, i, pctProgress);
-    }
 
     function _getNormalizedWeights() internal view returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
