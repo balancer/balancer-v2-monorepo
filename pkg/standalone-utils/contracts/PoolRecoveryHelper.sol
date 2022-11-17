@@ -107,7 +107,7 @@ contract PoolRecoveryHelper is SingletonAuthentication {
         IRateProvider[] memory rateProviders = IRateProviderPool(pool).getRateProviders();
         for (uint256 i = 0; i < rateProviders.length; ++i) {
             if (rateProviders[i] != IRateProvider(0)) {
-                try rateProviders[i].getRate() {
+                try rateProviders[i].getRate()  {
                     // On success, we simply keep processing rate providers
                     continue;
                 } catch {
