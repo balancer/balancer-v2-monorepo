@@ -9,54 +9,32 @@ export type VaultDeployment = {
 };
 
 const Authorizer = new Task('20210418-authorizer', TaskMode.READ_ONLY);
+const Tokens = new Task('00000000-tokens', TaskMode.READ_ONLY);
 
 export default {
-  kovan: {
-    Authorizer,
-    weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
-  },
+  Authorizer,
+  pauseWindowDuration: 3 * MONTH,
+  bufferPeriodDuration: MONTH,
+
   mainnet: {
-    Authorizer,
-    weth: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'mainnet' }).WETH,
   },
   polygon: {
-    Authorizer,
-    weth: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270', // WMATIC
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'polygon' }).WETH, // WMATIC
   },
   arbitrum: {
-    Authorizer,
-    weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'arbitrum' }).WETH,
   },
   optimism: {
-    Authorizer,
-    weth: '0x4200000000000000000000000000000000000006',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'optimism' }).WETH,
   },
   gnosis: {
-    Authorizer,
-    weth: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', // wxDAI
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'gnosis' }).WETH, // wxDAI
   },
   bsc: {
-    Authorizer,
-    weth: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'bsc' }).WETH, // WBNB
   },
   goerli: {
-    Authorizer,
-    weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
-    pauseWindowDuration: 3 * MONTH,
-    bufferPeriodDuration: MONTH,
+    weth: Tokens.output({ network: 'goerli' }).WETH,
   },
 };
