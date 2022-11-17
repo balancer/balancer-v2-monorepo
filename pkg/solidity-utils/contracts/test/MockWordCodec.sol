@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "../helpers/WordCodec.sol";
+import "../helpers/WordCodecHelpers.sol";
 
 contract MockWordCodec {
     function insertUint(
@@ -72,7 +73,7 @@ contract MockWordCodec {
         uint256 offset,
         uint256 bitLength
     ) external pure returns (bytes32) {
-        return WordCodec.clearWordAtPosition(word, offset, bitLength);
+        return WordCodecHelpers.clearWordAtPosition(word, offset, bitLength);
     }
 
     function isOtherStateUnchanged(
@@ -81,6 +82,6 @@ contract MockWordCodec {
         uint256 offset,
         uint256 bitLength
     ) external pure returns (bool) {
-        return WordCodec.isOtherStateUnchanged(oldPoolState, newPoolState, offset, bitLength);
+        return WordCodecHelpers.isOtherStateUnchanged(oldPoolState, newPoolState, offset, bitLength);
     }
 }
