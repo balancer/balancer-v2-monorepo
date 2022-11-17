@@ -31,8 +31,10 @@
     "test": "hardhat test ./**/test/*.ts",
     "ci:prepare-config": "ts-node ci/prepare-config.ts"
   },
+  "dependencies": {
+    "@balancer-labs/balancer-js": "workspace:*"
+  },
   "devDependencies": {
-    "@balancer-labs/balancer-js": "workspace:*",
     "@balancer-labs/v2-helpers": "workspace:*",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.6",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
