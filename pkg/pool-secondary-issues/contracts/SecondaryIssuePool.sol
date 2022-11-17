@@ -200,7 +200,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 request.tokenIn == IERC20(_currency) ||
                 request.tokenIn == IERC20(_security), "Invalid swapped tokens");
         uint256[] memory scalingFactors = _scalingFactors();
-        
         Params memory params;
         if(request.userData.length!=0){
             // console.log("Here");
@@ -215,7 +214,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }
             else{ // returning swap results from matchOrders function below
-                console.log("Recursive Call", request.userData.length);
+                console.log("Recursive Call", _downscaleDown(request.amount, scalingFactors[indexOut]));
                 return _downscaleDown(request.amount, scalingFactors[indexOut]);
             }        
         }else{ //by default, any order without price specified is a market order
@@ -250,7 +249,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
             uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], request.amount);
-            request.amount = Math.div(postPaidCurrencyBalance, balances[_securityIndex], false);
+            request.amount = (Math.div(postPaidCurrencyBalance, balances[_securityIndex], false))*FixedPoint.ONE;
             (price, amount) = newOrder(request, params, Order.Buy, balances);
             if (params.trade == OrderType.Market) 
                 return _downscaleDown(amount, scalingFactors[indexOut]);
@@ -363,19 +362,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         _userOrderIndex[ref] = _userOrderRefs[_request.from].length;
         _userOrderRefs[_request.from].push(ref);
         if (_params.trade == OrderType.Market) {
-            console.log("Here inside Market Order");
             orders[ref].status = OrderStatus.Open;
             _marketOrders[orders[ref].orderno] = ref;
             marketOrderbook = marketOrderbook + 1;
             return matchOrders(ref, OrderType.Market);
         } else if (_params.trade == OrderType.Limit) {
-            console.log("Here inside Limit");
             orders[ref].status = OrderStatus.Open;
             _limitOrders[orders[ref].orderno] = ref;
             limitOrderbook = limitOrderbook + 1;
             checkLimitOrders(_params.price);
         } else if (_params.trade == OrderType.Stop) {
-            console.log("Here inside Stop Order");
             orders[ref].status = OrderStatus.Open;
             _stopOrders[orders[ref].orderno] = ref;
             stopOrderbook = stopOrderbook + 1;
@@ -478,22 +474,35 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             stopOrderbook = stopOrderbook - 1;
         }
     }
-
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+    struct SingleSwap {
+        bytes32 poolId;
+        SwapKind kind;
+        IAsset assetIn;
+        IAsset assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address payable recipient;
+        bool toInternalBalance;
+    }
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
+        bytes32 pid = getPoolId();
+        IVault vault = getVault();
+
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
                 _marketOrders[i] != _ref &&
                 //orders[_marketOrders[i]].party != orders[_ref].party && 
                 orders[_marketOrders[i]].status != OrderStatus.Filled
             ) {
-                console.log("Hello inside IF");
                 if (orders[_marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
-                    console.log("Hey");
                     if (orders[_marketOrders[i]].price >= orders[_ref].price) {
-                        console.log("orders[_marketOrders[i]].price", orders[_marketOrders[i]].price);
-                        console.log("orders[_ref].price", orders[_ref].price);
                         if (orders[_marketOrders[i]].price > _bestBidPrice) {
                             // console.log("_bestBidPrice", _bestBidPrice);
                             _bestUnfilledBid = _bestBidPrice;
@@ -504,6 +513,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                 } else if (orders[_marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
                     if (orders[_marketOrders[i]].price <= orders[_ref].price) {
+                        console.log("orders[_marketOrders[i]].price", orders[_marketOrders[i]].price);
+                        console.log("orders[_ref].price", orders[_ref].price);
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
                             _bestOfferPrice = orders[_marketOrders[i]].price;
@@ -514,12 +525,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }
         }
-        bytes32 pid = getPoolId();
+
         if (orders[_ref].order == Order.Sell) {            
             if (_bestBid != "") {
                 uint256 qty;
                 if (orders[_bestBid].qty >= orders[_ref].qty) {
-                    console.log("Bid Here IF");
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
                     qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
@@ -537,7 +547,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     );
                     reorder(_bidIndex, _trade);
                 } else {
-                    console.log("Bid Here ELSE");
                     orders[_ref].qty = orders[_ref].qty - orders[_bestBid].qty;
                     qty = orders[_bestBid].qty;
                     orders[_bestBid].qty = 0;
@@ -560,48 +569,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
-                // calling onSwap to return results for the buyer
-                // SwapRequest memory nRequest = SwapRequest({
-                //     kind: IVault.SwapKind.GIVEN_OUT,
-                //     tokenIn: orders[_ref].tokenIn,
-                //     tokenOut: orders[_bestBid].tokenOut,
-                //     amount: orders[_bestBid].qty,
-                //     // Misc data
-                //     poolId: pid,
-                //     lastChangeBlock: block.number,
-                //     from: orders[_bestBid].party,
-                //     to: orders[_ref].party,
-                //     userData: "self" //sending this only to distinguish call from this function to onSwaps, there might be a better way
-                // });
-                // onSwap(nRequest, balances, orders[_bestBid].tokenIn==IERC20(_security)?1:2, orders[_bestBid].tokenOut==IERC20(_security)?1:2);
-                // calling onSwap to return results for the seller
-                // nRequest = SwapRequest({
-                //     kind: IVault.SwapKind.GIVEN_IN,
-                //     tokenIn: orders[_bestBid].tokenIn,
-                //     tokenOut: orders[_ref].tokenOut,
-                //     amount: orders[_ref].qty,
-                //     // Misc data
-                //     poolId: pid,
-                //     lastChangeBlock: block.number,
-                //     from: orders[_ref].party,
-                //     to: orders[_bestBid].party,
-                //     userData: "self"
-                // });
-                // onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);                    
             }
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
                 uint256 qty;
-                console.log("I m here in ELSE IF");
-                console.log("orders[_bestOffer].qty", orders[_bestOffer].qty);
-                console.log("orders[_ref].qty", orders[_ref].qty);
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
                     qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
                     orders[_bestOffer].status = OrderStatus.Filled;
                     orders[_ref].status = OrderStatus.Filled;
-                    console.log("Hello Here", qty);
                     reportTrade(
                         _bestOffer,
                         orders[_bestOffer].party,
@@ -614,7 +591,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     );
                     reorder(_bidIndex, _trade);
                 } else {
-                    console.log("Not Here");
                     orders[_ref].qty = orders[_ref].qty - orders[_bestOffer].qty;
                     qty = orders[_bestOffer].qty;
                     orders[_bestOffer].qty = 0;
@@ -633,29 +609,30 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                // console.log("orders[_ref].currencyBalance", orders[_ref].currencyBalance);
-                console.log("orders[_ref].currencyBalance", orders[_ref].price);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
                 uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
-                // console.log(balances[0], balances[1]);
                 // calling onSwap to return results for the seller
-                // SwapRequest memory nRequest = SwapRequest({
-                //     kind: IVault.SwapKind.GIVEN_IN,
-                //     tokenIn: orders[_bestOffer].tokenIn,
-                //     tokenOut: orders[_ref].tokenOut,
-                //     amount: orders[_ref].qty,
-                //     // Misc data
+                // WIP
+                // IVault.SingleSwap memory nRequest = IVault.SingleSwap({
                 //     poolId: pid,
-                //     lastChangeBlock: block.number,
-                //     from: orders[_bestOffer].party,
-                //     to: orders[_ref].party,
+                //     kind: IVault.SwapKind.GIVEN_IN,
+                //     assetIn: orders[_bestOffer].tokenIn,
+                //     assetOut: orders[_ref].tokenOut,
+                //     amount: orders[_ref].qty,
                 //     userData: "self"
                 // });
-                // onSwap(nRequest, balances, orders[_bestOffer].tokenIn==IERC20(_security)?1:2, orders[_bestOffer].tokenOut==IERC20(_security)?1:2);
-                // // calling onSwap to return results for the buyer
+                // IVault.FundManagement memory fundMgt = IVault.FundManagement({
+                //    sender: orders[_bestOffer].party,
+                //    fromInternalBalance: false,
+                //    recipient: payable(orders[_ref].party),
+                //    toInternalBalance: false
+                // });
+
+                // vault.swap(nRequest, fundMgt, balances[0], 999999999999999999);
+                // calling onSwap to return results for the buyer
                 // nRequest = SwapRequest({
                 //     kind: IVault.SwapKind.GIVEN_OUT,
                 //     tokenIn: orders[_ref].tokenIn,

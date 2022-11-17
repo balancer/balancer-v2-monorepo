@@ -203,8 +203,8 @@ describe('SecondaryPool', function () {
         });
         console.log("buy_order", buy_order.toString());
 
-        // console.log("buy balance", );
-        // console.log("sell balance", );
+        console.log("currency balance", currentBalances[pool.currencyIndex].toString());
+        console.log("Security balance", currentBalances[pool.securityIndex].toString());
 
         // const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
         // const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
