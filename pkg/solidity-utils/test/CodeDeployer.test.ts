@@ -35,7 +35,7 @@ describe('CodeDeployer', function () {
       const receipt = await (await factory.deploy(data)).wait();
       const event = expectEvent.inReceipt(receipt, 'CodeDeployed');
 
-      expect(await ethers.provider.getCode(event.args[0])).to.equal(data);
+      expect(await ethers.provider.getCode(event.args.destination)).to.equal(data);
     });
   }
 });
