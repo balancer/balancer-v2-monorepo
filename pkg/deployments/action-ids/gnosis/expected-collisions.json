@@ -1,0 +1,30 @@
+{
+  "0x2c2d48381025f2538d3009c98716f7e89c28225a73559252433caa24330885fb": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "BalancerHelpers",
+      "signature": "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220721-balancer-queries",
+      "contractName": "BalancerQueries",
+      "signature": "queryExit(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": true
+    }
+  ],
+  "0xd972b0ea55e93f1ad627c0b544d12659dfd52456acc8e7899690b6bebca50994": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "BalancerHelpers",
+      "signature": "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220721-balancer-queries",
+      "contractName": "BalancerQueries",
+      "signature": "queryJoin(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": true
+    }
+  ]
+}

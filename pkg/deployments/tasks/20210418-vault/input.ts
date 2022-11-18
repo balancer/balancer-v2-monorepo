@@ -41,6 +41,18 @@ export default {
     pauseWindowDuration: 3 * MONTH,
     bufferPeriodDuration: MONTH,
   },
+  gnosis: {
+    Authorizer,
+    weth: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', // wxDAI
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
+  bsc: {
+    Authorizer,
+    weth: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
+    pauseWindowDuration: 3 * MONTH,
+    bufferPeriodDuration: MONTH,
+  },
   goerli: {
     Authorizer,
     weth: '0xdFCeA9088c8A88A76FF74892C1457C17dfeef9C1',
