@@ -712,7 +712,7 @@ contract ComposableStablePool is
     }
 
     /**
-     * @dev Support single- and multi-token joins, but not explicit proportional joins.
+     * @dev Support single- and multi-token joins, plus explicit proportional joins.
      */
     function _doJoin(
         uint256[] memory balances,
@@ -733,11 +733,27 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
+        } else if (kind == StablePoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return _joinAllTokensInForExactBptOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_JOIN_KIND);
         }
+    }
+
+    /**
+     * @dev Proportional join. Pays no swap fees.
+     */
+    function _joinAllTokensInForExactBptOut(
+        uint256 actualSupply,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private pure returns (uint256, uint256[] memory) {
+        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+        uint256[] memory amountsIn = StableMath._computeProportionalAmountsIn(balances, bptAmountOut, actualSupply);
+
+        return (bptAmountOut, amountsIn);
     }
 
     /**
@@ -808,8 +824,8 @@ contract ComposableStablePool is
     // Exit Hooks
 
     /**
-     * @dev Support single- and multi-token exits, but not explicit proportional exits, which are
-     * supported through Recovery Mode.
+     * @dev Support single- and multi-token exits, plus explicit proportional exits (in addition to the
+     * recovery mode exit).
      */
     function _doExit(
         uint256[] memory balances,
@@ -830,11 +846,29 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            return _exitExactBPTInForTokensOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
             _revert(Errors.UNHANDLED_EXIT_KIND);
         }
+    }
+
+    /**
+     * @dev Proportional exit. Pays no swap fees. This is functionally equivalent to the recovery mode exit,
+     * except this doesn't skip protocol fee collection, calling rate providers, etc., and doesn't require
+     * recovery mode to be enabled.
+     */
+    function _exitExactBPTInForTokensOut(
+        uint256 actualSupply,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private pure returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        uint256[] memory amountsOut = _computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
+
+        return (bptAmountIn, amountsOut);
     }
 
     /**
