@@ -1,0 +1,612 @@
+{
+  "0x02f35da6a02017154367bc4d47bb6c7d06c7533b": [
+    {
+      "taskId": "20211208-aave-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "setPaused(bool)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220413-arbitrum-root-gauge-factory",
+      "contractName": "ArbitrumRootGaugeFactory",
+      "signature": "setArbitrumFees(uint64,uint64,uint64)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220325-gauge-controller",
+      "contractName": "VotingEscrow",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-gauge-controller",
+      "contractName": "GaugeController",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-single-recipient-gauge-factory",
+      "contractName": "SingleRecipientGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-arbitrum-root-gauge-factory",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-polygon-root-gauge-factory",
+      "contractName": "PolygonRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220420-fee-distributor",
+      "contractName": "FeeDistributor",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220628-optimism-root-gauge-factory",
+      "contractName": "OptimismRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220714-fee-distributor-v2",
+      "contractName": "FeeDistributor",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "checkpoint()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220628-optimism-root-gauge-factory",
+      "contractName": "OptimismRootGaugeFactory",
+      "signature": "setOptimismGasLimit(uint32)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20211208-stable-phantom-pool",
+      "contractName": "StablePhantomPool",
+      "signature": "setPaused(bool)",
+      "useAdaptor": false
+    }
+  ],
+  "DAO_MULTISIG": [
+    {
+      "taskId": "20220325-ve-delegation",
+      "contractName": "VotingEscrowDelegationProxy",
+      "signature": "setDelegation(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220420-smart-wallet-checker",
+      "contractName": "SmartWalletChecker",
+      "signature": "denylistAddress(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220325-mainnet-gauge-factory",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220325-single-recipient-gauge-factory",
+      "contractName": "SingleRecipientGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-arbitrum-root-gauge-factory",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220413-polygon-root-gauge-factory",
+      "contractName": "PolygonRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220628-optimism-root-gauge-factory",
+      "contractName": "OptimismRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220822-mainnet-gauge-factory-v2",
+      "contractName": "LiquidityGaugeV5",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-optimism-root-gauge-factory-v2",
+      "contractName": "OptimismRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-arbitrum-root-gauge-factory-v2",
+      "contractName": "ArbitrumRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220823-polygon-root-gauge-factory-v2",
+      "contractName": "PolygonRootGauge",
+      "signature": "killGauge()",
+      "useAdaptor": true
+    },
+    {
+      "taskId": "20220725-protocol-fee-percentages-provider",
+      "contractName": "ProtocolFeePercentagesProvider",
+      "signature": "setFeeTypePercentage(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220420-smart-wallet-checker",
+      "contractName": "SmartWalletChecker",
+      "signature": "allowlistAddress(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "ProtocolFeesCollector",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "0x170027069fd114bff2f57b0fc796df93290c02a6": [
+    {
+      "taskId": "20210418-weighted-pool",
+      "contractName": "WeightedPool",
+      "signature": "setPaused(bool)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "setPaused(bool)",
+      "useAdaptor": false
+    }
+  ],
+  "0x239e55f427d44c3cc793f49bfb507ebe76638a2b": [
+    {
+      "taskId": "20220325-balancer-token-admin",
+      "contractName": "BalancerTokenAdmin",
+      "signature": "mint(address,uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "0x2536dfeecb7a0397cf98edada8486254533b1afa": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "setRelayerApproval(address,address,bool)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    }
+  ],
+  "0x2ffb7b215ae7f088ec2530c7aa8e1b24e398f26a": [
+    {
+      "taskId": "20220325-gauge-controller",
+      "contractName": "GaugeController",
+      "signature": "add_gauge(address,int128)",
+      "useAdaptor": true
+    }
+  ],
+  "0x5ef4c5352882b10893b70dbcaa0c000965bd23c5": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "ProtocolFeesCollector",
+      "signature": "withdrawCollectedFees(address[],uint256[],address)",
+      "useAdaptor": false
+    }
+  ],
+  "LINEAR_POOL_CONTROLLER_BALLER_MULTISIG": [
+    {
+      "taskId": "20211208-stable-phantom-pool",
+      "contractName": "StablePhantomPool",
+      "signature": "setTokenRateCacheDuration(address,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20211208-aave-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20211208-aave-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "setTargets(uint256,uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "TREASURY_MULTISIG": [
+    {
+      "taskId": "20220517-protocol-fee-withdrawer",
+      "contractName": "ProtocolFeesWithdrawer",
+      "signature": "withdrawCollectedFees(address[],uint256[],address)",
+      "useAdaptor": false
+    }
+  ],
+  "0x886a3ec7bcc508b8795990b60fa21f85f9db7948": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "setRelayerApproval(address,address,bool)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    }
+  ],
+  "0x97207b095e4d5c9a6e4cfbfcd2c3358e03b90c4a": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "ProtocolFeesCollector",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "ProtocolFeesCollector",
+      "signature": "setFlashLoanFeePercentage(uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "EMERGENCY_SUBDAO_MULTISIG": [
+    {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "unpause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPool",
+      "signature": "pause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "unpause()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220517-protocol-fee-withdrawer",
+      "contractName": "ProtocolFeesWithdrawer",
+      "signature": "denylistToken(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPool",
+      "signature": "unpause()",
+      "useAdaptor": false
+    }
+  ],
+  "0xac9f49ef3ab0bbc929f7b1bb0a17e1fca5786251": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "setRelayerApproval(address,address,bool)",
+      "useAdaptor": false
+    }
+  ],
+  "LM_MULTISIG": [
+    {
+      "taskId": "20220628-gauge-adder-v2",
+      "contractName": "GaugeAdder",
+      "signature": "addPolygonGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220628-gauge-adder-v2",
+      "contractName": "GaugeAdder",
+      "signature": "addEthereumGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220325-gauge-adder",
+      "contractName": "GaugeAdder",
+      "signature": "addArbitrumGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220325-gauge-adder",
+      "contractName": "GaugeAdder",
+      "signature": "addEthereumGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220628-gauge-adder-v2",
+      "contractName": "GaugeAdder",
+      "signature": "addOptimismGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220628-gauge-adder-v2",
+      "contractName": "GaugeAdder",
+      "signature": "addArbitrumGauge(address)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220325-gauge-adder",
+      "contractName": "GaugeAdder",
+      "signature": "addPolygonGauge(address)",
+      "useAdaptor": false
+    }
+  ],
+  "GNOSIS_PROTOCOL_RELAYER": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "BLABS_VEBAL_MULTISIG": [
+    {
+      "taskId": "20220325-bal-token-holder-factory",
+      "contractName": "BALTokenHolder",
+      "signature": "function withdrawFunds(address,uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "0xdcdbf71a870cc60c6f9b621e28a7d3ffd6dd4965": [
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "batchSwap(uint8,(bytes32,uint256,uint256,uint256,bytes)[],address[],(address,bool,address,bool),int256[],uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "exitPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "swap((bytes32,uint8,address,address,uint256,bytes),(address,bool,address,bool),uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "joinPool(bytes32,address,address,(address[],uint256[],bytes,bool))",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-vault",
+      "contractName": "Vault",
+      "signature": "manageUserBalance((uint8,address,uint256,address,address)[])",
+      "useAdaptor": false
+    }
+  ],
+  "GAUNTLET_FEE_SETTER": [
+    {
+      "taskId": "20211208-stable-phantom-pool",
+      "contractName": "StablePhantomPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220908-weighted-pool-v2",
+      "contractName": "WeightedPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-weighted-pool",
+      "contractName": "WeightedPool2Tokens",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220609-stable-pool-v2",
+      "contractName": "StablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210624-stable-pool",
+      "contractName": "StablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210727-meta-stable-pool",
+      "contractName": "MetaStablePool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20210418-weighted-pool",
+      "contractName": "WeightedPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    }
+  ],
+  "0xeb151668006cd04dadd098afd0a82e78f77076c3": [
+    {
+      "taskId": "20220325-balancer-token-admin",
+      "contractName": "BalancerTokenAdmin",
+      "signature": "activate()",
+      "useAdaptor": false
+    }
+  ],
+  "SWAP_FEE_CONTROLLER_BALLER_MULTISIG": [
+    {
+      "taskId": "20220609-stable-pool-v2",
+      "contractName": "StablePool",
+      "signature": "startAmplificationParameterUpdate(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "startAmplificationParameterUpdate(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "setTargets(uint256,uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220817-aave-rebalanced-linear-pool",
+      "contractName": "AaveLinearPool",
+      "signature": "setSwapFeePercentage(uint256)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220906-composable-stable-pool",
+      "contractName": "ComposableStablePool",
+      "signature": "stopAmplificationParameterUpdate()",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20220609-stable-pool-v2",
+      "contractName": "StablePool",
+      "signature": "stopAmplificationParameterUpdate()",
+      "useAdaptor": false
+    }
+  ]
+}
