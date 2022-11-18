@@ -23,8 +23,8 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./WeightedPool.sol";
 
 contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode)
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory factoryVersion, string memory poolVersion)
+        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode, factoryVersion, poolVersion)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -46,20 +46,23 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
-                    WeightedPool.NewPoolParams({
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
                         name: name,
                         symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
+                    WeightedPool.NewPoolParams({
+                        protocolFeeProvider: getProtocolFeePercentagesProvider(),
                         tokens: tokens,
                         normalizedWeights: normalizedWeights,
                         rateProviders: rateProviders,
                         assetManagers: new address[](tokens.length), // Don't allow asset managers,
                         swapFeePercentage: swapFeePercentage
-                    }),
-                    getVault(),
-                    getProtocolFeePercentagesProvider(),
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner
+                    })
                 )
             );
     }

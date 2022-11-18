@@ -15,12 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
@@ -32,19 +32,22 @@ import "./AaveLinearPoolRebalancer.sol";
 
 contract AaveLinearPoolFactory is
     ILastCreatedPoolFactory,
-    IFactoryCreatedPoolVersion,
-    Version,
     BasePoolFactory,
     ReentrancyGuard,
     FactoryWidePauseWindow
 {
+    struct PoolDeploymentParams {
+        bytes32 rebalancerSalt;
+        bytes rebalancerCreationCode;
+        address expectedRebalancerAddress;
+    }
+
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
     IBalancerQueries private immutable _queries;
 
     address private _lastCreatedPool;
-    string private _poolVersion;
 
     constructor(
         IVault vault,
@@ -52,17 +55,12 @@ contract AaveLinearPoolFactory is
         IBalancerQueries queries,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) Version(factoryVersion) {
+    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode, factoryVersion, poolVersion) {
         _queries = queries;
-        _poolVersion = poolVersion;
     }
 
     function getLastCreatedPool() external view override returns (address) {
         return _lastCreatedPool;
-    }
-
-    function getPoolVersion() public view override returns (string memory) {
-        return _poolVersion;
     }
 
     function _create(bytes memory constructorArgs) internal virtual override returns (address) {
@@ -97,31 +95,25 @@ contract AaveLinearPoolFactory is
         // approach is that create2 requires the full creation code, including constructor arguments, and among those is
         // the Pool's address. To work around this, we have the Rebalancer fetch this address from `getLastCreatedPool`,
         // which will hold the Pool's address after we call `_create`.
-
-        bytes32 rebalancerSalt = bytes32(_nextRebalancerSalt);
-        _nextRebalancerSalt += 1;
-
-        bytes memory rebalancerCreationCode = abi.encodePacked(
-            type(AaveLinearPoolRebalancer).creationCode,
-            abi.encode(getVault(), _queries)
-        );
-        address expectedRebalancerAddress = Create2.computeAddress(rebalancerSalt, keccak256(rebalancerCreationCode));
+        PoolDeploymentParams memory deploymentParams = _getPoolDeploymentParameters();
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         AaveLinearPool.ConstructorArgs memory args = AaveLinearPool.ConstructorArgs({
-            vault: getVault(),
-            name: name,
-            symbol: symbol,
+            basePoolParams: IBasePool.BasePoolParams({
+                vault: getVault(),
+                name: name,
+                symbol: symbol,
+                pauseWindowDuration: pauseWindowDuration,
+                bufferPeriodDuration: bufferPeriodDuration,
+                owner: owner,
+                version: getPoolVersion()
+            }),
             mainToken: mainToken,
             wrappedToken: wrappedToken,
-            assetManager: expectedRebalancerAddress,
+            assetManager: deploymentParams.expectedRebalancerAddress,
             upperTarget: upperTarget,
-            swapFeePercentage: swapFeePercentage,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner,
-            version: getPoolVersion()
+            swapFeePercentage: swapFeePercentage
         });
 
         AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));
@@ -132,10 +124,23 @@ contract AaveLinearPoolFactory is
 
         // Not that the Linear Pool's deployment is complete, we can deploy the Rebalancer, verifying that we correctly
         // predicted its deployment address.
-        address actualRebalancerAddress = Create2.deploy(0, rebalancerSalt, rebalancerCreationCode);
-        require(expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
+        address actualRebalancerAddress = Create2.deploy(
+            0, deploymentParams.rebalancerSalt, deploymentParams.rebalancerCreationCode);
+        require(deploymentParams.expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
 
         // We don't return the Rebalancer's address, but that can be queried in the Vault by calling `getPoolTokenInfo`.
         return pool;
+    }
+
+    function _getPoolDeploymentParameters() private returns (PoolDeploymentParams memory deploymentParams) {
+        deploymentParams.rebalancerSalt = bytes32(_nextRebalancerSalt);
+        _nextRebalancerSalt += 1;
+
+        deploymentParams.rebalancerCreationCode = abi.encodePacked(
+            type(AaveLinearPoolRebalancer).creationCode,
+            abi.encode(getVault(), _queries)
+        );
+        deploymentParams.expectedRebalancerAddress = Create2.computeAddress(
+            deploymentParams.rebalancerSalt, keccak256(deploymentParams.rebalancerCreationCode));
     }
 }

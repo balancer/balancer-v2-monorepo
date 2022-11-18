@@ -22,30 +22,20 @@ contract MockLinearPool is LinearPool, MockLinearMath {
     uint256 internal _wrappedTokenRate = 1e18;
 
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
+        BasePoolParams memory basePoolParams,
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        uint256 swapFeePercentage
     )
         LinearPool(
-            vault,
-            name,
-            symbol,
+            basePoolParams,
             mainToken,
             wrappedToken,
             upperTarget,
             assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            swapFeePercentage
         )
     {
         // solhint-disable-previous-line no-empty-blocks

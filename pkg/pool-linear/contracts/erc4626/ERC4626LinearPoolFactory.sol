@@ -23,8 +23,8 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./ERC4626LinearPool.sol";
 
 contract ERC4626LinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ERC4626LinearPool).creationCode)
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory factoryVersion, string memory poolVersion)
+        BasePoolFactory(vault, protocolFeeProvider, type(ERC4626LinearPool).creationCode, factoryVersion, poolVersion)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -55,7 +55,8 @@ contract ERC4626LinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
                     swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
-                    owner
+                    owner,
+                    getPoolVersion()
                 )
             )
         );

@@ -21,39 +21,27 @@ import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "../LinearPool.sol";
 
-contract AaveLinearPool is LinearPool, Version {
+contract AaveLinearPool is LinearPool {
     ILendingPool private immutable _lendingPool;
 
     struct ConstructorArgs {
-        IVault vault;
-        string name;
-        string symbol;
+        BasePoolParams basePoolParams;
         IERC20 mainToken;
         IERC20 wrappedToken;
         address assetManager;
         uint256 upperTarget;
         uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
-        string version;
     }
 
     constructor(ConstructorArgs memory args)
         LinearPool(
-            args.vault,
-            args.name,
-            args.symbol,
+            args.basePoolParams,
             args.mainToken,
             args.wrappedToken,
             args.upperTarget,
             _toAssetManagerArray(args),
-            args.swapFeePercentage,
-            args.pauseWindowDuration,
-            args.bufferPeriodDuration,
-            args.owner
+            args.swapFeePercentage
         )
-        Version(args.version)
     {
         _lendingPool = IStaticAToken(address(args.wrappedToken)).LENDING_POOL();
         _require(address(args.mainToken) == IStaticAToken(address(args.wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);

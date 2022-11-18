@@ -21,7 +21,7 @@ import "./MockRecoveryRateProviderPool.sol";
 
 contract MockRecoveryRateProviderPoolFactory is BasePoolFactory {
     constructor(IVault _vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(_vault, protocolFeeProvider, type(MockRecoveryRateProviderPool).creationCode)
+        BasePoolFactory(_vault, protocolFeeProvider, type(MockRecoveryRateProviderPool).creationCode, "", "")
     {
         // solhint-disable-previous-line no-empty-blocks
     }

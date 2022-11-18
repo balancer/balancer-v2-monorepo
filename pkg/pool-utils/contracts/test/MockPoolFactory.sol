@@ -21,8 +21,8 @@ import "../factories/BasePoolFactory.sol";
 import "./MockFactoryCreatedPool.sol";
 
 contract MockPoolFactory is BasePoolFactory {
-    constructor(IVault _vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(_vault, protocolFeeProvider, type(MockFactoryCreatedPool).creationCode)
+    constructor(IVault _vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory factoryVersion, string memory poolVersion)
+        BasePoolFactory(_vault, protocolFeeProvider, type(MockFactoryCreatedPool).creationCode, factoryVersion, poolVersion)
     {
         // solhint-disable-previous-line no-empty-blocks
     }

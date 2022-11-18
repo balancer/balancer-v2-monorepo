@@ -79,20 +79,26 @@ contract ComposableStablePool is
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
+        string version;
     }
 
     constructor(NewPoolParams memory params)
         BasePool(
-            params.vault,
-            IVault.PoolSpecialization.GENERAL,
-            params.name,
-            params.symbol,
-            _insertSorted(params.tokens, IERC20(this)),
-            new address[](params.tokens.length + 1),
-            params.swapFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
+            BasePoolParams({ 
+                vault: params.vault,
+                name: params.name,
+                symbol: params.symbol,
+                pauseWindowDuration: params.pauseWindowDuration,
+                bufferPeriodDuration: params.bufferPeriodDuration,
+                owner: params.owner,
+                version: params.version
+            }),
+            PoolRegistrationLib.PoolRegistrationParams({
+                specialization: IVault.PoolSpecialization.GENERAL,
+                tokens: _insertSorted(params.tokens, IERC20(this)),
+                assetManagers: new address[](params.tokens.length + 1)
+            }),
+            params.swapFeePercentage
         )
         StablePoolAmplification(params.amplificationParameter)
         ComposableStablePoolStorage(_extractStorageParams(params))

@@ -125,31 +125,21 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
 
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
+        BasePoolParams memory basePoolParams,
         IERC20 mainToken,
         IERC20 wrappedToken,
         uint256 upperTarget,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        uint256 swapFeePercentage
     )
         NewBasePool(
-            vault,
+            basePoolParams,
             PoolRegistrationLib.registerComposablePool(
-                vault,
+                basePoolParams.vault,
                 IVault.PoolSpecialization.GENERAL,
                 _sortTokens(mainToken, wrappedToken),
                 assetManagers
-            ),
-            name,
-            symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            )
         )
     {
         // Set tokens

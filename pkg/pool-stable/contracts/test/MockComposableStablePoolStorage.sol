@@ -34,16 +34,21 @@ contract MockComposableStablePoolStorage is ComposableStablePoolStorage {
             })
         )
         BasePool(
-            vault,
-            IVault.PoolSpecialization.GENERAL,
-            "MockComposableStablePoolStorage",
-            "MOCK_BPT",
-            _insertSorted(tokens, IERC20(this)),
-            new address[](tokens.length + 1),
-            1e12, // BasePool._MIN_SWAP_FEE_PERCENTAGE
-            0,
-            0,
-            address(0)
+            BasePoolParams({
+                vault: vault,
+                name: "MockComposableStablePoolStorage",
+                symbol: "MOCK_BPT",
+                pauseWindowDuration: 0,
+                bufferPeriodDuration: 0,
+                owner: address(0),
+                version: ""
+            }),
+            PoolRegistrationLib.PoolRegistrationParams({
+                specialization: IVault.PoolSpecialization.GENERAL,
+                tokens: _insertSorted(tokens, IERC20(this)),
+                assetManagers: new address[](tokens.length + 1)
+            }),
+            1e12 // BasePool._MIN_SWAP_FEE_PERCENTAGE
         )
     {
         // solhint-disable-previous-line no-empty-blocks

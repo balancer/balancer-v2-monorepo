@@ -24,6 +24,17 @@ import "./IPoolSwapStructs.sol";
  * either IGeneralPool or IMinimalSwapInfoPool
  */
 interface IBasePool is IPoolSwapStructs {
+
+    struct BasePoolParams {
+        IVault vault;
+        string name;
+        string symbol;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        address owner;
+        string version;
+    }
+
     /**
      * @dev Called by the Vault when a user calls `IVault.joinPool` to add liquidity to this Pool. Returns how many of
      * each registered token the user should provide, as well as the amount of protocol fees the Pool owes to the Vault.

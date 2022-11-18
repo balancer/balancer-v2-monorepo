@@ -41,29 +41,19 @@ import "../LinearPool.sol";
  */
 contract UnbuttonAaveLinearPool is LinearPool {
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
+        BasePoolParams memory basePoolParams,
         IUnbuttonToken mainToken,
         IUnbuttonToken wrappedToken,
         uint256 upperTarget,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        uint256 swapFeePercentage
     )
         LinearPool(
-            vault,
-            name,
-            symbol,
+            basePoolParams,
             mainToken, // wAMPL
             wrappedToken, // wAaveAMPL
             upperTarget,
             new address[](2),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            swapFeePercentage
         )
     {
         // wAMPL.underlying() == AMPL

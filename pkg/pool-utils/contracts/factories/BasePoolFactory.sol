@@ -21,6 +21,8 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
+import "../Version.sol";
+
 /**
  * @notice Base contract for Pool factories.
  *
@@ -35,11 +37,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
  * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolFactory is IBasePoolFactory, BaseSplitCodeFactory, SingletonAuthentication {
+abstract contract BasePoolFactory is
+    IBasePoolFactory,
+    Version,
+    BaseSplitCodeFactory,
+    SingletonAuthentication
+{
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
+    string private _poolVersion;
 
     event PoolCreated(address indexed pool);
     event FactoryDisabled();
@@ -47,9 +55,16 @@ abstract contract BasePoolFactory is IBasePoolFactory, BaseSplitCodeFactory, Sin
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        bytes memory creationCode
-    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) {
+        bytes memory creationCode,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) Version(factoryVersion) {
         _protocolFeeProvider = protocolFeeProvider;
+        _poolVersion = poolVersion;
+    }
+
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
     }
 
     function isPoolFromFactory(address pool) external view override returns (bool) {

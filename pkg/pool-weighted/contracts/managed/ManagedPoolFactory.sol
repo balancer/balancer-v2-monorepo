@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./ManagedPool.sol";
@@ -37,8 +38,8 @@ import "../ExternalWeightedMath.sol";
 contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     IExternalWeightedMath private immutable _weightedMath;
 
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
+    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory factoryVersion, string memory poolVersion)
+        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode, factoryVersion, poolVersion)
     {
         _weightedMath = new ExternalWeightedMath();
     }
@@ -50,7 +51,7 @@ contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
-    function create(ManagedPoolSettings.NewPoolParams memory poolParams, address owner)
+    function create(ManagedPoolSettings.NewPoolParams memory poolParams, string memory name, string memory symbol, address owner)
         external
         returns (address pool)
     {
@@ -59,13 +60,18 @@ contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
                     poolParams,
-                    getVault(),
                     getProtocolFeePercentagesProvider(),
-                    _weightedMath,
-                    owner,
-                    pauseWindowDuration,
-                    bufferPeriodDuration
+                    _weightedMath
                 )
             );
     }

@@ -21,28 +21,18 @@ contract MockWeightedPoolProtocolFees is WeightedPoolProtocolFees {
     uint256 private immutable _totalTokens;
 
     constructor(
-        IVault vault,
+        BasePoolParams memory basePoolParams,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        string memory name,
-        string memory symbol,
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
         address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        uint256 swapFeePercentage
     )
         BaseWeightedPool(
-            vault,
-            name,
-            symbol,
+            basePoolParams,
             tokens,
             assetManagers,
             swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner,
             false
         )
         ProtocolFeeCache(

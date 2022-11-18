@@ -42,32 +42,22 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
     using WeightedPoolUserData for bytes;
 
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
+        BasePoolParams memory basePoolParams,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner,
         bool swapEnabledOnStart
     )
         LiquidityBootstrappingPoolSettings(
-            vault,
+            basePoolParams,
             PoolRegistrationLib.registerPool(
-                vault,
+                basePoolParams.vault,
                 tokens.length == 2 ? IVault.PoolSpecialization.TWO_TOKEN : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
                 tokens
             ),
-            name,
-            symbol,
             tokens,
             normalizedWeights,
             swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner,
             swapEnabledOnStart
         )
     {

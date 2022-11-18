@@ -28,29 +28,19 @@ contract ERC4626LinearPool is LinearPool {
     uint256 private immutable _rateScaleFactor;
 
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
+        BasePoolParams memory basePoolParams,
         IERC20 mainToken,
         IERC4626 wrappedToken,
         uint256 upperTarget,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        uint256 swapFeePercentage
     )
         LinearPool(
-            vault,
-            name,
-            symbol,
+            basePoolParams,
             mainToken,
             wrappedToken,
             upperTarget,
             new address[](2),
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            swapFeePercentage
         )
     {
         // We do NOT enforce mainToken == wrappedToken.asset() even

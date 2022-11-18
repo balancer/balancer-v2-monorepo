@@ -59,29 +59,20 @@ contract ManagedPool is ManagedPoolSettings {
     IExternalWeightedMath private immutable _weightedMath;
 
     constructor(
+        IBasePool.BasePoolParams memory basePoolParams,
         NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        IExternalWeightedMath weightedMath,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        IExternalWeightedMath weightedMath
     )
         NewBasePool(
-            vault,
+            basePoolParams,
             PoolRegistrationLib.registerComposablePool(
-                vault,
+                basePoolParams.vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
                 params.tokens,
                 params.assetManagers
-            ),
-            params.name,
-            params.symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            )
         )
-        ManagedPoolSettings(params, protocolFeeProvider)
+        ManagedPoolSettings(params)
     {
         _weightedMath = weightedMath;
     }
