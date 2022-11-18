@@ -7,11 +7,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceTime, currentWeekTimestamp, MONTH, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { impersonate } from '../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
+
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('DistributionScheduler', 'mainnet', 14850000, function () {
   let lmCommittee: SignerWithAddress, distributor: SignerWithAddress;
@@ -37,8 +35,8 @@ describeForkTest('DistributionScheduler', 'mainnet', 14850000, function () {
   });
 
   before('setup accounts', async () => {
-    lmCommittee = await impersonate(LM_COMMITTEE_ADDRESS, fp(100));
-    distributor = await impersonate(DISTRIBUTOR_ADDRESS, fp(100));
+    lmCommittee = await impersonate(LM_COMMITTEE_ADDRESS);
+    distributor = await impersonate(DISTRIBUTOR_ADDRESS);
   });
 
   before('setup contracts', async () => {

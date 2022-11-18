@@ -17,7 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProviderPool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -27,7 +27,7 @@ import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 
 import "./StableMath.sol";
 
-abstract contract ComposableStablePoolStorage is NewBasePool {
+abstract contract ComposableStablePoolStorage is NewBasePool, IRateProviderPool {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 
@@ -285,7 +285,7 @@ abstract contract ComposableStablePoolStorage is NewBasePool {
     /**
      * @dev Returns the rate providers configured for each token (not including BPT).
      */
-    function getRateProviders() external view returns (IRateProvider[] memory) {
+    function getRateProviders() external view override returns (IRateProvider[] memory) {
         uint256 totalPoolTokens = _getTotalPoolTokens();
         IRateProvider[] memory providers = new IRateProvider[](totalPoolTokens);
 

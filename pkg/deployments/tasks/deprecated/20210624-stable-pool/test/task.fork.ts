@@ -8,12 +8,10 @@ import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { getSigner, impersonateWhale } from '../../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { getSigner, impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../../src';
 
 describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
@@ -31,6 +29,8 @@ describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
   const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
 
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
+
   before('run task', async () => {
     task = new Task('20210624-stable-pool', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
@@ -39,7 +39,7 @@ describeForkTest('StablePoolFactory', 'mainnet', 14850000, function () {
 
   before('load signers', async () => {
     owner = await getSigner();
-    whale = await impersonateWhale(fp(100));
+    whale = await impersonate(LARGE_TOKEN_HOLDER);
   });
 
   before('load vault and tokens', async () => {
