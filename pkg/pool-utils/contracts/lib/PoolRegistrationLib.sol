@@ -20,28 +20,46 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 library PoolRegistrationLib {
+    struct PoolRegistrationParams {
+        IVault.PoolSpecialization specialization;
+        IERC20[] tokens;
+        address[] assetManagers;
+    }
+
     function registerPool(
         IVault vault,
         IVault.PoolSpecialization specialization,
         IERC20[] memory tokens
     ) internal returns (bytes32) {
-        return registerPoolWithAssetManagers(vault, specialization, tokens, new address[](tokens.length));
+        return
+            registerPoolWithAssetManagers(
+                vault,
+                PoolRegistrationParams({
+                    specialization: specialization,
+                    tokens: tokens,
+                    assetManagers: new address[](tokens.length)
+                })
+            );
     }
 
-    function registerPoolWithAssetManagers(
-        IVault vault,
-        IVault.PoolSpecialization specialization,
-        IERC20[] memory tokens,
-        address[] memory assetManagers
-    ) internal returns (bytes32) {
+    function registerPoolWithAssetManagers(IVault vault, PoolRegistrationParams memory registrationParams)
+        internal
+        returns (bytes32)
+    {
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
         //
         // Note that for Pools which can register and deregister tokens after deployment, this property may not hold
         // as tokens which are added to the Pool after deployment are always added to the end of the array.
-        InputHelpers.ensureArrayIsSorted(tokens);
+        InputHelpers.ensureArrayIsSorted(registrationParams.tokens);
 
-        return _registerPool(vault, specialization, tokens, assetManagers);
+        return
+            _registerPool(
+                vault,
+                registrationParams.specialization,
+                registrationParams.tokens,
+                registrationParams.assetManagers
+            );
     }
 
     function registerComposablePool(

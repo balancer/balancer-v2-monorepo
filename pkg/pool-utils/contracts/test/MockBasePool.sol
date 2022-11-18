@@ -32,32 +32,18 @@ contract MockBasePool is BasePool {
     event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
 
     constructor(
-        IVault vault,
-        IVault.PoolSpecialization specialization,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        BasePoolParams memory basePoolParams,
+        PoolRegistrationLib.PoolRegistrationParams memory poolRegistrationParams,
+        uint256 swapFeePercentage
     )
         BasePool(
-            vault,
-            specialization,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            basePoolParams,
+            poolRegistrationParams,
+            swapFeePercentage
         )
     {
         _failBeforeSwapJoinExit = false;
-        _totalTokens = tokens.length;
+        _totalTokens = poolRegistrationParams.tokens.length;
     }
 
     function setMiscData(bytes32 data) external {

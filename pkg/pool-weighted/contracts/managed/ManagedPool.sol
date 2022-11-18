@@ -45,7 +45,7 @@ import "./ManagedPoolSettings.sol";
  * rebalancing through token changes, gradual weight or fee updates, fine-grained control of protocol and
  * management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is IVersion, ManagedPoolSettings {
+contract ManagedPool is ManagedPoolSettings {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -59,51 +59,24 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
     // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
-    string private _version;
-
-    struct ManagedPoolParams {
-        string name;
-        string symbol;
-        address[] assetManagers;
-    }
-
-    struct ManagedPoolConfigParams {
-        IVault vault;
-        IProtocolFeePercentagesProvider protocolFeeProvider;
-        IExternalWeightedMath weightedMath;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        string version;
-    }
 
     constructor(
-        ManagedPoolParams memory params,
-        ManagedPoolConfigParams memory configParams,
-        ManagedPoolSettingsParams memory settingsParams,
-        address owner
+        IBasePool.BasePoolParams memory basePoolParams,
+        NewPoolParams memory params,
+        IExternalWeightedMath weightedMath
     )
         NewBasePool(
-            configParams.vault,
+            basePoolParams,
             PoolRegistrationLib.registerComposablePool(
-                configParams.vault,
+                basePoolParams.vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                settingsParams.tokens,
+                params.tokens,
                 params.assetManagers
-            ),
-            params.name,
-            params.symbol,
-            configParams.pauseWindowDuration,
-            configParams.bufferPeriodDuration,
-            owner
+            )
         )
-        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider)
+        ManagedPoolSettings(params)
     {
-        _weightedMath = configParams.weightedMath;
-        _version = configParams.version;
-    }
-
-    function version() external view override returns (string memory) {
-        return _version;
+        _weightedMath = weightedMath;
     }
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {

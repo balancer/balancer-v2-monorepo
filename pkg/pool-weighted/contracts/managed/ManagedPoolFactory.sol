@@ -36,33 +36,29 @@ import "../ExternalWeightedMath.sol";
  * In this design, other client-specific factories will deploy a contract, then call this factory
  * to deploy the pool, passing in that contract address as the owner.
  */
-contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
+contract ManagedPoolFactory is BasePoolFactory {
     IExternalWeightedMath private immutable _weightedMath;
     string private _poolVersion;
 
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        string memory factoryVersion,
-        string memory poolVersion,
         uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BasePoolFactory(
             vault,
             protocolFeeProvider,
             initialPauseWindowDuration,
             bufferPeriodDuration,
-            type(ManagedPool).creationCode
+            type(ManagedPool).creationCode,
+            factoryVersion,
+            poolVersion
         )
-        Version(factoryVersion)
     {
         _weightedMath = new ExternalWeightedMath();
-        _poolVersion = poolVersion;
-    }
-
-    function getPoolVersion() public view override returns (string memory) {
-        return _poolVersion;
     }
 
     function getWeightedMath() external view returns (IExternalWeightedMath) {
@@ -73,21 +69,29 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
     function create(
-        ManagedPool.ManagedPoolParams memory params,
-        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
+        ManagedPoolSettings.NewPoolParams memory poolParams,
+        string memory name,
+        string memory symbol,
         address owner
     ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        ManagedPool.ManagedPoolConfigParams memory configParams = ManagedPool.ManagedPoolConfigParams({
-            vault: getVault(),
-            protocolFeeProvider: getProtocolFeePercentagesProvider(),
-            weightedMath: _weightedMath,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            version: getPoolVersion()
-        });
-
-        return _create(abi.encode(params, configParams, settingsParams, owner));
+        return
+            _create(
+                abi.encode(
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
+                    poolParams,
+                    getProtocolFeePercentagesProvider(),
+                    _weightedMath
+                )
+            );
     }
 }

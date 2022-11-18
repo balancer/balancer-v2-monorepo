@@ -20,11 +20,16 @@ import "../ExternalWeightedMath.sol";
 
 contract MockManagedPool is ManagedPool {
     constructor(
-        ManagedPoolParams memory params,
-        ManagedPoolConfigParams memory configParams,
-        ManagedPoolSettingsParams memory settingsParams,
-        address owner
-    ) ManagedPool(params, configParams, settingsParams, owner) {
+        BasePoolParams memory basePoolParams,
+        NewPoolParams memory params,
+        ExternalWeightedMath weightedMath
+    )
+        ManagedPool(
+            basePoolParams,
+            params,
+            weightedMath
+        )
+    {
         // solhint-disable-previous-line no-empty-blocks
     }
 

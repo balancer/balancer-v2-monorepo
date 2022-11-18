@@ -26,14 +26,18 @@ contract WeightedPoolFactory is BasePoolFactory {
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BasePoolFactory(
             vault,
             protocolFeeProvider,
             initialPauseWindowDuration,
             bufferPeriodDuration,
-            type(WeightedPool).creationCode
+            type(WeightedPool).creationCode,
+            factoryVersion,
+            poolVersion
         )
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -56,20 +60,23 @@ contract WeightedPoolFactory is BasePoolFactory {
         return
             _create(
                 abi.encode(
-                    WeightedPool.NewPoolParams({
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
                         name: name,
                         symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
+                    WeightedPool.NewPoolParams({
+                        protocolFeeProvider: getProtocolFeePercentagesProvider(),
                         tokens: tokens,
                         normalizedWeights: normalizedWeights,
                         rateProviders: rateProviders,
                         assetManagers: new address[](tokens.length), // Don't allow asset managers,
                         swapFeePercentage: swapFeePercentage
-                    }),
-                    getVault(),
-                    getProtocolFeePercentagesProvider(),
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner
+                    })
                 )
             );
     }

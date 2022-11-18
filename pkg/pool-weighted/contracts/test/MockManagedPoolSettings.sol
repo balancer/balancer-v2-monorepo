@@ -24,28 +24,22 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
     ExternalWeightedMath private immutable _weightedMath;
 
     constructor(
-        ManagedPoolSettingsParams memory settingsParams,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        ExternalWeightedMath weightedMath,
-        address[] memory assetManagers,
-        address owner
+        BasePoolParams memory basePoolParams,
+        NewPoolParams memory params,
+        ExternalWeightedMath weightedMath
     )
         NewBasePool(
-            vault,
+            basePoolParams,
             PoolRegistrationLib.registerPoolWithAssetManagers(
-                vault,
-                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                settingsParams.tokens,
-                assetManagers
-            ),
-            "MockManagedPoolName",
-            "MockManagedPoolSymbol",
-            90 days,
-            30 days,
-            owner
+                basePoolParams.vault,
+                PoolRegistrationLib.PoolRegistrationParams({
+                    specialization: IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+                    tokens: params.tokens,
+                    assetManagers: params.assetManagers
+                })
+            )
         )
-        ManagedPoolSettings(settingsParams, protocolFeeProvider)
+        ManagedPoolSettings(params)
     {
         _weightedMath = weightedMath;
     }

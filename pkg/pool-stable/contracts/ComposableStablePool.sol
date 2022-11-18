@@ -52,7 +52,6 @@ import "./StableMath.sol";
  */
 contract ComposableStablePool is
     IRateProvider,
-    IVersion,
     BaseGeneralPool,
     StablePoolAmplification,
     ComposableStablePoolRates,
@@ -66,8 +65,6 @@ contract ComposableStablePool is
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
     // We are preminting half of that value (rounded up).
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
-
-    string private _version;
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -89,16 +86,21 @@ contract ComposableStablePool is
 
     constructor(NewPoolParams memory params)
         BasePool(
-            params.vault,
-            IVault.PoolSpecialization.GENERAL,
-            params.name,
-            params.symbol,
-            _insertSorted(params.tokens, IERC20(this)),
-            new address[](params.tokens.length + 1),
-            params.swapFeePercentage,
-            params.pauseWindowDuration,
-            params.bufferPeriodDuration,
-            params.owner
+            BasePoolParams({
+                vault: params.vault,
+                name: params.name,
+                symbol: params.symbol,
+                pauseWindowDuration: params.pauseWindowDuration,
+                bufferPeriodDuration: params.bufferPeriodDuration,
+                owner: params.owner,
+                version: params.version
+            }),
+            PoolRegistrationLib.PoolRegistrationParams({
+                specialization: IVault.PoolSpecialization.GENERAL,
+                tokens: _insertSorted(params.tokens, IERC20(this)),
+                assetManagers: new address[](params.tokens.length + 1)
+            }),
+            params.swapFeePercentage
         )
         StablePoolAmplification(params.amplificationParameter)
         ComposableStablePoolStorage(_extractStorageParams(params))
@@ -108,7 +110,7 @@ contract ComposableStablePool is
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
     {
-        _version = params.version;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     // Translate parameters to avoid stack-too-deep issues in the constructor
@@ -137,10 +139,6 @@ contract ComposableStablePool is
                 tokenRateProviders: params.rateProviders,
                 exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
             });
-    }
-
-    function version() external view override returns (string memory) {
-        return _version;
     }
 
     /**

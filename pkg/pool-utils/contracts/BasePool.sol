@@ -32,6 +32,7 @@ import "./lib/PoolRegistrationLib.sol";
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "./RecoveryMode.sol";
+import "./Version.sol";
 
 // solhint-disable max-states-count
 
@@ -57,6 +58,7 @@ import "./RecoveryMode.sol";
 abstract contract BasePool is
     IBasePool,
     IControlledPool,
+    Version,
     BasePoolAuthorization,
     BalancerPoolToken,
     TemporarilyPausable,
@@ -102,16 +104,9 @@ abstract contract BasePool is
     event SwapFeePercentageChanged(uint256 swapFeePercentage);
 
     constructor(
-        IVault vault,
-        IVault.PoolSpecialization specialization,
-        string memory name,
-        string memory symbol,
-        IERC20[] memory tokens,
-        address[] memory assetManagers,
-        uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
+        BasePoolParams memory basePoolParams,
+        PoolRegistrationLib.PoolRegistrationParams memory poolRegistrationParams,
+        uint256 swapFeePercentage
     )
         // Base Pools are expected to be deployed using factories. By using the factory address as the action
         // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
@@ -119,25 +114,24 @@ abstract contract BasePool is
         // any Pool created by the same factory), while still making action identifiers unique among different factories
         // if the selectors match, preventing accidental errors.
         Authentication(bytes32(uint256(msg.sender)))
-        BalancerPoolToken(name, symbol, vault)
-        BasePoolAuthorization(owner)
-        TemporarilyPausable(pauseWindowDuration, bufferPeriodDuration)
+        BalancerPoolToken(basePoolParams.name, basePoolParams.symbol, basePoolParams.vault)
+        BasePoolAuthorization(basePoolParams.owner)
+        TemporarilyPausable(basePoolParams.pauseWindowDuration, basePoolParams.bufferPeriodDuration)
+        Version(basePoolParams.version)
     {
-        _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
-        _require(tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
+        _require(poolRegistrationParams.tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);
+        _require(poolRegistrationParams.tokens.length <= _getMaxTokens(), Errors.MAX_TOKENS);
 
         _setSwapFeePercentage(swapFeePercentage);
 
         bytes32 poolId = PoolRegistrationLib.registerPoolWithAssetManagers(
-            vault,
-            specialization,
-            tokens,
-            assetManagers
+            basePoolParams.vault,
+            poolRegistrationParams
         );
 
         // Set immutable state variables - these cannot be read from during construction
         _poolId = poolId;
-        _protocolFeesCollector = vault.getProtocolFeesCollector();
+        _protocolFeesCollector = basePoolParams.vault.getProtocolFeesCollector();
     }
 
     // Getters / Setters

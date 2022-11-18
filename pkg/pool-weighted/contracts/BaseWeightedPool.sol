@@ -36,35 +36,27 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
     using WeightedPoolUserData for bytes;
 
     constructor(
-        IVault vault,
-        string memory name,
-        string memory symbol,
+        BasePoolParams memory basePoolParams,
         IERC20[] memory tokens,
         address[] memory assetManagers,
         uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner,
         bool mutableTokens
     )
         BasePool(
-            vault,
+            basePoolParams,
             // Given BaseMinimalSwapInfoPool supports both of these specializations, and this Pool never registers
             // or deregisters any tokens after construction, picking Two Token when the Pool only has two tokens is free
             // gas savings.
             // If the pool is expected to be able register new tokens in future, we must choose MINIMAL_SWAP_INFO
             // as clearly the TWO_TOKEN specification doesn't support adding extra tokens in future.
-            tokens.length == 2 && !mutableTokens
-                ? IVault.PoolSpecialization.TWO_TOKEN
-                : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-            name,
-            symbol,
-            tokens,
-            assetManagers,
-            swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner
+            PoolRegistrationLib.PoolRegistrationParams({
+                specialization: tokens.length == 2 && !mutableTokens
+                    ? IVault.PoolSpecialization.TWO_TOKEN
+                    : IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
+                tokens: tokens,
+                assetManagers: assetManagers
+            }),
+            swapFeePercentage
         )
     {
         // solhint-disable-previous-line no-empty-blocks

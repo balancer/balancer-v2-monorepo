@@ -26,14 +26,18 @@ contract ERC4626LinearPoolFactory is BasePoolFactory {
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BasePoolFactory(
             vault,
             protocolFeeProvider,
             initialPauseWindowDuration,
             bufferPeriodDuration,
-            type(ERC4626LinearPool).creationCode
+            type(ERC4626LinearPool).creationCode,
+            factoryVersion,
+            poolVersion
         )
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -56,16 +60,19 @@ contract ERC4626LinearPoolFactory is BasePoolFactory {
         LinearPool pool = ERC4626LinearPool(
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
                     mainToken,
                     wrappedToken,
                     upperTarget,
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner
+                    swapFeePercentage
                 )
             )
         );

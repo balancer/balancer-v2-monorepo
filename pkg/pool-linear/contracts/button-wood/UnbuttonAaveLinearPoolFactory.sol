@@ -26,14 +26,18 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory {
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BasePoolFactory(
             vault,
             protocolFeeProvider,
             initialPauseWindowDuration,
             bufferPeriodDuration,
-            type(UnbuttonAaveLinearPool).creationCode
+            type(UnbuttonAaveLinearPool).creationCode,
+            factoryVersion,
+            poolVersion
         )
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -56,16 +60,19 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory {
         LinearPool pool = UnbuttonAaveLinearPool(
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
                     mainToken,
                     wrappedToken,
                     upperTarget,
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner
+                    swapFeePercentage
                 )
             )
         );

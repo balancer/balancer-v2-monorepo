@@ -91,9 +91,11 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
-    struct ManagedPoolSettingsParams {
+    struct NewPoolParams {
+        IProtocolFeePercentagesProvider protocolFeeProvider;
         IERC20[] tokens;
         uint256[] normalizedWeights;
+        address[] assetManagers;
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
@@ -101,9 +103,9 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         uint256 aumFeeId;
     }
 
-    constructor(ManagedPoolSettingsParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
+    constructor(NewPoolParams memory params)
         ProtocolFeeCache(
-            protocolFeeProvider,
+            params.protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: params.aumFeeId })
         )
     {

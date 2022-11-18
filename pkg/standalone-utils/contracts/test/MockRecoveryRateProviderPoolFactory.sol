@@ -29,7 +29,9 @@ contract MockRecoveryRateProviderPoolFactory is BasePoolFactory {
             protocolFeeProvider,
             _INITIAL_PAUSE_WINDOW_DURATION,
             _BUFFER_PERIOD_DURATION,
-            type(MockRecoveryRateProviderPool).creationCode
+            type(MockRecoveryRateProviderPool).creationCode,
+            "",
+            ""
         )
     {
         // solhint-disable-previous-line no-empty-blocks

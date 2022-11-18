@@ -97,18 +97,13 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
     );
 
     constructor(
-        IVault vault,
+        BasePoolParams memory basePoolParams,
         bytes32 poolId,
-        string memory name,
-        string memory symbol,
         IERC20[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 swapFeePercentage,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner,
         bool swapEnabledOnStart
-    ) NewBasePool(vault, poolId, name, symbol, pauseWindowDuration, bufferPeriodDuration, owner) {
+    ) NewBasePool(basePoolParams, poolId) {
         uint256 totalTokens = tokens.length;
         InputHelpers.ensureInputLengthMatch(totalTokens, normalizedWeights.length);
         _require(tokens.length >= _MIN_TOKENS, Errors.MIN_TOKENS);

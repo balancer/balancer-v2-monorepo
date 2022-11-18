@@ -60,8 +60,7 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
     uint256 internal immutable _normalizedWeight7;
 
     struct NewPoolParams {
-        string name;
-        string symbol;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
         IERC20[] tokens;
         uint256[] normalizedWeights;
         IRateProvider[] rateProviders;
@@ -69,28 +68,10 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 swapFeePercentage;
     }
 
-    constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration,
-        address owner
-    )
-        BaseWeightedPool(
-            vault,
-            params.name,
-            params.symbol,
-            params.tokens,
-            params.assetManagers,
-            params.swapFeePercentage,
-            pauseWindowDuration,
-            bufferPeriodDuration,
-            owner,
-            false
-        )
+    constructor(BasePoolParams memory basePoolParams, NewPoolParams memory params)
+        BaseWeightedPool(basePoolParams, params.tokens, params.assetManagers, params.swapFeePercentage, false)
         ProtocolFeeCache(
-            protocolFeeProvider,
+            params.protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
         )
         WeightedPoolProtocolFees(params.tokens.length, params.rateProviders)

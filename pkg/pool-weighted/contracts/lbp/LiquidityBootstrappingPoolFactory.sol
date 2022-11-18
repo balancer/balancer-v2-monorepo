@@ -26,14 +26,18 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BasePoolFactory(
             vault,
             protocolFeeProvider,
             initialPauseWindowDuration,
             bufferPeriodDuration,
-            type(LiquidityBootstrappingPool).creationCode
+            type(LiquidityBootstrappingPool).creationCode,
+            factoryVersion,
+            poolVersion
         )
     {
         // solhint-disable-previous-line no-empty-blocks
@@ -56,15 +60,18 @@ contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
         return
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
                     tokens,
                     weights,
                     swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner,
                     swapEnabledOnStart
                 )
             );

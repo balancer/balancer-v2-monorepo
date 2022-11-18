@@ -25,32 +25,22 @@ contract ReaperLinearPool is LinearPool {
     uint256 private immutable _rateScaleFactor;
 
     struct ConstructorArgs {
-        IVault vault;
-        string name;
-        string symbol;
+        BasePoolParams basePoolParams;
         IERC20 mainToken;
         IERC20 wrappedToken;
         address assetManager;
         uint256 upperTarget;
         uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
     }
 
     constructor(ConstructorArgs memory args)
         LinearPool(
-            args.vault,
-            args.name,
-            args.symbol,
+            args.basePoolParams,
             args.mainToken,
             args.wrappedToken,
             args.upperTarget,
             _toAssetManagerArray(args),
-            args.swapFeePercentage,
-            args.pauseWindowDuration,
-            args.bufferPeriodDuration,
-            args.owner
+            args.swapFeePercentage
         )
     {
         IReaperTokenVault tokenVault = IReaperTokenVault(address(args.wrappedToken));

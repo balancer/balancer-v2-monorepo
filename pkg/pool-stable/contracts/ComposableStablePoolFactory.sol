@@ -23,36 +23,26 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 
 import "./ComposableStablePool.sol";
 
-contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory {
-    string private _version;
-    string private _poolVersion;
-
+contract ComposableStablePoolFactory is BasePoolFactory {
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        string memory factoryVersion,
-        string memory poolVersion,
         uint256 initialPauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint256 bufferPeriodDuration,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BasePoolFactory(
             vault,
             protocolFeeProvider,
             initialPauseWindowDuration,
             bufferPeriodDuration,
-            type(ComposableStablePool).creationCode
+            type(ComposableStablePool).creationCode,
+            factoryVersion,
+            poolVersion
         )
     {
-        _version = factoryVersion;
-        _poolVersion = poolVersion;
-    }
-
-    function version() external view override returns (string memory) {
-        return _version;
-    }
-
-    function getPoolVersion() public view override returns (string memory) {
-        return _poolVersion;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /**

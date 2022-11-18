@@ -22,6 +22,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 import "./FactoryWidePauseWindow.sol";
+import "../Version.sol";
 
 /**
  * @notice Base contract for Pool factories.
@@ -41,12 +42,14 @@ abstract contract BasePoolFactory is
     IBasePoolFactory,
     BaseSplitCodeFactory,
     SingletonAuthentication,
-    FactoryWidePauseWindow
+    FactoryWidePauseWindow,
+    Version
 {
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
+    string private _poolVersion;
 
     event PoolCreated(address indexed pool);
     event FactoryDisabled();
@@ -56,13 +59,21 @@ abstract contract BasePoolFactory is
         IProtocolFeePercentagesProvider protocolFeeProvider,
         uint256 initialPauseWindowDuration,
         uint256 bufferPeriodDuration,
-        bytes memory creationCode
+        bytes memory creationCode,
+        string memory factoryVersion,
+        string memory poolVersion
     )
         BaseSplitCodeFactory(creationCode)
         SingletonAuthentication(vault)
         FactoryWidePauseWindow(initialPauseWindowDuration, bufferPeriodDuration)
+        Version(factoryVersion)
     {
         _protocolFeeProvider = protocolFeeProvider;
+        _poolVersion = poolVersion;
+    }
+
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
     }
 
     function isPoolFromFactory(address pool) external view override returns (bool) {
