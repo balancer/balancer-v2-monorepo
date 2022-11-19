@@ -18,14 +18,17 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "hardhat/console.sol";
 
-contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
+
+contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for *;
-
+    
     address private immutable _security;
     address private immutable _currency;
 
@@ -40,7 +43,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     uint256 private immutable _currencyIndex;
 
     address payable private _balancerManager;
-
+    
     struct Params {
         OrderType trade;
         uint256 price;
@@ -112,6 +115,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
     event Offer(address indexed security, uint256 secondaryOffer);
+    IBalancerQueries internal _queries;
 
     constructor(
         IVault vault,
@@ -492,9 +496,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
-        bytes32 pid = getPoolId();
         IVault vault = getVault();
-
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
                 _marketOrders[i] != _ref &&
@@ -569,6 +571,41 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
+
+                IVault.SingleSwap memory swap = IVault.SingleSwap({
+                    poolId: getPoolId(),
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    assetIn: IAsset(address(orders[_bestBid].tokenIn)),
+                    assetOut: IAsset(address(orders[_ref].tokenOut)),
+                    amount: orders[_ref].qty,
+                    userData: "self"
+                });
+                IVault.FundManagement memory funds = IVault.FundManagement({
+                   sender: orders[_bestBid].party,
+                   fromInternalBalance: false,
+                   recipient: payable(orders[_ref].party),
+                   toInternalBalance: false
+                });
+                console.log("orders[_bestOffer].party",orders[_bestBid].party);
+                console.log("orders[_ref].party",orders[_ref].party);
+                vault.swap( swap, funds, balances[1], 999999999999999999);
+
+                // calling onSwap to return results for the buyer
+                swap = IVault.SingleSwap({
+                    poolId: getPoolId(),
+                    kind: IVault.SwapKind.GIVEN_OUT,
+                    assetIn: IAsset(address(orders[_ref].tokenIn)),
+                    assetOut: IAsset(address(orders[_bestBid].tokenOut)),
+                    amount: orders[_bestOffer].qty,
+                    userData: "self"
+                });
+                funds = IVault.FundManagement({
+                   sender: orders[_ref].party,
+                   fromInternalBalance: false,
+                   recipient: payable(orders[_bestBid].party),
+                   toInternalBalance: false
+                });
+                vault.swap( swap, funds, balances[0], 999999999999999999);
             }
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
@@ -616,36 +653,43 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 balances[1] = orders[_ref].currencyBalance;
                 // calling onSwap to return results for the seller
                 // WIP
-                // IVault.SingleSwap memory nRequest = IVault.SingleSwap({
-                //     poolId: pid,
-                //     kind: IVault.SwapKind.GIVEN_IN,
-                //     assetIn: orders[_bestOffer].tokenIn,
-                //     assetOut: orders[_ref].tokenOut,
-                //     amount: orders[_ref].qty,
-                //     userData: "self"
-                // });
-                // IVault.FundManagement memory fundMgt = IVault.FundManagement({
-                //    sender: orders[_bestOffer].party,
-                //    fromInternalBalance: false,
-                //    recipient: payable(orders[_ref].party),
-                //    toInternalBalance: false
-                // });
+                IVault.SingleSwap memory swap = IVault.SingleSwap({
+                    poolId: getPoolId(),
+                    kind: IVault.SwapKind.GIVEN_IN,
+                    assetIn: IAsset(address(orders[_bestOffer].tokenIn)),
+                    assetOut: IAsset(address(orders[_ref].tokenOut)),
+                    amount: orders[_ref].qty,
+                    userData: "self"
+                });
+                IVault.FundManagement memory funds = IVault.FundManagement({
+                   sender: orders[_bestOffer].party,
+                   fromInternalBalance: false,
+                   recipient: payable(orders[_ref].party),
+                   toInternalBalance: false
+                });
+                uint256 wrappedAmountOut = _queries.querySwap(swap, funds);
+                console.log("wrappedAmountOut", wrappedAmountOut);
+                console.log("orders[_bestOffer].party",orders[_bestOffer].party);
+                console.log("orders[_ref].party",orders[_ref].party);
+                vault.swap( swap, funds, balances[1], 999999999999999999);
 
-                // vault.swap(nRequest, fundMgt, balances[0], 999999999999999999);
                 // calling onSwap to return results for the buyer
-                // nRequest = SwapRequest({
-                //     kind: IVault.SwapKind.GIVEN_OUT,
-                //     tokenIn: orders[_ref].tokenIn,
-                //     tokenOut: orders[_bestOffer].tokenOut,
-                //     amount: orders[_bestOffer].qty,
-                //     // Misc data
-                //     poolId: pid,
-                //     lastChangeBlock: block.number,
-                //     from: orders[_ref].party,
-                //     to: orders[_bestOffer].party,
-                //     userData: "self" 
-                // });
-                // onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);
+                swap = IVault.SingleSwap({
+                    poolId: getPoolId(),
+                    kind: IVault.SwapKind.GIVEN_OUT,
+                    assetIn: IAsset(address(orders[_ref].tokenIn)),
+                    assetOut: IAsset(address(orders[_bestOffer].tokenOut)),
+                    amount: orders[_bestOffer].qty,
+                    userData: "self"
+                });
+                funds = IVault.FundManagement({
+                   sender: orders[_ref].party,
+                   fromInternalBalance: false,
+                   recipient: payable(orders[_bestOffer].party),
+                   toInternalBalance: false
+                });
+                vault.swap( swap, funds, balances[0], 999999999999999999);
+
             }
         }
     }
