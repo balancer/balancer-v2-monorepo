@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 import "./interfaces/ISettlor.sol";
-
+import "hardhat/console.sol";
 import "./utilities/StringUtils.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
@@ -202,8 +202,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory scalingFactors = _scalingFactors();
         
         Params memory params;
+        console.log(string(request.userData));
         if(request.userData.length!=0){
+            console.log("Not a market order");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
+                console.log("Limit or Stop loss order");
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
@@ -211,12 +214,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         trade: otype== "Limit" ? OrderType.Limit : OrderType.Stop,
                         price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
                     });
-                }
-                else{ // returning swap results from matchOrders function below
-                    return _downscaleDown(request.amount, scalingFactors[indexOut]);
-                }
-            }            
+                }                
+            }    
+            else{ // returning swap results from matchOrders function below
+                console.log("Returning final swap result");
+                return _downscaleDown(request.amount, scalingFactors[indexOut]);
+            }        
         }else{ //by default, any order without price specified is a market order
+            console.log("Market order");
             if (request.tokenIn == IERC20(_currency) || request.tokenOut == IERC20(_security)){
                 //it is a buy (bid), so need the best offer by a counter party
                 params = Params({
@@ -477,7 +482,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
-
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
                 _marketOrders[i] != _ref &&
@@ -505,7 +509,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }
         }
-        bytes32 pid = getPoolId();
         if (orders[_ref].order == Order.Sell) {            
             if (_bestBid != "") {
                 uint256 qty;
@@ -546,10 +549,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
-                uint256[] memory balances = new uint256[](2);
+                //calling onSwap to return results for the buyer
+                callSwap(false, _ref, _bestBid);
+                //calling onSwap to return results for the seller
+                callSwap(true, _bestBid, _ref);
+                /*uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
-                // calling onSwap to return results for the buyer
+                //calling onSwap to return results for the buyer
                 SwapRequest memory nRequest = SwapRequest({
                     kind: IVault.SwapKind.GIVEN_OUT,
                     tokenIn: orders[_ref].tokenIn,
@@ -576,7 +583,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     to: orders[_bestBid].party,
                     userData: "self"
                 });
-                onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);                    
+                onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);*/                    
             }
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
@@ -619,11 +626,15 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
-                uint256[] memory balances = new uint256[](2);
-                balances[0] = orders[_ref].securityBalance;
-                balances[1] = orders[_ref].currencyBalance;
+                //calling onSwap to return results for the seller
+                callSwap(true, _bestOffer, _ref);
+                //calling onSwap to return results for the buyer
+                callSwap(false, _ref, _bestOffer);
+                //uint256[] memory balances = new uint256[](2);
+                //balances[0] = orders[_ref].securityBalance;
+                //balances[1] = orders[_ref].currencyBalance;
                 // calling onSwap to return results for the seller
-                SwapRequest memory nRequest = SwapRequest({
+                /*SwapRequest memory nRequest = SwapRequest({
                     kind: IVault.SwapKind.GIVEN_IN,
                     tokenIn: orders[_bestOffer].tokenIn,
                     tokenOut: orders[_ref].tokenOut,
@@ -649,9 +660,28 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     to: orders[_bestOffer].party,
                     userData: "self" 
                 });
-                onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);
+                onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);*/
             }
         }
+    }
+
+    function callSwap(bool givenIn, bytes32 i, bytes32 o) private {
+        IVault vault = getVault();
+        IVault.SingleSwap memory swap = IVault.SingleSwap({
+            poolId: getPoolId(),
+            kind: givenIn==true ? IVault.SwapKind.GIVEN_IN : IVault.SwapKind.GIVEN_OUT,
+            assetIn: IAsset(address(orders[i].tokenIn)),
+            assetOut: IAsset(address(orders[o].tokenOut)),
+            amount: orders[o].qty,
+            userData: "self"
+        });
+        IVault.FundManagement memory funds = IVault.FundManagement({
+            sender: orders[i].party,
+            fromInternalBalance: true,
+            recipient: payable(orders[o].party),
+            toInternalBalance: true
+        });
+        vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 
     function reportTrade(
