@@ -186,11 +186,14 @@ describe('SecondaryPool', function () {
       });
       
       it('accepts buy order', async () => {
+
         const sell_order = await pool.swapGivenIn({
           in: pool.securityIndex,
           out: pool.currencyIndex,
           amount: sell_amount,
           balances: currentBalances,
+          from: lp,
+          recipient: lp,
           data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market'+sell_price.toString())) // MarketOrder Sell 15@price
         });
 
@@ -199,18 +202,17 @@ describe('SecondaryPool', function () {
           out: pool.securityIndex,
           amount: buy_amount,
           balances: currentBalances,
+          from: trader,
+          recipient: trader,
           data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market'+buy_price.toString())) // MarketOrder Buy 15@price
         });
-        console.log("buy_order", buy_order.toString());
 
-        console.log("currency balance", currentBalances[pool.currencyIndex].toString());
-        console.log("Security balance", currentBalances[pool.securityIndex].toString());
-
-        // const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
-        // const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
-
+        const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
+        const afterSwapBalancesSecurity = await securityToken.balanceOf(trader);
         
-        expect(buy_order.toString()).to.be.equals(sell_order.toString());
+        expect(afterSwapBalanceCurrency.toString()).to.be.equals(fp(140).toString());
+        expect(afterSwapBalancesSecurity.toString()).to.be.equals(sell_amount.toString());
+        
       });
 
       context('when pool paused', () => {
@@ -233,10 +235,14 @@ describe('SecondaryPool', function () {
     context('Placing Limit order', () => {
       let sell_amount: BigNumber;
       let buy_amount: BigNumber;
+      let sell_price: BigNumber;
+      let buy_price: BigNumber;
 
       sharedBeforeEach('initialize values ', async () => {
-        sell_amount = BigNumber.from("10"); //qty
-        buy_amount = BigNumber.from("15"); //qty
+        sell_amount = fp(10); //qty
+        buy_amount = fp(15); //qty
+        buy_price = fp(12); // Buying price
+        sell_price = fp(12); // Selling price
       });
       
       it('accepts limit order', async () => {
@@ -245,7 +251,8 @@ describe('SecondaryPool', function () {
           out: pool.currencyIndex,
           amount: sell_amount,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit12')) // Limit Order Sell@price12
+          // from: lp,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
         });
 
         const buy_order = await pool.swapGivenIn({
@@ -253,13 +260,19 @@ describe('SecondaryPool', function () {
           out: pool.securityIndex,
           amount: buy_amount,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market14')) // MarketOrder Buy@price12
+          // from: trader,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market' + buy_price.toString())) // MarketOrder Buy@price12
         });
 
-        const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
-        const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+        const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
+        const afterSwapBalancesSecurity = await securityToken.balanceOf(trader);
+        
+        expect(afterSwapBalanceCurrency.toString()).to.be.equals(fp(120).toString());
+        expect(afterSwapBalancesSecurity.toString()).to.be.equals(sell_amount.toString());
 
-        expect(buy_order.toString()).to.be.equals(request_amount.toString());
+        // const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+        // const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+
       });
 
       context('when pool paused', () => {
@@ -283,10 +296,14 @@ describe('SecondaryPool', function () {
   context('Placing Stop Loss order', () => {
     let sell_amount: BigNumber;
     let buy_amount: BigNumber;
+    let buy_price: BigNumber;
+    let sell_price: BigNumber;
 
     sharedBeforeEach('initialize values ', async () => {
-      sell_amount = BigNumber.from("10"); //qty
-      buy_amount = BigNumber.from("25"); //qty
+      sell_amount = fp(10); //qty
+      buy_amount = fp(25); //qty
+      buy_price = fp(12); // Buying price
+      sell_price = fp(12); // Selling price
     });
     
     it('accepts sell order', async () => {
@@ -295,7 +312,8 @@ describe('SecondaryPool', function () {
         out: pool.currencyIndex,
         amount: sell_amount,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop12')) // Stop Order Sell@price12
+        // from: lp,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + sell_price.toString())) // Stop Order Sell@price12
       });
 
       const buy_order = await pool.swapGivenOut({
@@ -303,13 +321,20 @@ describe('SecondaryPool', function () {
         out: pool.securityIndex,
         amount: buy_amount,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market12')) // MarketOrder Buy@price12
+        // from: trader,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market' + buy_price.toString())) // MarketOrder Buy@price12
       });
 
-      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
-      const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+      const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
+      const afterSwapBalancesSecurity = await securityToken.balanceOf(trader);
+      
+      expect(afterSwapBalanceCurrency.toString()).to.be.equals(fp(120).toString());
+      expect(afterSwapBalancesSecurity.toString()).to.be.equals(sell_amount.toString());
 
-      expect(buy_order.toString()).to.be.equals(request_amount.toString());
+      // const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      // const request_amount = postPaidCurrencyBalance.div(currentBalances[pool.securityIndex])
+
+      // expect(buy_order.toString()).to.be.equals(request_amount.toString());
     });
 
     context('when pool paused', () => {

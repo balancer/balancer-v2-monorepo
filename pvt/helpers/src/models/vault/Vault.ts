@@ -91,16 +91,15 @@ export default class Vault {
   }
 
   async generalSwap(params: GeneralSwap): Promise<ContractTransaction> {
-    const sender = params.from || (await this._defaultSender());
+    const sender = params.from ?? (await this._defaultSender());
     const vault = params.from ? this.instance.connect(sender) : this.instance;
-
     return this.mocked
       ? vault.callGeneralPoolSwap(
           params.poolAddress,
           {
             kind: params.kind,
             poolId: params.poolId,
-            from: params.from ?? sender.address,
+            from: sender.address,
             to: params.to,
             tokenIn: params.tokenIn,
             tokenOut: params.tokenOut,
