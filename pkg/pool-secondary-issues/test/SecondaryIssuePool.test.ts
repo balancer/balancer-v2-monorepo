@@ -185,7 +185,7 @@ describe('SecondaryPool', function () {
         sell_price = fp(12); // Selling price
       });
       
-      it('accepts buy order', async () => {
+      it('accepts sell order: BuyOrder > SellOrder', async () => {
 
         const sell_order = await pool.swapGivenIn({
           in: pool.securityIndex,
@@ -194,7 +194,7 @@ describe('SecondaryPool', function () {
           balances: currentBalances,
           from: lp,
           recipient: lp,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market'+sell_price.toString())) // MarketOrder Sell 15@price
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 10@market price
         });
 
         const buy_order = await pool.swapGivenIn({
@@ -202,9 +202,9 @@ describe('SecondaryPool', function () {
           out: pool.securityIndex,
           amount: buy_amount,
           balances: currentBalances,
-          from: trader,
-          recipient: trader,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market'+buy_price.toString())) // MarketOrder Buy 15@price
+          // from: trader,
+          // recipient: trader,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy 15@market price
         });
 
         const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
@@ -245,7 +245,7 @@ describe('SecondaryPool', function () {
         sell_price = fp(12); // Selling price
       });
       
-      it('accepts limit order', async () => {
+      it('accepts Buy Order: SellOrder > BuyOrder', async () => {
         const sell_order = await pool.swapGivenIn({
           in: pool.securityIndex,
           out: pool.currencyIndex,

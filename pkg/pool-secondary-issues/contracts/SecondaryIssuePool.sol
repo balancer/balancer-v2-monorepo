@@ -8,7 +8,7 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 import "./interfaces/ISettlor.sol";
-
+import "hardhat/console.sol";
 import "./utilities/StringUtils.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
@@ -48,7 +48,21 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         OrderType trade;
         uint256 price;
     }
-
+    enum SwapKind { GIVEN_IN, GIVEN_OUT }
+    struct SingleSwap {
+        bytes32 poolId;
+        SwapKind kind;
+        IAsset assetIn;
+        IAsset assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address payable recipient;
+        bool toInternalBalance;
+    }
     //counter for block timestamp nonce for creating unique order references
     uint256 private _previousTs = 0;
 
@@ -206,19 +220,18 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params;
         if(request.userData.length!=0){
-            // console.log("Here");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
                     params = Params({
-                        trade: otype=="Market" ? OrderType.Market:(otype=="Limit" ? OrderType.Limit : OrderType.Stop),
+                        trade: otype=="Limit" ? OrderType.Limit : OrderType.Stop,
                         price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
                     });
-                }
-            }
+                }                
+            }    
             else{ // returning swap results from matchOrders function below
-                console.log("Recursive Call", _downscaleDown(request.amount, scalingFactors[indexOut]));
+                console.log("Returning final swap result");
                 return _downscaleDown(request.amount, scalingFactors[indexOut]);
             }        
         }else{ //by default, any order without price specified is a market order
@@ -478,25 +491,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             stopOrderbook = stopOrderbook - 1;
         }
     }
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
-    struct SingleSwap {
-        bytes32 poolId;
-        SwapKind kind;
-        IAsset assetIn;
-        IAsset assetOut;
-        uint256 amount;
-        bytes userData;
-    }
-    struct FundManagement {
-        address sender;
-        bool fromInternalBalance;
-        address payable recipient;
-        bool toInternalBalance;
-    }
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
-        
         for (uint256 i = 0; i < marketOrderbook; i++) {
             if (
                 _marketOrders[i] != _ref &&
@@ -505,8 +502,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             ) {
                 if (orders[_marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price) {
-                        if (orders[_marketOrders[i]].price > _bestBidPrice) {
-                            // console.log("_bestBidPrice", _bestBidPrice);
+                        if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
                             _bestUnfilledBid = _bestBidPrice;
                             _bestBidPrice = orders[_marketOrders[i]].price;
                             _bestBid = _orderRefs[i];
@@ -515,8 +511,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                     }
                 } else if (orders[_marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
                     if (orders[_marketOrders[i]].price <= orders[_ref].price) {
-                        console.log("orders[_marketOrders[i]].price", orders[_marketOrders[i]].price);
-                        console.log("orders[_ref].price", orders[_ref].price);
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
                             _bestOfferPrice = orders[_marketOrders[i]].price;
@@ -527,7 +521,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 }
             }
         }
-
         if (orders[_ref].order == Order.Sell) {            
             if (_bestBid != "") {
                 uint256 qty;
@@ -568,44 +561,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
-                uint256[] memory balances = new uint256[](2);
-                balances[0] = orders[_ref].securityBalance;
-                balances[1] = orders[_ref].currencyBalance;
-                IVault vault = getVault();
-                // IVault.SingleSwap memory swap = IVault.SingleSwap({
-                //     poolId: getPoolId(),
-                //     kind: IVault.SwapKind.GIVEN_IN,
-                //     assetIn: IAsset(address(orders[_bestBid].tokenIn)),
-                //     assetOut: IAsset(address(orders[_ref].tokenOut)),
-                //     amount: orders[_ref].qty,
-                //     userData: "self"
-                // });
-                // IVault.FundManagement memory funds = IVault.FundManagement({
-                //    sender: orders[_bestBid].party,
-                //    fromInternalBalance: false,
-                //    recipient: payable(orders[_ref].party),
-                //    toInternalBalance: false
-                // });
-                // console.log("orders[_bestOffer].party",orders[_bestBid].party);
-                // console.log("orders[_ref].party",orders[_ref].party);
-                // vault.swap( swap, funds, balances[1], 999999999999999999);
-
-                // // calling onSwap to return results for the buyer
-                // swap = IVault.SingleSwap({
-                //     poolId: getPoolId(),
-                //     kind: IVault.SwapKind.GIVEN_OUT,
-                //     assetIn: IAsset(address(orders[_ref].tokenIn)),
-                //     assetOut: IAsset(address(orders[_bestBid].tokenOut)),
-                //     amount: orders[_bestOffer].qty,
-                //     userData: "self"
-                // });
-                // funds = IVault.FundManagement({
-                //    sender: orders[_ref].party,
-                //    fromInternalBalance: false,
-                //    recipient: payable(orders[_bestBid].party),
-                //    toInternalBalance: false
-                // });
-                // vault.swap( swap, funds, balances[0], 999999999999999999);
+                //calling onSwap to return results for the buyer
+                callSwap(false, _ref, _bestBid);
+                //calling onSwap to return results for the seller
+                callSwap(true, _bestBid, _ref);
             }
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
@@ -646,55 +605,36 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                     
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
+                console.log("Before", orders[_ref].qty);
+                console.log("orders[_ref].price", orders[_ref].price);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
-                uint256[] memory balances = new uint256[](2);
-                balances[0] = orders[_ref].securityBalance;
-                balances[1] = orders[_ref].currencyBalance;
-                IVault vault = getVault();
-                console.log("orders[_bestOffer].party",orders[_bestOffer].party);
-                console.log("orders[_ref].party",orders[_ref].party);
-                // calling onSwap to return results for the seller
-                // WIP
-                // IVault.SingleSwap memory swap = IVault.SingleSwap({
-                //     poolId: getPoolId(),
-                //     kind: IVault.SwapKind.GIVEN_IN,
-                //     assetIn: IAsset(address(orders[_bestOffer].tokenIn)),
-                //     assetOut: IAsset(address(orders[_ref].tokenOut)),
-                //     amount: orders[_ref].qty,
-                //     userData: "self"
-                // });
-                // IVault.FundManagement memory funds = IVault.FundManagement({
-                //    sender: orders[_bestOffer].party,
-                //    fromInternalBalance: false,
-                //    recipient: payable(orders[_ref].party),
-                //    toInternalBalance: false
-                // });
-                // // uint256 wrappedAmountOut = _queries.querySwap(swap, funds);
-                // // console.log("wrappedAmountOut", wrappedAmountOut);
-                // // console.log("orders[_bestOffer].party",orders[_bestOffer].party);
-                // // console.log("orders[_ref].party",orders[_ref].party);
-                // vault.swap( swap, funds, balances[1], 999999999999999999);
-
-                // // calling onSwap to return results for the buyer
-                // swap = IVault.SingleSwap({
-                //     poolId: getPoolId(),
-                //     kind: IVault.SwapKind.GIVEN_OUT,
-                //     assetIn: IAsset(address(orders[_ref].tokenIn)),
-                //     assetOut: IAsset(address(orders[_bestOffer].tokenOut)),
-                //     amount: orders[_bestOffer].qty,
-                //     userData: "self"
-                // });
-                // funds = IVault.FundManagement({
-                //    sender: orders[_ref].party,
-                //    fromInternalBalance: false,
-                //    recipient: payable(orders[_bestOffer].party),
-                //    toInternalBalance: false
-                // });
-                // vault.swap( swap, funds, balances[0], 999999999999999999);
-
+                console.log("orders[_ref].securityBalance", orders[_ref].securityBalance);
+                //calling onSwap to return results for the seller
+                callSwap(true, _bestOffer, _ref);
+                //calling onSwap to return results for the buyer
+                callSwap(false, _ref, _bestOffer);
             }
         }
+    }
+
+    function callSwap(bool givenIn, bytes32 i, bytes32 o) private {
+        IVault vault = getVault();
+        IVault.SingleSwap memory swap = IVault.SingleSwap({
+            poolId: getPoolId(),
+            kind: givenIn==true ? IVault.SwapKind.GIVEN_IN : IVault.SwapKind.GIVEN_OUT,
+            assetIn: IAsset(address(orders[i].tokenIn)),
+            assetOut: IAsset(address(orders[o].tokenOut)),
+            amount: orders[o].qty,
+            userData: "self"
+        });
+        IVault.FundManagement memory funds = IVault.FundManagement({
+            sender: orders[i].party,
+            fromInternalBalance: true,
+            recipient: payable(orders[o].party),
+            toInternalBalance: true
+        });
+        vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 
     function reportTrade(
