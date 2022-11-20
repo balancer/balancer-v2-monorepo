@@ -1,6 +1,6 @@
-import hre, { ethers } from 'hardhat';
+import hre from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, Contract, ContractTransaction } from 'ethers';
+import { BigNumber, Contract } from 'ethers';
 
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { describeForkTest } from '../../../src/forkTests';
@@ -11,11 +11,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
-import { BasePoolEncoder, StablePoolEncoder, StablePoolJoinKind, SwapKind } from '@balancer-labs/balancer-js';
+import { BasePoolEncoder, StablePoolEncoder, SwapKind } from '@balancer-labs/balancer-js';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 
-describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () { // 15225000
+describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () {
   let task: Task;
 
   let factory: Contract;
@@ -28,15 +28,16 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () { // 1
   let usdt: Contract;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+  const USDT_SCALING = bn(1e12); // USDT has 6 decimals, so its scaling factor is 1e12
 
   const USDT = '0xdac17f958d2ee523a2206206994597c13d831ec7';
-  const BUSD = '0x4Fabb145d64652a948d72533023f6E7A623C7C53'
+  const BUSD = '0x4Fabb145d64652a948d72533023f6E7A623C7C53';
 
   const tokens = [BUSD, USDT];
   const amplificationParameter = bn(400);
   const swapFeePercentage = fp(0.01);
-  const initialBalanceBUSD = fp(1e6)
-  const initialBalanceUSDT = fp(1e6).div(1e12); // 6 digits
+  const initialBalanceBUSD = fp(1e6);
+  const initialBalanceUSDT = fp(1e6).div(USDT_SCALING);
   const initialBalances = [initialBalanceBUSD, initialBalanceUSDT];
 
   before('run task', async () => {
@@ -61,9 +62,12 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () { // 1
 
     busd = await task.instanceAt('ERC20', BUSD);
     usdt = await task.instanceAt('ERC20', USDT);
+
+    await busd.connect(whale).approve(vault.address, MAX_UINT256);
+    await usdt.connect(whale).approve(vault.address, MAX_UINT256);
   });
 
-  async function createPool(tokens: string[], initialize: boolean = true): Promise<Contract> {
+  async function createPool(tokens: string[], initialize = true): Promise<Contract> {
     const rateProviders: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     const cacheDurations: BigNumber[] = Array(tokens.length).fill(bn(0));
     const exemptFlags: boolean[] = Array(tokens.length).fill(false);
@@ -87,9 +91,6 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () { // 1
     if (initialize) {
       const bptIndex = await pool.getBptIndex();
       const poolId = await pool.getPoolId();
-      
-      await busd.connect(whale).approve(vault.address, MAX_UINT256);
-      await usdt.connect(whale).approve(vault.address, MAX_UINT256);
 
       const registeredBalances = getRegisteredBalances(bptIndex, initialBalances);
       const { tokens: registeredTokens } = await vault.getPoolTokens(poolId);
@@ -110,7 +111,9 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () { // 1
   }
 
   function getRegisteredBalances(bptIndex: number, balances: BigNumber[]): BigNumber[] {
-    return Array.from({ length: balances.length + 1 }).map((_, i) => (i == bptIndex ? bn(0) : i < bptIndex ? balances[i] : balances[i - 1] ));
+    return Array.from({ length: balances.length + 1 }).map((_, i) =>
+      i == bptIndex ? bn(0) : i < bptIndex ? balances[i] : balances[i - 1]
+    );
   }
 
   describe('pool operations', () => {
@@ -120,90 +123,121 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () { // 1
     let poolId: string;
     let bptIndex: number;
 
-    before('deploy a composable stable pool', async () => {
-      expect(await factory.isPoolFromFactory(ZERO_ADDRESS)).to.be.false;
-  
-      pool = await createPool(tokens);
+    context('swap', () => {
+      before('deploy a composable stable pool', async () => {
+        expect(await factory.isPoolFromFactory(ZERO_ADDRESS)).to.be.false;
 
-      poolId = pool.getPoolId();
-      const [registeredAddress] = await vault.getPool(poolId);
-      expect(registeredAddress).to.equal(pool.address);
+        pool = await createPool(tokens);
 
-      bptIndex = await pool.getBptIndex();
-    });
+        poolId = pool.getPoolId();
+        const [registeredAddress] = await vault.getPool(poolId);
+        expect(registeredAddress).to.equal(pool.address);
 
-    it('swap in the pool', async () => {
-      await busd.connect(whale).transfer(owner.address, amount);
-      await busd.connect(owner).approve(vault.address, amount);
-
-      await vault
-        .connect(owner)
-        .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: BUSD, assetOut: USDT, amount, userData: '0x' },
-          { sender: owner.address, recipient: owner.address, fromInternalBalance: false, toInternalBalance: false },
-          0,
-          MAX_UINT256
-        );
-
-      // Assert pool swap
-      const expectedUSDT = amount.div(1e12);
-      expectEqualWithError(await busd.balanceOf(owner.address), 0, 0.0001);
-      expectEqualWithError(await usdt.balanceOf(owner.address), bn(expectedUSDT), 0.1);
-    });
-
-    it.skip('join proportionally', async () => {
-      await usdt.connect(whale).transfer(owner.address, amount.div(1e12));
-      await usdt.connect(owner).approve(vault.address, amount.div(1e12));
-
-      const previousBptBalance = await pool.balanceOf(owner.address);
-      const bptOut = previousBptBalance.div(5);
-
-      const { tokens: registeredTokens } = await vault.getPoolTokens(poolId);
-
-      const expectedAmountsIn = initialBalances.map((n, i) => (i != bptIndex ? bn(n).div(5) : bn(0)));
-      const maxAmountsIn = getRegisteredBalances(bptIndex, expectedAmountsIn).map((b) => b.mul(fp(1.05)));
-
-      const tx = await vault.connect(owner).joinPool(poolId, owner.address, owner.address, {
-        assets: registeredTokens,
-        maxAmountsIn: maxAmountsIn,
-        fromInternalBalance: false,
-        userData: StablePoolEncoder.joinAllTokensInForExactBptOut(bptOut),
+        bptIndex = await pool.getBptIndex();
       });
-      const receipt = await (await tx).wait();
-      const { deltas: amountsIn } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
 
-      // Amounts in should be 1/5 the initial balances
-      expect(amountsIn).to.equalWithError(expectedAmountsIn, 0.0000001);
+      it('performs a swap', async () => {
+        await busd.connect(whale).transfer(owner.address, amount);
+        await busd.connect(owner).approve(vault.address, amount);
 
-      // Make sure received BPT is close to what we expect
-      const currentBptBalance = await pool.balanceOf(owner.address);
-      expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).add(bptOut), 0.001);
+        await vault
+          .connect(owner)
+          .swap(
+            { kind: SwapKind.GivenIn, poolId, assetIn: BUSD, assetOut: USDT, amount, userData: '0x' },
+            { sender: owner.address, recipient: owner.address, fromInternalBalance: false, toInternalBalance: false },
+            0,
+            MAX_UINT256
+          );
+
+        // Assert pool swap
+        const expectedUSDT = amount.div(USDT_SCALING);
+        expectEqualWithError(await busd.balanceOf(owner.address), 0, 0.0001);
+        expectEqualWithError(await usdt.balanceOf(owner.address), bn(expectedUSDT), 0.1);
+      });
     });
 
-    it('exit proportionally', async () => {
-      const previousBptBalance = await pool.balanceOf(owner.address);
-      const bptIn = previousBptBalance.div(4);
+    context('proportional join', () => {
+      before('deploy a composable stable pool', async () => {
+        expect(await factory.isPoolFromFactory(ZERO_ADDRESS)).to.be.false;
 
-      const { tokens: registeredTokens, balances: registeredBalances } = await vault.getPoolTokens(poolId);
+        pool = await createPool(tokens);
 
-      const tx = await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
-        assets: registeredTokens,
-        minAmountsOut: Array(registeredTokens.length).fill(0),
-        fromInternalBalance: false,
-        userData: StablePoolEncoder.exitExactBptInForTokensOut(bptIn),
+        poolId = pool.getPoolId();
+        const [registeredAddress] = await vault.getPool(poolId);
+        expect(registeredAddress).to.equal(pool.address);
+
+        bptIndex = await pool.getBptIndex();
       });
-      const receipt = await (await tx).wait();
-      const { deltas } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-      const amountsOut = deltas.map((x: BigNumber) => x.mul(-1));
 
-      const expectedAmountsOut = getRegisteredBalances(bptIndex, registeredBalances);
+      it('joins proportionally', async () => {
+        const ownerBptBalance = await pool.balanceOf(owner.address);
+        const bptOut = ownerBptBalance.div(5);
 
-      // Amounts out should be 1/4 the initial balances
-      expect(amountsOut).to.equalWithError(expectedAmountsOut.map((x) => x.div(4)), 0.00001);
+        const { tokens: registeredTokens } = await vault.getPoolTokens(poolId);
+        // Given the bptOut, the max amounts in should be slightly more than 1/5. Decimals make it a bit complicated.
+        const adjustedBalances = [
+          initialBalanceBUSD.div(fp(4.99)).mul(fp(1)),
+          initialBalanceUSDT.div(bn(4.99e6)).mul(1e6),
+        ];
+        const maxAmountsIn = getRegisteredBalances(bptIndex, adjustedBalances);
 
-      // Make sure sent BPT is close to what we expect
-      const currentBptBalance = await pool.balanceOf(owner.address);
-      expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).sub(bptIn), 0.001);
+        const tx = await vault.connect(whale).joinPool(poolId, whale.address, whale.address, {
+          assets: registeredTokens,
+          maxAmountsIn: maxAmountsIn,
+          fromInternalBalance: false,
+          userData: StablePoolEncoder.joinAllTokensInForExactBptOut(bptOut),
+        });
+        const receipt = await (await tx).wait();
+        const { deltas: amountsIn } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+
+        // Amounts in should be ~ 1/5 the initial balances
+        expect(amountsIn).to.equalWithError(maxAmountsIn, 0.01);
+
+        // Make sure received BPT is close to what we expect
+        const currentBptBalance = await pool.balanceOf(whale.address);
+        expect(currentBptBalance).to.be.equalWithError(bptOut, 0.001);
+      });
+    });
+
+    context('proportional exit', () => {
+      before('deploy a composable stable pool', async () => {
+        expect(await factory.isPoolFromFactory(ZERO_ADDRESS)).to.be.false;
+
+        pool = await createPool(tokens);
+
+        poolId = pool.getPoolId();
+        const [registeredAddress] = await vault.getPool(poolId);
+        expect(registeredAddress).to.equal(pool.address);
+
+        bptIndex = await pool.getBptIndex();
+      });
+
+      it('exits proportionally', async () => {
+        const previousBptBalance = await pool.balanceOf(owner.address);
+        const bptIn = previousBptBalance.div(4);
+
+        const { tokens: registeredTokens, balances: registeredBalances } = await vault.getPoolTokens(poolId);
+
+        const tx = await vault.connect(owner).exitPool(poolId, owner.address, owner.address, {
+          assets: registeredTokens,
+          minAmountsOut: Array(registeredTokens.length).fill(0),
+          fromInternalBalance: false,
+          userData: StablePoolEncoder.exitExactBptInForTokensOut(bptIn),
+        });
+        const receipt = await (await tx).wait();
+        const { deltas } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+        const amountsOut = deltas.map((x: BigNumber) => x.mul(-1));
+
+        const expectedAmountsOut = (registeredBalances as BigNumber[]).map((b) => b.div(4));
+        expectedAmountsOut[bptIndex] = bn(0);
+
+        // Amounts out should be 1/4 the initial balances
+        expect(amountsOut).to.equalWithError(expectedAmountsOut, 0.00001);
+
+        // Make sure sent BPT is close to what we expect
+        const currentBptBalance = await pool.balanceOf(owner.address);
+        expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).sub(bptIn), 0.001);
+      });
     });
   });
 
