@@ -32,7 +32,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "./PoolBalances.sol";
 import "./balances/BalanceAllocation.sol";
-import "hardhat/console.sol";
 
 /**
  * Implements the Vault's high-level swap functionality.
@@ -70,7 +69,6 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         authenticateFor(funds.sender)
         returns (uint256 amountCalculated)
     {
-        console.log("Inside Swaps Sol");
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         _require(block.timestamp <= deadline, Errors.SWAP_DEADLINE);
@@ -82,7 +80,6 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         IERC20 tokenIn = _translateToIERC20(singleSwap.assetIn);
         IERC20 tokenOut = _translateToIERC20(singleSwap.assetOut);
         _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
-        console.log("After Require in Swaps Sol");
         // Initializing each struct field one-by-one uses less gas than setting all at once.
         IPoolSwapStructs.SwapRequest memory poolRequest;
         poolRequest.poolId = singleSwap.poolId;

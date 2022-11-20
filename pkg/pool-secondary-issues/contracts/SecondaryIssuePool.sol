@@ -20,7 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
-// import "hardhat/console.sol";
+
 
 
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
@@ -230,7 +230,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 }                
             }    
             else{ // returning swap results from matchOrders function below
-                // console.log("Returning final swap result");
                 return _downscaleDown(request.amount, scalingFactors[indexOut]);
             }        
         }else{ //by default, any order without price specified is a market order
@@ -434,7 +433,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     //check if a buy order in the limit order book can execute over the prevailing (low) price passed to the function
     //check if a sell order in the limit order book can execute under the prevailing (high) price passed to the function
     function checkLimitOrders(uint256 _priceFilled) private {
-        // console.log("_priceFilled", _priceFilled);
         bytes32 ref;
         for (uint256 i = 0; i < limitOrderbook; i++) {
             if ((orders[_limitOrders[i]].order == Order.Buy && orders[_limitOrders[i]].price >= _priceFilled) ||
@@ -495,13 +493,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
         for (uint256 i = 0; i < marketOrderbook; i++) {
-            // console.log("Inside for loop", i);
             if (
                 _marketOrders[i] != _ref &&
                 orders[_marketOrders[i]].party != orders[_ref].party && 
                 orders[_marketOrders[i]].status != OrderStatus.Filled
             ) {
-                // console.log("Inside IF & for loop");
                 if (orders[_marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
@@ -513,8 +509,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                         orders[_ref].price = orders[_bestBid].price;
                     }
                 } else if (orders[_marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
-                    // console.log("orders[_marketOrders[i]].price",orders[_marketOrders[i]].price);
-                    // console.log("orders[_ref].price",orders[_ref].price);
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
@@ -528,8 +522,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 }
             }
         }
-        if (orders[_ref].order == Order.Sell) {   
-            // console.log("In match sell order");   
+        if (orders[_ref].order == Order.Sell) {     
             if (_bestBid != "") {
                 uint256 qty;                
                 if (orders[_bestBid].qty >= orders[_ref].qty) {                    
@@ -580,12 +573,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             }
         } 
         else if (orders[_ref].order == Order.Buy) {
-            // console.log("In match buy order");
             if (_bestOffer != "") {
-                // console.log("BestOfer Buy Loop");
                 uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
-                    // console.log("BestOffer IF case", orders[_ref].qty, orders[_bestOffer].price, orders[_ref].price);
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
                     qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
@@ -603,7 +593,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                     );
                     reorder(_bidIndex, _trade);
                 } else {
-                    // console.log("BestOffer else");
                     orders[_ref].qty = orders[_ref].qty - orders[_bestOffer].qty;
                     qty = orders[_bestOffer].qty;
                     orders[_bestOffer].qty = 0;
@@ -623,14 +612,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, qty);
-                orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);                
+                orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);          
                 //calling onSwap to return results for the seller
                 callSwap(true, _bestOffer, _ref);
                 //calling onSwap to return results for the buyer
                 callSwap(false, _ref, _bestOffer);
             }
             else{
-                // console.log("Dumped");
                 checkLimitOrders(orders[_ref].price);
                 checkStopOrders(orders[_ref].price);
             }
@@ -638,7 +626,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     }
 
     function callSwap(bool givenIn, bytes32 i, bytes32 o) private {
-        // console.log("In call swap");
         IVault vault = getVault();
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: getPoolId(),
@@ -654,7 +641,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             recipient: payable(orders[o].party),
             toInternalBalance: false
         });
-        // console.log("Going to call swap on Vault");
         vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 

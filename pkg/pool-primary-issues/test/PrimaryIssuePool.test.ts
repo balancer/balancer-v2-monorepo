@@ -122,19 +122,19 @@ describe('PrimaryPool', function () {
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs}, false);
     });
-    
-    it('adds bpt to the vault', async () => {
+
+    it('adds bpt to the owner', async () => {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
 
       await pool.initialize();
-
       const currentBalances = await pool.getBalances();
-      expect(currentBalances[pool.bptIndex]).to.be.equal(MAX_UINT112);
+      expect(currentBalances[pool.bptIndex]).to.be.equal(0);
       expect(currentBalances[pool.securityIndex]).to.be.equal(0);
       expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
 
-      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+      const ownerBalance = await pool.balanceOf(owner);
+      expect(ownerBalance.toString()).to.be.equal(MAX_UINT112);
     });
     
     it('cannot be initialized outside of the initialize function', async () => {
@@ -462,7 +462,18 @@ describe('PrimaryPool', function () {
         await expect(pool.exitPool()).to.be.revertedWith('NOT_PAUSED');
       }); 
     });
-  });
+
+    context('when paused for emergency proportional exit', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.pause();
+      });
+
+      it('gives back tokens', async () => {
+          await pool.exitPool();
+        }); 
+      });
+    })
+
 
   describe('issueCutoffTime and price check', () => {
     let currentBalances: BigNumber[];

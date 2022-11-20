@@ -167,7 +167,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
             fromInternalBalance: false
         });
-        vault.joinPool(getPoolId(), address(this), address(this), request);
+        vault.joinPool(getPoolId(), address(this), payable(_balancerManager), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
     }
 
@@ -324,11 +324,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
         _require(sender == address(this), Errors.INVALID_INITIALIZATION);
-        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
+        _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
         
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
         return (bptAmountOut, amountsIn);
     }
