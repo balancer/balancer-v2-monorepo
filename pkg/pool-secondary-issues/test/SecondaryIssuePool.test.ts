@@ -171,178 +171,217 @@ describe('SecondaryPool', function () {
     };
    
 
-    context('Placing Market order', () => {
-      let sell_amount: BigNumber;
-      let buy_amount: BigNumber;
-      let sell_price: BigNumber;
-      let buy_price: BigNumber;
-      let beforeSwapLPCurrency: BigNumber;
-      let beforeSwapLPSecurity: BigNumber;
-      let beforeSwapTraderCurrency: BigNumber;
-      let beforeSwapTraderSecurity: BigNumber;
+  context('Placing Market order', () => {
+    let sell_amount: BigNumber;
+    let buy_amount: BigNumber;
+    let sell_price: BigNumber;
+    let buy_price: BigNumber;
+    let beforeSwapLPCurrency: BigNumber;
+    let beforeSwapLPSecurity: BigNumber;
+    let beforeSwapTraderCurrency: BigNumber;
+    let beforeSwapTraderSecurity: BigNumber;
 
-
-
-      sharedBeforeEach('initialize values ', async () => {
-        sell_amount = fp(10); // sell qty
-        buy_amount = fp(15); // buy qty
-        buy_price = fp(14); // Buying price
-        sell_price = fp(12); // Selling price
-        beforeSwapLPCurrency = await currencyToken.balanceOf(lp);
-        beforeSwapLPSecurity = await securityToken.balanceOf(lp);
-        beforeSwapTraderCurrency = await currencyToken.balanceOf(trader);
-        beforeSwapTraderSecurity = await securityToken.balanceOf(trader);
+    sharedBeforeEach('initialize values ', async () => {
+      sell_amount = fp(10); // sell qty
+      buy_amount = fp(15); // buy qty
+      buy_price = fp(14); // Buying price
+      sell_price = fp(12); // Selling price
+      beforeSwapLPCurrency = await currencyToken.balanceOf(lp);
+      beforeSwapLPSecurity = await securityToken.balanceOf(lp);
+      beforeSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      beforeSwapTraderSecurity = await securityToken.balanceOf(trader);
+    });
+    
+    it('accepts Empty order: Sell Order@CMP > Buy Order@CMP', async () => {
+    
+      const sell_order = await pool.swapGivenIn({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        balances: currentBalances,
+        from: lp,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 15@Market Price
       });
       
-      it('accepts sell order: Sell Order@CMP > Buy Order@CMP', async () => {
-     
-        const sell_order = await pool.swapGivenIn({
-          in: pool.securityIndex,
-          out: pool.currencyIndex,
-          amount: sell_amount,
-          balances: currentBalances,
-          from: lp,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 15@Market Price
-        });
-        
-        const buy_order = await pool.swapGivenIn({
-          in: pool.currencyIndex,
-          out: pool.securityIndex,
-          amount: buy_amount,
-          balances: currentBalances,
-          from: trader,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy 15@market price
-        });
-
-        const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
-        const afterSwapLPSecurity = await securityToken.balanceOf(lp);
-        const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
-        const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
-        
-        expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.toString());
-        expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(sell_amount).toString());
-        expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.toString());
-        expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(sell_amount).toString());
+      const buy_order = await pool.swapGivenIn({
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_amount,
+        balances: currentBalances,
+        from: trader,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy 15@market price
       });
 
-      context('when pool paused', () => {
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
-        it('reverts', async () => {
-          await expect(
-            pool.swapGivenOut({
-              in: pool.currencyIndex,
-              out: pool.securityIndex,
-              amount: buy_amount,
-              balances: currentBalances,
-            })
-          ).to.be.revertedWith('PAUSED');
-        });
-      });
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
+      const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
+      const afterSwapLPSecurity = await securityToken.balanceOf(lp);
+      const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
+      
+      expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
+      expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
     });
 
-    context('Placing Limit order', () => {
-      let sell_amount: BigNumber;
-      let buy_amount: BigNumber;
-      let sell_price: BigNumber;
-      let buy_price: BigNumber;
-      let beforeSwapLPCurrency: BigNumber;
-      let beforeSwapLPSecurity: BigNumber;
-      let beforeSwapTraderCurrency: BigNumber;
-      let beforeSwapTraderSecurity: BigNumber;
-
-      sharedBeforeEach('initialize values ', async () => {
-        sell_amount = fp(10); //qty
-        buy_amount = fp(15); //qty
-        buy_price = fp(12); // Buying price
-        sell_price = fp(20); // Selling price
-        beforeSwapLPCurrency = await currencyToken.balanceOf(lp);
-        beforeSwapLPSecurity = await securityToken.balanceOf(lp);
-        beforeSwapTraderCurrency = await currencyToken.balanceOf(trader);
-        beforeSwapTraderSecurity = await securityToken.balanceOf(trader);
+    it('accepts Market order: Sell Order@CMP > Buy Limit Order', async () => {
+    
+      const sell_order = await pool.swapGivenIn({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        balances: currentBalances,
+        from: lp,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 15@Market Price
       });
       
-      it('accepts Market Buy Order: Sell Limit Order > Buy Market Order', async () => {
-        
-        const sell_order = await pool.swapGivenIn({
-          in: pool.securityIndex,
-          out: pool.currencyIndex,
-          amount: sell_amount,
-          from: lp,
-          balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
-        });
-
-        const buy_order = await pool.swapGivenIn({
-          in: pool.currencyIndex,
-          out: pool.securityIndex,
-          amount: buy_amount,
-          from: trader,
-          balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy@market price
-        });
-
-        const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
-        const afterSwapLPSecurity = await securityToken.balanceOf(lp);
-        const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
-        const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
-        
-        expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(sell_price).toString());
-        expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(sell_amount).toString());
-        expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(sell_price).toString());
-        expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(sell_amount).toString());
+      const buy_order = await pool.swapGivenIn({
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_amount,
+        balances: currentBalances,
+        from: trader,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())) // MarketOrder Buy 15@market price
       });
 
-      it('accepts Limit Buy Order: Sell Limit Order > Buy Limit Order', async () => {
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
 
-        const sell_order= await pool.swapGivenIn({
-          in: pool.securityIndex,
-          out: pool.currencyIndex,
-          amount: sell_amount,
-          balances: currentBalances,
-          from: lp,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
-        });
+      const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
+      const afterSwapLPSecurity = await securityToken.balanceOf(lp);
+      const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
+      
+      expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(buy_price).toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
+      expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.add(buy_price).toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
+    });
 
-        const buy_order = await pool.swapGivenIn({
-          in: pool.currencyIndex,
-          out: pool.securityIndex,
-          amount: buy_amount,
-          from: trader,
-          balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())) // Limit Order Sell@price12
-        });
-
-        
-
-        const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
-        const afterSwapLPSecurity = await securityToken.balanceOf(lp);
-        const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
-        const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
-        
-        expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(buy_price).toString());
-        expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(sell_amount).toString());
-        expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(buy_price).toString());
-        expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(sell_amount).toString());
+    context('when pool paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.pause();
       });
-
-      context('when pool paused', () => {
-        sharedBeforeEach('pause pool', async () => {
-          await pool.pause();
-        });
-        it('reverts', async () => {
-          await expect(
-            pool.swapGivenOut({
-              in: pool.currencyIndex,
-              out: pool.securityIndex,
-              amount: buy_amount,
-              balances: currentBalances,
-            })
-          ).to.be.revertedWith('PAUSED');
-        });
+      it('reverts', async () => {
+        await expect(
+          pool.swapGivenOut({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: buy_amount,
+            balances: currentBalances,
+          })
+        ).to.be.revertedWith('PAUSED');
       });
     });
+  });
+
+  context('Placing Limit order', () => {
+    let sell_amount: BigNumber;
+    let buy_amount: BigNumber;
+    let sell_price: BigNumber;
+    let buy_price: BigNumber;
+    let beforeSwapLPCurrency: BigNumber;
+    let beforeSwapLPSecurity: BigNumber;
+    let beforeSwapTraderCurrency: BigNumber;
+    let beforeSwapTraderSecurity: BigNumber;
+
+    sharedBeforeEach('initialize values ', async () => {
+      sell_amount = fp(10); //qty
+      buy_amount = fp(15); //qty
+      buy_price = fp(12); // Buying price
+      sell_price = fp(20); // Selling price
+      beforeSwapLPCurrency = await currencyToken.balanceOf(lp);
+      beforeSwapLPSecurity = await securityToken.balanceOf(lp);
+      beforeSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      beforeSwapTraderSecurity = await securityToken.balanceOf(trader);
+    });
+    
+    it('accepts Market Buy Order: Sell Limit Order > Buy Market Order', async () => {
+      
+      const sell_order = await pool.swapGivenIn({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        from: lp,
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
+      });
+
+      const buy_order = await pool.swapGivenIn({
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_amount,
+        from: trader,
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy@market price
+      });
+
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
+      const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
+      const afterSwapLPSecurity = await securityToken.balanceOf(lp);
+      const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
+      
+      expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(sell_price).toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
+      expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(sell_price).toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
+    });
+
+    it('accepts Limit Buy Order: Sell Limit Order > Buy Limit Order', async () => {
+
+      const sell_order= await pool.swapGivenIn({
+        in: pool.securityIndex,
+        out: pool.currencyIndex,
+        amount: sell_amount,
+        balances: currentBalances,
+        from: lp,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
+      });
+
+      const buy_order = await pool.swapGivenIn({
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_amount,
+        from: trader,
+        balances: currentBalances,
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())) // Limit Order Sell@price12
+      });
+
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
+      const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
+      const afterSwapLPSecurity = await securityToken.balanceOf(lp);
+      const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
+      
+      expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(buy_price).toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
+      expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(buy_price).toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
+    });
+
+    context('when pool paused', () => {
+      sharedBeforeEach('pause pool', async () => {
+        await pool.pause();
+      });
+      it('reverts', async () => {
+        await expect(
+          pool.swapGivenOut({
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
+            amount: buy_amount,
+            balances: currentBalances,
+          })
+        ).to.be.revertedWith('PAUSED');
+      });
+    });
+  });
 
 
   context('Placing Stop Loss order', () => {
@@ -386,15 +425,18 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy@CMP
       });
 
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
       const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
       const afterSwapLPSecurity = await securityToken.balanceOf(lp);
       const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
       const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
       
       expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(sell_price).toString());
-      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(sell_amount).toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
       expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(sell_price).toString());
-      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(sell_amount).toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
 
     });
 
@@ -418,15 +460,18 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())) // Buy Stop Order Buy@12
       });
 
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
       const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
       const afterSwapLPSecurity = await securityToken.balanceOf(lp);
       const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
       const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
       
       expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(sell_price).toString());
-      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(sell_amount).toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
       expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(sell_price).toString());
-      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(sell_amount).toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
 
     });
 
@@ -529,15 +574,19 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy@CMP
       });
 
+      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
+
       const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
       const afterSwapLPSecurity = await securityToken.balanceOf(lp);
       const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
       const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
       
       expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.add(sell_price).toString());
-      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(sell_amount).toString());
+      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
       expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.sub(sell_price).toString());
-      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(sell_amount).toString());
+      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
       
     });
   });
