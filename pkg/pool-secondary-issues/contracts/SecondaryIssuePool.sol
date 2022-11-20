@@ -202,7 +202,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory scalingFactors = _scalingFactors();
         
         Params memory params;
-        console.log(string(request.userData), request.userData.length);
         if(request.userData.length!=0){
             console.log("Not a market order");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
@@ -586,6 +585,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 });
                 onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);*/                    
             }
+            else{
+                checkLimitOrders(orders[_ref].price);
+                checkStopOrders(orders[_ref].price);
+            }
         } 
         else if (orders[_ref].order == Order.Buy) {
             console.log("In match buy order");
@@ -665,6 +668,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 });
                 onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);*/
             }
+            else{
+                checkLimitOrders(orders[_ref].price);
+                checkStopOrders(orders[_ref].price);
+            }
         }
     }
 
@@ -677,7 +684,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             assetIn: IAsset(address(orders[i].tokenIn)),
             assetOut: IAsset(address(orders[o].tokenOut)),
             amount: orders[o].qty,
-            userData: "self"
+            userData: 'self'
         });
         IVault.FundManagement memory funds = IVault.FundManagement({
             sender: orders[i].party,

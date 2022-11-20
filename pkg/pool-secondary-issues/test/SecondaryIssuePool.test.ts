@@ -186,7 +186,7 @@ describe('SecondaryPool', function () {
           out: pool.currencyIndex,
           amount: sell_amount,
           balances: currentBalances,
-          data: ''
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(""))
           //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Sell 15@price
         });
 
@@ -195,7 +195,7 @@ describe('SecondaryPool', function () {
           out: pool.securityIndex,
           amount: buy_amount,
           balances: currentBalances,
-          data: ''
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(""))
           //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Buy 15@price
         });
 
@@ -246,7 +246,7 @@ describe('SecondaryPool', function () {
           out: pool.securityIndex,
           amount: buy_amount,
           balances: currentBalances,
-          data: ''
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(""))
           //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market14')) // MarketOrder Buy@price12
         });
 
@@ -297,7 +297,7 @@ describe('SecondaryPool', function () {
         out: pool.securityIndex,
         amount: buy_amount,
         balances: currentBalances,
-        data: ''
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(""))
         //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market12')) // MarketOrder Buy@price12
       });
 
@@ -356,7 +356,7 @@ describe('SecondaryPool', function () {
         out: pool.securityIndex,
         amount: buy_amount, //Qty 25
         balances: currentBalances,
-        data: ''
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes(""))
         //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market25')) // MarketOrder Buy@price12
       });
 
