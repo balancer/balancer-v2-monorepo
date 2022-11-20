@@ -495,11 +495,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
         for (uint256 i = 0; i < marketOrderbook; i++) {
+            console.log("Inside for loop");
             if (
                 _marketOrders[i] != _ref &&
-                //orders[_marketOrders[i]].party != orders[_ref].party && 
+                orders[_marketOrders[i]].party != orders[_ref].party && 
                 orders[_marketOrders[i]].status != OrderStatus.Filled
             ) {
+                console.log("Inside IF & for loop");
                 if (orders[_marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
@@ -605,11 +607,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                     
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                console.log("Before", orders[_ref].qty);
-                console.log("orders[_ref].price", orders[_ref].price);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
-                console.log("orders[_ref].securityBalance", orders[_ref].securityBalance);
                 //calling onSwap to return results for the seller
                 callSwap(true, _bestOffer, _ref);
                 //calling onSwap to return results for the buyer
