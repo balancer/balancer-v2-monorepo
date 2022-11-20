@@ -541,7 +541,7 @@ describe('SecondaryPool', function () {
       
     });
   });
-  
+
 });
 
   describe('joins and exits', () => {

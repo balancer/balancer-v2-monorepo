@@ -219,7 +219,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 request.tokenIn == IERC20(_security), "Invalid swapped tokens");
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params;
-        console.log(string(request.userData), request.userData.length);
         if(request.userData.length!=0){
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
@@ -572,6 +571,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 //calling onSwap to return results for the seller
                 // callSwap(true, _bestBid, _ref);
             }
+            else{
+                checkLimitOrders(orders[_ref].price);
+                checkStopOrders(orders[_ref].price);
+            }
         } 
         else if (orders[_ref].order == Order.Buy) {
             console.log("In match buy order");
@@ -623,7 +626,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 //calling onSwap to return results for the buyer
                 // callSwap(false, _ref, _bestOffer);
             }
-            console.log("Dumped");
+            else{
+                checkLimitOrders(orders[_ref].price);
+                checkStopOrders(orders[_ref].price);
+            }
         }
     }
 
@@ -636,7 +642,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             assetIn: IAsset(address(orders[i].tokenIn)),
             assetOut: IAsset(address(orders[o].tokenOut)),
             amount: orders[o].qty,
-            userData: "self"
+            userData: 'self'
         });
         IVault.FundManagement memory funds = IVault.FundManagement({
             sender: orders[i].party,
