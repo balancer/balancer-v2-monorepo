@@ -513,8 +513,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                         }
                     }
                 } else if (orders[_marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
-                    console.log("orders[_marketOrders[i]].price",20);
-                    console.log("orders[_ref].price",0);
+                    console.log("orders[_marketOrders[i]].price",orders[_marketOrders[i]].price);
+                    console.log("orders[_ref].price",orders[_ref].price);
                     if (orders[_marketOrders[i]].price <= orders[_ref].price) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
@@ -579,6 +579,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 console.log("BestOfer Buy Loop");
                 uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
+                    console.log("BestOffer IF case", orders[_bestOffer].qty, orders[_ref].qty);
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
                     qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
@@ -596,6 +597,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                     );
                     reorder(_bidIndex, _trade);
                 } else {
+                    console.log("BestOffer else");
                     orders[_ref].qty = orders[_ref].qty - orders[_bestOffer].qty;
                     qty = orders[_bestOffer].qty;
                     orders[_bestOffer].qty = 0;
