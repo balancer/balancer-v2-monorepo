@@ -495,7 +495,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
         for (uint256 i = 0; i < marketOrderbook; i++) {
-            console.log("Inside for loop");
+            console.log("Inside for loop", i);
             if (
                 _marketOrders[i] != _ref &&
                 orders[_marketOrders[i]].party != orders[_ref].party && 
@@ -512,6 +512,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                         }
                     }
                 } else if (orders[_marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
+                    console.log("orders[_marketOrders[i]].price",20);
+                    console.log("orders[_ref].price",0);
                     if (orders[_marketOrders[i]].price <= orders[_ref].price) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
@@ -525,6 +527,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         }
         if (orders[_ref].order == Order.Sell) {            
             if (_bestBid != "") {
+                console.log("BestBid Sell Loop");
                 uint256 qty;
                 if (orders[_bestBid].qty >= orders[_ref].qty) {
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
@@ -564,12 +567,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
                 //calling onSwap to return results for the buyer
-                callSwap(false, _ref, _bestBid);
+                // callSwap(false, _ref, _bestBid);
                 //calling onSwap to return results for the seller
-                callSwap(true, _bestBid, _ref);
+                // callSwap(true, _bestBid, _ref);
             }
         } else if (orders[_ref].order == Order.Buy) {
             if (_bestOffer != "") {
+                console.log("BestOfer Buy Loop");
                 uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
@@ -610,10 +614,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
                 //calling onSwap to return results for the seller
-                callSwap(true, _bestOffer, _ref);
+                // callSwap(true, _bestOffer, _ref);
                 //calling onSwap to return results for the buyer
-                callSwap(false, _ref, _bestOffer);
+                // callSwap(false, _ref, _bestOffer);
             }
+            console.log("Dumped");
         }
     }
 

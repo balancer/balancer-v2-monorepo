@@ -197,6 +197,7 @@ describe('SecondaryPool', function () {
           from: lp,
           data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 10@market price
         });
+        
         const buy_order = await pool.swapGivenIn({
           in: pool.currencyIndex,
           out: pool.securityIndex,
@@ -241,7 +242,7 @@ describe('SecondaryPool', function () {
         sell_amount = fp(10); //qty
         buy_amount = fp(15); //qty
         buy_price = fp(12); // Buying price
-        sell_price = fp(12); // Selling price
+        sell_price = fp(20); // Selling price
       });
       
       it('accepts Buy Order: SellOrder > BuyOrder', async () => {
@@ -256,6 +257,7 @@ describe('SecondaryPool', function () {
           balances: currentBalances,
           data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
         });
+        console.log("Sell Order Complete");
         const buy_order = await pool.swapGivenIn({
           in: pool.currencyIndex,
           out: pool.securityIndex,
