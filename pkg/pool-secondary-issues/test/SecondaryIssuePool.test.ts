@@ -195,7 +195,8 @@ describe('SecondaryPool', function () {
           amount: sell_amount,
           balances: currentBalances,
           from: lp,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 10@market price
+          data: ''
+          //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Sell 15@price
         });
         
         const buy_order = await pool.swapGivenIn({
@@ -204,7 +205,8 @@ describe('SecondaryPool', function () {
           amount: buy_amount,
           balances: currentBalances,
           from: trader,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy 15@market price
+          data: ''
+          //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market15')) // MarketOrder Buy 15@price
         });
 
         const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
@@ -264,7 +266,8 @@ describe('SecondaryPool', function () {
           amount: buy_amount,
           from: trader,
           balances: currentBalances,
-          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy@MarketPrice
+          data: ''
+          //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market14')) // MarketOrder Buy@price12
         });
 
         const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
@@ -321,8 +324,8 @@ describe('SecondaryPool', function () {
         out: pool.securityIndex,
         amount: buy_amount,
         balances: currentBalances,
-        // from: trader,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market' + buy_price.toString())) // MarketOrder Buy@price12
+        data: ''
+        //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market12')) // MarketOrder Buy@price12
       });
 
       const afterSwapBalanceCurrency = await currencyToken.balanceOf(lp);
@@ -386,7 +389,8 @@ describe('SecondaryPool', function () {
         out: pool.securityIndex,
         amount: buy_amount, //Qty 25
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market25')) // MarketOrder Buy@price12
+        data: ''
+        //data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('6Market25')) // MarketOrder Buy@price12
       });
 
       const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
