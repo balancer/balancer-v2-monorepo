@@ -202,7 +202,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory scalingFactors = _scalingFactors();
         
         Params memory params;
-        console.log(string(request.userData));
+        console.log(string(request.userData), request.userData.length);
         if(request.userData.length!=0){
             console.log("Not a market order");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
@@ -509,10 +509,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }
         }
-        if (orders[_ref].order == Order.Sell) {            
+        if (orders[_ref].order == Order.Sell) {   
+            console.log("In match sell order");   
             if (_bestBid != "") {
-                uint256 qty;
-                if (orders[_bestBid].qty >= orders[_ref].qty) {
+                uint256 qty;                
+                if (orders[_bestBid].qty >= orders[_ref].qty) {                    
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
                     qty = orders[_ref].qty;
                     orders[_ref].qty = 0;
@@ -527,7 +528,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         qty,
                         orders[_ref].order,
                         orders[_ref].otype
-                    );
+                    );                    
                     reorder(_bidIndex, _trade);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[_bestBid].qty;
@@ -552,7 +553,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 //calling onSwap to return results for the buyer
                 callSwap(false, _ref, _bestBid);
                 //calling onSwap to return results for the seller
-                callSwap(true, _bestBid, _ref);
+                //callSwap(true, _bestBid, _ref);
                 /*uint256[] memory balances = new uint256[](2);
                 balances[0] = orders[_ref].securityBalance;
                 balances[1] = orders[_ref].currencyBalance;
@@ -585,7 +586,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 });
                 onSwap(nRequest, balances, orders[_ref].tokenIn==IERC20(_security)?1:2, orders[_ref].tokenOut==IERC20(_security)?1:2);*/                    
             }
-        } else if (orders[_ref].order == Order.Buy) {
+        } 
+        else if (orders[_ref].order == Order.Buy) {
+            console.log("In match buy order");
             if (_bestOffer != "") {
                 uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
@@ -625,7 +628,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, orders[_ref].qty);
-                orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);
+                orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);                
                 //calling onSwap to return results for the seller
                 callSwap(true, _bestOffer, _ref);
                 //calling onSwap to return results for the buyer
@@ -666,6 +669,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     }
 
     function callSwap(bool givenIn, bytes32 i, bytes32 o) private {
+        console.log("In call swap");
         IVault vault = getVault();
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: getPoolId(),
@@ -677,10 +681,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         });
         IVault.FundManagement memory funds = IVault.FundManagement({
             sender: orders[i].party,
-            fromInternalBalance: true,
+            fromInternalBalance: false,
             recipient: payable(orders[o].party),
-            toInternalBalance: true
+            toInternalBalance: false
         });
+        console.log("Going to call swap on Vault");
         vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 
