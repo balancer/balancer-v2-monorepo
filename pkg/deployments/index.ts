@@ -24,7 +24,7 @@ export async function getBalancerContractAt(task: string, contract: string, addr
 }
 
 /**
- * @dev Returns the contract's ABI of for a specific task
+ * @dev Returns the contract's ABI for a specific task
  * @param task ID of the task to look the ABI of the required contract
  * @param contract Name of the contract to looking the ABI of
  */
@@ -33,7 +33,7 @@ export function getBalancerContractAbi(task: string, contract: string): unknown[
 }
 
 /**
- * @dev Returns the contract's creation code of for a specific task
+ * @dev Returns the contract's creation code for a specific task
  * @param task ID of the task to look the creation code of the required contract
  * @param contract Name of the contract to looking the creation code of
  */
