@@ -323,7 +323,6 @@ abstract contract BasePool is
         _beforeSwapJoinExit();
 
         uint256[] memory scalingFactors = _scalingFactors();
-        console.log("balance sender", balanceOf(sender));
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
                 poolId,
@@ -340,7 +339,6 @@ abstract contract BasePool is
             _mintPoolTokens(address(0), _getMinimumBpt());
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
             
-            console.log("balance recipient balanceManager", balanceOf(recipient));
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
 
@@ -384,7 +382,6 @@ abstract contract BasePool is
     ) external override onlyVault(poolId) returns (uint256[] memory, uint256[] memory) {
         uint256[] memory amountsOut;
         uint256 bptAmountIn;
-
         // When a user calls `exitPool`, this is the first point of entry from the Vault.
         // We first check whether this is a Recovery Mode exit - if so, we proceed using this special lightweight exit
         // mechanism which avoids computing any complex values, interacting with external contracts, etc., and generally
@@ -398,7 +395,6 @@ abstract contract BasePool is
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
             // Note that we only call this if we're not in a recovery mode exit.
-            console.log("Paras", sender, recipient, bptAmountIn);
             _beforeSwapJoinExit();
 
             uint256[] memory scalingFactors = _scalingFactors();
@@ -419,7 +415,6 @@ abstract contract BasePool is
             _downscaleDownArray(amountsOut, scalingFactors);
         }
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
-        console.log("balance sender", balanceOf(sender));
         _burnPoolTokens(sender, bptAmountIn);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.

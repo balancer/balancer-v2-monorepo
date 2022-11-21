@@ -185,7 +185,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             toInternalBalance: false
         });
         console.log("Before exitPool");
-        vault.exitPool(poolId, address(this), payable(_balancerManager), request);
+        vault.exitPool(poolId, _balancerManager, payable(address(this)), request);
         console.log("After exitPool");
     }
     
@@ -363,11 +363,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //usually exit pool reverts
             _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
         } else {
-            //unless paused in which case tokens are retrievable by contributors
-            // _ensurePaused();
-            console.log("Checkc here");
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-
         }
     }
 
@@ -376,7 +372,6 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         view
         returns (uint256, uint256[] memory)
     {   
-        console.log("Inside");
         // This proportional exit function is only enabled if the contract is paused, to provide users a way to
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();

@@ -465,7 +465,26 @@ describe('PrimaryPool', function () {
 
     context('when paused for emergency proportional exit', () => {
       it('gives back tokens', async () => {
+          const beforeExitOwnerBalance = await pool.balanceOf(owner);
+          const previousBalances = await pool.getBalances();
+          const previousSecurityBalance = previousBalances[pool.securityIndex];
+          const previousCurrencyBalance = previousBalances[pool.currencyIndex];
+          const securityTokenBalanceBefore = await securityToken.balanceOf(owner);
+          const currencyTokenBalanceBefore = await currencyToken.balanceOf(owner);
+
           await pool.exitPool();
+
+          const afterExitOwnerBalance = await pool.balanceOf(owner);
+          const currentBalances = await pool.getBalances();
+          const securityTokenBalanceAfter = await securityToken.balanceOf(owner);
+          const currencyTokenBalanceAfter = await currencyToken.balanceOf(owner);
+
+          expect(currentBalances[pool.bptIndex]).to.be.equal(0);
+          expect(currentBalances[pool.securityIndex]).to.be.equal(0);
+          expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
+          expect(securityTokenBalanceAfter).to.be.equal(securityTokenBalanceBefore.add(previousSecurityBalance));
+          expect(currencyTokenBalanceAfter).to.be.equal(currencyTokenBalanceBefore.add(previousCurrencyBalance));
+          expect(afterExitOwnerBalance).to.be.equal(beforeExitOwnerBalance.sub(MAX_UINT112));
         }); 
       });
     })
