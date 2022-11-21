@@ -30,7 +30,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "./RecoveryMode.sol";
-import "hardhat/console.sol";
 // solhint-disable max-states-count
 
 /**

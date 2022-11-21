@@ -219,9 +219,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params;
         if(request.userData.length!=0){
-            //console.log("Not a market order");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
-                //console.log("Limit or Stop loss order");
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
