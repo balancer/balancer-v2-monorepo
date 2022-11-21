@@ -464,10 +464,6 @@ describe('PrimaryPool', function () {
     });
 
     context('when paused for emergency proportional exit', () => {
-      sharedBeforeEach('pause pool', async () => {
-        await pool.pause();
-      });
-
       it('gives back tokens', async () => {
           await pool.exitPool();
         }); 

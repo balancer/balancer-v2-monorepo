@@ -21,6 +21,7 @@ import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
 import "./interfaces/IMarketMaker.sol";
 import "./interfaces/IPrimaryIssuePoolFactory.sol";
+import "hardhat/console.sol";
 
 contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
@@ -183,7 +184,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
+        console.log("Before exitPool");
         vault.exitPool(poolId, address(this), payable(_balancerManager), request);
+        console.log("After exitPool");
     }
     
     function onSwap(
@@ -361,7 +364,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
         } else {
             //unless paused in which case tokens are retrievable by contributors
-            _ensurePaused();
+            // _ensurePaused();
+            console.log("Checkc here");
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
 
         }
@@ -371,11 +375,14 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         private
         view
         returns (uint256, uint256[] memory)
-    {
+    {   
+        console.log("Inside");
         // This proportional exit function is only enabled if the contract is paused, to provide users a way to
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        console.log("bptAmountIn",bptAmountIn);
         uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
+        console.log("bptRatio", bptRatio);
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
@@ -383,6 +390,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
                 amountsOut[i] = balances[i].mulDown(bptRatio);
             }
         }
+        console.log("amountsOut[0]",amountsOut[0]);
+        console.log("amountsOut[1]",amountsOut[1]);
+        console.log("amountsOut[2]",amountsOut[2]);
 
         return (bptAmountIn, amountsOut);
     }

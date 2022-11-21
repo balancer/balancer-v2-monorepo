@@ -30,7 +30,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "./RecoveryMode.sol";
-
+import "hardhat/console.sol";
 // solhint-disable max-states-count
 
 /**
@@ -323,7 +323,7 @@ abstract contract BasePool is
         _beforeSwapJoinExit();
 
         uint256[] memory scalingFactors = _scalingFactors();
-
+        console.log("balance sender", balanceOf(sender));
         if (totalSupply() == 0) {
             (uint256 bptAmountOut, uint256[] memory amountsIn) = _onInitializePool(
                 poolId,
@@ -339,7 +339,8 @@ abstract contract BasePool is
             _require(bptAmountOut >= _getMinimumBpt(), Errors.MINIMUM_BPT);
             _mintPoolTokens(address(0), _getMinimumBpt());
             _mintPoolTokens(recipient, bptAmountOut - _getMinimumBpt());
-
+            
+            console.log("balance recipient balanceManager", balanceOf(recipient));
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
 
@@ -360,7 +361,6 @@ abstract contract BasePool is
             // Note we no longer use `balances` after calling `_onJoinPool`, which may mutate it.
 
             _mintPoolTokens(recipient, bptAmountOut);
-
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
 
@@ -398,6 +398,7 @@ abstract contract BasePool is
             (bptAmountIn, amountsOut) = _doRecoveryModeExit(balances, totalSupply(), userData);
         } else {
             // Note that we only call this if we're not in a recovery mode exit.
+            console.log("Paras", sender, recipient, bptAmountIn);
             _beforeSwapJoinExit();
 
             uint256[] memory scalingFactors = _scalingFactors();
@@ -417,9 +418,8 @@ abstract contract BasePool is
             // amountsOut are amounts exiting the Pool, so we round down.
             _downscaleDownArray(amountsOut, scalingFactors);
         }
-
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
-
+        console.log("balance sender", balanceOf(sender));
         _burnPoolTokens(sender, bptAmountIn);
 
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
