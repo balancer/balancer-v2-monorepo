@@ -1,0 +1,54 @@
+{
+  "0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6": {
+    "task": "20210418-authorizer",
+    "name": "Authorizer"
+  },
+  "0xBA12222222228d8Ba445958a75a0704d566BF2C8": {
+    "task": "20210418-vault",
+    "name": "Vault"
+  },
+  "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
+    "task": "20210418-vault",
+    "name": "BalancerHelpers"
+  },
+  "0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD": {
+    "task": "20211202-no-protocol-fee-lbp",
+    "name": "NoProtocolFeeLiquidityBootstrappingPoolFactory"
+  },
+  "0x41B953164995c11C81DA73D212ED8Af25741b7Ac": {
+    "task": "20220325-authorizer-adaptor",
+    "name": "AuthorizerAdaptor"
+  },
+  "0xD7FAD3bd59D6477cbe1BE7f646F7f1BA25b230f8": {
+    "task": "20220517-protocol-fee-withdrawer",
+    "name": "ProtocolFeesWithdrawer"
+  },
+  "0x239e55F427D44C3cc793f49bFB507ebe76638a2b": {
+    "task": "20220721-balancer-queries",
+    "name": "BalancerQueries"
+  },
+  "0xb08E16cFc07C684dAA2f93C70323BAdb2A6CBFd2": {
+    "task": "20220725-protocol-fee-percentages-provider",
+    "name": "ProtocolFeePercentagesProvider"
+  },
+  "0x2E96068b3D5B5BAE3D7515da4A1D2E52d08A2647": {
+    "task": "20220817-aave-rebalanced-linear-pool",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0xf302f9F50958c5593770FDf4d4812309fF77414f": {
+    "task": "20220906-composable-stable-pool",
+    "name": "ComposableStablePoolFactory"
+  },
+  "0xC128a9954e6c874eA3d62ce62B468bA073093F25": {
+    "task": "20220908-weighted-pool-v2",
+    "name": "WeightedPoolFactory"
+  },
+  "0x8F42aDBbA1B16EaAE3BB5754915E0D06059aDd75": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BatchRelayerLibrary"
+  },
+  "0x36caC20dd805d128c1a6Dd16eeA845C574b5A17C": {
+    "task": "20221111-authorizer-adaptor-entrypoint",
+    "name": "AuthorizerAdaptorEntrypoint"
+  }
+}
