@@ -453,7 +453,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 ref = _stopOrders[i];
                 reorder(i, OrderType.Stop);
                 if(_trade!=OrderType.Market){
-                    _marketOrders[orders[_stopOrders[stopOrderbook]].orderno] = _limitOrders[stopOrderbook];
+                    _marketOrders[orders[_stopOrders[stopOrderbook-1]].orderno] = _limitOrders[stopOrderbook-1];
                     marketOrderbook = marketOrderbook + 1;
                     delete _stopOrders[stopOrderbook-1];
                     stopOrderbook = stopOrderbook - 1;
