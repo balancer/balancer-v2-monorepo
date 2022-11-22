@@ -47,19 +47,19 @@ Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a contract d
 
 _Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
 
-- **async function getBalancerContractAbi(taskID, contract)**
+- **function getBalancerContractAbi(taskID, contract)**
 
 Returns a contract's [ABI](https://docs.soliditylang.org/en/latest/abi-spec.html).
 
-- **async function getBalancerContractBytecode(taskID, contract)**
+- **function getBalancerContractBytecode(taskID, contract)**
 
 Returns a contract's [creation code](https://docs.soliditylang.org/en/latest/contracts.html#creating-contracts).
 
-- **async function getBalancerContractAddress(taskID, contract, network)**
+- **function getBalancerContractAddress(taskID, contract, network)**
 
 Returns the address of a contract's canonical deployment.
 
-- **async function getBalancerDeployment(taskID, network)**
+- **function getBalancerDeployment(taskID, network)**
 
 Returns an object with all contracts from a deployment and their addresses.
 
