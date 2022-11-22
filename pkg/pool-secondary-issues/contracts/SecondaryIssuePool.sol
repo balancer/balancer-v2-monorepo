@@ -191,7 +191,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params;
         if(request.userData.length!=0){
+            //console.log("Not a market order");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
+                //console.log("Limit or Stop loss order");
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
@@ -202,9 +204,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }                
             }    
             else{ // returning swap results from matchOrders function below
+                //console.log("Returning final swap result");
                 return _downscaleDown(request.amount, scalingFactors[indexOut]);
             }        
         }else{ //by default, any order without price specified is a market order
+            //console.log("Market order");
             if (request.tokenIn == IERC20(_currency) || request.tokenOut == IERC20(_security)){
                 //it is a buy (bid), so need the best offer by a counter party
                 params = Params({
@@ -602,6 +606,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     }
 
     function callSwap(bool givenIn, bytes32 i, bytes32 o) private {
+        //console.log("In call swap");
         IVault vault = getVault();
         IVault.SingleSwap memory swap = IVault.SingleSwap({
             poolId: getPoolId(),
