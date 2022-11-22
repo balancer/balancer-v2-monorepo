@@ -90,7 +90,6 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     // We are now ready to verify the Pool
     await task.verify('AaveLinearPool', mockPool.address, [mockPoolArgs]);
 
-    console.log(mockPoolArgs);
     // We can also verify the Asset Manager
     await task.verify('AaveLinearPoolRebalancer', assetManagerAddress, [input.Vault, input.BalancerQueries]);
   }
