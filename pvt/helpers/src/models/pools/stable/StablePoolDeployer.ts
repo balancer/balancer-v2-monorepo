@@ -36,9 +36,12 @@ export default {
       bufferPeriodDuration,
       amplificationParameter,
       from,
+      version,
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
+
+    const versionProvider = await deploy('v2-pool-utils/MockVersionProvider', { args: [version] });
 
     return deploy('v2-pool-stable/MockComposableStablePool', {
       args: [
@@ -56,6 +59,7 @@ export default {
           pauseWindowDuration,
           bufferPeriodDuration,
           owner,
+          versionProvider: versionProvider.address,
         },
       ],
       from,

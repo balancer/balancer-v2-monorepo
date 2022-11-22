@@ -13,23 +13,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersionProvider.sol";
 
-/**
- * @notice Retrieves a contract's version using the given provider.
- *
- * @dev The contract happens to have the same interface as the version provider, but it only holds a reference
- * to the version provider to be more efficient in terms of deployed bytecode size.
- */
-contract Version is IVersionProvider {
-    IVersionProvider private immutable _versionProvider;
+contract MockVersionProvider is IVersionProvider {
+    string private _version;
 
-    constructor(IVersionProvider versionProvider) {
-        _versionProvider = versionProvider;
+    constructor(string memory version) {
+        _version = version;
     }
 
     function version() external view override returns (string memory) {
-        return _versionProvider.version();
+        return _version;
     }
 }

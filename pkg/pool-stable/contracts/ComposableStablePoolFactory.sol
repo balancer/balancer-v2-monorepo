@@ -28,9 +28,11 @@ contract ComposableStablePoolFactory is IVersionProvider, BasePoolSplitCodeFacto
     IProtocolFeePercentagesProvider private _protocolFeeProvider;
     string private _version;
 
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory version)
-        BasePoolSplitCodeFactory(vault, type(ComposableStablePool).creationCode)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory version
+    ) BasePoolSplitCodeFactory(vault, type(ComposableStablePool).creationCode) {
         _protocolFeeProvider = protocolFeeProvider;
         _version = version;
     }

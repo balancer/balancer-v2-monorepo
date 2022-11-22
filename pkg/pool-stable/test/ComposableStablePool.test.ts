@@ -76,6 +76,7 @@ describe('ComposableStablePool', () => {
   function itBehavesAsComposableStablePool(numberOfTokens: number): void {
     let pool: StablePool, tokens: TokenList;
     let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
+    let version: string;
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
@@ -97,6 +98,12 @@ describe('ComposableStablePool', () => {
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
 
+      version = JSON.stringify({
+        name: 'ComposableStablePool',
+        version: '0',
+        deployment: 'test-deployment',
+      });
+
       pool = await StablePool.create({
         tokens,
         rateProviders,
@@ -104,6 +111,7 @@ describe('ComposableStablePool', () => {
         exemptFromYieldProtocolFeeFlags,
         owner,
         admin,
+        version,
         ...params,
       });
 
@@ -119,6 +127,10 @@ describe('ComposableStablePool', () => {
 
         sharedBeforeEach('deploy pool', async () => {
           await deployPool({ swapFeePercentage, amplificationParameter: AMPLIFICATION_PARAMETER }, tokenRates);
+        });
+
+        it('sets the version', async () => {
+          expect(await pool.instance.version()).to.equal(version);
         });
 
         it('sets the name', async () => {
