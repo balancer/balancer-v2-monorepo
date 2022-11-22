@@ -106,8 +106,8 @@ contract ERC4626LinearPool is LinearPool {
             uint256 rate = assetsPerShare.mul(_rateScaleFactor).divDown(FixedPoint.ONE);
             return rate;
         } catch (bytes memory revertData) {
-            // By maliciously reverting here, Gearbox (or any other contract in the call stack) could trick the Pool into
-            // reporting invalid data to the query mechanism for swaps/joins/exits.
+            // By maliciously reverting here, Gearbox (or any other contract in the call stack) could trick the Pool
+            // into reporting invalid data to the query mechanism for swaps/joins/exits.
             // We then check the revert data to ensure this doesn't occur.
             ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
         }

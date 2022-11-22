@@ -116,7 +116,15 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16015018, function () {
 
   describe('create, join, and rebalance', () => {
     it('deploy a linear pool', async () => {
-      const tx = await factory.create('', '', frxEth, erc4626Token, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
+      const tx = await factory.create(
+        '',
+        '',
+        frxEth,
+        erc4626Token,
+        INITIAL_UPPER_TARGET,
+        SWAP_FEE_PERCENTAGE,
+        owner.address
+      );
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
       pool = await task.instanceAt('ERC4626LinearPool', event.args.pool);
@@ -138,14 +146,19 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16015018, function () {
 
       const joinAmount = INITIAL_UPPER_TARGET.mul(2).div(FRXETH_SCALING);
 
-      await vault
-        .connect(holder)
-        .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: frxEth, assetOut: pool.address, amount: joinAmount, userData: '0x' },
-          { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
-          0,
-          MAX_UINT256
-        );
+      await vault.connect(holder).swap(
+        {
+          kind: SwapKind.GivenIn,
+          poolId,
+          assetIn: frxEth,
+          assetOut: pool.address,
+          amount: joinAmount,
+          userData: '0x',
+        },
+        { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
+        0,
+        MAX_UINT256
+      );
 
       // Assert join amount - some fees will be collected as we're going over the upper target.
       const excess = joinAmount.mul(FRXETH_SCALING).sub(INITIAL_UPPER_TARGET);
@@ -170,14 +183,19 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16015018, function () {
       const { upperTarget } = await pool.getTargets();
       const joinAmount = upperTarget.mul(5).div(FRXETH_SCALING);
 
-      await vault
-        .connect(holder)
-        .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: frxEth, assetOut: pool.address, amount: joinAmount, userData: '0x' },
-          { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
-          0,
-          MAX_UINT256
-        );
+      await vault.connect(holder).swap(
+        {
+          kind: SwapKind.GivenIn,
+          poolId,
+          assetIn: frxEth,
+          assetOut: pool.address,
+          amount: joinAmount,
+          userData: '0x',
+        },
+        { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
+        0,
+        MAX_UINT256
+      );
     });
 
     itRebalancesThePool(LinearPoolState.MAIN_EXCESS);
@@ -221,14 +239,19 @@ describeForkTest('ERC4626LinearPoolFactory', 'mainnet', 16015018, function () {
 
       const joinAmount = midpoint.div(100).div(FRXETH_SCALING);
 
-      await vault
-        .connect(holder)
-        .swap(
-          { kind: SwapKind.GivenIn, poolId, assetIn: frxEth, assetOut: pool.address, amount: joinAmount, userData: '0x' },
-          { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
-          0,
-          MAX_UINT256
-        );
+      await vault.connect(holder).swap(
+        {
+          kind: SwapKind.GivenIn,
+          poolId,
+          assetIn: frxEth,
+          assetOut: pool.address,
+          amount: joinAmount,
+          userData: '0x',
+        },
+        { sender: holder.address, recipient: holder.address, fromInternalBalance: false, toInternalBalance: false },
+        0,
+        MAX_UINT256
+      );
     });
 
     itRebalancesThePool(LinearPoolState.BALANCED);

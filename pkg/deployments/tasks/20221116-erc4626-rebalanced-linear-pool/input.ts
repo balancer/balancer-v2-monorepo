@@ -13,5 +13,5 @@ const BalancerQueries = new Task('20220721-balancer-queries', TaskMode.READ_ONLY
 export default {
   Vault,
   ProtocolFeePercentagesProvider,
-  BalancerQueries
+  BalancerQueries,
 };
