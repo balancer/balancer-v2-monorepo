@@ -161,5 +161,15 @@
         "multicall(bytes[])": "0xa96c0afabf02c31b02bc22d11bd1916fc2af814a7ef07810f1fe61455e25846c"
       }
     }
+  },
+  "20221123-pool-recovery-helper": {
+    "PoolRecoveryHelper": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addPoolFactory(address)": "0x90ce8036a67bbe2451d4f50ab7353343339db901728ae2de09928006819ee686",
+        "enableRecoveryMode(address)": "0xd803b6aadd1ec41e42e680b246ebc3f68425ee6cfba1883b53b8fd01e7f37c6b",
+        "removePoolFactory(address)": "0x25cbdd96392463c2c0b1e5a2db364a18327ef561b6ceeb4a444b694dbf2c7890"
+      }
+    }
   }
 }
