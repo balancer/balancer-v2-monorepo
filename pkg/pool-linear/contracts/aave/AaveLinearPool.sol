@@ -17,10 +17,11 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IStaticAToken.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "../LinearPool.sol";
 
-contract AaveLinearPool is LinearPool {
+contract AaveLinearPool is LinearPool, Version {
     ILendingPool private immutable _lendingPool;
 
     struct ConstructorArgs {
@@ -35,6 +36,7 @@ contract AaveLinearPool is LinearPool {
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
+        IVersionProvider versionProvider;
     }
 
     constructor(ConstructorArgs memory args)
@@ -51,6 +53,7 @@ contract AaveLinearPool is LinearPool {
             args.bufferPeriodDuration,
             args.owner
         )
+        Version(args.versionProvider)
     {
         _lendingPool = IStaticAToken(address(args.wrappedToken)).LENDING_POOL();
         _require(address(args.mainToken) == IStaticAToken(address(args.wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);

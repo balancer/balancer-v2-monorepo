@@ -18,6 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersionProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
@@ -28,20 +29,33 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "./AaveLinearPool.sol";
 import "./AaveLinearPoolRebalancer.sol";
 
-contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, ReentrancyGuard, FactoryWidePauseWindow {
+contract AaveLinearPoolFactory is
+    ILastCreatedPoolFactory,
+    IVersionProvider,
+    BasePoolFactory,
+    ReentrancyGuard,
+    FactoryWidePauseWindow
+{
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
     IBalancerQueries private immutable _queries;
+    string private _version;
 
     address private _lastCreatedPool;
 
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        IBalancerQueries queries
+        IBalancerQueries queries,
+        string memory version
     ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) {
         _queries = queries;
+        _version = version;
+    }
+
+    function version() external view override returns (string memory) {
+        return _version;
     }
 
     function getLastCreatedPool() external view override returns (address) {
@@ -103,7 +117,8 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
             swapFeePercentage: swapFeePercentage,
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner
+            owner: owner,
+            versionProvider: this
         });
 
         AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));
