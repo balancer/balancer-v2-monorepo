@@ -20,7 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "hardhat/console.sol";
 
-contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
+contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for *;
