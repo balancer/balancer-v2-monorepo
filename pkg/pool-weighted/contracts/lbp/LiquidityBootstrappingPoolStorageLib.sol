@@ -139,7 +139,9 @@ library LiquidityBootstrappingPoolStorageLib {
             _TIMESTAMP_BIT_LENGTH
         );
 
-        // We assume that newStartWeights.length == newEndWeights.length.
+        // This performs no checks on the validity of the weights, assuming these are done externally.
+        // In particular, we assume that newStartWeights.length == newEndWeights.length, and all
+        // newEndWeights are above the minimum.
         //
         // We do not need to check that `newStartWeights <= _MAX_LBP_TOKENS` as the `_MAX_LBP_TOKENS + 1`th token will
         // attempt to write past the 256th bit of `poolState`, resulting in `WordCodec` reverting.
