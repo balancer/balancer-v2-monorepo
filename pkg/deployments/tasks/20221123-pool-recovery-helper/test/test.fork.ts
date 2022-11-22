@@ -27,9 +27,10 @@ describeForkTest('PoolRecoveryHelper', 'mainnet', 15998800, function () {
 
   before('load vault', async () => {
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    vault = await vaultTask.deployedInstance('Vault');
 
-    vault = await vaultTask.instanceAt('Vault', await helper.getVault());
-    authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
+    const authorizerTask = new Task('20210418-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre));
+    authorizer = await authorizerTask.deployedInstance('Authorizer');
   });
 
   before('load signers', async () => {
