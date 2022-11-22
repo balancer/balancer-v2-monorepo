@@ -17,4 +17,34 @@ export default {
       WeightedPoolFactoryTask.output({ network: 'mainnet' }).WeightedPoolFactory,
     ],
   },
+  goerli: {
+    InitialFactories: [
+      ComposableStablePoolFactoryTask.output({ network: 'goerli' }).ComposableStablePoolFactory,
+      WeightedPoolFactoryTask.output({ network: 'goerli' }).WeightedPoolFactory,
+    ],
+  },
+  polygon: {
+    InitialFactories: [
+      ComposableStablePoolFactoryTask.output({ network: 'polygon' }).ComposableStablePoolFactory,
+      WeightedPoolFactoryTask.output({ network: 'polygon' }).WeightedPoolFactory,
+    ],
+  },
+  arbitrum: {
+    InitialFactories: [
+      ComposableStablePoolFactoryTask.output({ network: 'arbitrum' }).ComposableStablePoolFactory,
+      WeightedPoolFactoryTask.output({ network: 'arbitrum' }).WeightedPoolFactory,
+    ],
+  },
+  optimism: {
+    InitialFactories: [
+      ComposableStablePoolFactoryTask.output({ network: 'optimism' }).ComposableStablePoolFactory,
+      WeightedPoolFactoryTask.output({ network: 'optimism' }).WeightedPoolFactory,
+    ],
+  },
+  bsc: {
+    InitialFactories: [
+      ComposableStablePoolFactoryTask.output({ network: 'bsc' }).ComposableStablePoolFactory,
+      WeightedPoolFactoryTask.output({ network: 'bsc' }).WeightedPoolFactory,
+    ],
+  },
 };
