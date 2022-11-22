@@ -1,6 +1,6 @@
 # 2022-11-22 - Pool Recovery Helper
 
-Deployment of the `PoolRecoveryHelper`, which allows creating Managed Pools.
+Deployment of the `PoolRecoveryHelper`, which provides a permissionless way to make Pools enter Recovery Mode, provided one of their Rate Providers is failing..
 
 ## Useful Files
 
