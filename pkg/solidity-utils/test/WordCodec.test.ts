@@ -321,7 +321,7 @@ describe('WordCodec', () => {
       expect(await lib.isOtherStateUnchanged(ONES_BYTES32, ZERO_BYTES32, 0, 255)).to.be.false;
 
       // Realistic example. Insert a value, *other* bits should be unchanged.
-      const changedValue = await await lib.insertUint(ONES_BYTES32, 0, 192, 32);
+      const changedValue = await lib.insertUint(ONES_BYTES32, 0, 192, 32);
       expect(await lib.isOtherStateUnchanged(ONES_BYTES32, changedValue, 192, 32)).to.be.true;
     });
   });
