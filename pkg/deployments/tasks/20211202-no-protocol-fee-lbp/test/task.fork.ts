@@ -11,11 +11,9 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
@@ -39,6 +37,8 @@ describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 'mainnet', 14
   const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
 
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
+
   before('run task', async () => {
     task = new Task('20211202-no-protocol-fee-lbp', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
@@ -47,7 +47,7 @@ describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 'mainnet', 14
 
   before('load signers', async () => {
     owner = await getSigner();
-    whale = await impersonateWhale(fp(100));
+    whale = await impersonate(LARGE_TOKEN_HOLDER);
   });
 
   before('load vault and tokens', async () => {
@@ -158,7 +158,7 @@ describeForkTest('NoProtocolFeeLiquidityBootstrappingPoolFactory', 'mainnet', 14
     const authorizer = await vaultTask.instanceAt('Authorizer', await vault.getAuthorizer());
 
     const DEFAULT_ADMIN_ROLE = await authorizer.DEFAULT_ADMIN_ROLE();
-    const admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0), fp(100));
+    const admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0));
 
     await authorizer.connect(admin).grantRole(await actionId(factory, 'disable'), admin.address);
     await factory.connect(admin).disable();
