@@ -9,6 +9,7 @@
 - Deployed core Pool factories (`WeightedPoolFactory`, `ComposableStablePoolFactory`, `LiquidityBootstrappingPool`, `AaveLinearPool`) to BNB.
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
 - Deployed `AaveLinearPoolFactory` to all networks.
+- Deployed `PoolRecoveryHelper` to all networks.
 
 ## 3.0.0 (2022-10-25)
 
