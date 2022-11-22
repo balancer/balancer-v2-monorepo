@@ -20,7 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
-
+import "hardhat/console.sol";
 
 
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
@@ -80,23 +80,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     //mapping user's order reference to positions
     mapping(bytes32 => uint256) private _userOrderIndex;
 
-    //mapping market order no to order reference
-    mapping(uint256 => bytes32) private _marketOrders;
+    //market order book
+    bytes32[] private _marketOrders;
 
-    //size of market order book
-    uint256 marketOrderbook;
+    //limit order book
+    bytes32[] private _limitOrders;
 
-    //mapping limit order no to order reference
-    mapping(uint256 => bytes32) private _limitOrders;
-
-    //size of limit order book
-    uint256 limitOrderbook;
-
-    //mapping stop order no to order reference
-    mapping(uint256 => bytes32) private _stopOrders;
-
-    //size of stop loss order book
-    uint256 stopOrderbook;
+    //stop loss order book
+    bytes32[] private _stopOrders;
 
     //order matching related
     bytes32 private _bestBid;
@@ -378,19 +369,16 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         _userOrderRefs[_request.from].push(ref);
         if (_params.trade == OrderType.Market) {
             orders[ref].status = OrderStatus.Open;
-            _marketOrders[orders[ref].orderno] = ref;
-            marketOrderbook = marketOrderbook + 1;
+            _marketOrders.push(ref);
             return matchOrders(ref, OrderType.Market);
         } else if (_params.trade == OrderType.Limit) {
             orders[ref].status = OrderStatus.Open;
-            _limitOrders[orders[ref].orderno] = ref;
-            limitOrderbook = limitOrderbook + 1;
-            checkLimitOrders(_params.price, OrderType.Limit);
+            _limitOrders.push(ref);
+            checkLimitOrders(ref, OrderType.Limit);
         } else if (_params.trade == OrderType.Stop) {
             orders[ref].status = OrderStatus.Open;
-            _stopOrders[orders[ref].orderno] = ref;
-            stopOrderbook = stopOrderbook + 1;
-            checkStopOrders(_params.price, OrderType.Stop);
+            _stopOrders.push(ref);
+            checkStopOrders(ref, OrderType.Stop);
         }
 
     }
@@ -410,19 +398,17 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         orders[ref].qty = _qty;
         orders[ref].dt = block.timestamp;
         if (orders[ref].otype == OrderType.Limit) {
-            _limitOrders[orders[ref].orderno] = ref;
-            checkLimitOrders(_price, OrderType.Limit);
+            checkLimitOrders(ref, OrderType.Limit);
         } else if (orders[ref].otype == OrderType.Stop) {
-            _stopOrders[orders[ref].orderno] = ref;
-            checkStopOrders(_price, OrderType.Stop);
+            checkStopOrders(ref, OrderType.Stop);
         }        
     }
 
     function cancelOrder(bytes32 ref) external override {
         require(orders[ref].party == msg.sender, "Sender is not order creator");
-        delete _marketOrders[orders[ref].orderno];
-        delete _limitOrders[orders[ref].orderno];
-        delete _stopOrders[orders[ref].orderno];
+        //delete _marketOrders[ref];
+        //delete _limitOrders[ref];
+        //delete _stopOrders[ref];
         delete orders[ref];
         delete _orderRefs[_orderIndex[ref]];
         delete _orderIndex[ref];
@@ -432,22 +418,19 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
 
     //check if a buy order in the limit order book can execute over the prevailing (low) price passed to the function
     //check if a sell order in the limit order book can execute under the prevailing (high) price passed to the function
-    function checkLimitOrders(uint256 _priceFilled, OrderType _trade) private {
+    function checkLimitOrders(bytes32 _ref, OrderType _trade) private {
         bytes32 ref;
-        for (uint256 i = 0; i < limitOrderbook; i++) {
-            if ((orders[_limitOrders[i]].order == Order.Buy && orders[_limitOrders[i]].price >= _priceFilled) ||
-                (orders[_limitOrders[i]].order == Order.Sell && orders[_limitOrders[i]].price <= _priceFilled)){
-                _marketOrders[orders[_limitOrders[i]].orderno] = _limitOrders[i];
-                marketOrderbook = marketOrderbook + 1;
+        for (uint256 i = 0; i < _limitOrders.length; i++) {
+            if ((orders[_limitOrders[i]].order == Order.Buy && orders[_limitOrders[i]].price >= orders[_ref].price) ||
+                (orders[_limitOrders[i]].order == Order.Sell && orders[_limitOrders[i]].price <= orders[_ref].price)){
+                _marketOrders.push(_limitOrders[i]);
                 ref = _limitOrders[i];
-                reorder(i, OrderType.Limit);
-                if(_trade!=OrderType.Market){
-                    _marketOrders[orders[_limitOrders[limitOrderbook-1]].orderno] = _limitOrders[limitOrderbook-1];
-                    marketOrderbook = marketOrderbook + 1;
-                    delete _limitOrders[limitOrderbook-1];
-                    limitOrderbook = limitOrderbook - 1;        
-                    //reorder(limitOrderbook, OrderType.Limit);
-                }
+                reorder(i, OrderType.Limit);     
+                if(_trade!=OrderType.Market && _limitOrders[orders[_ref].orderno]==_ref){
+                //only if the consecutive order is a limit or stop loss order, it goes to the market order book
+                    _marketOrders.push(_ref);
+                    reorder(_orderIndex[_ref], OrderType.Limit);
+                }           
                 matchOrders(ref, OrderType.Limit);
             } 
         }
@@ -455,22 +438,19 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
 
     //check if a buy order in the stoploss order book can execute under the prevailing (high) price passed to the function
     //check if a sell order in the stoploss order book can execute over the prevailing (low) price passed to the function
-    function checkStopOrders(uint256 _priceFilled, OrderType _trade) private {
+    function checkStopOrders(bytes32 _ref, OrderType _trade) private {
         bytes32 ref;
-        for (uint256 i = 0; i < stopOrderbook; i++) {
-            if ((orders[_stopOrders[i]].order == Order.Buy && orders[_stopOrders[i]].price <= _priceFilled) ||
-                (orders[_stopOrders[i]].order == Order.Sell && orders[_stopOrders[i]].price >= _priceFilled)){
-                _marketOrders[orders[_stopOrders[i]].orderno] = _stopOrders[i];
-                marketOrderbook = marketOrderbook + 1;
+        for (uint256 i = 0; i < _stopOrders.length; i++) {
+            if ((orders[_stopOrders[i]].order == Order.Buy && orders[_stopOrders[i]].price <= orders[_ref].price) ||
+                (orders[_stopOrders[i]].order == Order.Sell && orders[_stopOrders[i]].price >= orders[_ref].price)){
+                _marketOrders.push(_stopOrders[i]);
                 ref = _stopOrders[i];
-                reorder(i, OrderType.Stop);
-                if(_trade!=OrderType.Market){
-                    _marketOrders[orders[_stopOrders[stopOrderbook-1]].orderno] = _limitOrders[stopOrderbook-1];
-                    marketOrderbook = marketOrderbook + 1;
-                    delete _stopOrders[stopOrderbook-1];
-                    stopOrderbook = stopOrderbook - 1;
-                    //reorder(stopOrderbook, OrderType.Stop);
-                }
+                reorder(i, OrderType.Stop);     
+                if(_trade!=OrderType.Market && _stopOrders[orders[_ref].orderno]==_ref){
+                //only if the consecutive order is a limit or stop loss order, it goes to the market order book
+                    _marketOrders.push(_ref);
+                    reorder(_orderIndex[_ref], OrderType.Stop);
+                }           
                 matchOrders(ref, OrderType.Stop);
             } 
         }
@@ -478,35 +458,32 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
 
     function reorder(uint256 position, OrderType list) private {
         if (list == OrderType.Market) {
-            for (uint256 i = position; i < marketOrderbook; i++) {
-                if (i == marketOrderbook - 1){ 
+            for (uint256 i = position; i < _marketOrders.length; i++) {
+                if (i == _marketOrders.length - 1){ 
                     delete _marketOrders[position];
                 }
                 else _marketOrders[position] = _marketOrders[position + 1];
             }
-            marketOrderbook = marketOrderbook - 1;
         } else if (list == OrderType.Limit) {
-            for (uint256 i = position; i < limitOrderbook; i++) {
-                if (i == limitOrderbook - 1) {
+            for (uint256 i = position; i < _limitOrders.length; i++) {
+                if (i == _limitOrders.length - 1) {
                     delete _limitOrders[position];
                 }
                 else _limitOrders[position] = _limitOrders[position + 1];
             }
-            limitOrderbook = limitOrderbook - 1;
         } else if (list == OrderType.Stop) {
-            for (uint256 i = position; i < stopOrderbook; i++) {
-                if (i == stopOrderbook - 1) {
+            for (uint256 i = position; i < _stopOrders.length; i++) {
+                if (i == _stopOrders.length - 1) {
                     delete _stopOrders[position];
                 }
                 else _stopOrders[position] = _stopOrders[position + 1];
             }
-            stopOrderbook = stopOrderbook - 1;
         }
     }
     //match market orders. Sellers get the best price (highest bid) they can sell at.
     //Buyers get the best price (lowest offer) they can buy at.
     function matchOrders(bytes32 _ref, OrderType _trade) private returns (uint256, uint256) {
-        for (uint256 i = 0; i < marketOrderbook; i++) {
+        for (uint256 i = 0; i < _marketOrders.length; i++) {
             if (
                 _marketOrders[i] != _ref &&
                 orders[_marketOrders[i]].party != orders[_ref].party && 
@@ -536,8 +513,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 }
             }
         }
-        if (orders[_ref].order == Order.Sell) {     
+        if (orders[_ref].order == Order.Sell) {               
             if (_bestBid != "") {
+                console.log("In match sell order");  
                 uint256 qty;                
                 if (orders[_bestBid].qty >= orders[_ref].qty) {                    
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
@@ -582,12 +560,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 callSwap(true, _bestBid, _ref);
             }
             else if(_trade==OrderType.Market){
-                checkLimitOrders(orders[_ref].price, _trade);
-                checkStopOrders(orders[_ref].price, _trade);
+                console.log("Checking limit and stop orders for sells");  
+                checkLimitOrders(_ref, _trade);
+                checkStopOrders(_ref, _trade);
             }
         } 
-        else if (orders[_ref].order == Order.Buy) {
+        else if (orders[_ref].order == Order.Buy) {            
             if (_bestOffer != "") {
+                console.log("In match buy order");
                 uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
@@ -633,8 +613,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 callSwap(false, _ref, _bestOffer);
             }
             else if(_trade==OrderType.Market){
-                checkLimitOrders(orders[_ref].price, _trade);
-                checkStopOrders(orders[_ref].price, _trade);
+                console.log("Checking limit and stop orders for buys");
+                checkLimitOrders(_ref, _trade);
+                checkStopOrders(_ref, _trade);
             }
         }
     }
@@ -655,7 +636,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             recipient: payable(orders[o].party),
             toInternalBalance: false
         });
-        vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
+        console.log("Going to call swap on Vault");
+        //vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 
     function reportTrade(
@@ -748,7 +730,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         orders[_orderRef].status = OrderStatus.Open;
         orders[_orderRef].orderno = _orderRefs.length;
         _marketOrders[orders[_orderRef].orderno] = _orderRef;
-        marketOrderbook = marketOrderbook + 1;
     }
 
     function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) external override {
