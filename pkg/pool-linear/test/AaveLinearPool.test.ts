@@ -53,8 +53,9 @@ describe('AaveLinearPool', function () {
   sharedBeforeEach('deploy pool factory', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    const version = 'test';
     poolFactory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address, version],
     });
   });
 

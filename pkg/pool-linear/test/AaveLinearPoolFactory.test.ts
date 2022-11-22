@@ -15,6 +15,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 describe('AaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
+  let version: string;
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
@@ -30,8 +31,13 @@ describe('AaveLinearPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    version = JSON.stringify({
+      name: 'AaveRebalancedLinearPool',
+      version: '0',
+      deployment: 'test-deployment',
+    });
     factory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address, version],
     });
     creationTime = await currentTimestamp();
 
@@ -58,7 +64,7 @@ describe('AaveLinearPoolFactory', function () {
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');
-    return deployedAt('LinearPool', event.args.pool);
+    return deployedAt('AaveLinearPool', event.args.pool);
   }
 
   describe('constructor arguments', () => {
@@ -70,6 +76,14 @@ describe('AaveLinearPoolFactory', function () {
 
     it('sets the vault', async () => {
       expect(await pool.getVault()).to.equal(vault.address);
+    });
+
+    it('checks the factory version', async () => {
+      expect(await factory.version()).to.equal(version);
+    });
+
+    it('checks the pool version', async () => {
+      expect(await pool.version()).to.equal(version);
     });
 
     it('registers tokens in the vault', async () => {
