@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
-import "hardhat/console.sol";
 
 
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
@@ -46,21 +45,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     struct Params {
         OrderType trade;
         uint256 price;
-    }
-    enum SwapKind { GIVEN_IN, GIVEN_OUT }
-    struct SingleSwap {
-        bytes32 poolId;
-        SwapKind kind;
-        IAsset assetIn;
-        IAsset assetOut;
-        uint256 amount;
-        bytes userData;
-    }
-    struct FundManagement {
-        address sender;
-        bool fromInternalBalance;
-        address payable recipient;
-        bool toInternalBalance;
     }
     //counter for block timestamp nonce for creating unique order references
     uint256 private _previousTs = 0;
@@ -515,7 +499,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
         }
         if (orders[_ref].order == Order.Sell) {               
             if (_bestBid != "") {
-                console.log("In match sell order");  
                 uint256 qty;                
                 if (orders[_bestBid].qty >= orders[_ref].qty) {                    
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
@@ -559,15 +542,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 //calling onSwap to return results for the seller
                 callSwap(true, _bestBid, _ref);
             }
-            else if(_trade==OrderType.Market){
-                console.log("Checking limit and stop orders for sells");  
+            else if(_trade==OrderType.Market){ 
                 checkLimitOrders(_ref, _trade);
                 checkStopOrders(_ref, _trade);
             }
         } 
         else if (orders[_ref].order == Order.Buy) {            
             if (_bestOffer != "") {
-                console.log("In match buy order");
                 uint256 qty;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
@@ -613,7 +594,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 callSwap(false, _ref, _bestOffer);
             }
             else if(_trade==OrderType.Market){
-                console.log("Checking limit and stop orders for buys");
                 checkLimitOrders(_ref, _trade);
                 checkStopOrders(_ref, _trade);
             }
@@ -636,8 +616,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
             recipient: payable(orders[o].party),
             toInternalBalance: false
         });
-        console.log("Going to call swap on Vault");
-        //vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
+        vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 
     function reportTrade(
