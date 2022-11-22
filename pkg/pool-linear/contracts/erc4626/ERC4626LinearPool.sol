@@ -73,9 +73,6 @@ contract ERC4626LinearPool is LinearPool {
         // whereas mainToken is DAI. But the 1:1 relationship holds, and
         // the pool is still valid.
 
-        // Check if maintoken and wrappedToken asset matches
-        _require(address(args.mainToken) == IERC4626(address(args.wrappedToken)).asset(), Errors.TOKENS_MISMATCH);
-
         // _getWrappedTokenRate is scaled e18, so we may need to scale IERC4626.convertToAssets()
         uint256 wrappedTokenDecimals = ERC20(address(args.wrappedToken)).decimals();
         uint256 mainTokenDecimals = ERC20(address(args.mainToken)).decimals();
