@@ -14,6 +14,12 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+/**
+ * @notice Simple interface to retrieve the version of a deployed contract.
+ *
+ * @dev The contract implementing the interface may provide the actual version, or forward the call to another
+ * version provider (e.g. a pool will forward the call to its respective pool factory).
+ */
 interface IVersionProvider {
     /**
      * @dev Returns a JSON representation of the contract version containing name, version number and task ID.
