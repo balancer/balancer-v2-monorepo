@@ -36,7 +36,7 @@ contract AaveLinearPool is LinearPool, Version {
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
-        IVersionProvider versionProvider;
+        string version;
     }
 
     constructor(ConstructorArgs memory args)
@@ -53,7 +53,7 @@ contract AaveLinearPool is LinearPool, Version {
             args.bufferPeriodDuration,
             args.owner
         )
-        Version(args.versionProvider)
+        Version(args.version)
     {
         _lendingPool = IStaticAToken(address(args.wrappedToken)).LENDING_POOL();
         _require(address(args.mainToken) == IStaticAToken(address(args.wrappedToken)).ASSET(), Errors.TOKENS_MISMATCH);

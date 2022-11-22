@@ -18,8 +18,9 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersionProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IPoolVersion.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
@@ -31,7 +32,8 @@ import "./AaveLinearPoolRebalancer.sol";
 
 contract AaveLinearPoolFactory is
     ILastCreatedPoolFactory,
-    IVersionProvider,
+    IPoolVersion,
+    Version,
     BasePoolFactory,
     ReentrancyGuard,
     FactoryWidePauseWindow
@@ -40,26 +42,27 @@ contract AaveLinearPoolFactory is
     uint256 private _nextRebalancerSalt;
 
     IBalancerQueries private immutable _queries;
-    string private _version;
 
     address private _lastCreatedPool;
+    string private _poolVersion;
 
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IBalancerQueries queries,
-        string memory version
-    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) {
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) Version(factoryVersion) {
         _queries = queries;
-        _version = version;
-    }
-
-    function version() external view override returns (string memory) {
-        return _version;
+        _poolVersion = poolVersion;
     }
 
     function getLastCreatedPool() external view override returns (address) {
         return _lastCreatedPool;
+    }
+
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
     }
 
     function _create(bytes memory constructorArgs) internal virtual override returns (address) {
@@ -118,7 +121,7 @@ contract AaveLinearPoolFactory is
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
             owner: owner,
-            versionProvider: this
+            version: getPoolVersion()
         });
 
         AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));

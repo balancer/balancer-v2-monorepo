@@ -12,21 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
-
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
+pragma solidity >=0.7.0 <0.9.0;
 
 /**
- * @notice Retrieves a contract's version set at creation time from storage.
+ * @notice Simple interface to retrieve the version of a deployed contract.
  */
-contract Version is IVersion {
-    string private _version;
-
-    constructor(string memory version) {
-        _version = version;
-    }
-
-    function version() external view override returns (string memory) {
-        return _version;
-    }
+interface IVersion {
+    /**
+     * @dev Returns a JSON representation of the contract version containing name, version number and task ID.
+     */
+    function version() external view returns (string memory);
 }
