@@ -17,6 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
+
 import "../../contracts/WeightedMath.sol";
 
 import "../../contracts/test/MockLiquidityBootstrappingPoolStorageLib.sol";
@@ -42,36 +44,16 @@ contract LiquidityBootstrappingPoolStorageLibTest is Test {
         mock = new MockLiquidityBootstrappingPoolStorageLib();
     }
 
-    function clearWordAtPosition(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (bytes32 clearedWord) {
-        uint256 mask = (1 << bitLength) - 1;
-        clearedWord = bytes32(uint256(word) & ~(mask << offset));
-    }
-
-    function assertOtherStateUnchanged(
-        bytes32 oldPoolState,
-        bytes32 newPoolState,
-        uint256 offset,
-        uint256 bitLength
-    ) internal returns (bool) {
-        bytes32 clearedOldState = clearWordAtPosition(oldPoolState, offset, bitLength);
-        bytes32 clearedNewState = clearWordAtPosition(newPoolState, offset, bitLength);
-        assertEq(clearedOldState, clearedNewState);
-    }
-
     function testSetRecoveryMode(bytes32 poolState, bool enabled) external {
         bytes32 newPoolState = mock.setRecoveryMode(poolState, enabled);
-        assertOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_BIT_OFFSET, 1);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_BIT_OFFSET, 1));
 
         assertEq(mock.getRecoveryMode(newPoolState), enabled);
     }
 
     function testSwapsEnabled(bytes32 poolState, bool enabled) external {
         bytes32 newPoolState = mock.setSwapEnabled(poolState, enabled);
-        assertOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1));
 
         assertEq(mock.getSwapEnabled(newPoolState), enabled);
     }
@@ -114,16 +96,18 @@ contract LiquidityBootstrappingPoolStorageLibTest is Test {
                 newEndWeights
             );
 
-            assertOtherStateUnchanged(
-                poolState,
-                newPoolState,
-                _START_TIME_OFFSET,
-                2 *
-                    _TIMESTAMP_BIT_LENGTH +
-                    _MAX_LBP_TOKENS *
-                    _START_WEIGHT_BIT_LENGTH *
-                    _MAX_LBP_TOKENS *
-                    _END_WEIGHT_BIT_LENGTH
+            assertTrue(
+                WordCodecHelpers.isOtherStateUnchanged(
+                    poolState,
+                    newPoolState,
+                    _START_TIME_OFFSET,
+                    2 *
+                        _TIMESTAMP_BIT_LENGTH +
+                        _MAX_LBP_TOKENS *
+                        _START_WEIGHT_BIT_LENGTH *
+                        _MAX_LBP_TOKENS *
+                        _END_WEIGHT_BIT_LENGTH
+                )
             );
 
             (
