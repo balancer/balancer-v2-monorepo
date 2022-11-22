@@ -26,6 +26,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
@@ -50,6 +51,7 @@ import "./StableMath.sol";
  */
 contract ComposableStablePool is
     IRateProvider,
+    Version,
     BaseGeneralPool,
     StablePoolAmplification,
     ComposableStablePoolRates,
@@ -79,6 +81,7 @@ contract ComposableStablePool is
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
+        IVersionProvider versionProvider;
     }
 
     constructor(NewPoolParams memory params)
@@ -98,6 +101,7 @@ contract ComposableStablePool is
         ComposableStablePoolStorage(_extractStorageParams(params))
         ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        Version(params.versionProvider)
     {
         // solhint-disable-previous-line no-empty-blocks
     }
