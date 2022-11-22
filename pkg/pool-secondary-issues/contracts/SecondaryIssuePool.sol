@@ -538,9 +538,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
                 //calling onSwap to return results for the buyer
-                callSwap(false, _ref, _bestBid);
+                // callSwap(false, _ref, _bestBid);
                 //calling onSwap to return results for the seller
-                callSwap(true, _bestBid, _ref);
+                // callSwap(true, _bestBid, _ref);
             }
             else if(_trade==OrderType.Market){ 
                 checkLimitOrders(_ref, _trade);
@@ -589,9 +589,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);          
                 //calling onSwap to return results for the seller
-                callSwap(true, _bestOffer, _ref);
+                // callSwap(true, _bestOffer, _ref);
                 //calling onSwap to return results for the buyer
-                callSwap(false, _ref, _bestOffer);
+                // callSwap(false, _ref, _bestOffer);
             }
             else if(_trade==OrderType.Market){
                 checkLimitOrders(_ref, _trade);
