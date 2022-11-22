@@ -101,7 +101,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade, IAsset {
     event BestAvailableTrades(uint256 bestUnfilledBid, uint256 bestUnfilledOffer);
 
     event Offer(address indexed security, uint256 secondaryOffer);
-    IBalancerQueries internal _queries;
 
     constructor(
         IVault vault,
