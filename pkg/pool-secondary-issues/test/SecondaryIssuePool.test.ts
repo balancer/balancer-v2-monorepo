@@ -177,7 +177,7 @@ describe('SecondaryPool', function () {
 
       sharedBeforeEach('initialize values ', async () => {
         sell_amount = BigNumber.from("10"); //qty
-        buy_amount = BigNumber.from("5"); //qty
+        buy_amount = BigNumber.from("5"); //price
       });
       
       it('accepts buy order', async () => {
@@ -228,8 +228,8 @@ describe('SecondaryPool', function () {
       let buy_amount: BigNumber;
 
       sharedBeforeEach('initialize values ', async () => {
-        sell_amount = BigNumber.from("10"); //qty
-        buy_amount = BigNumber.from("15"); //qty
+        sell_amount = BigNumber.from("12"); //qty
+        buy_amount = BigNumber.from("15"); //price
       });
       
       it('accepts limit order', async () => {
@@ -279,11 +279,11 @@ describe('SecondaryPool', function () {
     let buy_amount: BigNumber;
 
     sharedBeforeEach('initialize values ', async () => {
-      sell_amount = BigNumber.from("10"); //qty
-      buy_amount = BigNumber.from("25"); //qty
+      sell_amount = BigNumber.from("12"); //qty
+      buy_amount = BigNumber.from("25"); //price
     });
     
-    it('accepts sell order', async () => {
+    it('accepts stop loss order', async () => {
       const stop_order = await pool.swapGivenOut({
         in: pool.securityIndex,
         out: pool.currencyIndex,
