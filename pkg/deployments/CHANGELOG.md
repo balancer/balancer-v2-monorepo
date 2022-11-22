@@ -11,6 +11,10 @@
 - Deployed `AaveLinearPoolFactory` to all networks.
 - Deployed `PoolRecoveryHelper` to all networks.
 
+### API Changes
+
+- Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.
+
 ## 3.0.0 (2022-10-25)
 
 ### New Deployments

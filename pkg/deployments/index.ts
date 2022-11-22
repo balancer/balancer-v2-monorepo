@@ -28,7 +28,7 @@ export async function getBalancerContractAt(task: string, contract: string, addr
  * @param task ID of the task to look the ABI of the required contract
  * @param contract Name of the contract to looking the ABI of
  */
-export async function getBalancerContractAbi(task: string, contract: string): Promise<unknown[]> {
+export function getBalancerContractAbi(task: string, contract: string): unknown[] {
   return require(getBalancerContractAbiPath(task, contract));
 }
 
@@ -37,7 +37,7 @@ export async function getBalancerContractAbi(task: string, contract: string): Pr
  * @param task ID of the task to look the creation code of the required contract
  * @param contract Name of the contract to looking the creation code of
  */
-export async function getBalancerContractBytecode(task: string, contract: string): Promise<string> {
+export function getBalancerContractBytecode(task: string, contract: string): string {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require(getBalancerContractBytecodePath(task, contract)).creationCode;
 }
@@ -48,8 +48,8 @@ export async function getBalancerContractBytecode(task: string, contract: string
  * @param contract Name of the contract to fetched the address of
  * @param network Name of the network looking the deployment for (e.g. mainnet, rinkeby, ropsten, etc)
  */
-export async function getBalancerContractAddress(task: string, contract: string, network: string): Promise<string> {
-  const output = await getBalancerDeployment(task, network);
+export function getBalancerContractAddress(task: string, contract: string, network: string): string {
+  const output = getBalancerDeployment(task, network);
   return output[contract];
 }
 
@@ -58,7 +58,7 @@ export async function getBalancerContractAddress(task: string, contract: string,
  * @param task ID of the task to look the deployment output of the required network
  * @param network Name of the network looking the deployment output for (e.g. mainnet, rinkeby, ropsten, etc)
  */
-export async function getBalancerDeployment(task: string, network: string): Promise<{ [key: string]: string }> {
+export function getBalancerDeployment(task: string, network: string): { [key: string]: string } {
   return require(getBalancerDeploymentPath(task, network));
 }
 
