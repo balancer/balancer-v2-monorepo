@@ -665,5 +665,15 @@
         "updateProtocolFeePercentageCache()": "0x5f506869a4e7d71cdd3300156e93255616486d8a28c659a096cac8055bdf1e6d"
       }
     }
+  },
+  "20221123-pool-recovery-helper": {
+    "PoolRecoveryHelper": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addPoolFactory(address)": "0x1ef9ebf17e6cb20013888ccc67c7738c82a57e350ff8b2f45c4034a1c4fe7a82",
+        "enableRecoveryMode(address)": "0x94a599a04a3486414f2bc16589657fbd9e89bad629c52c12eac47282134f4d57",
+        "removePoolFactory(address)": "0xc0752596453bbce0bf94d874591e784b93cce5a01db369dcc137bbf8f497105b"
+      }
+    }
   }
 }
