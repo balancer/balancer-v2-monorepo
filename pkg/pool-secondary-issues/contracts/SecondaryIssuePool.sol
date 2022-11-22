@@ -102,6 +102,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
 
     event Offer(address indexed security, uint256 secondaryOffer);
 
+    event CallSwap(string orderType);
+
     constructor(
         IVault vault,
         string memory name,
@@ -204,7 +206,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }                
             }    
             else{ // returning swap results from matchOrders function below
-                //console.log("Returning final swap result");
+                console.log("Returning final swap result");
                 return _downscaleDown(request.amount, scalingFactors[indexOut]);
             }        
         }else{ //by default, any order without price specified is a market order
@@ -539,6 +541,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, qty);
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
+
+                emit CallSwap("sellSwap");
                 //calling onSwap to return results for the buyer
                 // callSwap(false, _ref, _bestBid);
                 //calling onSwap to return results for the seller
@@ -591,7 +595,9 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, qty);
-                orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);          
+                orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);      
+
+                emit CallSwap("buySwap");
                 //calling onSwap to return results for the seller
                 // callSwap(true, _bestOffer, _ref);
                 //calling onSwap to return results for the buyer

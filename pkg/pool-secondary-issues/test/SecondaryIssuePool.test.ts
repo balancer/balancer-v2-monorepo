@@ -13,7 +13,8 @@ import { RawSecondaryPoolDeployment } from '@balancer-labs/v2-helpers/src/models
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import SecondaryPool from '@balancer-labs/v2-helpers/src/models/pools/secondary-issue/SecondaryIssuePool';
-
+import { keccak256 } from "@ethersproject/keccak256";
+import { toUtf8Bytes } from "@ethersproject/strings";
 import Decimal from 'decimal.js';
 
 describe('SecondaryPool', function () {
@@ -26,6 +27,9 @@ describe('SecondaryPool', function () {
   
   const TOTAL_TOKENS = 3;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const eventName = "CallSwap(string)";
+  const eventType = ["string orderType"];
+  const encodedEventSignature = keccak256(toUtf8Bytes(eventName));
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
 
@@ -41,9 +45,10 @@ describe('SecondaryPool', function () {
     currencyToken = tokens.CDAI;
   });
    
-  async function deployPool(params: RawSecondaryPoolDeployment, mockedVault = true): Promise<void> {
+  async function deployPool(params: RawSecondaryPoolDeployment, mockedVault = true): Promise<any> {
     params = Object.assign({}, { swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE, owner, admin }, params);
     pool = await SecondaryPool.create(params, mockedVault);
+    return pool;
   }
   
   describe('creation', () => {
@@ -137,10 +142,11 @@ describe('SecondaryPool', function () {
   describe('swaps', () => {
     let currentBalances: BigNumber[];
     let params: {};
+    let secondary_pool: any;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
 
-      await deployPool({ securityToken, currencyToken }, true);
+      secondary_pool = await deployPool({ securityToken, currencyToken }, true);
 
       await setBalances(pool, { securityBalance: fp(20), currencyBalance: fp(35), bptBalance: MAX_UINT112 });
       
@@ -193,14 +199,14 @@ describe('SecondaryPool', function () {
     });
     
     it('accepts Empty order: Sell Order@CMP > Buy Order@CMP', async () => {
-    
+
       const sell_order = await pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
         amount: sell_amount,
         balances: currentBalances,
         from: lp,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 15@Market Price
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Sell 15@Market Price,
       });
       
       const buy_order = await pool.swapGivenIn({
@@ -209,21 +215,48 @@ describe('SecondaryPool', function () {
         amount: buy_amount,
         balances: currentBalances,
         from: trader,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy 15@market price
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy 15@market price
+        eventHash: encodedEventSignature
       });
 
-      const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
-      const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+      const eventEncodedData =  ethers.utils.defaultAbiCoder.decode(eventType,buy_order[1]);
 
-      const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
-      const afterSwapLPSecurity = await securityToken.balanceOf(lp);
-      const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
-      const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
+      if(eventEncodedData.orderType == "buySwap")
+      {
+        const sell_order = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_amount,
+          from: lp,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
+          eventHash: encodedEventSignature
+        });
+        expect(sell_order.toString()).to.be.equals(fp(sell_amount));
+
+        const buy_order = await pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_amount,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")),  
+        });
+        expect(buy_order.toString()).to.be.equals(fp(buy_amount));
+      }
+
+      // const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
+      // const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
+
+      // const afterSwapLPCurrency = await currencyToken.balanceOf(lp);
+      // const afterSwapLPSecurity = await securityToken.balanceOf(lp);
+      // const afterSwapTraderCurrency = await currencyToken.balanceOf(trader);
+      // const afterSwapTraderSecurity = await securityToken.balanceOf(trader);
       
-      expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.toString());
-      expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
-      expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.toString());
-      expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
+      // expect(afterSwapLPCurrency.toString()).to.be.equals(beforeSwapLPCurrency.toString());
+      // expect(afterSwapLPSecurity.toString()).to.be.equals(beforeSwapLPSecurity.sub(request_amount).toString());
+      // expect(afterSwapTraderCurrency.toString()).to.be.equals(beforeSwapTraderCurrency.toString());
+      // expect(afterSwapTraderSecurity.toString()).to.be.equals(beforeSwapTraderSecurity.add(request_amount).toString());
     });
 
     it('accepts Market order: Sell Order@CMP > Buy Limit Order', async () => {
@@ -245,6 +278,30 @@ describe('SecondaryPool', function () {
         from: trader,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())) // MarketOrder Buy 15@market price
       });
+
+      const eventEncodedData =  ethers.utils.defaultAbiCoder.decode(eventType,buy_order[1]);
+      if(eventEncodedData.orderType == "buySwap")
+      {
+        const sell_order = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_amount,
+          balances: currentBalances,
+          from: lp,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Sell 15@Market Price
+        });
+        console.log(sell_order.toString());
+        const buy_order = await pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_amount,
+          balances: currentBalances,
+          from: trader,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())) // MarketOrder Buy 15@market price
+        });
+        console.log(buy_order.toString());
+      }
+
 
       const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
       const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());
@@ -299,14 +356,14 @@ describe('SecondaryPool', function () {
     });
     
     it('accepts Market Buy Order: Sell Limit Order > Buy Market Order', async () => {
-      
+
       const sell_order = await pool.swapGivenIn({
         in: pool.securityIndex,
         out: pool.currencyIndex,
         amount: sell_amount,
         from: lp,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())) // Limit Order Sell@price12
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
       });
 
       const buy_order = await pool.swapGivenIn({
@@ -315,8 +372,35 @@ describe('SecondaryPool', function () {
         amount: buy_amount,
         from: trader,
         balances: currentBalances,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')) // MarketOrder Buy@market price
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Buy@market price
+        eventHash: encodedEventSignature
       });
+
+      const eventEncodedData =  ethers.utils.defaultAbiCoder.decode(eventType,buy_order[1]);
+
+      if(eventEncodedData.orderType == "buySwap")
+      {
+        const sell_order = await pool.swapGivenIn({
+          in: pool.securityIndex,
+          out: pool.currencyIndex,
+          amount: sell_amount,
+          from: lp,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), // Limit Order Sell@price12
+          eventHash: encodedEventSignature
+        });
+        console.log("sell_order", sell_order.toString());
+
+        const buy_order = await pool.swapGivenIn({
+          in: pool.currencyIndex,
+          out: pool.securityIndex,
+          amount: buy_amount,
+          from: trader,
+          balances: currentBalances,
+          data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")) // MarketOrder Buy@market price
+        });
+        console.log("buy_order", buy_order.toString());
+      }
 
       const postPaidCurrencyBalance = currentBalances[pool.currencyIndex].add(buy_amount);
       const request_amount = fp(postPaidCurrencyBalance.div(currentBalances[pool.securityIndex]).toString());

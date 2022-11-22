@@ -41,6 +41,7 @@ export type SwapSecondaryPool = {
   from?: SignerWithAddress;
   lastChangeBlock?: BigNumberish;
   data?: string;
+  eventHash?: string;
 };
 
 export type EditOrder = {
