@@ -17,15 +17,15 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 
 import "../lib/GradualValueChange.sol";
-import "../lib/ValueCompression.sol";
 import "../WeightedMath.sol";
+
+import "./LiquidityBootstrappingPoolStorageLib.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
@@ -36,8 +36,6 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
     // solhint-disable not-rely-on-time
 
     using FixedPoint for uint256;
-    using WordCodec for bytes32;
-    using ValueCompression for uint256;
 
     // LBPs often involve only two tokens - we support up to four since we're able to pack the entire config in a single
     // storage slot.
@@ -139,13 +137,29 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
         _setSwapEnabled(swapEnabledOnStart);
     }
 
+    function _getPoolState() internal view returns (bytes32) {
+        return _poolState;
+    }
+
+    function _getTotalTokens() internal view returns (uint256) {
+        return _totalTokens;
+    }
+
+    function _getTokenIndex(IERC20 token) internal view returns (uint256) {
+        if (token == _token0) return 0;
+        else if (token == _token1) return 1;
+        else if (token == _token2) return 2;
+        else if (token == _token3) return 3;
+        else _revert(Errors.INVALID_TOKEN);
+    }
+
     // External functions
 
     /**
      * @notice Return whether swaps are enabled or not for the given pool.
      */
-    function getSwapEnabled() public view returns (bool) {
-        return _poolState.decodeBool(_SWAP_ENABLED_OFFSET);
+    function getSwapEnabled() external view returns (bool) {
+        return LiquidityBootstrappingPoolStorageLib.getSwapEnabled(_poolState);
     }
 
     /**
@@ -176,19 +190,10 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
             uint256[] memory endWeights
         )
     {
-        // Load current pool state from storage
-        bytes32 poolState = _poolState;
-
-        startTime = poolState.decodeUint(_START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
-        endTime = poolState.decodeUint(_END_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
-        uint256 totalTokens = _getTotalTokens();
-        endWeights = new uint256[](totalTokens);
-
-        for (uint256 i = 0; i < totalTokens; i++) {
-            endWeights[i] = poolState
-                .decodeUint(_END_WEIGHT_OFFSET + i * _END_WEIGHT_BIT_LENGTH, _END_WEIGHT_BIT_LENGTH)
-                .decompress(_END_WEIGHT_BIT_LENGTH);
-        }
+        (startTime, endTime, , endWeights) = LiquidityBootstrappingPoolStorageLib.getGradualWeightUpdateParams(
+            _poolState,
+            _getTotalTokens()
+        );
     }
 
     /**
@@ -215,51 +220,36 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
 
     // Internal functions
 
-    function _getNormalizedWeight(IERC20 token) internal view returns (uint256) {
-        uint256 i;
-
-        // First, convert token address to a token index
-
-        // prettier-ignore
-        if (token == _token0) { i = 0; }
-        else if (token == _token1) { i = 1; }
-        else if (token == _token2) { i = 2; }
-        else if (token == _token3) { i = 3; }
-        else {
-            _revert(Errors.INVALID_TOKEN);
-        }
-
-        return _getNormalizedWeightByIndex(i, _poolState);
-    }
-
-    function _getNormalizedWeightByIndex(uint256 i, bytes32 poolState) internal view returns (uint256) {
-        uint256 startWeight = poolState
-            .decodeUint(_START_WEIGHT_OFFSET + i * _START_WEIGHT_BIT_LENGTH, _START_WEIGHT_BIT_LENGTH)
-            .decompress(_START_WEIGHT_BIT_LENGTH);
-        uint256 endWeight = poolState
-            .decodeUint(_END_WEIGHT_OFFSET + i * _END_WEIGHT_BIT_LENGTH, _END_WEIGHT_BIT_LENGTH)
-            .decompress(_END_WEIGHT_BIT_LENGTH);
-        uint256 startTime = poolState.decodeUint(_START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
-        uint256 endTime = poolState.decodeUint(_END_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH);
-
-        return GradualValueChange.getInterpolatedValue(startWeight, endWeight, startTime, endTime);
-    }
-
     function _getNormalizedWeights() internal view returns (uint256[] memory) {
         uint256 totalTokens = _getTotalTokens();
         uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
         bytes32 poolState = _poolState;
 
-        // prettier-ignore
-        {
-            normalizedWeights[0] = _getNormalizedWeightByIndex(0, poolState);
-            normalizedWeights[1] = _getNormalizedWeightByIndex(1, poolState);
-            if (totalTokens == 2) return normalizedWeights;
-            normalizedWeights[2] = _getNormalizedWeightByIndex(2, poolState);
-            if (totalTokens == 3) return normalizedWeights;
-            normalizedWeights[3] = _getNormalizedWeightByIndex(3, poolState);
-        }
+        uint256 pctProgress = LiquidityBootstrappingPoolStorageLib.getWeightChangeProgress(poolState);
+
+        normalizedWeights[0] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            0,
+            pctProgress
+        );
+        normalizedWeights[1] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            1,
+            pctProgress
+        );
+        if (totalTokens == 2) return normalizedWeights;
+        normalizedWeights[2] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            2,
+            pctProgress
+        );
+        if (totalTokens == 3) return normalizedWeights;
+        normalizedWeights[3] = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+            poolState,
+            3,
+            pctProgress
+        );
 
         return normalizedWeights;
     }
@@ -296,45 +286,29 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
         uint256[] memory startWeights,
         uint256[] memory endWeights
     ) internal virtual {
-        bytes32 newPoolState = _poolState;
-
         uint256 normalizedSum = 0;
         for (uint256 i = 0; i < endWeights.length; i++) {
             uint256 endWeight = endWeights[i];
             _require(endWeight >= WeightedMath._MIN_WEIGHT, Errors.MIN_WEIGHT);
-
-            newPoolState = newPoolState
-                .insertUint(
-                startWeights[i].compress(_START_WEIGHT_BIT_LENGTH),
-                _START_WEIGHT_OFFSET + i * _START_WEIGHT_BIT_LENGTH,
-                _START_WEIGHT_BIT_LENGTH
-            )
-                .insertUint(
-                endWeight.compress(_END_WEIGHT_BIT_LENGTH),
-                _END_WEIGHT_OFFSET + i * _END_WEIGHT_BIT_LENGTH,
-                _END_WEIGHT_BIT_LENGTH
-            );
 
             normalizedSum = normalizedSum.add(endWeight);
         }
         // Ensure that the normalized weights sum to ONE
         _require(normalizedSum == FixedPoint.ONE, Errors.NORMALIZED_WEIGHT_INVARIANT);
 
-        _poolState = newPoolState.insertUint(startTime, _START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH).insertUint(
+        _poolState = LiquidityBootstrappingPoolStorageLib.setNormalizedWeights(
+            _poolState,
+            startTime,
             endTime,
-            _END_TIME_OFFSET,
-            _TIMESTAMP_BIT_LENGTH
+            startWeights,
+            endWeights
         );
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
     }
 
-    function _getTotalTokens() internal view returns (uint256) {
-        return _totalTokens;
-    }
-
     function _setSwapEnabled(bool swapEnabled) private {
-        _poolState = _poolState.insertBool(swapEnabled, _SWAP_ENABLED_OFFSET);
+        _poolState = LiquidityBootstrappingPoolStorageLib.setSwapEnabled(_poolState, swapEnabled);
         emit SwapEnabledSet(swapEnabled);
     }
 
@@ -372,7 +346,7 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
      * @notice Returns whether the pool is in Recovery Mode.
      */
     function inRecoveryMode() public view override returns (bool) {
-        return _poolState.decodeBool(_RECOVERY_MODE_BIT_OFFSET);
+        return LiquidityBootstrappingPoolStorageLib.getRecoveryMode(_poolState);
     }
 
     /**
@@ -380,7 +354,7 @@ abstract contract LiquidityBootstrappingPoolSettings is IMinimalSwapInfoPool, Ne
      * base contract, in `enableRecoveryMode` or `disabledRecoveryMode`, before calling this hook.
      */
     function _setRecoveryMode(bool enabled) internal virtual override {
-        _poolState = _poolState.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
+        _poolState = LiquidityBootstrappingPoolStorageLib.setRecoveryMode(_poolState, enabled);
     }
 
     // Misc
