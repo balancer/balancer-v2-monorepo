@@ -174,7 +174,7 @@ export default class Task {
     const expectedDeploymentAddress = getContractAddress(deploymentTx);
     if (deployedAddress !== expectedDeploymentAddress) {
       throw Error(
-        `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' does not match the address which would be deployed by the transaction ${deploymentTxHash} (${expectedDeploymentAddress})`
+        `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' (${deployedAddress}) does not match the address which would be deployed by the transaction ${deploymentTxHash} (which instead deploys to ${expectedDeploymentAddress})`
       );
     }
 
