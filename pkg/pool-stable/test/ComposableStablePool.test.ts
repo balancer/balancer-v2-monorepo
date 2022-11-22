@@ -76,7 +76,6 @@ describe('ComposableStablePool', () => {
   function itBehavesAsComposableStablePool(numberOfTokens: number): void {
     let pool: StablePool, tokens: TokenList;
     let deployTimestamp: BigNumber, bptIndex: number, initialBalances: BigNumberish[];
-    let version: string;
 
     const rateProviders: Contract[] = [];
     const tokenRateCacheDurations: number[] = [];
