@@ -80,7 +80,6 @@ abstract contract Swaps is ReentrancyGuard, PoolBalances {
         IERC20 tokenIn = _translateToIERC20(singleSwap.assetIn);
         IERC20 tokenOut = _translateToIERC20(singleSwap.assetOut);
         _require(tokenIn != tokenOut, Errors.CANNOT_SWAP_SAME_TOKEN);
-
         // Initializing each struct field one-by-one uses less gas than setting all at once.
         IPoolSwapStructs.SwapRequest memory poolRequest;
         poolRequest.poolId = singleSwap.poolId;

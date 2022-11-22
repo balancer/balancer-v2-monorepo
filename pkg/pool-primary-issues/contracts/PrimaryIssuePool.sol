@@ -167,7 +167,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
             fromInternalBalance: false
         });
-        vault.joinPool(getPoolId(), address(this), address(this), request);
+        vault.joinPool(getPoolId(), address(this), payable(_balancerManager), request);
         emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
     }
 
@@ -183,7 +183,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             userData: abi.encode(PrimaryPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
             toInternalBalance: false
         });
-        vault.exitPool(poolId, address(this), payable(_balancerManager), request);
+        vault.exitPool(poolId, _balancerManager, payable(address(this)), request);
     }
     
     function onSwap(
@@ -324,11 +324,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
         _require(sender == address(this), Errors.INVALID_INITIALIZATION);
-        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
+        _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
         
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
         return (bptAmountOut, amountsIn);
     }
@@ -361,10 +360,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             //usually exit pool reverts
             _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
         } else {
-            //unless paused in which case tokens are retrievable by contributors
-            _ensurePaused();
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
-
         }
     }
 
@@ -372,7 +368,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         private
         view
         returns (uint256, uint256[] memory)
-    {
+    {   
         // This proportional exit function is only enabled if the contract is paused, to provide users a way to
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();

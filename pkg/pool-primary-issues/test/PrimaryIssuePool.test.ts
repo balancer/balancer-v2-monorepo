@@ -122,19 +122,19 @@ describe('PrimaryPool', function () {
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs}, false);
     });
-    
-    it('adds bpt to the vault', async () => {
+
+    it('adds bpt to the owner', async () => {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
 
       await pool.initialize();
-
       const currentBalances = await pool.getBalances();
-      expect(currentBalances[pool.bptIndex]).to.be.equal(MAX_UINT112);
+      expect(currentBalances[pool.bptIndex]).to.be.equal(0);
       expect(currentBalances[pool.securityIndex]).to.be.equal(0);
       expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
 
-      expect(await pool.totalSupply()).to.be.equal(MAX_UINT112);
+      const ownerBalance = await pool.balanceOf(owner);
+      expect(ownerBalance.toString()).to.be.equal(MAX_UINT112);
     });
     
     it('cannot be initialized outside of the initialize function', async () => {
@@ -462,7 +462,33 @@ describe('PrimaryPool', function () {
         await expect(pool.exitPool()).to.be.revertedWith('NOT_PAUSED');
       }); 
     });
-  });
+
+    context('when paused for emergency proportional exit', () => {
+      it('gives back tokens', async () => {
+          const beforeExitOwnerBalance = await pool.balanceOf(owner);
+          const previousBalances = await pool.getBalances();
+          const previousSecurityBalance = previousBalances[pool.securityIndex];
+          const previousCurrencyBalance = previousBalances[pool.currencyIndex];
+          const securityTokenBalanceBefore = await securityToken.balanceOf(owner);
+          const currencyTokenBalanceBefore = await currencyToken.balanceOf(owner);
+
+          await pool.exitPool();
+
+          const afterExitOwnerBalance = await pool.balanceOf(owner);
+          const currentBalances = await pool.getBalances();
+          const securityTokenBalanceAfter = await securityToken.balanceOf(owner);
+          const currencyTokenBalanceAfter = await currencyToken.balanceOf(owner);
+
+          expect(currentBalances[pool.bptIndex]).to.be.equal(0);
+          expect(currentBalances[pool.securityIndex]).to.be.equal(0);
+          expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
+          expect(securityTokenBalanceAfter).to.be.equal(securityTokenBalanceBefore.add(previousSecurityBalance));
+          expect(currencyTokenBalanceAfter).to.be.equal(currencyTokenBalanceBefore.add(previousCurrencyBalance));
+          expect(afterExitOwnerBalance).to.be.equal(beforeExitOwnerBalance.sub(MAX_UINT112));
+        }); 
+      });
+    })
+
 
   describe('issueCutoffTime and price check', () => {
     let currentBalances: BigNumber[];
