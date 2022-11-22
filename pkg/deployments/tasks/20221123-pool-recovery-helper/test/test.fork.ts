@@ -14,7 +14,7 @@ describeForkTest('PoolRecoveryHelper', 'mainnet', 15998800, function () {
 
   let helper: Contract;
   let operator: SignerWithAddress, admin: SignerWithAddress;
-  let vault: Contract, authorizer: Contract;
+  let authorizer: Contract;
 
   const POOL_STABLE = '0xbD482fFb3E6E50dC1c437557C3Bea2B68f3683Ee'; // From ComposableStablePoolFactory
   const POOL_WEIGHTED = '0xe340EBfcAA544da8bB1Ee9005F1a346D50Ec422e'; // From WeightedPoolFactory
@@ -26,9 +26,6 @@ describeForkTest('PoolRecoveryHelper', 'mainnet', 15998800, function () {
   });
 
   before('load vault', async () => {
-    const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
-    vault = await vaultTask.deployedInstance('Vault');
-
     const authorizerTask = new Task('20210418-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await authorizerTask.deployedInstance('Authorizer');
   });
