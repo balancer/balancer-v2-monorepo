@@ -27,6 +27,7 @@ describe('ComposableStablePoolFactory', function () {
 
   let createTime: BigNumber;
   let protocolFeeExemptFlags: boolean[];
+  let version: string;
 
   before('setup signers', async () => {
     [, owner] = await ethers.getSigners();
@@ -34,7 +35,14 @@ describe('ComposableStablePoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('ComposableStablePoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    version = JSON.stringify({
+      name: 'ComposableStablePool',
+      version: '0',
+      deployment: 'test-deployment',
+    });
+    factory = await deploy('ComposableStablePoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address, version],
+    });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['baDAI', 'baUSDC', 'baUSDT'], { sorted: true });
@@ -70,8 +78,16 @@ describe('ComposableStablePoolFactory', function () {
       pool = await createPool();
     });
 
+    it('checks the version in the factory', async () => {
+      expect(await factory.version()).to.equal(version);
+    });
+
     it('sets the vault', async () => {
       expect(await pool.getVault()).to.equal(vault.address);
+    });
+
+    it('sets the version in the pool', async () => {
+      expect(await pool.version()).to.equal(version);
     });
 
     it('registers tokens in the vault', async () => {
