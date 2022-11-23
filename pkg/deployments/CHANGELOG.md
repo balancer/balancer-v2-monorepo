@@ -14,6 +14,7 @@
 ### API Changes
 
 - Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.
+- Made `getBalancerContractBytecode` also return the link references describing where to insert the addresses of linked libraries.
 
 ## 3.0.0 (2022-10-25)
 
