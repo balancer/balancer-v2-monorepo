@@ -70,7 +70,10 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       action = await actionId(adaptor, 'getProtocolFeesCollector', vault.interface);
 
       target = vault.address;
-      calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector');
+      // Function selector and some random extra info as calldata.
+      // The extra bytes are not required to perform the call, but for testing purposes it's better if the selector
+      // does not match the entire calldata.
+      calldata = vault.interface.encodeFunctionData('getProtocolFeesCollector').concat('aabbccddeeff');
 
       expectedResult = defaultAbiCoder.encode(['address'], [await vault.instance.getProtocolFeesCollector()]);
     });
@@ -107,7 +110,12 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
       it('emits an event describing the performed action', async () => {
         const tx = await adaptorEntrypoint.connect(grantee).performAction(target, calldata);
-        expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { caller: grantee.address, target, data: calldata });
+        expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', {
+          selector: calldata.slice(0, 10), // '0x' + 8 characters representing 4 bytes.
+          caller: grantee.address,
+          target,
+          data: calldata,
+        });
       });
     }
 
