@@ -111,7 +111,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       it('emits an event describing the performed action', async () => {
         const tx = await adaptorEntrypoint.connect(grantee).performAction(target, calldata);
         expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', {
-          selector: calldata.slice(0, 10), // '0x' + 8 characters representing 4 bytes.
+          selector: vault.interface.getSighash('getProtocolFeesCollector'),
           caller: grantee.address,
           target,
           data: calldata,
