@@ -108,5 +108,12 @@ function writeContractArtifact(task: Task, contractName: string, artifact: Compi
     mkdirSync(bytecodeDirectory);
   }
   const bytecodeFilePath = path.resolve(bytecodeDirectory, `${contractName}.json`);
-  writeFileSync(bytecodeFilePath, JSON.stringify({ creationCode: artifact.evm.bytecode.object }, null, 2));
+  writeFileSync(
+    bytecodeFilePath,
+    JSON.stringify(
+      { creationCode: artifact.evm.bytecode.object, linkReferences: artifact.evm.bytecode.linkReferences },
+      null,
+      2
+    )
+  );
 }
