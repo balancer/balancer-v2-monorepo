@@ -107,7 +107,7 @@ describe('AuthorizerAdaptorEntrypoint', () => {
 
       it('emits an event describing the performed action', async () => {
         const tx = await adaptorEntrypoint.connect(grantee).performAction(target, calldata);
-        expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { target, data: calldata });
+        expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { caller: grantee.address, target, data: calldata });
       });
     }
 
