@@ -207,7 +207,7 @@ async function deployPoolFromFactory(
     });
     factory = await deploy(`${fullName}Factory`, { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address, '', ''] });
   } else {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   }
