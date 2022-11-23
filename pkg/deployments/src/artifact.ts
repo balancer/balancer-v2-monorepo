@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
-import { CompilerOutputContract } from 'hardhat/types';
+import { CompilerOutputContract, LinkReferences } from 'hardhat/types';
 import path from 'path';
 import { findContractSourceName } from './buildinfo';
 import logger from './logger';
@@ -45,11 +45,13 @@ export function checkArtifact(task: Task): void {
       const contractName = fileName;
 
       const expectedArtifact = extractContractArtifact(task, fileName, contractName);
-      const { abi, bytecode } = readContractABIAndBytecode(task, contractName);
+      const { abi, bytecode, linkReferences } = readContractABIAndBytecode(task, contractName);
 
       const bytecodeMatch = bytecode === expectedArtifact.evm.bytecode.object;
       const abiMatch = JSON.stringify(abi) === JSON.stringify(expectedArtifact.abi);
-      if (bytecodeMatch && abiMatch) {
+      const linkReferencesMatch =
+        JSON.stringify(linkReferences) === JSON.stringify(expectedArtifact.evm.bytecode.linkReferences);
+      if (bytecodeMatch && abiMatch && linkReferencesMatch) {
         logger.success(`Verified ABI and bytecode integrity of contract '${contractName}' of task '${task.id}'`);
       } else {
         throw Error(
@@ -74,8 +76,11 @@ function extractContractArtifact(task: Task, fileName: string, contractName: str
 /**
  * Read the ABI and bytecode for the contract `contractName` from the ABI and bytecode files.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function readContractABIAndBytecode(task: Task, contractName: string): { abi: any; bytecode: string } {
+function readContractABIAndBytecode(
+  task: Task,
+  contractName: string
+): // eslint-disable-next-line @typescript-eslint/no-explicit-any
+{ abi: any; bytecode: string; linkReferences: LinkReferences } {
   // Read contract ABI from file
   const abiFilePath = path.resolve(task.dir(), 'abi', `${contractName}.json`);
   const abiFileExists = existsSync(abiFilePath) && statSync(abiFilePath).isFile();
@@ -84,8 +89,10 @@ function readContractABIAndBytecode(task: Task, contractName: string): { abi: an
   // Read contract bytecode from file
   const bytecodeFilePath = path.resolve(task.dir(), 'bytecode', `${contractName}.json`);
   const bytecodeFileExists = existsSync(bytecodeFilePath) && statSync(bytecodeFilePath).isFile();
-  const bytecode = bytecodeFileExists ? JSON.parse(readFileSync(bytecodeFilePath).toString()).creationCode : '';
-  return { abi, bytecode };
+  const bytecodeInfo = bytecodeFileExists ? JSON.parse(readFileSync(bytecodeFilePath).toString()) : {};
+  const bytecode = bytecodeInfo.creationCode;
+  const linkReferences = bytecodeInfo.linkReferences;
+  return { abi, bytecode, linkReferences };
 }
 
 /**
