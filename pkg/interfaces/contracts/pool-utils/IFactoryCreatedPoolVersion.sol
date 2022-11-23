@@ -17,7 +17,7 @@ pragma solidity >=0.7.0 <0.9.0;
 /**
  * @notice Simple interface to retrieve the version of pools deployed by a pool factory.
  */
-interface IPoolVersion {
+interface IFactoryCreatedPoolVersion {
     /**
      * @dev Returns a JSON representation of the deployed pool version containing name, version number and task ID.
      *
