@@ -1,7 +1,5 @@
 # <img src="../../logo.svg" alt="Balancer" height="128px">
 
-/**
-
 # Balancer V2 Stable Pools
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-pool-stable.svg)](https://www.npmjs.org/package/@balancer-labs/v2-pool-stable)
