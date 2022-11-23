@@ -4,7 +4,7 @@ import { Contract } from 'ethers';
  * @dev Creates an ethers Contract object for a canonical contract deployed on a specific network
  * @param task ID of the task to fetch the deployed contract
  * @param contract Name of the contract to be fetched
- * @param network Name of the network looking the deployment for (e.g. mainnet, rinkeby, ropsten, etc)
+ * @param network Name of the network looking the deployment for (e.g. mainnet, polygon, goerli, etc)
  */
 export async function getBalancerContract(task: string, contract: string, network: string): Promise<Contract> {
   const address = await getBalancerContractAddress(task, contract, network);
@@ -46,7 +46,7 @@ export function getBalancerContractBytecode(task: string, contract: string): str
  * @dev Returns the contract address of a deployed contract for a specific task on a network
  * @param task ID of the task looking the deployment for
  * @param contract Name of the contract to fetched the address of
- * @param network Name of the network looking the deployment for (e.g. mainnet, rinkeby, ropsten, etc)
+ * @param network Name of the network looking the deployment for (e.g. mainnet, polygon, goerli, etc)
  */
 export function getBalancerContractAddress(task: string, contract: string, network: string): string {
   const output = getBalancerDeployment(task, network);
@@ -56,7 +56,7 @@ export function getBalancerContractAddress(task: string, contract: string, netwo
 /**
  * @dev Returns the deployment output for a specific task on a network
  * @param task ID of the task to look the deployment output of the required network
- * @param network Name of the network looking the deployment output for (e.g. mainnet, rinkeby, ropsten, etc)
+ * @param network Name of the network looking the deployment output for (e.g. mainnet, polygon, goerli, etc)
  */
 export function getBalancerDeployment(task: string, network: string): { [key: string]: string } {
   return require(getBalancerDeploymentPath(task, network));
@@ -83,7 +83,7 @@ function getBalancerContractBytecodePath(task: string, contract: string): string
 /**
  * @dev Returns the deployment path for a specific task on a network
  * @param task ID of the task to look the deployment path for the required network
- * @param network Name of the network looking the deployment path for (e.g. mainnet, rinkeby, ropsten, etc)
+ * @param network Name of the network looking the deployment path for (e.g. mainnet, polygon, goerli, etc)
  */
 function getBalancerDeploymentPath(task: string, network: string): string {
   return `@balancer-labs/v2-deployments/dist/tasks/${task}/output/${network}.json`;
