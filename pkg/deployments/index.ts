@@ -1,5 +1,11 @@
 import { Contract } from 'ethers';
 
+interface LinkReferences {
+  [libraryFileName: string]: {
+    [libraryName: string]: Array<{ length: number; start: number }>;
+  };
+}
+
 /**
  * @dev Creates an ethers Contract object for a canonical contract deployed on a specific network
  * @param task ID of the task to fetch the deployed contract
@@ -37,9 +43,12 @@ export function getBalancerContractAbi(task: string, contract: string): unknown[
  * @param task ID of the task to look the creation code of the required contract
  * @param contract Name of the contract to looking the creation code of
  */
-export function getBalancerContractBytecode(task: string, contract: string): string {
+export function getBalancerContractBytecode(
+  task: string,
+  contract: string
+): { creationCode: string; linkReferences: LinkReferences } {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require(getBalancerContractBytecodePath(task, contract)).creationCode;
+  return require(getBalancerContractBytecodePath(task, contract));
 }
 
 /**
