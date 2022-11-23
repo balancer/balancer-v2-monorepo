@@ -15,7 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersionProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IPoolVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
@@ -24,21 +25,28 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 
 import "./ComposableStablePool.sol";
 
-contract ComposableStablePoolFactory is IVersionProvider, BasePoolSplitCodeFactory, FactoryWidePauseWindow {
+contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolSplitCodeFactory, FactoryWidePauseWindow {
     IProtocolFeePercentagesProvider private _protocolFeeProvider;
     string private _version;
+    string private _poolVersion;
 
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
-        string memory version
+        string memory factoryVersion,
+        string memory poolVersion
     ) BasePoolSplitCodeFactory(vault, type(ComposableStablePool).creationCode) {
         _protocolFeeProvider = protocolFeeProvider;
-        _version = version;
+        _version = factoryVersion;
+        _poolVersion = poolVersion;
     }
 
     function version() external view override returns (string memory) {
         return _version;
+    }
+
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -74,7 +82,7 @@ contract ComposableStablePoolFactory is IVersionProvider, BasePoolSplitCodeFacto
                             pauseWindowDuration: pauseWindowDuration,
                             bufferPeriodDuration: bufferPeriodDuration,
                             owner: owner,
-                            versionProvider: this
+                            version: getPoolVersion()
                         })
                     )
                 )

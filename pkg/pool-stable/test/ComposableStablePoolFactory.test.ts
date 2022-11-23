@@ -27,7 +27,7 @@ describe('ComposableStablePoolFactory', function () {
 
   let createTime: BigNumber;
   let protocolFeeExemptFlags: boolean[];
-  let version: string;
+  let factoryVersion: string, poolVersion: string;
 
   before('setup signers', async () => {
     [, owner] = await ethers.getSigners();
@@ -35,13 +35,18 @@ describe('ComposableStablePoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    version = JSON.stringify({
+    factoryVersion = JSON.stringify({
+      name: 'ComposableStablePoolFactory',
+      version: '1',
+      deployment: 'test-deployment',
+    });
+    poolVersion = JSON.stringify({
       name: 'ComposableStablePool',
       version: '0',
       deployment: 'test-deployment',
     });
     factory = await deploy('ComposableStablePoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, version],
+      args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
     });
     createTime = await currentTimestamp();
 
@@ -78,16 +83,20 @@ describe('ComposableStablePoolFactory', function () {
       pool = await createPool();
     });
 
-    it('checks the version in the factory', async () => {
-      expect(await factory.version()).to.equal(version);
+    it('sets the factory version', async () => {
+      expect(await factory.version()).to.equal(factoryVersion);
     });
 
     it('sets the vault', async () => {
       expect(await pool.getVault()).to.equal(vault.address);
     });
 
-    it('sets the version in the pool', async () => {
-      expect(await pool.version()).to.equal(version);
+    it('sets the pool version', async () => {
+      expect(await pool.version()).to.equal(poolVersion);
+    });
+
+    it('gets pool version from the factory', async () => {
+      expect(await factory.getPoolVersion()).to.equal(poolVersion);
     });
 
     it('registers tokens in the vault', async () => {

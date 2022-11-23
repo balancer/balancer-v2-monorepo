@@ -12,19 +12,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity >=0.7.0 <0.9.0;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersionProvider.sol";
-
-contract MockVersionProvider is IVersionProvider {
-    string private _version;
-
-    constructor(string memory version) {
-        _version = version;
-    }
-
-    function version() external view override returns (string memory) {
-        return _version;
-    }
+/**
+ * @notice Simple interface to retrieve the version of pools deployed by a pool factory.
+ */
+interface IPoolVersion {
+    /**
+     * @dev Returns a JSON representation of the deployed pool version containing name, version number and task ID.
+     *
+     * This is typically only useful in complex Pool deployment schemes, where multiple subsystems need to know about
+     * each other. Note that this value will only be updated at factory creation time.
+     */
+    function getPoolVersion() external view returns (string memory);
 }

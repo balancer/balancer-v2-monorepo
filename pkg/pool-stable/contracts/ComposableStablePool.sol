@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.so
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersionProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -51,7 +51,7 @@ import "./StableMath.sol";
  */
 contract ComposableStablePool is
     IRateProvider,
-    IVersionProvider,
+    IVersion,
     BaseGeneralPool,
     StablePoolAmplification,
     ComposableStablePoolRates,
@@ -66,7 +66,7 @@ contract ComposableStablePool is
     // We are preminting half of that value (rounded up).
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
 
-    IVersionProvider private immutable _versionProvider;
+    string private _version;
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -83,7 +83,7 @@ contract ComposableStablePool is
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
-        IVersionProvider versionProvider;
+        string version;
     }
 
     constructor(NewPoolParams memory params)
@@ -104,7 +104,7 @@ contract ComposableStablePool is
         ComposableStablePoolRates(_extractRatesParams(params))
         ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
     {
-        _versionProvider = params.versionProvider;
+        _version = params.version;
     }
 
     // Translate parameters to avoid stack-too-deep issues in the constructor
@@ -136,7 +136,7 @@ contract ComposableStablePool is
     }
 
     function version() external view override returns (string memory) {
-        return _versionProvider.version();
+        return _version;
     }
 
     /**
