@@ -116,6 +116,30 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () {
     );
   }
 
+  describe('getters', () => {
+    it('check factory version', async () => {
+      const expectedFactoryVersion = {
+        name: 'ComposableStablePoolFactory',
+        version: 2,
+        deployment: '20221122-composable-stable-pool-v2',
+      };
+
+      expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
+    });
+
+    it('check pool version', async () => {
+      const pool = await createPool(tokens);
+
+      const expectedPoolVersion = {
+        name: 'ComposableStablePool',
+        version: 2,
+        deployment: '20221122-composable-stable-pool-v2',
+      };
+
+      expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
+    });
+  });
+
   describe('pool operations', () => {
     const amount = fp(500);
 

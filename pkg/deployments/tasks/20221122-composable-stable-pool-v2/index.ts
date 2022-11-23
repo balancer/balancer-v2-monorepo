@@ -5,6 +5,6 @@ import { ComposableStablePoolDeployment } from './input';
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as ComposableStablePoolDeployment;
 
-  const args = [input.Vault, input.ProtocolFeePercentagesProvider];
+  const args = [input.Vault, input.ProtocolFeePercentagesProvider, input.FactoryVersion, input.PoolVersion];
   await task.deployAndVerify('ComposableStablePoolFactory', args, from, force);
 };
