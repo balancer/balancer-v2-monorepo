@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { expect } from 'chai';
 import { defaultAbiCoder } from 'ethers/lib/utils';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
@@ -102,6 +103,11 @@ describe('AuthorizerAdaptorEntrypoint', () => {
       it('rejects direct calls from the adaptor', async () => {
         // The authorizer will reject calls that are not initiated in the adaptor adaptorEntrypoint.
         await expect(adaptor.connect(grantee).performAction(target, calldata)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+
+      it('emits an event describing the performed action', async () => {
+        const tx = await adaptorEntrypoint.connect(grantee).performAction(target, calldata);
+        expectEvent.inReceipt(await tx.wait(), 'ActionPerformed', { target, data: calldata });
       });
     }
 
