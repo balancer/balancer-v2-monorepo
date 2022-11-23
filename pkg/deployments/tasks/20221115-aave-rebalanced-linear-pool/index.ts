@@ -5,15 +5,17 @@ import { AaveLinearPoolDeployment } from './input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { ethers } from 'hardhat';
-import {
-  getContractDeploymentTransactionHash,
-  getContractDeploymentTransactionHash,
-  saveContractDeploymentTransactionHash,
-} from '../../src';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from '../../src';
 
 export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise<void> => {
   const input = task.input() as AaveLinearPoolDeployment;
-  const args = [input.Vault, input.ProtocolFeePercentagesProvider, input.BalancerQueries];
+  const args = [
+    input.Vault,
+    input.ProtocolFeePercentagesProvider,
+    input.BalancerQueries,
+    input.FactoryVersion,
+    input.PoolVersion,
+  ];
 
   const factory = await task.deployAndVerify('AaveLinearPoolFactory', args, from, force);
 
@@ -41,6 +43,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       bufferPeriodDuration: undefined,
       swapFeePercentage: bn(1e12),
       owner: ZERO_ADDRESS,
+      version: input.PoolVersion,
     };
 
     // This mimics the logic inside task.deploy
