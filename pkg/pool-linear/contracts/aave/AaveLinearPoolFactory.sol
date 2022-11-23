@@ -18,7 +18,7 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IPoolVersion.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
@@ -32,7 +32,7 @@ import "./AaveLinearPoolRebalancer.sol";
 
 contract AaveLinearPoolFactory is
     ILastCreatedPoolFactory,
-    IPoolVersion,
+    IFactoryCreatedPoolVersion,
     Version,
     BasePoolFactory,
     ReentrancyGuard,
