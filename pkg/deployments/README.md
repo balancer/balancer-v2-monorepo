@@ -94,6 +94,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
+| Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/20221122-composable-stable-pool-v2)                   |
 
 ## Scripts
 
@@ -137,3 +138,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Arbitrum Root Gauges, for veBAL voting           | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
 | Polygon Root Gauges, for veBAL voting            | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
 | Optimism Root Gauges, for veBAL voting           | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
+| Composable Stable Pools                          | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |
