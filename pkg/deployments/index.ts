@@ -34,6 +34,17 @@ export function getBalancerContractArtifact(task: string, contract: string): Art
 }
 
 /**
+ * @dev Returns the ABI for a contract from a specific task
+ * @param task ID of the task to look the ABI of the required contract
+ * @param contract Name of the contract to be fetched.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getBalancerContractABI(task: string, contract: string): any[] {
+  const artifact = getBalancerContractArtifact(task, contract);
+  return artifact.abi;
+}
+
+/**
  * @deprecated
  * @dev Returns the contract's creation code of for a specific task
  * @param task ID of the task to look the creation code of the required contract
