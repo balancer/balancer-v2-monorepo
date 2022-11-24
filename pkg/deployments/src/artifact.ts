@@ -44,9 +44,9 @@ export function checkArtifact(task: Task): void {
       const contractName = fileName;
 
       const expectedArtifact = task.artifact(contractName, fileName);
-      const artifact = readContractArtifact(task, contractName);
+      const actualArtifact = readContractArtifact(task, contractName);
 
-      const artifactMatch = JSON.stringify(artifact) === JSON.stringify(expectedArtifact);
+      const artifactMatch = JSON.stringify(actualArtifact) === JSON.stringify(expectedArtifact);
       if (artifactMatch) {
         logger.success(`Verified artifact integrity of contract '${contractName}' of task '${task.id}'`);
       } else {
