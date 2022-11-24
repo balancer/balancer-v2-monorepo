@@ -39,7 +39,7 @@ export function getBalancerContractArtifact(task: string, contract: string): Art
  * @param contract Name of the contract to be fetched.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getBalancerContractABI(task: string, contract: string): any[] {
+export function getBalancerContractAbi(task: string, contract: string): any[] {
   const artifact = getBalancerContractArtifact(task, contract);
   return artifact.abi;
 }
