@@ -16,6 +16,8 @@ import {
   arrayFpMul,
   fpMul,
   fpDiv,
+  FP_ONE,
+  FP_100_PCT,
 } from '@balancer-labs/v2-helpers/src/numbers';
 
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
@@ -466,7 +468,7 @@ describe('ComposableStablePoolProtocolFees', () => {
 
               const deltaSum = bnSum(
                 preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
+                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(FP_ONE))
                 )
               );
 
@@ -502,7 +504,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               const swapFeeDeltaSum = bnSum(swapFeeDeltas);
               const yieldDeltaSum = bnSum(
                 preBalances.map((balance, i) =>
-                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(fp(1)))
+                  exemptFromYieldProtocolFeeFlags[i] ? 0 : fpMul(balance, rates[i].sub(FP_ONE))
                 )
               );
               const currSum = bnSum(currentBalances);
@@ -570,7 +572,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               // to mint = supply * protocol ownership / (1 - protocol ownership)
               expectedBptAmount = preVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+                .div(FP_100_PCT.sub(expectedProtocolOwnershipPercentage));
             });
 
             it('returns a non-zero protocol ownership percentage', async () => {
@@ -703,10 +705,10 @@ describe('ComposableStablePoolProtocolFees', () => {
               // Compute the balances, and increase/decrease the virtual supply proportionally
               if (op == Operation.JOIN) {
                 currentBalances = arrayAdd(preBalances, amounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, FP_ONE.add(ratio));
               } else {
                 currentBalances = arraySub(preBalances, amounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, FP_ONE.sub(ratio));
               }
             });
           }
@@ -725,12 +727,12 @@ describe('ComposableStablePoolProtocolFees', () => {
               // (because they are fees).
               if (op == Operation.JOIN) {
                 const proportionalBalances = arrayAdd(preBalances, proportionalAmounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).add(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, FP_ONE.add(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
               } else {
                 const proportionalBalances = arraySub(preBalances, proportionalAmounts);
-                currentVirtualSupply = fpMul(preVirtualSupply, fp(1).sub(ratio));
+                currentVirtualSupply = fpMul(preVirtualSupply, FP_ONE.sub(ratio));
 
                 currentBalances = arrayAdd(proportionalBalances, deltas);
               }
@@ -792,7 +794,7 @@ describe('ComposableStablePoolProtocolFees', () => {
               // to mint = supply * protocol ownership / (1 - protocol ownership)
               expectedBptAmount = currentVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+                .div(FP_100_PCT.sub(expectedProtocolOwnershipPercentage));
             });
 
             it('mints BPT to the protocol fee collector', async () => {

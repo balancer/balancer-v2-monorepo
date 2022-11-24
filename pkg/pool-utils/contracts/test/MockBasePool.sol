@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     uint256 private immutable _totalTokens;
@@ -28,6 +29,7 @@ contract MockBasePool is BasePool {
 
     event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
     event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
+    event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
 
     constructor(
         IVault vault,
@@ -147,45 +149,6 @@ contract MockBasePool is BasePool {
         }
     }
 
-    function upscale(uint256 amount, uint256 scalingFactor) external pure returns (uint256) {
-        return _upscale(amount, scalingFactor);
-    }
-
-    function upscaleArray(uint256[] memory amounts, uint256[] memory scalingFactors)
-        external
-        pure
-        returns (uint256[] memory)
-    {
-        _upscaleArray(amounts, scalingFactors);
-        return amounts;
-    }
-
-    function downscaleDown(uint256 amount, uint256 scalingFactor) external pure returns (uint256) {
-        return _downscaleDown(amount, scalingFactor);
-    }
-
-    function downscaleDownArray(uint256[] memory amounts, uint256[] memory scalingFactors)
-        external
-        pure
-        returns (uint256[] memory)
-    {
-        _downscaleDownArray(amounts, scalingFactors);
-        return amounts;
-    }
-
-    function downscaleUp(uint256 amount, uint256 scalingFactor) external pure returns (uint256) {
-        return _downscaleUp(amount, scalingFactor);
-    }
-
-    function downscaleUpArray(uint256[] memory amounts, uint256[] memory scalingFactors)
-        external
-        pure
-        returns (uint256[] memory)
-    {
-        _downscaleUpArray(amounts, scalingFactors);
-        return amounts;
-    }
-
     function doNotCallInRecovery() external view whenNotInRecoveryMode {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -196,5 +159,15 @@ contract MockBasePool is BasePool {
 
     function onlyCallableInRecovery() external view {
         _ensureInRecoveryMode();
+    }
+
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        emit RecoveryModeExit(totalSupply, balances, bptAmountIn);
+        return (bptAmountIn, balances);
     }
 }

@@ -13,11 +13,13 @@ import {
   fp,
   pct,
   arrayAdd,
-  bnSum,
   arrayFpMul,
+  bnSum,
   fpDiv,
   fpMul,
-  FP_SCALING_FACTOR,
+  FP_ONE,
+  FP_ZERO,
+  FP_100_PCT,
 } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
@@ -94,7 +96,7 @@ describe('ComposableStablePool', () => {
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
-        await rateProviders[i].mockRate(rates[i] || fp(1));
+        await rateProviders[i].mockRate(rates[i] || FP_ONE);
         tokenRateCacheDurations[i] = MONTH + i;
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
@@ -359,7 +361,7 @@ describe('ComposableStablePool', () => {
               const preVirtualSupply = await pool.getVirtualSupply();
               expectedBptAmount = preVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+                .div(FP_100_PCT.sub(expectedProtocolOwnershipPercentage));
             });
 
             it('returns the total supply after protocol fees are paid', async () => {
@@ -484,7 +486,7 @@ describe('ComposableStablePool', () => {
 
         context('when the pool was not initialized', () => {
           it('reverts', async () => {
-            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(0), recipient });
+            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: FP_ZERO, recipient });
             await expect(tx).to.be.reverted;
           });
         });
@@ -1482,7 +1484,7 @@ describe('ComposableStablePool', () => {
               const value = Math.random() / 5;
 
               await rateProviders[i].mockRate(
-                previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))
+                fpMul(previousCache.rate, Math.random() > 0.5 ? fp(1 + value) : fp(1 - value))
               );
             });
           }
@@ -1497,7 +1499,7 @@ describe('ComposableStablePool', () => {
               expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
-            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_ONE);
           }
 
           sharedBeforeEach('fund lp and pool', async () => {
@@ -1737,8 +1739,8 @@ describe('ComposableStablePool', () => {
 
               const actualSupply = virtualSupply.add(unmintedBPT);
 
-              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
-              const rateConsideringProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(actualSupply);
+              const rateAssumingNoProtocolFees = invariant.mul(FP_ONE).div(virtualSupply);
+              const rateConsideringProtocolFees = invariant.mul(FP_ONE).div(actualSupply);
 
               // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
               // rounding error.
@@ -1807,7 +1809,7 @@ describe('ComposableStablePool', () => {
 
               const virtualSupply = await pool.getVirtualSupply();
 
-              const rateAssumingNoProtocolFees = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+              const rateAssumingNoProtocolFees = invariant.mul(FP_ONE).div(virtualSupply);
 
               expect(newRate).to.be.almostEqual(rateAssumingNoProtocolFees, 1e-6);
             });
@@ -2092,7 +2094,6 @@ describe('ComposableStablePool', () => {
 
       const expectedOwnerOnlyFunctions = [
         'setSwapFeePercentage',
-        'setAssetManagerPoolConfig',
         'startAmplificationParameterUpdate',
         'stopAmplificationParameterUpdate',
         'setTokenRateCacheDuration',

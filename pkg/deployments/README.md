@@ -3,9 +3,9 @@
 # Balancer V2 Deployments
 
 [![NPM Package](https://img.shields.io/npm/v/@balancer-labs/v2-deployments.svg)](https://www.npmjs.org/package/@balancer-labs/v2-deployments)
-[![GitHub Repository](https://img.shields.io/badge/github-deployments-lightgrey?logo=github)](https://github.com/balancer-labs/balancer-v2-monorepo/tree/deployments-latest/pkg/deployments)
+[![GitHub Repository](https://img.shields.io/badge/github-deployments-lightgrey?logo=github)](https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments)
 
-This package contains the addresses and ABIs of all Balancer V2 deployed contracts, for Ethereum, Polygon, Arbitrum and Optimism mainnet, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), and ABIs of related contracts.
+This package contains the addresses and ABIs of all Balancer V2 deployed contracts for Ethereum mainnet, Polygon, Arbitrum and Optimism, as well as various test networks. Each deployment consists of a deployment script (called 'task'), inputs (script configuration, such as dependencies), outputs (typically contract addresses), ABIs and bytecode files of related contracts.
 
 Addresses and ABIs can be consumed from the package in JavaScript environments, or manually retrieved from the [GitHub](https://github.com/balancer-labs/balancer-v2-monorepo/tree/master/pkg/deployments) repository.
 
@@ -25,7 +25,13 @@ $ npm install @balancer-labs/v2-deployments
 
 ### Usage
 
-Import `@balancer-labs/v2-deployments` to access the different ABIs and deployed addresses. To see all Task IDs and their associated contracts, head to [Past Deployments](#past-deployments).
+Import `@balancer-labs/v2-deployments` to access the different ABIs and deployed addresses. To see all current Task IDs and their associated contracts, head to [Active Deployments](#active-deployments).
+
+Past deployments that are currently not in use or have been superseded can be accessed in the [Deprecated Deployments](#deprecated-deployments) section. Use `deprecated/` as prefix when referring to a deprecated task ID.
+
+> ⚠️ Exercise care when interacting with deprecated deployments: there's often a very good reason why they're no longer active.
+>
+> You can find information on why each deployment has been deprecated in their corresponding readme file.
 
 ---
 
@@ -41,19 +47,19 @@ Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a contract d
 
 _Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
 
-- **async function getBalancerContractAbi(taskID, contract)**
+- **function getBalancerContractAbi(taskID, contract)**
 
 Returns a contract's [ABI](https://docs.soliditylang.org/en/latest/abi-spec.html).
 
-- **async function getBalancerContractBytecode(taskID, contract)**
+- **function getBalancerContractBytecode(taskID, contract)**
 
 Returns a contract's [creation code](https://docs.soliditylang.org/en/latest/contracts.html#creating-contracts).
 
-- **async function getBalancerContractAddress(taskID, contract, network)**
+- **function getBalancerContractAddress(taskID, contract, network)**
 
 Returns the address of a contract's canonical deployment.
 
-- **async function getBalancerDeployment(taskID, network)**
+- **function getBalancerDeployment(taskID, network)**
 
 Returns an object with all contracts from a deployment and their addresses.
 
@@ -64,6 +70,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Authorizer, governance contract                         | [`20210418-authorizer`](./tasks/20210418-authorizer)                                                 |
 | Vault, main protocol contract                           | [`20210418-vault`](./tasks/20210418-vault)                                                           |
 | Rate Provider for wstETH                                | [`20210812-wsteth-rate-provider`](./tasks/20210812-wsteth-rate-provider)                             |
+| Liquidity Bootstrapping Pools                           | [`20211202-no-protocol-fee-lbp`](./tasks/20211202-no-protocol-fee-lbp)                               |
 | Authorizer Adaptor for extending governance             | [`20220325-authorizer-adaptor`](./tasks/20220325-authorizer-adaptor)                                 |
 | Wallet for the BAL token                                | [`20220325-bal-token-holder-factory`](./tasks/20220325-bal-token-holder-factory)                     |
 | Admin of the BAL token                                  | [`20220325-balancer-token-admin`](./tasks/20220325-balancer-token-admin)                             |
@@ -83,18 +90,21 @@ Returns an object with all contracts from a deployment and their addresses.
 | Gauge Registrant V2, supporting new networks            | [`20220628-gauge-adder-v2`](./tasks/20220628-gauge-adder-v2)                                         |
 | Distribution Scheduler for reward tokens on gauges      | [`20220707-distribution-scheduler`](./tasks/20220707-distribution-scheduler)                         |
 | Fee Distributor for veBAL holders V2                    | [`20220714-fee-distributor-v2`](./tasks/20220714-fee-distributor-v2)                                 |
-| Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/20220720-batch-relayer-v3)                                     |
 | Swap, join and exit simulations (queries)               | [`20220721-balancer-queries`](./tasks/20220721-balancer-queries)                                     |
 | Protocol fee percentages provider                       | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 | Child Chain Gauge Reward Helper                         | [`20220812-child-chain-reward-helper`](./tasks/20220812-child-chain-reward-helper)                   |
-| Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/20220817-aave-rebalanced-linear-pool)               |
 | Mainnet Staking Gauges V2                               | [`20220822-mainnet-gauge-factory-v2`](./tasks/20220822-mainnet-gauge-factory-v2)                     |
 | Arbitrum Root Gauges V2, for veBAL voting               | [`20220823-arbitrum-root-gauge-factory-v2`](./tasks/20220823-arbitrum-root-gauge-factory-v2)         |
 | Polygon Root Gauges V2, for veBAL voting                | [`20220823-polygon-root-gauge-factory-v2`](./tasks/20220823-polygon-root-gauge-factory-v2)           |
 | Optimism Root Gauges V2, for veBAL voting               | [`20220823-optimism-root-gauge-factory-v2`](./tasks/20220823-optimism-root-gauge-factory-v2)         |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
+| Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
+| Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
+| Authorizer Adaptor Entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
+| Linear Pools for Aave aTokens with built-in rebalancing | [`20221115-aave-rebalanced-linear-pool`](./tasks/20221115-aave-rebalanced-linear-pool)               |
 | Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/20221122-composable-stable-pool-v2)                   |
+| Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 
 ## Scripts
 
@@ -116,26 +126,28 @@ These deployments have been deprecated because they're either outdated and have 
 
 Go to each deprecated deployment's readme file to learn more about why it is deprecated, and what the replacement deployment is (if any).
 
-| Description                                      | Task ID                                                                                             |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Weighted Pools of up to 8 tokens                 | [`20210418-weighted-pool`](./deprecated/tasks/20210418-weighted-pool)                                          |
-| Stable Pools of up to 5 tokens                   | [`20210624-stable-pool`](./tasks/deprecated/20210624-stable-pool)                                   |
-| Liquidity Bootstrapping Pools of up to 4 tokens  | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
-| Meta Stable Pools with 2 tokens and price oracle | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                         |
-| Distributor contract for LDO rewards             | [`20210811-ldo-merkle`](./deprecated/tasks/deprecated/20210811-ldo-merkle)                          |
-| Relayer for Lido stETH wrapping/unwrapping       | [`20210812-lido-relayer`](./tasks/deprecated/20210812-lido-relayer)                                 |
-| Basic Investment Pools for few tokens            | [`20210907-investment-pool`](./tasks/deprecated/20210907-investment-pool)                           |
-| Distributor contract for arbitrum BAL rewards    | [`20210913-bal-arbitrum-merkle`](./tasks/deprecated/20210913-bal-arbitrum-merkle)                   |
-| Distributor contract for arbitrum MCB rewards    | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
-| Merkle Orchard Distributor                       | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
-| Batch Relayer                                    | [`20211203-batch-relayer`](./tasks/deprecated/20211203-batch-relayer)                               |
-| Linear Pools for Aave aTokens                    | [`20211208-aave-linear-pool`](./tasks/deprecated/20211208-aave-linear-pool)                         |
-| Preminted BPT Meta Stable Pools                  | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
-| Linear Pools for ERC4626 Tokens                  | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
-| Batch Relayer V2                                 | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                         |
-| Fee Distributor for veBAL holders                | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
-| Mainnet Staking Gauges                           | [`20220325-mainnet-gauge-factory`](./tasks/deprecated/20220325-mainnet-gauge-factory)               |
-| Arbitrum Root Gauges, for veBAL voting           | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
-| Polygon Root Gauges, for veBAL voting            | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
-| Optimism Root Gauges, for veBAL voting           | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
-| Composable Stable Pools                          | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |
+| Description                                             | Task ID                                                                                             |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Weighted Pools of up to 8 tokens                        | [`20210418-weighted-pool`](./deprecated/tasks/20210418-weighted-pool)                               |
+| Stable Pools of up to 5 tokens                          | [`20210624-stable-pool`](./tasks/deprecated/20210624-stable-pool)                                   |
+| Liquidity Bootstrapping Pools of up to 4 tokens         | [`20210721-liquidity-bootstrapping-pool`](./tasks/deprecated/20210721-liquidity-bootstrapping-pool) |
+| Meta Stable Pools with 2 tokens and price oracle        | [`20210727-meta-stable-pool`](./tasks/deprecated/20210727-meta-stable-pool)                         |
+| Distributor contract for LDO rewards                    | [`20210811-ldo-merkle`](./deprecated/tasks/deprecated/20210811-ldo-merkle)                          |
+| Relayer for Lido stETH wrapping/unwrapping              | [`20210812-lido-relayer`](./tasks/deprecated/20210812-lido-relayer)                                 |
+| Basic Investment Pools for few tokens                   | [`20210907-investment-pool`](./tasks/deprecated/20210907-investment-pool)                           |
+| Distributor contract for arbitrum BAL rewards           | [`20210913-bal-arbitrum-merkle`](./tasks/deprecated/20210913-bal-arbitrum-merkle)                   |
+| Distributor contract for arbitrum MCB rewards           | [`20210928-mcb-arbitrum-merkle`](./tasks/deprecated/20210928-mcb-arbitrum-merkle)                   |
+| Merkle Orchard Distributor                              | [`20211012-merkle-orchard`](./tasks/deprecated/20211012-merkle-orchard)                             |
+| Batch Relayer                                           | [`20211203-batch-relayer`](./tasks/deprecated/20211203-batch-relayer)                               |
+| Linear Pools for Aave aTokens                           | [`20211208-aave-linear-pool`](./tasks/deprecated/20211208-aave-linear-pool)                         |
+| Preminted BPT Meta Stable Pools                         | [`20211208-stable-phantom-pool`](./tasks/deprecated/20211208-stable-phantom-pool)                   |
+| Linear Pools for ERC4626 Tokens                         | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
+| Batch Relayer V2                                        | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                         |
+| Fee Distributor for veBAL holders                       | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
+| Mainnet Staking Gauges                                  | [`20220325-mainnet-gauge-factory`](./tasks/deprecated/20220325-mainnet-gauge-factory)               |
+| Arbitrum Root Gauges, for veBAL voting                  | [`20220413-arbitrum-root-gauge-factory`](./tasks/deprecated/20220413-arbitrum-root-gauge-factory)   |
+| Polygon Root Gauges, for veBAL voting                   | [`20220413-polygon-root-gauge-factory`](./tasks/deprecated/20220413-polygon-root-gauge-factory)     |
+| Optimism Root Gauges, for veBAL voting                  | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
+| Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                         |
+| Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)   |
+| Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |

@@ -5,7 +5,7 @@ import { WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/wei
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import { bn, fp, fpDiv } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, fpDiv, FP_100_PCT, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
@@ -127,7 +127,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
         it('is set on initialization', async () => {
           await pool.init({ initialBalances });
 
-          const rates = pool.weights.map(() => fp(1));
+          const rates = pool.weights.map(() => FP_100_PCT);
           const expectedRateProduct = calculateInvariant(rates, pool.weights);
           expect(await pool.instance.getATHRateProduct()).to.be.almostEqual(expectedRateProduct, 0.0000001);
         });
@@ -212,7 +212,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
 
         // We trigger protocol fee payment by executing a proportional exit for 0 BPT
         await pool.exit({
-          data: WeightedPoolEncoder.exitExactBPTInForTokensOut(fp(0)),
+          data: WeightedPoolEncoder.exitExactBPTInForTokensOut(FP_ZERO),
           protocolFeePercentage,
         });
 

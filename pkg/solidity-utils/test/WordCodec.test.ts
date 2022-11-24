@@ -4,6 +4,7 @@ import { Contract, BigNumber, BigNumberish } from 'ethers';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { bn, negate } from '@balancer-labs/v2-helpers/src/numbers';
 import { random } from 'lodash';
+import { ONES_BYTES32, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 
 describe('WordCodec', () => {
   let lib: Contract;
@@ -297,6 +298,31 @@ describe('WordCodec', () => {
           });
         });
       }
+    });
+  });
+
+  describe('helpers', () => {
+    it('clears word at position', async () => {
+      // Starting with all 1's, inserting a 128-bit value of 0 should be the same as clearing 128 bits
+      expect(await lib.clearWordAtPosition(ONES_BYTES32, 128, 128)).to.equal(
+        await lib.insertUint(ONES_BYTES32, 0, 128, 128)
+      );
+      // Should fail when the values are different
+      expect(await lib.clearWordAtPosition(ONES_BYTES32, 128, 128)).to.not.equal(
+        await lib.insertUint(ONES_BYTES32, 0, 128, 64)
+      );
+    });
+
+    it('ensures surrounding state unchanged', async () => {
+      // Should be true if you pass in the same value
+      expect(await lib.isOtherStateUnchanged(ONES_BYTES32, ONES_BYTES32, 0, 255)).to.be.true;
+
+      // Should be false if you pass in different values
+      expect(await lib.isOtherStateUnchanged(ONES_BYTES32, ZERO_BYTES32, 0, 255)).to.be.false;
+
+      // Realistic example. Insert a value, *other* bits should be unchanged.
+      const changedValue = await lib.insertUint(ONES_BYTES32, 0, 192, 32);
+      expect(await lib.isOtherStateUnchanged(ONES_BYTES32, changedValue, 192, 32)).to.be.true;
     });
   });
 });

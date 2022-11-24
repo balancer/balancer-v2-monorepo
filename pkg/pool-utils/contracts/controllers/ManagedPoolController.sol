@@ -15,7 +15,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IControlledManagedPool.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IManagedPool.sol";
 
 import "./BasePoolController.sol";
 
@@ -30,6 +31,7 @@ import "./BasePoolController.sol";
  * if the corresponding permission is set.
  */
 contract ManagedPoolController is BasePoolController {
+    using SafeERC20 for IERC20;
     using WordCodec for bytes32;
 
     // There are six managed pool rights: all corresponding to permissioned functions of ManagedPool.
@@ -150,6 +152,7 @@ contract ManagedPoolController is BasePoolController {
     function updateWeightsGradually(
         uint256 startTime,
         uint256 endTime,
+        IERC20[] calldata tokens,
         uint256[] calldata endWeights
     ) external virtual onlyManager withBoundPool {
         _require(canChangeWeights(), Errors.FEATURE_DISABLED);
@@ -158,7 +161,7 @@ contract ManagedPoolController is BasePoolController {
             Errors.WEIGHT_CHANGE_TOO_FAST
         );
 
-        IControlledManagedPool(pool).updateWeightsGradually(startTime, endTime, endWeights);
+        IManagedPool(pool).updateWeightsGradually(startTime, endTime, tokens, endWeights);
     }
 
     /**
@@ -167,7 +170,7 @@ contract ManagedPoolController is BasePoolController {
     function setSwapEnabled(bool swapEnabled) external virtual onlyManager withBoundPool {
         _require(canDisableSwaps(), Errors.FEATURE_DISABLED);
 
-        IControlledManagedPool(pool).setSwapEnabled(swapEnabled);
+        IManagedPool(pool).setSwapEnabled(swapEnabled);
     }
 
     /**
@@ -182,7 +185,7 @@ contract ManagedPoolController is BasePoolController {
     function setMustAllowlistLPs(bool mustAllowlistLPs) external virtual onlyManager withBoundPool {
         _require(canSetMustAllowlistLPs(), Errors.FEATURE_DISABLED);
 
-        IControlledManagedPool(pool).setMustAllowlistLPs(mustAllowlistLPs);
+        IManagedPool(pool).setMustAllowlistLPs(mustAllowlistLPs);
     }
 
     /**
@@ -190,7 +193,7 @@ contract ManagedPoolController is BasePoolController {
      * The underlying pool handles all state/permission checks. It will revert if the LP allowlist is off.
      */
     function addAllowedAddress(address member) external virtual onlyManager withBoundPool {
-        IControlledManagedPool(pool).addAllowedAddress(member);
+        IManagedPool(pool).addAllowedAddress(member);
     }
 
     /**
@@ -199,28 +202,14 @@ contract ManagedPoolController is BasePoolController {
      * previouslly added to the allowlist.
      */
     function removeAllowedAddress(address member) external virtual onlyManager withBoundPool {
-        IControlledManagedPool(pool).removeAllowedAddress(member);
+        IManagedPool(pool).removeAllowedAddress(member);
     }
 
     /**
      * @dev Transfer any BPT management fees from this contract to the recipient.
      */
     function withdrawCollectedManagementFees(address recipient) external virtual onlyManager withBoundPool {
-        IERC20(pool).transfer(recipient, IERC20(pool).balanceOf(address(this)));
-    }
-
-    /**
-     * @dev Pass a call to ManagedPool's setManagementSwapFeePercentage through to the underlying pool.
-     */
-    function setManagementSwapFeePercentage(uint256 managementSwapFeePercentage)
-        external
-        virtual
-        onlyManager
-        withBoundPool
-    {
-        _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
-
-        IControlledManagedPool(pool).setManagementSwapFeePercentage(managementSwapFeePercentage);
+        IERC20(pool).safeTransfer(recipient, IERC20(pool).balanceOf(address(this)));
     }
 
     /**
@@ -235,6 +224,6 @@ contract ManagedPoolController is BasePoolController {
     {
         _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
 
-        return IControlledManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
+        return IManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
     }
 }

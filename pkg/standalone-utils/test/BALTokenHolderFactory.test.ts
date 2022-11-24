@@ -20,7 +20,7 @@ describe('BALTokenHolderFactory', function () {
 
     // Deploy BAL token
     tokens = await TokenList.create([{ symbol: 'BAL' }]);
-    BAL = await tokens.findBySymbol('BAL');
+    BAL = tokens.findBySymbol('BAL');
 
     factory = await deploy('BALTokenHolderFactory', { args: [BAL.address, vault.address] });
   });

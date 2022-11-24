@@ -23,8 +23,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IFlashLoanRecipient.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title DoubleEntrypointFixRelayer
  * @notice This contract performs mitigations to safeguard funds affected by double-entrypoint tokens (mostly Synthetix

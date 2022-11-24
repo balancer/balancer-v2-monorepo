@@ -1,21 +1,19 @@
 import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
+import { range } from 'lodash';
 
-import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentTimestamp, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { range } from 'lodash';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
+import { getSigner, impersonate, getForkedNetwork, Task, TaskMode, describeForkTest } from '../../../src';
 
 describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -50,7 +48,7 @@ describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
     admin = await getSigner(0);
     recipient = await getSigner(1);
 
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
   });
 
   before('setup contracts', async () => {
@@ -97,7 +95,7 @@ describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
   it('grant permissions', async () => {
     // We need to grant permission to the admin to add the Polygon factory to the GaugeAdder, and also to then add
     // gauges from said factory to the GaugeController.
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
 
     await Promise.all(
       ['addGaugeFactory', 'addPolygonGauge'].map(
@@ -164,7 +162,7 @@ describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
 
     // Note that instead of the weight, we use the cap (since we expect for the weight to be larger than the cap)
-    const expectedEmissions = weightCap.mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = weightCap.mul(weeklyRate).div(FP_ONE);
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
@@ -215,7 +213,7 @@ describeForkTest('PolygonRootGaugeFactoryV2', 'mainnet', 15397200, function () {
     // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
     // Note that instead of the weight, we use the cap (since we expect for the weight to be larger than the cap)
-    const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = weightCap.mul(numberOfWeeks).mul(weeklyRate).div(FP_ONE);
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
     const tx = await authorizerAdaptor.connect(admin).performAction(gauge.address, calldata);

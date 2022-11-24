@@ -21,10 +21,12 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ILinearPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 
-import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/NewBasePool.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 
 import "./LinearMath.sol";
@@ -38,8 +40,8 @@ import "./LinearMath.sol";
  * The Pool will register three tokens in the Vault however: the two assets and the BPT itself,
  * so that BPT can be exchanged (effectively joining and exiting) via swaps.
  *
- * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins and
- * exits, as the initial BPT supply is 'preminted' during initialization. No further BPT can be minted, and BPT can
+ * Despite inheriting from BasePool, much of the basic behavior changes. This Pool does not support regular joins
+ * and exits, as the initial BPT supply is 'preminted' during initialization. No further BPT can be minted, and BPT can
  * only be burned if governance enables Recovery Mode and LPs use it to exit proportionally.
  *
  * Unlike most other Pools, this one does not attempt to create revenue by charging fees: value is derived by holding
@@ -51,7 +53,7 @@ import "./LinearMath.sol";
  * The net revenue via fees is expected to be zero: all collected fees are used to pay for this 'rebalancing'.
  * Accordingly, this Pool does not pay any protocol fees.
  */
-abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePool {
+abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBasePool {
     using WordCodec for bytes32;
     using FixedPoint for uint256;
     using PriceRateCache for bytes32;
@@ -70,11 +72,14 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     // the Pool, and then burn the acquired BPT, resulting in prohibitively large gas costs.
     uint256 private constant _INITIAL_BPT_SUPPLY = 2**(112) - 1;
 
+    // 1e18 corresponds to 1.0, or a 100% fee
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 1e17; // 10%
+
     IERC20 private immutable _mainToken;
     IERC20 private immutable _wrappedToken;
 
     // The indices of each token when registered, which can then be used to access the balances array.
-    uint256 private immutable _bptIndex;
     uint256 private immutable _mainIndex;
     uint256 private immutable _wrappedIndex;
 
@@ -86,18 +91,17 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     uint256 private immutable _scalingFactorMainToken;
     uint256 private immutable _scalingFactorWrappedToken;
 
-    // The lower and upper targets are in BasePool's misc data field, which has 192 bits available (as it shares the
-    // same storage slot as the swap fee percentage and recovery mode flag, which together take up 64 bits).
-    // We use 64 of these 192 for the targets (32 for each).
-    //
+    // The lower and upper targets are stored in the pool state field, along with the swap fee percentage and recovery
+    // mode flag, which together take up 64 bits).
+    bytes32 private _poolState;
+
     // The targets are already scaled by the main token's scaling factor (which makes the token behave as if it had 18
     // decimals), but we only store the integer part: the targets must be multiplied by 1e18 before being used.
     // This means the targets' resolution does not include decimal places in the main token (so e.g. a target of 500.1
     // DAI is impossible). Since targets are expected to be relatively large, this is a non-issue. With 32 bits per
     // target, we can represent values as high as ~4 billion (2^32).
-    // [        64 bits       |    32 bits   |    32 bits    | 128 bits ]
-    // [       reserved       | upper target |  lower target | reserved ]
-    // [  base pool swap fee  |                  misc data              ]
+    // [   1 bit  |  63 bits  |    32 bits   |    32 bits    | 128 bits ]
+    // [ recovery | swap  fee | upper target |  lower target | reserved ]
     // [ MSB                                                        LSB ]
 
     uint256 private constant _TARGET_SCALING = 1e18;
@@ -106,9 +110,18 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
 
     uint256 private constant _LOWER_TARGET_OFFSET = 32;
     uint256 private constant _UPPER_TARGET_OFFSET = 64;
+    uint256 private constant _SWAP_FEE_PERCENTAGE_OFFSET = 192;
+    uint256 private constant _RECOVERY_MODE_BIT_OFFSET = 255;
+
+    // A fee can never be larger than FixedPoint.ONE, which fits in 60 bits, so 63 is more than enough.
+    uint256 private constant _SWAP_FEE_PERCENTAGE_BIT_LENGTH = 63;
 
     uint256 private constant _MAX_UPPER_TARGET = (2**(32) - 1) * _TARGET_SCALING;
 
+    // Composable Pool registration will put the BPT at index 0, with the main/wrapped following in sorted order.
+    uint256 private constant _BPT_INDEX = 0;
+
+    event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event TargetsSet(IERC20 indexed token, uint256 lowerTarget, uint256 upperTarget);
 
     constructor(
@@ -124,14 +137,16 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256 bufferPeriodDuration,
         address owner
     )
-        BasePool(
+        NewBasePool(
             vault,
-            IVault.PoolSpecialization.GENERAL,
+            PoolRegistrationLib.registerComposablePool(
+                vault,
+                IVault.PoolSpecialization.GENERAL,
+                _sortTokens(mainToken, wrappedToken),
+                assetManagers
+            ),
             name,
             symbol,
-            _sortTokens(mainToken, wrappedToken, this),
-            _insertNullBptAssetManager(mainToken, wrappedToken, assetManagers),
-            swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
             owner
@@ -141,15 +156,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _mainToken = mainToken;
         _wrappedToken = wrappedToken;
 
-        // Set token indexes
-        (uint256 mainIndex, uint256 wrappedIndex, uint256 bptIndex) = _getSortedTokenIndexes(
-            mainToken,
-            wrappedToken,
-            this
-        );
-        _bptIndex = bptIndex;
-        _mainIndex = mainIndex;
-        _wrappedIndex = wrappedIndex;
+        // Set token indexes. BPT is always 0; other tokens follow in sorted order.
+        _mainIndex = mainToken < wrappedToken ? 1 : 2;
+        _wrappedIndex = mainToken < wrappedToken ? 2 : 1;
 
         // Set scaling factors
         _scalingFactorMainToken = _computeScalingFactor(mainToken);
@@ -159,31 +168,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         // Otherwise the pool would owe fees from the start, which would make the rate manipulable.
         uint256 lowerTarget = 0;
         _setTargets(mainToken, lowerTarget, upperTarget);
-    }
 
-    /**
-     * @dev Inserts a zero-valued entry in the `assetManagers` array at the BPT token index, ensuring that BPT is not
-     * managed even if the main or wrapped tokens are.
-     */
-    function _insertNullBptAssetManager(
-        IERC20 mainToken,
-        IERC20 wrappedToken,
-        address[] memory assetManagers
-    ) private view returns (address[] memory) {
-        (, , uint256 bptIndex) = _getSortedTokenIndexes(mainToken, wrappedToken, this);
-
-        address[] memory extendedAssetManagers = new address[](assetManagers.length + 1);
-        for (uint256 i = 0; i < extendedAssetManagers.length; ++i) {
-            if (i < bptIndex) {
-                extendedAssetManagers[i] = assetManagers[i];
-            } else if (i > bptIndex) {
-                extendedAssetManagers[i] = assetManagers[i - 1];
-            } else {
-                extendedAssetManagers[i] = address(0);
-            }
-        }
-
-        return extendedAssetManagers;
+        // Set the initial swap fee percentage.
+        _setSwapFeePercentage(swapFeePercentage);
     }
 
     /**
@@ -204,8 +191,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
      * @notice Return the index of the BPT token.
      * @dev Note that this is an index into the registered token list (with 3 tokens).
      */
-    function getBptIndex() public view override returns (uint256) {
-        return _bptIndex;
+    function getBptIndex() public pure override returns (uint256) {
+        return _BPT_INDEX;
     }
 
     /**
@@ -225,8 +212,8 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     /**
-     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will have
-     * been minted.
+     * @dev Finishes initialization of the Linear Pool: it is unusable before calling this function as no BPT will
+     * have been minted.
      *
      * Since Linear Pools have preminted BPT stored in the Vault, they require an initial join to deposit said BPT as
      * their balance. Unfortunately, this cannot be performed during construction, as a join involves calling the
@@ -243,7 +230,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         // Joins typically involve the Pool receiving tokens in exchange for newly-minted BPT. In this case however, the
         // Pool will mint the entire BPT supply to itself, and join itself with it.
         uint256[] memory maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-        maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        maxAmountsIn[_BPT_INDEX] = _INITIAL_BPT_SUPPLY;
 
         // The first time this executes, it will call `_onInitializePool` (as the BPT supply will be zero). Future calls
         // will be routed to `_onJoinPool`, which always reverts, meaning `initialize` will only execute once.
@@ -258,21 +245,19 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     }
 
     /**
-     * @dev Implementation of onSwap, from IGeneralPool.
+     * @dev Implement the BasePool hook for a general swap (see `IGeneralPool`).
      */
-    function onSwap(
+    function _onSwapGeneral(
         SwapRequest memory request,
         uint256[] memory balances,
         uint256 indexIn,
         uint256 indexOut
-    ) external override onlyVault(request.poolId) returns (uint256) {
-        _beforeSwapJoinExit();
-
+    ) internal view override returns (uint256) {
         // In most Pools, swaps involve exchanging one token held by the Pool for another. In this case however, since
         // one of the three tokens is the BPT itself, a swap might also be a join (main/wrapped for BPT) or an exit
         // (BPT for main/wrapped).
         // All three swap types (swaps, joins and exits) are fully disabled if the emergency pause is enabled. Under
-        // these circumstances, the Pool should be exited using the regular Vault.exitPool function.
+        // these circumstances, the Pool can only be exited using Recovery Mode, if it is enabled.
 
         // Sanity check: this is not entirely necessary as the Vault's interface enforces the indices to be valid, but
         // the check is cheap to perform.
@@ -282,7 +267,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         // these indices to the inner functions.
 
         // Upscale balances by the scaling factors (taking into account the wrapped token rate)
-        uint256[] memory scalingFactors = _scalingFactors();
+        uint256[] memory scalingFactors = getScalingFactors();
         _upscaleArray(balances, scalingFactors);
 
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
@@ -336,7 +321,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _getVirtualSupply(balances[_bptIndex]),
+                _getVirtualSupply(balances[_BPT_INDEX]),
                 params
             );
     }
@@ -353,7 +338,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcWrappedOutPerMainIn(request.amount, balances[_mainIndex], params);
@@ -371,7 +356,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcMainOutPerWrappedIn(request.amount, balances[_mainIndex], params);
@@ -404,7 +389,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                 request.amount,
                 balances[_mainIndex],
                 balances[_wrappedIndex],
-                _getVirtualSupply(balances[_bptIndex]),
+                _getVirtualSupply(balances[_BPT_INDEX]),
                 params
             );
     }
@@ -421,7 +406,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcWrappedInPerMainOut(request.amount, balances[_mainIndex], params);
@@ -439,17 +424,15 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
                     request.amount,
                     balances[_mainIndex],
                     balances[_wrappedIndex],
-                    _getVirtualSupply(balances[_bptIndex]),
+                    _getVirtualSupply(balances[_BPT_INDEX]),
                     params
                 )
                 : LinearMath._calcMainInPerWrappedOut(request.amount, balances[_mainIndex], params);
     }
 
     function _onInitializePool(
-        bytes32,
         address sender,
         address recipient,
-        uint256[] memory,
         bytes memory
     ) internal view override returns (uint256, uint256[] memory) {
         // Linear Pools can only be initialized by the Pool performing the initial join via the `initialize` function.
@@ -461,60 +444,53 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
 
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        amountsIn[_BPT_INDEX] = _INITIAL_BPT_SUPPLY;
 
         return (bptAmountOut, amountsIn);
     }
 
+    function _onSwapMinimal(
+        SwapRequest memory,
+        uint256,
+        uint256
+    ) internal pure override returns (uint256) {
+        _revert(Errors.UNIMPLEMENTED);
+    }
+
     function _onJoinPool(
-        bytes32,
         address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        _revert(Errors.UNIMPLEMENTED);
     }
 
     function _onExitPool(
-        bytes32,
         address,
-        address,
-        uint256[] memory,
-        uint256,
-        uint256,
         uint256[] memory,
         bytes memory
     ) internal pure override returns (uint256, uint256[] memory) {
-        _revert(Errors.UNHANDLED_BY_LINEAR_POOL);
+        _revert(Errors.UNIMPLEMENTED);
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            registeredBalances,
-            _getVirtualSupply(registeredBalances[getBptIndex()]),
-            userData
-        );
+    ) internal view override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256[] memory amountsOut = new uint256[](registeredBalances.length);
 
-        // By default the pool will pay out an amount of BPT equivalent to that which the user burns.
-        // We zero this amount out, as otherwise a single user could drain the pool.
-        amountsOut[getBptIndex()] = 0;
+        uint256 bptIndex = getBptIndex();
+
+        uint256 virtualSupply = _getVirtualSupply(registeredBalances[bptIndex]);
+        uint256 bptRatio = bptAmountIn.divDown(virtualSupply);
+
+        for (uint256 i = 0; i < registeredBalances.length; i++) {
+            amountsOut[i] = i != bptIndex ? registeredBalances[i].mulDown(bptRatio) : 0;
+        }
 
         return (bptAmountIn, amountsOut);
-    }
-
-    function _getMaxTokens() internal pure override returns (uint256) {
-        return _TOTAL_TOKENS;
     }
 
     function _getMinimumBpt() internal pure override returns (uint256) {
@@ -523,11 +499,9 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         return 0;
     }
 
-    function _getTotalTokens() internal view virtual override returns (uint256) {
-        return _TOTAL_TOKENS;
-    }
+    // Scaling factors
 
-    function _scalingFactor(IERC20 token) internal view virtual override returns (uint256) {
+    function _scalingFactor(IERC20 token) internal view virtual returns (uint256) {
         if (token == _mainToken) {
             return _scalingFactorMainToken;
         } else if (token == _wrappedToken) {
@@ -541,14 +515,17 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         }
     }
 
-    function _scalingFactors() internal view virtual override returns (uint256[] memory) {
+    /**
+     * @notice Return the scaling factors for all tokens, including the BPT.
+     */
+    function getScalingFactors() public view virtual override returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](_TOTAL_TOKENS);
 
         // The wrapped token's scaling factor is not constant, but increases over time as the wrapped token increases in
         // value.
         scalingFactors[_mainIndex] = _scalingFactorMainToken;
         scalingFactors[_wrappedIndex] = _scalingFactorWrappedToken.mulDown(_getWrappedTokenRate());
-        scalingFactors[_bptIndex] = FixedPoint.ONE;
+        scalingFactors[_BPT_INDEX] = FixedPoint.ONE;
 
         return scalingFactors;
     }
@@ -562,7 +539,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     function getRate() external view override returns (uint256) {
         bytes32 poolId = getPoolId();
         (, uint256[] memory balances, ) = getVault().getPoolTokens(poolId);
-        _upscaleArray(balances, _scalingFactors());
+        _upscaleArray(balances, getScalingFactors());
 
         (uint256 lowerTarget, uint256 upperTarget) = getTargets();
         LinearMath.Params memory params = LinearMath.Params({
@@ -579,7 +556,7 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         // Note that we're dividing by the virtual supply, which may be zero (causing this call to revert). However, the
         // only way for that to happen would be for all LPs to exit the Pool, and nothing prevents new LPs from
         // joining it later on.
-        return totalBalance.divUp(_getVirtualSupply(balances[_bptIndex]));
+        return totalBalance.divUp(_getVirtualSupply(balances[_BPT_INDEX]));
     }
 
     /**
@@ -597,37 +574,17 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
      */
     function _getWrappedTokenRate() internal view virtual returns (uint256);
 
+    // Targets
+
     /**
      * @notice Return the lower and upper bounds of the zero-fee trading range for the main token balance.
      */
     function getTargets() public view override returns (uint256 lowerTarget, uint256 upperTarget) {
-        bytes32 miscData = _getMiscData();
+        bytes32 poolState = _poolState;
 
         // Since targets are stored downscaled by _TARGET_SCALING, we undo that when reading them.
-        lowerTarget = miscData.decodeUint(_LOWER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
-        upperTarget = miscData.decodeUint(_UPPER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
-    }
-
-    function _setTargets(
-        IERC20 mainToken,
-        uint256 lowerTarget,
-        uint256 upperTarget
-    ) private {
-        _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
-        _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
-
-        // Targets are stored downscaled by _TARGET_SCALING to make them fit in _TARGET_BITS at the cost of some
-        // resolution. We check that said resolution is not being used before downscaling.
-
-        _require(upperTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
-        _require(lowerTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
-
-        _setMiscData(
-            WordCodec.encodeUint(lowerTarget / _TARGET_SCALING, _LOWER_TARGET_OFFSET, _TARGET_BITS) |
-                WordCodec.encodeUint(upperTarget / _TARGET_SCALING, _UPPER_TARGET_OFFSET, _TARGET_BITS)
-        );
-
-        emit TargetsSet(mainToken, lowerTarget, upperTarget);
+        lowerTarget = poolState.decodeUint(_LOWER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
+        upperTarget = poolState.decodeUint(_UPPER_TARGET_OFFSET, _TARGET_BITS) * _TARGET_SCALING;
     }
 
     /**
@@ -647,25 +604,25 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         _setTargets(_mainToken, newLowerTarget, newUpperTarget);
     }
 
-    /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function, and disabled if the pool is paused.
-     * Note that we override the public version of setSwapFeePercentage instead of the internal one
-     * (_setSwapFeePercentage) as the internal one is called during construction, and therefore cannot access immutable
-     * state variables, which we use below.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) public override {
-        // For the swap fee percentage to be changeable:
-        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
-        //
-        // As the amount of accrued fees is not explicitly stored but rather derived from the main token balance and the
-        // current swap fee percentage, requiring for no fees to be pending prevents the fee setter from changing the
-        // amount of pending fees, which they could use to e.g. drain Pool funds in the form of inflated fees.
+    function _setTargets(
+        IERC20 mainToken,
+        uint256 lowerTarget,
+        uint256 upperTarget
+    ) private {
+        _require(lowerTarget <= upperTarget, Errors.LOWER_GREATER_THAN_UPPER_TARGET);
+        _require(upperTarget <= _MAX_UPPER_TARGET, Errors.UPPER_TARGET_TOO_HIGH);
 
-        (uint256 lowerTarget, uint256 upperTarget) = getTargets();
-        _require(_isMainBalanceWithinTargets(lowerTarget, upperTarget), Errors.OUT_OF_TARGET_RANGE);
+        // Targets are stored downscaled by _TARGET_SCALING to make them fit in _TARGET_BITS at the cost of some
+        // resolution. We check that said resolution is not being used before downscaling.
 
-        super.setSwapFeePercentage(swapFeePercentage);
+        _require(upperTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
+        _require(lowerTarget % _TARGET_SCALING == 0, Errors.FRACTIONAL_TARGET);
+
+        _poolState = _poolState
+            .insertUint(lowerTarget / _TARGET_SCALING, _LOWER_TARGET_OFFSET, _TARGET_BITS)
+            .insertUint(upperTarget / _TARGET_SCALING, _UPPER_TARGET_OFFSET, _TARGET_BITS);
+
+        emit TargetsSet(mainToken, lowerTarget, upperTarget);
     }
 
     function _isMainBalanceWithinTargets(uint256 lowerTarget, uint256 upperTarget) private view returns (bool) {
@@ -676,9 +633,51 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
         return mainTokenBalance >= lowerTarget && mainTokenBalance <= upperTarget;
     }
 
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
-        return actionId == getActionId(this.setTargets.selector) || super._isOwnerOnlyAction(actionId);
+    // Swap Fees
+
+    /**
+     * @notice Return the current value of the swap fee percentage.
+     * @dev This is stored in `_poolState`.
+     */
+    function getSwapFeePercentage() public view virtual override returns (uint256) {
+        return _poolState.decodeUint(_SWAP_FEE_PERCENTAGE_OFFSET, _SWAP_FEE_PERCENTAGE_BIT_LENGTH);
     }
+
+    /**
+     * @notice Set the swap fee percentage.
+     * @dev This is a permissioned function.
+     */
+    function setSwapFeePercentage(uint256 swapFeePercentage) external authenticate {
+        // For the swap fee percentage to be changeable:
+        //  - the pool must currently be between the current targets (meaning no fees are currently pending)
+        //
+        // As the amount of accrued fees is not explicitly stored but rather derived from the main token balance and the
+        // current swap fee percentage, requiring for no fees to be pending prevents the fee setter from changing the
+        // amount of pending fees, which they could use to e.g. drain Pool funds in the form of inflated fees.
+
+        (uint256 lowerTarget, uint256 upperTarget) = getTargets();
+        _require(_isMainBalanceWithinTargets(lowerTarget, upperTarget), Errors.OUT_OF_TARGET_RANGE);
+
+        _setSwapFeePercentage(swapFeePercentage);
+    }
+
+    /**
+     * @dev Validate the swap fee, update storage, and emit an event.
+     */
+    function _setSwapFeePercentage(uint256 swapFeePercentage) internal {
+        _require(swapFeePercentage >= _MIN_SWAP_FEE_PERCENTAGE, Errors.MIN_SWAP_FEE_PERCENTAGE);
+        _require(swapFeePercentage <= _MAX_SWAP_FEE_PERCENTAGE, Errors.MAX_SWAP_FEE_PERCENTAGE);
+
+        _poolState = _poolState.insertUint(
+            swapFeePercentage,
+            _SWAP_FEE_PERCENTAGE_OFFSET,
+            _SWAP_FEE_PERCENTAGE_BIT_LENGTH
+        );
+
+        emit SwapFeePercentageChanged(swapFeePercentage);
+    }
+
+    // Virtual Supply
 
     /**
      * @notice Returns the number of tokens in circulation.
@@ -705,5 +704,34 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, BasePo
     // virtualSupply = totalSupply() - _balances[_bptIndex]
     function _getVirtualSupply(uint256 bptBalance) internal view returns (uint256) {
         return totalSupply().sub(bptBalance);
+    }
+
+    // Recovery Mode
+
+    /**
+     * @notice Returns whether the pool is in Recovery Mode.
+     */
+    function inRecoveryMode() public view override returns (bool) {
+        return _poolState.decodeBool(_RECOVERY_MODE_BIT_OFFSET);
+    }
+
+    /**
+     * @dev Sets the recoveryMode state, and emits the corresponding event.
+     */
+    function _setRecoveryMode(bool enabled) internal virtual override {
+        _poolState = _poolState.insertBool(enabled, _RECOVERY_MODE_BIT_OFFSET);
+
+        emit RecoveryModeStateChanged(enabled);
+    }
+
+    // Misc
+
+    /**
+     * @dev Enumerates all ownerOnly functions in Linear Pool.
+     */
+    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual override returns (bool) {
+        return
+            actionId == getActionId(this.setTargets.selector) ||
+            actionId == getActionId(this.setSwapFeePercentage.selector);
     }
 }

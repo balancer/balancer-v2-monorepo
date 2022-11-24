@@ -21,12 +21,12 @@ describe('BasePoolCodeFactory', function () {
     const codeA = await ethers.provider.getCode(contractA);
     const codeB = await ethers.provider.getCode(contractB);
 
-    const artifact = await getArtifact('MockFactoryCreatedContract');
+    const artifact = getArtifact('MockFactoryCreatedContract');
     expect(codeA.concat(codeB.slice(2))).to.equal(artifact.bytecode); // Slice to remove the '0x' prefix
   });
 
   it('returns the contract creation code', async () => {
-    const artifact = await getArtifact('MockFactoryCreatedContract');
+    const artifact = getArtifact('MockFactoryCreatedContract');
     const poolCreationCode = await factory.getCreationCode();
 
     expect(poolCreationCode).to.equal(artifact.bytecode);
@@ -55,7 +55,7 @@ describe('BasePoolCodeFactory', function () {
 
     it('deploys correct bytecode', async () => {
       const code = await ethers.provider.getCode(contract);
-      const artifact = await getArtifact('MockFactoryCreatedContract');
+      const artifact = getArtifact('MockFactoryCreatedContract');
       expect(code).to.equal(artifact.deployedBytecode);
     });
 

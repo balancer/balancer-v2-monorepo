@@ -4,15 +4,13 @@ import path from 'path';
 import { Network } from './types';
 
 const DEPLOYMENT_TXS_DIRECTORY = path.resolve(__dirname, '../deployment-txs');
-const VERIFIED_NETWORKS = ['mainnet', 'polygon', 'arbitrum', 'optimism', 'goerli'];
 
-export async function saveContractDeploymentTransactionHash(
+export function saveContractDeploymentTransactionHash(
   deployedAddress: string,
   deploymentTransactionHash: string,
   network: Network
-): Promise<void> {
-  // We only save transactions hashes for a subset of networks.
-  if (!VERIFIED_NETWORKS.includes(network)) return;
+): void {
+  if (network === 'hardhat') return;
 
   const filePath = path.join(DEPLOYMENT_TXS_DIRECTORY, `${network}.json`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
@@ -26,7 +24,7 @@ export async function saveContractDeploymentTransactionHash(
   fs.writeFileSync(filePath, JSON.stringify(newFileContents, null, 2));
 }
 
-export async function getContractDeploymentTransactionHash(deployedAddress: string, network: Network): Promise<string> {
+export function getContractDeploymentTransactionHash(deployedAddress: string, network: Network): string {
   const filePath = path.join(DEPLOYMENT_TXS_DIRECTORY, `${network}.json`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
   if (!fileExists) {

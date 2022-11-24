@@ -6,7 +6,7 @@ import { bn, printGas } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
-import { setupEnvironment, getWeightedPool, getStablePool, pickTokenAddresses } from './misc';
+import { setupEnvironment, getWeightedPool, getStablePool } from './misc';
 import { WeightedPoolEncoder, StablePoolEncoder } from '@balancer-labs/balancer-js';
 import { deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { poolConfigs } from './config';
@@ -231,15 +231,16 @@ async function joinAndExitWeightedPool(
   const { address: poolAddress } = await vault.getPool(poolId);
   const pool: Contract = await deployedAt('v2-pool-weighted/WeightedPool', poolAddress);
 
+  const { tokens: assets } = await vault.getPoolTokens(poolId);
   const joinRequest = {
-    assets: pickTokenAddresses(tokens, numTokens),
-    maxAmountsIn: Array(numTokens).fill(MAX_UINT256),
+    assets,
+    maxAmountsIn: Array(assets.length).fill(MAX_UINT256),
     userData: joinData,
     fromInternalBalance: !transferTokens,
   };
   const exitRequest = {
-    assets: pickTokenAddresses(tokens, numTokens),
-    minAmountsOut: Array(numTokens).fill(0),
+    assets,
+    minAmountsOut: Array(assets.length).fill(0),
     userData: exitData,
     fromInternalBalance: !transferTokens,
   };

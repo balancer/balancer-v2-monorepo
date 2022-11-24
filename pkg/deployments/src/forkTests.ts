@@ -36,7 +36,7 @@ function _describeBody(forkNetwork: Network, blockNumber: number, callback: () =
     });
 
     const config = hre.network.config as HardhatNetworkConfig;
-    config.forking = { enabled: true, blockNumber, url: forkingNetworkConfig.url };
+    config.forking = { enabled: true, blockNumber, url: forkingNetworkConfig.url, httpHeaders: {} };
   });
   callback();
 }

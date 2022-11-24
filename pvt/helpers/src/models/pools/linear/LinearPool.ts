@@ -56,6 +56,17 @@ export default class LinearPool extends BasePool {
     );
   }
 
+  // Order the tokens the same way the Vault will
+  static getTokenList(mainToken: Token, wrappedToken: Token, bptToken: Token): TokenList {
+    const tokens: Token[] = [];
+
+    tokens.push(bptToken);
+    tokens.push(mainToken.address < wrappedToken.address ? mainToken : wrappedToken);
+    tokens.push(mainToken.address < wrappedToken.address ? wrappedToken : mainToken);
+
+    return new TokenList(tokens);
+  }
+
   constructor(
     instance: Contract,
     poolId: string,
@@ -69,7 +80,14 @@ export default class LinearPool extends BasePool {
     swapFeePercentage: BigNumberish,
     owner?: SignerWithAddress
   ) {
-    super(instance, poolId, vault, new TokenList([wrappedToken, mainToken, bptToken]).sort(), swapFeePercentage, owner);
+    super(
+      instance,
+      poolId,
+      vault,
+      LinearPool.getTokenList(mainToken, wrappedToken, bptToken),
+      swapFeePercentage,
+      owner
+    );
     this.mainToken = mainToken;
     this.wrappedToken = wrappedToken;
     this.bptToken = bptToken;
@@ -83,7 +101,7 @@ export default class LinearPool extends BasePool {
   }
 
   get getLinearTokens(): TokenList {
-    return new TokenList([this.wrappedToken, this.mainToken, this.bptToken]).sort();
+    return LinearPool.getTokenList(this.mainToken, this.wrappedToken, this.bptToken);
   }
 
   get mainIndex(): number {
@@ -153,8 +171,9 @@ export default class LinearPool extends BasePool {
   async swap(params: GeneralSwap): Promise<BigNumber> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
-    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return amount;
+    const { amountIn, amountOut } = expectEvent.inReceipt(receipt, 'Swap').args;
+
+    return params.kind == SwapKind.GivenIn ? amountOut : amountIn;
   }
 
   private _buildSwapParams(kind: number, params: SwapLinearPool): GeneralSwap {

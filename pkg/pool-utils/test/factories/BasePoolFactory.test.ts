@@ -1,14 +1,14 @@
 import { ethers } from 'hardhat';
 import { Contract } from 'ethers';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { ZERO_ADDRESS, ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('BasePoolFactory', function () {
   let vault: Contract;
@@ -23,13 +23,17 @@ describe('BasePoolFactory', function () {
   });
 
   sharedBeforeEach(async () => {
-    const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
-
-    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
-    protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
-      args: [vault.address, fp(1), fp(1)],
-    });
+    ({
+      instance: vault,
+      authorizer,
+      protocolFeesProvider,
+    } = await Vault.create({
+      admin,
+      pauseWindowDuration: MONTH,
+      bufferPeriodDuration: MONTH,
+      maxYieldValue: fp(1),
+      maxAUMValue: fp(1),
+    }));
 
     factory = await deploy('MockPoolFactory', { args: [vault.address, protocolFeesProvider.address] });
 

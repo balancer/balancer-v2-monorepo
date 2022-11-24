@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IOptimismGasLimitProvider.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
 
@@ -30,6 +31,8 @@ interface IL1StandardBridge {
 }
 
 contract OptimismRootGauge is StakelessGauge {
+    using SafeERC20 for IERC20;
+
     IL1StandardBridge private immutable _optimismL1StandardBridge;
     address private immutable _optimismBal;
     IOptimismGasLimitProvider private immutable _factory;
@@ -67,7 +70,7 @@ contract OptimismRootGauge is StakelessGauge {
     }
 
     function _postMintAction(uint256 mintAmount) internal override {
-        _balToken.approve(address(_optimismL1StandardBridge), mintAmount);
+        _balToken.safeApprove(address(_optimismL1StandardBridge), mintAmount);
 
         // This will transfer BAL to `_recipient` on the Optimism chain
         _optimismL1StandardBridge.depositERC20To(
