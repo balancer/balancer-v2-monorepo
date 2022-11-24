@@ -23,6 +23,7 @@ import {
 } from './types';
 import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
 import { getTaskActionIds } from './actionId';
+import { getArtifactFromContractOutput } from './artifact';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
@@ -245,7 +246,7 @@ export default class Task {
     );
 
     if (!sourceName) throw Error(`Could not find artifact for ${contractName}`);
-    return builds[sourceName][contractName];
+    return getArtifactFromContractOutput(sourceName, contractName, builds[sourceName][contractName]);
   }
 
   actionId(contractName: string, signature: string): string {

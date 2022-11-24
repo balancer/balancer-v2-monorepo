@@ -109,7 +109,7 @@ const ARTIFACT_FORMAT_VERSION = 'hh-sol-artifact-1';
  * @param contractName the contract's name.
  * @param contractOutput the contract's compilation output as emitted by `solc`.
  */
-function getArtifactFromContractOutput(
+export function getArtifactFromContractOutput(
   sourceName: string,
   contractName: string,
   contractOutput: CompilerOutputContract

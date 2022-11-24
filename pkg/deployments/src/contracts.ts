@@ -15,7 +15,7 @@ export async function deploy(
   if (libs) artifact = linkBytecode(artifact, libs);
 
   const { ethers } = await import('hardhat');
-  const factory = await ethers.getContractFactory(artifact.abi, artifact.evm.bytecode.object as utils.BytesLike);
+  const factory = await ethers.getContractFactory(artifact.abi, artifact.bytecode as utils.BytesLike);
   const deployment = await factory.connect(from).deploy(...args);
   return deployment.deployed();
 }
@@ -35,12 +35,12 @@ export function deploymentTxData(artifact: Artifact, args: Array<Param> = [], li
   // constructor arguments.
   // We remove the first two characters of the encoded constructor arguments as ethers returns a string with the "0x"
   // prefix.
-  return `0x${artifact.evm.bytecode.object}${encodedConstructorArguments.substring(2)}`;
+  return `${artifact.bytecode}${encodedConstructorArguments.substring(2)}`;
 }
 
 function linkBytecode(artifact: Artifact, libraries: Libraries): Artifact {
-  let bytecode = artifact.evm.bytecode.object;
-  for (const [, fileReferences] of Object.entries(artifact.evm.bytecode.linkReferences)) {
+  let bytecode = artifact.bytecode;
+  for (const [, fileReferences] of Object.entries(artifact.linkReferences)) {
     for (const [libName, fixups] of Object.entries(fileReferences)) {
       const address = libraries[libName];
       if (address === undefined) continue;
@@ -51,6 +51,6 @@ function linkBytecode(artifact: Artifact, libraries: Libraries): Artifact {
     }
   }
 
-  artifact.evm.bytecode.object = bytecode.toLowerCase();
+  artifact.bytecode = bytecode.toLowerCase();
   return artifact;
 }
