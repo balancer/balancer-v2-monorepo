@@ -213,6 +213,17 @@
         "create(string,string,address[],uint256[],uint256,address,bool)": "0x803e6b81fee024ccd085712b4bcd6741a50460eef16ac4d213ce52fa09ac31b4",
         "disable()": "0xf606602974ca80beb7071ceacbfd2e03a1d2bb9da2001eb3591a2c4bbbbc0d05"
       }
+    },
+    "NoProtocolFeeLiquidityBootstrappingPool": {
+      "useAdaptor": false,
+      "factoryOutput": "0x8485b36623632fFA5E486008DF4d0B6d363DEFdB",
+      "actionIds": {
+        "setAssetManagerPoolConfig(address,bytes)": "0xc4ca135a8ee3a202cf58d5dc78331892fb4ddeb709bdf799280ee671b8649a9a",
+        "setPaused(bool)": "0x33651f97c60f5c9bae32e34d4affa67d26b9b3bb7fe727a08b22d54e60dc9e0a",
+        "setSwapEnabled(bool)": "0xd7d5ce1b6761a937c49998a490a4c72f5914155c09b54c3ae59633610d5a8638",
+        "setSwapFeePercentage(uint256)": "0xb6202de0535d339310cb6bbbe84445fab2c4f3560adc56dfa561ec6867d2d5c0",
+        "updateWeightsGradually(uint256,uint256,uint256[])": "0x93387e6b11da4ff55581ebe54e26f0ebd5f03aaa4240346b7422c7d1fd4a785f"
+      }
     }
   },
   "20211203-batch-relayer": {
@@ -889,6 +900,16 @@
       "actionIds": {
         "create((string,string,address[],uint256[],address[],uint256,bool,bool,uint256,uint256),address)": "0x01ed6b1d1a76460295cf1325534f6c4bd3fc1f8717cd0cf9733f493a0821da71",
         "disable()": "0xa010f28803768154a04542ff29718c73ff40e307b10e5f39fbdff6c90db7b4ec"
+      }
+    }
+  },
+  "20221123-pool-recovery-helper": {
+    "PoolRecoveryHelper": {
+      "useAdaptor": false,
+      "actionIds": {
+        "addPoolFactory(address)": "0xbc33dd383590d6f85727901da00e6971ba3af5561e93a485f41a82a94137cf47",
+        "enableRecoveryMode(address)": "0x7004ffafae71ebf8ca75d0161b7818dd31e726c2d57bfa02b045adf08e9f8a06",
+        "removePoolFactory(address)": "0x2ee7ebfa3c3d2e030256ae85768e5434350a58e9284ac5bec2d6b7efa01819e3"
       }
     }
   }

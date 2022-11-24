@@ -366,14 +366,16 @@ contract TimelockAuthorizer is IAuthorizer, IAuthentication, ReentrancyGuard {
         address where
     ) public view override returns (bool) {
         if (msg.sender == address(_authorizerAdaptor)) {
-            // We special case the situation where the caller is the authorizer adaptor.
-            // We do this as it doesn't properly calculate the value of `actionId` to pass to the authorizer,
-            // potentially allowing addresses to perform privilege escalations.
+            // We special case the situation where the caller is the `AuthorizerAdaptor`, as it can be tricked into
+            // passing an incorrect `actionId` value, potentially resulting in escalation of privileges.
             //
-            // To remedy this we force all calls to the authorizer adaptor be through a singleton entrypoint contract
-            // This contract correctly checks whether `account` can perform `actionId` on `where` and forwards the call
-            // onto the authorizer adaptor to execute.
-            // The authorizer must then reject calls to the authorizer adaptor which aren't made through the entrypoint.
+            // To remedy this we force all calls to the `AuthorizerAdaptor` to be made through a singleton entrypoint
+            // contract, called the `AuthorizerAdaptorEntrypoint`. This contract correctly checks whether `account` can
+            // perform `actionId` on `where`, and then forwards the call onto the `AuthorizerAdaptor` to execute.
+            //
+            // The authorizer then rejects calls to the `AuthorizerAdaptor` which aren't made through the entrypoint,
+            // and approves all calls made through it (since the entrypoint will have already performed any necessary
+            // permission checks).
             return account == address(_authorizerAdaptorEntrypoint);
         }
 
