@@ -20,6 +20,7 @@ import SecondaryPoolDeployer from './SecondaryIssuePoolDeployer';
 import { deployedAt } from '../../../contract';
 import BasePool from '../base/BasePool';
 
+
 export default class SecondaryPool extends BasePool{
   instance: Contract;
   poolId: string;
@@ -191,19 +192,24 @@ export default class SecondaryPool extends BasePool{
     return this.instance.cancelOrder(params.ref);
   }
 
-  async swapGivenIn(params: SwapSecondaryPool): Promise<BigNumber> {
-    return this.swap(this._buildSwapParams(SwapKind.GivenIn, params));
+  async swapGivenIn(params: SwapSecondaryPool): Promise<any> {
+    return this.swap(this._buildSwapParams(SwapKind.GivenIn, params), params.eventHash!);
   }
 
-  async swapGivenOut(params: SwapSecondaryPool): Promise<BigNumber> {
-    return this.swap(this._buildSwapParams(SwapKind.GivenOut, params));
+  async swapGivenOut(params: SwapSecondaryPool): Promise<any> {
+    return this.swap(this._buildSwapParams(SwapKind.GivenOut, params), params.eventHash!);
   }
 
-  async swap(params: GeneralSwap): Promise<BigNumber> {
+  async swap(params: GeneralSwap, eventEncoded: string): Promise<any> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
+    // extracting eventEncoded from transaction log reciept
+    const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == this.instance.address);
+    const swapEvent = eventEncoded ? SecondaryPoolEvents.filter((e) => e.topics[0] == eventEncoded): [];
+    const logData = swapEvent?.length ? swapEvent[0].data : null;
+
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return amount;
+    return [amount, logData];
   }
 
   private _buildSwapParams(kind: number, params: SwapSecondaryPool): GeneralSwap {
