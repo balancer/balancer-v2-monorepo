@@ -551,10 +551,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, orders[_ref].price);
 
                 emit CallSwap("sellSwap");
-                //calling onSwap to return results for the buyer
-                // callSwap(false, _ref, _bestBid);
-                //calling onSwap to return results for the seller
-                // callSwap(true, _bestBid, _ref);
             }
             else if(_trade==OrderType.Market){ 
                 console.log("Checking limit and stop orders for sells");
@@ -604,12 +600,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                 orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, qty);
                 orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, orders[_ref].price);      
-
+                console.log("Event Fired Finally");
                 emit CallSwap("buySwap");
-                //calling onSwap to return results for the seller
-                // callSwap(true, _bestOffer, _ref);
-                //calling onSwap to return results for the buyer
-                // callSwap(false, _ref, _bestOffer);
             }
             else if(_trade==OrderType.Market){
                 console.log("Checking limit and stop orders for buys");
@@ -617,27 +609,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 checkStopOrders(_ref, _trade);
             }
         }
-    }
-
-    function callSwap(bool givenIn, bytes32 i, bytes32 o) private {
-        //console.log("In call swap");
-        IVault vault = getVault();
-        IVault.SingleSwap memory swap = IVault.SingleSwap({
-            poolId: getPoolId(),
-            kind: givenIn==true ? IVault.SwapKind.GIVEN_IN : IVault.SwapKind.GIVEN_OUT,
-            assetIn: IAsset(address(orders[i].tokenIn)),
-            assetOut: IAsset(address(orders[o].tokenOut)),
-            amount: orders[o].qty,
-            userData: "self"
-        });
-        IVault.FundManagement memory funds = IVault.FundManagement({
-            sender: orders[i].party,
-            fromInternalBalance: false,
-            recipient: payable(orders[o].party),
-            toInternalBalance: false
-        });
-        console.log("Going to call swap on Vault");
-        // vault.swap(swap, funds, orders[i].tokenIn == IERC20(_currency) ? orders[i].currencyBalance : orders[i].securityBalance, 999999999999999999);
     }
 
     function reportTrade(

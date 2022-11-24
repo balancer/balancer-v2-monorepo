@@ -205,8 +205,8 @@ export default class SecondaryPool extends BasePool{
     const receipt = await (await tx).wait();
     // extracting eventEncoded from transaction log reciept
     const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == this.instance.address);
-    const myEvent = eventEncoded ? SecondaryPoolEvents.filter((e) => e.topics[0] == eventEncoded): null;
-    const logData = myEvent?.length ? myEvent[0].data : "" ;
+    const swapEvent = eventEncoded ? SecondaryPoolEvents.filter((e) => e.topics[0] == eventEncoded): [];
+    const logData = swapEvent?.length ? swapEvent[0].data : null;
 
     const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
     return [amount, logData];
