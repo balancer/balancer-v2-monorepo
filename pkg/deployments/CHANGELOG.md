@@ -4,7 +4,6 @@
 
 ### New Deployments
 
-- Deployed `ProtocolFeeSplitter` to Mainnet.
 - Deployed core infrastructure (`Authorizer`, `Vault`, `AuthorizerAdaptor`, `ProtocolFeeWithdrawer`, `ProtocolFeePercentagesProvider`, `BalancerQueries` and `BatchRelayer`) to Gnosis and BNB.
 - Deployed core Pool factories (`WeightedPoolFactory`, `ComposableStablePoolFactory`, `LiquidityBootstrappingPool`, `AaveLinearPool`) to BNB.
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
