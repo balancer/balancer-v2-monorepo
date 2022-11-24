@@ -1,4 +1,4 @@
-import { Contract, utils } from 'ethers';
+import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { getSigner } from './signers';
