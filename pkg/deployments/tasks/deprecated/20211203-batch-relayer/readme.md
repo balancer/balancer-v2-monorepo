@@ -11,5 +11,5 @@ Deployment of the first `BalancerRelayer` using `BatchRelayerLibrary`, for combi
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Polygon addresses](./output/polygon.json)
-- [`BalancerRelayer` ABI](./abi/BalancerRelayer.json)
-- [`BatchRelayerLibrary` ABI](./abi/BatchRelayerLibrary.json)
+- [`BalancerRelayer` artifact](./artifact/BalancerRelayer.json)
+- [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)

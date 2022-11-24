@@ -5,4 +5,4 @@ Deployment of the `SmartWalletCheckerCoordinator`, responsible for setting up th
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`SmartWalletCheckerCoordinator` ABI](./abi/SmartWalletCheckerCoordinator.json)
+- [`SmartWalletCheckerCoordinator` artifact](./artifact/SmartWalletCheckerCoordinator.json)

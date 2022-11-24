@@ -12,5 +12,5 @@ Deployment of the `WeightedPoolFactory`, which allows creating Weighted Pools wh
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
-- [`WeightedPool` ABI](./abi/WeightedPool.json)
-- [`WeightedPoolFactory` ABI](./abi/WeightedPoolFactory.json)
+- [`WeightedPool` artifact](./artifact/WeightedPool.json)
+- [`WeightedPoolFactory` artifact](./artifact/WeightedPoolFactory.json)
