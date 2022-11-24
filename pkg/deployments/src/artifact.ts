@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { Artifact, CompilerOutputContract } from 'hardhat/types';
 import path from 'path';
-import { findContractSourceName } from './buildinfo';
 import logger from './logger';
 import Task from './task';
 
@@ -28,7 +27,7 @@ export function extractArtifact(task: Task, file?: string, contract?: string): v
 
 function _extractArtifact(task: Task, file: string, contract?: string) {
   contract = contract ?? file;
-  const artifact = extractContractArtifact(task, file, contract);
+  const artifact = task.artifact(contract, file);
   writeContractArtifact(task, contract, artifact);
   logger.success(`Artifacts created for ${contract} contract found in ${file} build-info file`);
 }
@@ -44,7 +43,7 @@ export function checkArtifact(task: Task): void {
       const fileName = path.parse(buildInfoFileName).name;
       const contractName = fileName;
 
-      const expectedArtifact = extractContractArtifact(task, fileName, contractName);
+      const expectedArtifact = task.artifact(contractName, fileName);
       const artifact = readContractArtifact(task, contractName);
 
       const artifactMatch = JSON.stringify(artifact) === JSON.stringify(expectedArtifact);
@@ -57,20 +56,6 @@ export function checkArtifact(task: Task): void {
       }
     }
   }
-}
-
-/**
- * Read the build-info file for the contract `contractName` and extract the artifact.
- */
-function extractContractArtifact(task: Task, fileName: string, contractName: string): Artifact {
-  const buildInfo = task.buildInfo(fileName);
-
-  const contractSourceName = findContractSourceName(buildInfo, contractName);
-  return getArtifactFromContractOutput(
-    contractSourceName,
-    contractName,
-    buildInfo.output.contracts[contractSourceName][contractName]
-  );
 }
 
 /**
