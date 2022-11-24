@@ -4,7 +4,6 @@
 
 ### New Deployments
 
-- Deployed `ProtocolFeeSplitter` to Mainnet.
 - Deployed core infrastructure (`Authorizer`, `Vault`, `AuthorizerAdaptor`, `ProtocolFeeWithdrawer`, `ProtocolFeePercentagesProvider`, `BalancerQueries` and `BatchRelayer`) to Gnosis and BNB.
 - Deployed core Pool factories (`WeightedPoolFactory`, `ComposableStablePoolFactory`, `LiquidityBootstrappingPool`, `AaveLinearPool`) to BNB.
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
@@ -14,6 +13,8 @@
 ### API Changes
 
 - Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.
+- Added `getBalancerContractArtifact` which returns a artifact file for the contract in the same format used by Hardhat.
+- Deprecated `getBalancerContractBytecode` in favour of `getBalancerContractArtifact`.
 
 ## 3.0.0 (2022-10-25)
 

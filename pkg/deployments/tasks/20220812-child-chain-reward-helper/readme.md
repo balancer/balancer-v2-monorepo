@@ -8,4 +8,4 @@ Deployment of the `ChildChainGaugeRewardHelper`, a helper contract that can be u
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
 - [Goerli testnet addresses](./output/goerli.json)
-- [`ChildChainGaugeRewardHelper` ABI](./abi/ChildChainGaugeRewardHelper.json)
+- [`ChildChainGaugeRewardHelper` artifact](./artifact/ChildChainGaugeRewardHelper.json)

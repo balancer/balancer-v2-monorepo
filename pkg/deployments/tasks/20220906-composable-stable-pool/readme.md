@@ -8,5 +8,5 @@ Deployment of `ComposableStablePoolFactory`, which allows creating Stable Pools 
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
-- [`ComposableStablePool` ABI](./abi/ComposableStablePool.json)
-- [`ComposableStablePoolFactory` ABI](./abi/ComposableStablePoolFactory.json)
+- [`ComposableStablePool` artifact](./artifact/ComposableStablePool.json)
+- [`ComposableStablePoolFactory` artifact](./artifact/ComposableStablePoolFactory.json)

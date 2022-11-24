@@ -6,4 +6,4 @@ This version contains some bugfixes, and lets users (both EOAs and contracts) pr
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`FeeDistributor` ABI](./abi/FeeDistributor.json)
+- [`FeeDistributor` artifact](./artifact/FeeDistributor.json)
