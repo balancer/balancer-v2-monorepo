@@ -179,7 +179,8 @@ export default class Task {
       );
     }
 
-    if (deploymentTx.data === deploymentTxData(this.artifact(name), args, libs)) {
+    const expectedDeploymentTxData = await deploymentTxData(this.artifact(name), args, libs);
+    if (deploymentTx.data === expectedDeploymentTxData) {
       logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
     } else {
       throw Error(

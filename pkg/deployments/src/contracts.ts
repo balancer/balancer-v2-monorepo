@@ -12,10 +12,9 @@ export async function deploy(
 ): Promise<Contract> {
   if (!args) args = [];
   if (!from) from = await getSigner();
-  if (libs) artifact = linkBytecode(artifact, libs);
 
   const { ethers } = await import('hardhat');
-  const factory = await ethers.getContractFactory(artifact.abi, artifact.bytecode as utils.BytesLike);
+  const factory = await ethers.getContractFactoryFromArtifact(artifact, { libraries: libs });
   const deployment = await factory.connect(from).deploy(...args);
   return deployment.deployed();
 }
@@ -25,32 +24,12 @@ export async function instanceAt(artifact: Artifact, address: string): Promise<C
   return ethers.getContractAt(artifact.abi, address);
 }
 
-export function deploymentTxData(artifact: Artifact, args: Array<Param> = [], libs?: Libraries): string {
-  if (libs) artifact = linkBytecode(artifact, libs);
+export async function deploymentTxData(artifact: Artifact, args: Array<Param> = [], libs?: Libraries): Promise<string> {
+  const { ethers } = await import('hardhat');
+  const factory = await ethers.getContractFactoryFromArtifact(artifact, { libraries: libs });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const encodedConstructorArguments = new utils.Interface(artifact.abi as any[]).encodeDeploy(args);
+  const { data } = factory.getDeployTransaction(...args);
+  if (data === undefined) throw new Error('Deploy transaction with no data. Something is very wrong');
 
-  // Solidity contracts are deployed by sending a transaction with their creation code, concatenated by the abi-encoded
-  // constructor arguments.
-  // We remove the first two characters of the encoded constructor arguments as ethers returns a string with the "0x"
-  // prefix.
-  return `${artifact.bytecode}${encodedConstructorArguments.substring(2)}`;
-}
-
-function linkBytecode(artifact: Artifact, libraries: Libraries): Artifact {
-  let bytecode = artifact.bytecode;
-  for (const [, fileReferences] of Object.entries(artifact.linkReferences)) {
-    for (const [libName, fixups] of Object.entries(fileReferences)) {
-      const address = libraries[libName];
-      if (address === undefined) continue;
-      for (const fixup of fixups) {
-        bytecode =
-          bytecode.substr(0, fixup.start * 2) + address.substr(2) + bytecode.substr((fixup.start + fixup.length) * 2);
-      }
-    }
-  }
-
-  artifact.bytecode = bytecode.toLowerCase();
-  return artifact;
+  return data.toString();
 }
