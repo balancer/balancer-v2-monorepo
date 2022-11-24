@@ -9,7 +9,7 @@ describeForkTest('AuthorizerAdaptorEntrypoint', 'mainnet', 15925800, function ()
   let task: Task;
 
   before('run task', async () => {
-    task = new Task('20221111-authorizer-adaptor-entrypoint', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     adaptorEntrypoint = await task.deployedInstance('AuthorizerAdaptorEntrypoint');
   });
