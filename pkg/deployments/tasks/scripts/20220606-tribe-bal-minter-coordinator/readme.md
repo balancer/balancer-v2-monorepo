@@ -7,4 +7,4 @@ See [the forum post](https://forum.balancer.fi/t/tribe-dao-unclaimable-bal-rewar
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`TribeBALMinterCoordinator` ABI](./abi/TribeBALMinterCoordinator.json)
+- [`TribeBALMinterCoordinator` artifact](./artifact/TribeBALMinterCoordinator.json)

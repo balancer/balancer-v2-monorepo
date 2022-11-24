@@ -10,5 +10,5 @@ This new version provides quality of life improvements, like read-only chained r
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
-- [`BalancerRelayer` ABI](./abi/BalancerRelayer.json)
-- [`BatchRelayerLibrary` ABI](./abi/BatchRelayerLibrary.json)
+- [`BalancerRelayer` artifact](./artifact/BalancerRelayer.json)
+- [`BatchRelayerLibrary` artifact](./artifact/BatchRelayerLibrary.json)
