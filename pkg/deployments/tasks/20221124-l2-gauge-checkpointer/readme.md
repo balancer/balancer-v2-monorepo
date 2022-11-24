@@ -5,4 +5,4 @@ Deployment of the `L2GaugeCheckpointer` contract. It automates the process of pe
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`L2GaugeCheckpointer` ABI](./abi/L2GaugeCheckpointer.json)
+- [`L2GaugeCheckpointer` artifact](./artifact/L2GaugeCheckpointer.json)
