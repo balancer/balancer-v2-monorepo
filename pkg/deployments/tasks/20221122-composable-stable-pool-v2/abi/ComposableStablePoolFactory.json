@@ -206,6 +206,19 @@
   },
   {
     "inputs": [],
+    "name": "getProtocolFeePercentagesProvider",
+    "outputs": [
+      {
+        "internalType": "contract IProtocolFeePercentagesProvider",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getVault",
     "outputs": [
       {
