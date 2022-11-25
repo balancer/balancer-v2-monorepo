@@ -114,6 +114,13 @@ contract MockVault is IPoolSwapStructs {
         }
     }
 
+    function updateManaged(bytes32 poolId, uint256[] memory managed) external {
+        Pool storage pool = pools[poolId];
+        for (uint256 i = 0; i < managed.length; i++) {
+            pool.managed[pool.tokens[i]] = managed[i];
+        }
+    }
+
     function callMinimalPoolSwap(
         address pool,
         SwapRequest memory request,
