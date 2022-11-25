@@ -437,6 +437,20 @@
       "useAdaptor": true
     }
   ],
+  "0x86de7f38b01b0cb905a3ac31f25891f3ba5a50f5074181ac37bfbd28a4e31f16": [
+    {
+      "taskId": "20220325-authorizer-adaptor",
+      "contractName": "AuthorizerAdaptor",
+      "signature": "performAction(address,bytes)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221124-authorizer-adaptor-entrypoint",
+      "contractName": "AuthorizerAdaptorEntrypoint",
+      "signature": "performAction(address,bytes)",
+      "useAdaptor": false
+    }
+  ],
   "0x7f4b0536efcbd917495f0d8e7a96852c08739243c797e73f00d32999233f8d5d": [
     {
       "taskId": "20220325-gauge-controller",

@@ -436,5 +436,13 @@
         "removePoolFactory(address)": "0xa450560b4243ca4b627c589e0f1f51c3022ac250bb247dc70009744aee0fe13b"
       }
     }
+  },
+  "20221124-authorizer-adaptor-entrypoint": {
+    "AuthorizerAdaptorEntrypoint": {
+      "useAdaptor": false,
+      "actionIds": {
+        "performAction(address,bytes)": "0xf30af7479cfcd4e7270ce592c1bb3c208dae2172a952b757164f0e975f759426"
+      }
+    }
   }
 }
