@@ -144,7 +144,9 @@ export default class SecondaryPool extends BasePool{
   }
 
   async getOrderRef(params: OrderRef): Promise<BigNumber[]> {
-    return this.instance.getOrderRef(params.from);
+    const sender = params.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.getOrderRef();
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
@@ -185,11 +187,15 @@ export default class SecondaryPool extends BasePool{
   }
 
   async editOrder(params: EditOrder): Promise<BigNumber> {
-    return this.instance.editOrder(params.ref, params.price, params.amount, params.from);
+    const sender = params.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.editOrder(params.ref, params.price, params.amount);
   }
 
   async cancelOrder(params: CancelOrder): Promise<BigNumber> {
-    return this.instance.cancelOrder(params.ref, params.from);
+    const sender = params.from || this.owner;
+    const pool = sender ? this.instance.connect(sender) : this.instance;
+    return pool.cancelOrder(params.ref);
   }
 
   async swapGivenIn(params: SwapSecondaryPool): Promise<any> {
