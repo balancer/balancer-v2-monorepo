@@ -100,7 +100,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 | Weighted Pool V2                                        | [`20220908-weighted-pool-v2`](./tasks/20220908-weighted-pool-v2)                                     |
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
-| Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20221115-aave-rebalanced-linear-pool`](./tasks/20221115-aave-rebalanced-linear-pool)               |
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/20221122-composable-stable-pool-v2)                   |
@@ -151,3 +150,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                         |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)   |
 | Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |
+| Managed Pool                                            | [`20221021-managed-pool`](./tasks/deprecated/20221021-managed-pool)                                 |

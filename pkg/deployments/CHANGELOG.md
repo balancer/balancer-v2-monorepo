@@ -10,6 +10,10 @@
 - Deployed `AaveLinearPoolFactory` to all networks.
 - Deployed `PoolRecoveryHelper` to all networks.
 
+### Deprecations
+
+- Deprecated `20211021-managed-pool` due to lacking features and not being expected to ever be used. A new version will be released soon.
+
 ### API Changes
 
 - Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.

@@ -78,7 +78,7 @@ contract BaseRelayerLibrary is IBaseRelayerLibrary {
      * @notice Approves the Vault to use tokens held in the relayer
      * @dev This is needed to avoid having to send intermediate tokens back to the user
      */
-    function approveVault(IERC20 token, uint256 amount) public override {
+    function approveVault(IERC20 token, uint256 amount) public payable override {
         if (_isChainedReference(amount)) {
             amount = _getChainedReferenceValue(amount);
         }
