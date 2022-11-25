@@ -8,6 +8,7 @@ import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
 import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode, getSigner } from '../../../src';
 import { setCode } from '@nomicfoundation/hardhat-network-helpers';
+import { Interface } from '@ethersproject/abi';
 
 describeForkTest('PoolRecoveryHelper', 'mainnet', 15998800, function () {
   let task: Task;
@@ -38,12 +39,12 @@ describeForkTest('PoolRecoveryHelper', 'mainnet', 15998800, function () {
   });
 
   before('approve helper at the authorizer', async () => {
-    const selector = task.artifact('IRecoveryMode').evm.methodIdentifiers['enableRecoveryMode()'];
+    const selector = new Interface(task.artifact('IRecoveryMode').abi).getSighash('enableRecoveryMode()');
 
     const actionIds = await Promise.all(
       [POOL_STABLE, POOL_WEIGHTED].map(async (poolAddress) => {
         const pool = await task.instanceAt('IAuthentication', poolAddress);
-        return await pool.getActionId(`0x${selector}`);
+        return await pool.getActionId(selector);
       })
     );
 
@@ -77,16 +78,13 @@ describeForkTest('PoolRecoveryHelper', 'mainnet', 15998800, function () {
     it('puts the pool in recovery mode if one of the rate providers reverts', async () => {
       // We get the first non-zero rate provider of the Pool, and replace it with a mock one that reverts
       const rateProviderPool = await task.instanceAt('IRateProviderPool', poolAddress);
-      const rateProviders = await rateProviderPool.getRateProviders();
+      const rateProviders: string[] = await rateProviderPool.getRateProviders();
       const mockedRateProvider: string = rateProviders.filter((provider) => provider !== ZERO_ADDRESS)[0];
 
       // Make sure there's at least one rate provider
       expect(mockedRateProvider).to.not.equal(undefined);
 
-      await setCode(
-        mockedRateProvider,
-        `0x${(await task.artifact('MockRevertingRateProvider')).evm.deployedBytecode.object}`
-      );
+      await setCode(mockedRateProvider, (await task.artifact('MockRevertingRateProvider')).deployedBytecode);
       const mockLendingPool = await task.instanceAt('MockRevertingRateProvider', mockedRateProvider);
       await mockLendingPool.setRevertOnGetRate(true);
 

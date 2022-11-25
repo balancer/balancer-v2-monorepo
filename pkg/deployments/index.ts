@@ -1,4 +1,5 @@
 import { Contract } from 'ethers';
+import { Artifact } from 'hardhat/types';
 
 /**
  * @dev Creates an ethers Contract object for a canonical contract deployed on a specific network
@@ -18,28 +19,40 @@ export async function getBalancerContract(task: string, contract: string, networ
  * @param address Address of the contract to be fetched
  */
 export async function getBalancerContractAt(task: string, contract: string, address: string): Promise<Contract> {
-  const abi = await getBalancerContractAbi(task, contract);
+  const artifact = getBalancerContractArtifact(task, contract);
   const { ethers } = await import('hardhat');
-  return ethers.getContractAt(abi, address);
+  return ethers.getContractAt(artifact.abi, address);
 }
 
 /**
- * @dev Returns the contract's ABI of for a specific task
+ * @dev Returns the artifact for a contract from a specific task
  * @param task ID of the task to look the ABI of the required contract
  * @param contract Name of the contract to looking the ABI of
  */
-export function getBalancerContractAbi(task: string, contract: string): unknown[] {
-  return require(getBalancerContractAbiPath(task, contract));
+export function getBalancerContractArtifact(task: string, contract: string): Artifact {
+  return require(getBalancerContractArtifactPath(task, contract));
 }
 
 /**
+ * @dev Returns the ABI for a contract from a specific task
+ * @param task ID of the task to look the ABI of the required contract
+ * @param contract Name of the contract to be fetched.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getBalancerContractAbi(task: string, contract: string): any[] {
+  const artifact = getBalancerContractArtifact(task, contract);
+  return artifact.abi;
+}
+
+/**
+ * @deprecated
  * @dev Returns the contract's creation code of for a specific task
  * @param task ID of the task to look the creation code of the required contract
  * @param contract Name of the contract to looking the creation code of
  */
 export function getBalancerContractBytecode(task: string, contract: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require(getBalancerContractBytecodePath(task, contract)).creationCode;
+  const artifact = getBalancerContractArtifact(task, contract);
+  return artifact.bytecode;
 }
 
 /**
@@ -63,21 +76,12 @@ export function getBalancerDeployment(task: string, network: string): { [key: st
 }
 
 /**
- * @dev Returns the path of a contract's ABI of for a specific task
- * @param task ID of the task to look the path of the ABI of the required contract
- * @param contract Name of the contract to look the path of it's ABI
- */
-function getBalancerContractAbiPath(task: string, contract: string): string {
-  return `@balancer-labs/v2-deployments/dist/tasks/${task}/abi/${contract}.json`;
-}
-
-/**
- * @dev Returns the path of a contract's creation code of for a specific task
- * @param task ID of the task to look the path of the creation code of the required contract
+ * @dev Returns the path of a contract's artifact from a specific task
+ * @param task ID of the task to look the path of the artifact the required contract
  * @param contract Name of the contract to look the path of it's creation code
  */
-function getBalancerContractBytecodePath(task: string, contract: string): string {
-  return `@balancer-labs/v2-deployments/dist/tasks/${task}/bytecode/${contract}.json`;
+function getBalancerContractArtifactPath(task: string, contract: string): string {
+  return `@balancer-labs/v2-deployments/dist/tasks/${task}/artifact/${contract}.json`;
 }
 
 /**

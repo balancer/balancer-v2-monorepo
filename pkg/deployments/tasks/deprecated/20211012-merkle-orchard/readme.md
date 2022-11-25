@@ -12,4 +12,4 @@ Deployment of the `MerkleOrchard`, for distributing tokens via Merkle Trees
 - [Ethereum arbitrum addresses](./output/arbitrum.json)
 - [Ethereum polygon addresses](./output/polygon.json)
 - [Ethereum kovan addresses](./output/kovan.json)
-- [`MerkleOrchard` ABI](./abi/MerkleOrchard.json)
+- [`MerkleOrchard` artifact](./artifact/MerkleOrchard.json)

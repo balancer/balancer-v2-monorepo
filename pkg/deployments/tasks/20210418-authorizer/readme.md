@@ -11,4 +11,4 @@ This contract is expected to be eventually replaced by one with a) native suppor
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
 - [Gnosis mainnet address](./output/gnosis.json)
-- [`Authorizer` ABI](./abi/Authorizer.json)
+- [`Authorizer` artifact](./artifact/Authorizer.json)

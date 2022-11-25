@@ -10,4 +10,4 @@ Deployment of the `PoolRecoveryHelper`, which provides a permissionless way to m
 - [Optimism addresses](./output/optimism.json)
 - [Binance addresses](./output/bsc.json)
 - [Gnosis addresses](./output/gnosis.json)
-- [`PoolRecoveryHelper` ABI](./abi/PoolRecoveryHelper.json)
+- [`PoolRecoveryHelper` artifact](./artifact/PoolRecoveryHelper.json)
