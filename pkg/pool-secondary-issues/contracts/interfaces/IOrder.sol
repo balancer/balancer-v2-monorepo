@@ -28,13 +28,14 @@ interface IOrder {
         uint256 securityBalance;    
     }
 
-    function getOrderRef() external view returns(bytes32[] memory);
+    function getOrderRef(address from) external view returns(bytes32[] memory);
 
-    function cancelOrder(bytes32 ref) external;
+    function cancelOrder(bytes32 ref, address from) external;
 
     function editOrder( bytes32 ref,
                         uint256 _price,
-                        uint256 _qty) external;
+                        uint256 _qty,
+                        address from) external;
 
     function revertTrade(bytes32 _orderRef, uint256 _qty, Order _order) external;
 
