@@ -472,6 +472,7 @@ describe('PrimaryPool', function () {
           const securityTokenBalanceBefore = await securityToken.balanceOf(owner);
           const currencyTokenBalanceBefore = await currencyToken.balanceOf(owner);
 
+          await pool.vault.setRelayerApproval(owner, pool, true);
           await pool.exitPool();
 
           const afterExitOwnerBalance = await pool.balanceOf(owner);

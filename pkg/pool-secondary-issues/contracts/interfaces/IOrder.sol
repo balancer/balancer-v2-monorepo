@@ -14,7 +14,7 @@ interface IOrder {
     enum Order{ Buy, Sell } 
 
     struct order{
-        uint256 orderno; 
+        //uint256 orderno; 
         IERC20 tokenIn;
         IERC20 tokenOut;
         OrderType otype;
