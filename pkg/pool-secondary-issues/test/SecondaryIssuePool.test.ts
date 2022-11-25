@@ -1,11 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { BigNumber, FixedNumber } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { bn, fp, scaleDown } from '@balancer-labs/v2-helpers/src/numbers';
-import { MAX_UINT112, MAX_UINT96, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
-import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
+import { MAX_UINT112, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
 import { RawSecondaryPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/secondary-issue/types';
@@ -15,7 +14,7 @@ import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import SecondaryPool from '@balancer-labs/v2-helpers/src/models/pools/secondary-issue/SecondaryIssuePool';
 import { keccak256 } from "@ethersproject/keccak256";
 import { toUtf8Bytes } from "@ethersproject/strings";
-import Decimal from 'decimal.js';
+
 
 describe('SecondaryPool', function () {
   let pool: SecondaryPool, tokens: TokenList, securityToken: Token, currencyToken: Token;
@@ -802,14 +801,14 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit'+ sell_price.toString())) // Stop Order Sell@price12
       });
 
-      const _ref = await pool.getOrderRef({from: lp.address});
+      const _ref = await pool.getOrderRef({from: lp});
 
       const cancel_order = await pool.cancelOrder({
         ref: _ref[0].toString(),
-        from: lp.address
+        from: lp
       });
 
-      const _refAfterCancell = await pool.getOrderRef({from: lp.address});
+      const _refAfterCancell = await pool.getOrderRef({from: lp});
       expect(_refAfterCancell[0]).to.be.equals(ZERO_BYTES32);
       
     });
@@ -852,13 +851,13 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const _ref = await pool.getOrderRef({from: lp.address});
+      const _ref = await pool.getOrderRef({from: lp});
 
       const edit_order = await pool.editOrder({
         ref: _ref[0].toString(),
         price: editedPrice, //Changed price from 12[selling price] --> 18[buying price]
         amount: editedAmount, //Changed Qty from 10[sell amount] --> 12[buy amount]
-        from: lp.address
+        from: lp
       });
 
       const buy_order = await pool.swapGivenIn({

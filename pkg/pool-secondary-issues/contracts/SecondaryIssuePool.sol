@@ -373,18 +373,17 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         }
     }
 
-    function getOrderRef(address from) external view override returns (bytes32[] memory) {
-        return _userOrderRefs[from];
+    function getOrderRef() external view override returns (bytes32[] memory) {
+        return _userOrderRefs[msg.sender];
     }
 
     function editOrder(
         bytes32 ref,
         uint256 _price,
-        uint256 _qty,
-        address from
+        uint256 _qty
     ) external override {
         require(orders[ref].status == OrderStatus.Open, "Order is already filled");
-        require(orders[ref].party == from, "Sender is not order creator");
+        require(orders[ref].party == msg.sender, "Sender is not order creator");
         orders[ref].price = _price;
         orders[ref].qty = _qty;
         orders[ref].dt = block.timestamp;
@@ -399,8 +398,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         }        
     }
 
-    function cancelOrder(bytes32 ref, address from) external override {
-        require(orders[ref].party == from, "Sender is not order creator");
+    function cancelOrder(bytes32 ref) external override {
+        require(orders[ref].party == msg.sender, "Sender is not order creator");
         //delete _marketOrders[_marketOrderIndex[ref]];
         delete _marketOrderIndex[ref];
         //delete _limitOrders[_limitOrderIndex[ref]];
@@ -410,7 +409,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         delete orders[ref];
         delete _orderRefs[_orderIndex[ref]];
         delete _orderIndex[ref];
-        delete _userOrderRefs[from][_userOrderIndex[ref]];
+        delete _userOrderRefs[msg.sender][_userOrderIndex[ref]];
         delete _userOrderIndex[ref];
     }
 
