@@ -6,7 +6,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { describeForkTest } from '../../../src/forkTests';
 import Task, { TaskMode } from '../../../src/task';
 import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate, impersonateWhale } from '../../../src/signers';
+import { getSigner, impersonate } from '../../../src/signers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -28,6 +28,7 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () {
   let usdt: Contract;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
   const USDT_SCALING = bn(1e12); // USDT has 6 decimals, so its scaling factor is 1e12
 
   const USDT = '0xdac17f958d2ee523a2206206994597c13d831ec7';
@@ -48,7 +49,7 @@ describeForkTest('ComposableStablePool', 'mainnet', 16000000, function () {
 
   before('load signers', async () => {
     owner = await getSigner();
-    whale = await impersonateWhale(fp(100));
+    whale = await impersonate(LARGE_TOKEN_HOLDER, fp(100));
 
     govMultisig = await impersonate(GOV_MULTISIG, fp(100));
   });
