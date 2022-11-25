@@ -1,5 +1,11 @@
 # 2022-10-21 - Managed Pool Factory
 
+> ⚠️ **DEPRECATED: do not use** ⚠️
+>
+> This factory and associated Pools have been deprecated due to dependencies requiring extra features: this deployment's Pools are not expected to ever be used.
+>
+> An updated version will be released soon.
+
 Deployment of the `ManagedPoolFactory`, which allows creating Managed Pools.
 
 A Managed Pool is a Weighted Pool with mutable tokens and weights, designed to be used in conjunction with an owner contract containing specific business logic. This in turn may support many asset management use cases, such as large token counts, rebalancing through token changes, gradual weight or fee updates, fine-grained control of protocol and management fees, allowlisting of LPs, and more.
