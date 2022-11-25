@@ -77,8 +77,8 @@ export default class Vault {
     return this.instance.updateCash(poolId, cash);
   }
 
-  async updateManaged(poolId: string, managedl: BigNumber[]): Promise<ContractTransaction> {
-    return this.instance.updateManaged(poolId, managedl);
+  async updateManaged(poolId: string, managed: BigNumber[]): Promise<ContractTransaction> {
+    return this.instance.updateManaged(poolId, managed);
   }
 
   async minimalSwap(params: MinimalSwap): Promise<ContractTransaction> {
