@@ -93,7 +93,6 @@ Returns an object with all contracts from a deployment and their addresses.
 | Protocol fee percentages provider                       | [`20220725-protocol-fee-percentages-provider`](./tasks/20220725-protocol-fee-percentages-provider)   |
 | Child Chain Gauge Reward Helper                         | [`20220812-child-chain-reward-helper`](./tasks/20220812-child-chain-reward-helper)                   |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/20220817-aave-rebalanced-linear-pool)               |
-| Composable Stable Pools                                 | [`20220906-composable-stable-pool`](./tasks/20220906-composable-stable-pool)                         |
 
 ## Scripts
 
@@ -132,3 +131,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Linear Pools for ERC4626 Tokens                  | [`20220304-erc4626-linear-pool`](./tasks/deprecated/20220304-erc4626-linear-pool)                   |
 | Batch Relayer V2                                 | [`20220318-batch-relayer-v2`](./tasks/deprecated/20220318-batch-relayer-v2)                         |
 | Fee Distributor for veBAL holders                | [`20220420-fee-distributor`](./tasks/deprecated/20220420-fee-distributor)                           |
+| Composable Stable Pools                          | [`20220906-composable-stable-pool`](./tasks/deprecated/20220906-composable-stable-pool)             |
