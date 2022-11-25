@@ -9,7 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Account, NAry, TxParams } from '../../types/types';
 import { MAX_UINT112, ZERO_ADDRESS, MAX_UINT256 } from '../../../constants';
 import { GeneralSwap, ProtocolFee, QueryBatchSwap } from '../../vault/types';
-import { LastJoinExitData, RawStablePoolDeployment, SwapStablePool } from './types';
+import { LastJoinExitData, MultiExitGivenInStablePool, RawStablePoolDeployment, SwapStablePool } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -21,7 +21,8 @@ import * as expectEvent from '../../../test/expectEvent';
 import {
   InitStablePool,
   JoinGivenInStablePool,
-  JoinGivenOutStablePool,
+  SingleJoinGivenOutStablePool,
+  MultiJoinGivenOutStablePool,
   JoinExitStablePool,
   JoinResult,
   JoinQueryResult,
@@ -347,11 +348,19 @@ export default class StablePool extends BasePool {
     return this.queryJoin(this._buildJoinGivenInParams(params));
   }
 
-  async joinGivenOut(params: JoinGivenOutStablePool): Promise<JoinResult> {
+  async singleJoinGivenOut(params: SingleJoinGivenOutStablePool): Promise<JoinResult> {
+    return this.join(this._buildSingleJoinGivenOutParams(params));
+  }
+
+  async querySingleJoinGivenOut(params: SingleJoinGivenOutStablePool): Promise<JoinQueryResult> {
+    return this.queryJoin(this._buildSingleJoinGivenOutParams(params));
+  }
+
+  async joinGivenOut(params: MultiJoinGivenOutStablePool): Promise<JoinResult> {
     return this.join(this._buildJoinGivenOutParams(params));
   }
 
-  async queryJoinGivenOut(params: JoinGivenOutStablePool): Promise<JoinQueryResult> {
+  async queryJoinGivenOut(params: MultiJoinGivenOutStablePool): Promise<JoinQueryResult> {
     return this.queryJoin(this._buildJoinGivenOutParams(params));
   }
 
@@ -406,6 +415,14 @@ export default class StablePool extends BasePool {
     return this.queryExit(this._buildSingleExitGivenInParams(params));
   }
 
+  async exitGivenIn(params: MultiExitGivenInStablePool): Promise<ExitResult> {
+    return this.exit(this._buildExitGivenInParams(params));
+  }
+
+  async queryExitGivenIn(params: MultiExitGivenInStablePool): Promise<ExitQueryResult> {
+    return this.queryExit(this._buildExitGivenInParams(params));
+  }
+
   async queryExit(params: JoinExitStablePool): Promise<ExitQueryResult> {
     const fn = this.instance.queryExit;
     return (await this._executeQuery(params, fn)) as ExitQueryResult;
@@ -455,7 +472,7 @@ export default class StablePool extends BasePool {
     };
   }
 
-  private _buildJoinGivenOutParams(params: JoinGivenOutStablePool): JoinExitStablePool {
+  private _buildSingleJoinGivenOutParams(params: SingleJoinGivenOutStablePool): JoinExitStablePool {
     return {
       from: params.from,
       recipient: params.recipient,
@@ -463,6 +480,17 @@ export default class StablePool extends BasePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.joinTokenInForExactBPTOut(params.bptOut, this.tokens.indexOf(params.token)),
+    };
+  }
+
+  private _buildJoinGivenOutParams(params: MultiJoinGivenOutStablePool): JoinExitStablePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: StablePoolEncoder.joinAllTokensInForExactBptOut(params.bptOut),
     };
   }
 
@@ -488,6 +516,17 @@ export default class StablePool extends BasePool {
       currentBalances: params.currentBalances,
       protocolFeePercentage: params.protocolFeePercentage,
       data: StablePoolEncoder.exitExactBPTInForOneTokenOut(params.bptIn, this.tokens.indexOf(params.token)),
+    };
+  }
+
+  private _buildExitGivenInParams(params: MultiExitGivenInStablePool): JoinExitStablePool {
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: StablePoolEncoder.exitExactBptInForTokensOut(params.bptIn),
     };
   }
 
