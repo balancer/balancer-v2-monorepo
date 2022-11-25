@@ -34,7 +34,7 @@ describe('ExternalFees', function () {
         expect(await mock.bptForPoolOwnershipPercentage(1, FP_100_PCT.sub(1))).to.be.eq(fp(1).sub(1));
 
         expect(await mock.bptForPoolOwnershipPercentage(fp(1), fp(0.5))).to.be.eq(fp(1));
-        expect(await mock.bptForPoolOwnershipPercentage(fp(1), fp(0.25))).to.be.almostEqual(fp(0.333333333333333333));
+        expect(await mock.bptForPoolOwnershipPercentage(fp(1), fp(0.25))).to.be.almostEqual(fp(0.3333333333333333));
       });
     });
   });

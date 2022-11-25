@@ -5,5 +5,5 @@ Deployment of the `OptimismRootGaugeFactory`, for stakeless gauges that bridge f
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`OptimismRootGauge` ABI](./abi/OptimismRootGauge.json)
-- [`OptimismRootGaugeFactory` ABI](./abi/OptimismRootGaugeFactory.json)
+- [`OptimismRootGauge` artifact](./artifact/OptimismRootGauge.json)
+- [`OptimismRootGaugeFactory` artifact](./artifact/OptimismRootGaugeFactory.json)

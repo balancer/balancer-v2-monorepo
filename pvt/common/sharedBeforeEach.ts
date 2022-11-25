@@ -1,8 +1,7 @@
 import { AsyncFunc } from 'mocha';
+import { takeSnapshot, SnapshotRestorer } from '@nomicfoundation/hardhat-network-helpers';
 
-import { takeSnapshot, revert, getProvider } from './network';
-
-const SNAPSHOTS: string[] = [];
+const SNAPSHOTS: Array<SnapshotRestorer> = [];
 
 /**
  * This Mocha helper acts as a `beforeEach`, but executes the initializer
@@ -21,23 +20,22 @@ export function sharedBeforeEach(nameOrFn: string | AsyncFunc, maybeFn?: AsyncFu
   let initialized = false;
 
   beforeEach(wrapWithTitle(name, 'Running shared before each or reverting'), async function () {
-    const provider = await getProvider();
     if (!initialized) {
       const prevSnapshot = SNAPSHOTS.pop();
       if (prevSnapshot !== undefined) {
-        await revert(provider, prevSnapshot);
-        SNAPSHOTS.push(await takeSnapshot(provider));
+        await prevSnapshot.restore();
+        SNAPSHOTS.push(await takeSnapshot());
       }
 
       await fn.call(this);
 
-      SNAPSHOTS.push(await takeSnapshot(provider));
+      SNAPSHOTS.push(await takeSnapshot());
       initialized = true;
     } else {
-      const snapshotId = SNAPSHOTS.pop();
-      if (snapshotId === undefined) throw Error('Missing snapshot ID');
-      await revert(provider, snapshotId);
-      SNAPSHOTS.push(await takeSnapshot(provider));
+      const shapshot = SNAPSHOTS.pop();
+      if (shapshot === undefined) throw Error('Missing sharedBeforeEach snapshot');
+      await shapshot.restore();
+      SNAPSHOTS.push(await takeSnapshot());
     }
   });
 

@@ -8,4 +8,4 @@ Deployment of the `UnbuttonAaveLinearPoolFactory`, for Aave Linear Pools where b
 - [Polygon address](./output/polygon.json)
 - [Arbitrum address](./output/arbitrum.json)
 - [Optimism address](./output/optimism.json)
-- [`UnbuttonAaveLinearPool` ABI](./abi/UnbuttonAaveLinearPool.json)
+- [`UnbuttonAaveLinearPool` artifact](./artifact/UnbuttonAaveLinearPool.json)
