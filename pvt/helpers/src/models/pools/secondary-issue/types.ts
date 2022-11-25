@@ -48,10 +48,16 @@ export type EditOrder = {
   ref?: string;
   amount: BigNumberish;
   price: BigNumberish;
+  from?: string;
 };
 
 export type CancelOrder = {
   ref?: string;
+  from?: string;
+};
+
+export type OrderRef = {
+  from?: string;
 };
 
 export type ExitResult = {

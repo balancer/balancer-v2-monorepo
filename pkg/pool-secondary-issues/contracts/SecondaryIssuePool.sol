@@ -18,7 +18,6 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "hardhat/console.sol";
 
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     using Math for uint256;
@@ -108,7 +107,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
 
     event Offer(address indexed security, uint256 secondaryOffer);
 
-    event CallSwap(string orderType, uint256 qty, uint256 price); //change qty to 'securityTraded' and price to 'currencyTraded' and make changes in test cases accordingly
+    event CallSwap(string orderType, uint256 securityTraded, uint256 currencyTraded); 
 
     constructor(
         IVault vault,
@@ -199,9 +198,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         uint256[] memory scalingFactors = _scalingFactors();
         Params memory params;
         if(request.userData.length!=0){
-            //console.log("Not a market order");
             if(request.userData.length != 4){ //handling swaps from matchOrders function below
-                //console.log("Limit or Stop loss order");
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
@@ -212,7 +209,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }                
             }    
             else{ // returning swap results from matchOrders function below
-                console.log("Returning final swap result");
                 if(request.kind == IVault.SwapKind.GIVEN_IN){
                      if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         return _downscaleDown(request.amount, scalingFactors[indexOut]);
@@ -225,7 +221,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
             }        
         }else{ //by default, any order without price specified is a market order
-            //console.log("Market order");
             if (request.tokenIn == IERC20(_currency) || request.tokenOut == IERC20(_security)){
                 //it is a buy (bid), so need the best offer by a counter party
                 params = Params({
@@ -378,29 +373,34 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         }
     }
 
-    function getOrderRef() external view override returns (bytes32[] memory) {
-        return _userOrderRefs[msg.sender];
+    function getOrderRef(address from) external view override returns (bytes32[] memory) {
+        return _userOrderRefs[from];
     }
 
     function editOrder(
         bytes32 ref,
         uint256 _price,
-        uint256 _qty
+        uint256 _qty,
+        address from
     ) external override {
         require(orders[ref].status == OrderStatus.Open, "Order is already filled");
-        require(orders[ref].party == msg.sender, "Sender is not order creator");
+        require(orders[ref].party == from, "Sender is not order creator");
         orders[ref].price = _price;
         orders[ref].qty = _qty;
         orders[ref].dt = block.timestamp;
-        if (orders[ref].otype == OrderType.Limit) {            
+        if (orders[ref].otype == OrderType.Limit) {
+            _limitOrderIndex[ref] = _limitOrders.length;
+            _limitOrders.push(ref);            
             checkLimitOrders(ref, OrderType.Limit);
         } else if (orders[ref].otype == OrderType.Stop) {
+            _stopOrderIndex[ref] = _stopOrders.length;
+            _stopOrders.push(ref);
             checkStopOrders(ref, OrderType.Stop);
         }        
     }
 
-    function cancelOrder(bytes32 ref) external override {
-        require(orders[ref].party == msg.sender, "Sender is not order creator");
+    function cancelOrder(bytes32 ref, address from) external override {
+        require(orders[ref].party == from, "Sender is not order creator");
         //delete _marketOrders[_marketOrderIndex[ref]];
         delete _marketOrderIndex[ref];
         //delete _limitOrders[_limitOrderIndex[ref]];
@@ -410,7 +410,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         delete orders[ref];
         delete _orderRefs[_orderIndex[ref]];
         delete _orderIndex[ref];
-        delete _userOrderRefs[msg.sender][_userOrderIndex[ref]];
+        delete _userOrderRefs[from][_userOrderIndex[ref]];
         delete _userOrderIndex[ref];
     }
 
@@ -429,7 +429,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
                     reorder(_limitOrderIndex[_ref], OrderType.Limit);
-                }           
+                }        
                 matchOrders(ref, OrderType.Limit);
             } 
         }
@@ -455,36 +455,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             } 
         }
     }
-
-
-    /*function checkLimitStopOrders(bytes32 _ref, OrderType _trade) private {
-        bytes32 ref;
-        bytes32[] memory limitOrStopOrders;
-        uint256 orderIndex;
-        if(_trade == OrderType.Limit){
-            limitOrStopOrders =  _limitOrders;
-            orderIndex = _limitOrderIndex[_ref];
-        }
-        else if(_trade == OrderType.Stop){
-            limitOrStopOrders =  _stopOrders;
-            orderIndex = _stopOrderIndex[_ref];
-        }
-        for (uint256 i = 0; i < limitOrStopOrders.length; i++) {
-            if ((orders[limitOrStopOrders[i]].order == Order.Buy && orders[limitOrStopOrders[i]].price <= orders[_ref].price) ||
-                (orders[limitOrStopOrders[i]].order == Order.Sell && orders[limitOrStopOrders[i]].price >= orders[_ref].price)){
-                _marketOrders.push(limitOrStopOrders[i]);
-                ref = limitOrStopOrders[i];
-                reorder(i, _trade);  
-                if(ref == 0) continue; // skip the loop when ref data is 0 [i.e remains after deleting in reorder func.]
-                if(_trade!=OrderType.Market && ref!=_ref){
-                //only if the consecutive order is a limit or stop loss order, it goes to the market order book
-                    _marketOrders.push(_ref);
-                    reorder(orderIndex, _trade);
-                }       
-                matchOrders(ref, _trade);
-            } 
-        }
-    }*/
 
     function reorder(uint256 position, OrderType list) private {
         if (list == OrderType.Market) {
@@ -545,11 +515,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         }
         if (orders[_ref].order == Order.Sell) {               
             if (_bestBid != "") {
-                require(Math.sub(orders[_ref].securityBalance, orders[_ref].qty)>=0, "Not enough securities balance");
-                uint256 qty;                
+                uint256 securityTraded;                
                 if (orders[_bestBid].qty >= orders[_ref].qty) {                     
                     orders[_bestBid].qty = orders[_bestBid].qty - orders[_ref].qty;
-                    qty = orders[_ref].qty;                    
+                    securityTraded = orders[_ref].qty;                    
                     orders[_ref].qty = 0;
                     orders[_bestBid].status = OrderStatus.Filled;
                     orders[_ref].status = OrderStatus.Filled;
@@ -559,14 +528,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         _bestBid,
                         orders[_bestBid].party,
                         orders[_ref].price,
-                        qty,
+                        securityTraded,
                         orders[_ref].order,
                         orders[_ref].otype
                     );                    
                     reorder(_bidIndex, _trade);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[_bestBid].qty;
-                    qty = orders[_bestBid].qty;
+                    securityTraded = orders[_bestBid].qty;
                     orders[_bestBid].qty = 0;
                     orders[_bestBid].status = OrderStatus.PartlyFilled;
                     orders[_ref].status = OrderStatus.PartlyFilled;
@@ -576,30 +545,30 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         _bestBid,
                         orders[_bestBid].party,
                         orders[_ref].price,
-                        qty,
+                        securityTraded,
                         orders[_ref].order,
                         orders[_ref].otype
                     );                    
                 }
+                uint256 currencyTraded = Math.div(orders[_ref].price.mul(securityTraded), FixedPoint.ONE, false); 
+                require(Math.sub(orders[_ref].securityBalance, securityTraded)>=0, "Not enough securities balance");
+                //orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, securityTraded);
+                //orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, currencyTraded);
+
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                //orders[_ref].securityBalance = Math.sub(orders[_ref].securityBalance, qty);
-                //orders[_ref].currencyBalance = Math.add(orders[_ref].currencyBalance, Math.mul(orders[_ref].price, qty));
-                uint256 cashBalance = Math.div(orders[_ref].price.mul(qty), FixedPoint.ONE, false); 
-                emit CallSwap("sellSwap", qty, cashBalance);
+                emit CallSwap("sellSwap", securityTraded, currencyTraded);
             }
             else if(_trade==OrderType.Market){ 
-                //console.log("Checking limit and stop orders for sells");
                 checkLimitOrders(_ref, _trade);
                 checkStopOrders(_ref, _trade);
             }
         } 
         else if (orders[_ref].order == Order.Buy) {            
             if (_bestOffer != "") {
-                require(Math.sub(orders[_ref].currencyBalance, Math.mul(orders[_ref].price, orders[_ref].qty))>=0, "Not enough currency balance");
-                uint256 qty;
+                uint256 securityTraded;
                 if (orders[_bestOffer].qty >= orders[_ref].qty) {
                     orders[_bestOffer].qty = orders[_bestOffer].qty - orders[_ref].qty;
-                    qty = orders[_ref].qty;
+                    securityTraded = orders[_ref].qty;
                     orders[_ref].qty = 0;
                     orders[_bestOffer].status = OrderStatus.Filled;
                     orders[_ref].status = OrderStatus.Filled;
@@ -609,14 +578,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         _ref,
                         orders[_ref].party,
                         orders[_ref].price,
-                        qty,
+                        securityTraded,
                         orders[_ref].order,
                         orders[_ref].otype
                     );
                     reorder(_bidIndex, _trade);
                 } else {
                     orders[_ref].qty = orders[_ref].qty - orders[_bestOffer].qty;
-                    qty = orders[_bestOffer].qty;
+                    securityTraded = orders[_bestOffer].qty;
                     orders[_bestOffer].qty = 0;
                     orders[_bestOffer].status = OrderStatus.PartlyFilled;
                     orders[_ref].status = OrderStatus.PartlyFilled;
@@ -626,19 +595,21 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         _ref,
                         orders[_ref].party,
                         orders[_ref].price,
-                        qty,
+                        securityTraded,
                         orders[_ref].order,
                         orders[_ref].otype
                     );
                 }
+
+                uint256 currencyTraded = Math.div(orders[_ref].price.mul(securityTraded), FixedPoint.ONE, false); 
+                require(Math.sub(orders[_ref].currencyBalance, currencyTraded)>=0, "Not enough currency balance");
+                //orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, securityTraded);
+                //orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, currencyTraded);
+
                 emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                //orders[_ref].securityBalance = Math.add(orders[_ref].securityBalance, qty);
-                //orders[_ref].currencyBalance = Math.sub(orders[_ref].currencyBalance, Math.mul(orders[_ref].price, qty));
-                uint256 cashBalance = Math.div(orders[_ref].price.mul(qty), FixedPoint.ONE, false); 
-                emit CallSwap("buySwap", qty, cashBalance);
+                emit CallSwap("buySwap", securityTraded, currencyTraded);
             }
             else if(_trade==OrderType.Market){
-                //console.log("Checking limit and stop orders for buys");
                 checkLimitOrders(_ref, _trade);
                 checkStopOrders(_ref, _trade);
             }
