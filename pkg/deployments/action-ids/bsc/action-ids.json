@@ -193,5 +193,13 @@
         "unpause()": "0x90c589fc159019d7f13565320460b0b7cc3c5c699cbbc17dc34fca4c9a926e55"
       }
     }
+  },
+  "20221124-authorizer-adaptor-entrypoint": {
+    "AuthorizerAdaptorEntrypoint": {
+      "useAdaptor": false,
+      "actionIds": {
+        "performAction(address,bytes)": "0xc04f5846b82301fafb719d6ec3ed20e109163bfc25b65b683a0b0b6d309a369c"
+      }
+    }
   }
 }
