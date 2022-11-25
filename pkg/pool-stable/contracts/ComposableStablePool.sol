@@ -878,7 +878,7 @@ contract ComposableStablePool is
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        uint256[] memory amountsOut = _computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
+        uint256[] memory amountsOut = StableMath._computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
 
         return (bptAmountIn, amountsOut);
     }
