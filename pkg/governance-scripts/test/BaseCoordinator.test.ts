@@ -11,11 +11,8 @@ import { advanceTime, DAY, receiptTimestamp } from '@balancer-labs/v2-helpers/sr
 const NUM_STAGES = 4;
 
 describe('BaseCoordinator', () => {
-  let vault: Vault;
   let adaptor: Contract;
-
   let coordinator: Contract;
-
   let admin: SignerWithAddress;
 
   before('setup signers', async () => {
@@ -23,10 +20,7 @@ describe('BaseCoordinator', () => {
   });
 
   sharedBeforeEach('deploy vault', async () => {
-    vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-
-    adaptor = await deploy('v2-liquidity-mining/AuthorizerAdaptor', { args: [vault.address] });
+    ({ authorizerAdaptor: adaptor } = await Vault.create({ admin }));
   });
 
   sharedBeforeEach('deploy coordinator', async () => {

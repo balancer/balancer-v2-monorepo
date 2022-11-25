@@ -19,6 +19,8 @@ export default class Vault {
   mocked: boolean;
   instance: Contract;
   authorizer: Contract;
+  authorizerAdaptor: Contract;
+  authorizerAdaptorEntrypoint: Contract;
   protocolFeesProvider: Contract;
   admin?: SignerWithAddress;
   feesCollector?: Contract;
@@ -35,12 +37,16 @@ export default class Vault {
     mocked: boolean,
     instance: Contract,
     authorizer: Contract,
+    authorizerAdaptor: Contract,
+    authorizerAdaptorEntrypoint: Contract,
     protocolFeesProvider: Contract,
     admin?: SignerWithAddress
   ) {
     this.mocked = mocked;
     this.instance = instance;
     this.authorizer = authorizer;
+    this.authorizerAdaptor = authorizerAdaptor;
+    this.authorizerAdaptorEntrypoint = authorizerAdaptorEntrypoint;
     this.protocolFeesProvider = protocolFeesProvider;
     this.admin = admin;
   }
@@ -62,9 +68,9 @@ export default class Vault {
 
   async getPoolTokenInfo(
     poolId: string,
-    token: Token
+    token: Token | string
   ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
-    return this.instance.getPoolTokenInfo(poolId, token.address);
+    return this.instance.getPoolTokenInfo(poolId, typeof token == 'string' ? token : token.address);
   }
 
   async updateBalances(poolId: string, balances: BigNumber[]): Promise<ContractTransaction> {
@@ -77,8 +83,8 @@ export default class Vault {
       {
         kind: params.kind,
         poolId: params.poolId,
-        from: params.from ?? ZERO_ADDRESS,
-        to: params.to,
+        from: TypesConverter.toAddress(params.from) ?? ZERO_ADDRESS,
+        to: TypesConverter.toAddress(params.to),
         tokenIn: params.tokenIn,
         tokenOut: params.tokenOut,
         lastChangeBlock: params.lastChangeBlock,
@@ -159,6 +165,7 @@ export default class Vault {
 
   async exitPool(params: ExitPool): Promise<ContractTransaction> {
     const vault = params.from ? this.instance.connect(params.from) : this.instance;
+
     return this.mocked
       ? vault.callExitPool(
           params.poolAddress ?? ZERO_ADDRESS,
@@ -294,5 +301,15 @@ export default class Vault {
   // Returns asset deltas
   async queryBatchSwap(params: QueryBatchSwap): Promise<BigNumber[]> {
     return await this.instance.queryBatchSwap(params.kind, params.swaps, params.assets, params.funds);
+  }
+
+  async setAuthorizer(newAuthorizer: Account): Promise<ContractTransaction> {
+    // Needed to suppress lint warning. grantPermissionsGlobally will fail if there is no authorizer or admin
+    const admin = this.admin ?? ZERO_ADDRESS;
+
+    const action = await actionId(this.instance, 'setAuthorizer');
+    await this.grantPermissionsGlobally([action], admin);
+
+    return this.instance.connect(admin).setAuthorizer(TypesConverter.toAddress(newAuthorizer));
   }
 }

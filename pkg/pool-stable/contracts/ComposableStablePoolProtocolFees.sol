@@ -17,8 +17,8 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodec.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/ProtocolFeeCache.sol";
-import "@balancer-labs/v2-pool-utils/contracts/protocol-fees/InvariantGrowthProtocolSwapFees.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/ProtocolFeeCache.sol";
+import "@balancer-labs/v2-pool-utils/contracts/external-fees/InvariantGrowthProtocolSwapFees.sol";
 
 import "./ComposableStablePoolStorage.sol";
 import "./ComposableStablePoolRates.sol";
@@ -85,14 +85,12 @@ abstract contract ComposableStablePoolProtocolFees is
         // Now that we know what percentage of the Pool's current value the protocol should own, we can compute how
         // much BPT we need to mint to get to this state. Since we're going to mint BPT for the protocol, the value
         // of each BPT is going to be reduced as all LPs get diluted.
-        uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+        uint256 protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
             virtualSupply,
             expectedProtocolOwnershipPercentage
         );
 
-        if (protocolFeeAmount > 0) {
-            _payProtocolFees(protocolFeeAmount);
-        }
+        _payProtocolFees(protocolFeeAmount);
 
         // We pay fees before a join or exit to ensure the pool is debt-free. This increases the virtual supply (making
         // it match the actual supply).
@@ -277,7 +275,7 @@ abstract contract ComposableStablePoolProtocolFees is
             );
 
             if (protocolOwnershipPercentage > 0) {
-                uint256 protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+                uint256 protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
                     postJoinExitSupply,
                     protocolOwnershipPercentage
                 );

@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### New Deployments
+
+- Deployed core infrastructure (`Authorizer`, `Vault`, `AuthorizerAdaptor`, `ProtocolFeeWithdrawer`, `ProtocolFeePercentagesProvider`, `BalancerQueries` and `BatchRelayer`) to Gnosis and BNB.
+- Deployed core Pool factories (`WeightedPoolFactory`, `ComposableStablePoolFactory`, `LiquidityBootstrappingPool`, `AaveLinearPool`) to BNB.
+- Deployed `AuthorizerAdaptorEntrypoint` to all networks.
+- Deployed `AaveLinearPoolFactory` to all networks.
+- Deployed `PoolRecoveryHelper` to all networks.
+
+### API Changes
+
+- Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.
+- Added `getBalancerContractArtifact` which returns a artifact file for the contract in the same format used by Hardhat.
+- Deprecated `getBalancerContractBytecode` in favour of `getBalancerContractArtifact`.
+
+## 3.0.0 (2022-10-25)
+
+### New Deployments
+
+- All deployments that occurred since September 2021, including Linear Pools, Liquidity Mining, Composable Stable Pools and Managed Pools.
+
+### Breaking Changes
+
+- Introduced the `deprecated` directory. Deployments may be moved to that directory in minor releases - this will not be considered a breaking change.
+
 ## 2.3.0 (2021-09-24)
 
 ### New Deployments

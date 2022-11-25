@@ -34,6 +34,8 @@ import "../math/Math.sol";
  * unpacking is therefore the preferred approach.
  */
 library WordCodec {
+    // solhint-disable no-inline-assembly
+
     // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
     // or to insert a new one replacing the old.
     uint256 private constant _MASK_1 = 2**(1) - 1;
@@ -50,12 +52,17 @@ library WordCodec {
         uint256 value,
         uint256 offset,
         uint256 bitLength
-    ) internal pure returns (bytes32) {
+    ) internal pure returns (bytes32 result) {
         _validateEncodingParams(value, offset, bitLength);
-
-        uint256 mask = (1 << bitLength) - 1;
-        bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
-        return clearedWord | bytes32(value << offset);
+        // Equivalent to:
+        // uint256 mask = (1 << bitLength) - 1;
+        // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
+        // result = clearedWord | bytes32(value << offset);
+        assembly {
+            let mask := sub(shl(bitLength, 1), 1)
+            let clearedWord := and(word, not(shl(offset, mask)))
+            result := or(clearedWord, shl(offset, value))
+        }
     }
 
     /**
@@ -122,8 +129,12 @@ library WordCodec {
         bytes32 word,
         uint256 offset,
         uint256 bitLength
-    ) internal pure returns (uint256) {
-        return uint256(word >> offset) & ((1 << bitLength) - 1);
+    ) internal pure returns (uint256 result) {
+        // Equivalent to:
+        // result = uint256(word >> offset) & ((1 << bitLength) - 1);
+        assembly {
+            result := and(shr(offset, word), sub(shl(bitLength, 1), 1))
+        }
     }
 
     /**
@@ -133,7 +144,7 @@ library WordCodec {
         bytes32 word,
         uint256 offset,
         uint256 bitLength
-    ) internal pure returns (int256) {
+    ) internal pure returns (int256 result) {
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
 
@@ -141,7 +152,12 @@ library WordCodec {
         // In case the decoded value is greater than the max positive integer that can be represented with bitLength
         // bits, we know it was originally a negative integer. Therefore, we mask it to restore the sign in the 256 bit
         // representation.
-        return value > maxInt ? (value | int256(~mask)) : value;
+        //
+        // Equivalent to:
+        // result = value > maxInt ? (value | int256(~mask)) : value;
+        assembly {
+            result := or(mul(gt(value, maxInt), not(mask)), value)
+        }
     }
 
     // Special cases
@@ -149,8 +165,12 @@ library WordCodec {
     /**
      * @dev Decodes and returns a boolean shifted by an offset from a 256 bit word.
      */
-    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool) {
-        return (uint256(word >> offset) & _MASK_1) == 1;
+    function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool result) {
+        // Equivalent to:
+        // result = (uint256(word >> offset) & 1) == 1;
+        assembly {
+            result := and(shr(offset, word), 1)
+        }
     }
 
     /**
@@ -176,9 +196,14 @@ library WordCodec {
         bytes32 word,
         bool value,
         uint256 offset
-    ) internal pure returns (bytes32) {
-        bytes32 clearedWord = bytes32(uint256(word) & ~(_MASK_1 << offset));
-        return clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
+    ) internal pure returns (bytes32 result) {
+        // Equivalent to:
+        // bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
+        // bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
+        assembly {
+            let clearedWord := and(word, not(shl(offset, 1)))
+            result := or(clearedWord, shl(offset, value))
+        }
     }
 
     // Helpers

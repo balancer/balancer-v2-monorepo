@@ -9,4 +9,4 @@ The relayer is mostly useful on mainnet, as it included mainnet hardcoded addres
 - [Ethereum mainnet addresses](./output/mainnet.json)
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
-- [`DoubleEntryPointFixRelayer` ABI](./abi/DoubleEntryPointFixRelayer.json)
+- [`DoubleEntryPointFixRelayer` artifact](./artifact/DoubleEntryPointFixRelayer.json)

@@ -102,7 +102,10 @@ contract ComposableStablePool is
         StablePoolAmplification(params.amplificationParameter)
         ComposableStablePoolStorage(_extractStorageParams(params))
         ComposableStablePoolRates(_extractRatesParams(params))
-        ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        ProtocolFeeCache(
+            params.protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
     {
         _version = params.version;
     }
@@ -943,14 +946,11 @@ contract ComposableStablePool is
         return (bptAmountIn, amountsOut);
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
         // adjust the balances array by removing BPT from it.
         // Note that we don't compute the actual supply, which would require a lot of complex calculations and
@@ -958,11 +958,13 @@ contract ComposableStablePool is
         // recovery mode is enabled (since all protocol fees are forfeit and the fee percentages zeroed out).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            balances,
-            virtualSupply,
-            userData
-        );
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256[] memory amountsOut = new uint256[](balances.length);
+
+        uint256 bptRatio = bptAmountIn.divDown(virtualSupply);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsOut[i] = balances[i].mulDown(bptRatio);
+        }
 
         // The vault requires an array including BPT, so add it back in here.
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -1015,7 +1017,7 @@ contract ComposableStablePool is
             currentInvariantWithLastJoinExitAmp
         ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
 
-        protocolFeeAmount = ProtocolFees.bptForPoolOwnershipPercentage(
+        protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
             virtualSupply,
             expectedProtocolOwnershipPercentage
         );
@@ -1108,9 +1110,7 @@ contract ComposableStablePool is
             uint256 currentInvariantWithLastJoinExitAmp
         ) = _getSupplyAndFeesData();
 
-        if (protocolFeeAmount > 0) {
-            _payProtocolFees(protocolFeeAmount);
-        }
+        _payProtocolFees(protocolFeeAmount);
 
         // With the fees paid, we now need to calculate the current invariant so we can store it alongside the current
         // amplification factor, marking the Pool as free of protocol debt.

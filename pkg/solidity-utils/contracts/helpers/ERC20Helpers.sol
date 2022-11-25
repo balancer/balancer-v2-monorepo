@@ -29,14 +29,15 @@ function _asIAsset(IERC20[] memory tokens) pure returns (IAsset[] memory assets)
 
 function _sortTokens(
     IERC20 tokenA,
-    IERC20 tokenB,
-    IERC20 tokenC
+    IERC20 tokenB
 ) pure returns (IERC20[] memory tokens) {
-    (uint256 indexTokenA, uint256 indexTokenB, uint256 indexTokenC) = _getSortedTokenIndexes(tokenA, tokenB, tokenC);
-    tokens = new IERC20[](3);
-    tokens[indexTokenA] = tokenA;
-    tokens[indexTokenB] = tokenB;
-    tokens[indexTokenC] = tokenC;
+    bool aFirst = tokenA < tokenB;
+    IERC20[] memory sortedTokens = new IERC20[](2);
+
+    sortedTokens[0] = aFirst ? tokenA : tokenB;
+    sortedTokens[1] = aFirst ? tokenB : tokenA;
+
+    return sortedTokens;
 }
 
 function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC20[] memory sorted) {
@@ -53,14 +54,6 @@ function _insertSorted(IERC20[] memory tokens, IERC20 token) pure returns (IERC2
     sorted[i] = token;
 }
 
-function _appendToken(IERC20[] memory tokens, IERC20 newToken) pure returns (IERC20[] memory newTokens) {
-    uint256 numTokens = tokens.length;
-    newTokens = new IERC20[](numTokens + 1);
-
-    for (uint256 i = 0; i < numTokens; ++i) newTokens[i] = tokens[i];
-    newTokens[numTokens] = newToken;
-}
-
 function _findTokenIndex(IERC20[] memory tokens, IERC20 token) pure returns (uint256) {
     // Note that while we know tokens are initially sorted, we cannot assume this will hold throughout
     // the pool's lifetime, as pools with mutable tokens can append and remove tokens in any order.
@@ -72,42 +65,4 @@ function _findTokenIndex(IERC20[] memory tokens, IERC20 token) pure returns (uin
     }
 
     _revert(Errors.INVALID_TOKEN);
-}
-
-function _getSortedTokenIndexes(
-    IERC20 tokenA,
-    IERC20 tokenB,
-    IERC20 tokenC
-)
-    pure
-    returns (
-        uint256 indexTokenA,
-        uint256 indexTokenB,
-        uint256 indexTokenC
-    )
-{
-    if (tokenA < tokenB) {
-        if (tokenB < tokenC) {
-            // (tokenA, tokenB, tokenC)
-            return (0, 1, 2);
-        } else if (tokenA < tokenC) {
-            // (tokenA, tokenC, tokenB)
-            return (0, 2, 1);
-        } else {
-            // (tokenC, tokenA, tokenB)
-            return (1, 2, 0);
-        }
-    } else {
-        // tokenB < tokenA
-        if (tokenC < tokenB) {
-            // (tokenC, tokenB, tokenA)
-            return (2, 1, 0);
-        } else if (tokenC < tokenA) {
-            // (tokenB, tokenC, tokenA)
-            return (2, 0, 1);
-        } else {
-            // (tokenB, tokenA, tokenC)
-            return (1, 0, 2);
-        }
-    }
 }

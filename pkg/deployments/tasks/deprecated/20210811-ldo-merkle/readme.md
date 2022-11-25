@@ -9,4 +9,4 @@ Distributor contract for LDO rewards.
 ## Useful Files
 
 - [Ethereum mainnet address](./output/mainnet.json)
-- [`MerkleRedeem` ABI](./abi/MerkleRedeem.json)
+- [`MerkleRedeem` artifact](./artifact/MerkleRedeem.json)

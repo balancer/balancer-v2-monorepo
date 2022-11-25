@@ -2,7 +2,6 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { describeForkTest } from '../../../../src/forkTests';
@@ -66,7 +65,7 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15150000, function
   });
 
   before('grant permissions', async () => {
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
 
     await authorizer.connect(govMultisig).grantRole(await authorizer.DEFAULT_ADMIN_ROLE(), coordinator.address);
   });

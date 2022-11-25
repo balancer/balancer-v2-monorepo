@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE, FP_ZERO, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, MAX_UINT32 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
@@ -159,7 +159,7 @@ describe('LinearPool', function () {
 
     it('cannot be initialized twice', async () => {
       await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(pool.initialize()).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
@@ -180,7 +180,7 @@ describe('LinearPool', function () {
         data: '0x',
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
 
     it('regular exits should revert', async () => {
@@ -194,18 +194,20 @@ describe('LinearPool', function () {
         data: '0x',
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
   describe('set targets', () => {
     const originalLowerTarget = fp(1000);
     const originalUpperTarget = fp(5000);
+    const originalSwapFee = fp(0.057);
 
     sharedBeforeEach('deploy pool and set initial targets', async () => {
       await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
       await setBalances(pool, { mainBalance: originalLowerTarget.add(originalUpperTarget).div(2) });
       await pool.setTargets(originalLowerTarget, originalUpperTarget);
+      await pool.setSwapFeePercentage(originalSwapFee);
     });
 
     const setBalances = async (
@@ -327,6 +329,15 @@ describe('LinearPool', function () {
             lowerTarget: newLowerTarget,
             upperTarget: newUpperTarget,
           });
+        });
+
+        it('does not overwrite other state', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget.mul(2);
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
+          expect(await pool.getSwapFeePercentage()).to.equal(originalSwapFee);
         });
 
         it('reverts if the lower target is fractional', async () => {
@@ -476,7 +487,7 @@ describe('LinearPool', function () {
 
       before('calculate expected rate', async () => {
         const nominalMainBalance = math.toNominal(mainBalance, params);
-        const invariant = math.calcInvariant(nominalMainBalance, wrappedBalance);
+        const invariant = math.calculateInvariant(nominalMainBalance, wrappedBalance);
         expectedRate = invariant.div(bptBalance);
       });
 
@@ -625,8 +636,8 @@ describe('LinearPool', function () {
     });
 
     const itAdaptsTheScalingFactorsCorrectly = () => {
-      const expectedBptScalingFactor = fp(1);
-      const expectedMainTokenScalingFactor = fp(1);
+      const expectedBptScalingFactor = FP_ONE;
+      const expectedMainTokenScalingFactor = FP_ONE;
 
       it('adapt the scaling factors with the price rate', async () => {
         const scalingFactors = await pool.getScalingFactors();
@@ -653,7 +664,7 @@ describe('LinearPool', function () {
 
     context('with a price rate equal to 1', () => {
       sharedBeforeEach('mock rate', async () => {
-        await pool.instance.setWrappedTokenRate(fp(1));
+        await pool.instance.setWrappedTokenRate(FP_ONE);
       });
 
       itAdaptsTheScalingFactorsCorrectly();
@@ -674,7 +685,7 @@ describe('LinearPool', function () {
     let params: math.Params;
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      lowerTarget = fp(0);
+      lowerTarget = FP_ZERO;
       upperTarget = fp(2000);
       await deployPool({ mainToken, wrappedToken, upperTarget }, true);
       await pool.instance.setTotalSupply(MAX_UINT112);

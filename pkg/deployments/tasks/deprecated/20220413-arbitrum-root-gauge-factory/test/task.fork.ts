@@ -2,19 +2,17 @@ import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { BigNumber, fp, FP_SCALING_FACTOR } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { getSigner, impersonate } from '../../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 describeForkTest('ArbitrumRootGaugeFactory', 'mainnet', 14600000, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -47,7 +45,7 @@ describeForkTest('ArbitrumRootGaugeFactory', 'mainnet', 14600000, function () {
     admin = await getSigner(0);
     recipient = await getSigner(1);
 
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
   });
 
   before('setup contracts', async () => {
@@ -97,7 +95,7 @@ describeForkTest('ArbitrumRootGaugeFactory', 'mainnet', 14600000, function () {
   it('grant permissions', async () => {
     // We need to grant permission to the admin to add the Arbitrum factory to the GaugeAdder, and also to then add
     // gauges from said factory to the GaugeController.
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
 
     const selectors = ['addGaugeFactory', 'addArbitrumGauge'].map((method) => gaugeAdder.interface.getSighash(method));
     await Promise.all(
@@ -162,7 +160,7 @@ describeForkTest('ArbitrumRootGaugeFactory', 'mainnet', 14600000, function () {
     // The amount of tokens minted should equal the weekly emissions rate times the relative weight of the gauge
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
 
-    const expectedEmissions = gaugeRelativeWeight.mul(weeklyRate).div(FP_SCALING_FACTOR);
+    const expectedEmissions = gaugeRelativeWeight.mul(weeklyRate).div(FP_ONE);
     expectEqualWithError(actualEmissions, expectedEmissions, 0.001);
 
     // Tokens are minted for the gauge
@@ -207,7 +205,7 @@ describeForkTest('ArbitrumRootGaugeFactory', 'mainnet', 14600000, function () {
     // gauge (this assumes we're not crossing an emissions rate epoch so that the inflation remains constant).
     const weeklyRate = (await BALTokenAdmin.getInflationRate()).mul(WEEK);
     const expectedEmissions = relativeWeights
-      .map((weight) => weight.mul(weeklyRate).div(FP_SCALING_FACTOR))
+      .map((weight) => weight.mul(weeklyRate).div(FP_ONE))
       .reduce((sum, value) => sum.add(value));
 
     const calldata = gauge.interface.encodeFunctionData('checkpoint');
