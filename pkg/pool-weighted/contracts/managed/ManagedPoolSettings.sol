@@ -847,6 +847,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         return
             (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setJoinExitEnabled.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
