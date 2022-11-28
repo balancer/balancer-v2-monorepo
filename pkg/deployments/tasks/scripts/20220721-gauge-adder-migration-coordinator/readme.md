@@ -7,4 +7,4 @@ The GaugeAdder is being migrated from [this implementation](../../20220325-gauge
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`GaugeAdderMigrationCoordinator` ABI](./abi/GaugeAdderMigrationCoordinator.json)
+- [`GaugeAdderMigrationCoordinator` artifact](./artifact/GaugeAdderMigrationCoordinator.json)

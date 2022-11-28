@@ -5,4 +5,4 @@ Deployment of the `SmartWalletChecker`, responsible allowlisting select contract
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`SmartWalletChecker` ABI](./abi/SmartWalletChecker.json)
+- [`SmartWalletChecker` artifact](./artifact/SmartWalletChecker.json)
