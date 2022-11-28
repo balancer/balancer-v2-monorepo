@@ -11,6 +11,10 @@
     "task": "20210418-vault",
     "name": "BalancerHelpers"
   },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
   "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
     "task": "20210418-weighted-pool",
     "name": "WeightedPoolFactory"
@@ -63,6 +67,10 @@
     "task": "20211203-batch-relayer",
     "name": "BatchRelayerLibrary"
   },
+  "0xAc9f49eF3ab0BbC929f7b1bb0A17E1Fca5786251": {
+    "task": "20211203-batch-relayer",
+    "name": "BalancerRelayer"
+  },
   "0xD7FAD3bd59D6477cbe1BE7f646F7f1BA25b230f8": {
     "task": "20211208-aave-linear-pool",
     "name": "AaveLinearPoolFactory"
@@ -74,6 +82,10 @@
   "0xd45369c11870e2057D5be17Cc106d32Ea416F7c4": {
     "task": "20220318-batch-relayer-v2",
     "name": "BatchRelayerLibrary"
+  },
+  "0x51CC53375A8920aE54C0561E73a9d0423A74832e": {
+    "task": "20220318-batch-relayer-v2",
+    "name": "BalancerRelayer"
   },
   "0x8F42aDBbA1B16EaAE3BB5754915E0D06059aDd75": {
     "task": "20220325-authorizer-adaptor",
@@ -115,6 +127,10 @@
     "task": "20220325-single-recipient-gauge-factory",
     "name": "SingleRecipientGaugeFactory"
   },
+  "0x5D3d2D18148baAcE45D09254513BcF2C548C4480": {
+    "task": "20220325-single-recipient-gauge-factory",
+    "name": "SingleRecipientGauge"
+  },
   "0x2E96068b3D5B5BAE3D7515da4A1D2E52d08A2647": {
     "task": "20220325-ve-delegation",
     "name": "VotingEscrowDelegation"
@@ -135,9 +151,17 @@
     "task": "20220413-arbitrum-root-gauge-factory",
     "name": "ArbitrumRootGaugeFactory"
   },
+  "0x715C777C6149C31A75D0d29633bbBE0A14370bDC": {
+    "task": "20220413-arbitrum-root-gauge-factory",
+    "name": "ArbitrumRootGauge"
+  },
   "0x4C4287b07d293E361281bCeEe8715c8CDeB64E34": {
     "task": "20220413-polygon-root-gauge-factory",
     "name": "PolygonRootGaugeFactory"
+  },
+  "0xe53D8f8aAaFD95FCc7196E393EC5a907Df44495E": {
+    "task": "20220413-polygon-root-gauge-factory",
+    "name": "PolygonRootGauge"
   },
   "0xd13AFc362F619b840C8f4AaC1D957cE219eF37Ca": {
     "task": "20220415-veBAL-L2-gauge-setup-coordinator",
@@ -195,6 +219,10 @@
     "task": "20220628-optimism-root-gauge-factory",
     "name": "OptimismRootGaugeFactory"
   },
+  "0xcA734aD0b286EA7dD6367a504a48FB75cd12a97F": {
+    "task": "20220628-optimism-root-gauge-factory",
+    "name": "OptimismRootGauge"
+  },
   "0xBd35248F8325DD1cB2bBf9D01E80A6bb99a792Dd": {
     "task": "20220707-distribution-scheduler",
     "name": "DistributionScheduler"
@@ -206,6 +234,10 @@
   "0xD966d712F470067B60D37246404D6DFe5Bf0B419": {
     "task": "20220720-batch-relayer-v3",
     "name": "BatchRelayerLibrary"
+  },
+  "0x886A3Ec7bcC508B8795990B60Fa21f85F9dB7948": {
+    "task": "20220720-batch-relayer-v3",
+    "name": "BalancerRelayer"
   },
   "0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5": {
     "task": "20220721-balancer-queries",
@@ -235,13 +267,25 @@
     "task": "20220823-arbitrum-root-gauge-factory-v2",
     "name": "ArbitrumRootGaugeFactory"
   },
+  "0x6337949cbC4825Bbd09242c811770F6F6fee9FfC": {
+    "task": "20220823-arbitrum-root-gauge-factory-v2",
+    "name": "ArbitrumRootGauge"
+  },
   "0x866D4B65694c66fbFD15Dd6fa933D0A6b3940A36": {
     "task": "20220823-optimism-root-gauge-factory-v2",
     "name": "OptimismRootGaugeFactory"
   },
+  "0xBC230b1a66A138cD9cFC7b352390025978dFAdde": {
+    "task": "20220823-optimism-root-gauge-factory-v2",
+    "name": "OptimismRootGauge"
+  },
   "0xa98Bce70c92aD2ef3288dbcd659bC0d6b62f8F13": {
     "task": "20220823-polygon-root-gauge-factory-v2",
     "name": "PolygonRootGaugeFactory"
+  },
+  "0xfeb1A24C2752E53576133cdb718F25bC64eBDD52": {
+    "task": "20220823-polygon-root-gauge-factory-v2",
+    "name": "PolygonRootGauge"
   },
   "0xf9ac7B9dF2b3454E841110CcE5550bD5AC6f875F": {
     "task": "20220906-composable-stable-pool",
@@ -255,6 +299,10 @@
     "task": "20220916-batch-relayer-v4",
     "name": "BatchRelayerLibrary"
   },
+  "0x2536dfeeCB7A0397CF98eDaDA8486254533b1aFA": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BalancerRelayer"
+  },
   "0xE42FFA682A26EF8F25891db4882932711D42e467": {
     "task": "20221021-managed-pool",
     "name": "ManagedPoolAddRemoveTokenLib"
@@ -267,8 +315,28 @@
     "task": "20221021-managed-pool",
     "name": "ManagedPoolFactory"
   },
-  "0x36caC20dd805d128c1a6Dd16eeA845C574b5A17C": {
-    "task": "20221111-authorizer-adaptor-entrypoint",
+  "0xb5a0a6bceCB2988bb348c2546BbA9c2bD9A04A1e": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0xc40e9101993ce134411e86E1bCB3Ffc27019CD13": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockAaveLendingPool"
+  },
+  "0xbA54bb8a7E0eefe160164d00c06A4F2ee8459a5f": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockStaticAToken"
+  },
+  "0xe23D111cb71414830B93F078977B7f53A5e996eE": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockAaveLinearPool"
+  },
+  "0x1b300C86980a5195bCF49bD419A068D98dC133Db": {
+    "task": "20221123-pool-recovery-helper",
+    "name": "PoolRecoveryHelper"
+  },
+  "0xf5dECDB1f3d1ee384908Fbe16D2F0348AE43a9eA": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
   }
 }

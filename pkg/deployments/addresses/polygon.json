@@ -11,6 +11,10 @@
     "task": "20210418-vault",
     "name": "BalancerHelpers"
   },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
   "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
     "task": "20210418-weighted-pool",
     "name": "WeightedPoolFactory"
@@ -51,6 +55,10 @@
     "task": "20211203-batch-relayer",
     "name": "BatchRelayerLibrary"
   },
+  "0x4574ccBcC09A00C9eE55fB92Fe353699A4fA800e": {
+    "task": "20211203-batch-relayer",
+    "name": "BalancerRelayer"
+  },
   "0xf302f9F50958c5593770FDf4d4812309fF77414f": {
     "task": "20211208-aave-linear-pool",
     "name": "AaveLinearPoolFactory"
@@ -66,6 +74,10 @@
   "0xC4eD21Aa0Bec959ED7e4A83B2CD46dd00a0205dA": {
     "task": "20220318-batch-relayer-v2",
     "name": "BatchRelayerLibrary"
+  },
+  "0xF537dDd7f4cc72C6C08866b62EAe9378f1F62da8": {
+    "task": "20220318-batch-relayer-v2",
+    "name": "BalancerRelayer"
   },
   "0xC128468b7Ce63eA702C1f104D55A2566b13D3ABD": {
     "task": "20220325-authorizer-adaptor",
@@ -111,6 +123,10 @@
     "task": "20220720-batch-relayer-v3",
     "name": "BatchRelayerLibrary"
   },
+  "0xcf6a66E32dCa0e26AcC3426b851FD8aCbF12Dac7": {
+    "task": "20220720-batch-relayer-v3",
+    "name": "BalancerRelayer"
+  },
   "0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5": {
     "task": "20220721-balancer-queries",
     "name": "BalancerQueries"
@@ -139,6 +155,10 @@
     "task": "20220916-batch-relayer-v4",
     "name": "BatchRelayerLibrary"
   },
+  "0x28A224d9d398a1eBB7BA69BCA515898966Bb1B6b": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BalancerRelayer"
+  },
   "0xE42FFA682A26EF8F25891db4882932711D42e467": {
     "task": "20221021-managed-pool",
     "name": "ManagedPoolAddRemoveTokenLib"
@@ -151,8 +171,28 @@
     "task": "20221021-managed-pool",
     "name": "ManagedPoolFactory"
   },
-  "0x36caC20dd805d128c1a6Dd16eeA845C574b5A17C": {
-    "task": "20221111-authorizer-adaptor-entrypoint",
+  "0x94522C4586cb15E08AFF943545Fb2c8Ca7f508cE": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0x6c7F4D97269eCE163fd08D5C2584A21E4a33934c": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockAaveLendingPool"
+  },
+  "0x97207B095e4D5C9a6e4cfbfcd2C3358E03B90c4A": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockStaticAToken"
+  },
+  "0xfCCcB77A946b6a3BD59d149F083B5BfbB8004D6D": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockAaveLinearPool"
+  },
+  "0x495F696430F4A51F7fcB98FbE68a9Cb7A07fB1bA": {
+    "task": "20221123-pool-recovery-helper",
+    "name": "PoolRecoveryHelper"
+  },
+  "0xAB093cd16e765b5B23D34030aaFaF026558e0A19": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
   }
 }

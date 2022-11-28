@@ -11,6 +11,10 @@
     "task": "20210418-vault",
     "name": "BalancerHelpers"
   },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
   "0xdAE7e32ADc5d490a43cCba1f0c736033F2b4eFca": {
     "task": "20210418-weighted-pool",
     "name": "WeightedPoolFactory"
@@ -83,6 +87,10 @@
     "task": "20220720-batch-relayer-v3",
     "name": "BatchRelayerLibrary"
   },
+  "0x195CcCBE464EF9073d1f7A1ba1C9Bf0f56dfFFff": {
+    "task": "20220720-batch-relayer-v3",
+    "name": "BalancerRelayer"
+  },
   "0xE39B5e3B6D74016b2F6A9673D7d7493B6DF549d5": {
     "task": "20220721-balancer-queries",
     "name": "BalancerQueries"
@@ -111,6 +119,10 @@
     "task": "20220916-batch-relayer-v4",
     "name": "BatchRelayerLibrary"
   },
+  "0x1a58897Ab366082028ced3740900ecBD765Af738": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BalancerRelayer"
+  },
   "0xF24917fB88261a37Cc57F686eBC831a5c0B9fD39": {
     "task": "20221021-managed-pool",
     "name": "ManagedPoolAddRemoveTokenLib"
@@ -123,8 +135,28 @@
     "task": "20221021-managed-pool",
     "name": "ManagedPoolFactory"
   },
-  "0x36caC20dd805d128c1a6Dd16eeA845C574b5A17C": {
-    "task": "20221111-authorizer-adaptor-entrypoint",
+  "0x9Bf6468Facac0F71C7ecA8D71a5Fb5f65bdAb319": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "AaveLinearPoolFactory"
+  },
+  "0xcd7F93C86f30B90a181f81934FA4f281c7bfF246": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockAaveLendingPool"
+  },
+  "0x5D5629FC838f5eA67d14264b7316FFD4294b0998": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockStaticAToken"
+  },
+  "0x6dDBcF8886B7741D9AE60B9e9950F9F56543Ae54": {
+    "task": "20221115-aave-rebalanced-linear-pool",
+    "name": "MockAaveLinearPool"
+  },
+  "0x26743984e3357eFC59f2fd6C1aFDC310335a61c9": {
+    "task": "20221123-pool-recovery-helper",
+    "name": "PoolRecoveryHelper"
+  },
+  "0xed86ff0c507D3AF5F35d3523B77C17415FCfFaCb": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
   }
 }

@@ -7,6 +7,10 @@
     "task": "20210418-vault",
     "name": "Vault"
   },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
   "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
     "task": "20210418-vault",
     "name": "BalancerHelpers"
@@ -31,8 +35,12 @@
     "task": "20220916-batch-relayer-v4",
     "name": "BatchRelayerLibrary"
   },
-  "0x36caC20dd805d128c1a6Dd16eeA845C574b5A17C": {
-    "task": "20221111-authorizer-adaptor-entrypoint",
+  "0xeF606F58A4FD0fCcb066c6203d0994694d3eB2D3": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BalancerRelayer"
+  },
+  "0x8F42aDBbA1B16EaAE3BB5754915E0D06059aDd75": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
     "name": "AuthorizerAdaptorEntrypoint"
   }
 }
