@@ -91,6 +91,7 @@ describe('YearnLinearPool', function () {
       const tokenVault = await deploy('MockYearnTokenVault', {
         args: ['yvDAI', 'yvDAI', 18, token.address, fp(1)],
       });
+      await tokenVault.setTotalSupply(fp(1));
 
       const pool = await deployPool(token.address, tokenVault.address);
 
@@ -109,6 +110,7 @@ describe('YearnLinearPool', function () {
       const tokenVault = await deploy('MockYearnTokenVault', {
         args: ['yvUSDC', 'yvUSDC', 6, token.address, 1e6],
       });
+      await tokenVault.setTotalSupply(fp(1));
 
       const pool = await deployPool(token.address, tokenVault.address);
 
@@ -127,6 +129,7 @@ describe('YearnLinearPool', function () {
       const tokenVault = await deploy('MockYearnTokenVault', {
         args: ['yvBTC', 'yvBTC', 8, token.address, 1e8],
       });
+      await tokenVault.setTotalSupply(fp(1));
 
       const pool = await deployPool(token.address, tokenVault.address);
 
@@ -145,6 +148,7 @@ describe('YearnLinearPool', function () {
       const tokenVault = await deploy('MockYearnTokenVault', {
         args: ['TOKEN', 'TOKEN', 2, token.address, 1e2],
       });
+      await tokenVault.setTotalSupply(fp(1));
 
       const pool = await deployPool(token.address, tokenVault.address);
 

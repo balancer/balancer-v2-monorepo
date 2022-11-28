@@ -24,7 +24,7 @@ contract YearnShareValueHelper {
         uint256 totalSupply = IYearnTokenVault(vault).totalSupply();
         if (totalSupply == 0) return shares;
 
-        uint256 freeFunds = calculateFreeFunds(vault);
+        uint256 freeFunds = _calculateFreeFunds(vault);
         return (
             shares
             * freeFunds
@@ -32,7 +32,7 @@ contract YearnShareValueHelper {
         );
     }
  
-    function calculateFreeFunds(address vault) private view returns (uint256) {
+    function _calculateFreeFunds(address vault) private view returns (uint256) {
         uint256 totalAssets = IYearnTokenVault(vault).totalAssets();
         uint256 lockedFundsRatio =
             (block.timestamp - IYearnTokenVault(vault).lastReport())
