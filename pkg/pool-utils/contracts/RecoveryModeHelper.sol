@@ -42,9 +42,9 @@ contract RecoveryModeHelper is IRecoveryModeHelper {
         bytes memory userData,
         uint256 totalSupply
     ) external view override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
-        // As ManagedPool is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
+        // As this is a composable Pool, `_doRecoveryModeExit()` must use the virtual supply rather than the
         // total supply to correctly distribute Pool assets proportionally.
-        // We must also ensure that we do not pay out a proportionaly fraction of the BPT held in the Vault, otherwise
+        // We must also ensure that we do not pay out a proportional fraction of the BPT held in the Vault, otherwise
         // this would allow a user to recursively exit the pool using BPT they received from the previous exit.
 
         IVault vault = getVault();

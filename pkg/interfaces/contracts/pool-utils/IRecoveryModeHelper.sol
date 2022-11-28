@@ -31,5 +31,5 @@ interface IRecoveryModeHelper {
         bytes32 poolId,
         bytes memory userData,
         uint256 totalSupply
-    ) external view returns (uint256 bptAmountInt, uint256[] memory amountsOut);
+    ) external view returns (uint256 bptAmountIn, uint256[] memory amountsOut);
 }
