@@ -75,6 +75,7 @@ describe('ManagedPool owner only actions', () => {
     'removeToken(address,uint256,address)',
     'setManagementAumFeePercentage(uint256)',
     'setMustAllowlistLPs(bool)',
+    'setJoinExitEnabled(bool)',
     'setSwapEnabled(bool)',
     'updateSwapFeeGradually(uint256,uint256,uint256,uint256)',
     'updateWeightsGradually(uint256,uint256,address[],uint256[])',

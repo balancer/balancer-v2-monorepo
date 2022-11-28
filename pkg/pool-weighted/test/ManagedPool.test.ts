@@ -283,9 +283,20 @@ describe('ManagedPool', function () {
           });
         });
 
-        context('when swaps are enabled', () => {
-          sharedBeforeEach('enable swaps', async () => {
+        context('when joins are disabled', () => {
+          sharedBeforeEach('disable joins', async () => {
+            await pool.setJoinExitEnabled(owner, false);
+          });
+
+          it('it reverts', async () => {
+            await expect(doJoinSwap()).to.be.revertedWith('JOINS_EXITS_DISABLED');
+          });
+        });
+
+        context('when swaps and joins are enabled', () => {
+          sharedBeforeEach('enable joins and swaps', async () => {
             await pool.setSwapEnabled(owner, true);
+            await pool.setJoinExitEnabled(owner, true);
           });
 
           context('when LP allowlist is enabled', () => {
@@ -462,9 +473,20 @@ describe('ManagedPool', function () {
           });
         });
 
-        context('when swaps are enabled', () => {
-          sharedBeforeEach('enable swaps', async () => {
+        context('when exits are disabled', () => {
+          sharedBeforeEach('disable exits', async () => {
+            await pool.setJoinExitEnabled(owner, false);
+          });
+
+          it('it reverts', async () => {
+            await expect(doExitSwap()).to.be.revertedWith('JOINS_EXITS_DISABLED');
+          });
+        });
+
+        context('when swaps and exits are enabled', () => {
+          sharedBeforeEach('enable swaps and exits', async () => {
             await pool.setSwapEnabled(owner, true);
+            await pool.setJoinExitEnabled(owner, true);
           });
 
           context('when LP allowlist is enabled', () => {
@@ -648,10 +670,24 @@ describe('ManagedPool', function () {
           await pool.addAllowedAddress(owner, other.address);
         });
 
-        it('the listed LP can join', async () => {
-          await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
+        context('when joins are enabled', () => {
+          it('the listed LP can join', async () => {
+            await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
 
-          expect(await pool.balanceOf(other)).to.be.gt(0);
+            expect(await pool.balanceOf(other)).to.be.gt(0);
+          });
+        });
+
+        context('when joins are disabled', () => {
+          sharedBeforeEach(async () => {
+            await pool.setJoinExitEnabled(owner, false);
+          });
+
+          it('reverts', async () => {
+            await expect(pool.joinAllGivenOut({ from: other, bptOut: FP_ONE })).to.be.revertedWith(
+              'JOINS_EXITS_DISABLED'
+            );
+          });
         });
       });
 
@@ -761,19 +797,29 @@ describe('ManagedPool', function () {
         await pool.setMustAllowlistLPs(owner, true);
       });
 
-      context('when LP is on the allowlist', () => {
-        sharedBeforeEach('add address to allowlist', async () => {
-          await pool.addAllowedAddress(owner, other.address);
+      context('when exits are enabled', () => {
+        context('when LP is on the allowlist', () => {
+          sharedBeforeEach('add address to allowlist', async () => {
+            await pool.addAllowedAddress(owner, other.address);
+          });
         });
 
-        it('the listed LP can exit', async () => {
-          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
+        context('when LP is not on the allowlist', () => {
+          it('the listed LP can exit', async () => {
+            await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
+          });
         });
       });
 
-      context('when LP is not on the allowlist', () => {
-        it('the listed LP can exit', async () => {
-          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
+      context('when exits are disabled', () => {
+        sharedBeforeEach(async () => {
+          await pool.setJoinExitEnabled(owner, false);
+        });
+
+        it('reverts', async () => {
+          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
         });
       });
     });
@@ -926,6 +972,14 @@ describe('ManagedPool', function () {
     context('when paused', () => {
       sharedBeforeEach('pause pool', async () => {
         await pool.pause();
+      });
+
+      itExitsViaRecoveryModeCorrectly();
+    });
+
+    context('when exits are disabled', () => {
+      sharedBeforeEach(async () => {
+        await pool.setJoinExitEnabled(owner, false);
       });
 
       itExitsViaRecoveryModeCorrectly();
