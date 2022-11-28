@@ -22,7 +22,8 @@ pragma solidity >=0.7.0 <0.9.0;
 interface IRecoveryModeHelper {
     /**
      * @dev Computes a Recovery Mode Exit BPT and token amounts for a Pool. Only 'cash' balances are considered, to
-     * avoid scenarios where the last LPs to attempt to exit the Pool cannot because only 'managed' balance remains.
+     * avoid scenarios where the last LPs to attempt to exit the Pool cannot do it because only 'managed' balance
+     * remains.
      *
      * The Pool is assumed to be a Composable Pool that uses ComposablePoolLib, meaning BPT will be its first token. It
      * is also assumed that there is no 'managed' balance for BPT.
