@@ -18,6 +18,12 @@ import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol"
 
 // solhint-disable not-rely-on-time
 
+// The YearnShareValueHelper provides a more precise wrappedTokenRate than is available
+// from simply using the pricePerShare. This is because the pps is limited to the precision
+// of the underlying asset (ie: USDC = 6), but it stores more precision internally, so the 
+// larger the amount exchanged, the larger the precision error becomes.
+// This implementation was ported from the ShareValueHelper:
+// https://github.com/wavey0x/ShareValueHelper/blob/master/contracts/Helper.sol
 contract YearnShareValueHelper {
     /**
      * @notice returns the amount of tokens required to mint the desired number of shares
