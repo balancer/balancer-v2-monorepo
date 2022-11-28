@@ -14,12 +14,19 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "../vault/IVault.sol";
+
 /**
  * Interface for an auxiliary contract that computes Recovery Mode exits, removing logic from the core Pool contract
  * that would otherwise take up a lot of bytecode size at the cost of some slight gas overhead. Since Recovery Mode
  * exits are expected to be highly infrequent (and ideally never occur), this tradeoff makes sense.
  */
 interface IRecoveryModeHelper {
+    /**
+     * @notice Returns the Balancer Vault
+     */
+    function getVault() external view returns (IVault);
+
     /**
      * @dev Computes a Recovery Mode Exit BPT and token amounts for a Pool. Only 'cash' balances are considered, to
      * avoid scenarios where the last LPs to attempt to exit the Pool cannot do it because only 'managed' balance

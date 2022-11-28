@@ -16,7 +16,6 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
 
@@ -33,7 +32,7 @@ contract RecoveryModeHelper is IRecoveryModeHelper {
         _vault = vault;
     }
 
-    function getVault() public view returns (IVault) {
+    function getVault() public view override returns (IVault) {
         return _vault;
     }
 
