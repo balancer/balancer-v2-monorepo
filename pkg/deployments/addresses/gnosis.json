@@ -1,0 +1,46 @@
+{
+  "0xA331D84eC860Bf466b4CdCcFb4aC09a1B43F3aE6": {
+    "task": "20210418-authorizer",
+    "name": "Authorizer"
+  },
+  "0xBA12222222228d8Ba445958a75a0704d566BF2C8": {
+    "task": "20210418-vault",
+    "name": "Vault"
+  },
+  "0xce88686553686DA562CE7Cea497CE749DA109f9F": {
+    "task": "20210418-vault",
+    "name": "ProtocolFeesCollector"
+  },
+  "0x8E9aa87E45e92bad84D5F8DD1bff34Fb92637dE9": {
+    "task": "20210418-vault",
+    "name": "BalancerHelpers"
+  },
+  "0x5aDDCCa35b7A0D07C74063c48700C8590E87864E": {
+    "task": "20220325-authorizer-adaptor",
+    "name": "AuthorizerAdaptor"
+  },
+  "0xdAE7e32ADc5d490a43cCba1f0c736033F2b4eFca": {
+    "task": "20220517-protocol-fee-withdrawer",
+    "name": "ProtocolFeesWithdrawer"
+  },
+  "0x0F3e0c4218b7b0108a3643cFe9D3ec0d4F57c54e": {
+    "task": "20220721-balancer-queries",
+    "name": "BalancerQueries"
+  },
+  "0x41B953164995c11C81DA73D212ED8Af25741b7Ac": {
+    "task": "20220725-protocol-fee-percentages-provider",
+    "name": "ProtocolFeePercentagesProvider"
+  },
+  "0xD7FAD3bd59D6477cbe1BE7f646F7f1BA25b230f8": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BatchRelayerLibrary"
+  },
+  "0xeF606F58A4FD0fCcb066c6203d0994694d3eB2D3": {
+    "task": "20220916-batch-relayer-v4",
+    "name": "BalancerRelayer"
+  },
+  "0x8F42aDBbA1B16EaAE3BB5754915E0D06059aDd75": {
+    "task": "20221124-authorizer-adaptor-entrypoint",
+    "name": "AuthorizerAdaptorEntrypoint"
+  }
+}
