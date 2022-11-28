@@ -388,5 +388,19 @@
       "signature": "wrapUnbuttonToken(address,address,address,uint256,uint256)",
       "useAdaptor": true
     }
+  ],
+  "0xaa84887ab3d5dc36e15c6c5207e74abbaaf48c3ef86dc273a5952acab745e203": [
+    {
+      "taskId": "20220325-authorizer-adaptor",
+      "contractName": "AuthorizerAdaptor",
+      "signature": "performAction(address,bytes)",
+      "useAdaptor": false
+    },
+    {
+      "taskId": "20221124-authorizer-adaptor-entrypoint",
+      "contractName": "AuthorizerAdaptorEntrypoint",
+      "signature": "performAction(address,bytes)",
+      "useAdaptor": false
+    }
   ]
 }
