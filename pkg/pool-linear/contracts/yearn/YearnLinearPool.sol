@@ -53,7 +53,6 @@ contract YearnLinearPool is LinearPool, Version, YearnShareValueHelper {
         )
         Version(args.version)
     {
-
         _require(
             address(args.mainToken) == IYearnTokenVault(address(args.wrappedToken)).token(),
             Errors.TOKENS_MISMATCH

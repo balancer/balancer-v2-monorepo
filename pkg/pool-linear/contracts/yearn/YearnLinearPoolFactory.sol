@@ -42,7 +42,7 @@ contract YearnLinearPoolFactory is
     uint256 private _nextRebalancerSalt;
 
     IBalancerQueries private immutable _queries;
-   
+
     address private _lastCreatedPool;
     string private _poolVersion;
 

@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol";
 
+// solhint-disable not-rely-on-time
+
 contract YearnShareValueHelper {
     /**
      * @notice returns the amount of tokens required to mint the desired number of shares
@@ -25,29 +27,20 @@ contract YearnShareValueHelper {
         if (totalSupply == 0) return shares;
 
         uint256 freeFunds = _calculateFreeFunds(vault);
-        return (
-            shares
-            * freeFunds
-            / totalSupply
-        );
+
+        return (shares * freeFunds) / totalSupply;
     }
- 
+
     function _calculateFreeFunds(address vault) private view returns (uint256) {
         uint256 totalAssets = IYearnTokenVault(vault).totalAssets();
-        uint256 lockedFundsRatio =
-            (block.timestamp - IYearnTokenVault(vault).lastReport())
-            * IYearnTokenVault(vault).lockedProfitDegradation();
+        uint256 lockedFundsRatio = (block.timestamp - IYearnTokenVault(vault).lastReport()) *
+            IYearnTokenVault(vault).lockedProfitDegradation();
 
-        if (lockedFundsRatio < 10 ** 18) {
+        if (lockedFundsRatio < 10**18) {
             uint256 lockedProfit = IYearnTokenVault(vault).lockedProfit();
-            lockedProfit -= (
-                lockedFundsRatio
-                * lockedProfit
-                / 10 ** 18
-            );
+            lockedProfit -= (lockedFundsRatio * lockedProfit) / 10**18;
             return totalAssets - lockedProfit;
-        }
-        else {
+        } else {
             return totalAssets;
         }
     }
