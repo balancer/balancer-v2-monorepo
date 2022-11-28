@@ -21,12 +21,7 @@ import {
   RawOutput,
   TaskRunOptions,
 } from './types';
-import {
-  getContractDeploymentByAddress,
-  getContractDeploymentTransactionHash,
-  saveContractDeploymentAddress,
-  saveContractDeploymentTransactionHash,
-} from './network';
+import { getContractDeploymentTransactionHash, saveContractDeploymentTransactionHash } from './network';
 import { getTaskActionIds } from './actionId';
 import { getArtifactFromContractOutput } from './artifact';
 
@@ -128,7 +123,6 @@ export default class Task {
 
       if (this.mode === TaskMode.LIVE) {
         saveContractDeploymentTransactionHash(instance.address, instance.deployTransaction.hash, this.network);
-        saveContractDeploymentAddress(this, name, instance.address, this.network);
       }
     } else {
       logger.info(`${name} already deployed at ${output[name]}`);
@@ -191,15 +185,6 @@ export default class Task {
     } else {
       throw Error(
         `The build info and inputs for contract '${name}' on network '${this.network}' of task '${this.id}' does not match the data used to deploy address ${deployedAddress}`
-      );
-    }
-
-    // We've verified that this task *did* deploy the contract at `deployedAddress` so any issues here are as a result
-    // of the reverse mapping from the address to the task/contract being incorrect.
-    const { task: taskId, name: contractName } = getContractDeploymentByAddress(deployedAddress, this.network);
-    if (taskId !== this.id || contractName !== contractName) {
-      throw Error(
-        `The contract address ${deployedAddress} on network '${this.network}' is stated to correspond to contract '${contractName}' of task '${taskId}' whereas it should be '${name}' of task '${this.id}'.`
       );
     }
 

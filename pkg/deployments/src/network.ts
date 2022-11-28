@@ -42,46 +42,27 @@ export function getContractDeploymentTransactionHash(deployedAddress: string, ne
   return txHash;
 }
 
-export function getContractDeploymentByAddress(
-  deployedAddress: string,
-  network: Network
-): { task: string; name: string } {
-  const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${network}.json`);
-  const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
-  if (!fileExists) {
-    throw Error(`Could not find file for contract addresses for network '${network}'`);
-  }
+export function saveContractDeploymentAddresses(task: Task): void {
+  if (task.network === 'hardhat') return;
 
-  // Load the existing content if any exists.
-  const newFileContents: Record<string, { task: string; name: string }> = JSON.parse(
-    fs.readFileSync(filePath).toString()
+  const newEntries = Object.fromEntries(
+    Object.entries(task.output({ ensure: false }))
+      .filter(([name]) => name !== 'timestamp')
+      .map(([name, address]) => [address, { task: task.id, name }])
   );
 
-  if (newFileContents[deployedAddress] === undefined) {
-    throw Error(`Could not find file for contract addresses for network '${network}'`);
-  }
-
-  return newFileContents[deployedAddress];
-}
-
-export function saveContractDeploymentAddress(
-  task: Task,
-  contractName: string,
-  deployedAddress: string,
-  network: Network
-): void {
-  if (network === 'hardhat') return;
-
-  const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${network}.json`);
+  const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${task.network}.json`);
   const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
 
   // Load the existing content if any exists.
-  const newFileContents: Record<string, { task: string; name: string }> = fileExists
+  let newFileContents: Record<string, { task: string; name: string }> = fileExists
     ? JSON.parse(fs.readFileSync(filePath).toString())
     : {};
-
-  // Write the new entry.
-  newFileContents[deployedAddress] = { task: task.id, name: contractName };
+  // Write the task's entries into the file..
+  newFileContents = {
+    ...newFileContents,
+    ...newEntries,
+  };
 
   fs.writeFileSync(filePath, JSON.stringify(newFileContents, null, 2));
 }
