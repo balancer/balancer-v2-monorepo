@@ -14,7 +14,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 
 describe('YearnLinearPoolFactory', function () {
-  let vault: Vault, tokens: TokenList, factory: Contract, shareValueHelper: Contract;
+  let vault: Vault, tokens: TokenList, factory: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
 
   const NAME = 'Balancer Linear Pool Token';
@@ -40,10 +40,8 @@ describe('YearnLinearPoolFactory', function () {
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();
 
-    shareValueHelper = await deploy('MockYearnShareValueHelper');
-
     factory = await deploy('YearnLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address, shareValueHelper.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address, '1.0', '1.0'],
     });
     creationTime = await currentTimestamp();
   });

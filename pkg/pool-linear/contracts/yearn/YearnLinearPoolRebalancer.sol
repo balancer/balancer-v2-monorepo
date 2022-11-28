@@ -17,26 +17,24 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IYearnShareValueHelper.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 
 import "../LinearPoolRebalancer.sol";
+import "./YearnShareValueHelper.sol";
 
-contract YearnLinearPoolRebalancer is LinearPoolRebalancer {
+contract YearnLinearPoolRebalancer is LinearPoolRebalancer, YearnShareValueHelper {
     using Math for uint256;
-
-    IYearnShareValueHelper private immutable _shareValueHelper;
 
     // These Rebalancers can only be deployed from a factory to work around a circular dependency: the Pool must know
     // the address of the Rebalancer in order to register it, and the Rebalancer must know the address of the Pool
     // during construction.
     constructor(
         IVault vault,
-        IBalancerQueries queries,
-        IYearnShareValueHelper shareValueHelper
-    ) LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries) {
-        _shareValueHelper = shareValueHelper;
+        IBalancerQueries queries
+    ) LinearPoolRebalancer(ILinearPool(ILastCreatedPoolFactory(msg.sender).getLastCreatedPool()), vault, queries)
+    {
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     function _wrapTokens(uint256 amount) internal override {
@@ -57,6 +55,6 @@ contract YearnLinearPoolRebalancer is LinearPoolRebalancer {
         // divisions and multiplications with rounding involved, this value might be off by one. We add one to ensure
         // the returned value will always be enough to get `wrappedAmount` when unwrapping. This might result in some
         // dust being left in the Rebalancer.
-        return _shareValueHelper.sharesToAmount(address(_wrappedToken), wrappedAmount) + 1;
+        return _sharesToAmount(address(_wrappedToken), wrappedAmount) + 1;
     }
 }

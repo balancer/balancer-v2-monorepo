@@ -18,43 +18,51 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Create2.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
 
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IYearnShareValueHelper.sol";
 import "./YearnLinearPool.sol";
 import "./YearnLinearPoolRebalancer.sol";
 
-contract YearnLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, ReentrancyGuard, FactoryWidePauseWindow {
+contract YearnLinearPoolFactory is
+    ILastCreatedPoolFactory,
+    IFactoryCreatedPoolVersion,
+    Version,
+    BasePoolFactory,
+    ReentrancyGuard,
+    FactoryWidePauseWindow
+{
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
     IBalancerQueries private immutable _queries;
-    // The IYearnShareValueHelper provides a more precise conversion between shares to underlying token
-    // (wrappedTokenRate) and is used in place of the standard price per share (pps).
-    // We provide the IYearnShareValueHelper when deploying the factory, which is then passed to the
-    // YearnLinearPool and YearnLinearPoolRebalancer on every call to create. This ensures that every
-    // pool created by this factory uses the same IYearnShareValueHelper.
-    IYearnShareValueHelper private immutable _shareValueHelper;
-
+   
     address private _lastCreatedPool;
+    string private _poolVersion;
 
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IBalancerQueries queries,
-        IYearnShareValueHelper shareValueHelper
-    ) BasePoolFactory(vault, protocolFeeProvider, type(YearnLinearPool).creationCode) {
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(YearnLinearPool).creationCode) Version(factoryVersion) {
         _queries = queries;
-        _shareValueHelper = shareValueHelper;
+        _poolVersion = poolVersion;
     }
 
     function getLastCreatedPool() external view override returns (address) {
         return _lastCreatedPool;
+    }
+
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
     }
 
     function _create(bytes memory constructorArgs) internal virtual override returns (address) {
@@ -95,7 +103,7 @@ contract YearnLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Ree
 
         bytes memory rebalancerCreationCode = abi.encodePacked(
             type(YearnLinearPoolRebalancer).creationCode,
-            abi.encode(getVault(), _queries, _shareValueHelper)
+            abi.encode(getVault(), _queries)
         );
         address expectedRebalancerAddress = Create2.computeAddress(rebalancerSalt, keccak256(rebalancerCreationCode));
 
@@ -113,7 +121,7 @@ contract YearnLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Ree
             pauseWindowDuration: pauseWindowDuration,
             bufferPeriodDuration: bufferPeriodDuration,
             owner: owner,
-            shareValueHelper: _shareValueHelper
+            version: getPoolVersion()
         });
 
         YearnLinearPool pool = YearnLinearPool(_create(abi.encode(args)));

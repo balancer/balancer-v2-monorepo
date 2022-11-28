@@ -16,14 +16,12 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/IYearnTokenVault.sol";
-import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IYearnShareValueHelper.sol";
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "../LinearPool.sol";
+import "./YearnShareValueHelper.sol";
 
-contract YearnLinearPool is LinearPool {
-    IYearnShareValueHelper private immutable _shareValueHelper;
-    IERC20 private immutable _wrappedToken;
-
+contract YearnLinearPool is LinearPool, Version, YearnShareValueHelper {
     struct ConstructorArgs {
         IVault vault;
         string name;
@@ -36,7 +34,7 @@ contract YearnLinearPool is LinearPool {
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
-        IYearnShareValueHelper shareValueHelper;
+        string version;
     }
 
     constructor(ConstructorArgs memory args)
@@ -53,9 +51,8 @@ contract YearnLinearPool is LinearPool {
             args.bufferPeriodDuration,
             args.owner
         )
+        Version(args.version)
     {
-        _shareValueHelper = args.shareValueHelper;
-        _wrappedToken = args.wrappedToken;
 
         _require(
             address(args.mainToken) == IYearnTokenVault(address(args.wrappedToken)).token(),
@@ -75,6 +72,6 @@ contract YearnLinearPool is LinearPool {
     function _getWrappedTokenRate() internal view override returns (uint256) {
         // _getWrappedTokenRate is expected to be scaled to 1e18 regardless of the underlying decimals.
         // By fetching sharesToAmount with 1e18 we ensure we scale to the appropriate precision.
-        return _shareValueHelper.sharesToAmount(address(_wrappedToken), 1e18);
+        return _sharesToAmount(address(getWrappedToken()), 1e18);
     }
 }

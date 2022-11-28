@@ -64,4 +64,21 @@ contract MockYearnTokenVault is TestToken {
 
         return amountToReturn;
     }
+
+
+    function lockedProfitDegradation() external pure returns (uint256) {
+        return 0;
+    }
+
+    function lastReport() external pure returns (uint256) {
+        return 0;
+    }
+
+    function totalAssets() external view returns (uint256) {
+        return totalSupply() * _pricePerShare / 10**decimals();
+    }
+
+    function lockedProfit() external pure returns (uint256) {
+        return 0;
+    }
 }
