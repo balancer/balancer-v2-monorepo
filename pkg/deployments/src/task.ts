@@ -28,6 +28,7 @@ import {
   saveContractDeploymentTransactionHash,
 } from './network';
 import { getTaskActionIds } from './actionId';
+import { getArtifactFromContractOutput } from './artifact';
 
 const TASKS_DIRECTORY = path.resolve(__dirname, '../tasks');
 const DEPRECATED_DIRECTORY = path.join(TASKS_DIRECTORY, 'deprecated');
@@ -184,7 +185,8 @@ export default class Task {
       );
     }
 
-    if (deploymentTx.data === deploymentTxData(this.artifact(name), args, libs)) {
+    const expectedDeploymentTxData = await deploymentTxData(this.artifact(name), args, libs);
+    if (deploymentTx.data === expectedDeploymentTxData) {
       logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
     } else {
       throw Error(
@@ -260,7 +262,7 @@ export default class Task {
     );
 
     if (!sourceName) throw Error(`Could not find artifact for ${contractName}`);
-    return builds[sourceName][contractName];
+    return getArtifactFromContractOutput(sourceName, contractName, builds[sourceName][contractName]);
   }
 
   actionId(contractName: string, signature: string): string {

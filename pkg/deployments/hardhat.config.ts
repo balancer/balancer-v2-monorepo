@@ -85,6 +85,10 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
       await new Task(args.id, TaskMode.CHECK, hre.network.name).run(args);
     } else {
       for (const taskID of Task.getAllTaskIds()) {
+        if (taskID.startsWith('00000000-')) {
+          continue;
+        }
+
         const task = new Task(taskID, TaskMode.CHECK, hre.network.name);
         const outputDir = path.resolve(task.dir(), 'output');
 
