@@ -184,6 +184,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // Check whether joins are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         // We first query data needed to perform the joinswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
         (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
@@ -256,6 +259,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // Check whether exits are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         // We first query data needed to perform the exitswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
         (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
