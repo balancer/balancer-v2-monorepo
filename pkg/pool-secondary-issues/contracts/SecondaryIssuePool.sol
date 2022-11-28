@@ -18,7 +18,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-
+import "hardhat/console.sol";
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     using Math for uint256;
     using FixedPoint for uint256;
@@ -383,12 +383,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         orders[ref].qty = _qty;
         orders[ref].dt = block.timestamp;
         if (orders[ref].otype == OrderType.Limit) {
-            //_limitOrderIndex[ref] = _limitOrders.length; 
-            //_limitOrders.push(ref); //Paras : why are we again pushing orders to the order book when we are editing them ?            
             checkLimitOrders(ref, OrderType.Limit);
         } else if (orders[ref].otype == OrderType.Stop) {
-            //_stopOrderIndex[ref] = _stopOrders.length;
-            //_stopOrders.push(ref); //Paras : why are we again pushing orders to the order book when we are editing them ?
             checkStopOrders(ref, OrderType.Stop);
         }        
     }
@@ -562,10 +558,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }    
                     else{
                         securityTraded = Math.div(Math.sub(orders[_ref].currencyBalance, currencyTraded), _bestBidPrice, false);
-                        orders[_ref].qty = Math.sub(orders[_ref].qty, orders[_bestBid].qty);
-                        orders[_bestBid].qty = 0;
-                        orders[_bestBid].status = OrderStatus.Filled;
-                        orders[_ref].status = OrderStatus.PartlyFilled;
+                        orders[_ref].qty = Math.sub(orders[_bestBid].qty,orders[_ref].qty);
+                        orders[_ref].qty = 0;
+                        orders[_ref].status = OrderStatus.Filled;
+                        orders[_bestBid].status = OrderStatus.PartlyFilled;
                         emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, securityTraded, currencyTraded);
                         reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                     }
@@ -596,7 +592,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     "Pending",
                     block.timestamp
                 );*/    
-                emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
+                // emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
             }
             else if(_trade==OrderType.Market){ 
                 checkLimitOrders(_ref, _trade);
@@ -660,7 +656,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     "Pending",
                     block.timestamp
                 );*/
-                emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
+                // emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
             }
             else if(_trade==OrderType.Market){
                 checkLimitOrders(_ref, _trade);

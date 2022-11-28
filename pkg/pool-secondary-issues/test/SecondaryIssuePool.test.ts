@@ -27,8 +27,8 @@ describe('SecondaryPool', function () {
   const TOTAL_TOKENS = 3;
   const SCALING_FACTOR = fp(1);
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
-  const eventName = "CallSwap(string,uint256,uint256)";
-  const eventType = ["string orderType", "uint256 securityTraded", "uint256 currencyTraded"];
+  const eventName = "CallSwap(IERC20,IERC20,uint256,uint256)";
+  const eventType = ["IERC20 tokenIn", "IERC20 tokenOut", "uint256 securityTraded", "uint256 currencyTraded"];
   const encodedEventSignature = keccak256(toUtf8Bytes(eventName));
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
@@ -50,7 +50,7 @@ describe('SecondaryPool', function () {
     pool = await SecondaryPool.create(params, mockedVault);
     return pool;
   }
-  const buyAmount=(qty: BigNumber, price: BigNumber)=>{
+  const sellAmount=(qty: BigNumber, price: BigNumber)=>{
     return scaleDown(qty.mul(price), SCALING_FACTOR);
   }
   
@@ -214,8 +214,8 @@ describe('SecondaryPool', function () {
       });
       
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
         amount: buy_qty,
         balances: currentBalances,
         from: trader,
@@ -238,8 +238,8 @@ describe('SecondaryPool', function () {
           expect(sell_order_swap[0].toString()).to.be.equals("0");
             
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -262,17 +262,17 @@ describe('SecondaryPool', function () {
         amount: sell_qty,
         balances: currentBalances,
         from: lp,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Sell 15@Market Price
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('')), // MarketOrder Sell 10@Market Price
         eventHash: encodedEventSignature
       });
-      
+
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: buyAmount(buy_qty,buy_price),
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_qty,
         balances: currentBalances,
         from: trader,
-        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // MarketOrder Buy 15@market price
+        data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // LimitOrder Buy 15@210
         eventHash: encodedEventSignature
       });
 
@@ -289,11 +289,11 @@ describe('SecondaryPool', function () {
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")) // MarketOrder Sell 15@Market Price
           });
           
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,buy_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,buy_price).toString()); //20
 
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             balances: currentBalances,
             from: trader,
@@ -320,9 +320,9 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: buyAmount(buy_qty,buy_price),
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_qty,
         balances: currentBalances,
         from: trader,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())), // MarketOrder Buy 15@market price
@@ -341,11 +341,11 @@ describe('SecondaryPool', function () {
             from: lp,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")) // MarketOrder Sell 15@Market Price
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,buy_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,buy_price).toString()); //20
 
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             balances: currentBalances,
             from: trader,
@@ -410,8 +410,8 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
         amount: buy_qty,
         from: trader,
         balances: currentBalances,
@@ -432,11 +432,11 @@ describe('SecondaryPool', function () {
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
 
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,sell_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,sell_price).toString()); //20
 
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -464,9 +464,9 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: buyAmount(buy_qty,buy_price),
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_qty,
         from: trader,
         balances: currentBalances,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Limit Order Sell@price12
@@ -486,11 +486,11 @@ describe('SecondaryPool', function () {
             balances: currentBalances,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,buy_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,buy_price).toString()); //20
           
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -520,9 +520,9 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: buyAmount(buy_qty,buy_price),
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_qty,
         from: trader,
         balances: currentBalances,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())), // Limit Order Sell@price12
@@ -542,11 +542,11 @@ describe('SecondaryPool', function () {
             balances: currentBalances,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,buy_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,buy_price).toString()); //20
           
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -615,8 +615,8 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
         amount: buy_qty,
         balances: currentBalances,
         from: trader,
@@ -637,11 +637,11 @@ describe('SecondaryPool', function () {
             balances: currentBalances,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,sell_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,sell_price).toString()); //20
           
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -669,9 +669,9 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: buyAmount(buy_qty,buy_price),
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_qty,
         balances: currentBalances,
         from: trader,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + buy_price.toString())), // Buy Stop Order Buy@12
@@ -691,11 +691,11 @@ describe('SecondaryPool', function () {
             balances: currentBalances,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,buy_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,buy_price).toString()); //20
           
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -723,9 +723,9 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
-        amount: buyAmount(buy_qty,buy_price),
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
+        amount: buy_qty,
         balances: currentBalances,
         from: trader,
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('4Stop' + buy_price.toString())), // Buy Stop Order Buy@12
@@ -745,11 +745,11 @@ describe('SecondaryPool', function () {
             balances: currentBalances,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(sell_qty,buy_price).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(sell_qty,buy_price).toString()); //20
           
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
@@ -864,8 +864,8 @@ describe('SecondaryPool', function () {
       });
 
       const buy_order = await pool.swapGivenOut({
-        in: pool.securityIndex,
-        out: pool.currencyIndex,
+        in: pool.currencyIndex,
+        out: pool.securityIndex,
         amount: buy_qty, //Qty 25
         from: trader,
         balances: currentBalances,
@@ -886,11 +886,11 @@ describe('SecondaryPool', function () {
             balances: currentBalances,
             data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("self")), 
           });
-          expect(sell_order_swap[0].toString()).to.be.equals(buyAmount(editedAmount,editedPrice).toString()); //20
+          expect(sell_order_swap[0].toString()).to.be.equals(sellAmount(editedAmount,editedPrice).toString()); //20
           
           const buy_order_swap = await pool.swapGivenOut({
-            in: pool.securityIndex,
-            out: pool.currencyIndex,
+            in: pool.currencyIndex,
+            out: pool.securityIndex,
             amount: eventEncodedData.securityTraded,
             from: trader,
             balances: currentBalances,
