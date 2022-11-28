@@ -22,13 +22,15 @@ interface ITrade {
         uint256 askprice;
         address currency;
         IOrder.Order order;
-        IOrder.OrderType stype;
+        IOrder.OrderType otype;
         uint256 qty;
         uint dt;
+        bytes32 pregRef;
+        bytes32 cpregRef;
     }
 
-    function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
+    //function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
 
-    function tradeSettled(bytes32 tradeRef, bytes32 partyRef, bytes32 counterpartyRef) external;
+    function tradeSettled(/*bytes32 tradeRef,*/ bytes32 partyRef, bytes32 counterpartyRef) external;
 
 }
