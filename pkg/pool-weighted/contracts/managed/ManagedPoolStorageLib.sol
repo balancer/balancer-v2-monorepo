@@ -34,7 +34,7 @@ library ManagedPoolStorageLib {
     //
     // [     1 bit      |   1 bit  |  1 bit  |   1 bit   |    62 bits   |     62 bits    |    32 bits   |     32 bits    | 32 bits |  32 bits  ]
     // [ join-exit flag | recovery | LP flag | swap flag | end swap fee | start swap fee | end fee time | start fee time | end wgt | start wgt ]
-    // |MSB                                                                                                                         LSB|
+    // |MSB                                                                                                                                 LSB|
     /* solhint-enable max-line-length */
     uint256 private constant _WEIGHT_START_TIME_OFFSET = 0;
     uint256 private constant _WEIGHT_END_TIME_OFFSET = _WEIGHT_START_TIME_OFFSET + _TIMESTAMP_WIDTH;
