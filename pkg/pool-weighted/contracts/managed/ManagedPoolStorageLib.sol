@@ -57,7 +57,7 @@ library ManagedPoolStorageLib {
      * @notice Returns whether the Pool allows regular joins and exits (recovery exits not included).
      * @param poolState - The byte32 state of the Pool.
      */
-    function getJoinsExitsEnabled(bytes32 poolState) internal pure returns (bool) {
+    function getJoinExitsEnabled(bytes32 poolState) internal pure returns (bool) {
         return poolState.decodeBool(_JOIN_EXIT_ENABLED_OFFSET);
     }
 
