@@ -67,7 +67,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
         });
 
         sharedBeforeEach('accumulate fees by increasing balance', async () => {
-          await pool.vault.updateBalances(
+          await pool.vault.updateCash(
             pool.poolId,
             initialBalances.map((x) => x.mul(initialBalanceGrowth))
           );
@@ -226,7 +226,7 @@ export function itPaysProtocolFeesFromInvariantGrowth(): void {
         });
 
         sharedBeforeEach('accumulate fees by increasing balance', async () => {
-          await pool.vault.updateBalances(
+          await pool.vault.updateCash(
             pool.poolId,
             initialBalances.map((x) => x.mul(initialBalanceGrowth))
           );

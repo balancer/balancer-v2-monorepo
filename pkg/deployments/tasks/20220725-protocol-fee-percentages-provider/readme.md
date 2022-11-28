@@ -8,4 +8,4 @@ Deployment of the `ProtocolFeePercentagesProvider` contract. It provides a conve
 - [Polygon mainnet addresses](./output/polygon.json)
 - [Arbitrum mainnet addresses](./output/arbitrum.json)
 - [Optimism mainnet addresses](./output/optimism.json)
-- [`ProtocolFeePercentagesProvider` ABI](./abi/ProtocolFeePercentagesProvider.json)
+- [`ProtocolFeePercentagesProvider` artifact](./artifact/ProtocolFeePercentagesProvider.json)
