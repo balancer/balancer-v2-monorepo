@@ -47,19 +47,19 @@ Returns an [Ethers](https://docs.ethers.io/v5/) contract object for a contract d
 
 _Note: requires using [Hardhat](https://hardhat.org/) with the [`hardhat-ethers`](https://hardhat.org/plugins/nomiclabs-hardhat-ethers.html) plugin._
 
-- **async function getBalancerContractAbi(taskID, contract)**
+- **function getBalancerContractAbi(taskID, contract)**
 
 Returns a contract's [ABI](https://docs.soliditylang.org/en/latest/abi-spec.html).
 
-- **async function getBalancerContractBytecode(taskID, contract)**
+- **function getBalancerContractBytecode(taskID, contract)**
 
 Returns a contract's [creation code](https://docs.soliditylang.org/en/latest/contracts.html#creating-contracts).
 
-- **async function getBalancerContractAddress(taskID, contract, network)**
+- **function getBalancerContractAddress(taskID, contract, network)**
 
 Returns the address of a contract's canonical deployment.
 
-- **async function getBalancerDeployment(taskID, network)**
+- **function getBalancerDeployment(taskID, network)**
 
 Returns an object with all contracts from a deployment and their addresses.
 
@@ -105,6 +105,8 @@ Returns an object with all contracts from a deployment and their addresses.
 | Authorizer Adaptor entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
 | Timelock Authorizer, governance contract                | [`20221111-timelock-authorizer`](./tasks/20221111-timelock-authorizer)                               |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20221115-aave-rebalanced-linear-pool`](./tasks/20221115-aave-rebalanced-linear-pool)               |
+| Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
+| Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
 
 ## Scripts
 
@@ -150,3 +152,4 @@ Go to each deprecated deployment's readme file to learn more about why it is dep
 | Optimism Root Gauges, for veBAL voting                  | [`20220628-optimism-root-gauge-factory`](./tasks/deprecated/20220628-optimism-root-gauge-factory)   |
 | Batch Relayer V3                                        | [`20220720-batch-relayer-v3`](./tasks/deprecated/20220720-batch-relayer-v3)                         |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20220817-aave-rebalanced-linear-pool`](./tasks/deprecated/20220817-aave-rebalanced-linear-pool)   |
+| Managed Pool                                            | [`20221021-managed-pool`](./tasks/deprecated/20221021-managed-pool)                                 |

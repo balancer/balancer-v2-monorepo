@@ -8,4 +8,4 @@ See [the forum post](https://forum.balancer.fi/t/tribe-dao-unclaimable-bal-rewar
 
 - [Ethereum addresses](./output/mainnet.json)
 - [Optimism addresses](./output/optimism.json)
-- [`SNXRecoveryCoordinator` ABI](./abi/SNXRecoveryCoordinator.json)
+- [`SNXRecoveryCoordinator` artifact](./artifact/SNXRecoveryCoordinator.json)

@@ -115,7 +115,7 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
     });
   }
 
-  describe('create, join, and rebalance', () => {
+  describe('create and check getters', () => {
     it('deploy a linear pool', async () => {
       const tx = await factory.create('', '', USDT, waUSDT, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
@@ -133,6 +133,28 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
       await usdt.connect(holder).approve(rebalancer.address, MAX_UINT256); // To send extra main on rebalance
     });
 
+    it('check factory version', async () => {
+      const expectedFactoryVersion = {
+        name: 'AaveLinearPoolFactory',
+        version: 2,
+        deployment: '20221115-aave-rebalanced-linear-pool',
+      };
+
+      expect(await factory.version()).to.equal(JSON.stringify(expectedFactoryVersion));
+    });
+
+    it('check pool version', async () => {
+      const expectedPoolVersion = {
+        name: 'AaveLinearPool',
+        version: 2,
+        deployment: '20221115-aave-rebalanced-linear-pool',
+      };
+
+      expect(await pool.version()).to.equal(JSON.stringify(expectedPoolVersion));
+    });
+  });
+
+  describe('join, and rebalance', () => {
     it('join the pool', async () => {
       // We're going to join with enough main token to bring the Pool above its upper target, which will let us later
       // rebalance.
