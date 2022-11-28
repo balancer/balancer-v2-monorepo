@@ -149,7 +149,7 @@ interface IManagedPool is IBasePool {
     // Join and Exit enable/disable
 
     /**
-     * @notice Enable or disable joins and exits.
+     * @notice Enable or disable joins and exits. Note that this does not affect Recovery Mode exits.
      * @dev Emits the JoinExitEnabledSet event. This is a permissioned function.
      * @param joinExitEnabled - The new value of the join/exit enabled flag.
      */
