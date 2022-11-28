@@ -544,7 +544,7 @@ contract ManagedPool is ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
 
         // Check whether joins are enabled.
-        _require(ManagedPoolStorageLib.getJoinsExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
 
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
@@ -653,7 +653,7 @@ contract ManagedPool is ManagedPoolSettings {
 
         // Check whether exits are enabled. Recovery mode exits are not blocked by this check, since they are routed
         // through a different codepath at the base pool layer.
-        _require(ManagedPoolStorageLib.getJoinsExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
 
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 

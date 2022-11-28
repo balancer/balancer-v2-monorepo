@@ -157,7 +157,7 @@ library ManagedPoolStorageLib {
      * @param poolState - The byte32 state of the Pool.
      * @param enabled - A boolean flag for whether Joins and Exits are to be enabled.
      */
-    function setJoinsExitsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+    function setJoinExitsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
         return poolState.insertBool(enabled, _JOIN_EXIT_ENABLED_OFFSET);
     }
 

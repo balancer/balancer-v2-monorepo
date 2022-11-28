@@ -382,7 +382,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // Join / Exit Enabled
 
     function getJoinExitEnabled() external view override returns (bool) {
-        return ManagedPoolStorageLib.getJoinsExitsEnabled(_poolState);
+        return ManagedPoolStorageLib.getJoinExitsEnabled(_poolState);
     }
 
     function setJoinExitEnabled(bool joinExitEnabled) external override authenticate whenNotPaused {
@@ -390,7 +390,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     function _setJoinExitEnabled(bool joinExitEnabled) private {
-        _poolState = ManagedPoolStorageLib.setJoinsExitsEnabled(_poolState, joinExitEnabled);
+        _poolState = ManagedPoolStorageLib.setJoinExitsEnabled(_poolState, joinExitEnabled);
 
         emit JoinExitEnabledSet(joinExitEnabled);
     }
