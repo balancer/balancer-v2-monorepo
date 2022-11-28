@@ -670,24 +670,10 @@ describe('ManagedPool', function () {
           await pool.addAllowedAddress(owner, other.address);
         });
 
-        context('when joins are enabled', () => {
-          it('the listed LP can join', async () => {
-            await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
+        it('the listed LP can join', async () => {
+          await pool.joinAllGivenOut({ from: other, bptOut: FP_ONE });
 
-            expect(await pool.balanceOf(other)).to.be.gt(0);
-          });
-        });
-
-        context('when joins are disabled', () => {
-          sharedBeforeEach(async () => {
-            await pool.setJoinExitEnabled(owner, false);
-          });
-
-          it('reverts', async () => {
-            await expect(pool.joinAllGivenOut({ from: other, bptOut: FP_ONE })).to.be.revertedWith(
-              'JOINS_EXITS_DISABLED'
-            );
-          });
+          expect(await pool.balanceOf(other)).to.be.gt(0);
         });
       });
 
@@ -734,6 +720,41 @@ describe('ManagedPool', function () {
           await expect(pool.joinGivenIn({ from: other, amountsIn })).to.be.revertedWith(
             'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
           );
+        });
+      });
+    });
+
+    context('when joins are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool({ swapEnabledOnStart: true });
+        await pool.init({ from: other, initialBalances });
+        await pool.setJoinExitEnabled(owner, false);
+      });
+
+      context('proportional joins', () => {
+        it('prevents proportionate joins', async () => {
+          const startingBpt = await pool.balanceOf(other);
+
+          await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
+        });
+      });
+
+      context('disproportionate joins', () => {
+        it('prevents disproportionate joins (single token)', async () => {
+          const bptOut = await pool.balanceOf(other);
+
+          await expect(pool.joinGivenOut({ from: other, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
+        });
+
+        it('prevents disproportionate joins (multi token)', async () => {
+          const amountsIn = [...initialBalances];
+          amountsIn[0] = 0;
+
+          await expect(pool.joinGivenIn({ from: other, amountsIn })).to.be.revertedWith('JOINS_EXITS_DISABLED');
         });
       });
     });
@@ -797,29 +818,19 @@ describe('ManagedPool', function () {
         await pool.setMustAllowlistLPs(owner, true);
       });
 
-      context('when exits are enabled', () => {
-        context('when LP is on the allowlist', () => {
-          sharedBeforeEach('add address to allowlist', async () => {
-            await pool.addAllowedAddress(owner, other.address);
-          });
+      context('when LP is on the allowlist', () => {
+        sharedBeforeEach('add address to allowlist', async () => {
+          await pool.addAllowedAddress(owner, other.address);
         });
 
-        context('when LP is not on the allowlist', () => {
-          it('the listed LP can exit', async () => {
-            await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
-          });
+        it('the listed LP can exit', async () => {
+          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
         });
       });
 
-      context('when exits are disabled', () => {
-        sharedBeforeEach(async () => {
-          await pool.setJoinExitEnabled(owner, false);
-        });
-
-        it('reverts', async () => {
-          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.be.revertedWith(
-            'JOINS_EXITS_DISABLED'
-          );
+      context('when LP is not on the allowlist', () => {
+        it('the listed LP can exit', async () => {
+          await expect(pool.multiExitGivenIn({ from: other, bptIn: FP_ONE })).to.not.be.reverted;
         });
       });
     });
@@ -862,6 +873,41 @@ describe('ManagedPool', function () {
           await expect(pool.exitGivenOut({ from: other, amountsOut })).to.be.revertedWith(
             'INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED'
           );
+        });
+      });
+    });
+
+    context('when exits are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool({ swapEnabledOnStart: true });
+        await pool.init({ from: other, initialBalances });
+        await pool.setJoinExitEnabled(owner, false);
+      });
+
+      context('proportional exits', () => {
+        it('prevents proportionate exits', async () => {
+          const previousBptBalance = await pool.balanceOf(other);
+          const bptIn = pct(previousBptBalance, 0.8);
+
+          await expect(pool.multiExitGivenIn({ from: other, bptIn })).to.be.revertedWith('JOINS_EXITS_DISABLED');
+        });
+      });
+
+      context('disproportionate exits', () => {
+        it('prevents disproportionate exits (single token)', async () => {
+          const previousBptBalance = await pool.balanceOf(other);
+          const bptIn = pct(previousBptBalance, 0.5);
+
+          await expect(pool.singleExitGivenIn({ from: other, bptIn, token: poolTokens.get(0) })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
+        });
+
+        it('prevents disproportionate exits (multi token)', async () => {
+          const amountsOut = [...initialBalances];
+          amountsOut[0] = 0;
+
+          await expect(pool.exitGivenOut({ from: other, amountsOut })).to.be.revertedWith('JOINS_EXITS_DISABLED');
         });
       });
     });
