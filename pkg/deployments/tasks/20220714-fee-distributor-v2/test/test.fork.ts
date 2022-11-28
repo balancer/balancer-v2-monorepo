@@ -7,12 +7,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { advanceToTimestamp, currentWeekTimestamp, DAY, HOUR, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { impersonate } from '../../../src/signers';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 import { _TypedDataEncoder } from 'ethers/lib/utils';
+
+import { describeForkTest, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('FeeDistributor', 'mainnet', 15130000, function () {
   let veBALHolder: SignerWithAddress,
@@ -47,10 +45,10 @@ describeForkTest('FeeDistributor', 'mainnet', 15130000, function () {
   });
 
   before('setup accounts', async () => {
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
-    veBALHolder2 = await impersonate(VEBAL_HOLDER_2, fp(100));
-    feeCollector = await impersonate(PROTOCOL_FEE_COLLECTOR, fp(100));
-    voterProxyAdmin = await impersonate(VOTER_PROXY_ADMIN, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
+    veBALHolder2 = await impersonate(VEBAL_HOLDER_2);
+    feeCollector = await impersonate(PROTOCOL_FEE_COLLECTOR);
+    voterProxyAdmin = await impersonate(VOTER_PROXY_ADMIN);
   });
 
   before('setup contracts', async () => {

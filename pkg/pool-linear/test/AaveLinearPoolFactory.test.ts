@@ -15,6 +15,7 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 describe('AaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
   let creationTime: BigNumber, owner: SignerWithAddress;
+  let factoryVersion: string, poolVersion: string;
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
@@ -30,13 +31,27 @@ describe('AaveLinearPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    factoryVersion = JSON.stringify({
+      name: 'AaveLinearPoolFactory',
+      version: '3',
+      deployment: 'test-deployment',
+    });
+    poolVersion = JSON.stringify({
+      name: 'AaveLinearPool',
+      version: '1',
+      deployment: 'test-deployment',
+    });
     factory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [vault.address, vault.getFeesProvider().address, queries.address, factoryVersion, poolVersion],
     });
     creationTime = await currentTimestamp();
 
+    const mockLendingPool = await deploy('MockAaveLendingPool');
+
     const mainToken = await Token.create('DAI');
-    const wrappedTokenInstance = await deploy('MockStaticAToken', { args: ['cDAI', 'cDAI', 18, mainToken.address] });
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: ['cDAI', 'cDAI', 18, mainToken.address, mockLendingPool.address],
+    });
     const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();
@@ -54,7 +69,7 @@ describe('AaveLinearPoolFactory', function () {
     );
 
     const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');
-    return deployedAt('LinearPool', event.args.pool);
+    return deployedAt('AaveLinearPool', event.args.pool);
   }
 
   describe('constructor arguments', () => {
@@ -66,6 +81,18 @@ describe('AaveLinearPoolFactory', function () {
 
     it('sets the vault', async () => {
       expect(await pool.getVault()).to.equal(vault.address);
+    });
+
+    it('checks the factory version', async () => {
+      expect(await factory.version()).to.equal(factoryVersion);
+    });
+
+    it('checks the pool version', async () => {
+      expect(await pool.version()).to.equal(poolVersion);
+    });
+
+    it('checks the pool version in the factory', async () => {
+      expect(await factory.getPoolVersion()).to.equal(poolVersion);
     });
 
     it('registers tokens in the vault', async () => {

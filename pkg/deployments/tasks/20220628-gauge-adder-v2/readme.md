@@ -7,5 +7,5 @@ Deployment of the new `GaugeAdder`, a helper contract which helps prevent some f
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`GaugeAdder` ABI](./abi/GaugeAdder.json)
+- [`GaugeAdder` artifact](./artifact/GaugeAdder.json)
 - [Previous `GaugeAdder` deployment](../20220325-gauge-adder/)

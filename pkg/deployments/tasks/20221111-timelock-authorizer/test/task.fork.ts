@@ -14,7 +14,7 @@ import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describeForkTest('TimelockAuthorizer', 'mainnet', 15925800, function () {
+describeForkTest('TimelockAuthorizer', 'mainnet', 15970880, function () {
   let input: TimelockAuthorizerDeployment;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
   let root: SignerWithAddress;
@@ -22,17 +22,8 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 15925800, function () {
   let task: Task;
 
   before('run task', async () => {
-    // TODO(@jubeira): remove adaptor entrypoint related code; this will be fetched in the input script.
-    const adaptorEntrypointTask = new Task(
-      '20221111-authorizer-adaptor-entrypoint',
-      TaskMode.TEST,
-      getForkedNetwork(hre)
-    );
-    await adaptorEntrypointTask.run({ force: true });
-    const adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
-
     task = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
-    await task.run({ force: true, extra: adaptorEntrypoint.address }); // TODO(@jubeira): remove extra argument.
+    await task.run({ force: true });
     input = task.input() as TimelockAuthorizerDeployment;
     migrator = await task.deployedInstance('TimelockAuthorizerMigrator');
     newAuthorizer = await task.deployedInstance('TimelockAuthorizer');

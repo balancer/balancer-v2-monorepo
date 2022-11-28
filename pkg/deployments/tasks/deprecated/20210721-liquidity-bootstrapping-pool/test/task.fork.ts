@@ -11,10 +11,7 @@ import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/w
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { advanceToTimestamp, currentTimestamp, DAY, MINUTE, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { getSigner, impersonateWhale } from '../../../../src/signers';
+import { describeForkTest, getSigner, getForkedNetwork, Task, TaskMode, impersonate } from '../../../../src';
 
 describeForkTest('LiquidityBootstrappingPoolFactory', 'mainnet', 14850000, function () {
   let owner: SignerWithAddress, whale: SignerWithAddress;
@@ -38,6 +35,8 @@ describeForkTest('LiquidityBootstrappingPoolFactory', 'mainnet', 14850000, funct
   const initialBalanceUSDC = fp(1e6).div(1e12); // 6 digits
   const initialBalances = [initialBalanceDAI, initialBalanceUSDC];
 
+  const LARGE_TOKEN_HOLDER = '0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503';
+
   before('run task', async () => {
     task = new Task('20210721-liquidity-bootstrapping-pool', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
@@ -46,7 +45,7 @@ describeForkTest('LiquidityBootstrappingPoolFactory', 'mainnet', 14850000, funct
 
   before('load signers', async () => {
     owner = await getSigner();
-    whale = await impersonateWhale(fp(100));
+    whale = await impersonate(LARGE_TOKEN_HOLDER);
   });
 
   before('load vault and tokens', async () => {
