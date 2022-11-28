@@ -4,7 +4,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-interface IPrimaryIssuePool {
+interface ISecondaryIssuePool {
 
     function getPoolId() external returns(bytes32);
 
@@ -23,8 +23,6 @@ interface IPrimaryIssuePool {
     function editOrder( bytes32 ref, uint256 _price, uint256 _qty) external;
 
     function cancelOrder(bytes32 ref) external;
-
-    function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
 
 }
 

@@ -3,6 +3,9 @@
 
 pragma solidity 0.7.1;
 pragma experimental ABIEncoderV2;
+
+import "./ITrade.sol";
+
 interface ISettlor {
 
     //enum SettlementStatus { Confirm, Reject, Pending }
@@ -57,5 +60,7 @@ interface ISettlor {
     function setSettlementStatus(bytes32 ref, bytes32 status, bytes32 id) external;
 
     function getTransferAgent(address party) external view returns(bytes32);
+
+    function reportTrade(ITrade.trade calldata report) external;
 
 }

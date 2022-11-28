@@ -3,6 +3,7 @@
 
 pragma solidity 0.7.1;
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 interface IOrder {
@@ -14,7 +15,7 @@ interface IOrder {
     enum Order{ Buy, Sell } 
 
     struct order{
-        //uint256 orderno; 
+        IVault.SwapKind swapKind; 
         IERC20 tokenIn;
         IERC20 tokenOut;
         OrderType otype;
