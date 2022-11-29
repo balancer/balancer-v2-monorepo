@@ -14,7 +14,6 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     input.Revokers,
     input.ExecuteDelays,
     input.GrantDelays,
-    { gasLimit: 15e6 },
   ];
   const migrator = await task.deployAndVerify('TimelockAuthorizerMigrator', args, from, force);
 
