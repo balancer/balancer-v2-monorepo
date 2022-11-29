@@ -2,6 +2,17 @@ import { Contract } from 'ethers';
 import { Artifact } from 'hardhat/types';
 
 /**
+ * @dev Returns the task id and contract name for a canonical contract deployed on a specific network
+ * @param address Address of the contract to be fetched
+ * @param network Name of the network looking the deployment for (e.g. mainnet,  polygon, goerli, etc)
+ */
+export function lookupBalancerContractByAddress(address: string, network: string): { task: string; name: string } {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const networkAddresses = require(getBalancerContractAddresses(network));
+  return networkAddresses[address];
+}
+
+/**
  * @dev Creates an ethers Contract object for a canonical contract deployed on a specific network
  * @param task ID of the task to fetch the deployed contract
  * @param contract Name of the contract to be fetched
@@ -25,7 +36,7 @@ export async function getBalancerContractAt(task: string, contract: string, addr
 }
 
 /**
- * @dev Returns the artifact for a contract from a specific task
+ * @dev Returns the contract's artifact from a specific task
  * @param task ID of the task to look the ABI of the required contract
  * @param contract Name of the contract to looking the ABI of
  */
@@ -91,4 +102,12 @@ function getBalancerContractArtifactPath(task: string, contract: string): string
  */
 function getBalancerDeploymentPath(task: string, network: string): string {
   return `@balancer-labs/v2-deployments/dist/tasks/${task}/output/${network}.json`;
+}
+
+/**
+ * @dev Returns the path for the list of Balancer contract addresses on a network
+ * @param network Name of the network looking the deployment path for (e.g. mainnet, polygon, goerli, etc)
+ */
+function getBalancerContractAddresses(network: string): string {
+  return `@balancer-labs/v2-deployments/dist/addresses/${network}.json`;
 }
