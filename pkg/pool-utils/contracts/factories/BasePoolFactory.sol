@@ -37,12 +37,7 @@ import "../Version.sol";
  * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
  * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolFactory is
-    IBasePoolFactory,
-    Version,
-    BaseSplitCodeFactory,
-    SingletonAuthentication
-{
+abstract contract BasePoolFactory is IBasePoolFactory, Version, BaseSplitCodeFactory, SingletonAuthentication {
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     mapping(address => bool) private _isPoolFromFactory;

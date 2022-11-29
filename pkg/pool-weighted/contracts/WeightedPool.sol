@@ -68,17 +68,8 @@ contract WeightedPool is BaseWeightedPool, WeightedPoolProtocolFees {
         uint256 swapFeePercentage;
     }
 
-    constructor(
-        BasePoolParams memory basePoolParams,
-        NewPoolParams memory params
-    )
-        BaseWeightedPool(
-            basePoolParams,
-            params.tokens,
-            params.assetManagers,
-            params.swapFeePercentage,
-            false
-        )
+    constructor(BasePoolParams memory basePoolParams, NewPoolParams memory params)
+        BaseWeightedPool(basePoolParams, params.tokens, params.assetManagers, params.swapFeePercentage, false)
         ProtocolFeeCache(
             params.protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })

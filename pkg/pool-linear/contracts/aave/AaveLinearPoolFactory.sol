@@ -30,12 +30,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "./AaveLinearPool.sol";
 import "./AaveLinearPoolRebalancer.sol";
 
-contract AaveLinearPoolFactory is
-    ILastCreatedPoolFactory,
-    BasePoolFactory,
-    ReentrancyGuard,
-    FactoryWidePauseWindow
-{
+contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, ReentrancyGuard, FactoryWidePauseWindow {
     struct PoolDeploymentParams {
         bytes32 rebalancerSalt;
         bytes rebalancerCreationCode;
@@ -99,7 +94,6 @@ contract AaveLinearPoolFactory is
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-
         IBasePool.BasePoolParams memory basePoolParams = IBasePool.BasePoolParams({
             vault: getVault(),
             name: name,
@@ -127,7 +121,10 @@ contract AaveLinearPoolFactory is
         // Not that the Linear Pool's deployment is complete, we can deploy the Rebalancer, verifying that we correctly
         // predicted its deployment address.
         address actualRebalancerAddress = Create2.deploy(
-            0, deploymentParams.rebalancerSalt, deploymentParams.rebalancerCreationCode);
+            0,
+            deploymentParams.rebalancerSalt,
+            deploymentParams.rebalancerCreationCode
+        );
         require(deploymentParams.expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
 
         // We don't return the Rebalancer's address, but that can be queried in the Vault by calling `getPoolTokenInfo`.
@@ -143,6 +140,8 @@ contract AaveLinearPoolFactory is
             abi.encode(getVault(), _queries)
         );
         deploymentParams.expectedRebalancerAddress = Create2.computeAddress(
-            deploymentParams.rebalancerSalt, keccak256(deploymentParams.rebalancerCreationCode));
+            deploymentParams.rebalancerSalt,
+            keccak256(deploymentParams.rebalancerCreationCode)
+        );
     }
 }

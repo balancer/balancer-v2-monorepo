@@ -38,9 +38,12 @@ import "../ExternalWeightedMath.sol";
 contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     IExternalWeightedMath private immutable _weightedMath;
 
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory factoryVersion, string memory poolVersion)
-        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode, factoryVersion, poolVersion)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode, factoryVersion, poolVersion) {
         _weightedMath = new ExternalWeightedMath();
     }
 
@@ -51,10 +54,12 @@ contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
-    function create(ManagedPoolSettings.NewPoolParams memory poolParams, string memory name, string memory symbol, address owner)
-        external
-        returns (address pool)
-    {
+    function create(
+        ManagedPoolSettings.NewPoolParams memory poolParams,
+        string memory name,
+        string memory symbol,
+        address owner
+    ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
         return

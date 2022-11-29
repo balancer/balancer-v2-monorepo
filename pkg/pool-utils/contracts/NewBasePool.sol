@@ -67,10 +67,7 @@ abstract contract NewBasePool is
     // Note that this value is immutable in the Vault, so we can make it immutable here and save gas
     IProtocolFeesCollector private immutable _protocolFeesCollector;
 
-    constructor(
-        BasePoolParams memory basePoolParams,
-        bytes32 poolId
-    )
+    constructor(BasePoolParams memory basePoolParams, bytes32 poolId)
         // Base Pools are expected to be deployed using factories. By using the factory address as the action
         // disambiguator, we make all Pools deployed by the same factory share action identifiers. This allows for
         // simpler management of permissions (such as being able to manage granting the 'set fee percentage' action in

@@ -24,7 +24,6 @@ import "./IPoolSwapStructs.sol";
  * either IGeneralPool or IMinimalSwapInfoPool
  */
 interface IBasePool is IPoolSwapStructs {
-
     struct BasePoolParams {
         IVault vault;
         string name;

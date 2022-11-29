@@ -31,19 +31,21 @@ library PoolRegistrationLib {
         IVault.PoolSpecialization specialization,
         IERC20[] memory tokens
     ) internal returns (bytes32) {
-        return registerPoolWithAssetManagers(
-            vault,
-            PoolRegistrationParams({
-                specialization: specialization,
-                tokens: tokens,
-                assetManagers: new address[](tokens.length)
-        }));
+        return
+            registerPoolWithAssetManagers(
+                vault,
+                PoolRegistrationParams({
+                    specialization: specialization,
+                    tokens: tokens,
+                    assetManagers: new address[](tokens.length)
+                })
+            );
     }
 
-    function registerPoolWithAssetManagers(
-        IVault vault,
-        PoolRegistrationParams memory params
-    ) internal returns (bytes32) {
+    function registerPoolWithAssetManagers(IVault vault, PoolRegistrationParams memory params)
+        internal
+        returns (bytes32)
+    {
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
         //
@@ -54,10 +56,7 @@ library PoolRegistrationLib {
         return _registerPool(vault, params.specialization, params.tokens, params.assetManagers);
     }
 
-    function registerComposablePool(
-        IVault vault,
-        PoolRegistrationParams memory params
-    ) internal returns (bytes32) {
+    function registerComposablePool(IVault vault, PoolRegistrationParams memory params) internal returns (bytes32) {
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
         //

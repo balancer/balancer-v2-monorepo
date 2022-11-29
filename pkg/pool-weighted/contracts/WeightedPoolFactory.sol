@@ -23,9 +23,12 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.
 import "./WeightedPool.sol";
 
 contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider, string memory factoryVersion, string memory poolVersion)
-        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode, factoryVersion, poolVersion)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode, factoryVersion, poolVersion) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

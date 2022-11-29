@@ -33,16 +33,7 @@ contract ERC4626LinearPool is LinearPool {
         IERC4626 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage
-    )
-        LinearPool(
-            basePoolParams,
-            mainToken,
-            wrappedToken,
-            upperTarget,
-            new address[](2),
-            swapFeePercentage
-        )
-    {
+    ) LinearPool(basePoolParams, mainToken, wrappedToken, upperTarget, new address[](2), swapFeePercentage) {
         // We do NOT enforce mainToken == wrappedToken.asset() even
         // though this is the expected behavior in most cases. Instead,
         // we assume a 1:1 relationship between mainToken and

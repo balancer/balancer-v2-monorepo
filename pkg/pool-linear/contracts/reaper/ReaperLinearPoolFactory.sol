@@ -120,7 +120,10 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
         // Not that the Linear Pool's deployment is complete, we can deploy the Rebalancer, verifying that we correctly
         // predicted its deployment address.
         address actualRebalancerAddress = Create2.deploy(
-            0, deploymentParams.rebalancerSalt, deploymentParams.rebalancerCreationCode);
+            0,
+            deploymentParams.rebalancerSalt,
+            deploymentParams.rebalancerCreationCode
+        );
         require(deploymentParams.expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
 
         // We don't return the Rebalancer's address, but that can be queried in the Vault by calling `getPoolTokenInfo`.
@@ -136,6 +139,8 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
             abi.encode(getVault(), _queries)
         );
         deploymentParams.expectedRebalancerAddress = Create2.computeAddress(
-            deploymentParams.rebalancerSalt, keccak256(deploymentParams.rebalancerCreationCode));
+            deploymentParams.rebalancerSalt,
+            keccak256(deploymentParams.rebalancerCreationCode)
+        );
     }
 }
