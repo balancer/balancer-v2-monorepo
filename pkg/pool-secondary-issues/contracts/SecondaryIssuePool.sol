@@ -548,8 +548,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }else if(orders[_bestBid].tokenIn==IERC20(_currency) && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                         currencyTraded = orders[_bestBid].qty; // amount of currency sent in (tokenIn) is already there
                     }
-                    if(currencyTraded >= orders[_bestBid].qty){
-                        securityTraded = Math.div(currencyTraded, _bestBidPrice, false);
+                    if(currencyTraded >= orders[_ref].qty){
+                        securityTraded = Math.div(orders[_ref].qty, _bestBidPrice, false);
                         orders[_bestBid].qty = orders[_bestBid].tokenOut==IERC20(_security) ? 
                                                 Math.sub(orders[_bestBid].qty, securityTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
                         orders[_ref].qty = 0;

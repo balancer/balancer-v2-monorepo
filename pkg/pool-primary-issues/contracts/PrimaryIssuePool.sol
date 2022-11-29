@@ -176,6 +176,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         IVault vault = getVault();
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
+        _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
         _minAmountsOut[_currencyIndex] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _asIAsset(tokens),

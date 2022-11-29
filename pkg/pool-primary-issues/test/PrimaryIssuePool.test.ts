@@ -8,7 +8,7 @@ import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
-import { PoolSpecialization, BalancerErrorCodes } from '@balancer-labs/balancer-js';
+import { PoolSpecialization, BalancerErrorCodes, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { RawPrimaryPoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/primary-issue/types';
 
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
@@ -439,22 +439,22 @@ describe('PrimaryPool', function () {
 
   describe('joins and exits', () => {
     sharedBeforeEach('deploy pool', async () => {
-    await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs }, false);
-    await pool.initialize();
-    });
+        await deployPool({ securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs }, false);
+        await pool.initialize();
+      });
 
     it('regular joins should revert', async () => {
-    const { tokens: allTokens } = await pool.getTokens();
-    
-    const tx = pool.vault.joinPool({
-      poolAddress: pool.address,
-      poolId: await pool.getPoolId(),
-      recipient: lp.address,
-      tokens: allTokens,
-      data: '0x',
-      });
-    
-    await expect(tx).to.be.revertedWith('UNHANDLED_BY_PRIMARY_POOL');
+      const { tokens: allTokens } = await pool.getTokens();
+      
+      const tx = pool.vault.joinPool({
+        poolAddress: pool.address,
+        poolId: await pool.getPoolId(),
+        recipient: lp.address,
+        tokens: allTokens,
+        data: '0x',
+        });
+      
+      await expect(tx).to.be.revertedWith('UNHANDLED_BY_PRIMARY_POOL');
     });
     
     it('regular exits should revert', async () => {
@@ -471,13 +471,35 @@ describe('PrimaryPool', function () {
           const previousCurrencyBalance = previousBalances[pool.currencyIndex];
           const securityTokenBalanceBefore = await securityToken.balanceOf(owner);
           const currencyTokenBalanceBefore = await currencyToken.balanceOf(owner);
+          const { tokens: allTokens } = await pool.getTokens();
 
-          await pool.exit();
+          // await pool.exitPool();
+          const minAmountsOut = new Array(tokens.length);
+          const poolId = await pool.getPoolId();
+      
+          minAmountsOut[pool.securityIndex] = maxSecurityOffered;
+          minAmountsOut[pool.currencyIndex] = maxSecurityOffered.div(basePrice);
+          minAmountsOut[pool.bptIndex] = 0;
+
+          const tx = await pool.vault.exitPool({
+            poolAddress: pool.address,
+            poolId: poolId,
+            from: owner,
+            recipient: owner.address,
+            tokens: allTokens,
+            minAmountsOut: minAmountsOut,
+            toInternalBalance: false,
+            protocolFeePercentage: 0,
+            data: WeightedPoolEncoder.exitExactBPTInForTokensOut(MAX_UINT112),
+            });
 
           const afterExitOwnerBalance = await pool.balanceOf(owner);
+          console.log("afterExitOwnerBalance",afterExitOwnerBalance.toString());
           const currentBalances = await pool.getBalances();
           const securityTokenBalanceAfter = await securityToken.balanceOf(owner);
           const currencyTokenBalanceAfter = await currencyToken.balanceOf(owner);
+          // console.log("securityTokenBalanceAfter",securityTokenBalanceAfter);
+          // console.log("securityTokenBalanceAfter",securityTokenBalanceAfter);
 
           expect(currentBalances[pool.bptIndex]).to.be.equal(0);
           expect(currentBalances[pool.securityIndex]).to.be.equal(0);
@@ -486,8 +508,8 @@ describe('PrimaryPool', function () {
           expect(currencyTokenBalanceAfter).to.be.equal(currencyTokenBalanceBefore.add(previousCurrencyBalance));
           expect(afterExitOwnerBalance).to.be.equal(beforeExitOwnerBalance.sub(MAX_UINT112));
         }); 
-      });
-    })
+    });
+  })
 
 
   describe('issueCutoffTime and price check', () => {
