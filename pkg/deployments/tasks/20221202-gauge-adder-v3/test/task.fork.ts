@@ -15,7 +15,7 @@ import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('GaugeAdderV3', 'mainnet', 15970880, function () {
+describeForkTest('GaugeAdderV3', 'mainnet', 16076200, function () {
   let factory: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
@@ -35,13 +35,13 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15970880, function () {
   const weightCap = fp(0.001);
 
   before('create timelock authorizer', async () => {
-    const timelockTask = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
+    const timelockTask = new Task('20221202-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
     await timelockTask.run({ force: true });
 
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
     migrator = await timelockTask.deployedInstance('TimelockAuthorizerMigrator');
 
-    const adaptorEntrypointTask = new Task('20221111-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY, 'mainnet');
+    const adaptorEntrypointTask = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY, 'mainnet');
     adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
   });
 
@@ -70,7 +70,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15970880, function () {
   });
 
   before('run Gauge Adder task', async () => {
-    task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221202-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     gaugeAdder = await task.deployedInstance('GaugeAdder');
   });
@@ -86,7 +86,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15970880, function () {
         'GaugeController',
         gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
       );
-      //augeController = await deployedAt('GaugeController', task.input().GaugeController);
+      // gaugeController = await deployedAt('GaugeController', task.input().GaugeController);
 
       // Ensure we can call functions on the gaugeController
       const controllerAdmin = await gaugeController.admin();
