@@ -514,29 +514,31 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         if (orders[_ref].order == Order.Sell) {               
             if (_bestBid != "") {
                 if(orders[_ref].tokenIn==IERC20(_security) && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN){
-                    require(Math.sub(orders[_ref].securityBalance, orders[_ref].qty)>=0, "Not enough security balance");
+                    require(orders[_ref].qty >= orders[_ref].securityBalance, "Not enough security balance");
                     if(orders[_bestBid].tokenIn==IERC20(_currency) && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                         securityTraded = Math.div(orders[_bestBid].qty, _bestBidPrice, false); // calculating amount of security that can be brought
                     }else if (orders[_bestBid].tokenOut==IERC20(_security) && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
                         securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                     }
-                    if(securityTraded >= orders[_ref].securityBalance){
-                        currencyTraded = Math.mul(Math.sub(securityTraded, orders[_ref].securityBalance), _bestBidPrice);
+                    if(securityTraded >= orders[_ref].qty){
+                        currencyTraded = Math.mul(orders[_ref].qty, _bestBidPrice);
                         orders[_bestBid].qty = orders[_bestBid].tokenIn==IERC20(_currency) ? 
-                                                Math.sub(orders[_bestBid].qty, currencyTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].securityBalance);
+                                                Math.sub(orders[_bestBid].qty, currencyTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
-                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, securityTraded, currencyTraded);
+                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, orders[_ref].qty, 
+                                        orders[_ref].tokenIn==IERC20(_security) ? securityTraded : currencyTraded);
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        currencyTraded = Math.mul(Math.sub(orders[_ref].securityBalance, securityTraded), _bestBidPrice);
-                        orders[_ref].qty = Math.sub(orders[_ref].qty, orders[_bestBid].qty);
+                        currencyTraded = Math.mul(securityTraded, _bestBidPrice);
+                        orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                         orders[_bestBid].qty = 0;
                         orders[_bestBid].status = OrderStatus.Filled;
                         orders[_ref].status = OrderStatus.PartlyFilled;
-                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, securityTraded, currencyTraded);
+                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, orders[_ref].qty, 
+                                        orders[_ref].tokenIn==IERC20(_security) ? securityTraded : currencyTraded);
                         reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                     }
                 }
@@ -546,23 +548,25 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }else if(orders[_bestBid].tokenIn==IERC20(_currency) && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                         currencyTraded = orders[_bestBid].qty; // amount of currency sent in (tokenIn) is already there
                     }
-                    if(currencyTraded >= orders[_bestBid].currencyBalance){
-                        securityTraded = Math.div(Math.sub(currencyTraded, orders[_bestBid].currencyBalance), _bestBidPrice, false);
-                        orders[_bestBid].qty = orders[_bestBid].tokenOut==IERC20(_security) && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT ? 
-                                                Math.sub(orders[_bestBid].qty, securityTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].currencyBalance);
+                    if(currencyTraded >= orders[_bestBid].qty){
+                        securityTraded = Math.div(currencyTraded, _bestBidPrice, false);
+                        orders[_bestBid].qty = orders[_bestBid].tokenOut==IERC20(_security) ? 
+                                                Math.sub(orders[_bestBid].qty, securityTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
-                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, securityTraded, currencyTraded);
+                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, orders[_ref].qty, 
+                                        orders[_ref].tokenIn==IERC20(_security) ? securityTraded : currencyTraded);
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        securityTraded = Math.div(Math.sub(orders[_ref].currencyBalance, currencyTraded), _bestBidPrice, false);
-                        orders[_ref].qty = Math.sub(orders[_bestBid].qty,orders[_ref].qty);
-                        orders[_ref].qty = 0;
-                        orders[_ref].status = OrderStatus.Filled;
-                        orders[_bestBid].status = OrderStatus.PartlyFilled;
-                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, securityTraded, currencyTraded);
+                        securityTraded = Math.div(currencyTraded, _bestBidPrice, false);
+                        orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
+                        orders[_bestBid].qty = 0;
+                        orders[_bestBid].status = OrderStatus.Filled;
+                        orders[_ref].status = OrderStatus.PartlyFilled;
+                        emit CallSwap(orders[_ref].tokenIn, orders[_ref].tokenOut, orders[_ref].qty, 
+                                        orders[_ref].tokenIn==IERC20(_security) ? securityTraded : currencyTraded);
                         reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                     }
                 }
