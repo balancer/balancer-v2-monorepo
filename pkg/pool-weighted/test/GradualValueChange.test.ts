@@ -136,16 +136,6 @@ describe('GradualValueChange', function () {
       }
     }
 
-    context('invalid mode', () => {
-      it('rejects invalid modes', async () => {
-        const invalidMode = ValueChangeMode.LINEAR_PERCENTAGE + 1;
-
-        await expect(mock.getInterpolatedValue(fp(0.1), fp(0.5), fp(0.5), invalidMode)).to.be.revertedWith(
-          'UNHANDLED_VALUE_CHANGE_MODE'
-        );
-      });
-    });
-
     describe('when startTime is before end time (standard case)', () => {
       const UPDATE_DURATION = DAY * 2;
 
