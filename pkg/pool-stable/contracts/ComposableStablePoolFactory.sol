@@ -60,25 +60,28 @@ contract ComposableStablePoolFactory is BasePoolFactory {
         address owner
     ) external returns (ComposableStablePool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
+
         return
             ComposableStablePool(
                 _create(
                     abi.encode(
-                        ComposableStablePool.NewPoolParams({
+                        IBasePool.BasePoolParams({
                             vault: getVault(),
-                            protocolFeeProvider: getProtocolFeePercentagesProvider(),
                             name: name,
                             symbol: symbol,
+                            pauseWindowDuration: pauseWindowDuration,
+                            bufferPeriodDuration: bufferPeriodDuration,
+                            owner: owner,
+                            version: getPoolVersion()
+                        }),
+                        ComposableStablePool.NewPoolParams({
+                            protocolFeeProvider: getProtocolFeePercentagesProvider(),
                             tokens: tokens,
                             rateProviders: rateProviders,
                             tokenRateCacheDurations: tokenRateCacheDurations,
                             exemptFromYieldProtocolFeeFlags: exemptFromYieldProtocolFeeFlags,
                             amplificationParameter: amplificationParameter,
-                            swapFeePercentage: swapFeePercentage,
-                            pauseWindowDuration: pauseWindowDuration,
-                            bufferPeriodDuration: bufferPeriodDuration,
-                            owner: owner,
-                            version: getPoolVersion()
+                            swapFeePercentage: swapFeePercentage
                         })
                     )
                 )

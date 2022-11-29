@@ -20,7 +20,8 @@ import "@balancer-labs/v2-pool-utils/contracts/test/MockFailureModes.sol";
 import "../ComposableStablePool.sol";
 
 contract MockComposableStablePool is ComposableStablePool, MockFailureModes {
-    constructor(NewPoolParams memory params) ComposableStablePool(params) {
+    constructor(BasePoolParams memory basePoolParams, NewPoolParams memory params)
+        ComposableStablePool(basePoolParams, params) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

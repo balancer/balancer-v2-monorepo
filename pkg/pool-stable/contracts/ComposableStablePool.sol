@@ -68,33 +68,18 @@ contract ComposableStablePool is
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
-        IVault vault;
         IProtocolFeePercentagesProvider protocolFeeProvider;
-        string name;
-        string symbol;
         IERC20[] tokens;
         IRateProvider[] rateProviders;
         uint256[] tokenRateCacheDurations;
         bool[] exemptFromYieldProtocolFeeFlags;
         uint256 amplificationParameter;
         uint256 swapFeePercentage;
-        uint256 pauseWindowDuration;
-        uint256 bufferPeriodDuration;
-        address owner;
-        string version;
     }
 
-    constructor(NewPoolParams memory params)
+    constructor(BasePoolParams memory basePoolParams, NewPoolParams memory params)
         BasePool(
-            BasePoolParams({
-                vault: params.vault,
-                name: params.name,
-                symbol: params.symbol,
-                pauseWindowDuration: params.pauseWindowDuration,
-                bufferPeriodDuration: params.bufferPeriodDuration,
-                owner: params.owner,
-                version: params.version
-            }),
+            basePoolParams,
             PoolRegistrationLib.PoolRegistrationParams({
                 specialization: IVault.PoolSpecialization.GENERAL,
                 tokens: _insertSorted(params.tokens, IERC20(this)),
