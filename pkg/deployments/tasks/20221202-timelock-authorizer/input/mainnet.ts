@@ -230,6 +230,27 @@ export const executeDelays: DelayData[] = [
     actionId: VotingEscrowDelegationProxy.actionId('VotingEscrowDelegationProxy', 'setDelegation(address)'),
     newDelay: 14 * DAY,
   },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addGaugeFactory(address,uint8)'),
+    newDelay: 14 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addEthereumGauge(address)'),
+    newDelay: 3 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addPolygonGauge(address)'),
+    newDelay: 3 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
+    newDelay: 3 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
+    newDelay: 3 * DAY,
+  }
+
 ];
 
 export const grantDelays: DelayData[] = [
