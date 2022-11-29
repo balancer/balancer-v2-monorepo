@@ -13,7 +13,7 @@ import { impersonate } from '../../../src/signers';
 
 // This block number is before the manual weekly checkpoint. This ensures gauges will actually be checkpointed.
 // This test verifies the checkpointer against the manual transactions for the given period.
-describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
+describeForkTest('L2GaugeCheckpointer', 'mainnet', 16076200, function () {
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
   let L2GaugeCheckpointer: Contract;
@@ -63,7 +63,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
   const gauges = new Map<GaugeType, GaugeData[]>();
 
   before('run task', async () => {
-    task = new Task('20221101-l2-gauge-checkpointer', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221202-l2-gauge-checkpointer', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     L2GaugeCheckpointer = await task.deployedInstance('L2GaugeCheckpointer');
   });
