@@ -59,7 +59,7 @@ contract ManagedPool is ManagedPoolSettings {
     IExternalWeightedMath private immutable _weightedMath;
 
     constructor(
-        NewPoolParams memory params,
+        ManagedPoolSettingsParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IExternalWeightedMath weightedMath,

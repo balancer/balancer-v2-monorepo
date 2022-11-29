@@ -50,7 +50,7 @@ contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
-    function create(ManagedPoolSettings.NewPoolParams memory poolParams, address owner)
+    function create(ManagedPoolSettings.ManagedPoolSettingsParams memory poolParams, address owner)
         external
         returns (address pool)
     {

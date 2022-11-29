@@ -20,7 +20,7 @@ import "../ExternalWeightedMath.sol";
 
 contract MockManagedPool is ManagedPool {
     constructor(
-        NewPoolParams memory params,
+        ManagedPoolSettingsParams memory params,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         ExternalWeightedMath weightedMath,
