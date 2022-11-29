@@ -195,7 +195,6 @@ const feesAndTargetsPermissions: RoleData[] = flatten([
   ]),
 ]);
 
-
 export const roles: RoleData[] = flatten([
   ...batchRelayerPermissions,
   ...lidoRelayerPermissions,
@@ -203,7 +202,6 @@ export const roles: RoleData[] = flatten([
   ...protocolFeesPermissions,
   ...veBALPermissions,
   ...feesAndTargetsPermissions,
-  ...emergencyPermissions,
 ]);
 
 export const granters: RoleData[] = flatten([
@@ -241,8 +239,7 @@ export const executeDelays: DelayData[] = [
   {
     actionId: GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
     newDelay: 3 * DAY,
-  }
-
+  },
 ];
 
 export const grantDelays: DelayData[] = [
