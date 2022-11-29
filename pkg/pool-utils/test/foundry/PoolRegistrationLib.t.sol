@@ -28,9 +28,11 @@ contract PoolRegistrationLibTest is Test {
 
         bytes32 poolId = PoolRegistrationLib.registerComposablePool(
             _vault,
-            IVault.PoolSpecialization.GENERAL,
-            tokens,
-            assetManagers
+            PoolRegistrationLib.PoolRegistrationParams({
+                specialization: IVault.PoolSpecialization.GENERAL,
+                tokens: tokens,
+                assetManagers: assetManagers
+            })
         );
 
         for (uint256 i = 0; i < tokenIds.length; i++) {

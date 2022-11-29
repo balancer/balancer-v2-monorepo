@@ -136,9 +136,11 @@ abstract contract LinearPool is ILinearPool, IGeneralPool, IRateProvider, NewBas
             basePoolParams,
             PoolRegistrationLib.registerComposablePool(
                 basePoolParams.vault,
-                IVault.PoolSpecialization.GENERAL,
-                _sortTokens(mainToken, wrappedToken),
-                assetManagers
+                PoolRegistrationLib.PoolRegistrationParams({
+                    specialization: IVault.PoolSpecialization.GENERAL,
+                    tokens: _sortTokens(mainToken, wrappedToken),
+                    assetManagers: assetManagers
+                })
             )
         )
     {
