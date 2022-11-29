@@ -195,15 +195,6 @@ const feesAndTargetsPermissions: RoleData[] = flatten([
   ]),
 ]);
 
-const emergencyPermissions: RoleData[] = flatten([
-  createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [
-    ComposableStablePool.actionId('ComposableStablePool', 'pause()'),
-    ComposableStablePool.actionId('ComposableStablePool', 'unpause()'),
-    WeightedPoolV2.actionId('WeightedPool', 'pause()'),
-    WeightedPoolV2.actionId('WeightedPool', 'unpause()'),
-  ]),
-]);
-
 export const roles: RoleData[] = flatten([
   ...batchRelayerPermissions,
   ...lidoRelayerPermissions,
@@ -211,7 +202,6 @@ export const roles: RoleData[] = flatten([
   ...protocolFeesPermissions,
   ...veBALPermissions,
   ...feesAndTargetsPermissions,
-  ...emergencyPermissions,
 ]);
 
 export const granters: RoleData[] = flatten([
@@ -229,6 +219,26 @@ export const executeDelays: DelayData[] = [
   {
     actionId: VotingEscrowDelegationProxy.actionId('VotingEscrowDelegationProxy', 'setDelegation(address)'),
     newDelay: 14 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addGaugeFactory(address,uint8)'),
+    newDelay: 14 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addEthereumGauge(address)'),
+    newDelay: 3 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addPolygonGauge(address)'),
+    newDelay: 3 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
+    newDelay: 3 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
+    newDelay: 3 * DAY,
   },
 ];
 
@@ -266,6 +276,14 @@ export const grantDelays: DelayData[] = [
     newDelay: 7 * DAY,
   },
   {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addGnosisGauge(address)'),
+    newDelay: 7 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addZKSyncGauge(address)'),
+    newDelay: 7 * DAY,
+  },
+  {
     actionId: GaugeAdder.actionId('GaugeAdder', 'addGaugeFactory(address,uint8)'),
     newDelay: 7 * DAY,
   },
@@ -300,14 +318,6 @@ export const grantDelays: DelayData[] = [
   },
   {
     actionId: Vault.actionId('Vault', 'manageUserBalance((uint8,address,uint256,address,address)[])'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: ComposableStablePool.actionId('ComposableStablePool', 'unpause()'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: WeightedPoolV2.actionId('WeightedPool', 'unpause()'),
     newDelay: 7 * DAY,
   },
 ];
