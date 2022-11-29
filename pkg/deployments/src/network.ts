@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import Task from './task';
 
 import { Network } from './types';
 
 const DEPLOYMENT_TXS_DIRECTORY = path.resolve(__dirname, '../deployment-txs');
+const CONTRACT_ADDRESSES_DIRECTORY = path.resolve(__dirname, '../addresses');
 
 export function saveContractDeploymentTransactionHash(
   deployedAddress: string,
@@ -38,4 +40,29 @@ export function getContractDeploymentTransactionHash(deployedAddress: string, ne
   }
 
   return txHash;
+}
+
+export function saveContractDeploymentAddresses(task: Task): void {
+  if (task.network === 'hardhat') return;
+
+  const newEntries = Object.fromEntries(
+    Object.entries(task.output({ ensure: false }))
+      .filter(([name]) => name !== 'timestamp')
+      .map(([name, address]) => [address, { task: task.id, name }])
+  );
+
+  const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${task.network}.json`);
+  const fileExists = fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+
+  // Load the existing content if any exists.
+  let newFileContents: Record<string, { task: string; name: string }> = fileExists
+    ? JSON.parse(fs.readFileSync(filePath).toString())
+    : {};
+  // Write the task's entries into the file..
+  newFileContents = {
+    ...newFileContents,
+    ...newEntries,
+  };
+
+  fs.writeFileSync(filePath, JSON.stringify(newFileContents, null, 2));
 }

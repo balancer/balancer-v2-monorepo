@@ -102,13 +102,12 @@ Returns an object with all contracts from a deployment and their addresses.
 | Batch Relayer V4                                        | [`20220916-batch-relayer-v4`](./tasks/20220916-batch-relayer-v4)                                     |
 | Managed Pool                                            | [`20221021-managed-pool`](./tasks/20221021-managed-pool)                                             |
 | Protocol Fee Splitter                                   | [`20221027-fee-splitter`](./tasks/20221027-fee-splitter)                                             |
-| Authorizer Adaptor entrypoint                           | [`20221111-authorizer-adaptor-entrypoint`](./tasks/20221111-authorizer-adaptor-entrypoint)           |
-| Timelock Authorizer, governance contract                | [`20221111-timelock-authorizer`](./tasks/20221111-timelock-authorizer)                               |
-| Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20221111-gauge-adder-v3`](./tasks/20221111-gauge-adder-v3)                                         |
-| L2 Gauge Checkpointer                                   | [`20221111-l2-gauge-checkpointer`](./tasks/20221111-l2-gauge-checkpointer)                           |
 | Linear Pools for Aave aTokens with built-in rebalancing | [`20221115-aave-rebalanced-linear-pool`](./tasks/20221115-aave-rebalanced-linear-pool)               |
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
+| Timelock Authorizer, governance contract                | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
+| Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20221202-gauge-adder-v3`](./tasks/20221202-gauge-adder-v3)                                         |
+| L2 Gauge Checkpointer                                   | [`20221202-l2-gauge-checkpointer`](./tasks/20221202-l2-gauge-checkpointer)
 
 ## Scripts
 
