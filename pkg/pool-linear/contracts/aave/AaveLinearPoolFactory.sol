@@ -136,8 +136,7 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        AaveLinearPool.ConstructorArgs memory args;
-        args.basePoolParams = IBasePool.BasePoolParams({
+        IBasePool.BasePoolParams memory basePoolParams = IBasePool.BasePoolParams({
             vault: getVault(),
             name: name,
             symbol: symbol,
@@ -146,13 +145,16 @@ contract AaveLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Reen
             owner: owner,
             version: getPoolVersion()
         });
-        args.mainToken = mainToken;
-        args.wrappedToken = wrappedToken;
-        args.assetManager = deploymentParams.expectedRebalancerAddress;
-        args.upperTarget = upperTarget;
-        args.swapFeePercentage = swapFeePercentage;
 
-        AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));
+        AaveLinearPool.ConstructorArgs memory args = AaveLinearPool.ConstructorArgs({
+            mainToken: mainToken,
+            wrappedToken: wrappedToken,
+            assetManager: deploymentParams.expectedRebalancerAddress,
+            upperTarget: upperTarget,
+            swapFeePercentage: swapFeePercentage
+        });
+
+        AaveLinearPool pool = AaveLinearPool(_create(abi.encode(basePoolParams, args)));
 
         // LinearPools have a separate post-construction initialization step: we perform it here to
         // ensure deployment and initialization are atomic.

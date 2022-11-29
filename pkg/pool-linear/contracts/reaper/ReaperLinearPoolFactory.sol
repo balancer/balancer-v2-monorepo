@@ -104,16 +104,17 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
+        IBasePool.BasePoolParams memory basePoolParams = IBasePool.BasePoolParams({
+            vault: getVault(),
+            name: name,
+            symbol: symbol,
+            pauseWindowDuration: pauseWindowDuration,
+            bufferPeriodDuration: bufferPeriodDuration,
+            owner: owner,
+            version: getPoolVersion()
+        });
+
         ReaperLinearPool.ConstructorArgs memory args = ReaperLinearPool.ConstructorArgs({
-            basePoolParams: IBasePool.BasePoolParams({
-                vault: getVault(),
-                name: name,
-                symbol: symbol,
-                pauseWindowDuration: pauseWindowDuration,
-                bufferPeriodDuration: bufferPeriodDuration,
-                owner: owner,
-                version: getPoolVersion()
-            }),
             mainToken: mainToken,
             wrappedToken: wrappedToken,
             assetManager: deploymentParams.expectedRebalancerAddress,
@@ -121,7 +122,7 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
             swapFeePercentage: swapFeePercentage
         });
 
-        ReaperLinearPool pool = ReaperLinearPool(_create(abi.encode(args)));
+        ReaperLinearPool pool = ReaperLinearPool(_create(abi.encode(basePoolParams, args)));
 
         // LinearPools have a separate post-construction initialization step: we perform it here to
         // ensure deployment and initialization are atomic.
