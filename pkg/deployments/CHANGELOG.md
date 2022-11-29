@@ -9,6 +9,7 @@
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
 - Deployed `AaveLinearPoolFactory` to all networks.
 - Deployed `PoolRecoveryHelper` to all networks.
+- Deployed `TimelockAuthorizer` to all networks.
 
 ### Deprecations
 
