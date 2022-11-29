@@ -81,9 +81,23 @@ contract ManagedPool is ManagedPoolSettings {
             bufferPeriodDuration,
             owner
         )
-        ManagedPoolSettings(params, protocolFeeProvider)
+        ManagedPoolSettings(_extractSettings(params), protocolFeeProvider)
     {
         _weightedMath = weightedMath;
+    }
+
+    function _extractSettings(NewPoolParams memory params) private pure returns (PoolSettings memory) {
+        return PoolSettings({ 
+            tokens: params.tokens,
+            normalizedWeights: params.normalizedWeights,
+            assetManagers: params.assetManagers,
+            swapFeePercentage: params.swapFeePercentage,
+            swapEnabledOnStart: params.swapEnabledOnStart,
+            mustAllowlistLPs: params.mustAllowlistLPs,
+            managementAumFeePercentage: params.managementAumFeePercentage,
+            aumFeeId: params.aumFeeId,
+            version: params.version
+        });
     }
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {

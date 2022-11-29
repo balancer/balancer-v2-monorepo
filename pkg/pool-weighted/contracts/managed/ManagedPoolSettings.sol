@@ -17,6 +17,7 @@ pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IManagedPool.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
@@ -41,7 +42,7 @@ import "./ManagedPoolAddRemoveTokenLib.sol";
 /**
  * @title Managed Pool Settings
  */
-abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManagedPool {
+abstract contract ManagedPoolSettings is IVersion, NewBasePool, ProtocolFeeCache, IManagedPool {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -91,6 +92,8 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // If mustAllowlistLPs is enabled, this is the list of addresses allowed to join the pool
     mapping(address => bool) private _allowedAddresses;
 
+    string private _version;
+
     struct NewPoolParams {
         string name;
         string symbol;
@@ -102,14 +105,29 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         bool mustAllowlistLPs;
         uint256 managementAumFeePercentage;
         uint256 aumFeeId;
+        string version;
     }
 
-    constructor(NewPoolParams memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
+    struct PoolSettings {
+        IERC20[] tokens;
+        uint256[] normalizedWeights;
+        address[] assetManagers;
+        uint256 swapFeePercentage;
+        bool swapEnabledOnStart;
+        bool mustAllowlistLPs;
+        uint256 managementAumFeePercentage;
+        uint256 aumFeeId;
+        string version;
+    }
+
+    constructor(PoolSettings memory params, IProtocolFeePercentagesProvider protocolFeeProvider)
         ProtocolFeeCache(
             protocolFeeProvider,
             ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: params.aumFeeId })
         )
     {
+        _version = params.version;
+
         uint256 totalTokens = params.tokens.length;
         _require(totalTokens >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(totalTokens <= _MAX_TOKENS, Errors.MAX_TOKENS);
@@ -147,6 +165,10 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
+    }
+
+    function version() public view override returns (string memory) {
+        return _version;
     }
 
     function _getPoolState() internal view returns (bytes32) {
