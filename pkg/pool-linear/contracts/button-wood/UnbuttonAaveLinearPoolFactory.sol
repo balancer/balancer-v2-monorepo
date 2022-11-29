@@ -46,17 +46,19 @@ contract UnbuttonAaveLinearPoolFactory is BasePoolFactory, FactoryWidePauseWindo
         LinearPool pool = UnbuttonAaveLinearPool(
             _create(
                 abi.encode(
-                    getVault(),
-                    name,
-                    symbol,
+                    IBasePool.BasePoolParams({
+                        vault: getVault(),
+                        name: name,
+                        symbol: symbol,
+                        pauseWindowDuration: pauseWindowDuration,
+                        bufferPeriodDuration: bufferPeriodDuration,
+                        owner: owner,
+                        version: getPoolVersion()
+                    }),
                     mainToken,
                     wrappedToken,
                     upperTarget,
-                    swapFeePercentage,
-                    pauseWindowDuration,
-                    bufferPeriodDuration,
-                    owner,
-                    getPoolVersion()
+                    swapFeePercentage
                 )
             )
         );

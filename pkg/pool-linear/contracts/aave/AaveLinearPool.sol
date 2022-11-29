@@ -25,7 +25,6 @@ contract AaveLinearPool is LinearPool {
     ILendingPool private immutable _lendingPool;
 
     struct ConstructorArgs {
-        BasePoolParams basePoolParams;
         IERC20 mainToken;
         IERC20 wrappedToken;
         address assetManager;
@@ -33,9 +32,9 @@ contract AaveLinearPool is LinearPool {
         uint256 swapFeePercentage;
     }
 
-    constructor(ConstructorArgs memory args)
+    constructor(BasePoolParams memory basePoolParams, ConstructorArgs memory args)
         LinearPool(
-            args.basePoolParams,
+            basePoolParams,
             args.mainToken,
             args.wrappedToken,
             args.upperTarget,
