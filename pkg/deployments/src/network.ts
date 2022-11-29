@@ -46,9 +46,7 @@ export function saveContractDeploymentAddresses(task: Task): void {
   if (task.network === 'hardhat') return;
 
   const newEntries = Object.fromEntries(
-    Object.entries(task.output({ ensure: false }))
-      .filter(([name]) => name !== 'timestamp')
-      .map(([name, address]) => [address, { task: task.id, name }])
+    Object.entries(task.output({ ensure: false })).map(([name, address]) => [address, { task: task.id, name }])
   );
 
   const filePath = path.join(CONTRACT_ADDRESSES_DIRECTORY, `${task.network}.json`);
