@@ -12,7 +12,7 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { FundManagement, SingleSwap } from '@balancer-labs/balancer-js/src';
 
-describe('TetuLinearPool', function() {
+describe('TetuLinearPool', function () {
   let poolFactory: Contract;
   let lp: SignerWithAddress, owner: SignerWithAddress;
   let vault: Vault;
