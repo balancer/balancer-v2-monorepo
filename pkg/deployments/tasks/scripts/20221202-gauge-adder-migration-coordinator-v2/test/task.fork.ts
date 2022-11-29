@@ -11,7 +11,7 @@ import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15970880, function () {
+describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16076200, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
@@ -28,11 +28,11 @@ describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 15970880, function
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
-    const gaugeAdderV3Task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
+    const gaugeAdderV3Task = new Task('20221202-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
     await gaugeAdderV3Task.run({ force: true });
     newGaugeAdder = await gaugeAdderV3Task.deployedInstance('GaugeAdder');
 
-    task = new Task('20221111-gauge-adder-migration-coordinator-v2', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221202-gauge-adder-migration-coordinator-v2', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true, extra: newGaugeAdder.address });
     coordinator = await task.deployedInstance('GaugeAdderMigrationCoordinator');
   });

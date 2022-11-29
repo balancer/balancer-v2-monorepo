@@ -9,7 +9,7 @@ export type GaugeAdderMigrationCoordinatorDeployment = {
   GaugeCheckpointingMultisig: string;
 };
 
-const AuthorizerAdaptorEntrypoint = new Task('20221111-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
+const AuthorizerAdaptorEntrypoint = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
 const OldGaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY);
 
 const ArbitrumRootGaugeFactory = new Task('20220413-arbitrum-root-gauge-factory', TaskMode.READ_ONLY);
