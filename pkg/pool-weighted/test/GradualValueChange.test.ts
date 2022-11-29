@@ -1,9 +1,10 @@
 import { BigNumber, Contract } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, fpDiv, FP_ONE, FP_ZERO } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime, advanceToTimestamp, currentTimestamp, DAY, MINUTE } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
+import { ValueChangeMode } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 
 const MAX_RELATIVE_ERROR = 0.0005;
 
@@ -51,9 +52,10 @@ describe('GradualValueChange', function () {
   });
 
   describe('getInterpolatedValue', () => {
-    function itInterpolatesValuesCorrectly(updateDuration: number) {
+    function itInterpolatesValuesCorrectly(updateDuration: number, mode: number) {
       const numValues = 20;
-      const startValues = Array.from({ length: numValues }).map((_, i) => fp(i / numValues));
+      const startValues = Array.from({ length: numValues }).map((_, i) => fp(i / numValues + 10));
+
       const endValues = startValues.map((value, i) => {
         if (i % 2 == 0) {
           return value.add(fp(0.02));
@@ -61,8 +63,18 @@ describe('GradualValueChange', function () {
         return value.sub(fp(0.02));
       });
 
-      let now, startTime: BigNumber, endTime: BigNumber;
+      let now: BigNumber, startTime: BigNumber, endTime: BigNumber;
       const START_DELAY = MINUTE * 10;
+
+      function getPctProgress(now: BigNumber, startTime: BigNumber, endTime: BigNumber) {
+        if (now <= startTime) {
+          return FP_ZERO;
+        } else if (now >= endTime) {
+          return FP_ONE;
+        }
+
+        return fpDiv(now.sub(startTime), endTime.sub(startTime));
+      }
 
       sharedBeforeEach('updateWeightsGradually', async () => {
         now = await currentTimestamp();
@@ -72,7 +84,9 @@ describe('GradualValueChange', function () {
 
       it('gets start weights if called before the start time', async () => {
         for (let i = 0; i < numValues; i++) {
-          const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], startTime, endTime);
+          const pctProgress = getPctProgress(now, startTime, endTime);
+
+          const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], pctProgress, mode);
 
           expect(interpolatedWeight).to.equal(startValues[i]);
         }
@@ -80,8 +94,10 @@ describe('GradualValueChange', function () {
 
       it('gets end weights if called after the end time', async () => {
         await advanceToTimestamp(endTime.add(MINUTE));
+        const pctProgress = getPctProgress(await currentTimestamp(), startTime, endTime);
+
         for (let i = 0; i < numValues; i++) {
-          const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], startTime, endTime);
+          const interpolatedWeight = await mock.getInterpolatedValue(startValues[i], endValues[i], pctProgress, mode);
 
           expect(interpolatedWeight).to.equal(endValues[i]);
         }
@@ -103,12 +119,14 @@ describe('GradualValueChange', function () {
           it(`gets correct intermediate weight if called ${pct}% through`, async () => {
             await advanceTime(START_DELAY + (updateDuration * pct) / 100);
 
+            const pctProgress = getPctProgress(await currentTimestamp(), startTime, endTime);
+
             for (let i = 0; i < numValues; i++) {
               const interpolatedWeight = await mock.getInterpolatedValue(
                 startValues[i],
                 endValues[i],
-                startTime,
-                endTime
+                pctProgress,
+                mode
               );
               const expectedInterpolatedWeight = getIntermediateWeight(startValues[i], endValues[i], pct);
               expect(interpolatedWeight).to.equalWithError(expectedInterpolatedWeight, MAX_RELATIVE_ERROR);
@@ -118,16 +136,38 @@ describe('GradualValueChange', function () {
       }
     }
 
-    context('when startTime is before end time (standard case)', () => {
-      const UPDATE_DURATION = DAY * 2;
+    context('invalid mode', () => {
+      it('rejects invalid modes', async () => {
+        const invalidMode = ValueChangeMode.LINEAR_PERCENTAGE + 1;
 
-      itInterpolatesValuesCorrectly(UPDATE_DURATION);
+        await expect(mock.getInterpolatedValue(fp(0.1), fp(0.5), fp(0.5), invalidMode)).to.be.revertedWith(
+          'UNHANDLED_VALUE_CHANGE_MODE'
+        );
+      });
     });
 
-    context('when startTime is equal to endTime (degenerate case)', () => {
+    describe('when startTime is before end time (standard case)', () => {
+      const UPDATE_DURATION = DAY * 2;
+
+      context('linear time mode', () => {
+        itInterpolatesValuesCorrectly(UPDATE_DURATION, ValueChangeMode.LINEAR_TIME);
+      });
+
+      context('linear percentage mode', () => {
+        itInterpolatesValuesCorrectly(UPDATE_DURATION, ValueChangeMode.LINEAR_PERCENTAGE);
+      });
+    });
+
+    describe('when startTime is equal to endTime (degenerate case)', () => {
       const UPDATE_DURATION = 0;
 
-      itInterpolatesValuesCorrectly(UPDATE_DURATION);
+      context('linear time mode', () => {
+        itInterpolatesValuesCorrectly(UPDATE_DURATION, ValueChangeMode.LINEAR_TIME);
+      });
+
+      context('linear percentage mode', () => {
+        itInterpolatesValuesCorrectly(UPDATE_DURATION, ValueChangeMode.LINEAR_PERCENTAGE);
+      });
     });
   });
 });

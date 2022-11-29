@@ -12,5 +12,5 @@ Deployment of a new version of `StablePoolFactory` corresponding to the [Phase I
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
-- [`StablePool` ABI](./abi/StablePool.json)
-- [`StablePoolFactory` ABI](./abi/StablePoolFactory.json)
+- [`StablePool` artifact](./artifact/StablePool.json)
+- [`StablePoolFactory` artifact](./artifact/StablePoolFactory.json)

@@ -113,8 +113,9 @@ library ManagedPoolStorageLib {
             uint256 endSwapFeePercentage
         ) = getSwapFeeFields(poolState);
 
-        return
-            GradualValueChange.getInterpolatedValue(startSwapFeePercentage, endSwapFeePercentage, startTime, endTime);
+        uint256 pctProgress = GradualValueChange.calculateValueChangeProgress(startTime, endTime);
+
+        return GradualValueChange.interpolateValue(startSwapFeePercentage, endSwapFeePercentage, pctProgress);
     }
 
     /**

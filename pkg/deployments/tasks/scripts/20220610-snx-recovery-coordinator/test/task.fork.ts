@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 
 import { defaultAbiCoder } from '@ethersproject/abi';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 import { describeForkTest } from '../../../../src/forkTests';
@@ -60,7 +59,7 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
   });
 
   before('grant permissions', async () => {
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
 
     const protocolFeeWithdrawerTask = new Task(
       '20220517-protocol-fee-withdrawer',
@@ -84,7 +83,7 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
     const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
-    const whale = await impersonate(BTC_STABLE_POOL_WHALE, fp(100));
+    const whale = await impersonate(BTC_STABLE_POOL_WHALE);
     await expect(
       vault.connect(whale).exitPool(BTC_STABLE_POOL_ID, BTC_STABLE_POOL_WHALE, BTC_STABLE_POOL_WHALE, {
         assets: [wBTC, renBTC, sBTC],
@@ -103,7 +102,7 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', SNX_WEIGHTED_POOL_ADDRESS);
 
-    const whale = await impersonate(SNX_WEIGHTED_POOL_WHALE, fp(100));
+    const whale = await impersonate(SNX_WEIGHTED_POOL_WHALE);
     await expect(
       vault.connect(whale).exitPool(SNX_WEIGHTED_POOL_ID, SNX_WEIGHTED_POOL_WHALE, SNX_WEIGHTED_POOL_WHALE, {
         assets: [SNX, WETH],
@@ -151,7 +150,7 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', BTC_STABLE_POOL_ADDRESS);
     const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
-    const whale = await impersonate(BTC_STABLE_POOL_WHALE, fp(100));
+    const whale = await impersonate(BTC_STABLE_POOL_WHALE);
     await vault.connect(whale).exitPool(BTC_STABLE_POOL_ID, BTC_STABLE_POOL_WHALE, BTC_STABLE_POOL_WHALE, {
       assets: [wBTC, renBTC, sBTC],
       minAmountsOut: [0, 0, 0],
@@ -168,7 +167,7 @@ describeForkTest('SNXRecoveryCoordinator', 'mainnet', 14945041, function () {
     const testBALTokenTask = new Task('20220325-test-balancer-token', TaskMode.READ_ONLY, getForkedNetwork(hre));
     const poolContract = await testBALTokenTask.instanceAt('TestBalancerToken', SNX_WEIGHTED_POOL_ADDRESS);
 
-    const whale = await impersonate(SNX_WEIGHTED_POOL_WHALE, fp(100));
+    const whale = await impersonate(SNX_WEIGHTED_POOL_WHALE);
     await vault.connect(whale).exitPool(SNX_WEIGHTED_POOL_ID, SNX_WEIGHTED_POOL_WHALE, SNX_WEIGHTED_POOL_WHALE, {
       assets: [SNX, WETH],
       minAmountsOut: [0, 0],

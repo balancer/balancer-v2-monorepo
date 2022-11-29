@@ -24,7 +24,7 @@ export type RawWeightedPoolDeployment = {
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
-  weightChangeMode?: WeightChangeMode;
+  weightChangeMode?: ValueChangeMode;
   mustAllowlistLPs?: boolean;
   managementAumFeePercentage?: BigNumberish;
   aumProtocolFeesCollector?: string;
@@ -48,7 +48,7 @@ export type WeightedPoolDeployment = {
   bufferPeriodDuration: BigNumberish;
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
-  weightChangeMode: WeightChangeMode;
+  weightChangeMode: ValueChangeMode;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
@@ -227,7 +227,7 @@ export type CircuitBreakerState = {
   upperBptPriceBound: BigNumber;
 };
 
-export enum WeightChangeMode {
-  EQUAL_WEIGHT_CHANGE = 0,
-  EQUAL_PRICE_PERCENTAGE_CHANGE,
+export enum ValueChangeMode {
+  LINEAR_TIME = 0,
+  LINEAR_PERCENTAGE,
 }

@@ -15,5 +15,6 @@ This directory the reports of audits performed on Balancer smart contracts by di
 | MultiRewards, Stable Pool         | OpenZeppelin  | [`2021-10-09`](./openzeppelin/2021-10-09.pdf)  |
 | Linear Pool, Stable Phantom Pool  | Trail Of Bits | [`2021-12-22`](./trail-of-bits/2021-12-22.pdf) |
 | Timelock Authorizer               | ABDK          | [`2022-04-15`](./abdk/2022-04-15.pdf)          |
-| Batch Relayer                     | Trail Of Bits | [`2022-05-23`](./trail-of-bits/2022-05-23.pdf) |
+| Batch Relayer                     | Trail Of Bits | [`2022-06-22`](./trail-of-bits/2022-06-22.pdf) |
+| Composable Stable Pool            | Certora       | [`2022-09-01`](./certora/2022-09-01.pdf)       |
 | Composable Stable Pool            | Trail Of Bits | [`2022-09-22`](./trail-of-bits/2022-09-22.pdf) |

@@ -123,6 +123,7 @@ library Errors {
     uint256 internal constant UNSORTED_TOKENS = 102;
     uint256 internal constant INPUT_LENGTH_MISMATCH = 103;
     uint256 internal constant ZERO_TOKEN = 104;
+    uint256 internal constant INSUFFICIENT_DATA = 105;
 
     // Shared pools
     uint256 internal constant MIN_TOKENS = 200;
@@ -196,7 +197,7 @@ library Errors {
     uint256 internal constant ADD_OR_REMOVE_BPT = 354;
     uint256 internal constant INVALID_CIRCUIT_BREAKER_BOUNDS = 355;
     uint256 internal constant CIRCUIT_BREAKER_TRIPPED = 356;
-    uint256 internal constant UNHANDLED_WEIGHT_CHANGE_MODE = 357;
+    uint256 internal constant MALICIOUS_QUERY_REVERT = 357;
 
     // Lib
     uint256 internal constant REENTRANCY = 400;
@@ -244,6 +245,7 @@ library Errors {
     uint256 internal constant SAFE_CAST_VALUE_CANT_FIT_UINT64 = 442;
     uint256 internal constant UNHANDLED_FEE_TYPE = 443;
     uint256 internal constant BURN_FROM_ZERO = 444;
+    uint256 internal constant UNHANDLED_VALUE_CHANGE_MODE = 445;
 
     // Vault
     uint256 internal constant INVALID_POOL_ID = 500;

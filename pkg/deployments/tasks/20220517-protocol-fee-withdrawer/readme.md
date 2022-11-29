@@ -10,4 +10,4 @@ See [the Double Entrypoint Fix Relayer](../20220513-double-entrypoint-fix-relaye
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
 - [Optimism addresses](./output/optimism.json)
-- [`ProtocolFeesWithdrawer` ABI](./abi/ProtocolFeesWithdrawer.json)
+- [`ProtocolFeesWithdrawer` artifact](./artifact/ProtocolFeesWithdrawer.json)

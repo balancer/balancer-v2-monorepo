@@ -6,11 +6,10 @@ import { decimal, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { MINUTE, advanceTime, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { range } from 'lodash';
-import { WeightChangeMode, WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
+import { ValueChangeMode, WeightedPoolType } from '../../../pvt/helpers/src/models/pools/weighted/types';
 import { itBehavesAsWeightedPool } from './BaseWeightedPool.behavior';
 
 describe('LiquidityBootstrappingPool', function () {
@@ -340,7 +339,7 @@ describe('LiquidityBootstrappingPool', function () {
         weights,
         owner: owner.address,
         poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
-        weightChangeMode: WeightChangeMode.EQUAL_WEIGHT_CHANGE,
+        weightChangeMode: ValueChangeMode.LINEAR_TIME,
         swapEnabledOnStart: true,
       };
       pool = await WeightedPool.create(params);
@@ -501,7 +500,7 @@ describe('LiquidityBootstrappingPool', function () {
         weights,
         owner: owner.address,
         poolType: WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL,
-        weightChangeMode: WeightChangeMode.EQUAL_PRICE_PERCENTAGE_CHANGE,
+        weightChangeMode: ValueChangeMode.LINEAR_PERCENTAGE,
         swapEnabledOnStart: true,
       };
       pool = await WeightedPool.create(params);
@@ -647,12 +646,10 @@ describe('LiquidityBootstrappingPool', function () {
           await advanceTime(delayPlusSeconds);
 
           const expectedWeights = getEndWeights(bn(seconds), totalSeconds);
-          const expectedNormalizedWeights = toNormalizedWeights(expectedWeights);
-
           const normalizedWeights = await pool.getNormalizedWeights();
 
           // Need to decrease precision
-          expect(normalizedWeights).to.equalWithError(expectedNormalizedWeights, 0.005);
+          expect(normalizedWeights).to.equalWithError(expectedWeights, 0.005);
         });
       }
     });

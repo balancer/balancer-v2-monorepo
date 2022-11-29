@@ -12,25 +12,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+pragma solidity ^0.7.0;
+
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-
-pragma solidity ^0.7.0;
 
 // solhint-disable not-rely-on-time
 
 library GradualValueChange {
     using FixedPoint for uint256;
 
+    enum ValueChangeMode { LINEAR_TIME, LINEAR_PERCENTAGE }
+
     function getInterpolatedValue(
         uint256 startValue,
         uint256 endValue,
-        uint256 startTime,
-        uint256 endTime
-    ) internal view returns (uint256) {
-        uint256 pctProgress = calculateValueChangeProgress(startTime, endTime);
+        uint256 pctProgress,
+        ValueChangeMode mode
+    ) internal pure returns (uint256) {
+        if (pctProgress >= FixedPoint.ONE || startValue == endValue) return endValue;
+        if (pctProgress == 0) return startValue;
 
-        return interpolateValue(startValue, endValue, pctProgress);
+        if (mode == ValueChangeMode.LINEAR_TIME) {
+            return interpolateValue(startValue, endValue, pctProgress);
+        } else if (mode == ValueChangeMode.LINEAR_PERCENTAGE) {
+            return interpolateLinearPercentageValue(startValue, endValue, pctProgress);
+        }
+
+        _revert(Errors.UNHANDLED_VALUE_CHANGE_MODE);
     }
 
     function resolveStartTime(uint256 startTime, uint256 endTime) internal view returns (uint256 resolvedStartTime) {
@@ -47,9 +56,6 @@ library GradualValueChange {
         uint256 endValue,
         uint256 pctProgress
     ) internal pure returns (uint256) {
-        if (pctProgress >= FixedPoint.ONE || startValue == endValue) return endValue;
-        if (pctProgress == 0) return startValue;
-
         if (startValue > endValue) {
             uint256 delta = pctProgress.mulDown(startValue - endValue);
             return startValue - delta;
@@ -57,6 +63,18 @@ library GradualValueChange {
             uint256 delta = pctProgress.mulDown(endValue - startValue);
             return startValue + delta;
         }
+    }
+
+    // Assumes the startValue is non-zero (e.g., a token weight)
+    function interpolateLinearPercentageValue(
+        uint256 startValue,
+        uint256 endValue,
+        uint256 pctProgress
+    ) internal pure returns (uint256) {
+        uint256 base = endValue.divDown(startValue);
+        uint256 power = base.powDown(pctProgress);
+
+        return startValue.mulDown(power);
     }
 
     /**

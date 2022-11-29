@@ -15,7 +15,7 @@ import {
   WeightedPoolDeployment,
   WeightedPoolType,
   BasePoolRights,
-  WeightChangeMode,
+  ValueChangeMode,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -84,7 +84,7 @@ export default {
     if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
     if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
-    if (!weightChangeMode) weightChangeMode = WeightChangeMode.EQUAL_WEIGHT_CHANGE;
+    if (!weightChangeMode) weightChangeMode = ValueChangeMode.LINEAR_TIME;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
     return {
