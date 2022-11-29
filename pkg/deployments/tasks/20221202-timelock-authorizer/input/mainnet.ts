@@ -287,6 +287,14 @@ export const grantDelays: DelayData[] = [
     newDelay: 7 * DAY,
   },
   {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addGnosisGauge(address)'),
+    newDelay: 7 * DAY,
+  },
+  {
+    actionId: GaugeAdder.actionId('GaugeAdder', 'addZKSyncGauge(address)'),
+    newDelay: 7 * DAY,
+  },
+  {
     actionId: GaugeAdder.actionId('GaugeAdder', 'addGaugeFactory(address,uint8)'),
     newDelay: 7 * DAY,
   },
