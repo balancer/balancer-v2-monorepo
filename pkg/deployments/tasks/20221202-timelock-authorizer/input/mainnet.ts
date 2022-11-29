@@ -195,14 +195,6 @@ const feesAndTargetsPermissions: RoleData[] = flatten([
   ]),
 ]);
 
-const emergencyPermissions: RoleData[] = flatten([
-  createRoleData(EMERGENCY_SUBDAO_MULTISIG, EVERYWHERE, [
-    ComposableStablePool.actionId('ComposableStablePool', 'pause()'),
-    ComposableStablePool.actionId('ComposableStablePool', 'unpause()'),
-    WeightedPoolV2.actionId('WeightedPool', 'pause()'),
-    WeightedPoolV2.actionId('WeightedPool', 'unpause()'),
-  ]),
-]);
 
 export const roles: RoleData[] = flatten([
   ...batchRelayerPermissions,
