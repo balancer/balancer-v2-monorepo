@@ -1,4 +1,4 @@
-# 2022-11-11 - GaugeAdder V3
+# 2022-12-02 - GaugeAdder V3
 
 Deployment of the new `GaugeAdder`, a helper contract which helps prevent some forms of improper configuration on the `GaugeController`. This version adds support for the
 Authorizer Adapter Entrypoint.

@@ -14,7 +14,7 @@ import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { TimelockAuthorizerDeployment } from '../input';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describeForkTest('TimelockAuthorizer', 'mainnet', 15970880, function () {
+describeForkTest('TimelockAuthorizer', 'mainnet', 16076200, function () {
   let input: TimelockAuthorizerDeployment;
   let migrator: Contract, vault: Contract, newAuthorizer: Contract, oldAuthorizer: Contract;
   let root: SignerWithAddress;
@@ -22,7 +22,7 @@ describeForkTest('TimelockAuthorizer', 'mainnet', 15970880, function () {
   let task: Task;
 
   before('run task', async () => {
-    task = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221202-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     input = task.input() as TimelockAuthorizerDeployment;
     migrator = await task.deployedInstance('TimelockAuthorizerMigrator');

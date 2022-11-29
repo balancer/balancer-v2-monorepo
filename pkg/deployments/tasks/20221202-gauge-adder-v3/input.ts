@@ -8,7 +8,7 @@ export type GaugeAdderDeployment = {
 
 const GaugeAdder = new Task('20220628-gauge-adder-v2', TaskMode.READ_ONLY);
 const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
-const AuthorizerAdaptorEntrypoint = new Task('20221111-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
+const AuthorizerAdaptorEntrypoint = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
 
 export default {
   AuthorizerAdaptorEntrypoint,
