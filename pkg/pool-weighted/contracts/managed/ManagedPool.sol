@@ -67,9 +67,11 @@ contract ManagedPool is ManagedPoolSettings {
             basePoolParams,
             PoolRegistrationLib.registerComposablePool(
                 basePoolParams.vault,
-                IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                params.tokens,
-                params.assetManagers
+                PoolRegistrationLib.PoolRegistrationParams({
+                    specialization: IVault.PoolSpecialization.GENERAL,
+                    tokens: params.tokens,
+                    assetManagers: params.assetManagers
+                })
             )
         )
         ManagedPoolSettings(params)

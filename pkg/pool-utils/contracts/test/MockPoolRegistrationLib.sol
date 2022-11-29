@@ -47,7 +47,14 @@ contract MockPoolRegistrationLib {
         IERC20[] memory tokens,
         address[] memory assetManagers
     ) external returns (bytes32) {
-        return PoolRegistrationLib.registerComposablePool(vault, specialization, tokens, assetManagers);
+        return PoolRegistrationLib.registerComposablePool(
+            vault,
+            PoolRegistrationLib.PoolRegistrationParams({
+                specialization: specialization,
+                tokens: tokens,
+                assetManagers: assetManagers
+            })
+        );
     }
 
     function registerToken(

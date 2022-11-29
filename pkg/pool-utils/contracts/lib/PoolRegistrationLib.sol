@@ -42,49 +42,47 @@ library PoolRegistrationLib {
 
     function registerPoolWithAssetManagers(
         IVault vault,
-        PoolRegistrationParams memory registrationParams
+        PoolRegistrationParams memory params
     ) internal returns (bytes32) {
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
         //
         // Note that for Pools which can register and deregister tokens after deployment, this property may not hold
         // as tokens which are added to the Pool after deployment are always added to the end of the array.
-        InputHelpers.ensureArrayIsSorted(registrationParams.tokens);
+        InputHelpers.ensureArrayIsSorted(params.tokens);
 
-        return _registerPool(vault, registrationParams.specialization, registrationParams.tokens, registrationParams.assetManagers);
+        return _registerPool(vault, params.specialization, params.tokens, params.assetManagers);
     }
 
     function registerComposablePool(
         IVault vault,
-        IVault.PoolSpecialization specialization,
-        IERC20[] memory tokens,
-        address[] memory assetManagers
+        PoolRegistrationParams memory params
     ) internal returns (bytes32) {
         // The Vault only requires the token list to be ordered for the Two Token Pools specialization. However,
         // to make the developer experience consistent, we are requiring this condition for all the native pools.
         //
         // Note that for Pools which can register and deregister tokens after deployment, this property may not hold
         // as tokens which are added to the Pool after deployment are always added to the end of the array.
-        InputHelpers.ensureArrayIsSorted(tokens);
+        InputHelpers.ensureArrayIsSorted(params.tokens);
 
-        IERC20[] memory composableTokens = new IERC20[](tokens.length + 1);
+        IERC20[] memory composableTokens = new IERC20[](params.tokens.length + 1);
         // We insert the Pool's BPT address into the first position.
         // This allows us to know the position of the BPT token in the tokens array without explicitly tracking it.
         // When deregistering a token, the token at the end of the array is moved into the index of the deregistered
         // token, changing its index. By placing BPT at the beginning of the tokens array we can be sure that its index
         // will never change unless it is deregistered itself (something which composable pools must prevent anyway).
         composableTokens[0] = IERC20(address(this));
-        for (uint256 i = 0; i < tokens.length; i++) {
-            composableTokens[i + 1] = tokens[i];
+        for (uint256 i = 0; i < params.tokens.length; i++) {
+            composableTokens[i + 1] = params.tokens[i];
         }
 
-        address[] memory composableAssetManagers = new address[](assetManagers.length + 1);
+        address[] memory composableAssetManagers = new address[](params.assetManagers.length + 1);
         // We do not allow an asset manager for the Pool's BPT.
         composableAssetManagers[0] = address(0);
-        for (uint256 i = 0; i < assetManagers.length; i++) {
-            composableAssetManagers[i + 1] = assetManagers[i];
+        for (uint256 i = 0; i < params.assetManagers.length; i++) {
+            composableAssetManagers[i + 1] = params.assetManagers[i];
         }
-        return _registerPool(vault, specialization, composableTokens, composableAssetManagers);
+        return _registerPool(vault, params.specialization, composableTokens, composableAssetManagers);
     }
 
     function _registerPool(
