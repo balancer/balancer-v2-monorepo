@@ -15,18 +15,17 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 interface ITetuSmartVault {
+    function deposit(uint256 amount) external;
 
-  function deposit(uint256 amount) external;
+    function underlyingBalanceInVault() external view returns (uint256);
 
-  function underlyingBalanceInVault() external view returns (uint256);
+    function withdraw(uint256 numberOfShares) external;
 
-  function withdraw(uint256 numberOfShares) external;
+    function underlyingBalanceWithInvestmentForHolder(address holder) external view returns (uint256);
 
-  function underlyingBalanceWithInvestmentForHolder(address holder) external view returns (uint256);
+    function underlying() external view returns (address);
 
-  function underlying() external view returns (address);
+    function underlyingUnit() external view returns (uint256);
 
-  function underlyingUnit() external view returns (uint256);
-
-  function getPricePerFullShare() external view returns (uint256);
+    function getPricePerFullShare() external view returns (uint256);
 }
