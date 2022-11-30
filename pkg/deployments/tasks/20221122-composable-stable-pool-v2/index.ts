@@ -21,12 +21,15 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // The pauseWindowDuration and bufferPeriodDuration will be filled in later, but we need to declare them here to
     // appease the type system. Those are constructor arguments, but automatically provided by the factory.
+
     const mockPoolArgs = {
       vault: input.Vault,
       protocolFeeProvider: input.ProtocolFeePercentagesProvider,
       name: 'DO NOT USE - Mock Composable Stable Pool',
       symbol: 'TEST',
-      tokens: [input.WETH, input.BAL].sort(),
+      tokens: [input.WETH, input.BAL].sort(function (a, b) {
+        return a.toLowerCase().localeCompare(b.toLowerCase());
+      }),
       rateProviders: [ZERO_ADDRESS, ZERO_ADDRESS],
       tokenRateCacheDurations: [0, 0],
       exemptFromYieldProtocolFeeFlags: [false, false],
