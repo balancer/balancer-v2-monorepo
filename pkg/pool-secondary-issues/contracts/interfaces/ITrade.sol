@@ -29,8 +29,6 @@ interface ITrade {
         bytes32 cpregRef;
     }
 
-    //function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
-
     function tradeSettled(/*bytes32 tradeRef,*/ bytes32 partyRef, bytes32 counterpartyRef) external;
 
 }
