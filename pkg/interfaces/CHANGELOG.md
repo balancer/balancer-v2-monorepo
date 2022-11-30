@@ -10,6 +10,7 @@
 - Added `IRateProviderPool`.
 - Added `IVersion`.
 - Added `IFactoryCreatedPoolVersion`.
+- Added `IRecoveryModeHelper`.
 
 ### New Features
 

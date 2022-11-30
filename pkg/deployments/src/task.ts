@@ -335,8 +335,7 @@ export default class Task {
   }
 
   private _write(path: string, output: Output): void {
-    const timestamp = new Date().getTime();
-    const finalOutputJSON = JSON.stringify({ ...output, timestamp }, null, 2);
+    const finalOutputJSON = JSON.stringify(output, null, 2);
     fs.writeFileSync(path, finalOutputJSON);
   }
 
