@@ -30,11 +30,19 @@ contract ManagedPoolStorageLibTest is Test {
     uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_PCT_WIDTH;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = _SWAP_ENABLED_OFFSET + 1;
     uint256 private constant _RECOVERY_MODE_OFFSET = _MUST_ALLOWLIST_LPS_OFFSET + 1;
+    uint256 private constant _JOIN_EXIT_ENABLED_OFFSET = _RECOVERY_MODE_OFFSET + 1;
 
     uint256 private constant _TIMESTAMP_WIDTH = 32;
     uint256 private constant _SWAP_FEE_PCT_WIDTH = 62;
 
     uint256 private constant _MAX_SWAP_FEE = (1 << _SWAP_FEE_PCT_WIDTH) - 1;
+
+    function testSetJoinExitsEnabled(bytes32 poolState, bool enabled) public {
+        bytes32 newPoolState = ManagedPoolStorageLib.setJoinExitsEnabled(poolState, enabled);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _JOIN_EXIT_ENABLED_OFFSET, 1));
+
+        assertEq(ManagedPoolStorageLib.getJoinExitsEnabled(newPoolState), enabled);
+    }
 
     function testSetRecoveryMode(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setRecoveryModeEnabled(poolState, enabled);

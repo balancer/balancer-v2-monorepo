@@ -205,6 +205,7 @@ export type ManagedPoolRights = {
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
   canChangeMgmtFees: boolean;
+  canDisableJoinExit: boolean;
 };
 
 export type ManagedPoolParams = {
