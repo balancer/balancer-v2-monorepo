@@ -9,6 +9,7 @@
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
 - Deployed `AaveLinearPoolFactory` to all networks.
 - Deployed `PoolRecoveryHelper` to all networks.
+- Deployed `TimelockAuthorizer` to ethereum mainnet and goerli.
 
 ### Deprecations
 
@@ -19,6 +20,7 @@
 - Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.
 - Added `getBalancerContractArtifact` which returns a artifact file for the contract in the same format used by Hardhat.
 - Deprecated `getBalancerContractBytecode` in favour of `getBalancerContractArtifact`.
+- Added `lookupBalancerContractByAddress` which returns the contract's name and the relevant deployment task if it is a tracked Balancer contract.
 
 ## 3.0.0 (2022-10-25)
 

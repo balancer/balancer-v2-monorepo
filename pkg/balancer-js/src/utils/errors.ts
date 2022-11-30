@@ -85,6 +85,7 @@ const balancerErrorCodes: Record<string, string> = {
   '355': 'INVALID_CIRCUIT_BREAKER_BOUNDS',
   '356': 'CIRCUIT_BREAKER_TRIPPED',
   '357': 'MALICIOUS_QUERY_REVERT',
+  '358': 'JOINS_EXITS_DISABLED',
   '400': 'REENTRANCY',
   '401': 'SENDER_NOT_ALLOWED',
   '402': 'PAUSED',
