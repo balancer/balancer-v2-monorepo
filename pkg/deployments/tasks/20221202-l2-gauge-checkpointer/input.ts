@@ -1,14 +1,15 @@
 import Task, { TaskMode } from '../../src/task';
 
 export type L2GaugeCheckpointerDeployment = {
-  GaugeAdder: string;
-  AdaptorEntrypoint: string;
+  //GaugeAdder: string;
+  AuthorizerAdaptorEntrypoint: string;
 };
 
-const AdaptorEntrypoint = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
-const GaugeAdder = new Task('20221202-gauge-adder-v3', TaskMode.READ_ONLY);
+const AuthorizerAdaptorEntrypoint = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY);
+//TODO: remove when gauge-adder deployed
+//const GaugeAdder = new Task('20221202-gauge-adder-v3', TaskMode.READ_ONLY);
 
 export default {
-  GaugeAdder,
-  AdaptorEntrypoint,
+  //GaugeAdder,
+  AuthorizerAdaptorEntrypoint,
 };

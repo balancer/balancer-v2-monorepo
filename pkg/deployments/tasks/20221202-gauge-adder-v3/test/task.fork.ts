@@ -15,7 +15,7 @@ import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
+describeForkTest('GaugeAdderV3', 'mainnet', 16078000, function () {
   let factory: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
@@ -34,22 +34,13 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
 
   const weightCap = fp(0.001);
 
-  before('create authorizer adaptor entrypoint', async () => {
-    // TODO: remove adaptor entrypoint related code; this will be fetched in the input script.
-    const adaptorEntrypointTask = new Task(
-      '20221111-authorizer-adaptor-entrypoint',
-      TaskMode.TEST,
-      getForkedNetwork(hre)
-    );
-    await adaptorEntrypointTask.run({ force: true });
-    adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
-  });
-
   before('create timelock authorizer', async () => {
-    const timelockTask = new Task('20221111-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
-    await timelockTask.run({ force: true, extra: adaptorEntrypoint.address });
+    const timelockTask = new Task('20221202-timelock-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
     migrator = await timelockTask.deployedInstance('TimelockAuthorizerMigrator');
+
+    const adaptorEntrypointTask = new Task('20221124-authorizer-adaptor-entrypoint', TaskMode.READ_ONLY, 'mainnet');
+    adaptorEntrypoint = await adaptorEntrypointTask.deployedInstance('AuthorizerAdaptorEntrypoint');
   });
 
   before('change authorizer admin to the DAO multisig', async () => {
@@ -77,8 +68,8 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
   });
 
   before('run Gauge Adder task', async () => {
-    task = new Task('20221111-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
-    await task.run({ force: true, extra: adaptorEntrypoint.address });
+    task = new Task('20221202-gauge-adder-v3', TaskMode.TEST, getForkedNetwork(hre));
+    await task.run({ force: true });
     gaugeAdder = await task.deployedInstance('GaugeAdder');
   });
 
@@ -93,7 +84,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 15397200, function () {
         'GaugeController',
         gaugeControllerTask.output({ network: 'mainnet' }).GaugeController
       );
-      //augeController = await deployedAt('GaugeController', task.input().GaugeController);
+      // gaugeController = await deployedAt('GaugeController', task.input().GaugeController);
 
       // Ensure we can call functions on the gaugeController
       const controllerAdmin = await gaugeController.admin();
