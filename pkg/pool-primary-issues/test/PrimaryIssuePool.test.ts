@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { BigNumber, BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, decimal, fp, fromFp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, decimal, fp, fromFp,scaleUp } from '@balancer-labs/v2-helpers/src/numbers';
 import { advanceTime } from '@balancer-labs/v2-helpers/src/time';
 import { MAX_UINT112, MAX_UINT96 } from '@balancer-labs/v2-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
@@ -33,6 +33,7 @@ describe('PrimaryPool', function () {
   const basePrice = fp(5);
   const maxSecurityOffered = fp(100);
   const issueCutoffTime = BigNumber.from("1672444800");
+  const SCALING_FACTOR = fp(1);
   const offeringDocs = "0xB45165ED3CD437B9FFAD02A2AAD22A4DDC69162470E2622982889CE5826F6E3D";
 
   const EXPECTED_RELATIVE_ERROR = 1e-14;
@@ -42,6 +43,11 @@ describe('PrimaryPool', function () {
   function testAllEqualTo(arr: BigNumber[], val: BigNumberish) {
     for (let i = 0; i < arr.length; i++) if (!arr[i].eq(val)) return false;
     return true;
+  }
+
+  const divDown = (a: BigNumber, b: BigNumber)=>{
+    const aInflated = scaleUp(a, SCALING_FACTOR);
+    return aInflated.div(b);
   }
 
   before('setup', async () => {
@@ -485,6 +491,7 @@ describe('PrimaryPool', function () {
     context('when paused for emergency proportional exit', () => {
       it('gives back tokens', async () => {
           const beforeExitOwnerBalance = await pool.balanceOf(owner);
+          console.log("beforeExitOwnerBalance",beforeExitOwnerBalance);
           const previousBalances = await pool.getBalances();
           const previousSecurityBalance = previousBalances[pool.securityIndex];
           const previousCurrencyBalance = previousBalances[pool.currencyIndex];
@@ -499,7 +506,7 @@ describe('PrimaryPool', function () {
           // await pool.vault.updateBalances(poolId, [fp(200),fp(0),fp(200)]);
       
           minAmountsOut[pool.securityIndex] = maxSecurityOffered;
-          minAmountsOut[pool.currencyIndex] = maxSecurityOffered.div(basePrice);
+          minAmountsOut[pool.currencyIndex] = divDown(maxSecurityOffered,basePrice);
           minAmountsOut[pool.bptIndex] = 0;
 
           console.log("minAmountsOut",minAmountsOut);

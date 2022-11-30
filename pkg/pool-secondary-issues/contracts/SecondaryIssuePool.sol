@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "hardhat/console.sol";
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
-    using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for *;
     
@@ -288,10 +287,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
 
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
-            //newOrder(request, params, Order.Sell);//, balances);
+            newOrder(request, params, Order.Sell);//, balances);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-            //newOrder(request, params, Order.Buy);//, balances);
+            newOrder(request, params, Order.Buy);//, balances);
         }
     }
 
@@ -463,7 +462,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 _marketOrders.push(_limitOrders[i]);
                 ref = _limitOrders[i];
                 reorder(i, OrderType.Limit);
-                if(ref == 0) continue; //Paras : why have we added this ?    
                 if(_trade!=OrderType.Market && ref!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
@@ -484,7 +482,6 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 _marketOrders.push(_stopOrders[i]);
                 ref = _stopOrders[i];
                 reorder(i, OrderType.Stop);
-                if(ref == 0) continue; // Paras : why have we added this ?     
                 if(_trade!=OrderType.Market && ref!=_ref){
                     //only if the consecutive order is a stop loss order, it goes to the market order book
                     _marketOrders.push(_ref);
@@ -564,12 +561,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
             if (_bestBid != "") {
                 if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN){
                     if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
-                        securityTraded = Math.div(orders[_bestBid].qty, _bestBidPrice, false); // calculating amount of security that can be brought
+                        securityTraded = orders[_bestBid].qty.divDown(_bestBidPrice); // calculating amount of security that can be brought
                     }else if (orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
                         securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                     }
                     if(securityTraded >= orders[_ref].qty){
-                        currencyTraded = Math.mul(orders[_ref].qty, _bestBidPrice);
+                        currencyTraded = orders[_ref].qty.mulDown(_bestBidPrice);
                         orders[_bestBid].qty = orders[_bestBid].tokenIn==_currency &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                 Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, currencyTraded);
                         orders[_ref].qty = 0;
@@ -578,7 +575,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        currencyTraded = Math.mul(securityTraded, _bestBidPrice);
+                        currencyTraded = securityTraded.mulDown(_bestBidPrice);
                         orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                         orders[_bestBid].qty = 0;
                         orders[_bestBid].status = OrderStatus.Filled;
@@ -588,12 +585,12 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 }
                 else if(orders[_ref].tokenOut==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
                     if(orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
-                        currencyTraded = Math.mul(orders[_bestBid].qty, _bestBidPrice); // calculating amount of currency that needs to be sent in to buy security (tokenOut)
+                        currencyTraded = orders[_bestBid].qty.mulDown(_bestBidPrice); // calculating amount of currency that needs to be sent in to buy security (tokenOut)
                     }else if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                         currencyTraded = orders[_bestBid].qty; // amount of currency sent in (tokenIn) is already there
                     }
                     if(currencyTraded >= orders[_ref].qty){
-                        securityTraded = Math.div(orders[_ref].qty, _bestBidPrice, false);
+                        securityTraded = orders[_ref].qty.divDown(_bestBidPrice);
                         orders[_bestBid].qty = orders[_bestBid].tokenOut==_security &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                 Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, securityTraded);
                         orders[_ref].qty = 0;
@@ -602,7 +599,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        securityTraded = Math.div(currencyTraded, _bestBidPrice, false);
+                        securityTraded = currencyTraded.divDown(_bestBidPrice);
                         orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                         orders[_bestBid].qty = 0;
                         orders[_bestBid].status = OrderStatus.Filled;
