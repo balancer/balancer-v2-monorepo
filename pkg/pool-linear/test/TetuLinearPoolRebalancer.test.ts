@@ -62,7 +62,7 @@ describe('TetuLinearPool', function () {
     let usdcTetuVault: Contract;
     let bbtUSDC: LinearPool;
 
-    sharedBeforeEach('setup tokens, reaper vault and linear pool', async () => {
+    sharedBeforeEach('setup tokens, tetu vault and linear pool', async () => {
       usdc = await Token.create({ symbol: 'USDC', name: 'USDC', decimals: 6 });
       usdcTetuVault = await deploy('MockTetuSmartVault', {
         args: ['xUSDC', 'xUSDC', 6, usdc.address, bn(1000000)],

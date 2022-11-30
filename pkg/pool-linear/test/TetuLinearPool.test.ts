@@ -62,7 +62,7 @@ describe('TetuLinearPool', function () {
     let usdcTetuVault: Contract;
     let bbtUSDC: LinearPool;
 
-    sharedBeforeEach('setup tokens, reaper vault and linear pool', async () => {
+    sharedBeforeEach('setup tokens, tetu vault and linear pool', async () => {
       usdc = await Token.create({ symbol: 'USDC', name: 'USDC', decimals: 6 });
       usdcTetuVault = await deploy('MockTetuSmartVault', {
         args: ['xUSDC', 'xUSDC', 6, usdc.address, fp(1)],
@@ -147,7 +147,7 @@ describe('TetuLinearPool', function () {
     let wbtcTetuVault: Contract;
     let bbtWBTC: LinearPool;
 
-    sharedBeforeEach('setup tokens, reaper vault and linear pool', async () => {
+    sharedBeforeEach('setup tokens, tetu vault and linear pool', async () => {
       wbtc = await Token.create({ symbol: 'WBTC', name: 'WBTC', decimals: 8 });
       wbtcTetuVault = await deploy('MockTetuSmartVault', {
         args: ['xWBTC', 'xWBTC', 8, wbtc.address, fp(1)],
@@ -229,15 +229,15 @@ describe('TetuLinearPool', function () {
   describe('DAI with 18 decimals tests', () => {
     let dai: Token;
     let xDAI: Token;
-    let daiReaperVault: Contract;
+    let daiTetuVault: Contract;
     let bbtDAI: LinearPool;
 
-    sharedBeforeEach('setup tokens, reaper vault and linear pool', async () => {
+    sharedBeforeEach('setup tokens, tetu vault and linear pool', async () => {
       dai = await Token.create({ symbol: 'DAI', name: 'DAI', decimals: 18 });
-      daiReaperVault = await deploy('MockTetuSmartVault', {
+      daiTetuVault = await deploy('MockTetuSmartVault', {
         args: ['xDAI', 'xDAI', 18, dai.address, fp(1)],
       });
-      xDAI = await Token.deployedAt(daiReaperVault.address);
+      xDAI = await Token.deployedAt(daiTetuVault.address);
 
       bbtDAI = await deployPool(dai.address, xDAI.address);
       const initialJoinAmount = fp(100);
@@ -258,12 +258,12 @@ describe('TetuLinearPool', function () {
     });
 
     it('should return unscaled wrapped token rate for an 18 decimal token', async () => {
-      await daiReaperVault.setPricePerFullShare(fp(1.5));
+      await daiTetuVault.setPricePerFullShare(fp(1.5));
       expect(await bbtDAI.getWrappedTokenRate()).to.be.eq(fp(1.5));
     });
 
     it('should swap 1 xDAI to 2 DAI when the pricePerFullShare is 2e18', async () => {
-      await daiReaperVault.setPricePerFullShare(fp(2));
+      await daiTetuVault.setPricePerFullShare(fp(2));
 
       const xDAIAmount = fp(1);
       await xDAI.mint(lp, xDAIAmount);
