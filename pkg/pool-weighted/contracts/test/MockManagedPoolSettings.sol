@@ -28,9 +28,8 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         ExternalWeightedMath weightedMath,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        address[] memory asssetManagers,
+        address owner
     )
         NewBasePool(
             vault,
@@ -38,12 +37,12 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
                 vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
                 settingsParams.tokens,
-                new address[](settingsParams.tokens.length)
+                asssetManagers
             ),
             "MockManagedPoolName",
             "MockManagedPoolSymbol",
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            90 days,
+            30 days,
             owner
         )
         ManagedPoolSettings(settingsParams, protocolFeeProvider)

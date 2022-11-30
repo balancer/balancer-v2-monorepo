@@ -70,7 +70,6 @@ describe('ManagedPool', function () {
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
       poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPool',
       ...overrides,
     };
     return WeightedPool.create(params);

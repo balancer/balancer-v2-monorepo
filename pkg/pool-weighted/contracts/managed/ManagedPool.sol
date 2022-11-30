@@ -59,9 +59,9 @@ contract ManagedPool is ManagedPoolSettings {
     IExternalWeightedMath private immutable _weightedMath;
 
     struct ManagedPoolParams {
-        address[] assetManagers;
         string name;
         string symbol;
+        address[] assetManagers;
     }
 
     struct ManagedPoolConfigParams {
