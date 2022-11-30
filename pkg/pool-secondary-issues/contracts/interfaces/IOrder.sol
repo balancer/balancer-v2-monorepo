@@ -16,8 +16,8 @@ interface IOrder {
 
     struct order{
         IVault.SwapKind swapKind; 
-        IERC20 tokenIn;
-        IERC20 tokenOut;
+        address tokenIn;
+        address tokenOut;
         OrderType otype;
         Order order;
         OrderStatus status;
@@ -25,8 +25,13 @@ interface IOrder {
         uint256 dt;
         address party;
         uint256 price;  
-        uint256 currencyBalance;  
-        uint256 securityBalance;    
+        //uint256 currencyBalance;  
+        //uint256 securityBalance;    
+    }
+
+    struct Params {
+        OrderType trade;
+        uint256 price;
     }
 
     function getOrderRef() external view returns(bytes32[] memory);

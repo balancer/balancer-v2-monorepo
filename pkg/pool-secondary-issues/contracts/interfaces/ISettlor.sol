@@ -63,4 +63,6 @@ interface ISettlor {
 
     function reportTrade(ITrade.trade calldata report) external;
 
+    function getTrade(bytes32 ref) external view returns(uint256 b, uint256 a);
+
 }
