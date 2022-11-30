@@ -409,9 +409,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         return scalingFactors;
     }
 
-    function _getMinimumBpt() internal pure override returns (uint256) {
-        // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
-        // mechanism, ensuring initialization only occurs once.
-        return 0;
-    }
+    // function _getMinimumBpt() internal pure override returns (uint256) {
+    //     // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+    //     // mechanism, ensuring initialization only occurs once.
+    //     return 0;
+    // }
 }
