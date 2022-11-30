@@ -92,11 +92,8 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     mapping(address => bool) private _allowedAddresses;
 
     struct ManagedPoolSettingsParams {
-        string name;
-        string symbol;
         IERC20[] tokens;
         uint256[] normalizedWeights;
-        address[] assetManagers;
         uint256 swapFeePercentage;
         bool swapEnabledOnStart;
         bool mustAllowlistLPs;
@@ -114,7 +111,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         _require(totalTokens >= _MIN_TOKENS, Errors.MIN_TOKENS);
         _require(totalTokens <= _MAX_TOKENS, Errors.MAX_TOKENS);
 
-        InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length, params.assetManagers.length);
+        InputHelpers.ensureInputLengthMatch(totalTokens, params.normalizedWeights.length);
 
         // Validate and set initial fees
         _setManagementAumFeePercentage(params.managementAumFeePercentage);

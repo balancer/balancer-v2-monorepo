@@ -58,32 +58,43 @@ contract ManagedPool is ManagedPoolSettings {
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
 
+    struct ManagedPoolParams {
+        address[] assetManagers;
+        string name;
+        string symbol;
+    }
+
+    struct ManagedPoolConfigParams {
+        IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
+        IExternalWeightedMath weightedMath;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+    }
+
     constructor(
-        ManagedPoolSettingsParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        IExternalWeightedMath weightedMath,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        ManagedPoolParams memory params,
+        ManagedPoolConfigParams memory configParams,
+        ManagedPoolSettingsParams memory settingsParams,
+        address owner
     )
         NewBasePool(
-            vault,
+            configParams.vault,
             PoolRegistrationLib.registerComposablePool(
-                vault,
+                configParams.vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                params.tokens,
+                settingsParams.tokens,
                 params.assetManagers
             ),
             params.name,
             params.symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            configParams.pauseWindowDuration,
+            configParams.bufferPeriodDuration,
             owner
         )
-        ManagedPoolSettings(params, protocolFeeProvider)
+        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider)
     {
-        _weightedMath = weightedMath;
+        _weightedMath = configParams.weightedMath;
     }
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {

@@ -50,23 +50,21 @@ contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
     /**
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
-    function create(ManagedPoolSettings.ManagedPoolSettingsParams memory poolParams, address owner)
-        external
-        returns (address pool)
-    {
+    function create(
+        ManagedPool.ManagedPoolParams memory params,
+        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
+        address owner
+    ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        return
-            _create(
-                abi.encode(
-                    poolParams,
-                    getVault(),
-                    getProtocolFeePercentagesProvider(),
-                    _weightedMath,
-                    owner,
-                    pauseWindowDuration,
-                    bufferPeriodDuration
-                )
-            );
+        ManagedPool.ManagedPoolConfigParams memory configParams = ManagedPool.ManagedPoolConfigParams({
+            vault: getVault(),
+            protocolFeeProvider: getProtocolFeePercentagesProvider(),
+            weightedMath: _weightedMath,
+            pauseWindowDuration: pauseWindowDuration,
+            bufferPeriodDuration: bufferPeriodDuration
+        });
+
+        return _create(abi.encode(params, configParams, settingsParams, owner));
     }
 }
