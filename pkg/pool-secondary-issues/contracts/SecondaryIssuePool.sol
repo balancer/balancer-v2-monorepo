@@ -525,8 +525,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(securityTraded >= orders[_ref].qty){
                         currencyTraded = Math.mul(orders[_ref].qty, _bestBidPrice);
-                        orders[_bestBid].qty = orders[_bestBid].tokenIn==IERC20(_currency) ? 
-                                                Math.sub(orders[_bestBid].qty, currencyTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
+                        orders[_bestBid].qty = orders[_bestBid].tokenIn==IERC20(_currency) &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
+                                                Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, currencyTraded);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
@@ -549,8 +549,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(currencyTraded >= orders[_ref].qty){
                         securityTraded = Math.div(orders[_ref].qty, _bestBidPrice, false);
-                        orders[_bestBid].qty = orders[_bestBid].tokenOut==IERC20(_security) ? 
-                                                Math.sub(orders[_bestBid].qty, securityTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
+                        orders[_bestBid].qty = orders[_bestBid].tokenOut==IERC20(_security) &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
+                                                Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
@@ -561,7 +561,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                         orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                         orders[_bestBid].qty = 0;
                         orders[_bestBid].status = OrderStatus.Filled;
-                        orders[_ref].status = OrderStatus.PartlyFilled;                        
+                        orders[_ref].status = OrderStatus.PartlyFilled;       // Can we add this? orders[_ref].qty == 0 ?  OrderStatus.Filled : OrderStatus.PartlyFilled;             
                         reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                     }
                 }
@@ -616,8 +616,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(currencyTraded >= orders[_ref].qty){
                         securityTraded = Math.div(orders[_ref].qty, _bestOfferPrice, false);
-                        orders[_bestOffer].qty = orders[_bestOffer].tokenOut==IERC20(_currency) ? 
-                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(currencyTraded, orders[_ref].qty);
+                        orders[_bestOffer].qty = orders[_bestOffer].tokenOut==IERC20(_currency) &&  orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_OUT ? 
+                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestOffer].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
@@ -640,8 +640,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(securityTraded >= orders[_ref].qty){
                         currencyTraded = Math.mul(orders[_ref].qty, _bestOfferPrice);
-                        orders[_bestOffer].qty = orders[_bestOffer].tokenIn==IERC20(_security) ? 
-                                                Math.sub(securityTraded, orders[_bestOffer].qty) : Math.sub(orders[_bestOffer].qty, orders[_ref].qty);
+                        orders[_bestOffer].qty = orders[_bestOffer].tokenIn==IERC20(_security) && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
+                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestOffer].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
