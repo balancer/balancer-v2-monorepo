@@ -132,6 +132,10 @@ export default class WeightedPool extends BasePool {
     return fpMul(currentBalances[tokenIndex], MAX_OUT_RATIO);
   }
 
+  async getJoinExitEnabled(from: SignerWithAddress): Promise<boolean> {
+    return this.instance.connect(from).getJoinExitEnabled();
+  }
+
   async getSwapEnabled(from: SignerWithAddress): Promise<boolean> {
     return this.instance.connect(from).getSwapEnabled();
   }
@@ -559,6 +563,11 @@ export default class WeightedPool extends BasePool {
 
   private _isManagedPool() {
     return this.poolType == WeightedPoolType.MANAGED_POOL || this.poolType == WeightedPoolType.MOCK_MANAGED_POOL;
+  }
+
+  async setJoinExitEnabled(from: SignerWithAddress, joinExitEnabled: boolean): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return pool.setJoinExitEnabled(joinExitEnabled);
   }
 
   async setSwapEnabled(from: SignerWithAddress, swapEnabled: boolean): Promise<ContractTransaction> {

@@ -106,7 +106,7 @@ Returns an object with all contracts from a deployment and their addresses.
 | Pool Recovery Helper                                    | [`20221123-pool-recovery-helper`](./tasks/20221123-pool-recovery-helper)                             |
 | Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
 | Timelock Authorizer, governance contract                | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
-| Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20221202-gauge-adder-v3`](./tasks/20221111-gauge-adder-v3)                                         |
+| Gauge Registrant V3, supporting the Adaptor entrypoint  | [`20221202-gauge-adder-v3`](./tasks/20221202-gauge-adder-v3)                                         |
 
 ## Scripts
 

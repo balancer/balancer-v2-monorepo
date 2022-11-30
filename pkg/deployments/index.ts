@@ -2,14 +2,19 @@ import { Contract } from 'ethers';
 import { Artifact } from 'hardhat/types';
 
 /**
- * @dev Returns the task id and contract name for a canonical contract deployed on a specific network
+ * @dev Returns the task id and contract name for a canonical contract deployed on a specific network.
+ * Throws if the address doesn't match any known Balancer deployment.
  * @param address Address of the contract to be fetched
  * @param network Name of the network looking the deployment for (e.g. mainnet,  polygon, goerli, etc)
  */
 export function lookupBalancerContractByAddress(address: string, network: string): { task: string; name: string } {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const networkAddresses = require(getBalancerContractAddresses(network));
-  return networkAddresses[address];
+  const deploymentInfo = networkAddresses[address];
+  if (deploymentInfo === undefined) {
+    throw new Error(`Unable to connect ${address} to any Balancer deployment on ${network}`);
+  }
+  return deploymentInfo;
 }
 
 /**

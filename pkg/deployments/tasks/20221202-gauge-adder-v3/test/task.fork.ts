@@ -15,7 +15,7 @@ import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('GaugeAdderV3', 'mainnet', 16076200, function () {
+describeForkTest('GaugeAdderV3', 'mainnet', 16078000, function () {
   let factory: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
@@ -35,9 +35,7 @@ describeForkTest('GaugeAdderV3', 'mainnet', 16076200, function () {
   const weightCap = fp(0.001);
 
   before('create timelock authorizer', async () => {
-    const timelockTask = new Task('20221202-timelock-authorizer', TaskMode.TEST, getForkedNetwork(hre));
-    await timelockTask.run({ force: true });
-
+    const timelockTask = new Task('20221202-timelock-authorizer', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await timelockTask.deployedInstance('TimelockAuthorizer');
     migrator = await timelockTask.deployedInstance('TimelockAuthorizerMigrator');
 

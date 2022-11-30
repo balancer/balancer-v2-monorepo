@@ -161,7 +161,7 @@ task('save-action-ids', `Print the action IDs for a particular contract and chec
               const outputFilePath = path.resolve(outputDir, outputFile);
               if (outputFile.includes(hre.network.name) && statSync(outputFilePath).isFile()) {
                 const fileContents = JSON.parse(readFileSync(outputFilePath).toString());
-                const contractNames = Object.keys(fileContents).filter((name) => name !== 'timestamp');
+                const contractNames = Object.keys(fileContents);
 
                 for (const contractName of contractNames) {
                   await saveActionIds(task, contractName);
