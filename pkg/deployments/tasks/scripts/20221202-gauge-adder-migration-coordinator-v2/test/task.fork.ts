@@ -11,7 +11,7 @@ import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
-describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16076200, function () {
+describeForkTest('GaugeAdderMigrationCoordinator', 'mainnet', 16078000, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
