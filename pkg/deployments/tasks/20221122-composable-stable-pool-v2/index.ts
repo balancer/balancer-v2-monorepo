@@ -26,7 +26,7 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
       protocolFeeProvider: input.ProtocolFeePercentagesProvider,
       name: 'DO NOT USE - Mock Composable Stable Pool',
       symbol: 'TEST',
-      tokens: [input.WETH, input.BAL],
+      tokens: [input.WETH, input.BAL].sort(),
       rateProviders: [ZERO_ADDRESS, ZERO_ADDRESS],
       tokenRateCacheDurations: [0, 0],
       exemptFromYieldProtocolFeeFlags: [false, false],
