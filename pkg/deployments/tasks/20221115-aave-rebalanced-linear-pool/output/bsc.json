@@ -1,6 +1,5 @@
 {
   "AaveLinearPoolFactory": "0x4E7bBd911cf1EFa442BC1b2e9Ea01ffE785412EC",
-  "timestamp": 1669237047145,
   "MockAaveLendingPool": "0xEd5ba579bB5D516263ff6E1C10fcAc1040075Fe2",
   "MockStaticAToken": "0xB848f50141F3D4255b37aC288C25C109104F2158",
   "MockAaveLinearPool": "0x4ca6AC0509E6381Ca7CD872a6cdC0Fbf00600Fa1"
