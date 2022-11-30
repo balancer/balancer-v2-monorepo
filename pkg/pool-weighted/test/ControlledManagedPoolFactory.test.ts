@@ -53,7 +53,7 @@ describe('ControlledManagedPoolFactory', function () {
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     factory = await deploy('ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion'],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,

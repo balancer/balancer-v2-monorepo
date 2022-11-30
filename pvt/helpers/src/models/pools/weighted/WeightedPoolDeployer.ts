@@ -40,6 +40,7 @@ export default {
       mustAllowlistLPs,
       managementAumFeePercentage,
       aumProtocolFeesCollector,
+      poolVersion,
     } = deployment;
 
     return new WeightedPool(
@@ -55,7 +56,8 @@ export default {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector
+      aumProtocolFeesCollector,
+      poolVersion
     );
   },
 
@@ -76,6 +78,7 @@ export default {
       owner,
       from,
       aumFeeId,
+      poolVersion,
     } = params;
 
     let result: Promise<Contract>;
@@ -116,6 +119,7 @@ export default {
               weightedMath: math.address,
               pauseWindowDuration,
               bufferPeriodDuration,
+              version: poolVersion,
             },
             {
               tokens: tokens.addresses,
@@ -155,6 +159,7 @@ export default {
               weightedMath: math.address,
               pauseWindowDuration,
               bufferPeriodDuration,
+              version: poolVersion,
             },
             {
               tokens: tokens.addresses,
@@ -248,6 +253,8 @@ export default {
       owner,
       from,
       aumFeeId,
+      factoryVersion,
+      poolVersion,
     } = params;
 
     let result: Promise<Contract>;
@@ -276,7 +283,7 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
           from,
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,

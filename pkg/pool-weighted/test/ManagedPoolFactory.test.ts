@@ -23,6 +23,17 @@ describe('ManagedPoolFactory', function () {
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
 
+  const factoryVersion = JSON.stringify({
+    name: 'ManagedPoolFactory',
+    version: '4',
+    deployment: 'test-deployment',
+  });
+  const poolVersion = JSON.stringify({
+    name: 'ManagedPool',
+    version: '0',
+    deployment: 'test-deployment',
+  });
+
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -44,7 +55,7 @@ describe('ManagedPoolFactory', function () {
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     factory = await deploy('ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
@@ -141,6 +152,18 @@ describe('ManagedPoolFactory', function () {
 
     it('sets the decimals', async () => {
       expect(await pool.decimals()).to.equal(18);
+    });
+
+    it('sets factory version', async () => {
+      expect(await factory.version()).to.be.eq(factoryVersion);
+    });
+
+    it('sets pool version', async () => {
+      expect(await factory.getPoolVersion()).to.be.eq(poolVersion);
+    });
+
+    it('sets pool version in the pool', async () => {
+      expect(await pool.version()).to.be.eq(poolVersion);
     });
   });
 
