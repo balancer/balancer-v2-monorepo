@@ -370,6 +370,10 @@ def decimals() -> uint8:
 def BOOST_V1() -> address:
     return BOOST_V1
 
+@pure
+@external
+def version() -> String[8]:
+    return VERSION
 
 @pure
 @external
