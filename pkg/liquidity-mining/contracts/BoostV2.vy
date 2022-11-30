@@ -47,7 +47,7 @@ NAME: constant(String[32]) = "Vote-Escrowed Boost"
 SYMBOL: constant(String[8]) = "veBoost"
 VERSION: constant(String[8]) = "v2.0.0"
 
-EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")
+EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
 WEEK: constant(uint256) = 86400 * 7
@@ -73,7 +73,7 @@ migrated: public(HashMap[uint256, bool])
 @external
 def __init__(_boost_v1: address, _ve: address):
     BOOST_V1 = _boost_v1
-    DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self, block.prevhash))
+    DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self))
     VE = _ve
 
     log Transfer(ZERO_ADDRESS, msg.sender, 0)
