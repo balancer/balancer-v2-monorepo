@@ -26,8 +26,8 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
-import { CircuitBreakerState, WeightedPoolType } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import ManagedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/ManagedPool';
+import { CircuitBreakerState } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
@@ -43,7 +43,7 @@ describe('ManagedPoolSettings', function () {
   let poolTokens: TokenList;
   let tooManyWeights: BigNumber[];
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
-  let pool: WeightedPool;
+  let pool: ManagedPool;
   let vault: Vault;
 
   before('setup signers', async () => {
@@ -79,14 +79,13 @@ describe('ManagedPoolSettings', function () {
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function createMockPool(params: any): Promise<WeightedPool> {
+  async function createMockPool(params: any): Promise<ManagedPool> {
     const fullParams = {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
-      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
       mockContractName: 'MockManagedPoolSettings',
     };
-    return WeightedPool.create(fullParams);
+    return ManagedPool.create(fullParams);
   }
 
   describe('constructor', () => {
@@ -181,8 +180,7 @@ describe('ManagedPoolSettings', function () {
         function itStoresProviderFeeIds(aumFeeId: number) {
           context(`when aum fee ID is ${ProtocolFee[aumFeeId]}`, () => {
             sharedBeforeEach('deploy pool', async () => {
-              pool = await WeightedPool.create({
-                poolType: WeightedPoolType.MANAGED_POOL,
+              pool = await ManagedPool.create({
                 tokens: allTokens.subset(2),
                 vault,
                 aumFeeId,
