@@ -335,6 +335,6 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         bytes memory userData
     ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
     }
 }

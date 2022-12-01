@@ -323,7 +323,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, bptAmountOut, totalSupply);
+        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
 
         return (bptAmountOut, amountsIn);
     }
@@ -427,7 +427,7 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply);
+        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
         return (bptAmountIn, amountsOut);
     }
 
@@ -463,6 +463,6 @@ abstract contract BaseWeightedPool is BaseMinimalSwapInfoPool {
         bytes memory userData
     ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
     }
 }

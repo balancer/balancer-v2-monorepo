@@ -112,7 +112,7 @@ contract ExternalWeightedMath is IExternalWeightedMath {
         uint256 bptAmountOut,
         uint256 totalBPT
     ) external pure override returns (uint256[] memory) {
-        return BasePoolMath.computeProportionalAmountsIn(balances, bptAmountOut, totalBPT);
+        return BasePoolMath.computeProportionalAmountsIn(balances, totalBPT, bptAmountOut);
     }
 
     function calcBptInGivenExactTokensOut(
@@ -171,7 +171,7 @@ contract ExternalWeightedMath is IExternalWeightedMath {
         uint256 bptAmountIn,
         uint256 totalBPT
     ) external pure override returns (uint256[] memory) {
-        return BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalBPT);
+        return BasePoolMath.computeProportionalAmountsOut(balances, totalBPT, bptAmountIn);
     }
 
     function calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight)

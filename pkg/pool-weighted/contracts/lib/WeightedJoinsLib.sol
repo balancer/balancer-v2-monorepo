@@ -86,6 +86,6 @@ library WeightedJoinsLib {
         bptAmountOut = userData.allTokensInForExactBptOut();
         // Note that there is no maximum amountsIn parameter: this is handled by `IVault.joinPool`.
 
-        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, bptAmountOut, totalSupply);
+        amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
     }
 }

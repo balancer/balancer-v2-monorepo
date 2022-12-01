@@ -21,22 +21,22 @@ library BasePoolMath {
 
     function computeProportionalAmountsIn(
         uint256[] memory balances,
-        uint256 bptAmountOut,
-        uint256 totalBPT
+        uint256 bptTotalSupply,
+        uint256 bptAmountOut
     ) internal pure returns (uint256[] memory amountsIn) {
         /************************************************************************************
-        // tokensInForExactBptOut                                                          //
+        // computeProportionalAmountsIn                                                    //
         // (per token)                                                                     //
-        // aI = amountIn                   /   bptOut   \                                  //
-        // b = balance           aI = b * | ------------ |                                 //
-        // bptOut = bptAmountOut           \  totalBPT  /                                  //
-        // bpt = totalBPT                                                                  //
+        // aI = amountIn                   /      bptOut      \                            //
+        // b = balance           aI = b * | ----------------- |                            //
+        // bptOut = bptAmountOut           \  bptTotalSupply  /                            //
+        // bpt = bptTotalSupply                                                            //
         ************************************************************************************/
 
         // Since we're computing amounts in, we round up overall. This means rounding up on both the multiplication and
         //division.
 
-        uint256 bptRatio = bptAmountOut.divUp(totalBPT);
+        uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
 
         amountsIn = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
@@ -46,11 +46,11 @@ library BasePoolMath {
 
     function computeProportionalAmountsOut(
         uint256[] memory balances,
-        uint256 totalSupply,
+        uint256 bptTotalSupply,
         uint256 bptAmountIn
     ) internal pure returns (uint256[] memory amountsOut) {
         /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
+        // computeProportionalAmountsOut                                                             //
         // (per token)                                                                               //
         // aO = tokenAmountOut             /        bptIn         \                                  //
         // b = tokenBalance      a0 = b * | ---------------------  |                                 //
@@ -61,7 +61,7 @@ library BasePoolMath {
         // Since we're computing an amount out, we round down overall. This means rounding down on both the
         // multiplication and division.
 
-        uint256 bptRatio = bptAmountIn.divDown(totalSupply);
+        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
 
         amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {

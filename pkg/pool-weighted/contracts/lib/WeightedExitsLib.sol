@@ -61,7 +61,7 @@ library WeightedExitsLib {
         bptAmountIn = userData.exactBptInForTokensOut();
         // Note that there is no minimum amountOut parameter: this is handled by `IVault.exitPool`.
 
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
     }
 
     function exitBPTInForExactTokensOut(

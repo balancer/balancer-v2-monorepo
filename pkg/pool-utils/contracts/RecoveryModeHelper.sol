@@ -59,7 +59,7 @@ contract RecoveryModeHelper is IRecoveryModeHelper {
 
         bptAmountIn = userData.recoveryModeExit();
 
-        amountsOut = BasePoolMath.computeProportionalAmountsOut(cashBalances, bptAmountIn, virtualSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(cashBalances, virtualSupply, bptAmountIn);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
