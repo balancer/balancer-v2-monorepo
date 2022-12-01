@@ -81,12 +81,15 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
     switch (poolName) {
       case 'ManagedPool': {
-        const newPoolParams: ManagedPoolParams = {
+        const userInputs = {
           name: name,
           symbol: symbol,
+          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+        };
+
+        const managedPoolSettings: ManagedPoolParams = {
           tokens: tokens.addresses,
           normalizedWeights: weights,
-          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
@@ -109,7 +112,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canChangeMgmtFees: true,
         };
 
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
+        params = [userInputs, managedPoolSettings, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
       default: {
@@ -208,7 +211,7 @@ async function deployPoolFromFactory(
     const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
     const baseFactory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion'],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
@@ -216,7 +219,7 @@ async function deployPoolFromFactory(
     });
     factory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address, '', ''] });
   } else {
     factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
   }

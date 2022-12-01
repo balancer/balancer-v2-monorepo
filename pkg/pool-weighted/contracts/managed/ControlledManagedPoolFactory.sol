@@ -39,7 +39,8 @@ contract ControlledManagedPoolFactory {
      * @dev Deploys a new `ManagedPool`.
      */
     function create(
-        ManagedPoolSettings.NewPoolParams memory poolParams,
+        ManagedPool.ManagedPoolParams memory params,
+        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams,
         BasePoolController.BasePoolRights calldata basePoolRights,
         ManagedPoolController.ManagedPoolRights calldata managedPoolRights,
         uint256 minWeightChangeDuration,
@@ -53,7 +54,7 @@ contract ControlledManagedPoolFactory {
         );
 
         // Let the base factory deploy the pool (owner is the controller)
-        pool = ManagedPoolFactory(managedPoolFactory).create(poolParams, address(poolController));
+        pool = ManagedPoolFactory(managedPoolFactory).create(params, settingsParams, address(poolController));
 
         // Finally, initialize the controller
         poolController.initialize(pool);
