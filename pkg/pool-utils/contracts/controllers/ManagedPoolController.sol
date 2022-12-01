@@ -34,7 +34,7 @@ contract ManagedPoolController is BasePoolController {
     using SafeERC20 for IERC20;
     using WordCodec for bytes32;
 
-    // There are six managed pool rights: all corresponding to permissioned functions of ManagedPool.
+    // There are seven managed pool rights: all corresponding to permissioned functions of ManagedPool.
     struct ManagedPoolRights {
         bool canChangeWeights;
         bool canDisableSwaps;
@@ -42,19 +42,22 @@ contract ManagedPoolController is BasePoolController {
         bool canSetCircuitBreakers;
         bool canChangeTokens;
         bool canChangeMgmtFees;
+        bool canDisableJoinExit;
     }
 
     // The minimum weight change duration could be replaced with more sophisticated rate-limiting.
     uint256 internal immutable _minWeightChangeDuration;
 
+    /* solhint-disable max-line-length */
     // Immutable controller state - the first 16 bits are reserved as a bitmap for permission flags
-    // (3 used in the base class; 6 used here), and the remaining 240 bits can be used by derived classes
+    // (3 used in the base class; 7 used here), and the remaining 240 bits can be used by derived classes
     // to store any other immutable data.
     //
-    //               Managed Pool Controller Permissions             |   Base Controller Permissions  ]
-    // [  240 | 7 bits |   1 bit  |  1 bit |  1 bit   | 1 bit | 1 bit |  1 bit  |  1 bit   |  1 bit   |   1 bit  ]
-    // [unused|reserved| mgmt fee | tokens | breakers |  LPs  | swaps | weights | metadata | swap fee | transfer ]
-    // |MSB                                                                                                   LSB|
+    // [                        Managed Pool Controller Permissions                         |   Base Controller Permissions  ]
+    // [  240 | 6 bits |   1 bit   |   1 bit  |  1 bit |  1 bit   | 1 bit | 1 bit |  1 bit  |  1 bit   |  1 bit   |   1 bit  ]
+    // [unused|reserved| join-exit | mgmt fee | tokens | breakers |  LPs  | swaps | weights | metadata | swap fee | transfer ]
+    // |MSB                                                                                                               LSB|
+    /* solhint-enable max-line-length */
 
     uint256 private constant _CHANGE_WEIGHTS_OFFSET = 3;
     uint256 private constant _DISABLE_SWAPS_OFFSET = 4;
@@ -62,6 +65,7 @@ contract ManagedPoolController is BasePoolController {
     uint256 private constant _CIRCUIT_BREAKERS_OFFSET = 6;
     uint256 private constant _CHANGE_TOKENS_OFFSET = 7;
     uint256 private constant _CHANGE_MGMT_FEES_OFFSET = 8;
+    uint256 private constant _DISABLE_JOIN_EXIT_OFFSET = 9;
 
     /**
      * @dev Pass in the `BasePoolRights` and `ManagedPoolRights` structures, to form the complete set of
@@ -91,6 +95,7 @@ contract ManagedPoolController is BasePoolController {
         // Needed to avoid "stack too deep"
         return
             permissions
+                .insertBool(managedRights.canDisableJoinExit, _DISABLE_JOIN_EXIT_OFFSET)
                 .insertBool(managedRights.canChangeMgmtFees, _CHANGE_MGMT_FEES_OFFSET)
                 .insertBool(managedRights.canChangeTokens, _CHANGE_TOKENS_OFFSET)
                 .insertBool(managedRights.canSetCircuitBreakers, _CIRCUIT_BREAKERS_OFFSET);
@@ -136,6 +141,13 @@ contract ManagedPoolController is BasePoolController {
      */
     function canChangeManagementFees() public view returns (bool) {
         return _controllerState.decodeBool(_CHANGE_MGMT_FEES_OFFSET);
+    }
+
+    /**
+     * @dev Getter for the canDisableJoinExit permission.
+     */
+    function canDisableJoinExit() public view returns (bool) {
+        return _controllerState.decodeBool(_DISABLE_JOIN_EXIT_OFFSET);
     }
 
     /**
@@ -225,5 +237,14 @@ contract ManagedPoolController is BasePoolController {
         _require(canChangeManagementFees(), Errors.FEATURE_DISABLED);
 
         return IManagedPool(pool).setManagementAumFeePercentage(managementAumFeePercentage);
+    }
+
+    /**
+     * @dev Pass a call to ManagedPool's setJoinExitEnabled through to the underlying pool.
+     */
+    function setJoinExitEnabled(bool joinExitEnabled) external virtual onlyManager withBoundPool {
+        _require(canDisableJoinExit(), Errors.FEATURE_DISABLED);
+
+        IManagedPool(pool).setJoinExitEnabled(joinExitEnabled);
     }
 }

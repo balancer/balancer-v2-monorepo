@@ -203,6 +203,9 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // Check whether joins are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         // We first query data needed to perform the joinswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
         (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
@@ -275,6 +278,9 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // Check whether exits are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         // We first query data needed to perform the exitswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
         (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
@@ -561,6 +567,10 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
         bytes32 poolState = _getPoolState();
+
+        // Check whether joins are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
@@ -665,6 +675,11 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         bytes memory userData
     ) internal view virtual returns (uint256, uint256[] memory) {
         bytes32 poolState = _getPoolState();
+
+        // Check whether exits are enabled. Recovery mode exits are not blocked by this check, since they are routed
+        // through a different codepath at the base pool layer.
+        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter

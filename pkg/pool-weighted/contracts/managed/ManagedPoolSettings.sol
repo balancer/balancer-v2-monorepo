@@ -144,6 +144,9 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
 
         // If true, only addresses on the manager-controlled allowlist may join the pool.
         _setMustAllowlistLPs(params.mustAllowlistLPs);
+
+        // Joins and exits are enabled by default on start.
+        _setJoinExitEnabled(true);
     }
 
     function _getPoolState() internal view returns (bytes32) {
@@ -371,6 +374,22 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         _poolState = ManagedPoolStorageLib.setWeightChangeData(_poolState, startTime, endTime);
 
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
+    }
+
+    // Join / Exit Enabled
+
+    function getJoinExitEnabled() external view override returns (bool) {
+        return ManagedPoolStorageLib.getJoinExitsEnabled(_poolState);
+    }
+
+    function setJoinExitEnabled(bool joinExitEnabled) external override authenticate whenNotPaused {
+        _setJoinExitEnabled(joinExitEnabled);
+    }
+
+    function _setJoinExitEnabled(bool joinExitEnabled) private {
+        _poolState = ManagedPoolStorageLib.setJoinExitsEnabled(_poolState, joinExitEnabled);
+
+        emit JoinExitEnabledSet(joinExitEnabled);
     }
 
     // Swap Enabled
@@ -825,6 +844,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
         return
             (actionId == getActionId(ManagedPoolSettings.updateWeightsGradually.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.updateSwapFeeGradually.selector)) ||
+            (actionId == getActionId(ManagedPoolSettings.setJoinExitEnabled.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.setSwapEnabled.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.addAllowedAddress.selector)) ||
             (actionId == getActionId(ManagedPoolSettings.removeAllowedAddress.selector)) ||
