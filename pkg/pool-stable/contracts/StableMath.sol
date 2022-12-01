@@ -447,4 +447,54 @@ library StableMath {
 
         _revert(Errors.STABLE_GET_BALANCE_DIDNT_CONVERGE);
     }
+
+    function _computeProportionalAmountsIn(
+        uint256[] memory balances,
+        uint256 bptAmountOut,
+        uint256 totalBPT
+    ) internal pure returns (uint256[] memory) {
+        /************************************************************************************
+        // tokensInForExactBptOut                                                          //
+        // (per token)                                                                     //
+        // aI = amountIn                   /   bptOut   \                                  //
+        // b = balance           aI = b * | ------------ |                                 //
+        // bptOut = bptAmountOut           \  totalBPT  /                                  //
+        // bpt = totalBPT                                                                  //
+        ************************************************************************************/
+
+        // Tokens in, so we round up overall.
+        uint256 bptRatio = bptAmountOut.divUp(totalBPT);
+
+        uint256[] memory amountsIn = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsIn[i] = balances[i].mulUp(bptRatio);
+        }
+
+        return amountsIn;
+    }
+
+    function _computeProportionalAmountsOut(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        uint256 bptAmountIn
+    ) internal pure returns (uint256[] memory amountsOut) {
+        /**********************************************************************************************
+        // exactBPTInForTokensOut                                                                    //
+        // (per token)                                                                               //
+        // aO = tokenAmountOut             /        bptIn         \                                  //
+        // b = tokenBalance      a0 = b * | ---------------------  |                                 //
+        // bptIn = bptAmountIn             \     bptTotalSupply    /                                 //
+        // bpt = bptTotalSupply                                                                      //
+        **********************************************************************************************/
+
+        // Since we're computing an amount out, we round down overall. This means rounding down on both the
+        // multiplication and division.
+
+        uint256 bptRatio = bptAmountIn.divDown(totalSupply);
+
+        amountsOut = new uint256[](balances.length);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsOut[i] = balances[i].mulDown(bptRatio);
+        }
+    }
 }
