@@ -81,12 +81,15 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
     switch (poolName) {
       case 'ManagedPool': {
-        const newPoolParams: ManagedPoolParams = {
+        const userInputs = {
           name: name,
           symbol: symbol,
+          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+        };
+
+        const managedPoolSettings: ManagedPoolParams = {
           tokens: tokens.addresses,
           normalizedWeights: weights,
-          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
@@ -109,7 +112,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           canChangeMgmtFees: true,
         };
 
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
+        params = [userInputs, managedPoolSettings, basePoolRights, managedPoolRights, DAY, creator.address];
         break;
       }
       default: {

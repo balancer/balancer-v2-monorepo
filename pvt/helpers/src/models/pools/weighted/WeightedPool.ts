@@ -562,7 +562,11 @@ export default class WeightedPool extends BasePool {
   }
 
   private _isManagedPool() {
-    return this.poolType == WeightedPoolType.MANAGED_POOL || this.poolType == WeightedPoolType.MOCK_MANAGED_POOL;
+    return (
+      this.poolType == WeightedPoolType.MANAGED_POOL ||
+      this.poolType == WeightedPoolType.MOCK_MANAGED_POOL ||
+      this.poolType == WeightedPoolType.MOCK_MANAGED_POOL_SETTINGS
+    );
   }
 
   async setJoinExitEnabled(from: SignerWithAddress, joinExitEnabled: boolean): Promise<ContractTransaction> {
