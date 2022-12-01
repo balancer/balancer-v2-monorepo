@@ -19,7 +19,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
-contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
+contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
     using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for *;
@@ -40,7 +40,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     address payable private _balancerManager;
     
     //counter for block timestamp nonce for creating unique order references
-    uint256 private _previousTs = 0;
+    /*uint256 private _previousTs = 0;
 
     //order references
     bytes32[] private _orderRefs;
@@ -73,7 +73,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     mapping(bytes32 => uint256) private _stopOrderIndex;
 
     event CallSwap( bool swapKindParty, string tokenInParty, address party, 
-                    bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId); 
+                    bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId);*/ 
 
     //order matching related    
     uint256 private _bestUnfilledBid;
@@ -259,7 +259,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 uint256 tradeType_length = string(request.userData).substring(0,1).stringToUint();
                 bytes32 otype = string(request.userData).substring(1, tradeType_length + 1).stringToBytes32();
                 if(otype!="" && tradeType_length!=0){ //we have removed market order from this place, any order where price is indicated is a limit or stop loss order
-                    params = Params({
+                    params = IOrder.Params({
                         trade: otype=="Limit" ? IOrder.OrderType.Limit : IOrder.OrderType.Stop,
                         price: string(request.userData).substring(tradeType_length, request.userData.length).stringToUint()
                     });
@@ -268,14 +268,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         }else{ //by default, any order without price specified is a market order
             if (request.tokenIn == IERC20(_currency) || request.tokenOut == IERC20(_security)){
                 //it is a buy (bid), so need the best offer by a counter party
-                params = Params({
+                params = IOrder.Params({
                     trade: IOrder.OrderType.Market,
                     price: _bestUnfilledOffer
                 });
             }
             else {
                 //it is a sell (offer), so need the best bid by a counter party
-                params = Params({
+                params = IOrder.Params({
                     trade: IOrder.OrderType.Market,
                     price: _bestUnfilledBid
                 });
@@ -365,7 +365,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
     }
-    
+    /*
     function newOrder(
         SwapRequest memory _request,
         Params memory _params,
@@ -735,7 +735,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
         //delete _trades[tradeRef];
         orders[partyRef].status = OrderStatus.Filled;
         orders[counterpartyRef].status = OrderStatus.Filled;
-    }
+    }*/
 
     function _getMinimumBpt() internal pure override returns (uint256) {
         // Secondary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
