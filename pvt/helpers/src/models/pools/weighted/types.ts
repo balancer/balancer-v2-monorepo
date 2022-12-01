@@ -8,13 +8,6 @@ import TokenList from '../../tokens/TokenList';
 import { Account, NAry } from '../../types/types';
 import Vault from '../../vault/Vault';
 
-export enum WeightedPoolType {
-  WEIGHTED_POOL = 0,
-  LIQUIDITY_BOOTSTRAPPING_POOL,
-  MANAGED_POOL,
-  MOCK_MANAGED_POOL,
-}
-
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
@@ -23,18 +16,11 @@ export type RawWeightedPoolDeployment = {
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
-  swapEnabledOnStart?: boolean;
-  mustAllowlistLPs?: boolean;
-  managementAumFeePercentage?: BigNumberish;
-  aumProtocolFeesCollector?: string;
   owner?: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   vault?: Vault;
   fromFactory?: boolean;
-  poolType?: WeightedPoolType;
-  aumFeeId?: BigNumberish;
-  mockContractName?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -45,13 +31,70 @@ export type WeightedPoolDeployment = {
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
-  poolType: WeightedPoolType;
+  owner: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+};
+
+export type RawLiquidityBootstrappingPoolDeployment = {
+  tokens?: TokenList;
+  weights?: BigNumberish[];
+  swapFeePercentage?: BigNumberish;
+  swapEnabledOnStart?: boolean;
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  owner?: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+  vault?: Vault;
+  fromFactory?: boolean;
+};
+
+export type LiquidityBootstrappingPoolDeployment = {
+  tokens: TokenList;
+  weights: BigNumberish[];
+  swapFeePercentage: BigNumberish;
+  swapEnabledOnStart: boolean;
+  pauseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
+  owner: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+};
+
+export type RawManagedPoolDeployment = {
+  tokens?: TokenList;
+  weights?: BigNumberish[];
+  rateProviders?: Account[];
+  assetManagers?: string[];
+  swapFeePercentage?: BigNumberish;
+  swapEnabledOnStart?: boolean;
+  mustAllowlistLPs?: boolean;
+  managementAumFeePercentage?: BigNumberish;
+  aumFeeId?: BigNumberish;
+  pauseWindowDuration?: BigNumberish;
+  bufferPeriodDuration?: BigNumberish;
+  owner?: Account;
+  admin?: SignerWithAddress;
+  from?: SignerWithAddress;
+  vault?: Vault;
+  fromFactory?: boolean;
+  mockContractName?: string;
+};
+
+export type ManagedPoolDeployment = {
+  tokens: TokenList;
+  weights: BigNumberish[];
+  rateProviders: Account[];
+  assetManagers: string[];
+  swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
-  aumProtocolFeesCollector: string;
   aumFeeId?: BigNumberish;
-  owner?: string;
+  pauseWindowDuration: BigNumberish;
+  bufferPeriodDuration: BigNumberish;
+  owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
   mockContractName?: string;

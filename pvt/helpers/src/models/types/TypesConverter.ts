@@ -13,8 +13,11 @@ import { RawStablePoolDeployment, StablePoolDeployment } from '../pools/stable/t
 import {
   RawWeightedPoolDeployment,
   WeightedPoolDeployment,
-  WeightedPoolType,
   BasePoolRights,
+  RawLiquidityBootstrappingPoolDeployment,
+  LiquidityBootstrappingPoolDeployment,
+  RawManagedPoolDeployment,
+  ManagedPoolDeployment,
 } from '../pools/weighted/types';
 import {
   RawTokenApproval,
@@ -62,12 +65,6 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
-      swapEnabledOnStart,
-      mustAllowlistLPs,
-      managementAumFeePercentage,
-      aumProtocolFeesCollector,
-      poolType,
-      aumFeeId,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -78,29 +75,89 @@ export default {
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
     if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-    if (!poolType) poolType = WeightedPoolType.WEIGHTED_POOL;
-    if (!aumProtocolFeesCollector) aumProtocolFeesCollector = ZERO_ADDRESS;
-    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
-    if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
-    if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
-    if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
+
     return {
       tokens,
       weights,
-      rateProviders: this.toAddresses(rateProviders),
+      rateProviders,
       assetManagers,
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      owner: params.owner,
+      from: params.from,
+    };
+  },
+
+  toLiquidityBootstrappingPoolDeployment(
+    params: RawLiquidityBootstrappingPoolDeployment
+  ): LiquidityBootstrappingPoolDeployment {
+    let { tokens, weights, swapFeePercentage, swapEnabledOnStart, pauseWindowDuration, bufferPeriodDuration } = params;
+    if (!params.owner) params.owner = ZERO_ADDRESS;
+    if (!tokens) tokens = new TokenList();
+    if (!weights) weights = Array(tokens.length).fill(fp(1));
+    weights = toNormalizedWeights(weights.map(bn));
+    if (!swapFeePercentage) swapFeePercentage = bn(1e16);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
+
+    return {
+      tokens,
+      weights,
+      swapFeePercentage,
       swapEnabledOnStart,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      owner: params.owner,
+      from: params.from,
+    };
+  },
+
+  toManagedPoolDeployment(params: RawManagedPoolDeployment): ManagedPoolDeployment {
+    let {
+      tokens,
+      weights,
+      rateProviders,
+      assetManagers,
+      swapFeePercentage,
+      swapEnabledOnStart,
+      pauseWindowDuration,
+      bufferPeriodDuration,
+      aumFeeId,
       mustAllowlistLPs,
       managementAumFeePercentage,
-      aumProtocolFeesCollector,
-      owner: this.toAddress(params.owner),
-      from: params.from,
-      poolType,
+    } = params;
+    if (!params.owner) params.owner = ZERO_ADDRESS;
+    if (!tokens) tokens = new TokenList();
+    if (!weights) weights = Array(tokens.length).fill(fp(1));
+    weights = toNormalizedWeights(weights.map(bn));
+    if (!swapFeePercentage) swapFeePercentage = bn(1e16);
+    if (!rateProviders) rateProviders = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!assetManagers) assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
+    if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
+    if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
+    if (swapEnabledOnStart == undefined) swapEnabledOnStart = true;
+    if (undefined == aumFeeId) aumFeeId = ProtocolFee.AUM;
+    if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
+    if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
+    if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
+
+    return {
+      tokens,
+      weights,
+      rateProviders,
+      assetManagers,
+      swapFeePercentage,
+      swapEnabledOnStart,
       aumFeeId,
+      mustAllowlistLPs,
+      managementAumFeePercentage,
+      pauseWindowDuration,
+      bufferPeriodDuration,
       mockContractName: params.mockContractName,
+      owner: params.owner,
+      from: params.from,
     };
   },
 
