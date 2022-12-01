@@ -4,13 +4,9 @@ import { Contract } from 'ethers';
 
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
-import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
+import ManagedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/ManagedPool';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import {
-  WeightedPoolType,
-  ManagedPoolRights,
-  BasePoolRights,
-} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ManagedPoolRights, BasePoolRights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { currentTimestamp, MONTH, DAY, HOUR } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -26,7 +22,7 @@ const MIN_WEIGHT_CHANGE_DURATION = DAY;
 let admin: SignerWithAddress;
 let manager: SignerWithAddress;
 let other: SignerWithAddress;
-let pool: WeightedPool;
+let pool: ManagedPool;
 let allTokens: TokenList;
 let vault: Vault;
 let poolController: Contract;
@@ -95,11 +91,10 @@ async function deployControllerAndPool(
     owner: poolController.address,
     assetManagers,
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-    poolType: WeightedPoolType.MANAGED_POOL,
     swapEnabledOnStart: swapEnabledOnStart,
     protocolSwapFeePercentage: protocolSwapFeePercentage,
   };
-  pool = await WeightedPool.create(params);
+  pool = await ManagedPool.create(params);
 }
 
 // Some tests repeated; could have a behavesLikeBasePoolController.behavior.ts

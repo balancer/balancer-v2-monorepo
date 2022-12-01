@@ -6,7 +6,7 @@ import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import WeightedPool from '@balancer-labs/v2-helpers/src/models/pools/weighted/WeightedPool';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { WeightedPoolType, BasePoolRights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { BasePoolRights } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
@@ -63,7 +63,6 @@ async function deployControllerAndPool(canTransfer = true, canChangeSwapFee = tr
     owner: poolController.address,
     assetManagers,
     swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-    poolType: WeightedPoolType.WEIGHTED_POOL,
   };
   pool = await WeightedPool.create(params);
 }
