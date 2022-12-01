@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 3.1.1 (2022-12-01)
+
+### Bugfixes
+
+- Fixed changelog.
+
+## 3.1.0 (2022-12-01)
 
 ### New Deployments
 
