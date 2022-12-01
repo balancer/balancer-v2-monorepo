@@ -66,7 +66,7 @@ describe('ManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
+  async function createPool(swapEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
@@ -80,7 +80,7 @@ describe('ManagedPoolFactory', function () {
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      swapEnabledOnStart: swapsEnabled,
+      swapEnabledOnStart: swapEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
       aumFeeId: ProtocolFee.AUM,

@@ -379,7 +379,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // Join / Exit Enabled
 
     function getJoinExitEnabled() external view override returns (bool) {
-        return ManagedPoolStorageLib.getJoinExitsEnabled(_poolState);
+        return ManagedPoolStorageLib.getJoinExitEnabled(_poolState);
     }
 
     function setJoinExitEnabled(bool joinExitEnabled) external override authenticate whenNotPaused {
@@ -387,7 +387,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     function _setJoinExitEnabled(bool joinExitEnabled) private {
-        _poolState = ManagedPoolStorageLib.setJoinExitsEnabled(_poolState, joinExitEnabled);
+        _poolState = ManagedPoolStorageLib.setJoinExitEnabled(_poolState, joinExitEnabled);
 
         emit JoinExitEnabledSet(joinExitEnabled);
     }
@@ -395,7 +395,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     // Swap Enabled
 
     function getSwapEnabled() external view override returns (bool) {
-        return ManagedPoolStorageLib.getSwapsEnabled(_poolState);
+        return ManagedPoolStorageLib.getSwapEnabled(_poolState);
     }
 
     function setSwapEnabled(bool swapEnabled) external override authenticate whenNotPaused {
@@ -403,7 +403,7 @@ abstract contract ManagedPoolSettings is NewBasePool, ProtocolFeeCache, IManaged
     }
 
     function _setSwapEnabled(bool swapEnabled) private {
-        _poolState = ManagedPoolStorageLib.setSwapsEnabled(_poolState, swapEnabled);
+        _poolState = ManagedPoolStorageLib.setSwapEnabled(_poolState, swapEnabled);
 
         emit SwapEnabledSet(swapEnabled);
     }
