@@ -12,7 +12,7 @@ For a high-level introduction to Balancer V2, see [Introducing Balancer V2: Gene
 
 ## Structure
 
-This is a Yarn 3 monorepo, with the packages meant to be published in the [`pkg`](./pkg) directory. Newly developed packages may not be published yet.
+This is a Yarn monorepo, with the packages meant to be published in the [`pkg`](./pkg) directory. Newly developed packages may not be published yet.
 
 Active development occurs in this repository, which means some contracts in it might not be production-ready. Proceed with caution.
 
