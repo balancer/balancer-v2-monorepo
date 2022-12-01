@@ -28,7 +28,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         ExternalWeightedMath weightedMath,
-        address[] memory asssetManagers,
+        address[] memory assetManagers,
         address owner
     )
         NewBasePool(
@@ -37,7 +37,7 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
                 vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
                 settingsParams.tokens,
-                asssetManagers
+                assetManagers
             ),
             "MockManagedPoolName",
             "MockManagedPoolSymbol",
