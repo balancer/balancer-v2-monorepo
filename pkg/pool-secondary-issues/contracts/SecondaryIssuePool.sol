@@ -439,11 +439,18 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
 
     function cancelOrder(bytes32 ref) external override {
         require(orders[ref].party == msg.sender, "Sender is not order creator");
+        
         delete _marketOrders[_marketOrderIndex[ref]];
         delete _marketOrderIndex[ref];
-        delete _limitOrders[_limitOrderIndex[ref]];
+        if (_limitOrders.length > 0)
+        {
+            delete _limitOrders[_limitOrderIndex[ref]]; 
+        }
         delete _limitOrderIndex[ref];
-        delete _stopOrders[_stopOrderIndex[ref]];
+        if (_stopOrders.length > 0)
+        {
+            delete _stopOrders[_stopOrderIndex[ref]];
+        }
         delete _stopOrderIndex[ref];
         delete orders[ref];
         delete _orderRefs[_orderIndex[ref]];
@@ -457,6 +464,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function checkLimitOrders(bytes32 _ref, OrderType _trade) private {
         bytes32 ref;
         for (uint256 i = 0; i < _limitOrders.length; i++) {
+            if(_limitOrders[i] == 0) continue;
             if ((orders[_limitOrders[i]].order == Order.Buy && orders[_limitOrders[i]].price >= orders[_ref].price) ||
                 (orders[_limitOrders[i]].order == Order.Sell && orders[_limitOrders[i]].price <= orders[_ref].price)){
                 _marketOrders.push(_limitOrders[i]);
@@ -477,6 +485,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     function checkStopOrders(bytes32 _ref, OrderType _trade) private {
         bytes32 ref;
         for (uint256 i = 0; i < _stopOrders.length; i++) {
+            if(_stopOrders[i] == 0) continue;
             if ((orders[_stopOrders[i]].order == Order.Buy && orders[_stopOrders[i]].price <= orders[_ref].price) ||
                 (orders[_stopOrders[i]].order == Order.Sell && orders[_stopOrders[i]].price >= orders[_ref].price)){
                 _marketOrders.push(_stopOrders[i]);
@@ -531,26 +540,27 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                 orders[_marketOrders[i]].party != orders[_ref].party && //orders posted by a party can not be matched by a counter offer by the same party
                 orders[_marketOrders[i]].status != OrderStatus.Filled //orders that are filled can not be matched /traded again
             ) {
+                if (orders[_marketOrders[i]].price == 0 && orders[_ref].price == 0) continue; // Case: If Both CounterParty & Party place Order@CMP
                 if (orders[_marketOrders[i]].order == Order.Buy && orders[_ref].order == Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
                             _bestUnfilledBid = _bestBidPrice;
-                            _bestBidPrice = orders[_marketOrders[i]].price;
+                            _bestBidPrice = orders[_marketOrders[i]].price == 0 ? orders[_ref].price : orders[_marketOrders[i]].price; //Added this condition for: If CounterParty price = 0, then Party's price will be CounterParty price
                             _bestBid = _orderRefs[i];
                             _bidIndex = i;
                         }
-                        //orders[_ref].price = orders[_ref].price == 0 ? orders[_bestBid].price : orders[_ref].price; //Paras : shouldn't orders[_ref].price be what the best bid is ?
+                        orders[_ref].price = orders[_bestBid].price; 
                     }
                 } else if (orders[_marketOrders[i]].order == Order.Sell && orders[_ref].order == Order.Buy) {
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
-                            _bestOfferPrice = orders[_marketOrders[i]].price;
+                            _bestOfferPrice = orders[_marketOrders[i]].price == 0 ? orders[_ref].price : orders[_marketOrders[i]].price; //Added this condition for: If CounterParty price = 0, then Party's price will be CounterParty price
                             _bestOffer = _orderRefs[i];
                             _bidIndex = i;
                         }
-                        //orders[_ref].price = orders[_ref].price == 0 ? orders[_bestOffer].price : orders[_ref].price;
+                        orders[_ref].price = orders[_bestOffer].price;
                     }
                 }
             }
