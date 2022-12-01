@@ -51,7 +51,7 @@ contract ManagedPoolStorageLibTest is Test {
         assertEq(ManagedPoolStorageLib.getRecoveryModeEnabled(newPoolState), enabled);
     }
 
-    function testSwapsEnabled(bytes32 poolState, bool enabled) public {
+    function testSwapEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapEnabled(poolState, enabled);
         assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1));
 
