@@ -63,6 +63,7 @@ export default class WeightedPool extends BasePool {
   reserveAssetManager: string;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  poolVersion: string;
 
   static async create(params: RawWeightedPoolDeployment = {}): Promise<WeightedPool> {
     return WeightedPoolDeployer.deploy(params);
@@ -83,6 +84,7 @@ export default class WeightedPool extends BasePool {
     reserveAssetManager: string,
     managementAumFeePercentage: BigNumberish,
     aumProtocolFeesCollector: string,
+    poolVersion: string,
     owner?: SignerWithAddress
   ) {
     super(instance, poolId, vault, tokens, swapFeePercentage, owner);
@@ -96,6 +98,7 @@ export default class WeightedPool extends BasePool {
     this.reserveAssetManager = reserveAssetManager;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumProtocolFeesCollector = aumProtocolFeesCollector;
+    this.poolVersion = poolVersion;
   }
 
   get maxWeight(): BigNumberish {
@@ -149,6 +152,10 @@ export default class WeightedPool extends BasePool {
 
   async getNormalizedWeights(): Promise<BigNumber[]> {
     return this.instance.getNormalizedWeights();
+  }
+
+  async version(): Promise<string[]> {
+    return this.instance.version();
   }
 
   async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
@@ -565,7 +572,11 @@ export default class WeightedPool extends BasePool {
   }
 
   private _isManagedPool() {
-    return this.poolType == WeightedPoolType.MANAGED_POOL || this.poolType == WeightedPoolType.MOCK_MANAGED_POOL;
+    return (
+      this.poolType == WeightedPoolType.MANAGED_POOL ||
+      this.poolType == WeightedPoolType.MOCK_MANAGED_POOL ||
+      this.poolType == WeightedPoolType.MOCK_MANAGED_POOL_SETTINGS
+    );
   }
 
   async setJoinExitEnabled(from: SignerWithAddress, joinExitEnabled: boolean): Promise<ContractTransaction> {

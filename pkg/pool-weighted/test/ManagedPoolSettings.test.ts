@@ -83,8 +83,7 @@ describe('ManagedPoolSettings', function () {
     const fullParams = {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
-      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPoolSettings',
+      poolType: WeightedPoolType.MOCK_MANAGED_POOL_SETTINGS,
     };
     return WeightedPool.create(fullParams);
   }
@@ -161,13 +160,6 @@ describe('ManagedPoolSettings', function () {
               const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
 
               expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
-            });
-
-            it('sets asset managers', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                const info = await pool.getTokenInfo(token);
-                expect(info.assetManager).to.eq(assetManagers[i]);
-              });
             });
           });
         });
@@ -524,7 +516,6 @@ describe('ManagedPoolSettings', function () {
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
           const now = await currentTimestamp();
-
           await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
             'SENDER_NOT_ALLOWED'
           );

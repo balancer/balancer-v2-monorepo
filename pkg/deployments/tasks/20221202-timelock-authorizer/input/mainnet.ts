@@ -224,22 +224,6 @@ export const executeDelays: DelayData[] = [
     actionId: GaugeAdder.actionId('GaugeAdder', 'addGaugeFactory(address,uint8)'),
     newDelay: 14 * DAY,
   },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addEthereumGauge(address)'),
-    newDelay: 3 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addPolygonGauge(address)'),
-    newDelay: 3 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
-    newDelay: 3 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
-    newDelay: 3 * DAY,
-  },
 ];
 
 export const grantDelays: DelayData[] = [
@@ -258,34 +242,6 @@ export const grantDelays: DelayData[] = [
   {
     actionId: GaugeController.actionId('GaugeController', 'add_gauge(address,int128,uint256)'),
     newDelay: 14 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addEthereumGauge(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addPolygonGauge(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addArbitrumGauge(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addOptimismGauge(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addGnosisGauge(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addZKSyncGauge(address)'),
-    newDelay: 7 * DAY,
-  },
-  {
-    actionId: GaugeAdder.actionId('GaugeAdder', 'addGaugeFactory(address,uint8)'),
-    newDelay: 7 * DAY,
   },
   // BALTokenHolder.withdrawFunds(address, uint256) (veBAL BALTokenHolder)
   // Note this actionId can't be pulled from the json file as the BALTokenHolder is not listed there.

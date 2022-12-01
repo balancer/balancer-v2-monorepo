@@ -15,6 +15,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
@@ -43,7 +44,7 @@ import "./ManagedPoolSettings.sol";
  * rebalancing through token changes, gradual weight or fee updates, fine-grained control of protocol and
  * management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is ManagedPoolSettings {
+contract ManagedPool is IVersion, ManagedPoolSettings {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -57,33 +58,51 @@ contract ManagedPool is ManagedPoolSettings {
     // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
+    string private _version;
+
+    struct ManagedPoolParams {
+        string name;
+        string symbol;
+        address[] assetManagers;
+    }
+
+    struct ManagedPoolConfigParams {
+        IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
+        IExternalWeightedMath weightedMath;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        string version;
+    }
 
     constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        IExternalWeightedMath weightedMath,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        ManagedPoolParams memory params,
+        ManagedPoolConfigParams memory configParams,
+        ManagedPoolSettingsParams memory settingsParams,
+        address owner
     )
         NewBasePool(
-            vault,
+            configParams.vault,
             PoolRegistrationLib.registerComposablePool(
-                vault,
+                configParams.vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                params.tokens,
+                settingsParams.tokens,
                 params.assetManagers
             ),
             params.name,
             params.symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            configParams.pauseWindowDuration,
+            configParams.bufferPeriodDuration,
             owner
         )
-        ManagedPoolSettings(params, protocolFeeProvider)
+        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider)
     {
-        _weightedMath = weightedMath;
+        _weightedMath = configParams.weightedMath;
+        _version = configParams.version;
+    }
+
+    function version() external view override returns (string memory) {
+        return _version;
     }
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {
