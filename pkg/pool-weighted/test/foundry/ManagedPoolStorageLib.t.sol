@@ -37,7 +37,7 @@ contract ManagedPoolStorageLibTest is Test {
 
     uint256 private constant _MAX_SWAP_FEE = (1 << _SWAP_FEE_PCT_WIDTH) - 1;
 
-    function testsetJoinExitEnabled(bytes32 poolState, bool enabled) public {
+    function testSetJoinExitEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setJoinExitEnabled(poolState, enabled);
         assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _JOIN_EXIT_ENABLED_OFFSET, 1));
 
