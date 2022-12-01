@@ -36,6 +36,7 @@ export default {
       bufferPeriodDuration,
       amplificationParameter,
       from,
+      version,
     } = params;
 
     const owner = TypesConverter.toAddress(params.owner);
@@ -56,6 +57,7 @@ export default {
           pauseWindowDuration,
           bufferPeriodDuration,
           owner,
+          version: version,
         },
       ],
       from,

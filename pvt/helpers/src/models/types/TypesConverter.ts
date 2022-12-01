@@ -135,6 +135,7 @@ export default {
       swapFeePercentage,
       pauseWindowDuration,
       bufferPeriodDuration,
+      version,
     } = params;
 
     if (!tokens) tokens = new TokenList();
@@ -145,6 +146,7 @@ export default {
     if (!pauseWindowDuration) pauseWindowDuration = 3 * MONTH;
     if (!bufferPeriodDuration) bufferPeriodDuration = MONTH;
     if (!exemptFromYieldProtocolFeeFlags) exemptFromYieldProtocolFeeFlags = Array(tokens.length).fill(false);
+    if (!version) version = 'test';
 
     return {
       tokens,
@@ -156,6 +158,7 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       owner: params.owner,
+      version,
     };
   },
 

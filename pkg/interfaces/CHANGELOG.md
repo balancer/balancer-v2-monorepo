@@ -8,6 +8,9 @@
 - Added `IL2GaugeCheckpointer`.
 - Added `IAuthorizerAdaptorEntrypoint`.
 - Added `IRateProviderPool`.
+- Added `IVersion`.
+- Added `IFactoryCreatedPoolVersion`.
+- Added `IRecoveryModeHelper`.
 
 ### New Features
 

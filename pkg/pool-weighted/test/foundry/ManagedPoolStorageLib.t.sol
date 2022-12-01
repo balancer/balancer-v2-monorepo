@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import { Test } from "forge-std/Test.sol";
 
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
+
 import "../../contracts/managed/ManagedPoolStorageLib.sol";
 
 contract ManagedPoolStorageLibTest is Test {
@@ -28,49 +30,37 @@ contract ManagedPoolStorageLibTest is Test {
     uint256 private constant _SWAP_ENABLED_OFFSET = _SWAP_FEE_END_PCT_OFFSET + _SWAP_FEE_PCT_WIDTH;
     uint256 private constant _MUST_ALLOWLIST_LPS_OFFSET = _SWAP_ENABLED_OFFSET + 1;
     uint256 private constant _RECOVERY_MODE_OFFSET = _MUST_ALLOWLIST_LPS_OFFSET + 1;
+    uint256 private constant _JOIN_EXIT_ENABLED_OFFSET = _RECOVERY_MODE_OFFSET + 1;
 
     uint256 private constant _TIMESTAMP_WIDTH = 32;
     uint256 private constant _SWAP_FEE_PCT_WIDTH = 62;
 
     uint256 private constant _MAX_SWAP_FEE = (1 << _SWAP_FEE_PCT_WIDTH) - 1;
 
-    function clearWordAtPosition(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) internal returns (bytes32 clearedWord) {
-        uint256 mask = (1 << bitLength) - 1;
-        clearedWord = bytes32(uint256(word) & ~(mask << offset));
-    }
+    function testSetJoinExitsEnabled(bytes32 poolState, bool enabled) public {
+        bytes32 newPoolState = ManagedPoolStorageLib.setJoinExitsEnabled(poolState, enabled);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _JOIN_EXIT_ENABLED_OFFSET, 1));
 
-    function assertOtherStateUnchanged(
-        bytes32 oldPoolState,
-        bytes32 newPoolState,
-        uint256 offset,
-        uint256 bitLength
-    ) internal returns (bool) {
-        bytes32 clearedOldState = clearWordAtPosition(oldPoolState, offset, bitLength);
-        bytes32 clearedNewState = clearWordAtPosition(newPoolState, offset, bitLength);
-        assertEq(clearedOldState, clearedNewState);
+        assertEq(ManagedPoolStorageLib.getJoinExitsEnabled(newPoolState), enabled);
     }
 
     function testSetRecoveryMode(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setRecoveryModeEnabled(poolState, enabled);
-        assertOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_OFFSET, 1);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _RECOVERY_MODE_OFFSET, 1));
 
         assertEq(ManagedPoolStorageLib.getRecoveryModeEnabled(newPoolState), enabled);
     }
 
     function testSwapsEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setSwapsEnabled(poolState, enabled);
-        assertOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _SWAP_ENABLED_OFFSET, 1));
 
         assertEq(ManagedPoolStorageLib.getSwapsEnabled(newPoolState), enabled);
     }
 
     function testLPAllowlistEnabled(bytes32 poolState, bool enabled) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setLPAllowlistEnabled(poolState, enabled);
-        assertOtherStateUnchanged(poolState, newPoolState, _MUST_ALLOWLIST_LPS_OFFSET, 1);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _MUST_ALLOWLIST_LPS_OFFSET, 1));
 
         assertEq(ManagedPoolStorageLib.getLPAllowlistEnabled(newPoolState), enabled);
     }
@@ -81,7 +71,7 @@ contract ManagedPoolStorageLibTest is Test {
         uint32 endTime
     ) public {
         bytes32 newPoolState = ManagedPoolStorageLib.setWeightChangeData(poolState, startTime, endTime);
-        assertOtherStateUnchanged(poolState, newPoolState, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH * 2);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(poolState, newPoolState, _WEIGHT_START_TIME_OFFSET, _TIMESTAMP_WIDTH * 2));
 
         (uint256 actualStartTime, uint256 actualEndTime) = ManagedPoolStorageLib.getWeightChangeFields(newPoolState);
         assertEq(actualStartTime, startTime);
@@ -127,12 +117,12 @@ contract ManagedPoolStorageLibTest is Test {
             startSwapFeePercentage,
             endSwapFeePercentage
         );
-        assertOtherStateUnchanged(
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(
             poolState,
             newPoolState,
             _SWAP_FEE_START_TIME_OFFSET,
             _TIMESTAMP_WIDTH * 2 + _SWAP_FEE_PCT_WIDTH * 2
-        );
+        ));
 
         (
             uint256 actualStartTime,
