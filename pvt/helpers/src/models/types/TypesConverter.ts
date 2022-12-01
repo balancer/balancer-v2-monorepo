@@ -106,7 +106,6 @@ export default {
       aumFeeId,
       factoryVersion,
       poolVersion,
-      mockContractName: params.mockContractName,
     };
   },
 
