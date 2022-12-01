@@ -293,15 +293,17 @@ export default class Task {
       // deployed by other contracts (e.g. Batch Relayer Entrypoints). Therefore, by testing for CHECK mode we can
       // indentify this second type of contracts, and check them by comparing the saved address to the address that the
       // task would attempt to save.
-      const name = Object.keys(parsedOutput)[0];
-      const expectedAddress = this.output()[name];
-      const actualAddress = parsedOutput[name];
-      if (actualAddress === expectedAddress) {
-        logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
-      } else {
-        throw Error(
-          `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' (${actualAddress}) does not match the expected address (${expectedAddress})`
-        );
+
+      for (let name of Object.keys(parsedOutput)) {
+        const expectedAddress = this.output()[name];
+        const actualAddress = parsedOutput[name];
+        if (actualAddress === expectedAddress) {
+          logger.success(`Verified contract '${name}' on network '${this.network}' of task '${this.id}'`);
+        } else {
+          throw Error(
+            `The stated deployment address of '${name}' on network '${this.network}' of task '${this.id}' (${actualAddress}) does not match the expected address (${expectedAddress})`
+          );
+        }
       }
     }
 
