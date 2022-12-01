@@ -19,8 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/BasePoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRecoveryModeHelper.sol";
 
-import "@balancer-labs/v2-pool-weighted/contracts/WeightedMath.sol";
-
+import "./lib/BasePoolMath.sol";
 import "./lib/ComposablePoolLib.sol";
 
 contract RecoveryModeHelper is IRecoveryModeHelper {
@@ -60,7 +59,7 @@ contract RecoveryModeHelper is IRecoveryModeHelper {
 
         bptAmountIn = userData.recoveryModeExit();
 
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(cashBalances, bptAmountIn, virtualSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(cashBalances, bptAmountIn, virtualSupply);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);

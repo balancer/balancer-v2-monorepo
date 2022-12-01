@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "../WeightedMath.sol";
@@ -334,6 +335,6 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         bytes memory userData
     ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, bptAmountIn, totalSupply);
     }
 }
