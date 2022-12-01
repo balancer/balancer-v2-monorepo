@@ -69,7 +69,7 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 15634000, function () {
     aave = await task.instanceAt('IERC20', AAVE);
   });
 
-  async function createPool(swapsEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
+  async function createPool(swapEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[0] = owner.address;
 
@@ -80,7 +80,7 @@ describeForkTest('ManagedPoolFactory', 'mainnet', 15634000, function () {
       normalizedWeights: WEIGHTS,
       assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      swapEnabledOnStart: swapsEnabled,
+      swapEnabledOnStart: swapEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
       aumFeeId: ProtocolFee.AUM,
