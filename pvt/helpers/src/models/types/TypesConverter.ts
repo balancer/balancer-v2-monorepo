@@ -127,6 +127,8 @@ export default {
       aumFeeId,
       mustAllowlistLPs,
       managementAumFeePercentage,
+      factoryVersion,
+      poolVersion,
     } = params;
     if (!params.owner) params.owner = ZERO_ADDRESS;
     if (!tokens) tokens = new TokenList();
@@ -142,7 +144,8 @@ export default {
     if (undefined == swapEnabledOnStart) swapEnabledOnStart = true;
     if (undefined == mustAllowlistLPs) mustAllowlistLPs = false;
     if (undefined == managementAumFeePercentage) managementAumFeePercentage = FP_ZERO;
-
+    if (undefined == factoryVersion) factoryVersion = 'default factory version';
+    if (undefined == poolVersion) poolVersion = 'default pool version';
     return {
       tokens,
       weights,
@@ -156,6 +159,8 @@ export default {
       pauseWindowDuration,
       bufferPeriodDuration,
       mockContractName: params.mockContractName,
+      factoryVersion,
+      poolVersion,
       owner: params.owner,
       from: params.from,
     };

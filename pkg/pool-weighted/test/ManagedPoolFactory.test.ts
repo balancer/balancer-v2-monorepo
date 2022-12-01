@@ -23,6 +23,17 @@ describe('ManagedPoolFactory', function () {
   let manager: SignerWithAddress;
   let assetManager: SignerWithAddress;
 
+  const factoryVersion = JSON.stringify({
+    name: 'ManagedPoolFactory',
+    version: '4',
+    deployment: 'test-deployment',
+  });
+  const poolVersion = JSON.stringify({
+    name: 'ManagedPool',
+    version: '0',
+    deployment: 'test-deployment',
+  });
+
   const NAME = 'Balancer Pool Token';
   const SYMBOL = 'BPT';
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
@@ -44,7 +55,7 @@ describe('ManagedPoolFactory', function () {
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     factory = await deploy('ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
@@ -59,12 +70,15 @@ describe('ManagedPoolFactory', function () {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
-    const newPoolParams: ManagedPoolParams = {
+    const poolParams = {
       name: NAME,
       symbol: SYMBOL,
+      assetManagers: assetManagers,
+    };
+
+    const settingsParams: ManagedPoolParams = {
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
-      assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
@@ -72,7 +86,7 @@ describe('ManagedPoolFactory', function () {
       aumFeeId: ProtocolFee.AUM,
     };
 
-    const receipt = await (await factory.connect(manager).create(newPoolParams, manager.address)).wait();
+    const receipt = await (await factory.connect(manager).create(poolParams, settingsParams, manager.address)).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
     return deployedAt('ManagedPool', event.args.pool);
@@ -138,6 +152,18 @@ describe('ManagedPoolFactory', function () {
 
     it('sets the decimals', async () => {
       expect(await pool.decimals()).to.equal(18);
+    });
+
+    it('sets factory version', async () => {
+      expect(await factory.version()).to.be.eq(factoryVersion);
+    });
+
+    it('sets pool version', async () => {
+      expect(await factory.getPoolVersion()).to.be.eq(poolVersion);
+    });
+
+    it('sets pool version in the pool', async () => {
+      expect(await pool.version()).to.be.eq(poolVersion);
     });
   });
 

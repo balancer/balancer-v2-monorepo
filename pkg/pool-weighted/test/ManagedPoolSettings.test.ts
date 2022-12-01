@@ -161,13 +161,6 @@ describe('ManagedPoolSettings', function () {
 
               expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
             });
-
-            it('sets asset managers', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                const info = await pool.getTokenInfo(token);
-                expect(info.assetManager).to.eq(assetManagers[i]);
-              });
-            });
           });
         });
       }
@@ -522,7 +515,6 @@ describe('ManagedPoolSettings', function () {
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
           const now = await currentTimestamp();
-
           await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
             'SENDER_NOT_ALLOWED'
           );

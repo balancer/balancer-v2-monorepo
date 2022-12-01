@@ -37,6 +37,12 @@ describe('ManagedPool', function () {
   let pool: ManagedPool;
   let vault: Vault;
 
+  const poolVersion = JSON.stringify({
+    name: 'ManagedPool',
+    version: '0',
+    deployment: 'test-deployment',
+  });
+
   before('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();
   });
@@ -69,6 +75,7 @@ describe('ManagedPool', function () {
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
       mockContractName: 'MockManagedPool',
+      poolVersion,
       ...overrides,
     };
     return ManagedPool.create(params);
@@ -119,6 +126,10 @@ describe('ManagedPool', function () {
           const { assetManager } = await vault.getPoolTokenInfo(pool.poolId, token);
           expect(assetManager).to.be.eq(ZERO_ADDRESS);
         });
+      });
+
+      it('returns the expected pool version', async () => {
+        expect(await pool.version()).to.be.eq(poolVersion);
       });
     });
   });

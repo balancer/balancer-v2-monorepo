@@ -80,6 +80,8 @@ export type RawManagedPoolDeployment = {
   vault?: Vault;
   fromFactory?: boolean;
   mockContractName?: string;
+  factoryVersion?: string;
+  poolVersion?: string;
 };
 
 export type ManagedPoolDeployment = {
@@ -94,6 +96,8 @@ export type ManagedPoolDeployment = {
   aumFeeId?: BigNumberish;
   pauseWindowDuration: BigNumberish;
   bufferPeriodDuration: BigNumberish;
+  factoryVersion: string;
+  poolVersion: string;
   owner: Account;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -248,11 +252,8 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
-  name: string;
-  symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
-  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;

@@ -34,6 +34,7 @@ export default class ManagedPool extends WeightedPool {
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
   aumFeeId: BigNumberish;
+  poolVersion: string;
 
   constructor(
     instance: Contract,
@@ -47,6 +48,7 @@ export default class ManagedPool extends WeightedPool {
     swapEnabledOnStart: boolean,
     mustAllowlistLPs: boolean,
     managementAumFeePercentage: BigNumberish,
+    poolVersion: string,
     aumFeeId?: BigNumberish,
     owner?: Account
   ) {
@@ -56,6 +58,7 @@ export default class ManagedPool extends WeightedPool {
     this.mustAllowlistLPs = mustAllowlistLPs;
     this.managementAumFeePercentage = managementAumFeePercentage;
     this.aumFeeId = aumFeeId ?? ProtocolFee.AUM;
+    this.poolVersion = poolVersion;
   }
 
   static async create(params: RawManagedPoolDeployment = {}): Promise<ManagedPool> {
@@ -78,6 +81,7 @@ export default class ManagedPool extends WeightedPool {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
+      poolVersion,
       aumFeeId,
       owner,
     } = deployment;
@@ -94,6 +98,7 @@ export default class ManagedPool extends WeightedPool {
       swapEnabledOnStart,
       mustAllowlistLPs,
       managementAumFeePercentage,
+      poolVersion,
       aumFeeId,
       owner
     );
@@ -142,6 +147,7 @@ export default class ManagedPool extends WeightedPool {
       mustAllowlistLPs,
       managementAumFeePercentage,
       aumFeeId,
+      poolVersion,
       owner,
       pauseWindowDuration,
       bufferPeriodDuration,
@@ -149,26 +155,57 @@ export default class ManagedPool extends WeightedPool {
       from,
     } = params;
 
+    if (mockContractName == 'MockManagedPoolSettings') {
+      return deploy('v2-pool-weighted/MockManagedPoolSettings', {
+        args: [
+          {
+            tokens: tokens.addresses,
+            normalizedWeights: weights,
+            swapFeePercentage: swapFeePercentage,
+            swapEnabledOnStart: swapEnabledOnStart,
+            mustAllowlistLPs: mustAllowlistLPs,
+            managementAumFeePercentage: managementAumFeePercentage,
+            aumFeeId: aumFeeId,
+          },
+          vault.address,
+          vault.protocolFeesProvider.address,
+          ManagedPool.weightedMathLib.address,
+          assetManagers,
+          owner,
+        ],
+        from,
+        libraries: {
+          CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
+          ManagedPoolAddRemoveTokenLib: ManagedPool.addRemoveTokenLib.address,
+        },
+      });
+    }
+
     return deploy(mockContractName ?? 'v2-pool-weighted/ManagedPool', {
       args: [
         {
           name: NAME,
           symbol: SYMBOL,
+          assetManagers: assetManagers,
+        },
+        {
+          vault: vault.address,
+          protocolFeeProvider: vault.protocolFeesProvider.address,
+          weightedMath: ManagedPool.weightedMathLib.address,
+          pauseWindowDuration,
+          bufferPeriodDuration,
+          version: poolVersion,
+        },
+        {
           tokens: tokens.addresses,
           normalizedWeights: weights,
-          assetManagers: assetManagers,
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: swapEnabledOnStart,
           mustAllowlistLPs: mustAllowlistLPs,
           managementAumFeePercentage: managementAumFeePercentage,
           aumFeeId: aumFeeId,
         },
-        vault.address,
-        vault.protocolFeesProvider.address,
-        ManagedPool.weightedMathLib.address,
         owner,
-        pauseWindowDuration,
-        bufferPeriodDuration,
       ],
       from,
       libraries: {
@@ -176,6 +213,10 @@ export default class ManagedPool extends WeightedPool {
         ManagedPoolAddRemoveTokenLib: ManagedPool.addRemoveTokenLib.address,
       },
     });
+  }
+
+  async version(): Promise<string[]> {
+    return this.instance.version();
   }
 
   async getGradualSwapFeeUpdateParams(from?: SignerWithAddress): Promise<GradualSwapFeeUpdateParams> {
