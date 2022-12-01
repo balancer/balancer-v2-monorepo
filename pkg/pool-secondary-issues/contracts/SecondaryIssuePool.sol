@@ -18,7 +18,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
-import "hardhat/console.sol";
+
 contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
     using FixedPoint for uint256;
     using StringUtils for *;
@@ -567,7 +567,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(securityTraded >= orders[_ref].qty){
                         currencyTraded = orders[_ref].qty.mulDown(_bestBidPrice);
-                        orders[_bestBid].qty = orders[_bestBid].tokenIn==_currency &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
+                        orders[_bestBid].qty = orders[_bestBid].tokenIn ==_currency &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                 Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, currencyTraded);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = OrderStatus.PartlyFilled;
@@ -591,7 +591,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(currencyTraded >= orders[_ref].qty){
                         securityTraded = orders[_ref].qty.divDown(_bestBidPrice);
-                        orders[_bestBid].qty = orders[_bestBid].tokenOut==_security &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
+                        orders[_bestBid].qty = orders[_bestBid].tokenOut ==_security &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
                                                 Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = OrderStatus.PartlyFilled;
@@ -634,7 +634,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(currencyTraded >= orders[_ref].qty){
                         securityTraded = Math.div(orders[_ref].qty, _bestOfferPrice, false);
-                        orders[_bestOffer].qty = orders[_bestOffer].tokenOut==_currency &&  orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_OUT ? 
+                        orders[_bestOffer].qty = orders[_bestOffer].tokenOut ==_currency &&  orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_OUT ? 
                                                 Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestOffer].status = OrderStatus.PartlyFilled;
@@ -658,8 +658,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     }
                     if(securityTraded >= orders[_ref].qty){
                         currencyTraded = Math.mul(orders[_ref].qty, _bestOfferPrice);
-                        orders[_bestOffer].qty = orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
-                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
+                        orders[_bestOffer].qty = orders[_bestOffer].tokenIn ==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
+                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, currencyTraded);
                         orders[_ref].qty = 0;
                         orders[_bestOffer].status = OrderStatus.PartlyFilled;
                         orders[_ref].status = OrderStatus.Filled;  
