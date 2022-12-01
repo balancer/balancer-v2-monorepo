@@ -14,13 +14,16 @@ import Vault from '../../vault/Vault';
 
 import { RecoveryModeExitParams, ExitResult, JoinExitBasePool, FailureMode } from './types';
 
+export const NAME = 'Balancer Pool Token';
+export const SYMBOL = 'BPT';
+
 export default class BasePool {
   instance: Contract;
   poolId: string;
   tokens: TokenList;
   swapFeePercentage: BigNumberish;
   vault: Vault;
-  owner?: SignerWithAddress;
+  owner?: Account;
 
   constructor(
     instance: Contract,
@@ -28,7 +31,7 @@ export default class BasePool {
     vault: Vault,
     tokens: TokenList,
     swapFeePercentage: BigNumberish,
-    owner?: SignerWithAddress
+    owner?: Account
   ) {
     this.instance = instance;
     this.poolId = poolId;
