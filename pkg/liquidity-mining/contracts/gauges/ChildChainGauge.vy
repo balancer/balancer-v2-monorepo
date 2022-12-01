@@ -69,7 +69,7 @@ VERSION: constant(String[8]) = "v0.1.0"
 
 BAL: immutable(address)
 FACTORY: immutable(address)
-
+AUTHORIZER_ADAPTOR: immutable(address)
 
 DOMAIN_SEPARATOR: public(bytes32)
 nonces: public(HashMap[address, uint256])
@@ -82,7 +82,6 @@ balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
 
 lp_token: public(address)
-manager: public(address)
 
 voting_escrow: public(address)
 working_balances: public(HashMap[address, uint256])
@@ -112,11 +111,12 @@ inflation_rate: public(HashMap[uint256, uint256])
 
 
 @external
-def __init__(_bal_token: address, _factory: address):
+def __init__(_bal_token: address, _factory: address, _authorizer_adaptor: address):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
 
     BAL = _bal_token
     FACTORY = _factory
+    AUTHORIZER_ADAPTOR = _authorizer_adaptor
 
 
 @internal
@@ -560,7 +560,7 @@ def add_reward(_reward_token: address, _distributor: address):
     """
     @notice Set the active reward contract
     """
-    assert msg.sender == self.manager or msg.sender == Factory(FACTORY).owner()
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
 
     reward_count: uint256 = self.reward_count
     assert reward_count < MAX_REWARDS
@@ -575,7 +575,7 @@ def add_reward(_reward_token: address, _distributor: address):
 def set_reward_distributor(_reward_token: address, _distributor: address):
     current_distributor: address = self.reward_data[_reward_token].distributor
 
-    assert msg.sender == current_distributor or msg.sender == self.manager or msg.sender == Factory(FACTORY).owner()
+    assert msg.sender in [current_distributor, AUTHORIZER_ADAPTOR]
     assert current_distributor != ZERO_ADDRESS
     assert _distributor != ZERO_ADDRESS
 
@@ -612,14 +612,6 @@ def deposit_reward_token(_reward_token: address, _amount: uint256):
 
     self.reward_data[_reward_token].last_update = block.timestamp
     self.reward_data[_reward_token].period_finish = block.timestamp + WEEK
-
-
-@external
-def set_manager(_manager: address):
-    assert msg.sender == Factory(FACTORY).owner()
-
-    self.manager = _manager
-
 
 @external
 def update_voting_escrow():
@@ -666,13 +658,20 @@ def version() -> String[8]:
 def factory() -> address:
     return FACTORY
 
+@external
+@view
+def authorizer_adaptor() -> address:
+    """
+    @notice Return the authorizer adaptor address.
+    """
+    return AUTHORIZER_ADAPTOR
+
 
 @external
-def initialize(_lp_token: address, _manager: address):
+def initialize(_lp_token: address):
     assert self.lp_token == ZERO_ADDRESS  # dev: already initialzed
 
     self.lp_token = _lp_token
-    self.manager = _manager
 
     self.voting_escrow = Factory(msg.sender).voting_escrow()
 
