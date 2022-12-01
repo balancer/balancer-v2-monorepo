@@ -15,7 +15,7 @@ import { advanceTime, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import { AuthorizerDeployment } from '../../20210418-authorizer/input';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 
-describeForkTest('GaugeAdderV3', 'mainnet', 16078000, function () {
+describeForkTest('GaugeAdderV3', 'mainnet', 16092163, function () {
   let factory: Contract;
   let adaptorEntrypoint: Contract;
   let authorizer: Contract;
