@@ -9,10 +9,11 @@ import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
 
-contract Orderbook is IOrder, ITrade{
+contract Orderbook is IOrder, ITrade, Ownable{
     using Math for uint256;
 
     //counter for block timestamp nonce for creating unique order references
@@ -73,9 +74,11 @@ contract Orderbook is IOrder, ITrade{
     function newOrder(
         IPoolSwapStructs.SwapRequest memory _request,
         IOrder.Params memory _params,
-        IOrder.Order _order//,
-        //uint256[] memory _balances
-    ) private {
+        IOrder.Order _order,
+        uint256[] memory _balances,
+        uint256 _currencyIndex,
+        uint256 _securityIndex
+    ) public onlyOwner {
         require(_params.trade == IOrder.OrderType.Market || _params.trade == IOrder.OrderType.Limit || _params.trade == IOrder.OrderType.Stop);
         require(_order == IOrder.Order.Buy || _order == IOrder.Order.Sell);
         if(block.timestamp == _previousTs)
@@ -94,9 +97,9 @@ contract Orderbook is IOrder, ITrade{
             qty: _request.amount,
             dt: _previousTs,
             party: _request.from,
-            price: _params.price//,  
-            //currencyBalance: _balances[_currencyIndex],  
-            //securityBalance: _balances[_securityIndex]
+            price: _params.price,  
+            currencyBalance: _balances[_currencyIndex],  
+            securityBalance: _balances[_securityIndex]
         });
         orders[ref] = nOrder;
         //fill up indexes
@@ -270,7 +273,7 @@ contract Orderbook is IOrder, ITrade{
         uint256 currencyTraded;
         if (orders[_ref].order == IOrder.Order.Sell) {               
             if (_bestBid != "") {
-                if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN){
+                if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].securityBalance>=orders[_ref].qty){
                     if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                         securityTraded = Math.div(orders[_bestBid].qty, _bestBidPrice, false); // calculating amount of security that can be brought
                     }else if (orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
@@ -337,7 +340,7 @@ contract Orderbook is IOrder, ITrade{
         } 
         else if (orders[_ref].order == IOrder.Order.Buy){            
             if (_bestOffer != "") {
-                if(orders[_ref].tokenIn==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN){
+                if(orders[_ref].tokenIn==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].currencyBalance>=orders[_ref].qty){
                     if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                         currencyTraded = Math.mul(orders[_bestOffer].qty, _bestOfferPrice); // calculating amount of currency that can taken out    
                     } else if (orders[_bestOffer].tokenOut==_currency && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_OUT){

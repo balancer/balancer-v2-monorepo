@@ -9,6 +9,7 @@ import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 import "./interfaces/ISettlor.sol";
 import "./utilities/StringUtils.sol";
+import "./Orderbook.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
@@ -23,9 +24,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
     using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for *;
+
+    Orderbook public orderbook;
     
-    address private immutable _security;
-    address private immutable _currency;
+    address private _security;
+    address private _currency;
 
     uint256 private constant _TOTAL_TOKENS = 3; //Security token, Currency token (ie, paired token), Balancer pool token
 
@@ -73,14 +76,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
     mapping(bytes32 => uint256) private _stopOrderIndex;
 
     event CallSwap( bool swapKindParty, string tokenInParty, address party, 
-                    bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId);*/ 
+                    bool swapKindCounterparty, string tokenInCounterparty, address counterParty, uint256 swapId);
+                    
+    //swap references from party to order timestamp to return amount
+    mapping(address => mapping(uint256 => uint256)) private swapRefs;*/ 
 
     //order matching related    
     uint256 private _bestUnfilledBid;
     uint256 private _bestUnfilledOffer;
-
-    //swap references from party to order timestamp to return amount
-    mapping(address => mapping(uint256 => uint256)) private swapRefs;
 
     event TradeReport(
         address indexed security,
@@ -141,6 +144,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
         _MAX_TOKEN_BALANCE = maxSecurityOffered;
 
         _balancerManager = payable(owner);
+
+        orderbook = new Orderbook(_balancerManager, _security, _currency);
     }
 
     function getSecurity() external view returns (address) {
@@ -219,7 +224,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
                             "Pending",
                             block.timestamp
                         );*/
-                        return _downscaleDown(swapRefs[request.from][string(request.userData).stringToUint()], scalingFactors[indexOut]);
+                        //return _downscaleDown(swapRefs[request.from][string(request.userData).stringToUint()], scalingFactors[indexOut]);
                     }
                 }
                 else if(request.kind == IVault.SwapKind.GIVEN_OUT) {
@@ -251,7 +256,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
                             "Pending",
                             block.timestamp
                         );*/
-                        return _downscaleDown(swapRefs[request.from][string(request.userData).stringToUint()], scalingFactors[indexIn]);
+                        //return _downscaleDown(swapRefs[request.from][string(request.userData).stringToUint()], scalingFactors[indexIn]);
                     }
                 }
             }
@@ -288,10 +293,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
 
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
-            //newOrder(request, params, Order.Sell);//, balances);
+            orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-            //newOrder(request, params, Order.Buy);//, balances);
+            orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
         }
     }
 
