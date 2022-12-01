@@ -15,9 +15,12 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
+
+import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
+import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "./ManagedPool.sol";
 import "../ExternalWeightedMath.sol";
@@ -34,13 +37,22 @@ import "../ExternalWeightedMath.sol";
  * In this design, other client-specific factories will deploy a contract, then call this factory
  * to deploy the pool, passing in that contract address as the owner.
  */
-contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory, FactoryWidePauseWindow {
     IExternalWeightedMath private immutable _weightedMath;
+    string private _poolVersion;
 
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode)
-    {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode) Version(factoryVersion) {
         _weightedMath = new ExternalWeightedMath();
+        _poolVersion = poolVersion;
+    }
+
+    function getPoolVersion() public view override returns (string memory) {
+        return _poolVersion;
     }
 
     function getWeightedMath() external view returns (IExternalWeightedMath) {
@@ -62,7 +74,8 @@ contract ManagedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
             protocolFeeProvider: getProtocolFeePercentagesProvider(),
             weightedMath: _weightedMath,
             pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration
+            bufferPeriodDuration: bufferPeriodDuration,
+            version: getPoolVersion()
         });
 
         return _create(abi.encode(params, configParams, settingsParams, owner));

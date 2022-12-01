@@ -28,6 +28,7 @@ describe('ManagedPool owner only actions', () => {
           weightedMath: math.address,
           pauseWindowDuration: 0,
           bufferPeriodDuration: 0,
+          version: '',
         },
         {
           tokens: tokens.addresses,

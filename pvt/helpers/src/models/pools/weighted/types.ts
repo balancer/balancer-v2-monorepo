@@ -36,6 +36,8 @@ export type RawWeightedPoolDeployment = {
   poolType?: WeightedPoolType;
   aumFeeId?: BigNumberish;
   mockContractName?: string;
+  factoryVersion?: string;
+  poolVersion?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -51,6 +53,8 @@ export type WeightedPoolDeployment = {
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  factoryVersion: string;
+  poolVersion: string;
   aumFeeId?: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
