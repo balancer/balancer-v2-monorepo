@@ -49,8 +49,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
 
     mapping(bytes32 => uint256) private _stopOrderIndex;
 
-    //swap references from party to order timestamp to return amount
-    mapping(address => mapping(uint256 => uint256)) private swapRefs;
+    //order references from party to order timestamp
+    mapping(address => mapping(uint256 => ITrade.trade)) private tradeRefs;
 
     //order matching related    
     uint256 private _bestUnfilledBid;
@@ -139,12 +139,8 @@ contract Orderbook is IOrder, ITrade, Ownable{
         orders[ref].price = _price;
         orders[ref].qty = _qty;
         if (orders[ref].otype == IOrder.OrderType.Limit) {
-            //_limitOrderIndex[ref] = _limitOrders.length; 
-            //_limitOrders.push(ref); //Paras : why are we again pushing orders to the order book when we are editing them ?            
             checkLimitOrders(ref, IOrder.OrderType.Limit);
         } else if (orders[ref].otype == IOrder.OrderType.Stop) {
-            //_stopOrderIndex[ref] = _stopOrders.length;
-            //_stopOrders.push(ref); //Paras : why are we again pushing orders to the order book when we are editing them ?
             checkStopOrders(ref, IOrder.OrderType.Stop);
         }        
     }
@@ -253,7 +249,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             _bestBid = _orderRefs[i];
                             _bidIndex = i;
                         }
-                        //orders[_ref].price = orders[_ref].price == 0 ? orders[_bestBid].price : orders[_ref].price; //Paras : shouldn't orders[_ref].price be what the best bid is ?
                     }
                 } else if (orders[_marketOrders[i]].order == IOrder.Order.Sell && orders[_ref].order == IOrder.Order.Buy) {
                     // orders[_ref].price == 0 condition check for Market Order with 0 Price
@@ -264,7 +259,6 @@ contract Orderbook is IOrder, ITrade, Ownable{
                             _bestOffer = _orderRefs[i];
                             _bidIndex = i;
                         }
-                        //orders[_ref].price = orders[_ref].price == 0 ? orders[_bestOffer].price : orders[_ref].price;
                     }
                 }
             }
@@ -320,9 +314,26 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         orders[_ref].status = IOrder.OrderStatus.PartlyFilled;                        
                         reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                     }
-                }                 
-                swapRefs[orders[_ref].party][orders[_ref].dt] = orders[_ref].tokenIn==_security ? securityTraded : currencyTraded;
-                swapRefs[orders[_bestBid].party][orders[_ref].dt] = orders[_bestBid].tokenIn==_security ? securityTraded : currencyTraded;
+                }
+                ITrade.trade memory tradeToReport = ITrade.trade({
+                    partyRef: _ref,
+                    partySwapIn: orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
+                    partyTokenIn: orders[_ref].tokenIn==_security ? "security" : "currency",
+                    partyInAmount: orders[_ref].tokenIn==_security ? securityTraded : currencyTraded,
+                    party: orders[_ref].party,
+                    counterpartyRef: _bestBid, 
+                    counterpartySwapIn: orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
+                    counterpartyTokenIn: orders[_bestBid].tokenIn==_security ? "security" : "currency",
+                    counterpartyInAmount: orders[_bestBid].tokenIn==_security ? securityTraded : currencyTraded,
+                    counterparty: orders[_bestBid].party, 
+                    security: _security,
+                    currency: _currency,
+                    price: _bestBidPrice,
+                    otype: orders[_ref].otype,
+                    dt: block.timestamp
+                });                 
+                tradeRefs[orders[_ref].party][orders[_ref].dt] = tradeToReport;
+                tradeRefs[orders[_bestBid].party][orders[_ref].dt] = tradeToReport;
                 _bidIndex = orders[_ref].dt;
                 emit CallSwap(  orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
                                 orders[_ref].tokenIn==_security ? "security" : "currency",
@@ -388,8 +399,25 @@ contract Orderbook is IOrder, ITrade, Ownable{
                         reorder(_bidIndex, orders[_marketOrders[_bidIndex]].otype); //bid order ref is removed from market order list as its qty becomes zero
                     }
                 }                
-                swapRefs[orders[_ref].party][orders[_ref].dt] = orders[_ref].tokenIn==_security ? securityTraded : currencyTraded;
-                swapRefs[orders[_bestOffer].party][orders[_ref].dt] = orders[_bestOffer].tokenIn==_security ? securityTraded : currencyTraded;
+                ITrade.trade memory tradeToReport = ITrade.trade({
+                    partyRef: _ref,
+                    partySwapIn: orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
+                    partyTokenIn: orders[_ref].tokenIn==_security ? "security" : "currency",
+                    partyInAmount: orders[_ref].tokenIn==_security ? securityTraded : currencyTraded,
+                    party: orders[_ref].party,
+                    counterpartyRef: _bestOffer, 
+                    counterpartySwapIn: orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
+                    counterpartyTokenIn: orders[_bestOffer].tokenIn==_security ? "security" : "currency",
+                    counterpartyInAmount: orders[_bestOffer].tokenIn==_security ? securityTraded : currencyTraded,
+                    counterparty: orders[_bestOffer].party, 
+                    security: _security,
+                    currency: _currency,
+                    price: _bestOfferPrice,
+                    otype: orders[_ref].otype,
+                    dt: block.timestamp
+                }); 
+                tradeRefs[orders[_ref].party][orders[_ref].dt] = tradeToReport;
+                tradeRefs[orders[_bestOffer].party][orders[_ref].dt] = tradeToReport;
                 _bidIndex = orders[_ref].dt;
                 emit CallSwap(  orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN ? true : false,
                                 orders[_ref].tokenIn==_security ? "security" : "currency",
@@ -405,6 +433,14 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 checkStopOrders(_ref, _trade);
             }
         }
+    }
+
+    function getTrade(address _party, uint256 _timestamp) public view onlyOwner returns(ITrade.trade memory){
+        return tradeRefs[_party][_timestamp];
+    }
+
+    function getBestTrade( ) public view onlyOwner returns(uint256, uint256){
+        return (_bestUnfilledBid, _bestUnfilledOffer);
     }
 
     function revertTrade(

@@ -15,18 +15,21 @@ interface ITrade {
     enum SettlementType { STP, DP }*/
 
     struct trade{
-        address transferor;
-        address transferee;
+        bytes32 partyRef;
+        bool partySwapIn;
+        string partyTokenIn;
+        uint256 partyInAmount;
+        address party;
+        bytes32 counterpartyRef; 
+        bool counterpartySwapIn;
+        string counterpartyTokenIn;
+        uint256 counterpartyInAmount;
+        address counterparty; 
         address security;
-        uint256 price;
-        uint256 askprice;
         address currency;
-        IOrder.Order order;
+        uint256 price;
         IOrder.OrderType otype;
-        uint256 qty;
-        uint dt;
-        bytes32 pregRef;
-        bytes32 cpregRef;
+        uint256 dt;
     }
 
     function tradeSettled(/*bytes32 tradeRef,*/ bytes32 partyRef, bytes32 counterpartyRef) external;
