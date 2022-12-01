@@ -53,7 +53,7 @@ describe('ControlledManagedPoolFactory', function () {
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     factory = await deploy('ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion'],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
@@ -73,12 +73,15 @@ describe('ControlledManagedPoolFactory', function () {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
-    const newPoolParams: ManagedPoolParams = {
+    const poolParams = {
       name: NAME,
       symbol: SYMBOL,
+      assetManagers,
+    };
+
+    const settingsParams: ManagedPoolParams = {
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
-      assetManagers: assetManagers,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
       swapEnabledOnStart: swapsEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
@@ -104,7 +107,14 @@ describe('ControlledManagedPoolFactory', function () {
     const receipt = await (
       await controlledFactory
         .connect(manager)
-        .create(newPoolParams, basePoolRights, managedPoolRights, MIN_WEIGHT_CHANGE_DURATION, manager.address)
+        .create(
+          poolParams,
+          settingsParams,
+          basePoolRights,
+          managedPoolRights,
+          MIN_WEIGHT_CHANGE_DURATION,
+          manager.address
+        )
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
