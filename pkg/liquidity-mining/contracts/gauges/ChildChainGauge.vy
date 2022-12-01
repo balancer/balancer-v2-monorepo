@@ -67,7 +67,7 @@ WEEK: constant(uint256) = 86400 * 7
 VERSION: constant(String[8]) = "v0.1.0"
 
 
-CRV: immutable(address)
+BAL: immutable(address)
 FACTORY: immutable(address)
 
 
@@ -112,17 +112,17 @@ inflation_rate: public(HashMap[uint256, uint256])
 
 
 @external
-def __init__(_crv_token: address, _factory: address):
+def __init__(_bal_token: address, _factory: address):
     self.lp_token = 0x000000000000000000000000000000000000dEaD
 
-    CRV = _crv_token
+    BAL = _bal_token
     FACTORY = _factory
 
 
 @internal
 def _checkpoint(_user: address):
     """
-    @notice Checkpoint a user calculating their CRV entitlement
+    @notice Checkpoint a user calculating their BAL entitlement
     @param _user User address
     """
     period: uint256 = self.period
@@ -149,12 +149,12 @@ def _checkpoint(_user: address):
             prev_week_time = week_time
             week_time = min(week_time + WEEK, block.timestamp)
 
-    # check CRV balance and increase weekly inflation rate by delta for the rest of the week
-    crv_balance: uint256 = ERC20(CRV).balanceOf(self)
-    if crv_balance != 0:
+    # check BAL balance and increase weekly inflation rate by delta for the rest of the week
+    bal_balance: uint256 = ERC20(BAL).balanceOf(self)
+    if bal_balance != 0:
         current_week: uint256 = block.timestamp / WEEK
-        self.inflation_rate[current_week] += crv_balance / ((current_week + 1) * WEEK - block.timestamp)
-        ERC20(CRV).transfer(FACTORY, crv_balance)
+        self.inflation_rate[current_week] += bal_balance / ((current_week + 1) * WEEK - block.timestamp)
+        ERC20(BAL).transfer(FACTORY, bal_balance)
 
     period += 1
     self.period = period
@@ -170,8 +170,7 @@ def _checkpoint(_user: address):
 @internal
 def _update_liquidity_limit(_user: address, _user_balance: uint256, _total_supply: uint256):
     """
-    @notice Calculate working balances to apply amplification of CRV production.
-    @dev https://resources.curve.fi/guides/boosting-your-crv-rewards#formula
+    @notice Calculate working balances to apply amplification of BAL production.
     @param _user The user address
     @param _user_balance User's amount of liquidity (LP tokens)
     @param _total_supply Total amount of liquidity (LP tokens)
@@ -678,7 +677,7 @@ def initialize(_lp_token: address, _manager: address):
     self.voting_escrow = Factory(msg.sender).voting_escrow()
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
-    name: String[64] = concat("Curve.fi ", symbol, " Gauge Deposit")
+    name: String[64] = concat("Balancer ", symbol, " Gauge Deposit")
 
     self.name = name
     self.symbol = concat(symbol, "-gauge")
