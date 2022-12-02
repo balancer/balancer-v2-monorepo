@@ -20,7 +20,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
-contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
+contract SecondaryIssuePool is BasePool, IGeneralPool {
     using Math for uint256;
     using FixedPoint for uint256;
     using StringUtils for *;
@@ -161,13 +161,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                         ITrade.trade memory tradeToReport = orderbook.getTrade(request.from, string(request.userData).stringToUint());
-                        ISettlor(_balancerManager).reportTrade(tradeToReport);
+                        ISettlor(_balancerManager).requestSettlement(tradeToReport, orderbook);
                         uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                         emit TradeReport(
                             tradeToReport.security,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                            tradeToReport.price,
+                            Math.div(keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount, amount, false),
                             tradeToReport.price,
                             tradeToReport.currency,
                             amount,
@@ -181,13 +181,13 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
                     if (request.tokenOut == IERC20(_security) || request.tokenOut == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
                         ITrade.trade memory tradeToReport = orderbook.getTrade(request.from, string(request.userData).stringToUint());
-                        ISettlor(_balancerManager).reportTrade(tradeToReport);
+                        ISettlor(_balancerManager).requestSettlement(tradeToReport, orderbook);
                         uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                         emit TradeReport(
                             tradeToReport.security,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.party : tradeToReport.counterparty,
                             keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.party : tradeToReport.counterparty,
-                            tradeToReport.price,
+                            Math.div(keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("currency")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount, amount, false),
                             tradeToReport.price,
                             tradeToReport.currency,
                             amount,

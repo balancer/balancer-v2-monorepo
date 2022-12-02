@@ -453,6 +453,13 @@ contract Orderbook is IOrder, ITrade, Ownable{
         orders[_orderRef].qty = orders[_orderRef].qty + _qty;
         orders[_orderRef].status = OrderStatus.Open;
         //push to order book
+        if (orders[_orderRef].otype == IOrder.OrderType.Market) {
+            matchOrders(_orderRef, IOrder.OrderType.Market);
+        } else if (orders[_orderRef].otype == IOrder.OrderType.Limit) {
+            checkLimitOrders(_orderRef, IOrder.OrderType.Limit);
+        } else if (orders[_orderRef].otype == IOrder.OrderType.Stop) {
+            checkStopOrders(_orderRef, IOrder.OrderType.Stop);
+        }
     }
 
     function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) external override {
@@ -470,12 +477,10 @@ contract Orderbook is IOrder, ITrade, Ownable{
     }
 
     function tradeSettled(
-        //bytes32 tradeRef,
         bytes32 partyRef,
         bytes32 counterpartyRef
     ) external override {
         require(_balancerManager == msg.sender);
-        //delete _trades[tradeRef];
         orders[partyRef].status = OrderStatus.Filled;
         orders[counterpartyRef].status = OrderStatus.Filled;
     }
