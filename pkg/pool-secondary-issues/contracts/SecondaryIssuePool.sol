@@ -13,16 +13,12 @@ import "./Orderbook.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
-import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
-import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 contract SecondaryIssuePool is BasePool, IGeneralPool {//, IOrder, ITrade {
-    using Math for uint256;
-    using FixedPoint for uint256;
     using StringUtils for *;
 
     Orderbook public orderbook;

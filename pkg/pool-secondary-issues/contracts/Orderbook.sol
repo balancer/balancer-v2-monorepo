@@ -9,12 +9,13 @@ import "./interfaces/IOrder.sol";
 import "./interfaces/ITrade.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Ownable.sol";
 
 import "@balancer-labs/v2-interfaces/contracts/vault/IPoolSwapStructs.sol";
 
 contract Orderbook is IOrder, ITrade, Ownable{
-    using Math for uint256;
+    using FixedPoint for uint256;
 
     //counter for block timestamp nonce for creating unique order references
     uint256 private _previousTs = 0;
@@ -149,9 +150,15 @@ contract Orderbook is IOrder, ITrade, Ownable{
         require(orders[ref].party == msg.sender, "Sender is not order creator");
         delete _marketOrders[_marketOrderIndex[ref]];
         delete _marketOrderIndex[ref];
-        delete _limitOrders[_limitOrderIndex[ref]];
+        if (_limitOrders.length > 0)
+        {
+            delete _limitOrders[_limitOrderIndex[ref]]; 
+        }
         delete _limitOrderIndex[ref];
-        delete _stopOrders[_stopOrderIndex[ref]];
+        if (_stopOrders.length > 0)
+        {
+            delete _stopOrders[_stopOrderIndex[ref]];
+        }
         delete _stopOrderIndex[ref];
         delete orders[ref];
         delete _orderRefs[_orderIndex[ref]];
@@ -165,12 +172,12 @@ contract Orderbook is IOrder, ITrade, Ownable{
     function checkLimitOrders(bytes32 _ref, IOrder.OrderType _trade) private {
         bytes32 ref;
         for (uint256 i = 0; i < _limitOrders.length; i++) {
+            if(_limitOrders[i] == 0) continue;
             if ((orders[_limitOrders[i]].order == IOrder.Order.Buy && orders[_limitOrders[i]].price >= orders[_ref].price) ||
                 (orders[_limitOrders[i]].order == IOrder.Order.Sell && orders[_limitOrders[i]].price <= orders[_ref].price)){
                 _marketOrders.push(_limitOrders[i]);
                 ref = _limitOrders[i];
                 reorder(i, IOrder.OrderType.Limit);
-                if(ref == 0) continue; //Paras : why have we added this ?    
                 if(_trade!=IOrder.OrderType.Market && ref!=_ref){
                 //only if the consecutive order is a limit order, it goes to the market order book
                     _marketOrders.push(_ref);
@@ -186,12 +193,12 @@ contract Orderbook is IOrder, ITrade, Ownable{
     function checkStopOrders(bytes32 _ref, IOrder.OrderType _trade) private {
         bytes32 ref;
         for (uint256 i = 0; i < _stopOrders.length; i++) {
+            if(_stopOrders[i] == 0) continue;
             if ((orders[_stopOrders[i]].order == IOrder.Order.Buy && orders[_stopOrders[i]].price <= orders[_ref].price) ||
                 (orders[_stopOrders[i]].order == IOrder.Order.Sell && orders[_stopOrders[i]].price >= orders[_ref].price)){
                 _marketOrders.push(_stopOrders[i]);
                 ref = _stopOrders[i];
-                reorder(i, IOrder.OrderType.Stop);
-                if(ref == 0) continue; // Paras : why have we added this ?     
+                reorder(i, IOrder.OrderType.Stop);   
                 if(_trade!=IOrder.OrderType.Market && ref!=_ref){
                     //only if the consecutive order is a stop loss order, it goes to the market order book
                     _marketOrders.push(_ref);
@@ -241,11 +248,12 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 orders[_marketOrders[i]].party != orders[_ref].party && //orders posted by a party can not be matched by a counter offer by the same party
                 orders[_marketOrders[i]].status != IOrder.OrderStatus.Filled //orders that are filled can not be matched /traded again
             ) {
+                if (orders[_marketOrders[i]].price == 0 && orders[_ref].price == 0) continue; // Case: If Both CP & Party place Order@CMP
                 if (orders[_marketOrders[i]].order == IOrder.Order.Buy && orders[_ref].order == IOrder.Order.Sell) {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
                             _bestUnfilledBid = _bestBidPrice;
-                            _bestBidPrice = orders[_marketOrders[i]].price;
+                            _bestBidPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; // Case: If CP price = 0, CP price = Party's price 
                             _bestBid = _orderRefs[i];
                             _bidIndex = i;
                         }
@@ -255,7 +263,7 @@ contract Orderbook is IOrder, ITrade, Ownable{
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
-                            _bestOfferPrice = orders[_marketOrders[i]].price;
+                            _bestOfferPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; // Case: If CP price = 0, CP price = Party's price 
                             _bestOffer = _orderRefs[i];
                             _bidIndex = i;
                         }
@@ -269,21 +277,21 @@ contract Orderbook is IOrder, ITrade, Ownable{
             if (_bestBid != "") {
                 if(orders[_ref].tokenIn==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].securityBalance>=orders[_ref].qty){
                     if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
-                        securityTraded = Math.div(orders[_bestBid].qty, _bestBidPrice, false); // calculating amount of security that can be brought
+                        securityTraded = orders[_bestBid].qty.divDown(_bestBidPrice); // calculating amount of security that can be brought
                     }else if (orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
                         securityTraded = orders[_bestBid].qty; // amount of security brought (tokenOut) is already there 
                     }
                     if(securityTraded >= orders[_ref].qty){
-                        currencyTraded = Math.mul(orders[_ref].qty, _bestBidPrice);
-                        orders[_bestBid].qty = orders[_bestBid].tokenIn==_currency ? 
-                                                Math.sub(orders[_bestBid].qty, currencyTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
+                        currencyTraded = orders[_ref].qty.mulDown(_bestBidPrice);
+                        orders[_bestBid].qty = orders[_bestBid].tokenIn ==_currency &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_OUT ? 
+                                                Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, currencyTraded);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                         orders[_ref].status = IOrder.OrderStatus.Filled;  
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        currencyTraded = Math.mul(securityTraded, _bestBidPrice);
+                        currencyTraded = securityTraded.mulDown(_bestBidPrice);
                         orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                         orders[_bestBid].qty = 0;
                         orders[_bestBid].status = IOrder.OrderStatus.Filled;
@@ -293,21 +301,21 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 }
                 else if(orders[_ref].tokenOut==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
                     if(orders[_bestBid].tokenOut==_security && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_OUT){
-                        currencyTraded = Math.mul(orders[_bestBid].qty, _bestBidPrice); // calculating amount of currency that needs to be sent in to buy security (tokenOut)
+                        currencyTraded = orders[_bestBid].qty.mulDown(_bestBidPrice); // calculating amount of currency that needs to be sent in to buy security (tokenOut)
                     }else if(orders[_bestBid].tokenIn==_currency && orders[_bestBid].swapKind==IVault.SwapKind.GIVEN_IN){
                         currencyTraded = orders[_bestBid].qty; // amount of currency sent in (tokenIn) is already there
                     }
-                    if(currencyTraded >= orders[_bestBid].qty){
-                        securityTraded = Math.div(currencyTraded, _bestBidPrice, false);
-                        orders[_bestBid].qty = orders[_bestBid].tokenOut==_security ? 
-                                                Math.sub(orders[_bestBid].qty, securityTraded) : Math.sub(orders[_bestBid].qty, orders[_ref].qty);
+                    if(currencyTraded >= orders[_ref].qty){
+                        securityTraded = orders[_ref].qty.divDown(_bestBidPrice);
+                        orders[_bestBid].qty = orders[_bestBid].tokenOut ==_security &&  orders[_bestBid].swapKind == IVault.SwapKind.GIVEN_IN ? 
+                                                Math.sub(orders[_bestBid].qty, orders[_ref].qty) : Math.sub(orders[_bestBid].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestBid].status = IOrder.OrderStatus.PartlyFilled;
                         orders[_ref].status = IOrder.OrderStatus.Filled;  
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        securityTraded = Math.div(currencyTraded, _bestBidPrice, false);
+                        securityTraded = currencyTraded.divDown(_bestBidPrice);
                         orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                         orders[_bestBid].qty = 0;
                         orders[_bestBid].status = IOrder.OrderStatus.Filled;
@@ -353,21 +361,21 @@ contract Orderbook is IOrder, ITrade, Ownable{
             if (_bestOffer != "") {
                 if(orders[_ref].tokenIn==_currency && orders[_ref].swapKind==IVault.SwapKind.GIVEN_IN && orders[_ref].currencyBalance>=orders[_ref].qty){
                     if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
-                        currencyTraded = Math.mul(orders[_bestOffer].qty, _bestOfferPrice); // calculating amount of currency that can taken out    
+                        currencyTraded = orders[_bestOffer].qty.mulDown(_bestOfferPrice); // calculating amount of currency that can taken out    
                     } else if (orders[_bestOffer].tokenOut==_currency && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_OUT){
                         currencyTraded = orders[_bestOffer].qty; // amount of currency to take out (tokenOut) is already there 
                     }
                     if(currencyTraded >= orders[_ref].qty){
-                        securityTraded = Math.div(orders[_ref].qty, _bestOfferPrice, false);
-                        orders[_bestOffer].qty = orders[_bestOffer].tokenOut==_currency ? 
-                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(currencyTraded, orders[_ref].qty);
+                        securityTraded = orders[_ref].qty.divDown(_bestOfferPrice);
+                        orders[_bestOffer].qty = orders[_bestOffer].tokenOut ==_currency &&  orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_OUT ? 
+                                                Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, securityTraded);
                         orders[_ref].qty = 0;
                         orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                         orders[_ref].status = IOrder.OrderStatus.Filled;  
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        securityTraded = Math.div(currencyTraded, _bestOfferPrice, false);
+                        securityTraded = currencyTraded.divDown(_bestOfferPrice);
                         orders[_ref].qty = Math.sub(orders[_ref].qty, currencyTraded);
                         orders[_bestOffer].qty = 0;
                         orders[_bestOffer].status = IOrder.OrderStatus.Filled;
@@ -377,21 +385,21 @@ contract Orderbook is IOrder, ITrade, Ownable{
                 }
                 else if(orders[_ref].tokenOut==_security && orders[_ref].swapKind==IVault.SwapKind.GIVEN_OUT){
                     if(orders[_bestOffer].tokenOut==_currency && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_OUT){
-                        securityTraded = Math.div(orders[_bestOffer].qty, _bestOfferPrice, false); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
+                        securityTraded = orders[_bestOffer].qty.divDown(_bestOfferPrice); // calculating amount of security that needs to be sent in to take out currency (tokenOut)
                     } else if(orders[_bestOffer].tokenIn==_security && orders[_bestOffer].swapKind==IVault.SwapKind.GIVEN_IN){
                         securityTraded = orders[_bestOffer].qty; // amount of security sent in (tokenIn) is already there
                     }
                     if(securityTraded >= orders[_ref].qty){
-                        currencyTraded = Math.mul(orders[_ref].qty, _bestOfferPrice);
-                        orders[_bestOffer].qty = orders[_bestOffer].tokenIn==_security ? 
-                                                Math.sub(securityTraded, orders[_bestOffer].qty) : Math.sub(orders[_bestOffer].qty, orders[_ref].qty);
+                        currencyTraded = orders[_ref].qty.mulDown(_bestOfferPrice);
+                        orders[_bestOffer].qty = orders[_bestOffer].tokenIn ==_security && orders[_bestOffer].swapKind == IVault.SwapKind.GIVEN_IN ? 
+                                                 Math.sub(orders[_bestOffer].qty, orders[_ref].qty) : Math.sub(orders[_bestOffer].qty, currencyTraded);
                         orders[_ref].qty = 0;
                         orders[_bestOffer].status = IOrder.OrderStatus.PartlyFilled;
                         orders[_ref].status = IOrder.OrderStatus.Filled;  
                         reorder(_marketOrders.length-1, _trade); //order ref is removed from market order list as its qty becomes zero
                     }    
                     else{
-                        currencyTraded = Math.mul(securityTraded, _bestOfferPrice);
+                        currencyTraded = securityTraded.mulDown(_bestOfferPrice);
                         orders[_ref].qty = Math.sub(orders[_ref].qty, securityTraded);
                         orders[_bestOffer].qty = 0;
                         orders[_bestOffer].status = IOrder.OrderStatus.Filled;
