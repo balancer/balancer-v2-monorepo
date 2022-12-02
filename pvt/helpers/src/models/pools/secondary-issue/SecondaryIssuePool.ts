@@ -209,8 +209,9 @@ export default class SecondaryPool extends BasePool{
   async swap(params: GeneralSwap, eventEncoded: string): Promise<any> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
+    const orderbookAddress =  await this.instance.orderbook();
     // extracting eventEncoded from transaction log reciept
-    const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == this.instance.address);
+    const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == orderbookAddress);
     const swapEvent = eventEncoded ? SecondaryPoolEvents.filter((e) => e.topics[0] == eventEncoded): [];
     const logData = swapEvent?.length ? swapEvent[0].data : null;
 
