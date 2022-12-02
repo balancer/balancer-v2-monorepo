@@ -21,19 +21,22 @@ pragma experimental ABIEncoderV2;
  * By calling `TemporarilyPausable`'s constructor with the result of `getPauseConfiguration`, all Pools created by this
  * factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  */
-contract FactoryWidePauseWindow {
+abstract contract FactoryWidePauseWindow {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
     // solhint-disable not-rely-on-time
 
-    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 90 days;
-    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+    uint256 private immutable _initialPauseWindowDuration;
+    uint256 private immutable _bufferPeriodDuration;
 
     // Time when the pause window for all created Pools expires, and the pause window duration of new Pools becomes
     // zero.
     uint256 private immutable _poolsPauseWindowEndTime;
 
-    constructor() {
-        _poolsPauseWindowEndTime = block.timestamp + _INITIAL_PAUSE_WINDOW_DURATION;
+    constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
+        _initialPauseWindowDuration = initialPauseWindowDuration;
+        _bufferPeriodDuration = bufferPeriodDuration;
+
+        _poolsPauseWindowEndTime = block.timestamp + initialPauseWindowDuration;
     }
 
     /**
@@ -50,7 +53,7 @@ contract FactoryWidePauseWindow {
             // to a potential emergency. The Pause Window duration however decreases as the end time approaches.
 
             pauseWindowDuration = _poolsPauseWindowEndTime - currentTime; // No need for checked arithmetic.
-            bufferPeriodDuration = _BUFFER_PERIOD_DURATION;
+            bufferPeriodDuration = _bufferPeriodDuration;
         } else {
             // After the end time, newly created Pools have no Pause Window, nor Buffer Period (since they are not
             // pausable in the first place).
