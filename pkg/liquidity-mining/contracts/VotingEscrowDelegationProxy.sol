@@ -72,7 +72,7 @@ contract VotingEscrowDelegationProxy is SingletonAuthentication {
      * @return The current veBAL total supply.
      */
     function totalSupply() external view returns (uint256) {
-        return _votingEscrow.totalSupply();
+        return _totalSupply();
     }
 
     // Internal functions
