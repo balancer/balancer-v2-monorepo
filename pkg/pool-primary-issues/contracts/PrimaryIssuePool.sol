@@ -152,6 +152,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     function getBptIndex() public view override returns (uint256) {
         return _bptIndex;
     }
+
+    function getOfferingDocuments() public view returns(string memory){
+        return _offeringDocs;
+    }
     
     function initialize() external {
         bytes32 poolId = getPoolId();
