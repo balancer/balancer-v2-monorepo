@@ -21,8 +21,11 @@ import "../factories/BasePoolFactory.sol";
 import "./MockFactoryCreatedPool.sol";
 
 contract MockPoolFactory is BasePoolFactory {
+    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 90 days;
+    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+
     constructor(IVault _vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(_vault, protocolFeeProvider, type(MockFactoryCreatedPool).creationCode)
+        BasePoolFactory(_vault, protocolFeeProvider, _INITIAL_PAUSE_WINDOW_DURATION, _BUFFER_PERIOD_DURATION, type(MockFactoryCreatedPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }

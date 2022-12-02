@@ -18,13 +18,15 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./LiquidityBootstrappingPool.sol";
 
-contract LiquidityBootstrappingPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
+    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 90 days;
+    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(LiquidityBootstrappingPool).creationCode)
+        BasePoolFactory(vault, protocolFeeProvider, _INITIAL_PAUSE_WINDOW_DURATION, _BUFFER_PERIOD_DURATION, type(LiquidityBootstrappingPool).creationCode)
     {
         // solhint-disable-previous-line no-empty-blocks
     }

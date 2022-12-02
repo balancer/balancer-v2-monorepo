@@ -20,7 +20,6 @@ import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IBalancerQueries
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Create2.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
@@ -28,7 +27,10 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.
 import "./ReaperLinearPool.sol";
 import "./ReaperLinearPoolRebalancer.sol";
 
-contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, ReentrancyGuard, FactoryWidePauseWindow {
+contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, ReentrancyGuard {
+    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 90 days;
+    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
@@ -40,7 +42,7 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IBalancerQueries queries
-    ) BasePoolFactory(vault, protocolFeeProvider, type(ReaperLinearPool).creationCode) {
+    ) BasePoolFactory(vault, protocolFeeProvider, _INITIAL_PAUSE_WINDOW_DURATION, _BUFFER_PERIOD_DURATION, type(ReaperLinearPool).creationCode) {
         _queries = queries;
     }
 
