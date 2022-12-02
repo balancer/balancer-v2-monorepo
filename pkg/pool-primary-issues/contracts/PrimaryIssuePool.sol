@@ -162,6 +162,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
         _maxAmountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
         _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
             maxAmountsIn: _maxAmountsIn,
@@ -325,8 +326,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         bytes memory
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
-        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
-        _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
+        // _require(sender == address(this), Errors.INVALID_INITIALIZATION);
+        // _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
         
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);

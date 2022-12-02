@@ -56,7 +56,7 @@ describe('PrimaryPool', function () {
 
   sharedBeforeEach('deploy tokens', async () => {
     tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
-    await tokens.mint({ to: [owner, lp, trader], amount: fp(200) });
+    await tokens.mint({ to: [owner, lp, trader], amount: fp(500) });
 
     securityToken = tokens.DAI;
     currencyToken = tokens.CDAI;
@@ -151,14 +151,35 @@ describe('PrimaryPool', function () {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
 
-      await pool.initialize();
-      console.log("here");
+      const maxAmountsIn = new Array(tokens.length);
+      const poolId = await pool.getPoolId();
+      const { tokens: allTokens } = await pool.getTokens();
+  
+      maxAmountsIn[pool.securityIndex] = maxSecurityOffered;
+      maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
+      maxAmountsIn[pool.bptIndex] = MAX_UINT112;
+
+      const joinPool = await pool.vault.joinPool({
+            poolAddress: pool.address,
+            poolId: poolId,
+            recipient: owner.address,
+            maxAmountsIn: maxAmountsIn,
+            tokens: allTokens,
+            fromInternalBalance: false,
+            protocolFeePercentage: 0,
+            data: WeightedPoolEncoder.joinInit(maxAmountsIn),
+        });
+
+      // await pool.initialize();
+      console.log("Join Pool Done");
       const currentBalances = await pool.getBalances();
+      console.log(currentBalances);
       expect(currentBalances[pool.bptIndex]).to.be.equal(0);
-      expect(currentBalances[pool.securityIndex]).to.be.equal(fp(200));
-      expect(currentBalances[pool.currencyIndex]).to.be.equal(fp(200));
+      expect(currentBalances[pool.securityIndex]).to.be.equal(0);
+      expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
 
       const ownerBalance = await pool.balanceOf(owner);
+      console.log("ownerBalance",ownerBalance.toString());
       expect(ownerBalance.toString()).to.be.equal(MAX_UINT112.sub(_DEFAULT_MINIMUM_BPT));
     });
     
@@ -525,7 +546,9 @@ describe('PrimaryPool', function () {
       
           minAmountsOut[pool.securityIndex] = maxSecurityOffered;
           minAmountsOut[pool.currencyIndex] = divDown(maxSecurityOffered,basePrice);
-          minAmountsOut[pool.bptIndex] = 0;
+          minAmountsOut[pool.bptIndex] = MAX_UINT112;
+
+          console.log(WeightedPoolEncoder.joinInit(minAmountsOut));
           // const joinPool = await pool.vault.joinPool({
           //   poolAddress: pool.address,
           //   poolId: await pool.getPoolId(),

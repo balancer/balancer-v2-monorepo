@@ -341,7 +341,7 @@ abstract contract BasePool is
             
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
-
+            console.log("In Basepool",amountsIn[0],amountsIn[1],amountsIn[2]);
             return (amountsIn, new uint256[](balances.length));
         } else {
             _upscaleArray(balances, scalingFactors);
