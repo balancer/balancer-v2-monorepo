@@ -26,11 +26,13 @@ abstract contract PausableConstants {
     uint256 private constant _MAX_PAUSE_WINDOW_DURATION = 270 days;
     uint256 private constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
-    function MAX_PAUSE_WINDOW_DURATION() public pure returns (uint256) {
+    // solhint-disable func-name-mixedcase, private-vars-leading-underscore
+
+    function MAX_PAUSE_WINDOW_DURATION() internal pure returns (uint256) {
         return _MAX_PAUSE_WINDOW_DURATION;
     }
 
-    function MAX_BUFFER_PERIOD_DURATION() public pure returns (uint256) {
+    function MAX_BUFFER_PERIOD_DURATION() internal pure returns (uint256) {
         return _MAX_BUFFER_PERIOD_DURATION;
     }
 }
