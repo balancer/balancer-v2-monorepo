@@ -40,8 +40,8 @@ describe('ManagedPoolFactory', function () {
   const POOL_MANAGEMENT_AUM_FEE_PERCENTAGE = fp(0.01);
   const WEIGHTS = toNormalizedWeights([fp(30), fp(70), fp(5), fp(5)]);
 
-  const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
-  const BASE_BUFFER_PERIOD_DURATION = MONTH;
+  const BASE_PAUSE_WINDOW_DURATION = MONTH * 9;
+  const BASE_BUFFER_PERIOD_DURATION = MONTH * 2;
 
   let createTime: BigNumber;
 
