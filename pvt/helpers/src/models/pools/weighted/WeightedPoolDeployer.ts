@@ -291,11 +291,6 @@ export default {
           },
         });
 
-        const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
-          args: [factory.address],
-          from,
-        });
-
         const poolParams = {
           name: NAME,
           symbol: SYMBOL,
@@ -312,24 +307,9 @@ export default {
           aumFeeId: aumFeeId ?? ProtocolFee.AUM,
         };
 
-        const basePoolRights: BasePoolRights = {
-          canTransferOwnership: true,
-          canChangeSwapFee: true,
-          canUpdateMetadata: true,
-        };
-
-        const managedPoolRights: ManagedPoolRights = {
-          canChangeWeights: true,
-          canDisableSwaps: true,
-          canSetMustAllowlistLPs: true,
-          canSetCircuitBreakers: true,
-          canChangeTokens: true,
-          canChangeMgmtFees: true,
-        };
-
-        const tx = await controlledFactory
+        const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(poolParams, settingsParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
+          .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
 
