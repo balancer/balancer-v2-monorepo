@@ -32,6 +32,4 @@ interface ITrade {
         uint256 dt;
     }
 
-    function tradeSettled(/*bytes32 tradeRef,*/ bytes32 partyRef, bytes32 counterpartyRef) external;
-
 }

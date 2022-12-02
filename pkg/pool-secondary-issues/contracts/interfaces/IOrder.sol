@@ -40,9 +40,11 @@ interface IOrder {
 
     function editOrder( bytes32 ref,
                         uint256 _price,
-                        uint256 _qty) external;
-
-    function revertTrade(bytes32 _orderRef, uint256 _qty, Order _order) external;
+                        uint256 _qty) external;    
 
     function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) external;
+
+    function tradeSettled(bytes32 partyRef, bytes32 counterpartyRef) external;
+
+    function revertTrade(bytes32 _orderRef, uint256 _qty, IOrder.Order _order) external;
 }
