@@ -15,13 +15,17 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+
 /**
  * @dev Utility to create Pool factories for Pools that use the `TemporarilyPausable` contract.
  *
  * By calling `TemporarilyPausable`'s constructor with the result of `getPauseConfiguration`, all Pools created by this
  * factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  */
-abstract contract FactoryWidePauseWindow {
+abstract contract FactoryWidePauseWindow is PausableConstants {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
     // solhint-disable not-rely-on-time
 
@@ -33,6 +37,14 @@ abstract contract FactoryWidePauseWindow {
     uint256 private immutable _poolsPauseWindowEndTime;
 
     constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
+        // New pools will check on deployment that the durations given are within the bounds specified by
+        // `TemporarilyPausable`. Since it is now possible for a factory to pass in arbitrary values here,
+        // pre-emptively verify that these durations are valid for pool creation.
+        // (Otherwise, you would be able to deploy a useless factory where `create` would always revert.)
+
+        _require(initialPauseWindowDuration <= MAX_PAUSE_WINDOW_DURATION(), Errors.MAX_PAUSE_WINDOW_DURATION);
+        _require(bufferPeriodDuration <= MAX_BUFFER_PERIOD_DURATION(), Errors.MAX_BUFFER_PERIOD_DURATION);
+
         _initialPauseWindowDuration = initialPauseWindowDuration;
         _bufferPeriodDuration = bufferPeriodDuration;
 

@@ -17,6 +17,8 @@ pragma solidity ^0.7.0;
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/ITemporarilyPausable.sol";
 
+import "./PausableConstants.sol";
+
 /**
  * @dev Allows for a contract to be paused during an initial period after deployment, disabling functionality. Can be
  * used as an emergency switch in case a security vulnerability or threat is identified.
@@ -33,12 +35,9 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/ITemporari
  * Note that since the contract can only be paused within the Pause Window, unpausing during the Buffer Period is
  * irreversible.
  */
-abstract contract TemporarilyPausable is ITemporarilyPausable {
+abstract contract TemporarilyPausable is ITemporarilyPausable, PausableConstants {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
-
-    uint256 private constant _MAX_PAUSE_WINDOW_DURATION = 270 days;
-    uint256 private constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
     uint256 private immutable _pauseWindowEndTime;
     uint256 private immutable _bufferPeriodEndTime;
@@ -46,8 +45,8 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     bool private _paused;
 
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
-        _require(pauseWindowDuration <= _MAX_PAUSE_WINDOW_DURATION, Errors.MAX_PAUSE_WINDOW_DURATION);
-        _require(bufferPeriodDuration <= _MAX_BUFFER_PERIOD_DURATION, Errors.MAX_BUFFER_PERIOD_DURATION);
+        _require(pauseWindowDuration <= MAX_PAUSE_WINDOW_DURATION(), Errors.MAX_PAUSE_WINDOW_DURATION);
+        _require(bufferPeriodDuration <= MAX_BUFFER_PERIOD_DURATION(), Errors.MAX_BUFFER_PERIOD_DURATION);
 
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
