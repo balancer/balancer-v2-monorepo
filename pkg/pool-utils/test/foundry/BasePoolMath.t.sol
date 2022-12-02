@@ -39,7 +39,7 @@ contract BasePoolMathJoinExitRoundingTest is Test {
         }
 
         originalBptTotalSupply = bound(originalBptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
-        // We can't have arbitrarly large bptAmounts as that could cause for the amount / supply ratio to be too high
+        // We can't have arbitrarily large bptAmounts as that could cause for the amount / supply ratio to be too high
         // and result in mul overflow errors. We therefore limit this to 1e16 times the supply, which exceeds by a
         // huge margin any realistic usage.
         bptAmount = bound(bptAmount, 0, originalBptTotalSupply * 1e16);
@@ -66,7 +66,6 @@ contract BasePoolMathJoinExitRoundingTest is Test {
             bptAmount
         );
 
-        emit log_named_uint("originalBptTotalSupply", originalBptTotalSupply);
 
         // And check that we didn't get any free tokens
         for (uint256 i = 0; i < arrayLength; ++i) {
