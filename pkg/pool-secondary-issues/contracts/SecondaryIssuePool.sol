@@ -21,7 +21,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 contract SecondaryIssuePool is BasePool, IGeneralPool {
     using StringUtils for *;
 
-    Orderbook public orderbook;
+    Orderbook public _orderbook;
     
     address private _security;
     address private _currency;
@@ -102,7 +102,11 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
 
         _balancerManager = payable(owner);
 
-        orderbook = new Orderbook(_balancerManager, _security, _currency);
+        _orderbook = new Orderbook(_balancerManager, _security, _currency);
+    }
+
+    function orderbook() public view returns (Orderbook) {
+        return _orderbook;
     }
 
     function getSecurity() external view returns (address) {
@@ -149,15 +153,15 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         
         uint256[] memory scalingFactors = _scalingFactors();
         IOrder.Params memory params;
-        (_bestUnfilledBid, _bestUnfilledOffer) = orderbook.getBestTrade();
+        (_bestUnfilledBid, _bestUnfilledOffer) = _orderbook.getBestTrade();
 
         if(request.userData.length!=0){
             if(request.amount==0){
                 if(request.kind == IVault.SwapKind.GIVEN_IN){
                     if (request.tokenIn == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                        ITrade.trade memory tradeToReport = orderbook.getTrade(request.from, string(request.userData).stringToUint());
-                        ISettlor(_balancerManager).requestSettlement(tradeToReport, orderbook);
+                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, string(request.userData).stringToUint());
+                        ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                         uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                         emit TradeReport(
                             tradeToReport.security,
@@ -176,8 +180,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
                 else if(request.kind == IVault.SwapKind.GIVEN_OUT) {
                     if (request.tokenOut == IERC20(_security) || request.tokenOut == IERC20(_currency)) {
                         emit BestAvailableTrades(_bestUnfilledBid, _bestUnfilledOffer);
-                        ITrade.trade memory tradeToReport = orderbook.getTrade(request.from, string(request.userData).stringToUint());
-                        ISettlor(_balancerManager).requestSettlement(tradeToReport, orderbook);
+                        ITrade.trade memory tradeToReport = _orderbook.getTrade(request.from, string(request.userData).stringToUint());
+                        ISettlor(_balancerManager).requestSettlement(tradeToReport, _orderbook);
                         uint256 amount = keccak256(abi.encodePacked(tradeToReport.partyTokenIn))==keccak256(abi.encodePacked("security")) ? tradeToReport.partyInAmount : tradeToReport.counterpartyInAmount;
                         emit TradeReport(
                             tradeToReport.security,
@@ -227,10 +231,10 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
             request.amount = _upscale(request.amount, scalingFactors[indexOut]);
 
         if (request.tokenOut == IERC20(_currency) || request.tokenIn == IERC20(_security)) {
-            orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
+            _orderbook.newOrder(request, params, IOrder.Order.Sell, balances, _currencyIndex, _securityIndex);
         } 
         else if (request.tokenOut == IERC20(_security) || request.tokenIn == IERC20(_currency)) {
-            orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
+            _orderbook.newOrder(request, params, IOrder.Order.Buy, balances, _currencyIndex, _securityIndex);
         }
     }
 
