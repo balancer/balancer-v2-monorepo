@@ -30,4 +30,12 @@ contract MockPoolFactory is BasePoolFactory {
     function create() external returns (address) {
         return _create("");
     }
+
+    function getMaxPauseWindowDuration() external pure returns (uint256) {
+        return MAX_PAUSE_WINDOW_DURATION();
+    }
+
+    function getMaxBufferPeriodDuration() external pure returns (uint256) {
+        return MAX_BUFFER_PERIOD_DURATION();
+    }
 }
