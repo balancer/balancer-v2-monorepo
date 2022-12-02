@@ -31,11 +31,7 @@ import {
   calcTokenInGivenExactBptOut,
   calcTokenOutGivenExactBptIn,
   calcOutGivenIn,
-  calculateOneTokenSwapFeeAmount,
   calcInGivenOut,
-  calculateMaxOneTokenSwapFeeAmount,
-  calculateSpotPrice,
-  calculateBPTPrice,
 } from './math';
 
 import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
@@ -65,17 +61,8 @@ export default class BaseWeightedPool extends BasePool {
     this.weights = weights;
   }
 
-  get maxWeight(): BigNumberish {
-    return this.weights.reduce((max, weight) => (bn(weight).gt(max) ? weight : max), bn(0));
-  }
-
   get normalizedWeights(): BigNumberish[] {
     return this.weights;
-  }
-
-  get maxWeightIndex(): BigNumberish {
-    const maxIdx = this.weights.indexOf(this.maxWeight);
-    return bn(maxIdx);
   }
 
   async getLastPostJoinExitInvariant(): Promise<BigNumber> {
@@ -106,33 +93,6 @@ export default class BaseWeightedPool extends BasePool {
     return this.instance.getNormalizedWeights();
   }
 
-  async estimateSpotPrice(currentBalances?: BigNumberish[]): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getBalances();
-
-    const scalingFactors = await this.getScalingFactors();
-    return calculateSpotPrice(
-      currentBalances.map((x, i) => fpMul(x, scalingFactors[i])),
-      this.weights
-    );
-  }
-
-  async estimateBptPrice(
-    tokenIndex: number,
-    currentBalance?: BigNumberish,
-    currentSupply?: BigNumberish
-  ): Promise<BigNumber> {
-    if (!currentBalance) currentBalance = (await this.getBalances())[tokenIndex];
-    if (!currentSupply) currentSupply = await this.totalSupply();
-
-    const scalingFactors = await this.getScalingFactors();
-
-    return calculateBPTPrice(
-      fpMul(currentBalance, scalingFactors[tokenIndex]),
-      this.weights[tokenIndex],
-      currentSupply
-    );
-  }
-
   async estimateInvariant(currentBalances?: BigNumberish[]): Promise<BigNumber> {
     if (!currentBalances) currentBalances = await this.getBalances();
     const scalingFactors = await this.getScalingFactors();
@@ -141,34 +101,6 @@ export default class BaseWeightedPool extends BasePool {
       currentBalances.map((x, i) => fpMul(x, scalingFactors[i])),
       this.weights
     );
-  }
-
-  async estimateSwapFeeAmount(
-    paidToken: number | Token,
-    protocolFeePercentage: BigNumberish,
-    currentBalances?: BigNumberish[]
-  ): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getBalances();
-    const lastInvariant = await this.estimateInvariant();
-    const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateOneTokenSwapFeeAmount(currentBalances, this.weights, lastInvariant, paidTokenIndex);
-    return fpMul(bn(feeAmount), protocolFeePercentage);
-  }
-
-  async estimateMaxSwapFeeAmount(
-    paidToken: number | Token,
-    protocolFeePercentage: BigNumberish,
-    currentBalances?: BigNumberish[]
-  ): Promise<BigNumber> {
-    if (!currentBalances) currentBalances = await this.getBalances();
-    const paidTokenIndex = this.tokens.indexOf(paidToken);
-    const feeAmount = calculateMaxOneTokenSwapFeeAmount(
-      currentBalances,
-      this.weights,
-      MIN_INVARIANT_RATIO,
-      paidTokenIndex
-    );
-    return fpMul(bn(feeAmount), protocolFeePercentage);
   }
 
   async estimateGivenIn(params: SwapWeightedPool, currentBalances?: BigNumberish[]): Promise<BigNumberish> {

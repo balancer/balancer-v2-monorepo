@@ -104,39 +104,6 @@ export default class ManagedPool extends WeightedPool {
     );
   }
 
-  async updateWeightsGradually(
-    from: SignerWithAddress,
-    startTime: BigNumberish,
-    endTime: BigNumberish,
-    endWeights: BigNumberish[],
-    tokens?: string[]
-  ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-
-    if (!tokens) {
-      const { tokens: registeredTokens } = await this.getTokens();
-      // If the first token is BPT then we can assume that the Pool is composable.
-      if (registeredTokens[0] == this.address) {
-        tokens = registeredTokens.slice(1);
-      } else {
-        tokens = registeredTokens;
-      }
-    }
-
-    return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
-  }
-
-  async updateSwapFeeGradually(
-    from: SignerWithAddress,
-    startTime: BigNumberish,
-    endTime: BigNumberish,
-    startSwapFeePercentage: BigNumberish,
-    endSwapFeePercentage: BigNumberish
-  ): Promise<ContractTransaction> {
-    const pool = this.instance.connect(from);
-    return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
-  }
-
   static async _deployStandalone(params: ManagedPoolDeployment, vault: Vault): Promise<Contract> {
     const {
       tokens,
@@ -213,6 +180,103 @@ export default class ManagedPool extends WeightedPool {
         ManagedPoolAddRemoveTokenLib: ManagedPool.addRemoveTokenLib.address,
       },
     });
+  }
+
+  static async _deployFromFactory(params: ManagedPoolDeployment, vault: Vault): Promise<Contract> {
+    const {
+      tokens,
+      weights,
+      assetManagers,
+      swapFeePercentage,
+      swapEnabledOnStart,
+      mustAllowlistLPs,
+      managementAumFeePercentage,
+      aumFeeId,
+      from,
+    } = params;
+
+    const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address],
+      from,
+      libraries: {
+        CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
+        ManagedPoolAddRemoveTokenLib: ManagedPool.addRemoveTokenLib.address,
+      },
+    });
+
+    const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
+      args: [factory.address],
+      from,
+    });
+
+    const newPoolParams: ManagedPoolParams = {
+      name: NAME,
+      symbol: SYMBOL,
+      tokens: tokens.addresses,
+      normalizedWeights: weights,
+      assetManagers: assetManagers,
+      swapFeePercentage: swapFeePercentage,
+      swapEnabledOnStart: swapEnabledOnStart,
+      mustAllowlistLPs: mustAllowlistLPs,
+      managementAumFeePercentage: managementAumFeePercentage,
+      aumFeeId: aumFeeId ?? ProtocolFee.AUM,
+    };
+
+    const basePoolRights: BasePoolRights = {
+      canTransferOwnership: true,
+      canChangeSwapFee: true,
+      canUpdateMetadata: true,
+    };
+
+    const managedPoolRights: ManagedPoolRights = {
+      canChangeWeights: true,
+      canDisableSwaps: true,
+      canSetMustAllowlistLPs: true,
+      canSetCircuitBreakers: true,
+      canChangeTokens: true,
+      canChangeMgmtFees: true,
+      canDisableJoinExit: true,
+    };
+
+    const tx = await controlledFactory
+      .connect(from || ZERO_ADDRESS)
+      .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
+    return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
+  }
+
+  async updateWeightsGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    endWeights: BigNumberish[],
+    tokens?: string[]
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+
+    if (!tokens) {
+      const { tokens: registeredTokens } = await this.getTokens();
+      // If the first token is BPT then we can assume that the Pool is composable.
+      if (registeredTokens[0] == this.address) {
+        tokens = registeredTokens.slice(1);
+      } else {
+        tokens = registeredTokens;
+      }
+    }
+
+    return await pool.updateWeightsGradually(startTime, endTime, tokens, endWeights);
+  }
+
+  async updateSwapFeeGradually(
+    from: SignerWithAddress,
+    startTime: BigNumberish,
+    endTime: BigNumberish,
+    startSwapFeePercentage: BigNumberish,
+    endSwapFeePercentage: BigNumberish
+  ): Promise<ContractTransaction> {
+    const pool = this.instance.connect(from);
+    return await pool.updateSwapFeeGradually(startTime, endTime, startSwapFeePercentage, endSwapFeePercentage);
   }
 
   async version(): Promise<string[]> {
@@ -317,69 +381,5 @@ export default class ManagedPool extends WeightedPool {
 
   async getManagementAumFeeParams(): Promise<[BigNumber, BigNumber]> {
     return this.instance.getManagementAumFeeParams();
-  }
-
-  static async _deployFromFactory(params: ManagedPoolDeployment, vault: Vault): Promise<Contract> {
-    const {
-      tokens,
-      weights,
-      assetManagers,
-      swapFeePercentage,
-      swapEnabledOnStart,
-      mustAllowlistLPs,
-      managementAumFeePercentage,
-      aumFeeId,
-      from,
-    } = params;
-
-    const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
-      from,
-      libraries: {
-        CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
-        ManagedPoolAddRemoveTokenLib: ManagedPool.addRemoveTokenLib.address,
-      },
-    });
-
-    const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
-      args: [factory.address],
-      from,
-    });
-
-    const newPoolParams: ManagedPoolParams = {
-      name: NAME,
-      symbol: SYMBOL,
-      tokens: tokens.addresses,
-      normalizedWeights: weights,
-      assetManagers: assetManagers,
-      swapFeePercentage: swapFeePercentage,
-      swapEnabledOnStart: swapEnabledOnStart,
-      mustAllowlistLPs: mustAllowlistLPs,
-      managementAumFeePercentage: managementAumFeePercentage,
-      aumFeeId: aumFeeId ?? ProtocolFee.AUM,
-    };
-
-    const basePoolRights: BasePoolRights = {
-      canTransferOwnership: true,
-      canChangeSwapFee: true,
-      canUpdateMetadata: true,
-    };
-
-    const managedPoolRights: ManagedPoolRights = {
-      canChangeWeights: true,
-      canDisableSwaps: true,
-      canSetMustAllowlistLPs: true,
-      canSetCircuitBreakers: true,
-      canChangeTokens: true,
-      canChangeMgmtFees: true,
-      canDisableJoinExit: true,
-    };
-
-    const tx = await controlledFactory
-      .connect(from || ZERO_ADDRESS)
-      .create(newPoolParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
-    return deployedAt('v2-pool-weighted/ManagedPool', event.args.pool);
   }
 }
