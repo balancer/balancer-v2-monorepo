@@ -56,7 +56,7 @@ describe('PrimaryPool', function () {
 
   sharedBeforeEach('deploy tokens', async () => {
     tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
-    await tokens.mint({ to: [lp, trader], amount: fp(100) });
+    await tokens.mint({ to: [owner, lp, trader], amount: fp(200) });
 
     securityToken = tokens.DAI;
     currencyToken = tokens.CDAI;
@@ -128,17 +128,35 @@ describe('PrimaryPool', function () {
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs}, false);
+      // await setBalances(pool, { securityBalance: fp(200), currencyBalance: fp(200), bptBalance: fp(0) });
     });
+    const setBalances = async (
+      pool: PrimaryPool,
+      balances: { securityBalance?: BigNumber; currencyBalance?: BigNumber; bptBalance?: BigNumber }
+    ) => {
 
+      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+        i == pool.securityIndex
+          ? balances.securityBalance ?? bn(0)
+          : i == pool.currencyIndex
+          ? balances.currencyBalance ?? bn(0)
+          : i == pool.bptIndex
+          ? balances.bptBalance ?? bn(0)
+          : bn(0)
+      );
+      const poolId = await pool.getPoolId();
+      await pool.vault.updateBalances(poolId, updateBalances);
+    };
     it('adds bpt to the owner', async () => {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
 
       await pool.initialize();
+      console.log("here");
       const currentBalances = await pool.getBalances();
       expect(currentBalances[pool.bptIndex]).to.be.equal(0);
-      expect(currentBalances[pool.securityIndex]).to.be.equal(0);
-      expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
+      expect(currentBalances[pool.securityIndex]).to.be.equal(fp(200));
+      expect(currentBalances[pool.currencyIndex]).to.be.equal(fp(200));
 
       const ownerBalance = await pool.balanceOf(owner);
       expect(ownerBalance.toString()).to.be.equal(MAX_UINT112.sub(_DEFAULT_MINIMUM_BPT));
@@ -508,9 +526,19 @@ describe('PrimaryPool', function () {
           minAmountsOut[pool.securityIndex] = maxSecurityOffered;
           minAmountsOut[pool.currencyIndex] = divDown(maxSecurityOffered,basePrice);
           minAmountsOut[pool.bptIndex] = 0;
-
+          // const joinPool = await pool.vault.joinPool({
+          //   poolAddress: pool.address,
+          //   poolId: await pool.getPoolId(),
+          //   recipient: owner.address,
+          //   maxAmountsIn: minAmountsOut,
+          //   tokens: allTokens,
+          //   fromInternalBalance: false,
+          //   protocolFeePercentage: 0,
+          //   data: WeightedPoolEncoder.joinInit(minAmountsOut),
+          // });
+          // console.log(joinPool);
           console.log("minAmountsOut",minAmountsOut);
-          console.log ("getPoolTokens", await pool.vault.getPoolTokens(poolId));
+          // console.log ("getPoolTokens", await pool.vault.getPoolTokens(poolId));
           const tx = await pool.vault.exitPool({
             poolAddress: pool.address,
             poolId: poolId,

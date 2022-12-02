@@ -21,6 +21,7 @@ import "./utils/BokkyPooBahsDateTimeLibrary.sol";
 
 import "./interfaces/IMarketMaker.sol";
 import "./interfaces/IPrimaryIssuePoolFactory.sol";
+import "hardhat/console.sol";
 
 contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
@@ -329,7 +330,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
         uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-
+        amountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
+        amountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
+        console.log("Here in pool");
         return (bptAmountOut, amountsIn);
     }
     
