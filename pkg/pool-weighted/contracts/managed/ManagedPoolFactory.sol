@@ -37,11 +37,16 @@ import "../ExternalWeightedMath.sol";
  * to deploy the pool, passing in that contract address as the owner.
  */
 contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
-    IExternalWeightedMath private immutable _weightedMath;
-    string private _poolVersion;
+    // This is a very complex and highly configurable pool type, with much of the behavior determined by
+    // vendor-specific owner contracts that take significant time to develop. It might take quite a while
+    // for all Managed Pool features to be exercised in production, so we believe a longer "trial" period
+    // is appropriate for this factory.
 
     uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 270 days;
-    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+    uint256 private constant _BUFFER_PERIOD_DURATION = 60 days;
+
+    IExternalWeightedMath private immutable _weightedMath;
+    string private _poolVersion;
 
     constructor(
         IVault vault,
