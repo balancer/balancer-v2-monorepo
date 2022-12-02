@@ -33,8 +33,8 @@ library BasePoolMath {
         // bpt = bptTotalSupply                                                            //
         ************************************************************************************/
 
-        // Since we're computing amounts in, we round up overall. This means rounding up on both the multiplication and
-        //division.
+        // Since we're computing amounts in, we round up overall. This means rounding up on both the
+        // multiplication and division.
 
         uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
 
