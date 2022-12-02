@@ -189,13 +189,13 @@ export default class SecondaryPool extends BasePool{
   async editOrder(params: EditOrder): Promise<BigNumber> {
     const sender = params.from || this.owner;
     //const pool = sender ? this.instance.connect(sender) : this.instance;
-    return this.instance.orderbook.editOrder(params.ref, params.price, params.amount);
+    return this.instance.orderbook().editOrder(params.ref, params.price, params.amount);
   }
 
   async cancelOrder(params: CancelOrder): Promise<BigNumber> {
     const sender = params.from || this.owner;
     //const pool = sender ? this.instance.connect(sender) : this.instance;
-    return this.instance.orderbook.cancelOrder(params.ref);
+    return this.instance.orderbook().cancelOrder(params.ref);
   }
 
   async swapGivenIn(params: SwapSecondaryPool): Promise<any> {
