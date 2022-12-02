@@ -19,7 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerEr
 
 /**
  * @title Null VotingEscrow
- * @notice This contract acts fulfils the role of a `VotingEscrow` contract
+ * @notice This contract fulfils the role of a `VotingEscrow` contract
  * where no accounts hold a balance for the purposes of gauge boosts.
  * @dev This contract is to be used as the fallback `VotingEscrow` on chains other than Ethereum mainnet.
  * In the situation where boosts are not properly relayed from Ethereum mainnet to a chain and the veBoost
