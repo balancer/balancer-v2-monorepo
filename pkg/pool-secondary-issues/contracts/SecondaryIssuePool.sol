@@ -545,7 +545,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     if (orders[_marketOrders[i]].price >= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price > _bestBidPrice || _bestBidPrice == 0) {
                             _bestUnfilledBid = _bestBidPrice;
-                            _bestBidPrice = orders[_marketOrders[i]].price == 0 ? orders[_ref].price : orders[_marketOrders[i]].price; //Added this condition for: If CounterParty price = 0, then Party's price will be CounterParty price
+                            _bestBidPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; //Added this condition for: If CounterParty price = 0, then Party's price will be CounterParty price
                             _bestBid = _orderRefs[i];
                             _bidIndex = i;
                         }
@@ -556,7 +556,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool, IOrder, ITrade {
                     if (orders[_marketOrders[i]].price <= orders[_ref].price || orders[_ref].price == 0) {
                         if (orders[_marketOrders[i]].price < _bestOfferPrice || _bestOfferPrice == 0) {
                             _bestUnfilledOffer = _bestOfferPrice;
-                            _bestOfferPrice = orders[_marketOrders[i]].price == 0 ? orders[_ref].price : orders[_marketOrders[i]].price; //Added this condition for: If CounterParty price = 0, then Party's price will be CounterParty price
+                            _bestOfferPrice = orders[_marketOrders[i]].otype == OrderType.Market ? orders[_ref].price : orders[_marketOrders[i]].price; //Added this condition for: If CounterParty price = 0, then Party's price will be CounterParty price
                             _bestOffer = _orderRefs[i];
                             _bidIndex = i;
                         }
