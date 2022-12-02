@@ -17,7 +17,8 @@
   "browser": "dist/index.umd.js",
   "typings": "dist/index.d.ts",
   "files": [
-    "dist/"
+    "/dist/index.*",
+    "/dist/{addresses,tasks}/**/*"
   ],
   "scripts": {
     "build": "tsc",
