@@ -7,16 +7,8 @@ import Vault from '../../vault/Vault';
 import WeightedPool from './WeightedPool';
 import VaultDeployer from '../../vault/VaultDeployer';
 import TypesConverter from '../../types/TypesConverter';
-import {
-  BasePoolRights,
-  ManagedPoolParams,
-  ManagedPoolRights,
-  RawWeightedPoolDeployment,
-  WeightedPoolDeployment,
-  WeightedPoolType,
-} from './types';
+import { ManagedPoolParams, RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { DAY } from '@balancer-labs/v2-helpers/src/time';
 import { ProtocolFee } from '../../vault/types';
 
 const NAME = 'Balancer Pool Token';
