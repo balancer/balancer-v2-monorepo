@@ -157,7 +157,7 @@ describe('PrimaryPool', function () {
   
       maxAmountsIn[pool.securityIndex] = maxSecurityOffered;
       maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
-      maxAmountsIn[pool.bptIndex] = MAX_UINT112;
+      maxAmountsIn[pool.bptIndex] = 0;
 
       const joinPool = await pool.vault.joinPool({
             poolAddress: pool.address,
@@ -165,7 +165,7 @@ describe('PrimaryPool', function () {
             recipient: owner.address,
             maxAmountsIn: maxAmountsIn,
             tokens: allTokens,
-            fromInternalBalance: false,
+            fromInternalBalance: true,
             protocolFeePercentage: 0,
             data: WeightedPoolEncoder.joinInit(maxAmountsIn),
         });
