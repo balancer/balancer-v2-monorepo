@@ -42,7 +42,15 @@ contract ReaperLinearPoolFactory is ILastCreatedPoolFactory, BasePoolFactory, Re
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IBalancerQueries queries
-    ) BasePoolFactory(vault, protocolFeeProvider, _INITIAL_PAUSE_WINDOW_DURATION, _BUFFER_PERIOD_DURATION, type(ReaperLinearPool).creationCode) {
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            _INITIAL_PAUSE_WINDOW_DURATION,
+            _BUFFER_PERIOD_DURATION,
+            type(ReaperLinearPool).creationCode
+        )
+    {
         _queries = queries;
     }
 

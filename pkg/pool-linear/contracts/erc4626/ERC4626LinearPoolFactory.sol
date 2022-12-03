@@ -26,7 +26,13 @@ contract ERC4626LinearPoolFactory is BasePoolFactory {
     uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
 
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, _INITIAL_PAUSE_WINDOW_DURATION, _BUFFER_PERIOD_DURATION, type(ERC4626LinearPool).creationCode)
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            _INITIAL_PAUSE_WINDOW_DURATION,
+            _BUFFER_PERIOD_DURATION,
+            type(ERC4626LinearPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }

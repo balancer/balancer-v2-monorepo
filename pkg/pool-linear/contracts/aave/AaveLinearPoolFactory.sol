@@ -53,7 +53,16 @@ contract AaveLinearPoolFactory is
         IBalancerQueries queries,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, _INITIAL_PAUSE_WINDOW_DURATION, _BUFFER_PERIOD_DURATION, type(AaveLinearPool).creationCode) Version(factoryVersion) {
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            _INITIAL_PAUSE_WINDOW_DURATION,
+            _BUFFER_PERIOD_DURATION,
+            type(AaveLinearPool).creationCode
+        )
+        Version(factoryVersion)
+    {
         _queries = queries;
         _poolVersion = poolVersion;
     }
