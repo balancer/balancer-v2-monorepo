@@ -10,7 +10,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapSecondaryPool, RawSecondaryPoolDeployment, EditOrder, CancelOrder, OrderRef } from './types';
+import { SwapSecondaryPool, RawSecondaryPoolDeployment } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -19,7 +19,7 @@ import TypesConverter from '../../types/TypesConverter';
 import SecondaryPoolDeployer from './SecondaryIssuePoolDeployer';
 import { deployedAt } from '../../../contract';
 import BasePool from '../base/BasePool';
-
+import Orderbook from './orderbook/Orderbook';
 
 export default class SecondaryPool extends BasePool{
   instance: Contract;
@@ -41,9 +41,9 @@ export default class SecondaryPool extends BasePool{
     const [poolId, vault, securityToken, currencyToken, maxSecurityOffered, swapFee, owner] = await Promise.all([
       instance.getPoolId(),
       instance.getVault(),
-      instance.getSecurityToken(),
-      instance.getCurrencyToken(),
-      instance.getMaxSecurityOffered(),
+      instance.getSecurity(),
+      instance.getCurrency(),
+      instance.getSecurityOffered(),
       instance.getSwapFeePercentage(),
       instance.getOwner()
     ]);
@@ -123,6 +123,21 @@ export default class SecondaryPool extends BasePool{
     return this.instance.symbol();
   }
 
+  async orderbook(): Promise<Orderbook>{
+    const ob = await deployedAt('pool-secondary-issues/Orderbook', this.instance.getOrderbook());
+    const [balancerManager, security, currency] = await Promise.all([
+      this.instance.getOwner(),
+      this.instance.getSecurity(),
+      this.instance.getCurrency(),
+    ]);
+    return new Orderbook(
+      ob,
+      balancerManager,
+      security,
+      currency
+    );
+  }
+
   async totalSupply(): Promise<BigNumber> {
     return this.instance.totalSupply();
   }
@@ -141,12 +156,6 @@ export default class SecondaryPool extends BasePool{
 
   async getPoolId(): Promise<string> {
     return this.instance.getPoolId();
-  }
-
-  async getOrderRef(params: OrderRef): Promise<BigNumber[]> {
-    const sender = params.from || this.owner;
-    const pool = sender ? this.instance.connect(sender) : this.instance;
-    return pool.getOrderRef();
   }
 
   async getSwapFeePercentage(): Promise<BigNumber> {
@@ -186,18 +195,6 @@ export default class SecondaryPool extends BasePool{
     return this.instance.initialize();
   }
 
-  async editOrder(params: EditOrder): Promise<BigNumber> {
-    const sender = params.from || this.owner;
-    const pool = sender ? this.instance.connect(sender) : this.instance;
-    return pool.editOrder(params.ref, params.price, params.amount);
-  }
-
-  async cancelOrder(params: CancelOrder): Promise<BigNumber> {
-    const sender = params.from || this.owner;
-    const pool = sender ? this.instance.connect(sender) : this.instance;
-    return pool.cancelOrder(params.ref);
-  }
-
   async swapGivenIn(params: SwapSecondaryPool): Promise<any> {
     return this.swap(this._buildSwapParams(SwapKind.GivenIn, params), params.eventHash!);
   }
@@ -209,8 +206,9 @@ export default class SecondaryPool extends BasePool{
   async swap(params: GeneralSwap, eventEncoded: string): Promise<any> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
+    const orderbookAddress =  await this.instance.getOrderbook();
     // extracting eventEncoded from transaction log reciept
-    const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == this.instance.address);
+    const SecondaryPoolEvents = receipt.logs.filter((e)=> e.address == orderbookAddress);
     const swapEvent = eventEncoded ? SecondaryPoolEvents.filter((e) => e.topics[0] == eventEncoded): [];
     const logData = swapEvent?.length ? swapEvent[0].data : null;
 

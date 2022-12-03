@@ -152,6 +152,10 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     function getBptIndex() public view override returns (uint256) {
         return _bptIndex;
     }
+
+    function getOfferingDocuments() public view returns(string memory){
+        return _offeringDocs;
+    }
     
     function initialize() external {
         bytes32 poolId = getPoolId();
@@ -159,7 +163,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
-        _maxAmountsIn[_currencyIndex] = Math.div(_MAX_TOKEN_BALANCE, _minPrice, false);
+        _maxAmountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
         _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
@@ -176,7 +180,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         IVault vault = getVault();
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
-        _minAmountsOut[_currencyIndex] = Math.div(_MAX_TOKEN_BALANCE, _maxPrice, false);
+        _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
+        _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_maxPrice);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
@@ -372,7 +377,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // This proportional exit function is only enabled if the contract is paused, to provide users a way to
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        uint256 bptRatio = Math.div(bptAmountIn, Math.sub(totalSupply(), balances[_bptIndex]), false);
+        uint256 bptRatio = bptAmountIn.divDown(Math.sub(totalSupply(), balances[_bptIndex]));
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
@@ -408,9 +413,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         return scalingFactors;
     }
 
-    function _getMinimumBpt() internal pure override returns (uint256) {
-        // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
-        // mechanism, ensuring initialization only occurs once.
-        return 0;
-    }
+    // function _getMinimumBpt() internal pure override returns (uint256) {
+    //     // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+    //     // mechanism, ensuring initialization only occurs once.
+    //     return 0;
+    // }
 }

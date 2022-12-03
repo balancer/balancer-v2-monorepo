@@ -3,6 +3,7 @@
 
 pragma solidity 0.7.1;
 
+import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
 
 interface IOrder {
@@ -14,9 +15,9 @@ interface IOrder {
     enum Order{ Buy, Sell } 
 
     struct order{
-        //uint256 orderno; 
-        IERC20 tokenIn;
-        IERC20 tokenOut;
+        IVault.SwapKind swapKind; 
+        address tokenIn;
+        address tokenOut;
         OrderType otype;
         Order order;
         OrderStatus status;
@@ -28,15 +29,22 @@ interface IOrder {
         uint256 securityBalance;    
     }
 
+    struct Params {
+        OrderType trade;
+        uint256 price;
+    }
+
     function getOrderRef() external view returns(bytes32[] memory);
 
     function cancelOrder(bytes32 ref) external;
 
     function editOrder( bytes32 ref,
                         uint256 _price,
-                        uint256 _qty) external;
-
-    function revertTrade(bytes32 _orderRef, uint256 _qty, Order _order) external;
+                        uint256 _qty) external;    
 
     function orderFilled(bytes32 partyRef, bytes32 counterpartyRef) external;
+
+    function tradeSettled(bytes32 partyRef, bytes32 counterpartyRef) external;
+
+    function revertTrade(bytes32 _orderRef, uint256 _qty, IOrder.Order _order) external;
 }
