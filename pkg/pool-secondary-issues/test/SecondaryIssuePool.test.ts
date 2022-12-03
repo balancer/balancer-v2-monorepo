@@ -342,7 +342,7 @@ describe('SecondaryPool', function () {
       sell_price = fp(20); // Selling price
     });
 
-    it('Sell SWAP IN Security Order > Buy SWAP IN Currecny Order', async () => {
+    it('Sell SWAP IN Security Order > Buy SWAP IN Currency Order', async () => {
       const currencyTraded = mulDown(sell_qty,sell_price);
       const securityTraded = divDown(currencyTraded, sell_price);
 
@@ -374,7 +374,7 @@ describe('SecondaryPool', function () {
       }
     });
 
-    it('Sell SWAP Out Currency Order > Buy SWAP IN Currecny Order', async () => {
+    it('Sell SWAP Out Currency Order > Buy SWAP IN Currency Order', async () => {
       sell_qty = fp(400);
       const currencyTraded = sell_qty;
       const securityTraded = divDown(currencyTraded, sell_price);
@@ -407,7 +407,7 @@ describe('SecondaryPool', function () {
       }
     });
 
-    it('Sell SWAP In Security Order > Buy SWAP IN Currecny Order', async () => {
+    it('Sell SWAP In Security Order > Buy SWAP IN Currency Order', async () => {
       sell_qty = fp(20);
       buy_qty = fp(100);
       const currencyTraded = mulDown(sell_qty,sell_price);
@@ -441,7 +441,7 @@ describe('SecondaryPool', function () {
       }
     });
 
-    it('Sell SWAP Out Currency Order > Buy SWAP IN Currecny Order', async () => {
+    it('Sell SWAP Out Currency Order > Buy SWAP IN Currency Order', async () => {
       buy_qty = fp(100);
       sell_qty = fp(400);
       const currencyTraded = sell_qty;
@@ -920,14 +920,15 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const _ref = await pool.getOrderRef({from: lp});
+      const ob = await pool.orderbook(); 
+      const _ref = await ob.getOrderRef({from: lp});
 
-      const cancel_order = await pool.cancelOrder({
+      const cancel_order = await ob.cancelOrder({
         ref: _ref[0].toString(),
         from: lp
       });
 
-      const _refAfterCancell = await pool.getOrderRef({from: lp});
+      const _refAfterCancell = await ob.getOrderRef({from: lp});
       expect(_refAfterCancell[0]).to.be.equals(ZERO_BYTES32);
       
     });
@@ -965,9 +966,10 @@ describe('SecondaryPool', function () {
         eventHash: encodedEventSignature
       });
 
-      const _ref = await pool.getOrderRef({from: lp});
+      const ob = await pool.orderbook();
+      const _ref = await ob.getOrderRef({from: lp});
 
-      const edit_order = await pool.editOrder({
+      const edit_order = await ob.editOrder({
         ref: _ref[0].toString(),
         price: editedPrice, //Changed price from 12[selling price] --> 18[buying price]
         amount: editedAmount, //Changed Qty from 10[sell amount] --> 12[buy amount]

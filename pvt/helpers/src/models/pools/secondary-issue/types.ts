@@ -44,7 +44,7 @@ export type SwapSecondaryPool = {
   eventHash?: string;
 };
 
-export type EditOrder = {
+/*export type EditOrder = {
   ref?: string;
   amount: BigNumberish;
   price: BigNumberish;
@@ -58,7 +58,7 @@ export type CancelOrder = {
 
 export type OrderRef = {
   from?: SignerWithAddress;
-};
+};*/
 
 export type ExitResult = {
   amountsOut: BigNumber[];
