@@ -965,7 +965,7 @@ describe('SecondaryPool', function () {
         data: ethers.utils.hexlify(ethers.utils.toUtf8Bytes('5Limit' + sell_price.toString())), // Limit Order Sell@price12
         eventHash: encodedEventSignature
       });
-
+      
       const ob = await pool.orderbook();
       const _ref = await ob.getOrderRef({from: lp});
 

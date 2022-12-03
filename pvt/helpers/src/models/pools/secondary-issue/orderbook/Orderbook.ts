@@ -24,15 +24,21 @@ export default class Orderbook {
     }
 
     async getOrderRef(params: OrderRef): Promise<BigNumberish[]> {
-        return this.instance.getOrderRef();
+        const sender = params.from || this.balancerManager;
+        const orderbook = sender ? this.instance.connect(sender) : this.instance;
+        return orderbook.getOrderRef();
     }
 
     async editOrder(params: EditOrder): Promise<BigNumberish> {
-        return this.instance.editOrder(params.ref, params.price, params.amount);
+        const sender = params.from || this.balancerManager;
+        const orderbook = sender ? this.instance.connect(sender) : this.instance;
+        return orderbook.editOrder(params.ref, params.price, params.amount);
     }
 
     async cancelOrder(params: CancelOrder): Promise<BigNumberish> {
-        return this.instance.cancelOrder(params.ref);
+        const sender = params.from || this.balancerManager;
+        const orderbook = sender ? this.instance.connect(sender) : this.instance;
+        return orderbook.cancelOrder(params.ref);
     }
 
 }

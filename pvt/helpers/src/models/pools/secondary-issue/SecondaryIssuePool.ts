@@ -10,7 +10,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapSecondaryPool, RawSecondaryPoolDeployment/*, EditOrder, CancelOrder, OrderRef*/ } from './types';
+import { SwapSecondaryPool, RawSecondaryPoolDeployment } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
