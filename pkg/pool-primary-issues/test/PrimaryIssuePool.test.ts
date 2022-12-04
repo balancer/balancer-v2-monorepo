@@ -130,7 +130,7 @@ describe('PrimaryPool', function () {
       await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs}, false);
   
       tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
-      await tokens.approve({ to: [owner], from: owner, amount: fp(500) });
+      await tokens.approve({ from: owner, to: pool.vault.address, amount: fp(500) });
     });
 
     it('adds bpt to the owner', async () => {
@@ -145,17 +145,26 @@ describe('PrimaryPool', function () {
       maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
       maxAmountsIn[pool.bptIndex] = 0;
 
+      console.log("Security Balance Owner",(await securityToken.balanceOf(owner)).toString());
+      console.log("Cash Balance Owner",(await currencyToken.balanceOf(owner)).toString());
+      console.log ("getPoolTokens", await pool.vault.getPoolTokens(poolId));
+
+
       const joinPool = await pool.vault.joinPool({
             poolAddress: pool.address,
             poolId: poolId,
             from: owner,
             recipient: owner.address,
+            currentBalances: previousBalances,
             maxAmountsIn: maxAmountsIn,
             tokens: allTokens,
-            fromInternalBalance: true,
+            fromInternalBalance: false,
             protocolFeePercentage: 0,
             data: WeightedPoolEncoder.joinInit(maxAmountsIn),
         });
+
+      const receipt = await (await joinPool).wait();
+      console.log("receipt",receipt);
 
       // await pool.initialize();
       console.log("Join Pool Done");
