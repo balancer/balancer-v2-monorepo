@@ -172,7 +172,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
             fromInternalBalance: false
         });
         vault.joinPool(getPoolId(), address(this), payable(_balancerManager), request);
-        emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
+        emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[_securityIndex], _cutoffTime, _offeringDocs);
     }
 
     function exit() external {
@@ -181,7 +181,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
         uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
         _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
-        _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_maxPrice);
+        _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
@@ -296,7 +296,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenInAmt);
 
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
-        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
+        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
         emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
@@ -315,7 +315,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenInAmt);
 
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
-        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
+        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt, false);
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
@@ -413,9 +413,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         return scalingFactors;
     }
 
-    // function _getMinimumBpt() internal pure override returns (uint256) {
-    //     // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
-    //     // mechanism, ensuring initialization only occurs once.
-    //     return 0;
-    // }
+    /*function _getMinimumBpt() internal pure override returns (uint256) {
+         // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+         // mechanism, ensuring initialization only occurs once.
+         return 0;
+    }*/
 }

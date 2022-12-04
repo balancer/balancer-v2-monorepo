@@ -32,7 +32,7 @@ export default class PrimaryPool extends BasePool{
   issueCutoffTime: BigNumberish;
   offeringDocs: string;
   vault: Vault;
-  //owner?: SignerWithAddress;
+  owner?: SignerWithAddress;
 
   static async create(params: RawPrimaryPoolDeployment, mockedVault: boolean): Promise<PrimaryPool> {
     return PrimaryPoolDeployer.deploy(params, mockedVault);
@@ -43,14 +43,14 @@ export default class PrimaryPool extends BasePool{
     const [poolId, vault, securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, swapFee, issueCutoffTime, offeringDocs, owner] = await Promise.all([
       instance.getPoolId(),
       instance.getVault(),
-      instance.getSecurityToken(),
-      instance.getCurrencyToken(),
-      instance.getminimumPrice(),
-      instance.getbasePrice(),
-      instance.maxSecurityOffered(),
+      instance.getSecurity(),
+      instance.getCurrency(),
+      instance.getMinimumPrice(),
+      instance.getMaximumPrice(),
+      instance.getSecurityOffered(),
       instance.getSwapFeePercentage(),
-      instance.getissueCutoffTime(),
-      instance.getofferingDocs(),
+      instance.getIssueCutoffTime(),
+      instance.getOfferingDocuments(),
       instance.getOwner(),
     ]);
     return new PrimaryPool(
@@ -98,7 +98,7 @@ export default class PrimaryPool extends BasePool{
     this.swapFeePercentage = swapFeePercentage;
     this.issueCutoffTime = issueCutoffTime;
     this.offeringDocs = offeringDocs;
-    //this.owner = owner;
+    this.owner = owner;
   }
 
   get address(): string {
