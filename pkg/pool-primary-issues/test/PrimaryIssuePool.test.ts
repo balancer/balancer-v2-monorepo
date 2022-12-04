@@ -128,25 +128,11 @@ describe('PrimaryPool', function () {
   describe('initialization', () => {
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs}, false);
-      // await setBalances(pool, { securityBalance: fp(200), currencyBalance: fp(200), bptBalance: fp(0) });
+  
+      tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
+      await tokens.approve({ to: [owner], from: owner, amount: fp(500) });
     });
-    const setBalances = async (
-      pool: PrimaryPool,
-      balances: { securityBalance?: BigNumber; currencyBalance?: BigNumber; bptBalance?: BigNumber }
-    ) => {
 
-      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
-        i == pool.securityIndex
-          ? balances.securityBalance ?? bn(0)
-          : i == pool.currencyIndex
-          ? balances.currencyBalance ?? bn(0)
-          : i == pool.bptIndex
-          ? balances.bptBalance ?? bn(0)
-          : bn(0)
-      );
-      const poolId = await pool.getPoolId();
-      await pool.vault.updateBalances(poolId, updateBalances);
-    };
     it('adds bpt to the owner', async () => {
       const previousBalances = await pool.getBalances();
       expect(previousBalances).to.be.zeros;
@@ -162,6 +148,7 @@ describe('PrimaryPool', function () {
       const joinPool = await pool.vault.joinPool({
             poolAddress: pool.address,
             poolId: poolId,
+            from: owner,
             recipient: owner.address,
             maxAmountsIn: maxAmountsIn,
             tokens: allTokens,
@@ -487,25 +474,26 @@ describe('PrimaryPool', function () {
         await deployPool({securityToken, currencyToken, minimumPrice, basePrice, maxSecurityOffered, issueCutoffTime, offeringDocs }, false);
         await pool.initialize();
         // await setBalances(pool, { securityBalance: fp(200), currencyBalance: fp(200), bptBalance: fp(0) });
+        
       });
 
-      const setBalances = async (
-        pool: PrimaryPool,
-        balances: { securityBalance?: BigNumber; currencyBalance?: BigNumber; bptBalance?: BigNumber }
-      ) => {
+      // const setBalances = async (
+      //   pool: PrimaryPool,
+      //   balances: { securityBalance?: BigNumber; currencyBalance?: BigNumber; bptBalance?: BigNumber }
+      // ) => {
   
-        const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
-          i == pool.securityIndex
-            ? balances.securityBalance ?? bn(0)
-            : i == pool.currencyIndex
-            ? balances.currencyBalance ?? bn(0)
-            : i == pool.bptIndex
-            ? balances.bptBalance ?? bn(0)
-            : bn(0)
-        );
-        const poolId = await pool.getPoolId();
-        await pool.vault.updateBalances(poolId, updateBalances);
-      };
+      //   const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+      //     i == pool.securityIndex
+      //       ? balances.securityBalance ?? bn(0)
+      //       : i == pool.currencyIndex
+      //       ? balances.currencyBalance ?? bn(0)
+      //       : i == pool.bptIndex
+      //       ? balances.bptBalance ?? bn(0)
+      //       : bn(0)
+      //   );
+      //   const poolId = await pool.getPoolId();
+      //   await pool.vault.updateBalances(poolId, updateBalances);
+      // };
 
     it('regular joins should revert', async () => {
       const { tokens: allTokens } = await pool.getTokens();
