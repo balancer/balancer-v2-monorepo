@@ -23,4 +23,8 @@ library PrimaryPoolUserData {
     function exactBptInForTokensOut(bytes memory self) internal pure returns (uint256 bptAmountIn) {
         (, bptAmountIn) = abi.decode(self, (ExitKind, uint256));
     }
+
+    function joinKind(bytes memory self) internal pure returns (uint256[] memory maxAmountsIn) {
+        (, maxAmountsIn) = abi.decode(self, (JoinKind, uint256[]));
+    }
 }

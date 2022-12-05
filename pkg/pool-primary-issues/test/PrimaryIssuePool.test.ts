@@ -509,8 +509,8 @@ describe('PrimaryPool', function () {
           minAmountsOut[pool.currencyIndex] = divDown(maxSecurityOffered,basePrice);
           minAmountsOut[pool.bptIndex] = 0;
 
-          console.log("minAmountsOut",minAmountsOut);
-          console.log ("getPoolTokens", await pool.vault.getPoolTokens(poolId));
+          console.log("minAmountsOut before exit ",minAmountsOut);
+          console.log ("getPoolTokens before exit ", await pool.vault.getPoolTokens(poolId));
           const tx = await pool.vault.exitPool({
             poolAddress: pool.address,
             poolId: poolId,
@@ -522,7 +522,7 @@ describe('PrimaryPool', function () {
             protocolFeePercentage: 0,
             data: WeightedPoolEncoder.exitExactBPTInForTokensOut(MAX_UINT112.sub(_DEFAULT_MINIMUM_BPT)),
             });
-
+          
           const afterExitOwnerBalance = await pool.balanceOf(owner);
           console.log("afterExitOwnerBalance",afterExitOwnerBalance.toString());
           const currentBalances = await pool.getBalances();

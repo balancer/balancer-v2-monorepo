@@ -164,7 +164,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
         _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
         _maxAmountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
-        _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        //_maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
             assets: _asIAsset(tokens),
             maxAmountsIn: _maxAmountsIn,
@@ -182,6 +182,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
         _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
         _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
+        _minAmountsOut[_bptIndex] = 0;
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
             assets: _asIAsset(tokens),
             minAmountsOut: _minAmountsOut,
@@ -325,14 +326,14 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         address sender,
         address recipient,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
         _require(sender == address(this), Errors.INVALID_INITIALIZATION);
         _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
         
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
-        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
+        uint256[] memory amountsIn = userData.joinKind();
 
         return (bptAmountOut, amountsIn);
     }
