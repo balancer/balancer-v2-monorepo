@@ -165,7 +165,7 @@ contract AaveLinearPoolFactory is
         address actualRebalancerAddress = Create2.deploy(0, rebalancerSalt, rebalancerCreationCode);
         require(expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
 
-        // We do not require that the protocolId be registered.
+        // Identify the protocolId associated with this pool. We do not require that the protocolId be registered.
         emit AaveLinearPoolCreated(address(pool), protocolId);
 
         // We don't return the Rebalancer's address, but that can be queried in the Vault by calling `getPoolTokenInfo`.
