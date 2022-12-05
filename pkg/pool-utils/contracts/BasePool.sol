@@ -30,6 +30,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "./BalancerPoolToken.sol";
 import "./BasePoolAuthorization.sol";
 import "./RecoveryMode.sol";
+
 // solhint-disable max-states-count
 
 /**
@@ -340,7 +341,7 @@ abstract contract BasePool is
             
             // amountsIn are amounts entering the Pool, so we round up.
             _downscaleUpArray(amountsIn, scalingFactors);
-
+            
             return (amountsIn, new uint256[](balances.length));
         } else {
             _upscaleArray(balances, scalingFactors);
@@ -409,13 +410,11 @@ abstract contract BasePool is
                 scalingFactors,
                 userData
             );
-
             // amountsOut are amounts exiting the Pool, so we round down.
             _downscaleDownArray(amountsOut, scalingFactors);
         }
         // Note we no longer use `balances` after calling `_onExitPool`, which may mutate it.
         _burnPoolTokens(sender, bptAmountIn);
-
         // This Pool ignores the `dueProtocolFees` return value, so we simply return a zeroed-out array.
         return (amountsOut, new uint256[](balances.length));
     }

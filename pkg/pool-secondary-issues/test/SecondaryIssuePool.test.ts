@@ -132,15 +132,6 @@ describe('SecondaryPool', function () {
       expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
     });
 
-    it('cannot be initialized outside of the initialize function', async () => {
-      await expect(
-        pool.vault.joinPool({
-          poolId: await pool.getPoolId(),
-          tokens: pool.tokens.addresses,
-        })
-      ).to.be.revertedWith('INVALID_INITIALIZATION');
-    });
-
     it('cannot be initialized twice', async () => {
       await pool.initialize();
       await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
