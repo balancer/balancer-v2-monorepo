@@ -24,6 +24,8 @@ describe('AaveLinearPoolFactory', function () {
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
+  const AAVE_PROTOCOL_ID = 0;
+
   before('setup signers', async () => {
     [, owner] = await ethers.getSigners();
   });
@@ -58,17 +60,24 @@ describe('AaveLinearPoolFactory', function () {
   });
 
   async function createPool(): Promise<Contract> {
-    const receipt = await factory.create(
+    const tx = await factory.create(
       NAME,
       SYMBOL,
       tokens.DAI.address,
       tokens.CDAI.address,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      AAVE_PROTOCOL_ID
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+    expectEvent.inReceipt(receipt, 'AaveLinearPoolCreated', {
+      pool: event.args.pool,
+      protocolId: AAVE_PROTOCOL_ID,
+    });
+
     return deployedAt('AaveLinearPool', event.args.pool);
   }
 

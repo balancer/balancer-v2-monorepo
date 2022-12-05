@@ -46,6 +46,9 @@ contract AaveLinearPoolFactory is
     address private _lastCreatedPool;
     string private _poolVersion;
 
+    // This event allows off-chain tools to differentiate between different protocols that use Aave Linear Pools.
+    event AaveLinearPoolCreated(address indexed pool, uint256 protocolId);
+
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
@@ -82,7 +85,8 @@ contract AaveLinearPoolFactory is
         IERC20 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        uint256 protocolId
     ) external nonReentrant returns (AaveLinearPool) {
         // We are going to deploy both an AaveLinearPool and an AaveLinearPoolRebalancer set as its Asset Manager, but
         // this creates a circular dependency problem: the Pool must know the Asset Manager's address in order to call
@@ -108,21 +112,20 @@ contract AaveLinearPoolFactory is
         address expectedRebalancerAddress = Create2.computeAddress(rebalancerSalt, keccak256(rebalancerCreationCode));
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
+        AaveLinearPool.ConstructorArgs memory args;
 
-        AaveLinearPool.ConstructorArgs memory args = AaveLinearPool.ConstructorArgs({
-            vault: getVault(),
-            name: name,
-            symbol: symbol,
-            mainToken: mainToken,
-            wrappedToken: wrappedToken,
-            assetManager: expectedRebalancerAddress,
-            upperTarget: upperTarget,
-            swapFeePercentage: swapFeePercentage,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner,
-            version: getPoolVersion()
-        });
+        args.vault = getVault();
+        args.name = name;
+        args.symbol = symbol;
+        args.mainToken = mainToken;
+        args.wrappedToken = wrappedToken;
+        args.assetManager = expectedRebalancerAddress;
+        args.upperTarget = upperTarget;
+        args.swapFeePercentage = swapFeePercentage;
+        args.pauseWindowDuration = pauseWindowDuration;
+        args.bufferPeriodDuration = bufferPeriodDuration;
+        args.owner = owner;
+        args.version = getPoolVersion();
 
         AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));
 
@@ -134,6 +137,8 @@ contract AaveLinearPoolFactory is
         // predicted its deployment address.
         address actualRebalancerAddress = Create2.deploy(0, rebalancerSalt, rebalancerCreationCode);
         require(expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
+
+        emit AaveLinearPoolCreated(address(pool), protocolId);
 
         // We don't return the Rebalancer's address, but that can be queried in the Vault by calling `getPoolTokenInfo`.
         return pool;
