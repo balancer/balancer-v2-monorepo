@@ -29,7 +29,7 @@ abstract contract IBaseRelayerLibrary is AssetHelpers {
 
     function getVault() public view virtual returns (IVault);
 
-    function approveVault(IERC20 token, uint256 amount) public virtual;
+    function approveVault(IERC20 token, uint256 amount) public payable virtual;
 
     function peekChainedReferenceValue(uint256 ref) public view virtual returns (uint256);
 

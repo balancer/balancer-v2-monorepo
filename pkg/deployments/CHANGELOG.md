@@ -4,18 +4,36 @@
 
 ### New Deployments
 
+- Deployed `L2GaugeCheckpointer` to Mainnet.
+
+## 3.1.1 (2022-12-01)
+
+### Bugfixes
+
+- Fixed changelog.
+
+## 3.1.0 (2022-12-01)
+
+### New Deployments
+
 - Deployed core infrastructure (`Authorizer`, `Vault`, `AuthorizerAdaptor`, `ProtocolFeeWithdrawer`, `ProtocolFeePercentagesProvider`, `BalancerQueries` and `BatchRelayer`) to Gnosis and BNB.
 - Deployed core Pool factories (`WeightedPoolFactory`, `ComposableStablePoolFactory`, `LiquidityBootstrappingPool`, `AaveLinearPool`) to BNB.
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
 - Deployed `AaveLinearPoolFactory` to all networks.
 - Deployed `PoolRecoveryHelper` to all networks.
-- Deployed `L2GaugeCheckpointer` to Mainnet.
+- Deployed `ComposableStablePoolFactory` to all networks.
+- Deployed `TimelockAuthorizer` to ethereum mainnet and goerli.
+
+### Deprecations
+
+- Deprecated `20211021-managed-pool` due to lacking features and not being expected to ever be used. A new version will be released soon.
 
 ### API Changes
 
 - Made `getBalancerContractAbi`, `getBalancerContractBytecode`, `getBalancerContractAddress` and `getBalancerDeployment` synchronous rather than asynchronous functions.
 - Added `getBalancerContractArtifact` which returns a artifact file for the contract in the same format used by Hardhat.
 - Deprecated `getBalancerContractBytecode` in favour of `getBalancerContractArtifact`.
+- Added `lookupBalancerContractByAddress` which returns the contract's name and the relevant deployment task if it is a tracked Balancer contract.
 
 ## 3.0.0 (2022-10-25)
 

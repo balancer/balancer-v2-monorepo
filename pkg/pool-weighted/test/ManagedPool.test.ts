@@ -38,6 +38,12 @@ describe('ManagedPool', function () {
   let pool: WeightedPool;
   let vault: Vault;
 
+  const poolVersion = JSON.stringify({
+    name: 'ManagedPool',
+    version: '0',
+    deployment: 'test-deployment',
+  });
+
   before('setup signers', async () => {
     [, admin, owner, other] = await ethers.getSigners();
   });
@@ -70,7 +76,7 @@ describe('ManagedPool', function () {
       owner: owner.address,
       aumFeeId: ProtocolFee.AUM,
       poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPool',
+      poolVersion,
       ...overrides,
     };
     return WeightedPool.create(params);
@@ -121,6 +127,10 @@ describe('ManagedPool', function () {
           const { assetManager } = await vault.getPoolTokenInfo(pool.poolId, token);
           expect(assetManager).to.be.eq(ZERO_ADDRESS);
         });
+      });
+
+      it('returns the expected pool version', async () => {
+        expect(await pool.version()).to.be.eq(poolVersion);
       });
     });
   });
@@ -283,9 +293,20 @@ describe('ManagedPool', function () {
           });
         });
 
-        context('when swaps are enabled', () => {
-          sharedBeforeEach('enable swaps', async () => {
+        context('when joins are disabled', () => {
+          sharedBeforeEach('disable joins', async () => {
+            await pool.setJoinExitEnabled(owner, false);
+          });
+
+          it('it reverts', async () => {
+            await expect(doJoinSwap()).to.be.revertedWith('JOINS_EXITS_DISABLED');
+          });
+        });
+
+        context('when swaps and joins are enabled', () => {
+          sharedBeforeEach('enable joins and swaps', async () => {
             await pool.setSwapEnabled(owner, true);
+            await pool.setJoinExitEnabled(owner, true);
           });
 
           context('when LP allowlist is enabled', () => {
@@ -462,9 +483,20 @@ describe('ManagedPool', function () {
           });
         });
 
-        context('when swaps are enabled', () => {
-          sharedBeforeEach('enable swaps', async () => {
+        context('when exits are disabled', () => {
+          sharedBeforeEach('disable exits', async () => {
+            await pool.setJoinExitEnabled(owner, false);
+          });
+
+          it('it reverts', async () => {
+            await expect(doExitSwap()).to.be.revertedWith('JOINS_EXITS_DISABLED');
+          });
+        });
+
+        context('when swaps and exits are enabled', () => {
+          sharedBeforeEach('enable swaps and exits', async () => {
             await pool.setSwapEnabled(owner, true);
+            await pool.setJoinExitEnabled(owner, true);
           });
 
           context('when LP allowlist is enabled', () => {
@@ -702,6 +734,41 @@ describe('ManagedPool', function () {
       });
     });
 
+    context('when joins are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool({ swapEnabledOnStart: true });
+        await pool.init({ from: other, initialBalances });
+        await pool.setJoinExitEnabled(owner, false);
+      });
+
+      context('proportional joins', () => {
+        it('prevents proportionate joins', async () => {
+          const startingBpt = await pool.balanceOf(other);
+
+          await expect(pool.joinAllGivenOut({ from: other, bptOut: startingBpt })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
+        });
+      });
+
+      context('disproportionate joins', () => {
+        it('prevents disproportionate joins (single token)', async () => {
+          const bptOut = await pool.balanceOf(other);
+
+          await expect(pool.joinGivenOut({ from: other, bptOut, token: poolTokens.get(0) })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
+        });
+
+        it('prevents disproportionate joins (multi token)', async () => {
+          const amountsIn = [...initialBalances];
+          amountsIn[0] = 0;
+
+          await expect(pool.joinGivenIn({ from: other, amountsIn })).to.be.revertedWith('JOINS_EXITS_DISABLED');
+        });
+      });
+    });
+
     context('circuit breakers', () => {
       let tokenInIndex: number;
       let amountsIn: BigNumber[];
@@ -820,6 +887,41 @@ describe('ManagedPool', function () {
       });
     });
 
+    context('when exits are disabled', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        pool = await deployPool({ swapEnabledOnStart: true });
+        await pool.init({ from: other, initialBalances });
+        await pool.setJoinExitEnabled(owner, false);
+      });
+
+      context('proportional exits', () => {
+        it('prevents proportionate exits', async () => {
+          const previousBptBalance = await pool.balanceOf(other);
+          const bptIn = pct(previousBptBalance, 0.8);
+
+          await expect(pool.multiExitGivenIn({ from: other, bptIn })).to.be.revertedWith('JOINS_EXITS_DISABLED');
+        });
+      });
+
+      context('disproportionate exits', () => {
+        it('prevents disproportionate exits (single token)', async () => {
+          const previousBptBalance = await pool.balanceOf(other);
+          const bptIn = pct(previousBptBalance, 0.5);
+
+          await expect(pool.singleExitGivenIn({ from: other, bptIn, token: poolTokens.get(0) })).to.be.revertedWith(
+            'JOINS_EXITS_DISABLED'
+          );
+        });
+
+        it('prevents disproportionate exits (multi token)', async () => {
+          const amountsOut = [...initialBalances];
+          amountsOut[0] = 0;
+
+          await expect(pool.exitGivenOut({ from: other, amountsOut })).to.be.revertedWith('JOINS_EXITS_DISABLED');
+        });
+      });
+    });
+
     context('circuit breakers', () => {
       let tokenOutIndex: number;
       let amountsOut: BigNumber[];
@@ -926,6 +1028,14 @@ describe('ManagedPool', function () {
     context('when paused', () => {
       sharedBeforeEach('pause pool', async () => {
         await pool.pause();
+      });
+
+      itExitsViaRecoveryModeCorrectly();
+    });
+
+    context('when exits are disabled', () => {
+      sharedBeforeEach(async () => {
+        await pool.setJoinExitEnabled(owner, false);
       });
 
       itExitsViaRecoveryModeCorrectly();
