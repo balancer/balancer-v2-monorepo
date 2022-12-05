@@ -123,23 +123,23 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         return _MAX_TOKEN_BALANCE;
     }
 
-    // function initialize() external {
-    //     bytes32 poolId = getPoolId();
-    //     IVault vault = getVault();
-    //     (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+    function initialize() external {
+        bytes32 poolId = getPoolId();
+        IVault vault = getVault();
+        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
 
-    //     uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-    //     _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
+        _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
-    //     IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-    //         assets: _asIAsset(tokens),
-    //         maxAmountsIn: _maxAmountsIn,
-    //         userData: "",
-    //         fromInternalBalance: false
-    //     });
-    //     vault.joinPool(getPoolId(), address(this), address(this), request);
-    //     emit Offer(_security, _MAX_TOKEN_BALANCE);
-    // }
+        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
+            assets: _asIAsset(tokens),
+            maxAmountsIn: _maxAmountsIn,
+            userData: "",
+            fromInternalBalance: false
+        });
+        vault.joinPool(getPoolId(), address(this), address(this), request);
+        emit Offer(_security, _MAX_TOKEN_BALANCE);
+    }
 
     function onSwap(
         SwapRequest memory request,

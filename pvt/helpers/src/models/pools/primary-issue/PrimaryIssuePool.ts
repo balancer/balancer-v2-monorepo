@@ -222,10 +222,6 @@ export default class PrimaryPool extends BasePool{
     return pool.setSwapFeePercentage(swapFeePercentage);
   }
 
-  async initialize(): Promise<void> {
-    return this.instance.initialize();
-  }
-
   async init(params: InitPrimaryPool): Promise<JoinResult> {
     return this.join(this._buildInitParams(params));
   }
