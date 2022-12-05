@@ -51,7 +51,7 @@ export type SwapPrimaryPool = {
   data?: string;
 };
 
-export type JoinExitWeightedPool = {
+export type JoinExitPrimaryPool = {
   recipient?: Account;
   currentBalances?: BigNumberish[];
   lastChangeBlock?: BigNumberish;

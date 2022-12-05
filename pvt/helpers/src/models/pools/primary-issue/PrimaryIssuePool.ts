@@ -12,7 +12,7 @@ import { Account, TxParams } from '../../types/types';
 import { 
   SwapPrimaryPool, 
   RawPrimaryPoolDeployment, 
-  JoinExitWeightedPool, 
+  JoinExitPrimaryPool, 
   InitPrimaryPool, 
   JoinResult,
   ExitGivenOutPrimaryPool,
@@ -267,7 +267,7 @@ export default class PrimaryPool extends BasePool{
     };
   }
 
-  private _buildInitParams(params: InitPrimaryPool): JoinExitWeightedPool {
+  private _buildInitParams(params: InitPrimaryPool): JoinExitPrimaryPool {
     const { initialBalances: balances } = params;
     const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
 
@@ -279,7 +279,7 @@ export default class PrimaryPool extends BasePool{
     };
   }
 
-  private _buildExitGivenOutParams(params: ExitGivenOutPrimaryPool): JoinExitWeightedPool {
+  private _buildExitGivenOutParams(params: ExitGivenOutPrimaryPool): JoinExitPrimaryPool {
     const { amountsOut: amounts } = params;
     const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
     return {
@@ -300,7 +300,7 @@ export default class PrimaryPool extends BasePool{
     await this.instance.pause();
   }
 
-  async join(params: JoinExitWeightedPool): Promise<JoinResult> {
+  async join(params: JoinExitPrimaryPool): Promise<JoinResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
@@ -321,7 +321,7 @@ export default class PrimaryPool extends BasePool{
     return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
   }
 
-  async exit(params: JoinExitWeightedPool): Promise<ExitResult> {
+  async exit(params: JoinExitPrimaryPool): Promise<ExitResult> {
     const currentBalances = params.currentBalances || (await this.getBalances());
     const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
 
