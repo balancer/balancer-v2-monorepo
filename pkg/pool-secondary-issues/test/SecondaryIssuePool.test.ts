@@ -24,9 +24,14 @@ describe('SecondaryPool', function () {
         owner: SignerWithAddress,
         other: SignerWithAddress;
   
+  const minimumPrice = fp(0.5);
+  const basePrice = fp(5);
+  const maxSecurityOffered = fp(100);
   const TOTAL_TOKENS = 3;
   const SCALING_FACTOR = fp(1);
+  const _DEFAULT_MINIMUM_BPT = 1e6;
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+
   const eventName = "CallSwap(bool,string,address,bool,string,address,uint256)";
   const eventType = ["bool swapKindParty", "string tokenInParty", "address party", "bool swapKindCounterparty", "string tokenInCounterparty", "address counterParty", "uint256 swapId"];
   const encodedEventSignature = keccak256(toUtf8Bytes(eventName));
@@ -39,7 +44,7 @@ describe('SecondaryPool', function () {
   
   sharedBeforeEach('deploy tokens', async () => {
     tokens = await TokenList.create(['DAI', 'CDAI'], { sorted: true });
-    await tokens.mint({ to: [lp, trader], amount: fp(500) });
+    await tokens.mint({ to: [owner, lp, trader], amount: fp(500) });
 
     securityToken = tokens.DAI;
     currencyToken = tokens.CDAI;
@@ -115,27 +120,44 @@ describe('SecondaryPool', function () {
 
     });
   });
-  
+
   describe('initialization', () => {
+    let maxAmountsIn: BigNumber[];
+    let previousBalances: BigNumber[];
+
     sharedBeforeEach('deploy pool', async () => {
-      await deployPool({ securityToken, currencyToken }, false);
+      await deployPool({securityToken, currencyToken }, false);
+      await tokens.approve({ from: owner, to: pool.vault.address, amount: fp(500) });
+
+      previousBalances = await pool.getBalances();
+
+      maxAmountsIn = new Array(tokens.length);
+      maxAmountsIn[pool.securityIndex] = maxSecurityOffered; 
+      maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
+      maxAmountsIn[pool.bptIndex] = fp(0);
+
+      await pool.init({ from: owner, recipient: owner.address, initialBalances: maxAmountsIn });
     });
 
-    it('initialize pool', async () => {
-      const previousBalances = await pool.getBalances();
-      expect(previousBalances).to.be.zeros;
-
-      await pool.initialize();
-
+    it('adds bpt to the owner', async () => {
       const currentBalances = await pool.getBalances();
-      expect(currentBalances[pool.securityIndex]).to.be.equal(0);
-      expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
+      expect(currentBalances[pool.bptIndex]).to.be.equal(0);
+
+      expect(currentBalances[pool.securityIndex]).to.be.equal(maxSecurityOffered);
+      expect(currentBalances[pool.currencyIndex]).to.be.equal(divDown(maxSecurityOffered,minimumPrice));
+
+      const ownerBalance = await pool.balanceOf(owner);
+      expect(ownerBalance.toString()).to.be.equal(MAX_UINT112.sub(_DEFAULT_MINIMUM_BPT));
     });
 
     it('cannot be initialized twice', async () => {
-      await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
-    });
+      await expect(
+        pool.init({ 
+          from: owner, 
+          recipient: owner.address, 
+          initialBalances: maxAmountsIn 
+        })).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
+    }); 
   });
 
   describe('swaps', () => {
@@ -989,9 +1011,17 @@ describe('SecondaryPool', function () {
 });
 
   describe('joins and exits', () => {
+    let maxAmountsIn : BigNumber[];
     sharedBeforeEach('deploy pool', async () => {
       await deployPool({ securityToken, currencyToken }, false);
-      await pool.initialize();
+      await tokens.approve({ from: owner, to: pool.vault.address, amount: fp(500) });
+
+        maxAmountsIn = new Array(tokens.length);
+        maxAmountsIn[pool.securityIndex] = maxSecurityOffered; 
+        maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
+        maxAmountsIn[pool.bptIndex] = fp(0);
+
+        await pool.init({ from: owner, recipient: owner.address, initialBalances: maxAmountsIn });
     });
 
     it('regular joins should revert', async () => {
@@ -1007,19 +1037,36 @@ describe('SecondaryPool', function () {
 
       await expect(tx).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
     });
+    
+    context('when paused for emergency proportional exit', () => {
+      it('gives back tokens', async () => {
+          const previousBalances = await pool.getBalances();
+          const prevSecurityBalance = await securityToken.balanceOf(owner);
+          const prevCurrencyBalance = await currencyToken.balanceOf(owner);
 
-    it('regular exits should revert', async () => {
-      const { tokens: allTokens } = await pool.getTokens();
+          const bptAmountIn = MAX_UINT112.sub(_DEFAULT_MINIMUM_BPT);
+          await pool.exitGivenOut({
+            from: owner, 
+            recipient: owner.address, 
+            amountsOut: previousBalances, 
+            bptAmountIn: bptAmountIn
+          });
+     
+          const afterExitOwnerBalance = await pool.balanceOf(owner);
+          const currentBalances = await pool.getBalances();
+          const afterExitSecurityBalance = await securityToken.balanceOf(owner);
+          const afterExitCurrencyBalance = await securityToken.balanceOf(owner);
 
-      const tx = pool.vault.exitPool({
-        poolAddress: pool.address,
-        poolId: await pool.getPoolId(),
-        recipient: lp.address,
-        tokens: allTokens,
-        data: '0x',
-      });
+          expect(currentBalances[pool.bptIndex]).to.be.equal(0);
+          expect(currentBalances[pool.securityIndex]).to.be.equal(0);
+          expect(currentBalances[pool.currencyIndex]).to.be.equal(0);
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_SECONDARY_POOL');
+          expect(afterExitSecurityBalance).to.be.equal(prevSecurityBalance.add(previousBalances[pool.securityIndex]));
+          expect(afterExitCurrencyBalance).to.be.equal(prevCurrencyBalance.add(previousBalances[pool.currencyIndex]));
+
+          expect(afterExitOwnerBalance).to.be.equal(0);
+        }); 
     });
+
   });
 });

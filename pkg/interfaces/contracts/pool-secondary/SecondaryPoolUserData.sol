@@ -13,7 +13,8 @@ library SecondaryPoolUserData {
     }
     
     enum ExitKind {
-        EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT
+        EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT
     }
 
     function exitKind(bytes memory self) internal pure returns (ExitKind) {

@@ -156,42 +156,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
     function getOfferingDocuments() public view returns(string memory){
         return _offeringDocs;
     }
-    
-    // function initialize() external {
-    //     bytes32 poolId = getPoolId();
-    //     IVault vault = getVault();
-    //     (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
-    //     uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-    //     _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
-    //     _maxAmountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
-    //     // _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
-    //     IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-    //         assets: _asIAsset(tokens),
-    //         maxAmountsIn: _maxAmountsIn,
-    //         userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
-    //         fromInternalBalance: false
-    //     });
-    //     vault.joinPool(getPoolId(), _balancerManager, payable(_balancerManager), request);
-    //     emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
-    // }
-
-    // function exit() external {
-    //     bytes32 poolId = getPoolId();
-    //     IVault vault = getVault();
-    //     (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
-    //     uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
-    //     _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
-    //     _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_maxPrice);
-    //     IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
-    //         assets: _asIAsset(tokens),
-    //         minAmountsOut: _minAmountsOut,
-    //         userData: abi.encode(PrimaryPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
-    //         toInternalBalance: false
-    //     });
-    //     vault.exitPool(poolId, _balancerManager, payable(address(this)), request);
-    // }
-    
     function onSwap(
         SwapRequest memory request,
         uint256[] memory balances,
@@ -412,10 +377,4 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         scalingFactors[_bptIndex] = FixedPoint.ONE;
         return scalingFactors;
     }
-
-    /*function _getMinimumBpt() internal pure override returns (uint256) {
-         // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
-         // mechanism, ensuring initialization only occurs once.
-         return 0;
-    }*/
 }

@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { defaultAbiCoder } from '@ethersproject/abi';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
-import { SwapKind } from '@balancer-labs/balancer-js';
+import { SwapKind, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { actionId } from '../../misc/actions';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
@@ -10,7 +10,15 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapSecondaryPool, RawSecondaryPoolDeployment } from './types';
+import { 
+  SwapSecondaryPool, 
+  RawSecondaryPoolDeployment,
+  JoinExitSecondaryPool, 
+  InitPrimaryPool, 
+  JoinResult,
+  ExitGivenOutPrimaryPool,
+  ExitResult  
+} from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -195,6 +203,14 @@ export default class SecondaryPool extends BasePool{
     return this.instance.initialize();
   }
 
+  async init(params: InitPrimaryPool): Promise<JoinResult> {
+    return this.join(this._buildInitParams(params));
+  }
+
+  async exitGivenOut(params: ExitGivenOutPrimaryPool): Promise<ExitResult> {
+    return this.exit(this._buildExitGivenOutParams(params));
+  }
+
   async swapGivenIn(params: SwapSecondaryPool): Promise<any> {
     return this.swap(this._buildSwapParams(SwapKind.GivenIn, params), params.eventHash!);
   }
@@ -234,10 +250,77 @@ export default class SecondaryPool extends BasePool{
     };
   }
 
+  private _buildInitParams(params: InitPrimaryPool): JoinExitSecondaryPool {
+    const { initialBalances: balances } = params;
+    const amountsIn = Array.isArray(balances) ? balances : Array(this.tokens.length).fill(balances);
+
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: WeightedPoolEncoder.joinInit(amountsIn),
+    };
+  }
+
+  private _buildExitGivenOutParams(params: ExitGivenOutPrimaryPool): JoinExitSecondaryPool {
+    const { amountsOut: amounts } = params;
+    const amountsOut = Array.isArray(amounts) ? amounts : Array(this.tokens.length).fill(amounts);
+    return {
+      from: params.from,
+      recipient: params.recipient,
+      lastChangeBlock: params.lastChangeBlock,
+      currentBalances: params.currentBalances,
+      protocolFeePercentage: params.protocolFeePercentage,
+      data: WeightedPoolEncoder.exitExactBPTInForTokensOut(params.bptAmountIn),
+    };
+  }
+
   async pause(): Promise<void> {
     const action = await actionId(this.instance, 'pause');
     const unpauseAction = await actionId(this.instance, 'unpause');
     await this.vault.grantPermissionsGlobally([action, unpauseAction]);
     await this.instance.pause();
+  }
+
+  async join(params: JoinExitSecondaryPool): Promise<JoinResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    const tx = this.vault.joinPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: this.tokens.addresses,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsIn: deltas, dueProtocolFeeAmounts: protocolFees, receipt };
+  }
+
+  async exit(params: JoinExitSecondaryPool): Promise<ExitResult> {
+    const currentBalances = params.currentBalances || (await this.getBalances());
+    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
+
+    const tx = await this.vault.exitPool({
+      poolAddress: this.address,
+      poolId: this.poolId,
+      recipient: to,
+      currentBalances,
+      tokens: this.tokens.addresses,
+      lastChangeBlock: params.lastChangeBlock ?? 0,
+      protocolFeePercentage: params.protocolFeePercentage ?? 0,
+      data: params.data ?? '0x',
+      from: params.from,
+    });
+
+    const receipt = await (await tx).wait();
+    const { deltas, protocolFees } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
+    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFees, receipt };
   }
 }
