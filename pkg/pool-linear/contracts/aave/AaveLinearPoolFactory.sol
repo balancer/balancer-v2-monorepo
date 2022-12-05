@@ -38,6 +38,7 @@ contract AaveLinearPoolFactory is
     ReentrancyGuard,
     FactoryWidePauseWindow
 {
+    // Associate a name with each registered protocol that uses this factory.
     struct ProtocolIdData {
         string name;
         bool registered;
@@ -54,7 +55,8 @@ contract AaveLinearPoolFactory is
     // Maintain a set of recognized protocolIds.
     mapping(uint256 => ProtocolIdData) private _protocolIds;
 
-    // This event allows off-chain tools to differentiate between different protocols that use Aave Linear Pools.
+    // This event allows off-chain tools to differentiate between different protocols that use this factory
+    // to deploy Aave Linear Pools.
     event AaveLinearPoolCreated(address indexed pool, uint256 protocolId);
 
     constructor(
@@ -171,7 +173,7 @@ contract AaveLinearPoolFactory is
     }
 
     /**
-     * @notice Multiple protocols use the AaveLinearPoolFactory. Register an id (and name) to differentiate them.
+     * @notice Register an id (and name) to differentiate between multiple protocols using this factory.
      * @dev This is a permissioned function. Protocol ids cannot be deregistered.
      */
     function registerProtocolId(uint256 protocolId, string memory name) external authenticate {
