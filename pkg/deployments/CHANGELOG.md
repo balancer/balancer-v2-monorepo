@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### New Deployments
+
+- Deployed `L2GaugeCheckpointer` to Mainnet.
+
 ## 3.1.1 (2022-12-01)
 
 ### Bugfixes
