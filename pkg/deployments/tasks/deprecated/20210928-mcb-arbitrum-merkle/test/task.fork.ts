@@ -66,17 +66,5 @@ describeForkTest('MerkleRedeem', 'arbitrum', 1731663, function () {
       await distributor.connect(lp).claimWeek(lp.address, bn(1), fp(66), proof);
       expectEqualWithError(await token.balanceOf(lp.address), fp(66), fp(1));
     });
-
-    it('can claim a reward to a callback', async () => {
-      await distributor.connect(whale).seedAllocations(bn(2), root, fp(100));
-
-      const calldata = utils.defaultAbiCoder.encode([], []);
-      const callbackContract = await deploy('v2-distributors/MockRewardCallback', { args: [] });
-
-      const claims = [{ week: bn(2), balance: fp(66), merkleProof: proof }];
-
-      await distributor.connect(lp).claimWeeksWithCallback(lp.address, callbackContract.address, calldata, claims);
-      expectEqualWithError(await token.balanceOf(callbackContract.address), fp(66), fp(1));
-    });
   });
 });
