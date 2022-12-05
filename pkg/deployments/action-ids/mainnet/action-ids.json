@@ -968,15 +968,5 @@
         "updateTokenRateCache(address)": "0x43e924739082162d0dfbe4b85270de4e7fe29526d812caeaa4797cf243c0bdfa"
       }
     }
-  },
-  "20221205-l2-gauge-checkpointer": {
-    "L2GaugeCheckpointer": {
-      "useAdaptor": true,
-      "actionIds": {
-        "addGauges(uint8,address[])": "0x843755caf8023fd0387ada7fcd6646d4eb56a0c4328a5000c3ed3262fb4494c7",
-        "checkpointGaugesAboveRelativeWeight(uint256)": "0xa5c8ab0718d9225bc79e7638a58f65954aa5ddd3201793bcd02dd8b54675dd41",
-        "removeGauges(uint8,address[])": "0x7ea6c79a37cf05e2a14a05a56412077358ecc45161015ad2be70f226012213cd"
-      }
-    }
   }
 }
