@@ -15,10 +15,12 @@ import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 
+import "@balancer-labs/v2-interfaces/contracts/pool-secondary/SecondaryPoolUserData.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IGeneralPool.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 
 contract SecondaryIssuePool is BasePool, IGeneralPool {
+    using SecondaryPoolUserData for bytes;
     using StringUtils for *;
 
     Orderbook public _orderbook;
@@ -243,16 +245,14 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         address sender,
         address recipient,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //on initialization, pool simply premints max BPT supply possible
-        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
-        _require(recipient == address(this), Errors.INVALID_INITIALIZATION);
+        _require(sender == _balancerManager, Errors.INVALID_INITIALIZATION);
+        _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
 
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
-
-        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
-        amountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
+        uint256[] memory amountsIn = userData.joinKind();
 
         return (bptAmountOut, amountsIn);
     }

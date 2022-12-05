@@ -157,39 +157,40 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         return _offeringDocs;
     }
     
-    function initialize() external {
-        bytes32 poolId = getPoolId();
-        IVault vault = getVault();
-        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
-        uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
-        _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
-        _maxAmountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
-        _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
-        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
-            assets: _asIAsset(tokens),
-            maxAmountsIn: _maxAmountsIn,
-            userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
-            fromInternalBalance: false
-        });
-        vault.joinPool(getPoolId(), address(this), payable(_balancerManager), request);
-        emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
-    }
+    // function initialize() external {
+    //     bytes32 poolId = getPoolId();
+    //     IVault vault = getVault();
+    //     (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+    //     uint256[] memory _maxAmountsIn = new uint256[](_TOTAL_TOKENS);
+    //     _maxAmountsIn[_securityIndex] = _MAX_TOKEN_BALANCE;
+    //     _maxAmountsIn[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_minPrice);
+    //     // _maxAmountsIn[_bptIndex] = _INITIAL_BPT_SUPPLY;
 
-    function exit() external {
-        bytes32 poolId = getPoolId();
-        IVault vault = getVault();
-        (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
-        uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
-        _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
-        _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_maxPrice);
-        IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
-            assets: _asIAsset(tokens),
-            minAmountsOut: _minAmountsOut,
-            userData: abi.encode(PrimaryPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
-            toInternalBalance: false
-        });
-        vault.exitPool(poolId, _balancerManager, payable(address(this)), request);
-    }
+    //     IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest({
+    //         assets: _asIAsset(tokens),
+    //         maxAmountsIn: _maxAmountsIn,
+    //         userData: abi.encode(PrimaryPoolUserData.JoinKind.INIT, _maxAmountsIn),
+    //         fromInternalBalance: false
+    //     });
+    //     vault.joinPool(getPoolId(), _balancerManager, payable(_balancerManager), request);
+    //     emit OpenIssue(address(_security), _minPrice, _maxPrice, _maxAmountsIn[1], _cutoffTime, _offeringDocs);
+    // }
+
+    // function exit() external {
+    //     bytes32 poolId = getPoolId();
+    //     IVault vault = getVault();
+    //     (IERC20[] memory tokens, , ) = vault.getPoolTokens(poolId);
+    //     uint256[] memory _minAmountsOut = new uint256[](_TOTAL_TOKENS);
+    //     _minAmountsOut[_securityIndex] = _MAX_TOKEN_BALANCE;
+    //     _minAmountsOut[_currencyIndex] = _MAX_TOKEN_BALANCE.divDown(_maxPrice);
+    //     IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest({
+    //         assets: _asIAsset(tokens),
+    //         minAmountsOut: _minAmountsOut,
+    //         userData: abi.encode(PrimaryPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, _INITIAL_BPT_SUPPLY),
+    //         toInternalBalance: false
+    //     });
+    //     vault.exitPool(poolId, _balancerManager, payable(address(this)), request);
+    // }
     
     function onSwap(
         SwapRequest memory request,
@@ -296,7 +297,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 postPaidCurrencyBalance = Math.add(balances[_currencyIndex], tokenInAmt);
 
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
-        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenOutAmt, true);
+        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt, true);
         emit Subscription(address(_security), address(_currency), ERC20(address(_currency)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
@@ -315,7 +316,7 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         uint256 postPaidSecurityBalance = Math.add(balances[_securityIndex], tokenInAmt);
 
         require(postPaidCurrencyBalance.divDown(postPaidSecurityBalance) >= params.minPrice && postPaidCurrencyBalance.divDown(postPaidSecurityBalance) <= params.maxPrice, "Price out of bound");
-        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenOutAmt, false);
+        //IMarketMaker(_balancerManager).subscribe(getPoolId(), address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt, false);
         emit Subscription(address(_security), address(_security), ERC20(address(_security)).name(), request.amount, request.from, tokenInAmt);
         return tokenInAmt;
     }
@@ -325,14 +326,14 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         address sender,
         address recipient,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     ) internal view override whenNotPaused returns (uint256, uint256[] memory) {
         //the primary issue pool is initialized by the balancer manager contract
-        _require(sender == address(this), Errors.INVALID_INITIALIZATION);
+        _require(sender == _balancerManager, Errors.INVALID_INITIALIZATION);
         _require(recipient == payable(_balancerManager), Errors.INVALID_INITIALIZATION);
-        
+
         uint256 bptAmountOut = _INITIAL_BPT_SUPPLY;
-        uint256[] memory amountsIn = new uint256[](_TOTAL_TOKENS);
+        uint256[] memory amountsIn = userData.joinKind();
 
         return (bptAmountOut, amountsIn);
     }
@@ -377,12 +378,11 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         // This proportional exit function is only enabled if the contract is paused, to provide users a way to
         // retrieve their tokens in case of an emergency.
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        uint256 bptRatio = bptAmountIn.divDown(Math.sub(totalSupply(), balances[_bptIndex]));
         uint256[] memory amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; i++) {
             // BPT is skipped as those tokens are not the LPs, but rather the preminted and undistributed amount.
             if (i != _bptIndex) {
-                amountsOut[i] = balances[i].mulDown(bptRatio);
+                amountsOut[i] = balances[i];
             }
         }
 
@@ -413,9 +413,9 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
         return scalingFactors;
     }
 
-    // function _getMinimumBpt() internal pure override returns (uint256) {
-    //     // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
-    //     // mechanism, ensuring initialization only occurs once.
-    //     return 0;
-    // }
+    /*function _getMinimumBpt() internal pure override returns (uint256) {
+         // Primary Pools don't lock any BPT, as the total supply will already be forever non-zero due to the preminting
+         // mechanism, ensuring initialization only occurs once.
+         return 0;
+    }*/
 }
