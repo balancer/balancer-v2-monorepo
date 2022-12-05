@@ -11,10 +11,12 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('AaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
-  let creationTime: BigNumber, owner: SignerWithAddress;
+  let creationTime: BigNumber, admin: SignerWithAddress, owner: SignerWithAddress;
   let factoryVersion: string, poolVersion: string;
 
   const NAME = 'Balancer Linear Pool Token';
@@ -25,13 +27,19 @@ describe('AaveLinearPoolFactory', function () {
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
   const AAVE_PROTOCOL_ID = 0;
+  const BEEFY_PROTOCOL_ID = 1;
+  const STURDY_PROTOCOL_ID = 2;
+
+  const AAVE_PROTOCOL_NAME = 'AAVE';
+  const BEEFY_PROTOCOL_NAME = 'Beefy';
+  const STURDY_PROTOCOL_NAME = 'Sturdy';
 
   before('setup signers', async () => {
-    [, owner] = await ethers.getSigners();
+    [, admin, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
     factoryVersion = JSON.stringify({
       name: 'AaveLinearPoolFactory',
@@ -209,6 +217,43 @@ describe('AaveLinearPoolFactory', function () {
 
       expect(pauseWindowEndTime).to.equal(now);
       expect(bufferPeriodEndTime).to.equal(now);
+    });
+  });
+
+  describe('protocol id', () => {
+    context('with no registered protocols', () => {
+      it('should revert when asking for an unregistered protocol name', async () => {
+        await expect(factory.getProtocolName(AAVE_PROTOCOL_ID)).to.be.revertedWith('Protocol not registered');
+      });
+
+      it('should not allow adding protocols without permission', async () => {
+        await expect(factory.registerProtocolId(AAVE_PROTOCOL_ID, 'AAVE')).to.be.revertedWith('SENDER_NOT_ALLOWED');
+      });
+    });
+
+    context('with registered protocols', () => {
+      sharedBeforeEach('grant permissions', async () => {
+        const action = await actionId(factory, 'registerProtocolId');
+        await vault.authorizer.connect(admin).grantPermissions([action], admin.address, [factory.address]);
+      });
+
+      sharedBeforeEach('register some protocols', async () => {
+        await factory.connect(admin).registerProtocolId(AAVE_PROTOCOL_ID, AAVE_PROTOCOL_NAME);
+        await factory.connect(admin).registerProtocolId(BEEFY_PROTOCOL_ID, BEEFY_PROTOCOL_NAME);
+        await factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, STURDY_PROTOCOL_NAME);
+      });
+
+      it('should register protocols', async () => {
+        expect(await factory.getProtocolName(AAVE_PROTOCOL_ID)).to.equal(AAVE_PROTOCOL_NAME);
+        expect(await factory.getProtocolName(BEEFY_PROTOCOL_ID)).to.equal(BEEFY_PROTOCOL_NAME);
+        expect(await factory.getProtocolName(STURDY_PROTOCOL_ID)).to.equal(STURDY_PROTOCOL_NAME);
+      });
+
+      it('should fail when a protocol is already registered', async () => {
+        await expect(
+          factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, 'Rando protocol')
+        ).to.be.revertedWith('Protocol already registered');
+      });
     });
   });
 });
