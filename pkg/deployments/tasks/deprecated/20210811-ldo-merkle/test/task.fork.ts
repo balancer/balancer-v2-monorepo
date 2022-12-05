@@ -1,10 +1,9 @@
 import hre, { ethers } from 'hardhat';
-import { Contract, BigNumber, utils } from 'ethers';
+import { Contract, BigNumber } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { MerkleTree } from '@balancer-labs/v2-helpers/src/merkleTree';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
