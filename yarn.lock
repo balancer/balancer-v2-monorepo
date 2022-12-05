@@ -278,6 +278,7 @@ __metadata:
     decimal.js: ^10.4.2
     eslint: ^8.26.0
     eslint-plugin-prettier: ^4.2.1
+    ethereumjs-util: ^7.1.5
     ethers: ^5.7.2
     hardhat: ^2.12.2
     lodash.frompairs: ^4.0.1

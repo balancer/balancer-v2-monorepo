@@ -3,7 +3,7 @@ import { Contract, BigNumber, utils } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
+import { MerkleTree } from '@balancer-labs/v2-helpers/src/merkleTree';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
