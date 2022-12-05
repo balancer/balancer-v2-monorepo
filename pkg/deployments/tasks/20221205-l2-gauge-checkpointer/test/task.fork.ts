@@ -63,7 +63,7 @@ describeForkTest('L2GaugeCheckpointer', 'mainnet', 15839900, function () {
   const gauges = new Map<GaugeType, GaugeData[]>();
 
   before('run task', async () => {
-    task = new Task('20221124-l2-gauge-checkpointer', TaskMode.TEST, getForkedNetwork(hre));
+    task = new Task('20221205-l2-gauge-checkpointer', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     L2GaugeCheckpointer = await task.deployedInstance('L2GaugeCheckpointer');
   });
