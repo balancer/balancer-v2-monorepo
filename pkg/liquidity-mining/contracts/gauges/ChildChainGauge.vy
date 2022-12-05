@@ -622,14 +622,22 @@ def update_voting_escrow():
 
 
 @external
-def set_killed(_is_killed: bool):
+def killGauge():
     """
-    @notice Set the kill status of the gauge
-    @param _is_killed Kill status to put the gauge into
+    @notice Kills the gauge so it always yields a rate of 0 and so cannot mint BAL
     """
-    assert msg.sender == Factory(FACTORY).owner()
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
 
-    self.is_killed = _is_killed
+    self.is_killed = True
+
+@external
+def unkillGauge():
+    """
+    @notice Unkills the gauge so it can mint BAL again
+    """
+    assert msg.sender == AUTHORIZER_ADAPTOR  # dev: only owner
+
+    self.is_killed = False
 
 
 @view
