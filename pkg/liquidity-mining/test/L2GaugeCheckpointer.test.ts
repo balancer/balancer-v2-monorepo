@@ -8,8 +8,8 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { expect } from 'chai';
 import { ANY_ADDRESS, randomAddress, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 
-import { GaugeType } from './GaugeAdder.test';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { range } from 'lodash';
 
