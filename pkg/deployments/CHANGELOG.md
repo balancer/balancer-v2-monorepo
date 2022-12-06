@@ -5,6 +5,7 @@
 ### New Deployments
 
 - Deployed `L2GaugeCheckpointer` to Mainnet.
+- Deployed `VeBoostV2` to Mainnet.
 
 ## 3.1.1 (2022-12-01)
 
