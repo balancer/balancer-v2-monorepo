@@ -10,7 +10,7 @@ import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { signPermit } from '@balancer-labs/balancer-js';
 import { currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 
-describe('BoostV2', () => {
+describe('VeBoostV2', () => {
   let boost: Contract;
   let holder: SignerWithAddress, spender: SignerWithAddress;
 
@@ -19,7 +19,7 @@ describe('BoostV2', () => {
   });
 
   sharedBeforeEach('deploy veBoostV2', async () => {
-    boost = await deploy('BoostV2', { args: [ZERO_ADDRESS, ZERO_ADDRESS] });
+    boost = await deploy('VeBoostV2', { args: [ZERO_ADDRESS, ZERO_ADDRESS] });
   });
 
   describe('info', () => {
