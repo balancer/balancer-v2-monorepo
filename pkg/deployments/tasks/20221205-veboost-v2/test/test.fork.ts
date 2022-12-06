@@ -21,21 +21,27 @@ describeForkTest('veBoostV2', 'mainnet', 16110000, function () {
     '0xc2593e6a71130e7525ec3e64ba7795827086df0a000000000000000000000000',
     '0xef9a40f0ce782108233b6a5d8fef08c89b01a7bd000000000000000000000000',
     '0x0035fc5208ef989c28d47e552e92b0c507d2b318000000000000000000000000',
+    '0xc4eac760c2c631ee0b064e39888b89158ff808b2000000000000000000005abf',
   ];
 
   before('run task', async () => {
     task = new Task('20221205-veboost-v2', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     delegation = await task.deployedInstance('VeBoostV2');
-  });
 
-  it('proxy can be migrated to delegation', async () => {
     oldDelegation = await new Task(
       '20220530-preseeded-voting-escrow-delegation',
       TaskMode.READ_ONLY,
       getForkedNetwork(hre)
     ).deployedInstance('PreseededVotingEscrowDelegation');
+  });
 
+  it('no unexpected boosts exist on old veBoost contract', async () => {
+    const totalSupply = await oldDelegation.totalSupply();
+    expect(existingBoosts.length).to.be.eq(totalSupply);
+  });
+
+  it('proxy can be migrated to delegation', async () => {
     const delegationProxy = await new Task('ve-delegation', TaskMode.READ_ONLY, getForkedNetwork(hre)).deployedInstance(
       'VotingEscrowDelegationProxy'
     );
