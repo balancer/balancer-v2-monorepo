@@ -22,6 +22,9 @@ interface Minter:
 interface ERC1271:
     def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
 
+interface AuthorizerAdaptor:
+    def getVault() -> address: view
+
 
 event Approval:
     _owner: indexed(address)
@@ -69,6 +72,7 @@ VERSION: constant(String[8]) = "v0.1.0"
 
 BAL: immutable(address)
 FACTORY: immutable(address)
+BAL_VAULT: immutable(address)
 AUTHORIZER_ADAPTOR: immutable(address)
 
 DOMAIN_SEPARATOR: public(bytes32)
@@ -77,7 +81,7 @@ nonces: public(HashMap[address, uint256])
 name: public(String[64])
 symbol: public(String[32])
 
-allowance: public(HashMap[address, HashMap[address, uint256]])
+_allowance: HashMap[address, HashMap[address, uint256]]
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
 
@@ -117,6 +121,7 @@ def __init__(_bal_token: address, _factory: address, _authorizer_adaptor: addres
     BAL = _bal_token
     FACTORY = _factory
     AUTHORIZER_ADAPTOR = _authorizer_adaptor
+    BAL_VAULT = AuthorizerAdaptor(_authorizer_adaptor).getVault()
 
 
 @internal
@@ -337,6 +342,18 @@ def withdraw(_value: uint256, _user: address = msg.sender, _claim_rewards: bool 
     log Transfer(msg.sender, ZERO_ADDRESS, _value)
 
 
+@view
+@internal
+def _get_allowance(owner: address, spender: address) -> uint256:
+    """
+     @dev Override to grant the Vault infinite allowance, causing for Gauge Tokens to not require approval.
+     This is sound as the Vault already provides authorization mechanisms when initiating token transfers, which this
+     contract inherits.
+    """
+    if (spender == BAL_VAULT):
+        return MAX_UINT256
+    return self._allowance[owner][spender]
+
 @external
 @nonreentrant("lock")
 def transferFrom(_from: address, _to: address, _value: uint256) -> bool:
@@ -347,9 +364,9 @@ def transferFrom(_from: address, _to: address, _value: uint256) -> bool:
     @param _value the amount of tokens to be transferred
     @return bool success
     """
-    allowance: uint256 = self.allowance[_from][msg.sender]
+    allowance: uint256 = self._get_allowance(_from, msg.sender)
     if allowance != MAX_UINT256:
-        self.allowance[_from][msg.sender] = allowance - _value
+        self._allowance[_from][msg.sender] = allowance - _value
 
     self._transfer(_from, _to, _value)
     return True
@@ -369,7 +386,7 @@ def approve(_spender: address, _value: uint256) -> bool:
     @param _value The amount of tokens that may be transferred
     @return bool success
     """
-    self.allowance[msg.sender][_spender] = _value
+    self._allowance[msg.sender][_spender] = _value
 
     log Approval(msg.sender, _spender, _value)
     return True
@@ -418,7 +435,7 @@ def permit(
     else:
         assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner
 
-    self.allowance[_owner][_spender] = _value
+    self._allowance[_owner][_spender] = _value
     self.nonces[_owner] = nonce + 1
 
     log Approval(_owner, _spender, _value)
@@ -448,8 +465,8 @@ def increaseAllowance(_spender: address, _added_value: uint256) -> bool:
     @param _added_value The amount of to increase the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowance[msg.sender][_spender] + _added_value
-    self.allowance[msg.sender][_spender] = allowance
+    allowance: uint256 = self._get_allowance(msg.sender, _spender) + _added_value
+    self._allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
     return True
@@ -465,8 +482,8 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     @param _subtracted_value The amount of to decrease the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowance[msg.sender][_spender] - _subtracted_value
-    self.allowance[msg.sender][_spender] = allowance
+    allowance: uint256 = self._get_allowance(msg.sender, _spender) - _subtracted_value
+    self._allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
     return True
@@ -647,6 +664,14 @@ def decimals() -> uint256:
     @notice Returns the number of decimals the token uses
     """
     return 18
+
+@view
+@external
+def allowance(owner: address, spender: address) -> uint256:
+    """
+     @notice Get `spender`'s current allowance from `owner` 
+    """
+    return self._get_allowance(owner, spender)
 
 
 @view
