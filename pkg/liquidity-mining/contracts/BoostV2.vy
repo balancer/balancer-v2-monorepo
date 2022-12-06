@@ -47,7 +47,7 @@ NAME: constant(String[32]) = "Vote-Escrowed Boost"
 SYMBOL: constant(String[8]) = "veBoost"
 VERSION: constant(String[8]) = "v2.0.0"
 
-EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")
+EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
 WEEK: constant(uint256) = 86400 * 7
@@ -73,7 +73,7 @@ migrated: public(HashMap[uint256, bool])
 @external
 def __init__(_boost_v1: address, _ve: address):
     BOOST_V1 = _boost_v1
-    DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self, block.prevhash))
+    DOMAIN_SEPARATOR = keccak256(_abi_encode(EIP712_TYPEHASH, keccak256(NAME), keccak256(VERSION), chain.id, self))
     VE = _ve
 
     log Transfer(ZERO_ADDRESS, msg.sender, 0)
@@ -269,8 +269,7 @@ def approve(_spender: address, _value: uint256) -> bool:
 
 @external
 def permit(_owner: address, _spender: address, _value: uint256, _deadline: uint256, _v: uint8, _r: bytes32, _s: bytes32) -> bool:
-    assert _owner != ZERO_ADDRESS
-    assert block.timestamp <= _deadline
+    assert block.timestamp <= _deadline, 'EXPIRED_SIGNATURE'
 
     nonce: uint256 = self.nonces[_owner]
     digest: bytes32 = keccak256(
@@ -281,7 +280,7 @@ def permit(_owner: address, _spender: address, _value: uint256, _deadline: uint2
         )
     )
 
-    assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner
+    assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner and _owner != ZERO_ADDRESS, 'INVALID_SIGNATURE'
 
     self.allowance[_owner][_spender] = _value
     self.nonces[_owner] = nonce + 1
@@ -370,6 +369,10 @@ def decimals() -> uint8:
 def BOOST_V1() -> address:
     return BOOST_V1
 
+@pure
+@external
+def version() -> String[8]:
+    return VERSION
 
 @pure
 @external
