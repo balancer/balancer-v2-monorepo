@@ -266,7 +266,7 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         SecondaryPoolUserData.ExitKind kind = userData.exitKind();
         if (kind != SecondaryPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT) {
             //usually exit pool reverts
-            _revert(Errors.UNHANDLED_BY_PRIMARY_POOL);
+            _revert(Errors.UNHANDLED_BY_SECONDARY_POOL);
         } else {
             (bptAmountIn, amountsOut) = _emergencyProportionalExit(balances, userData);
         }
