@@ -251,7 +251,7 @@ describe('AaveLinearPoolFactory', function () {
 
       it('should fail when a protocol is already registered', async () => {
         await expect(
-          factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, 'Rando protocol')
+          factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, 'Random protocol')
         ).to.be.revertedWith('Protocol already registered');
       });
     });
