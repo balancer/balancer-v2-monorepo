@@ -24,8 +24,7 @@ describe('SecondaryPool', function () {
         owner: SignerWithAddress,
         other: SignerWithAddress;
   
-  const minimumPrice = fp(0.5);
-  const basePrice = fp(5);
+  const maxCurrencyOffered = fp(100);
   const maxSecurityOffered = fp(100);
   const TOTAL_TOKENS = 3;
   const SCALING_FACTOR = fp(1);
@@ -133,7 +132,7 @@ describe('SecondaryPool', function () {
 
       maxAmountsIn = new Array(tokens.length);
       maxAmountsIn[pool.securityIndex] = maxSecurityOffered; 
-      maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
+      maxAmountsIn[pool.currencyIndex] = maxCurrencyOffered;
       maxAmountsIn[pool.bptIndex] = fp(0);
 
       await pool.init({ from: owner, recipient: owner.address, initialBalances: maxAmountsIn });
@@ -144,7 +143,7 @@ describe('SecondaryPool', function () {
       expect(currentBalances[pool.bptIndex]).to.be.equal(0);
 
       expect(currentBalances[pool.securityIndex]).to.be.equal(maxSecurityOffered);
-      expect(currentBalances[pool.currencyIndex]).to.be.equal(divDown(maxSecurityOffered,minimumPrice));
+      expect(currentBalances[pool.currencyIndex]).to.be.equal(maxCurrencyOffered);
 
       const ownerBalance = await pool.balanceOf(owner);
       expect(ownerBalance.toString()).to.be.equal(MAX_UINT112.sub(_DEFAULT_MINIMUM_BPT));
@@ -1018,7 +1017,7 @@ describe('SecondaryPool', function () {
 
         maxAmountsIn = new Array(tokens.length);
         maxAmountsIn[pool.securityIndex] = maxSecurityOffered; 
-        maxAmountsIn[pool.currencyIndex] = divDown(maxSecurityOffered,minimumPrice);
+        maxAmountsIn[pool.currencyIndex] = maxCurrencyOffered;
         maxAmountsIn[pool.bptIndex] = fp(0);
 
         await pool.init({ from: owner, recipient: owner.address, initialBalances: maxAmountsIn });
