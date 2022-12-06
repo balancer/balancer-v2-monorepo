@@ -36,6 +36,8 @@ interface VotingEscrow:
     def totalSupply() -> uint256: view
     def locked__end(_user: address) -> uint256: view
 
+interface ERC1271:
+    def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
 
 struct Point:
     bias: uint256
@@ -49,6 +51,10 @@ VERSION: constant(String[8]) = "v2.0.0"
 
 EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
 PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+
+# keccak256("isValidSignature(bytes32,bytes)")[:4] << 224
+ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e00000000000000000000000000000000000000000000000000000000
+
 
 WEEK: constant(uint256) = 86400 * 7
 
@@ -280,7 +286,12 @@ def permit(_owner: address, _spender: address, _value: uint256, _deadline: uint2
         )
     )
 
-    assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner and _owner != ZERO_ADDRESS, 'INVALID_SIGNATURE'
+    if _owner.is_contract:
+        sig: Bytes[65] = concat(_abi_encode(_r, _s), slice(convert(_v, bytes32), 31, 1))
+        # reentrancy not a concern since this is a staticcall
+        assert ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL, 'INVALID_SIGNATURE'
+    else:
+        assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner and _owner != ZERO_ADDRESS, 'INVALID_SIGNATURE'
 
     self.allowance[_owner][_spender] = _value
     self.nonces[_owner] = nonce + 1
