@@ -72,7 +72,11 @@ contract VotingEscrowDelegationProxy is SingletonAuthentication {
      * @return The current veBAL total supply.
      */
     function totalSupply() external view returns (uint256) {
-        return _totalSupply();
+        IVeDelegation implementation = _delegation;
+        if (implementation == IVeDelegation(0)) {
+            return IERC20(_votingEscrow).totalSupply();
+        }
+        return implementation.totalSupply();
     }
 
     // Internal functions
@@ -83,14 +87,6 @@ contract VotingEscrowDelegationProxy is SingletonAuthentication {
             return IERC20(_votingEscrow).balanceOf(user);
         }
         return implementation.adjusted_balance_of(user);
-    }
-
-    function _totalSupply() internal view returns (uint256) {
-        IVeDelegation implementation = _delegation;
-        if (implementation == IVeDelegation(0)) {
-            return IERC20(_votingEscrow).totalSupply();
-        }
-        return implementation.totalSupply();
     }
 
     // Admin functions
