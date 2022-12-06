@@ -57,12 +57,6 @@ describeForkTest('veBoostV2', 'mainnet', 16110000, function () {
   });
 
   it('allows existing boosts to be migrated', async () => {
-    const existingBoosts: string[] = [
-      '0x7f01d9b227593e033bf8d6fc86e634d27aa85568000000000000000000000000',
-      '0xc2593e6a71130e7525ec3e64ba7795827086df0a000000000000000000000000',
-      '0xef9a40f0ce782108233b6a5d8fef08c89b01a7bd000000000000000000000000',
-      '0x0035fc5208ef989c28d47e552e92b0c507d2b318000000000000000000000000',
-    ];
     const migrateArgs = Array.from({ length: 16 }, (_, i) => existingBoosts[i] ?? ZERO_BYTES32);
 
     await delegation.migrate_many(migrateArgs);
