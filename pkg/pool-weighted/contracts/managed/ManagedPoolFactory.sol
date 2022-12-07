@@ -19,7 +19,6 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVer
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 
 import "./ManagedPool.sol";
@@ -37,7 +36,7 @@ import "../ExternalWeightedMath.sol";
  * In this design, other client-specific factories will deploy a contract, then call this factory
  * to deploy the pool, passing in that contract address as the owner.
  */
-contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory, FactoryWidePauseWindow {
+contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFactory {
     IExternalWeightedMath private immutable _weightedMath;
     string private _poolVersion;
 
@@ -45,8 +44,19 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory factoryVersion,
-        string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode) Version(factoryVersion) {
+        string memory poolVersion,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(ManagedPool).creationCode
+        )
+        Version(factoryVersion)
+    {
         _weightedMath = new ExternalWeightedMath();
         _poolVersion = poolVersion;
     }

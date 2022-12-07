@@ -37,7 +37,9 @@ describe('WeightedPoolFactory', function () {
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
 
-    factory = await deploy('WeightedPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy('WeightedPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+    });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });

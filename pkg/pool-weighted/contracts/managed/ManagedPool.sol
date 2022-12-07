@@ -22,6 +22,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
@@ -733,7 +734,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, virtualSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, virtualSupply, bptAmountIn);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);

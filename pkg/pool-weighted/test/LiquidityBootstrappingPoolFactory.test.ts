@@ -30,7 +30,7 @@ describe('LiquidityBootstrappingPoolFactory', function () {
     vault = await Vault.create();
 
     factory = await deploy('LiquidityBootstrappingPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
     });
     createTime = await currentTimestamp();
 

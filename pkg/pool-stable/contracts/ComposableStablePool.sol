@@ -27,6 +27,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
@@ -763,7 +764,7 @@ contract ComposableStablePool is
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         uint256 bptAmountOut = userData.allTokensInForExactBptOut();
-        uint256[] memory amountsIn = StableMath._computeProportionalAmountsIn(balances, bptAmountOut, actualSupply);
+        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, actualSupply, bptAmountOut);
 
         return (bptAmountOut, amountsIn);
     }
@@ -878,7 +879,7 @@ contract ComposableStablePool is
         bytes memory userData
     ) private pure returns (uint256, uint256[] memory) {
         uint256 bptAmountIn = userData.exactBptInForTokensOut();
-        uint256[] memory amountsOut = StableMath._computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
+        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
 
         return (bptAmountIn, amountsOut);
     }
