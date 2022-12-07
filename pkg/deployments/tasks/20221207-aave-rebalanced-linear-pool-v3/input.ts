@@ -1,4 +1,5 @@
 import Task, { TaskMode } from '../../src/task';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 export type AaveLinearPoolDeployment = {
   Vault: string;
@@ -7,6 +8,8 @@ export type AaveLinearPoolDeployment = {
   WETH: string;
   FactoryVersion: string;
   PoolVersion: string;
+  InitialPauseWindowDuration: number;
+  BufferPeriodDuration: number;
 };
 
 const Vault = new Task('20210418-vault', TaskMode.READ_ONLY);
@@ -23,4 +26,6 @@ export default {
   WETH,
   FactoryVersion: JSON.stringify({ name: 'AaveLinearPoolFactory', ...BaseVersion }),
   PoolVersion: JSON.stringify({ name: 'AaveLinearPool', ...BaseVersion }),
+  InitialPauseWindowDuration: MONTH * 3,
+  BufferPeriodDuration: MONTH,
 };

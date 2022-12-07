@@ -15,6 +15,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
     input.BalancerQueries,
     input.FactoryVersion,
     input.PoolVersion,
+    input.InitialPauseWindowDuration,
+    input.BufferPeriodDuration,
   ];
 
   const factory = await task.deployAndVerify('AaveLinearPoolFactory', args, from, force);

@@ -35,6 +35,8 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
   const FINAL_LOWER_TARGET = fp(0.2e7);
   const FINAL_UPPER_TARGET = fp(5e7);
 
+  const PROTOCOL_ID = 0;
+
   let pool: Contract;
   let poolId: string;
 
@@ -117,7 +119,16 @@ describeForkTest('AaveLinearPoolFactory', 'mainnet', 15225000, function () {
 
   describe('create and check getters', () => {
     it('deploy a linear pool', async () => {
-      const tx = await factory.create('', '', USDT, waUSDT, INITIAL_UPPER_TARGET, SWAP_FEE_PERCENTAGE, owner.address);
+      const tx = await factory.create(
+        '',
+        '',
+        USDT,
+        waUSDT,
+        INITIAL_UPPER_TARGET,
+        SWAP_FEE_PERCENTAGE,
+        owner.address,
+        PROTOCOL_ID
+      );
       const event = expectEvent.inReceipt(await tx.wait(), 'PoolCreated');
 
       pool = await task.instanceAt('AaveLinearPool', event.args.pool);
