@@ -5,9 +5,9 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { ANY_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { MONTH, currentTimestamp } from '@balancer-labs/v2-helpers/src/time';
 import { expect } from 'chai';
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('BasePoolFactory', function () {
@@ -105,6 +105,35 @@ describe('BasePoolFactory', function () {
 
       it('should not allow disabling twice', async () => {
         await expect(factory.connect(admin).disable()).to.be.revertedWith('DISABLED');
+      });
+    });
+  });
+
+  describe('pause durations', () => {
+    const PAUSE_WINDOW_DURATION = MONTH * 3;
+    const BUFFER_PERIOD_DURATION = MONTH;
+
+    let factoryDeployTime: BigNumber;
+
+    sharedBeforeEach(async () => {
+      factory = await deploy('MockPoolFactory', {
+        args: [vault.address, protocolFeesProvider.address],
+      });
+      factoryDeployTime = await currentTimestamp();
+    });
+
+    context('with valid durations', () => {
+      it('returns the current pause window duration', async () => {
+        const now = await currentTimestamp();
+        const expectedDuration = bn(PAUSE_WINDOW_DURATION).sub(now.sub(factoryDeployTime));
+
+        const { pauseWindowDuration } = await factory.getPauseConfiguration();
+        expect(pauseWindowDuration).to.equal(expectedDuration);
+      });
+
+      it('returns the buffer period duration', async () => {
+        const { bufferPeriodDuration } = await factory.getPauseConfiguration();
+        expect(bufferPeriodDuration).to.equal(BUFFER_PERIOD_DURATION);
       });
     });
   });

@@ -18,11 +18,10 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./WeightedPool.sol";
 
-contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract WeightedPoolFactory is BasePoolFactory {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
         BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode)
     {
