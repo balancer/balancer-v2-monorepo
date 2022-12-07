@@ -7,6 +7,10 @@
 - Deployed `L2GaugeCheckpointer` to Mainnet.
 - Deployed `VeBoostV2` to Mainnet.
 
+### Breaking Changes
+
+- The `20221115-aave-rebalanced-linear-pool` task was deleted and replace with `20221207-aave-rebalanced-linear-pool-v3`. The old task had not been used by anyone.
+
 ## 3.1.1 (2022-12-01)
 
 ### Bugfixes
