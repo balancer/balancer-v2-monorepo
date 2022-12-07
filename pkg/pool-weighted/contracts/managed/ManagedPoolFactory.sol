@@ -37,6 +37,13 @@ import "../ExternalWeightedMath.sol";
  * to deploy the pool, passing in that contract address as the owner.
  */
 contract ManagedPoolFactory is BasePoolFactory {
+    struct ManagedPoolCreationParams {
+        string name;
+        string symbol;
+        address owner;
+        address[] assetManagers;
+    }
+
     IExternalWeightedMath private immutable _weightedMath;
     string private _poolVersion;
 
@@ -61,7 +68,7 @@ contract ManagedPoolFactory is BasePoolFactory {
         _weightedMath = new ExternalWeightedMath();
     }
 
-    function getWeightedMath() external view returns (IExternalWeightedMath) {
+    function getWeightedMath() public view returns (IExternalWeightedMath) {
         return _weightedMath;
     }
 
@@ -69,10 +76,8 @@ contract ManagedPoolFactory is BasePoolFactory {
      * @dev Deploys a new `ManagedPool`. The owner should be a contract, deployed by another factory.
      */
     function create(
-        ManagedPoolSettings.NewPoolParams memory poolParams,
-        string memory name,
-        string memory symbol,
-        address owner
+        ManagedPoolCreationParams memory creationParams,
+        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams
     ) external returns (address pool) {
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
@@ -81,16 +86,19 @@ contract ManagedPoolFactory is BasePoolFactory {
                 abi.encode(
                     IBasePool.BasePoolParams({
                         vault: getVault(),
-                        name: name,
-                        symbol: symbol,
+                        name: creationParams.name,
+                        symbol: creationParams.symbol,
                         pauseWindowDuration: pauseWindowDuration,
                         bufferPeriodDuration: bufferPeriodDuration,
-                        owner: owner,
+                        owner: creationParams.owner,
                         version: getPoolVersion()
                     }),
-                    poolParams,
-                    getProtocolFeePercentagesProvider(),
-                    _weightedMath
+                    ManagedPool.ManagedPoolParams({
+                        protocolFeeProvider: getProtocolFeePercentagesProvider(),
+                        weightedMath: getWeightedMath(),
+                        assetManagers: creationParams.assetManagers
+                    }),
+                    settingsParams
                 )
             );
     }

@@ -46,6 +46,12 @@ import "./ManagedPoolSettings.sol";
  * management fees, allowlisting of LPs, and more.
  */
 contract ManagedPool is ManagedPoolSettings {
+    struct ManagedPoolParams {
+        IProtocolFeePercentagesProvider protocolFeeProvider;
+        IExternalWeightedMath weightedMath;
+        address[] assetManagers;
+    }
+
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -62,8 +68,8 @@ contract ManagedPool is ManagedPoolSettings {
 
     constructor(
         IBasePool.BasePoolParams memory basePoolParams,
-        NewPoolParams memory params,
-        IExternalWeightedMath weightedMath
+        ManagedPoolParams memory params,
+        ManagedPoolSettingsParams memory settingsParams
     )
         NewBasePool(
             basePoolParams,
@@ -71,14 +77,14 @@ contract ManagedPool is ManagedPoolSettings {
                 basePoolParams.vault,
                 PoolRegistrationLib.PoolRegistrationParams({
                     specialization: IVault.PoolSpecialization.GENERAL,
-                    tokens: params.tokens,
+                    tokens: settingsParams.tokens,
                     assetManagers: params.assetManagers
                 })
             )
         )
-        ManagedPoolSettings(params)
+        ManagedPoolSettings(settingsParams, params.protocolFeeProvider)
     {
-        _weightedMath = weightedMath;
+        _weightedMath = params.weightedMath;
     }
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {

@@ -15,18 +15,19 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "../managed/ManagedPool.sol";
 import "../managed/ManagedPoolSettings.sol";
 import "../ExternalWeightedMath.sol";
 
 contract MockManagedPoolSettings is ManagedPoolSettings {
     using WeightedPoolUserData for bytes;
 
-    ExternalWeightedMath private immutable _weightedMath;
+    IExternalWeightedMath private immutable _weightedMath;
 
     constructor(
-        BasePoolParams memory basePoolParams,
-        NewPoolParams memory params,
-        ExternalWeightedMath weightedMath
+        IBasePool.BasePoolParams memory basePoolParams,
+        ManagedPool.ManagedPoolParams memory params,
+        ManagedPoolSettings.ManagedPoolSettingsParams memory settingsParams
     )
         NewBasePool(
             basePoolParams,
@@ -34,14 +35,14 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
                 basePoolParams.vault,
                 PoolRegistrationLib.PoolRegistrationParams({
                     specialization: IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                    tokens: params.tokens,
+                    tokens: settingsParams.tokens,
                     assetManagers: params.assetManagers
                 })
             )
         )
-        ManagedPoolSettings(params)
+        ManagedPoolSettings(settingsParams, params.protocolFeeProvider)
     {
-        _weightedMath = weightedMath;
+        _weightedMath = params.weightedMath;
     }
 
     function getVirtualSupply() external view returns (uint256) {

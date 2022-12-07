@@ -26,6 +26,7 @@ contract Version is IVersion {
         _version = version;
     }
 
+    /// @inheritdoc IVersion
     function version() external view override returns (string memory) {
         return _version;
     }
