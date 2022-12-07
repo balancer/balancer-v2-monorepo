@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -65,7 +66,6 @@ contract BasePoolMathJoinExitRoundingTest is Test {
             newBptTotalSupply,
             bptAmount
         );
-
 
         // And check that we didn't get any free tokens
         for (uint256 i = 0; i < arrayLength; ++i) {

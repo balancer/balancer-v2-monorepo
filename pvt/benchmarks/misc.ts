@@ -18,6 +18,9 @@ import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
 
+const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+const BASE_BUFFER_PERIOD_DURATION = MONTH;
+
 export async function setupEnvironment(): Promise<{
   vault: Vault;
   tokens: TokenList;
@@ -187,21 +190,41 @@ async function deployPoolFromFactory(
 ): Promise<Contract> {
   const fullName = `${poolName == 'ComposableStablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
+  const MANAGED_PAUSE_WINDOW_DURATION = MONTH * 9;
+  const MANAGED_BUFFER_PERIOD_DURATION = MONTH * 2;
 
   if (poolName == 'ManagedPool') {
     const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
     factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, 'factoryVersion', 'poolVersion'],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        'factoryVersion',
+        'poolVersion',
+        MANAGED_PAUSE_WINDOW_DURATION,
+        MANAGED_BUFFER_PERIOD_DURATION,
+      ],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
       },
     });
   } else if (poolName == 'ComposableStablePool') {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address, '', ''] });
+    factory = await deploy(`${fullName}Factory`, {
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        '',
+        '',
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
+    });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy(`${fullName}Factory`, {
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+    });
   }
 
   // We could reuse this factory if we saved it across pool deployments
