@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
@@ -142,14 +143,13 @@ contract WeightedMathTest is Test {
             normalizedWeights[arrayLength - 1] += FixedPoint.ONE - normalizedWeightSum;
         }
 
-        amountOut = bound(amountOut, 0, balances[tokenIndex]);
         bptTotalSupply = bound(bptTotalSupply, _DEFAULT_MINIMUM_BPT, type(uint112).max);
         swapFeePercentage = bound(swapFeePercentage, 0, 0.99e18);
 
         // This exit type is special in that fees are charged on the amount out. This creates scenarios in which the
         // total amount out (including fees) exceeds the Pool's balance, which will lead to reverts. We reject any runs
         // that result in this edge case.
-        vm.assume(amountOut.divUp(FixedPoint.ONE - swapFeePercentage) <= balances[tokenIndex]);
+        amountOut = bound(amountOut, 0, balances[tokenIndex].mulDown(FixedPoint.ONE - swapFeePercentage));
 
         uint256[] memory amountsOut = new uint256[](balances.length);
         amountsOut[tokenIndex] = amountOut;
