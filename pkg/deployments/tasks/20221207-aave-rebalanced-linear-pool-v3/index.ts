@@ -50,6 +50,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
 
     // This mimics the logic inside task.deploy
     if (force || !task.output({ ensure: false })['MockAaveLinearPool']) {
+      const PROTOCOL_ID = 0;
+
       const poolCreationReceipt = await (
         await factory.create(
           mockPoolArgs.name,
@@ -58,7 +60,8 @@ export default async (task: Task, { force, from }: TaskRunOptions = {}): Promise
           mockPoolArgs.wrappedToken,
           mockPoolArgs.upperTarget,
           mockPoolArgs.swapFeePercentage,
-          mockPoolArgs.owner
+          mockPoolArgs.owner,
+          PROTOCOL_ID
         )
       ).wait();
       const event = expectEvent.inReceipt(poolCreationReceipt, 'PoolCreated');
