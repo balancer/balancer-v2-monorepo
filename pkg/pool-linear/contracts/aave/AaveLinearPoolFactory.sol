@@ -65,8 +65,19 @@ contract AaveLinearPoolFactory is
         IProtocolFeePercentagesProvider protocolFeeProvider,
         IBalancerQueries queries,
         string memory factoryVersion,
-        string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, type(AaveLinearPool).creationCode) Version(factoryVersion) {
+        string memory poolVersion,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(AaveLinearPool).creationCode
+        )
+        Version(factoryVersion)
+    {
         _queries = queries;
         _poolVersion = poolVersion;
     }

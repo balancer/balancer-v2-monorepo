@@ -22,8 +22,19 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "./ERC4626LinearPool.sol";
 
 contract ERC4626LinearPoolFactory is BasePoolFactory {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(ERC4626LinearPool).creationCode)
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(ERC4626LinearPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
