@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
@@ -65,9 +66,9 @@ contract ValueCompressionTest is Test {
         uint8 bitLength,
         uint256 maxUncompressedValue
     ) external {
-        vm.assume(maxUncompressedValue > 0);
-        vm.assume(value <= maxUncompressedValue);
-        vm.assume(bitLength >= 2 && bitLength <= 255);
+        maxUncompressedValue = bound(maxUncompressedValue, 1, type(uint256).max);
+        value = bound(value, 0, maxUncompressedValue);
+        bitLength = uint8(bound(bitLength, 2, 255));
 
         // Prevent internal overflows
         vm.assume(bitLength < 256 - mostSignificantBit(maxUncompressedValue));

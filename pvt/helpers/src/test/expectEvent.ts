@@ -47,21 +47,18 @@ export function inIndirectReceipt(
   emitter: Interface,
   eventName: string,
   eventArgs = {},
-  address?: string
+  address?: string,
+  amount?: number
 ): any {
-  const decodedEvents = receipt.logs
-    .filter((log) => (address ? log.address.toLowerCase() === address.toLowerCase() : true))
-    .map((log) => {
-      try {
-        return emitter.parseLog(log);
-      } catch (e) {
-        return undefined;
-      }
-    })
-    .filter((e): e is LogDescription => e !== undefined);
-
-  const expectedEvents = decodedEvents.filter((event) => event.name === eventName);
-  expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`);
+  const expectedEvents = arrayFromIndirectReceipt(receipt, emitter, eventName, address);
+  if (amount === undefined) {
+    expect(expectedEvents.length > 0).to.equal(true, `No '${eventName}' events found`);
+  } else {
+    expect(expectedEvents.length).to.equal(
+      amount,
+      `${expectedEvents.length} '${eventName}' events found; expected ${amount}`
+    );
+  }
 
   const exceptions: Array<string> = [];
   const event = expectedEvents.find(function (e) {
@@ -94,6 +91,26 @@ export function notEmitted(receipt: ContractReceipt, eventName: string): void {
     const events = receipt.events.filter((e) => e.event === eventName);
     expect(events.length > 0).to.equal(false, `'${eventName}' event found`);
   }
+}
+
+function arrayFromIndirectReceipt(
+  receipt: ContractReceipt,
+  emitter: Interface,
+  eventName: string,
+  address?: string
+): any[] {
+  const decodedEvents = receipt.logs
+    .filter((log) => (address ? log.address.toLowerCase() === address.toLowerCase() : true))
+    .map((log) => {
+      try {
+        return emitter.parseLog(log);
+      } catch {
+        return undefined;
+      }
+    })
+    .filter((e): e is LogDescription => e !== undefined);
+
+  return decodedEvents.filter((event) => event.name === eventName);
 }
 
 function contains(args: { [key: string]: any | undefined }, key: string, value: any) {

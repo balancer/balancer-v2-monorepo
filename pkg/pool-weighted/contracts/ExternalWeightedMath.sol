@@ -16,6 +16,8 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
+
 import "./lib/WeightedExitsLib.sol";
 import "./lib/WeightedJoinsLib.sol";
 import "./WeightedMath.sol";
@@ -110,7 +112,7 @@ contract ExternalWeightedMath is IExternalWeightedMath {
         uint256 bptAmountOut,
         uint256 totalBPT
     ) external pure override returns (uint256[] memory) {
-        return WeightedMath._calcAllTokensInGivenExactBptOut(balances, bptAmountOut, totalBPT);
+        return BasePoolMath.computeProportionalAmountsIn(balances, totalBPT, bptAmountOut);
     }
 
     function calcBptInGivenExactTokensOut(
@@ -169,7 +171,7 @@ contract ExternalWeightedMath is IExternalWeightedMath {
         uint256 bptAmountIn,
         uint256 totalBPT
     ) external pure override returns (uint256[] memory) {
-        return WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalBPT);
+        return BasePoolMath.computeProportionalAmountsOut(balances, totalBPT, bptAmountIn);
     }
 
     function calcBptOutAddToken(uint256 totalSupply, uint256 normalizedWeight)
