@@ -221,13 +221,13 @@ describe('AaveLinearPoolFactory', function () {
   });
 
   describe('protocol id', () => {
+    it('should not allow adding protocols without permission', async () => {
+      await expect(factory.registerProtocolId(AAVE_PROTOCOL_ID, 'AAVE')).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
     context('with no registered protocols', () => {
       it('should revert when asking for an unregistered protocol name', async () => {
-        await expect(factory.getProtocolName(AAVE_PROTOCOL_ID)).to.be.revertedWith('Protocol not registered');
-      });
-
-      it('should not allow adding protocols without permission', async () => {
-        await expect(factory.registerProtocolId(AAVE_PROTOCOL_ID, 'AAVE')).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        await expect(factory.getProtocolName(AAVE_PROTOCOL_ID)).to.be.revertedWith('Protocol ID not registered');
       });
     });
 
@@ -243,6 +243,17 @@ describe('AaveLinearPoolFactory', function () {
         await factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, STURDY_PROTOCOL_NAME);
       });
 
+      it('protocol ID registration should emit an event', async () => {
+        const OTHER_PROTOCOL_ID = 57;
+        const OTHER_PROTOCOL_NAME = 'Protocol 57';
+
+        const tx = await factory.connect(admin).registerProtocolId(OTHER_PROTOCOL_ID, OTHER_PROTOCOL_NAME);
+        expectEvent.inReceipt(await tx.wait(), 'AaveLinearPoolProtocolIdRegistered', {
+          protocolId: OTHER_PROTOCOL_ID,
+          name: OTHER_PROTOCOL_NAME,
+        });
+      });
+
       it('should register protocols', async () => {
         expect(await factory.getProtocolName(AAVE_PROTOCOL_ID)).to.equal(AAVE_PROTOCOL_NAME);
         expect(await factory.getProtocolName(BEEFY_PROTOCOL_ID)).to.equal(BEEFY_PROTOCOL_NAME);
@@ -252,7 +263,7 @@ describe('AaveLinearPoolFactory', function () {
       it('should fail when a protocol is already registered', async () => {
         await expect(
           factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, 'Random protocol')
-        ).to.be.revertedWith('Protocol already registered');
+        ).to.be.revertedWith('Protocol ID already registered');
       });
     });
   });

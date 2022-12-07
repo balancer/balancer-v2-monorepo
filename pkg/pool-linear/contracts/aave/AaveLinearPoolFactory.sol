@@ -59,6 +59,9 @@ contract AaveLinearPoolFactory is
     // to deploy Aave Linear Pools.
     event AaveLinearPoolCreated(address indexed pool, uint256 protocolId);
 
+    // Record protocol ID registrations
+    event AaveLinearPoolProtocolIdRegistered(uint256 indexed protocolId, string name);
+
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
@@ -88,9 +91,9 @@ contract AaveLinearPoolFactory is
      * @dev Return the name associated with the given protocolId, if registered.
      */
     function getProtocolName(uint256 protocolId) external view returns (string memory) {
-        ProtocolIdData storage protocolIdData = _protocolIds[protocolId];
+        ProtocolIdData memory protocolIdData = _protocolIds[protocolId];
 
-        require(protocolIdData.registered, "Protocol not registered");
+        require(protocolIdData.registered, "Protocol ID not registered");
 
         return protocolIdData.name;
     }
@@ -139,8 +142,8 @@ contract AaveLinearPoolFactory is
         address expectedRebalancerAddress = Create2.computeAddress(rebalancerSalt, keccak256(rebalancerCreationCode));
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
-        AaveLinearPool.ConstructorArgs memory args;
 
+        AaveLinearPool.ConstructorArgs memory args;
         args.vault = getVault();
         args.name = name;
         args.symbol = symbol;
@@ -177,12 +180,14 @@ contract AaveLinearPoolFactory is
      * @dev This is a permissioned function. Protocol ids cannot be deregistered.
      */
     function registerProtocolId(uint256 protocolId, string memory name) external authenticate {
-        require(!_protocolIds[protocolId].registered, "Protocol already registered");
+        require(!_protocolIds[protocolId].registered, "Protocol ID already registered");
 
         _registerProtocolId(protocolId, name);
     }
 
     function _registerProtocolId(uint256 protocolId, string memory name) private {
         _protocolIds[protocolId] = ProtocolIdData({ name: name, registered: true });
+
+        emit AaveLinearPoolProtocolIdRegistered(protocolId, name);
     }
 }
