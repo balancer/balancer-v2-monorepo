@@ -17,6 +17,7 @@ import Task, { TaskMode } from './src/task';
 import Verifier from './src/verifier';
 import { Logger } from './src/logger';
 import { checkActionIds, checkActionIdUniqueness, saveActionIds } from './src/actionId';
+import { saveContractDeploymentAddresses } from './src/network';
 
 task('deploy', 'Run deployment task')
   .addParam('id', 'Deployment task ID')
@@ -85,6 +86,10 @@ task('check-deployments', `Check that all tasks' deployments correspond to their
       await new Task(args.id, TaskMode.CHECK, hre.network.name).run(args);
     } else {
       for (const taskID of Task.getAllTaskIds()) {
+        if (taskID.startsWith('00000000-')) {
+          continue;
+        }
+
         const task = new Task(taskID, TaskMode.CHECK, hre.network.name);
         const outputDir = path.resolve(task.dir(), 'output');
 
@@ -156,7 +161,7 @@ task('save-action-ids', `Print the action IDs for a particular contract and chec
               const outputFilePath = path.resolve(outputDir, outputFile);
               if (outputFile.includes(hre.network.name) && statSync(outputFilePath).isFile()) {
                 const fileContents = JSON.parse(readFileSync(outputFilePath).toString());
-                const contractNames = Object.keys(fileContents).filter((name) => name !== 'timestamp');
+                const contractNames = Object.keys(fileContents);
 
                 for (const contractName of contractNames) {
                   await saveActionIds(task, contractName);
@@ -198,6 +203,25 @@ task('check-action-ids', `Check that contract action-ids correspond the expected
       }
     }
     checkActionIdUniqueness(hre.network.name);
+  });
+
+task('build-address-lookup', `Build a lookup table from contract addresses to the relevant deployment`)
+  .addOptionalParam('id', 'Specific task ID')
+  .setAction(async (args: { id?: string; verbose?: boolean }, hre: HardhatRuntimeEnvironment) => {
+    Logger.setDefaults(false, args.verbose || false);
+
+    if (args.id) {
+      const task = new Task(args.id, TaskMode.READ_ONLY, hre.network.name);
+      saveContractDeploymentAddresses(task);
+    } else {
+      for (const taskID of Task.getAllTaskIds()) {
+        if (taskID.startsWith('00000000-')) {
+          continue;
+        }
+        const task = new Task(taskID, TaskMode.READ_ONLY, hre.network.name);
+        saveContractDeploymentAddresses(task);
+      }
+    }
   });
 
 task(TASK_TEST).addOptionalParam('id', 'Specific task ID of the fork test to run.').setAction(test);

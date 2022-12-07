@@ -9,4 +9,4 @@ Distributor contract for MCB rewards on arbitrum.
 ## Useful Files
 
 - [Ethereum mainnet address](./output/arbitrum.json)
-- [`MerkleRedeem` ABI](./abi/MerkleRedeem.json)
+- [`MerkleRedeem` artifact](./artifact/MerkleRedeem.json)

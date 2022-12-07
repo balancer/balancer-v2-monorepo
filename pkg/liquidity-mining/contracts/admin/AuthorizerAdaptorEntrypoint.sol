@@ -29,6 +29,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
  * permissions correctly.
  */
 contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
+    event ActionPerformed(bytes4 indexed selector, address indexed caller, address indexed target, bytes data);
+
     using Address for address;
 
     IAuthorizerAdaptor private immutable _adaptor;
@@ -81,6 +83,8 @@ contract AuthorizerAdaptorEntrypoint is IAuthorizerAdaptorEntrypoint {
         bytes4 selector = data[0] | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
 
         _require(canPerform(getActionId(selector), msg.sender, target), Errors.SENDER_NOT_ALLOWED);
+
+        emit ActionPerformed(selector, msg.sender, target, data);
 
         // The `AuthorizerAdaptor` will not check for permissions: it is special-cased in the `TimelockAuthorizer` so
         // that all calls to it that are not made from this entrypoint fail, while those that originate in the

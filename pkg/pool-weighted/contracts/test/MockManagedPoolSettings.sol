@@ -24,29 +24,28 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
     ExternalWeightedMath private immutable _weightedMath;
 
     constructor(
-        NewPoolParams memory params,
+        ManagedPoolSettingsParams memory settingsParams,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         ExternalWeightedMath weightedMath,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        address[] memory assetManagers,
+        address owner
     )
         NewBasePool(
             vault,
             PoolRegistrationLib.registerPoolWithAssetManagers(
                 vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                params.tokens,
-                params.assetManagers
+                settingsParams.tokens,
+                assetManagers
             ),
-            params.name,
-            params.symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            "MockManagedPoolName",
+            "MockManagedPoolSymbol",
+            90 days,
+            30 days,
             owner
         )
-        ManagedPoolSettings(params, protocolFeeProvider)
+        ManagedPoolSettings(settingsParams, protocolFeeProvider)
     {
         _weightedMath = weightedMath;
     }
@@ -55,7 +54,11 @@ contract MockManagedPoolSettings is ManagedPoolSettings {
         return _getVirtualSupply();
     }
 
-    function _onInitializePool(address, address, bytes memory userData) internal override returns (uint256, uint256[] memory) {
+    function _onInitializePool(
+        address,
+        address,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
         _require(kind == WeightedPoolUserData.JoinKind.INIT, Errors.UNINITIALIZED);
 

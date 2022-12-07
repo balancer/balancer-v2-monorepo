@@ -5,4 +5,4 @@ Deployment of the `veBALGaugeFixCoordinator`, responsible for addressing the iss
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`veBALGaugeFixCoordinator` ABI](./abi/veBALGaugeFixCoordinator.json)
+- [`veBALGaugeFixCoordinator` artifact](./artifact/veBALGaugeFixCoordinator.json)

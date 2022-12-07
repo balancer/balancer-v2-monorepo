@@ -15,12 +15,14 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/IExternalWeightedMath.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserData.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
@@ -43,7 +45,7 @@ import "./ManagedPoolSettings.sol";
  * rebalancing through token changes, gradual weight or fee updates, fine-grained control of protocol and
  * management fees, allowlisting of LPs, and more.
  */
-contract ManagedPool is ManagedPoolSettings {
+contract ManagedPool is IVersion, ManagedPoolSettings {
     // ManagedPool weights and swap fees can change over time: these periods are expected to be long enough (e.g. days)
     // that any timestamp manipulation would achieve very little.
     // solhint-disable not-rely-on-time
@@ -57,33 +59,51 @@ contract ManagedPool is ManagedPoolSettings {
     // conceivable real liquidity - to allow for minting new BPT as a result of regular joins.
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
     IExternalWeightedMath private immutable _weightedMath;
+    string private _version;
+
+    struct ManagedPoolParams {
+        string name;
+        string symbol;
+        address[] assetManagers;
+    }
+
+    struct ManagedPoolConfigParams {
+        IVault vault;
+        IProtocolFeePercentagesProvider protocolFeeProvider;
+        IExternalWeightedMath weightedMath;
+        uint256 pauseWindowDuration;
+        uint256 bufferPeriodDuration;
+        string version;
+    }
 
     constructor(
-        NewPoolParams memory params,
-        IVault vault,
-        IProtocolFeePercentagesProvider protocolFeeProvider,
-        IExternalWeightedMath weightedMath,
-        address owner,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        ManagedPoolParams memory params,
+        ManagedPoolConfigParams memory configParams,
+        ManagedPoolSettingsParams memory settingsParams,
+        address owner
     )
         NewBasePool(
-            vault,
+            configParams.vault,
             PoolRegistrationLib.registerComposablePool(
-                vault,
+                configParams.vault,
                 IVault.PoolSpecialization.MINIMAL_SWAP_INFO,
-                params.tokens,
+                settingsParams.tokens,
                 params.assetManagers
             ),
             params.name,
             params.symbol,
-            pauseWindowDuration,
-            bufferPeriodDuration,
+            configParams.pauseWindowDuration,
+            configParams.bufferPeriodDuration,
             owner
         )
-        ManagedPoolSettings(params, protocolFeeProvider)
+        ManagedPoolSettings(settingsParams, configParams.protocolFeeProvider)
     {
-        _weightedMath = weightedMath;
+        _weightedMath = configParams.weightedMath;
+        _version = configParams.version;
+    }
+
+    function version() external view override returns (string memory) {
+        return _version;
     }
 
     function _getWeightedMath() internal view returns (IExternalWeightedMath) {
@@ -133,7 +153,7 @@ contract ManagedPool is ManagedPoolSettings {
         //
         // We block all types of swap if swaps are disabled as a token swap is equivalent to a join swap followed by
         // an exit swap into a different token.
-        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+        _require(ManagedPoolStorageLib.getSwapEnabled(poolState), Errors.SWAPS_DISABLED);
 
         if (request.tokenOut == IERC20(this)) {
             // `tokenOut` is the BPT, so this is a join swap.
@@ -184,6 +204,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // Check whether joins are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         // We first query data needed to perform the joinswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
         (uint256 tokenInWeight, uint256 scalingFactorTokenIn) = _getTokenInfo(
@@ -256,6 +279,9 @@ contract ManagedPool is ManagedPoolSettings {
         uint256 actualSupply,
         bytes32 poolState
     ) internal view returns (uint256) {
+        // Check whether exits are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         // We first query data needed to perform the exitswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
         (uint256 tokenOutWeight, uint256 scalingFactorTokenOut) = _getTokenInfo(
@@ -542,12 +568,16 @@ contract ManagedPool is ManagedPoolSettings {
         bytes memory userData
     ) internal view returns (uint256, uint256[] memory) {
         bytes32 poolState = _getPoolState();
+
+        // Check whether joins are enabled.
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
         // token prices.
         _require(
-            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
+            ManagedPoolStorageLib.getSwapEnabled(poolState) ||
                 kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
@@ -646,12 +676,17 @@ contract ManagedPool is ManagedPoolSettings {
         bytes memory userData
     ) internal view virtual returns (uint256, uint256[] memory) {
         bytes32 poolState = _getPoolState();
+
+        // Check whether exits are enabled. Recovery mode exits are not blocked by this check, since they are routed
+        // through a different codepath at the base pool layer.
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
         _require(
-            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
+            ManagedPoolStorageLib.getSwapEnabled(poolState) ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
@@ -699,7 +734,7 @@ contract ManagedPool is ManagedPoolSettings {
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, virtualSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, virtualSupply, bptAmountIn);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
