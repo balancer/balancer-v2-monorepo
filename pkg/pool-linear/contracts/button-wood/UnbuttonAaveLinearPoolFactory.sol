@@ -22,8 +22,19 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "./UnbuttonAaveLinearPool.sol";
 
 contract UnbuttonAaveLinearPoolFactory is BasePoolFactory {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(UnbuttonAaveLinearPool).creationCode)
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(UnbuttonAaveLinearPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }

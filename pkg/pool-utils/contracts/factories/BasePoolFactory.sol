@@ -54,8 +54,14 @@ abstract contract BasePoolFactory is
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration,
         bytes memory creationCode
-    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) FactoryWidePauseWindow() {
+    )
+        BaseSplitCodeFactory(creationCode)
+        SingletonAuthentication(vault)
+        FactoryWidePauseWindow(initialPauseWindowDuration, bufferPeriodDuration)
+    {
         _protocolFeeProvider = protocolFeeProvider;
     }
 

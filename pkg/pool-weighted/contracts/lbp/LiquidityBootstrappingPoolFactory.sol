@@ -22,8 +22,19 @@ import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
 import "./LiquidityBootstrappingPool.sol";
 
 contract LiquidityBootstrappingPoolFactory is BasePoolFactory {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(LiquidityBootstrappingPool).creationCode)
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(LiquidityBootstrappingPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }

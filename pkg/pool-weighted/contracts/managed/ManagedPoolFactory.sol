@@ -44,8 +44,19 @@ contract ManagedPoolFactory is IFactoryCreatedPoolVersion, Version, BasePoolFact
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory factoryVersion,
-        string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, type(ManagedPool).creationCode) Version(factoryVersion) {
+        string memory poolVersion,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(ManagedPool).creationCode
+        )
+        Version(factoryVersion)
+    {
         _weightedMath = new ExternalWeightedMath();
         _poolVersion = poolVersion;
     }
