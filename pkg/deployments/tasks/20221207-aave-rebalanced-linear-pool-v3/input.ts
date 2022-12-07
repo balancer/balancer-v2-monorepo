@@ -14,7 +14,7 @@ const BalancerQueries = new Task('20220721-balancer-queries', TaskMode.READ_ONLY
 const ProtocolFeePercentagesProvider = new Task('20220725-protocol-fee-percentages-provider', TaskMode.READ_ONLY);
 const WETH = new Task('00000000-tokens', TaskMode.READ_ONLY);
 
-const BaseVersion = { version: 2, deployment: '20221115-aave-rebalanced-linear-pool' };
+const BaseVersion = { version: 3, deployment: '20221207-aave-rebalanced-linear-pool-v3' };
 
 export default {
   Vault,
