@@ -37,17 +37,17 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
-    uint256 private constant _MAX_PAUSE_WINDOW_DURATION = 90 days;
-    uint256 private constant _MAX_BUFFER_PERIOD_DURATION = 30 days;
-
     uint256 private immutable _pauseWindowEndTime;
     uint256 private immutable _bufferPeriodEndTime;
 
     bool private _paused;
 
     constructor(uint256 pauseWindowDuration, uint256 bufferPeriodDuration) {
-        _require(pauseWindowDuration <= _MAX_PAUSE_WINDOW_DURATION, Errors.MAX_PAUSE_WINDOW_DURATION);
-        _require(bufferPeriodDuration <= _MAX_BUFFER_PERIOD_DURATION, Errors.MAX_BUFFER_PERIOD_DURATION);
+        _require(pauseWindowDuration <= PausableConstants.MAX_PAUSE_WINDOW_DURATION, Errors.MAX_PAUSE_WINDOW_DURATION);
+        _require(
+            bufferPeriodDuration <= PausableConstants.MAX_BUFFER_PERIOD_DURATION,
+            Errors.MAX_BUFFER_PERIOD_DURATION
+        );
 
         uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
 
@@ -133,4 +133,12 @@ abstract contract TemporarilyPausable is ITemporarilyPausable {
     function _getBufferPeriodEndTime() private view returns (uint256) {
         return _bufferPeriodEndTime;
     }
+}
+
+/**
+ * @dev Keep the maximum durations in a single place.
+ */
+library PausableConstants {
+    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 270 days;
+    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 }

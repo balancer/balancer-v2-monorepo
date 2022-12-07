@@ -30,7 +30,9 @@ describe('ERC4626LinearPoolFactory', function () {
 
   sharedBeforeEach('deploy factory & tokens', async () => {
     vault = await Vault.create();
-    factory = await deploy('ERC4626LinearPoolFactory', { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy('ERC4626LinearPoolFactory', {
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+    });
     creationTime = await currentTimestamp();
 
     mainToken = await Token.create({ symbol: 'USD+', decimals: 6 });
