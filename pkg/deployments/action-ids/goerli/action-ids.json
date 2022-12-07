@@ -756,5 +756,14 @@
         "updateTokenRateCache(address)": "0x43e924739082162d0dfbe4b85270de4e7fe29526d812caeaa4797cf243c0bdfa"
       }
     }
+  },
+  "20221021-managed-pool": {
+    "ManagedPoolFactory": {
+      "useAdaptor": false,
+      "actionIds": {
+        "create((string,string,address[],uint256[],address[],uint256,bool,bool,uint256,uint256),address)": "0x36109068009b7f32260b11e16b4afd875bba8106abcebb01b586994398dcc8c2",
+        "disable()": "0xec29307f87abfc2b5468e96f3e9ecae58a8b7eaeac6c2438d75b5b4c102cc918"
+      }
+    }
   }
 }

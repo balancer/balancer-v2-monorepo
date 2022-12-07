@@ -22,6 +22,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/ComposablePoolLib.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
@@ -152,7 +153,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         //
         // We block all types of swap if swaps are disabled as a token swap is equivalent to a join swap followed by
         // an exit swap into a different token.
-        _require(ManagedPoolStorageLib.getSwapsEnabled(poolState), Errors.SWAPS_DISABLED);
+        _require(ManagedPoolStorageLib.getSwapEnabled(poolState), Errors.SWAPS_DISABLED);
 
         if (request.tokenOut == IERC20(this)) {
             // `tokenOut` is the BPT, so this is a join swap.
@@ -204,7 +205,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         bytes32 poolState
     ) internal view returns (uint256) {
         // Check whether joins are enabled.
-        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
 
         // We first query data needed to perform the joinswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
@@ -279,7 +280,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         bytes32 poolState
     ) internal view returns (uint256) {
         // Check whether exits are enabled.
-        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
 
         // We first query data needed to perform the exitswap, i.e. the token weight and scaling factor as well as the
         // Pool's swap fee.
@@ -569,14 +570,14 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         bytes32 poolState = _getPoolState();
 
         // Check whether joins are enabled.
-        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
 
         WeightedPoolUserData.JoinKind kind = userData.joinKind();
 
         // If swaps are disabled, only proportional joins are allowed. All others involve implicit swaps, and alter
         // token prices.
         _require(
-            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
+            ManagedPoolStorageLib.getSwapEnabled(poolState) ||
                 kind == WeightedPoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
@@ -678,14 +679,14 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
 
         // Check whether exits are enabled. Recovery mode exits are not blocked by this check, since they are routed
         // through a different codepath at the base pool layer.
-        _require(ManagedPoolStorageLib.getJoinExitsEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
+        _require(ManagedPoolStorageLib.getJoinExitEnabled(poolState), Errors.JOINS_EXITS_DISABLED);
 
         WeightedPoolUserData.ExitKind kind = userData.exitKind();
 
         // If swaps are disabled, only proportional exits are allowed. All others involve implicit swaps, and alter
         // token prices.
         _require(
-            ManagedPoolStorageLib.getSwapsEnabled(poolState) ||
+            ManagedPoolStorageLib.getSwapEnabled(poolState) ||
                 kind == WeightedPoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT,
             Errors.INVALID_JOIN_EXIT_KIND_WHILE_SWAPS_DISABLED
         );
@@ -733,7 +734,7 @@ contract ManagedPool is IVersion, ManagedPoolSettings {
         (virtualSupply, balances) = ComposablePoolLib.dropBptFromBalances(totalSupply, balances);
 
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, virtualSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, virtualSupply, bptAmountIn);
 
         // The Vault expects an array of amounts which includes BPT so prepend an empty element to this array.
         amountsOut = ComposablePoolLib.prependZeroElement(amountsOut);
