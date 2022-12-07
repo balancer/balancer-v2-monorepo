@@ -316,7 +316,7 @@ export default {
       }
       case WeightedPoolType.AM_LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/SeededLiquidityBootstrappingPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
           from,
         });
 
@@ -339,7 +339,7 @@ export default {
       }
       case WeightedPoolType.UNSEEDED_AM_LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/UnseededLiquidityBootstrappingPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
           from,
         });
 
