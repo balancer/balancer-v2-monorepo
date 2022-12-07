@@ -46,7 +46,14 @@ describe('ComposableStablePoolFactory', function () {
       deployment: 'test-deployment',
     });
     factory = await deploy('ComposableStablePoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        factoryVersion,
+        poolVersion,
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
     });
     createTime = await currentTimestamp();
 
