@@ -11,6 +11,7 @@ import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { FundManagement, SingleSwap } from '@balancer-labs/balancer-js/src';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 describe('ReaperLinearPool', function () {
   let poolFactory: Contract;
@@ -19,6 +20,8 @@ describe('ReaperLinearPool', function () {
   let funds: FundManagement;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+  const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
   before('setup', async () => {
     [, lp, owner] = await ethers.getSigners();
@@ -35,7 +38,13 @@ describe('ReaperLinearPool', function () {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
     poolFactory = await deploy('ReaperLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        queries.address,
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
     });
   });
 

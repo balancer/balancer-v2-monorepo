@@ -30,24 +30,16 @@ describe('LiquidityBootstrappingPoolFactory', function () {
     vault = await Vault.create();
 
     factory = await deploy('LiquidityBootstrappingPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
     });
     createTime = await currentTimestamp();
 
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true): Promise<Contract> {
+  async function createPool(swapEnabled = true): Promise<Contract> {
     const receipt = await (
-      await factory.create(
-        NAME,
-        SYMBOL,
-        tokens.addresses,
-        WEIGHTS,
-        POOL_SWAP_FEE_PERCENTAGE,
-        ZERO_ADDRESS,
-        swapsEnabled
-      )
+      await factory.create(NAME, SYMBOL, tokens.addresses, WEIGHTS, POOL_SWAP_FEE_PERCENTAGE, ZERO_ADDRESS, swapEnabled)
     ).wait();
 
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');

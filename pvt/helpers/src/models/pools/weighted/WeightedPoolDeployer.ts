@@ -16,9 +16,10 @@ import {
   WeightedPoolType,
   AMLiquidityBootstrappingPoolParams,
 } from './types';
+import { ManagedPoolParams, RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { DAY } from '@balancer-labs/v2-helpers/src/time';
 import { ProtocolFee } from '../../vault/types';
+import { MONTH } from '../../../time';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -285,11 +286,18 @@ export default {
     } = params;
 
     let result: Promise<Contract>;
+    const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+    const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
     switch (poolType) {
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [
+            vault.address,
+            vault.getFeesProvider().address,
+            BASE_PAUSE_WINDOW_DURATION,
+            BASE_BUFFER_PERIOD_DURATION,
+          ],
           from,
         });
         const tx = await factory.create(
@@ -359,20 +367,25 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const MANAGED_PAUSE_WINDOW_DURATION = MONTH * 9;
+        const MANAGED_BUFFER_PERIOD_DURATION = MONTH * 2;
+
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
+          args: [
+            vault.address,
+            vault.getFeesProvider().address,
+            factoryVersion,
+            poolVersion,
+            MANAGED_PAUSE_WINDOW_DURATION,
+            MANAGED_BUFFER_PERIOD_DURATION,
+          ],
           from,
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
             ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
           },
-        });
-
-        const controlledFactory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', {
-          args: [factory.address],
-          from,
         });
 
         const poolParams = {
@@ -391,24 +404,9 @@ export default {
           aumFeeId: aumFeeId ?? ProtocolFee.AUM,
         };
 
-        const basePoolRights: BasePoolRights = {
-          canTransferOwnership: true,
-          canChangeSwapFee: true,
-          canUpdateMetadata: true,
-        };
-
-        const managedPoolRights: ManagedPoolRights = {
-          canChangeWeights: true,
-          canDisableSwaps: true,
-          canSetMustAllowlistLPs: true,
-          canSetCircuitBreakers: true,
-          canChangeTokens: true,
-          canChangeMgmtFees: true,
-        };
-
-        const tx = await controlledFactory
+        const tx = await factory
           .connect(from || ZERO_ADDRESS)
-          .create(poolParams, settingsParams, basePoolRights, managedPoolRights, DAY, from?.address || ZERO_ADDRESS);
+          .create(poolParams, settingsParams, from?.address || ZERO_ADDRESS);
         const receipt = await tx.wait();
         const event = expectEvent.inReceipt(receipt, 'ManagedPoolCreated');
 
@@ -420,7 +418,12 @@ export default {
       }
       default: {
         const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [
+            vault.address,
+            vault.getFeesProvider().address,
+            BASE_PAUSE_WINDOW_DURATION,
+            BASE_BUFFER_PERIOD_DURATION,
+          ],
           from,
         });
         const tx = await factory.create(

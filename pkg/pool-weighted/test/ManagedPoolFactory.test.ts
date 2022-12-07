@@ -55,7 +55,14 @@ describe('ManagedPoolFactory', function () {
     const addRemoveTokenLib = await deploy('ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('CircuitBreakerLib');
     factory = await deploy('ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        factoryVersion,
+        poolVersion,
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
@@ -66,7 +73,7 @@ describe('ManagedPoolFactory', function () {
     tokens = await TokenList.create(['MKR', 'DAI', 'SNX', 'BAT'], { sorted: true });
   });
 
-  async function createPool(swapsEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
+  async function createPool(swapEnabled = true, mustAllowlistLPs = false): Promise<Contract> {
     const assetManagers: string[] = Array(tokens.length).fill(ZERO_ADDRESS);
     assetManagers[tokens.indexOf(tokens.DAI)] = assetManager.address;
 
@@ -80,7 +87,7 @@ describe('ManagedPoolFactory', function () {
       tokens: tokens.addresses,
       normalizedWeights: WEIGHTS,
       swapFeePercentage: POOL_SWAP_FEE_PERCENTAGE,
-      swapEnabledOnStart: swapsEnabled,
+      swapEnabledOnStart: swapEnabled,
       mustAllowlistLPs: mustAllowlistLPs,
       managementAumFeePercentage: POOL_MANAGEMENT_AUM_FEE_PERCENTAGE,
       aumFeeId: ProtocolFee.AUM,

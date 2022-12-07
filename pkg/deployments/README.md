@@ -107,6 +107,8 @@ Returns an object with all contracts from a deployment and their addresses.
 | Composable Stable Pools V2                              | [`20221122-composable-stable-pool-v2`](./tasks/20221122-composable-stable-pool-v2)                   |
 | Authorizer Adaptor Entrypoint                           | [`20221124-authorizer-adaptor-entrypoint`](./tasks/20221124-authorizer-adaptor-entrypoint)           |
 | Timelock Authorizer, governance contract                | [`20221202-timelock-authorizer`](./tasks/20221202-timelock-authorizer)                               |
+| L2 Gauge Checkpointer                                   | [`20221205-l2-gauge-checkpointer`](./tasks/20221205-l2-gauge-checkpointer)                           |
+| VeBoost V2                                              | [`20221205-veboost-v2`](./tasks/20221205-veboost-v2)                                                 |
 
 ## Scripts
 
