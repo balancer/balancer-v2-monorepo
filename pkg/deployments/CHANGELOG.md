@@ -4,11 +4,25 @@
 
 ### New Deployments
 
+- Deployed `L2GaugeCheckpointer` to Mainnet.
+- Deployed `VeBoostV2` to Mainnet.
+
+## 3.1.1 (2022-12-01)
+
+### Bugfixes
+
+- Fixed changelog.
+
+## 3.1.0 (2022-12-01)
+
+### New Deployments
+
 - Deployed core infrastructure (`Authorizer`, `Vault`, `AuthorizerAdaptor`, `ProtocolFeeWithdrawer`, `ProtocolFeePercentagesProvider`, `BalancerQueries` and `BatchRelayer`) to Gnosis and BNB.
 - Deployed core Pool factories (`WeightedPoolFactory`, `ComposableStablePoolFactory`, `LiquidityBootstrappingPool`, `AaveLinearPool`) to BNB.
 - Deployed `AuthorizerAdaptorEntrypoint` to all networks.
 - Deployed `AaveLinearPoolFactory` to all networks.
 - Deployed `PoolRecoveryHelper` to all networks.
+- Deployed `ComposableStablePoolFactory` to all networks.
 - Deployed `TimelockAuthorizer` to ethereum mainnet and goerli.
 
 ### Deprecations
