@@ -3,7 +3,7 @@ import { Contract } from 'ethers';
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { BigNumberish } from '@balancer-labs/v2-helpers/src/numbers';
-import { advanceTime, currentTimestamp, fromNow, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, currentTimestamp, fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 describe('TemporarilyPausable', function () {
   let instance: Contract;
@@ -44,15 +44,17 @@ describe('TemporarilyPausable', function () {
       await assertPauseState(false, await currentTimestamp(), bufferPeriodDuration);
     });
 
-    it('cannot be initialized with a pause window greater than 90 days', async () => {
-      const pauseWindowDuration = DAY * 91;
+    it('cannot be initialized with a pause window greater than the max', async () => {
+      const maxPauseWindowDuration = await instance.getMaxPauseWindowDuration();
+      const pauseWindowDuration = maxPauseWindowDuration + 1;
 
       await expect(deployTemporarilyPausable({ pauseWindowDuration })).to.be.revertedWith('MAX_PAUSE_WINDOW_DURATION');
     });
 
-    it('cannot be initialized with a buffer period greater than 30 days', async () => {
+    it('cannot be initialized with a buffer period greater than the max', async () => {
+      const maxBufferPeriodDuration = await instance.getMaxBufferPeriodDuration();
       const pauseWindowDuration = MONTH;
-      const bufferPeriodDuration = DAY * 31;
+      const bufferPeriodDuration = maxBufferPeriodDuration + 1;
 
       await expect(deployTemporarilyPausable({ pauseWindowDuration, bufferPeriodDuration })).to.be.revertedWith(
         'MAX_BUFFER_PERIOD_DURATION'

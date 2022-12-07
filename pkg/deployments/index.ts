@@ -1,4 +1,4 @@
-import { Contract } from 'ethers';
+import { Contract } from '@ethersproject/contracts';
 import { Artifact } from 'hardhat/types';
 
 /**
@@ -36,8 +36,7 @@ export async function getBalancerContract(task: string, contract: string, networ
  */
 export async function getBalancerContractAt(task: string, contract: string, address: string): Promise<Contract> {
   const artifact = getBalancerContractArtifact(task, contract);
-  const { ethers } = await import('hardhat');
-  return ethers.getContractAt(artifact.abi, address);
+  return new Contract(address, artifact.abi);
 }
 
 /**

@@ -57,7 +57,7 @@ library ManagedPoolStorageLib {
      * @notice Returns whether the Pool allows regular joins and exits (recovery exits not included).
      * @param poolState - The byte32 state of the Pool.
      */
-    function getJoinExitsEnabled(bytes32 poolState) internal pure returns (bool) {
+    function getJoinExitEnabled(bytes32 poolState) internal pure returns (bool) {
         return poolState.decodeBool(_JOIN_EXIT_ENABLED_OFFSET);
     }
 
@@ -73,7 +73,7 @@ library ManagedPoolStorageLib {
      * @notice Returns whether the Pool currently allows swaps (and by extension, non-proportional joins/exits).
      * @param poolState - The byte32 state of the Pool.
      */
-    function getSwapsEnabled(bytes32 poolState) internal pure returns (bool) {
+    function getSwapEnabled(bytes32 poolState) internal pure returns (bool) {
         return poolState.decodeBool(_SWAP_ENABLED_OFFSET);
     }
 
@@ -158,7 +158,7 @@ library ManagedPoolStorageLib {
      * @param poolState - The byte32 state of the Pool.
      * @param enabled - A boolean flag for whether Joins and Exits are to be enabled.
      */
-    function setJoinExitsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+    function setJoinExitEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
         return poolState.insertBool(enabled, _JOIN_EXIT_ENABLED_OFFSET);
     }
 
@@ -176,7 +176,7 @@ library ManagedPoolStorageLib {
      * @param poolState - The byte32 state of the Pool.
      * @param enabled - A boolean flag for whether swaps are to be enabled.
      */
-    function setSwapsEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
+    function setSwapEnabled(bytes32 poolState, bool enabled) internal pure returns (bytes32) {
         return poolState.insertBool(enabled, _SWAP_ENABLED_OFFSET);
     }
 

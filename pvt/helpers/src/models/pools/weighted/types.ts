@@ -13,6 +13,7 @@ export enum WeightedPoolType {
   LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
   MOCK_MANAGED_POOL,
+  MOCK_MANAGED_POOL_SETTINGS,
 }
 
 export type RawWeightedPoolDeployment = {
@@ -36,6 +37,8 @@ export type RawWeightedPoolDeployment = {
   poolType?: WeightedPoolType;
   aumFeeId?: BigNumberish;
   mockContractName?: string;
+  factoryVersion?: string;
+  poolVersion?: string;
 };
 
 export type WeightedPoolDeployment = {
@@ -52,11 +55,12 @@ export type WeightedPoolDeployment = {
   mustAllowlistLPs: boolean;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  factoryVersion: string;
+  poolVersion: string;
   aumFeeId?: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
-  mockContractName?: string;
 };
 
 export type SwapWeightedPool = {
@@ -207,11 +211,8 @@ export type ManagedPoolRights = {
 };
 
 export type ManagedPoolParams = {
-  name: string;
-  symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
-  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
