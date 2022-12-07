@@ -10,6 +10,7 @@ import TypesConverter from '../../types/TypesConverter';
 import { ManagedPoolParams, RawWeightedPoolDeployment, WeightedPoolDeployment, WeightedPoolType } from './types';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { ProtocolFee } from '../../vault/types';
+import { MONTH } from '../../../time';
 
 const NAME = 'Balancer Pool Token';
 const SYMBOL = 'BPT';
@@ -250,11 +251,13 @@ export default {
     } = params;
 
     let result: Promise<Contract>;
-
+    const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+    const BASE_BUFFER_PERIOD_DURATION = MONTH;
+    
     switch (poolType) {
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
           from,
         });
         const tx = await factory.create(
@@ -272,10 +275,13 @@ export default {
         break;
       }
       case WeightedPoolType.MANAGED_POOL: {
+        const MANAGED_PAUSE_WINDOW_DURATION = MONTH * 9;
+        const MANAGED_BUFFER_PERIOD_DURATION = MONTH * 2;
+
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion],
+          args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion, MANAGED_PAUSE_WINDOW_DURATION, MANAGED_BUFFER_PERIOD_DURATION],
           from,
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
@@ -313,7 +319,7 @@ export default {
       }
       default: {
         const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address],
+          args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
           from,
         });
         const tx = await factory.create(
