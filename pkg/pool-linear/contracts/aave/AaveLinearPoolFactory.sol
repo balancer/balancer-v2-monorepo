@@ -22,7 +22,6 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IFactoryCreatedPoolVer
 
 import "@balancer-labs/v2-pool-utils/contracts/Version.sol";
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Create2.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/ReentrancyGuard.sol";
@@ -35,8 +34,7 @@ contract AaveLinearPoolFactory is
     IFactoryCreatedPoolVersion,
     Version,
     BasePoolFactory,
-    ReentrancyGuard,
-    FactoryWidePauseWindow
+    ReentrancyGuard
 {
     // Associate a name with each registered protocol that uses this factory.
     struct ProtocolIdData {

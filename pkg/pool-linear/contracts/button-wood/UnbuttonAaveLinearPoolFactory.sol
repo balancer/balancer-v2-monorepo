@@ -18,11 +18,10 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./UnbuttonAaveLinearPool.sol";
 
-contract UnbuttonAaveLinearPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
+contract UnbuttonAaveLinearPoolFactory is BasePoolFactory {
     constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
         BasePoolFactory(vault, protocolFeeProvider, type(UnbuttonAaveLinearPool).creationCode)
     {
