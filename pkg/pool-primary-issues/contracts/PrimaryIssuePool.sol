@@ -115,6 +115,8 @@ contract PrimaryIssuePool is IPrimaryPool, BasePool, IGeneralPool {
 
         //set owner
         _balancerManager = owner;     
+
+        emit OpenIssue(factoryPoolParams.security, _minPrice, _maxPrice, _MAX_TOKEN_BALANCE, _cutoffTime, _offeringDocs);
     }
 
     function getSecurity() external view override returns (IERC20) {

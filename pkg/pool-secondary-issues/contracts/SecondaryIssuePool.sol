@@ -105,6 +105,8 @@ contract SecondaryIssuePool is BasePool, IGeneralPool {
         _balancerManager = payable(owner);
 
         _orderbook = new Orderbook(_balancerManager, _security, _currency);
+
+        emit Offer(_security, _MAX_TOKEN_BALANCE);
     }
 
     function getOrderbook() public view returns (Orderbook) {
