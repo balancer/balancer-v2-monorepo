@@ -2,7 +2,7 @@ import { Contract } from 'ethers';
 import TypesConverter from '../../types/TypesConverter';
 import VaultDeployer from '../../vault/VaultDeployer';
 import BaseWeightedPool from './BaseWeightedPool';
-import { NAME, SYMBOL } from '../base/BasePool';
+import { BUFFER_PERIOD_DURATION, NAME, PAUSE_WINDOW_DURATION, SYMBOL } from '../base/BasePool';
 import { RawWeightedPoolDeployment, WeightedPoolDeployment } from './types';
 import Vault from '../../vault/Vault';
 import { deploy, deployedAt } from '../../../contract';
@@ -83,7 +83,7 @@ export default class WeightedPool extends BaseWeightedPool {
     const { tokens, weights, rateProviders, swapFeePercentage, owner, from } = params;
 
     const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
       from,
     });
 

@@ -3,7 +3,7 @@ import TypesConverter from '../../types/TypesConverter';
 import Vault from '../../vault/Vault';
 import VaultDeployer from '../../vault/VaultDeployer';
 import BaseWeightedPool from './BaseWeightedPool';
-import { NAME, SYMBOL } from '../base/BasePool';
+import { BUFFER_PERIOD_DURATION, NAME, PAUSE_WINDOW_DURATION, SYMBOL } from '../base/BasePool';
 import { deploy, deployedAt } from '../../../contract';
 import { RawLiquidityBootstrappingPoolDeployment, LiquidityBootstrappingPoolDeployment } from './types';
 import TokenList from '../../tokens/TokenList';
@@ -73,7 +73,7 @@ export default class LiquidityBootstrappingPool extends BaseWeightedPool {
     const { tokens, weights, swapFeePercentage, swapEnabledOnStart, owner, from } = params;
 
     const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
       from,
     });
 

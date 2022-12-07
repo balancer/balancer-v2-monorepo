@@ -2,7 +2,7 @@ import { BigNumber, Contract, ContractTransaction } from 'ethers';
 import TypesConverter from '../../types/TypesConverter';
 import VaultDeployer from '../../vault/VaultDeployer';
 import WeightedPool from './WeightedPool';
-import { NAME, SYMBOL } from '../base/BasePool';
+import { BUFFER_PERIOD_DURATION, NAME, PAUSE_WINDOW_DURATION, SYMBOL } from '../base/BasePool';
 import {
   RawManagedPoolDeployment,
   ManagedPoolDeployment,
@@ -196,7 +196,7 @@ export default class ManagedPool extends WeightedPool {
     } = params;
 
     const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+      args: [vault.address, vault.getFeesProvider().address, PAUSE_WINDOW_DURATION, BUFFER_PERIOD_DURATION],
       from,
       libraries: {
         CircuitBreakerLib: ManagedPool.circuitBreakerLib.address,
