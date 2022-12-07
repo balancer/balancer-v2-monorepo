@@ -38,6 +38,12 @@ contract AaveLinearPoolFactory is
     ReentrancyGuard,
     FactoryWidePauseWindow
 {
+    // Associate a name with each registered protocol that uses this factory.
+    struct ProtocolIdData {
+        string name;
+        bool registered;
+    }
+
     // Used for create2 deployments
     uint256 private _nextRebalancerSalt;
 
@@ -45,6 +51,16 @@ contract AaveLinearPoolFactory is
 
     address private _lastCreatedPool;
     string private _poolVersion;
+
+    // Maintain a set of recognized protocolIds.
+    mapping(uint256 => ProtocolIdData) private _protocolIds;
+
+    // This event allows off-chain tools to differentiate between different protocols that use this factory
+    // to deploy Aave Linear Pools.
+    event AaveLinearPoolCreated(address indexed pool, uint256 protocolId);
+
+    // Record protocol ID registrations.
+    event AaveLinearPoolProtocolIdRegistered(uint256 indexed protocolId, string name);
 
     constructor(
         IVault vault,
@@ -57,12 +73,29 @@ contract AaveLinearPoolFactory is
         _poolVersion = poolVersion;
     }
 
+    /**
+     * @dev Return the address of the most recently created pool.
+     */
     function getLastCreatedPool() external view override returns (address) {
         return _lastCreatedPool;
     }
 
+    /**
+     * @dev Return the pool version deployed by this factory.
+     */
     function getPoolVersion() public view override returns (string memory) {
         return _poolVersion;
+    }
+
+    /**
+     * @dev Return the name associated with the given protocolId, if registered.
+     */
+    function getProtocolName(uint256 protocolId) external view returns (string memory) {
+        ProtocolIdData memory protocolIdData = _protocolIds[protocolId];
+
+        require(protocolIdData.registered, "Protocol ID not registered");
+
+        return protocolIdData.name;
     }
 
     function _create(bytes memory constructorArgs) internal virtual override returns (address) {
@@ -73,7 +106,7 @@ contract AaveLinearPoolFactory is
     }
 
     /**
-     * @dev Deploys a new `AaveLinearPool`.
+     * @dev Deploys a new `AaveLinearPool` with a given protocolId.
      */
     function create(
         string memory name,
@@ -82,7 +115,8 @@ contract AaveLinearPoolFactory is
         IERC20 wrappedToken,
         uint256 upperTarget,
         uint256 swapFeePercentage,
-        address owner
+        address owner,
+        uint256 protocolId
     ) external nonReentrant returns (AaveLinearPool) {
         // We are going to deploy both an AaveLinearPool and an AaveLinearPoolRebalancer set as its Asset Manager, but
         // this creates a circular dependency problem: the Pool must know the Asset Manager's address in order to call
@@ -109,20 +143,19 @@ contract AaveLinearPoolFactory is
 
         (uint256 pauseWindowDuration, uint256 bufferPeriodDuration) = getPauseConfiguration();
 
-        AaveLinearPool.ConstructorArgs memory args = AaveLinearPool.ConstructorArgs({
-            vault: getVault(),
-            name: name,
-            symbol: symbol,
-            mainToken: mainToken,
-            wrappedToken: wrappedToken,
-            assetManager: expectedRebalancerAddress,
-            upperTarget: upperTarget,
-            swapFeePercentage: swapFeePercentage,
-            pauseWindowDuration: pauseWindowDuration,
-            bufferPeriodDuration: bufferPeriodDuration,
-            owner: owner,
-            version: getPoolVersion()
-        });
+        AaveLinearPool.ConstructorArgs memory args;
+        args.vault = getVault();
+        args.name = name;
+        args.symbol = symbol;
+        args.mainToken = mainToken;
+        args.wrappedToken = wrappedToken;
+        args.assetManager = expectedRebalancerAddress;
+        args.upperTarget = upperTarget;
+        args.swapFeePercentage = swapFeePercentage;
+        args.pauseWindowDuration = pauseWindowDuration;
+        args.bufferPeriodDuration = bufferPeriodDuration;
+        args.owner = owner;
+        args.version = getPoolVersion();
 
         AaveLinearPool pool = AaveLinearPool(_create(abi.encode(args)));
 
@@ -135,7 +168,26 @@ contract AaveLinearPoolFactory is
         address actualRebalancerAddress = Create2.deploy(0, rebalancerSalt, rebalancerCreationCode);
         require(expectedRebalancerAddress == actualRebalancerAddress, "Rebalancer deployment failed");
 
+        // Identify the protocolId associated with this pool. We do not require that the protocolId be registered.
+        emit AaveLinearPoolCreated(address(pool), protocolId);
+
         // We don't return the Rebalancer's address, but that can be queried in the Vault by calling `getPoolTokenInfo`.
         return pool;
+    }
+
+    /**
+     * @notice Register an id (and name) to differentiate between multiple protocols using this factory.
+     * @dev This is a permissioned function. Protocol ids cannot be deregistered.
+     */
+    function registerProtocolId(uint256 protocolId, string memory name) external authenticate {
+        require(!_protocolIds[protocolId].registered, "Protocol ID already registered");
+
+        _registerProtocolId(protocolId, name);
+    }
+
+    function _registerProtocolId(uint256 protocolId, string memory name) private {
+        _protocolIds[protocolId] = ProtocolIdData({ name: name, registered: true });
+
+        emit AaveLinearPoolProtocolIdRegistered(protocolId, name);
     }
 }

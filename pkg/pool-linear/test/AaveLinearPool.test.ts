@@ -31,6 +31,7 @@ describe('AaveLinearPool', function () {
   let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const AAVE_PROTOCOL_ID = 0;
 
   before('setup', async () => {
     [, lp, trader, owner] = await ethers.getSigners();
@@ -66,7 +67,8 @@ describe('AaveLinearPool', function () {
       wrappedToken.address,
       bn(0),
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      AAVE_PROTOCOL_ID
     );
 
     const receipt = await tx.wait();
@@ -87,7 +89,8 @@ describe('AaveLinearPool', function () {
           wrappedToken.address,
           bn(0),
           POOL_SWAP_FEE_PERCENTAGE,
-          owner.address
+          owner.address,
+          AAVE_PROTOCOL_ID
         )
       ).to.be.revertedWith('TOKENS_MISMATCH');
     });
