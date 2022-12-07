@@ -16,7 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuSmartVault.sol";
-
+import "@balancer-labs/v2-pool-utils/contracts/lib/ExternalCallLib.sol";
 import "../LinearPool.sol";
 
 contract TetuLinearPool is LinearPool {
@@ -72,6 +72,13 @@ contract TetuLinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        return _tokenVault.getPricePerFullShare() * _rateScaleFactor;
+        try _tokenVault.getPricePerFullShare() returns (uint256 ppfs) {
+            return ppfs * _rateScaleFactor;
+        } catch (bytes memory revertData) {
+            // By maliciously reverting here, TetuVault (or any other contract in the call stack)
+            // could trick the Pool into reporting invalid data to the query mechanism for swaps/joins/exits.
+            // We then check the revert data to ensure this doesn't occur.
+            ExternalCallLib.bubbleUpNonMaliciousRevert(revertData);
+        }
     }
 }

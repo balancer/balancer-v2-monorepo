@@ -16,6 +16,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuSmartVault.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuStrategy.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/ILastCreatedPoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
@@ -40,22 +41,32 @@ contract TetuLinearPoolRebalancer is LinearPoolRebalancer {
     }
 
     function _wrapTokens(uint256 amount) internal override {
-        // Depositing from underlying (i.e. DAI, USDC, etc. instead of rfDAI or rfUSDC). Before we can
-        // deposit however, we need to approve the wrapper (Tetu vault) in the underlying token.
+        // Depositing from underlying (i.e. DAI, USDC, etc.).
         _mainToken.safeApprove(address(_wrappedToken), amount);
         ITetuSmartVault(address(_wrappedToken)).deposit(amount);
     }
 
     function _unwrapTokens(uint256 amount) internal override {
-        // Withdrawing into underlying (i.e. DAI, USDC, etc. instead of rfDAI or rfUSDC). Approvals are not necessary
+        // Withdrawing into underlying (i.e. DAI, USDC, etc.). Approvals are not necessary
         // here as the wrapped token is simply burnt.
         ITetuSmartVault(address(_wrappedToken)).withdraw(amount);
     }
 
     function _getRequiredTokensToWrap(uint256 wrappedAmount) internal view override returns (uint256) {
-        // We round up to ensure the returned value will always be enough to get `wrappedAmount` when unwrapping.
-        // This might result in some dust being left in the Rebalancer.
-        // wrappedAmount * pricePerFullShare / 10^decimals
-        return wrappedAmount.mul(ITetuSmartVault(address(_wrappedToken)).getPricePerFullShare()).divUp(_divisor);
+        // Since there's fixed point divisions and multiplications with rounding involved, this value might
+        // be off by one. We add one to ensure the returned value will always be enough to get `wrappedAmount`
+        // when unwrapping. This might result in some dust being left in the Rebalancer.
+
+        if (_wrappedToken.totalSupply() == 0) {
+            return 0;
+        }
+        uint256 underlyingBalanceInVault = _mainToken.balanceOf(address(_wrappedToken));
+        address strategy = ITetuSmartVault(address(_wrappedToken)).strategy();
+        uint256 strategyInvestedUnderlyingBalance = address(strategy) == address(0)
+            ? 0
+            : ITetuStrategy(strategy).investedUnderlyingBalance();
+        return
+            ((wrappedAmount * (underlyingBalanceInVault + strategyInvestedUnderlyingBalance)) /
+                _wrappedToken.totalSupply()) + 1;
     }
 }

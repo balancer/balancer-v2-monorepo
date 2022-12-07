@@ -17,9 +17,9 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@balancer-labs/v2-interfaces/contracts/pool-linear/ITetuSmartVault.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
+import "@balancer-labs/v2-pool-utils/contracts/test/MaliciousQueryReverter.sol";
 
-
-contract MockTetuSmartVault is ITetuSmartVault, TestToken {
+contract MockTetuSmartVault is ITetuSmartVault, TestToken, MaliciousQueryReverter {
     using SafeERC20 for IERC20;
 
     IERC20 public underlyingAsset;
@@ -32,13 +32,14 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         uint8 decimals,
         address _underlyingAsset,
         uint256 fullSharePrice
-    )TestToken(name, symbol, decimals)  {
+    ) TestToken(name, symbol, decimals) {
         underlyingAsset = IERC20(_underlyingAsset);
         underlyingDecimals = decimals;
         _pricePerFullShare = fullSharePrice;
     }
 
     function getPricePerFullShare() external view override returns (uint256) {
+        maybeRevertMaliciously();
         return _pricePerFullShare;
     }
 
@@ -46,11 +47,11 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         _pricePerFullShare = _newPricePerFullShare;
     }
 
-    function underlyingBalanceInVault() external override view returns (uint256){
+    function underlyingBalanceInVault() external view override returns (uint256) {
         return underlyingAsset.balanceOf(address(this));
     }
 
-    function underlyingBalanceWithInvestmentForHolder(address) external override view returns (uint256){
+    function underlyingBalanceWithInvestmentForHolder(address) external view override returns (uint256) {
         return underlyingAsset.balanceOf(address(this));
     }
 
@@ -63,16 +64,19 @@ contract MockTetuSmartVault is ITetuSmartVault, TestToken {
         underlyingAsset.transfer(msg.sender, numberOfShares);
     }
 
-    function transferUnderlying(uint amount, address to) public {
+    function transferUnderlying(uint256 amount, address to) public {
         underlyingAsset.transfer(to, amount);
     }
 
-    function underlying() external override view returns (address){
+    function underlying() external view override returns (address) {
         return address(underlyingAsset);
     }
 
-    function underlyingUnit() external override view returns (uint256){
-        return 10 ** underlyingDecimals;
+    function underlyingUnit() external view override returns (uint256) {
+        return 10**underlyingDecimals;
     }
 
+    function strategy() external pure override returns (address) {
+        return address(0);
+    }
 }
