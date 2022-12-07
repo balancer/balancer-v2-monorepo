@@ -253,11 +253,16 @@ export default {
     let result: Promise<Contract>;
     const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
     const BASE_BUFFER_PERIOD_DURATION = MONTH;
-    
+
     switch (poolType) {
       case WeightedPoolType.LIQUIDITY_BOOTSTRAPPING_POOL: {
         const factory = await deploy('v2-pool-weighted/LiquidityBootstrappingPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+          args: [
+            vault.address,
+            vault.getFeesProvider().address,
+            BASE_PAUSE_WINDOW_DURATION,
+            BASE_BUFFER_PERIOD_DURATION,
+          ],
           from,
         });
         const tx = await factory.create(
@@ -281,7 +286,14 @@ export default {
         const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
         const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
         const factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address, factoryVersion, poolVersion, MANAGED_PAUSE_WINDOW_DURATION, MANAGED_BUFFER_PERIOD_DURATION],
+          args: [
+            vault.address,
+            vault.getFeesProvider().address,
+            factoryVersion,
+            poolVersion,
+            MANAGED_PAUSE_WINDOW_DURATION,
+            MANAGED_BUFFER_PERIOD_DURATION,
+          ],
           from,
           libraries: {
             CircuitBreakerLib: circuitBreakerLib.address,
@@ -319,7 +331,12 @@ export default {
       }
       default: {
         const factory = await deploy('v2-pool-weighted/WeightedPoolFactory', {
-          args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+          args: [
+            vault.address,
+            vault.getFeesProvider().address,
+            BASE_PAUSE_WINDOW_DURATION,
+            BASE_BUFFER_PERIOD_DURATION,
+          ],
           from,
         });
         const tx = await factory.create(
