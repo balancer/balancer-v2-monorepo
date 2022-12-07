@@ -59,7 +59,7 @@ contract AaveLinearPoolFactory is
     // to deploy Aave Linear Pools.
     event AaveLinearPoolCreated(address indexed pool, uint256 protocolId);
 
-    // Record protocol ID registrations
+    // Record protocol ID registrations.
     event AaveLinearPoolProtocolIdRegistered(uint256 indexed protocolId, string name);
 
     constructor(
