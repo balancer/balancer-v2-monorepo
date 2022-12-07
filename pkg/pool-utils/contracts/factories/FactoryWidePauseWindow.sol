@@ -25,7 +25,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.s
  * By calling `TemporarilyPausable`'s constructor with the result of `getPauseConfiguration`, all Pools created by this
  * factory will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  */
-abstract contract FactoryWidePauseWindow {
+contract FactoryWidePauseWindow {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
     // solhint-disable not-rely-on-time
 
