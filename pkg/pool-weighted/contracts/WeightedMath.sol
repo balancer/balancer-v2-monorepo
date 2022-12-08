@@ -308,31 +308,6 @@ library WeightedMath {
         return nonTaxableAmount.add(taxableAmountPlusFees);
     }
 
-    function _calcAllTokensInGivenExactBptOut(
-        uint256[] memory balances,
-        uint256 bptAmountOut,
-        uint256 totalBPT
-    ) internal pure returns (uint256[] memory) {
-        /************************************************************************************
-        // tokensInForExactBptOut                                                          //
-        // (per token)                                                                     //
-        // aI = amountIn                   /   bptOut   \                                  //
-        // b = balance           aI = b * | ------------ |                                 //
-        // bptOut = bptAmountOut           \  totalBPT  /                                  //
-        // bpt = totalBPT                                                                  //
-        ************************************************************************************/
-
-        // Tokens in, so we round up overall.
-        uint256 bptRatio = bptAmountOut.divUp(totalBPT);
-
-        uint256[] memory amountsIn = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsIn[i] = balances[i].mulUp(bptRatio);
-        }
-
-        return amountsIn;
-    }
-
     function _calcBptInGivenExactTokensOut(
         uint256[] memory balances,
         uint256[] memory normalizedWeights,
@@ -484,33 +459,6 @@ library WeightedMath {
         uint256 taxableAmountMinusFees = taxableAmount.mulUp(swapFeePercentage.complement());
 
         return nonTaxableAmount.add(taxableAmountMinusFees);
-    }
-
-    function _calcTokensOutGivenExactBptIn(
-        uint256[] memory balances,
-        uint256 bptAmountIn,
-        uint256 totalBPT
-    ) internal pure returns (uint256[] memory) {
-        /**********************************************************************************************
-        // exactBPTInForTokensOut                                                                    //
-        // (per token)                                                                               //
-        // aO = amountOut                  /        bptIn         \                                  //
-        // b = balance           a0 = b * | ---------------------  |                                 //
-        // bptIn = bptAmountIn             \       totalBPT       /                                  //
-        // bpt = totalBPT                                                                            //
-        **********************************************************************************************/
-
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptRatio = bptAmountIn.divDown(totalBPT);
-
-        uint256[] memory amountsOut = new uint256[](balances.length);
-        for (uint256 i = 0; i < balances.length; i++) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
-        }
-
-        return amountsOut;
     }
 
     /**

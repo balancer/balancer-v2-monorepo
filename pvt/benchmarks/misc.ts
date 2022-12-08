@@ -9,18 +9,17 @@ import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { StablePoolEncoder, toNormalizedWeights, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
 import { MAX_UINT256, ZERO_ADDRESS, MAX_WEIGHTED_TOKENS } from '@balancer-labs/v2-helpers/src/constants';
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { advanceTime, MONTH, DAY } from '@balancer-labs/v2-helpers/src/time';
+import { advanceTime, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { range } from 'lodash';
-import {
-  BasePoolRights,
-  ManagedPoolParams,
-  ManagedPoolRights,
-} from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
+import { ManagedPoolParams } from '@balancer-labs/v2-helpers/src/models/pools/weighted/types';
 import { poolConfigs } from './config';
 import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
 
 const name = 'Balancer Pool Token';
 const symbol = 'BPT';
+
+const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
 export async function setupEnvironment(): Promise<{
   vault: Vault;
@@ -81,12 +80,15 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
 
     switch (poolName) {
       case 'ManagedPool': {
-        const newPoolParams: ManagedPoolParams = {
+        const userInputs = {
           name: name,
           symbol: symbol,
+          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
+        };
+
+        const managedPoolSettings: ManagedPoolParams = {
           tokens: tokens.addresses,
           normalizedWeights: weights,
-          assetManagers: Array(tokens.length).fill(ZERO_ADDRESS),
           swapFeePercentage: swapFeePercentage,
           swapEnabledOnStart: true,
           mustAllowlistLPs: false,
@@ -94,22 +96,7 @@ export async function deployPool(vault: Vault, tokens: TokenList, poolName: Pool
           aumFeeId: ProtocolFee.AUM,
         };
 
-        const basePoolRights: BasePoolRights = {
-          canTransferOwnership: true,
-          canChangeSwapFee: true,
-          canUpdateMetadata: true,
-        };
-
-        const managedPoolRights: ManagedPoolRights = {
-          canChangeWeights: true,
-          canDisableSwaps: true,
-          canSetMustAllowlistLPs: true,
-          canSetCircuitBreakers: true,
-          canChangeTokens: true,
-          canChangeMgmtFees: true,
-        };
-
-        params = [newPoolParams, basePoolRights, managedPoolRights, DAY, creator.address];
+        params = [userInputs, managedPoolSettings, creator.address];
         break;
       }
       default: {
@@ -203,22 +190,41 @@ async function deployPoolFromFactory(
 ): Promise<Contract> {
   const fullName = `${poolName == 'ComposableStablePool' ? 'v2-pool-stable' : 'v2-pool-weighted'}/${poolName}`;
   let factory: Contract;
+  const MANAGED_PAUSE_WINDOW_DURATION = MONTH * 9;
+  const MANAGED_BUFFER_PERIOD_DURATION = MONTH * 2;
 
   if (poolName == 'ManagedPool') {
     const addRemoveTokenLib = await deploy('v2-pool-weighted/ManagedPoolAddRemoveTokenLib');
     const circuitBreakerLib = await deploy('v2-pool-weighted/CircuitBreakerLib');
-    const baseFactory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address],
+    factory = await deploy('v2-pool-weighted/ManagedPoolFactory', {
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        'factoryVersion',
+        'poolVersion',
+        MANAGED_PAUSE_WINDOW_DURATION,
+        MANAGED_BUFFER_PERIOD_DURATION,
+      ],
       libraries: {
         CircuitBreakerLib: circuitBreakerLib.address,
         ManagedPoolAddRemoveTokenLib: addRemoveTokenLib.address,
       },
     });
-    factory = await deploy('v2-pool-weighted/ControlledManagedPoolFactory', { args: [baseFactory.address] });
   } else if (poolName == 'ComposableStablePool') {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy(`${fullName}Factory`, {
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        '',
+        '',
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
+    });
   } else {
-    factory = await deploy(`${fullName}Factory`, { args: [vault.address, vault.getFeesProvider().address] });
+    factory = await deploy(`${fullName}Factory`, {
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
+    });
   }
 
   // We could reuse this factory if we saved it across pool deployments
@@ -228,7 +234,7 @@ async function deployPoolFromFactory(
 
   if (poolName == 'ManagedPool') {
     receipt = await (await factory.connect(args.from).create(...args.parameters)).wait();
-    event = receipt.events?.find((e) => e.event == 'ManagedPoolCreated');
+    event = receipt.events?.find((e) => e.event == 'PoolCreated');
   } else {
     receipt = await (await factory.connect(args.from).create(name, symbol, ...args.parameters, ZERO_ADDRESS)).wait();
     event = receipt.events?.find((e) => e.event == 'PoolCreated');

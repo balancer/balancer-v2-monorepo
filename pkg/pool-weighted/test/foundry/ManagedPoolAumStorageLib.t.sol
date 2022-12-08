@@ -13,8 +13,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
 
 import "../../contracts/managed/ManagedPoolAumStorageLib.sol";
 
@@ -28,31 +31,11 @@ contract ManagedPoolAumStorageLibTest is Test {
     uint256 private constant _MAX_AUM_FEE = (1 << _AUM_FEE_PCT_WIDTH) - 1;
     uint256 private constant _MAX_TIMESTAMP = (1 << _TIMESTAMP_WIDTH) - 1;
 
-    function clearWordAtPosition(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) internal returns (bytes32 clearedWord) {
-        uint256 mask = (1 << bitLength) - 1;
-        clearedWord = bytes32(uint256(word) & ~(mask << offset));
-    }
-
-    function assertOtherStateUnchanged(
-        bytes32 oldAumState,
-        bytes32 newAumState,
-        uint256 offset,
-        uint256 bitLength
-    ) internal returns (bool) {
-        bytes32 clearedOldState = clearWordAtPosition(oldAumState, offset, bitLength);
-        bytes32 clearedNewState = clearWordAtPosition(newAumState, offset, bitLength);
-        assertEq(clearedOldState, clearedNewState);
-    }
-
     function testSetAumFeePercentage(bytes32 aumState, uint256 expectedAumFeePercentage) public {
         vm.assume(expectedAumFeePercentage <= _MAX_AUM_FEE);
 
         bytes32 newAumState = ManagedPoolAumStorageLib.setAumFeePercentage(aumState, expectedAumFeePercentage);
-        assertOtherStateUnchanged(aumState, newAumState, _AUM_FEE_PERCENTAGE_OFFSET, _AUM_FEE_PCT_WIDTH);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(aumState, newAumState, _AUM_FEE_PERCENTAGE_OFFSET, _AUM_FEE_PCT_WIDTH));
 
         (uint256 actualAumFeePercentage, ) = ManagedPoolAumStorageLib.getAumFeeFields(newAumState);
         assertEq(actualAumFeePercentage, expectedAumFeePercentage);
@@ -65,7 +48,7 @@ contract ManagedPoolAumStorageLibTest is Test {
             aumState,
             expectedLastCollectionTimestamp
         );
-        assertOtherStateUnchanged(aumState, newAumState, _LAST_COLLECTION_TIMESTAMP_OFFSET, _TIMESTAMP_WIDTH);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(aumState, newAumState, _LAST_COLLECTION_TIMESTAMP_OFFSET, _TIMESTAMP_WIDTH));
 
         (, uint256 actualLastCollectionTimestamp) = ManagedPoolAumStorageLib.getAumFeeFields(newAumState);
         assertEq(actualLastCollectionTimestamp, expectedLastCollectionTimestamp);

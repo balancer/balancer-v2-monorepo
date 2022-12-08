@@ -15,6 +15,7 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { SwapKind } from '@balancer-labs/balancer-js';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 enum RevertType {
   DoNotRevert,
@@ -31,6 +32,10 @@ describe('AaveLinearPool', function () {
   let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+  const AAVE_PROTOCOL_ID = 0;
+
+  const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+  const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
   before('setup', async () => {
     [, lp, trader, owner] = await ethers.getSigners();
@@ -54,7 +59,15 @@ describe('AaveLinearPool', function () {
     vault = await Vault.create();
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
     poolFactory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        queries.address,
+        'factoryVersion',
+        'poolVersion',
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
     });
   });
 
@@ -66,7 +79,8 @@ describe('AaveLinearPool', function () {
       wrappedToken.address,
       bn(0),
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      AAVE_PROTOCOL_ID
     );
 
     const receipt = await tx.wait();
@@ -87,7 +101,8 @@ describe('AaveLinearPool', function () {
           wrappedToken.address,
           bn(0),
           POOL_SWAP_FEE_PERCENTAGE,
-          owner.address
+          owner.address,
+          AAVE_PROTOCOL_ID
         )
       ).to.be.revertedWith('TOKENS_MISMATCH');
     });

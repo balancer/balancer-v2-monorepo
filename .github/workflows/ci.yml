@@ -9,7 +9,7 @@ on:
     branches:
       - master
   pull_request:
-    branches: '*'
+    branches: ['*', '**/*']
 
 jobs:
   lint:
@@ -163,25 +163,6 @@ jobs:
       - name: Run Forge tests
         run: yarn workspace @balancer-labs/v2-pool-linear test-fuzz
 
-  test-distributors:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-      - name: Test
-        run: yarn workspace @balancer-labs/v2-distributors test
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Run Forge tests
-        run: yarn workspace @balancer-labs/v2-distributors test-fuzz
-
   test-liquidity-mining:
     runs-on: ubuntu-latest
     steps:
@@ -231,8 +212,8 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Build Balancer JS
         run: yarn workspace @balancer-labs/balancer-js build
-      - name: Build v2-distributors
-        run: yarn workspace @balancer-labs/v2-distributors build
+      - name: Compile
+        run: yarn build # Ideally we wouldn't depend on the packages of other artifacts, but we use some of their mocks
       - name: Forked Network Cache
         # Hardhat caches node requests when working with forked networks (e.g. when querying contract code, storage,
         # etc.) to save time in future runs. We cache this directory accross runs.

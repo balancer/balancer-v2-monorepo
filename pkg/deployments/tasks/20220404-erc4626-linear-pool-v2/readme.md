@@ -8,4 +8,4 @@ Second deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with a ERC
 - [Polygon address](./output/polygon.json)
 - [Arbitrum address](./output/arbitrum.json)
 - [Optimism address](./output/optimism.json)
-- [`ERC4626LinearPool` ABI](./abi/ERC4626LinearPool.json)
+- [`ERC4626LinearPool` artifact](./artifact/ERC4626LinearPool.json)

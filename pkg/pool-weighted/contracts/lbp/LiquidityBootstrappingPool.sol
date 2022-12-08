@@ -20,6 +20,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/lib/PoolRegistrationLib.sol";
 
 import "../WeightedMath.sol";
@@ -27,6 +28,7 @@ import "../lib/WeightedExitsLib.sol";
 import "../lib/WeightedJoinsLib.sol";
 
 import "./LiquidityBootstrappingPoolSettings.sol";
+import "./LiquidityBootstrappingPoolStorageLib.sol";
 
 /**
  * @dev Weighted Pool with mutable weights, designed to support V2 Liquidity Bootstrapping.
@@ -89,7 +91,25 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) internal virtual override returns (uint256) {
-        _require(getSwapEnabled(), Errors.SWAPS_DISABLED);
+        uint256 weightTokenIn;
+        uint256 weightTokenOut;
+        {
+            bytes32 poolState = _getPoolState();
+            _require(LiquidityBootstrappingPoolStorageLib.getSwapEnabled(poolState), Errors.SWAPS_DISABLED);
+
+            uint256 pctProgress = LiquidityBootstrappingPoolStorageLib.getWeightChangeProgress(poolState);
+
+            weightTokenIn = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+                poolState,
+                _getTokenIndex(request.tokenIn),
+                pctProgress
+            );
+            weightTokenOut = LiquidityBootstrappingPoolStorageLib.getNormalizedWeightByIndex(
+                poolState,
+                _getTokenIndex(request.tokenOut),
+                pctProgress
+            );
+        }
 
         uint256 scalingFactorTokenIn = _scalingFactor(request.tokenIn);
         uint256 scalingFactorTokenOut = _scalingFactor(request.tokenOut);
@@ -99,16 +119,17 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
         if (request.kind == IVault.SwapKind.GIVEN_IN) {
             // Fees are subtracted before scaling, to reduce the complexity of the rounding direction analysis.
-            request.amount = _subtractSwapFeeAmount(request.amount);
+            // This returns amount - fee amount, so we round up (favoring a higher fee amount).
+            request.amount = request.amount.mulDown(getSwapFeePercentage());
 
             // All token amounts are upscaled.
             request.amount = _upscale(request.amount, scalingFactorTokenIn);
 
             uint256 amountOut = WeightedMath._calcOutGivenIn(
                 balanceTokenIn,
-                _getNormalizedWeight(request.tokenIn),
+                weightTokenIn,
                 balanceTokenOut,
-                _getNormalizedWeight(request.tokenOut),
+                weightTokenOut,
                 request.amount
             );
 
@@ -120,9 +141,9 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
             uint256 amountIn = WeightedMath._calcInGivenOut(
                 balanceTokenIn,
-                _getNormalizedWeight(request.tokenIn),
+                weightTokenIn,
                 balanceTokenOut,
-                _getNormalizedWeight(request.tokenOut),
+                weightTokenOut,
                 request.amount
             );
 
@@ -130,26 +151,12 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
             amountIn = _downscaleUp(amountIn, scalingFactorTokenIn);
 
             // Fees are added after scaling happens, to reduce the complexity of the rounding direction analysis.
-            return _addSwapFeeAmount(amountIn);
+            // This returns amount + fee amount, so we round up (favoring a higher fee amount).
+            return amountIn.divUp(getSwapFeePercentage().complement());
         }
     }
 
-    /**
-     * @dev Adds swap fee amount to `amount`, returning a higher value.
-     */
-    function _addSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount + fee amount, so we round up (favoring a higher fee amount).
-        return amount.divUp(getSwapFeePercentage().complement());
-    }
-
-    /**
-     * @dev Subtracts swap fee amount from `amount`, returning a lower value.
-     */
-    function _subtractSwapFeeAmount(uint256 amount) internal view returns (uint256) {
-        // This returns amount - fee amount, so we round up (favoring a higher fee amount).
-        uint256 feeAmount = amount.mulUp(getSwapFeePercentage());
-        return amount.sub(feeAmount);
-    }
+    // Initialize hook
 
     function _onInitializePool(
         address sender,
@@ -177,6 +184,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
 
         return (bptAmountOut, amountsIn);
     }
+
+    // Join hook
 
     /**
      * @dev Called whenever the Pool is joined after the first initialization join (see `_onInitializePool`).
@@ -253,6 +262,8 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         }
     }
 
+    // Exit hook
+
     /**
      * @dev Called whenever the Pool is exited.
      *
@@ -324,6 +335,6 @@ contract LiquidityBootstrappingPool is LiquidityBootstrappingPoolSettings {
         bytes memory userData
     ) internal pure override returns (uint256 bptAmountIn, uint256[] memory amountsOut) {
         bptAmountIn = userData.recoveryModeExit();
-        amountsOut = WeightedMath._calcTokensOutGivenExactBptIn(balances, bptAmountIn, totalSupply);
+        amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
     }
 }

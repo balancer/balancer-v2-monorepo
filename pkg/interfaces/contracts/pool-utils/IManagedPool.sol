@@ -31,6 +31,7 @@ interface IManagedPool is IBasePool {
         uint256[] endWeights
     );
     event SwapEnabledSet(bool swapEnabled);
+    event JoinExitEnabledSet(bool joinExitEnabled);
     event MustAllowlistLPsSet(bool mustAllowlistLPs);
     event AllowlistAddressAdded(address indexed member);
     event AllowlistAddressRemoved(address indexed member);
@@ -144,6 +145,20 @@ interface IManagedPool is IBasePool {
             uint256[] memory startWeights,
             uint256[] memory endWeights
         );
+
+    // Join and Exit enable/disable
+
+    /**
+     * @notice Enable or disable joins and exits. Note that this does not affect Recovery Mode exits.
+     * @dev Emits the JoinExitEnabledSet event. This is a permissioned function.
+     * @param joinExitEnabled - The new value of the join/exit enabled flag.
+     */
+    function setJoinExitEnabled(bool joinExitEnabled) external;
+
+    /**
+     * @notice Returns whether joins and exits are enabled.
+     */
+    function getJoinExitEnabled() external view returns (bool);
 
     // Swap enable/disable
 

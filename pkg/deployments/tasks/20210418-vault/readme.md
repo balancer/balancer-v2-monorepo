@@ -13,4 +13,4 @@ Aditionally, the `WETH` argument may represent different things in different net
 - [Arbitrum mainnet address](./output/arbitrum.json)
 - [Optimism mainnet address](./output/optimism.json)
 - [Gnosis mainnet address](./output/gnosis.json)
-- [`Vault` ABI](./abi/Vault.json)
+- [`Vault` artifact](./artifact/Vault.json)
