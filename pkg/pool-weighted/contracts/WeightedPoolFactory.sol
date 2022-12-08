@@ -18,13 +18,23 @@ pragma experimental ABIEncoderV2;
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./WeightedPool.sol";
 
-contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
-    constructor(IVault vault, IProtocolFeePercentagesProvider protocolFeeProvider)
-        BasePoolFactory(vault, protocolFeeProvider, type(WeightedPool).creationCode)
+contract WeightedPoolFactory is BasePoolFactory {
+    constructor(
+        IVault vault,
+        IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(WeightedPool).creationCode
+        )
     {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -36,8 +46,8 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         string memory name,
         string memory symbol,
         IERC20[] memory tokens,
-        uint256[] memory weights,
-        address[] memory assetManagers,
+        uint256[] memory normalizedWeights,
+        IRateProvider[] memory rateProviders,
         uint256 swapFeePercentage,
         address owner
     ) external returns (address) {
@@ -46,14 +56,17 @@ contract WeightedPoolFactory is BasePoolFactory, FactoryWidePauseWindow {
         return
             _create(
                 abi.encode(
+                    WeightedPool.NewPoolParams({
+                        name: name,
+                        symbol: symbol,
+                        tokens: tokens,
+                        normalizedWeights: normalizedWeights,
+                        rateProviders: rateProviders,
+                        assetManagers: new address[](tokens.length), // Don't allow asset managers,
+                        swapFeePercentage: swapFeePercentage
+                    }),
                     getVault(),
                     getProtocolFeePercentagesProvider(),
-                    name,
-                    symbol,
-                    tokens,
-                    weights,
-                    assetManagers,
-                    swapFeePercentage,
                     pauseWindowDuration,
                     bufferPeriodDuration,
                     owner

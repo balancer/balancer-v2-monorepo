@@ -28,7 +28,8 @@ import "@balancer-labs/v2-vault/contracts/ProtocolFeesCollector.sol";
 contract MockVault is IPoolSwapStructs {
     struct Pool {
         IERC20[] tokens;
-        mapping(IERC20 => uint256) balances;
+        mapping(IERC20 => uint256) cash;
+        mapping(IERC20 => uint256) managed;
     }
 
     IAuthorizer private _authorizer;
@@ -36,14 +37,20 @@ contract MockVault is IPoolSwapStructs {
 
     mapping(bytes32 => Pool) private pools;
 
-    event Swap(bytes32 indexed poolId, IERC20 indexed tokenIn, IERC20 indexed tokenOut, uint256 amount);
+    event Swap(
+        bytes32 indexed poolId,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut
+    );
 
     event PoolBalanceChanged(
         bytes32 indexed poolId,
         address indexed liquidityProvider,
         IERC20[] tokens,
         int256[] deltas,
-        uint256[] protocolFees
+        uint256[] protocolFeeAmounts
     );
 
     constructor(IAuthorizer authorizer) {
@@ -66,7 +73,7 @@ contract MockVault is IPoolSwapStructs {
 
         for (uint256 i = 0; i < pool.tokens.length; i++) {
             tokens[i] = pool.tokens[i];
-            balances[i] = pool.balances[tokens[i]];
+            balances[i] = pool.cash[tokens[i]] + pool.managed[tokens[i]];
         }
     }
 
@@ -75,13 +82,14 @@ contract MockVault is IPoolSwapStructs {
         view
         returns (
             uint256 cash,
-            uint256,
+            uint256 managed,
             uint256,
             address
         )
     {
         Pool storage pool = pools[poolId];
-        cash = pool.balances[token];
+        cash = pool.cash[token];
+        managed = pool.managed[token];
     }
 
     function registerPool(IVault.PoolSpecialization) external view returns (bytes32) {
@@ -99,10 +107,17 @@ contract MockVault is IPoolSwapStructs {
         }
     }
 
-    function updateBalances(bytes32 poolId, uint256[] memory balances) external {
+    function updateCash(bytes32 poolId, uint256[] memory cash) external {
         Pool storage pool = pools[poolId];
-        for (uint256 i = 0; i < balances.length; i++) {
-            pool.balances[pool.tokens[i]] = balances[i];
+        for (uint256 i = 0; i < cash.length; i++) {
+            pool.cash[pool.tokens[i]] = cash[i];
+        }
+    }
+
+    function updateManaged(bytes32 poolId, uint256[] memory managed) external {
+        Pool storage pool = pools[poolId];
+        for (uint256 i = 0; i < managed.length; i++) {
+            pool.managed[pool.tokens[i]] = managed[i];
         }
     }
 
@@ -112,8 +127,11 @@ contract MockVault is IPoolSwapStructs {
         uint256 balanceTokenIn,
         uint256 balanceTokenOut
     ) external {
-        uint256 amount = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
-        emit Swap(request.poolId, request.tokenIn, request.tokenOut, amount);
+        uint256 amountCalculated = IMinimalSwapInfoPool(pool).onSwap(request, balanceTokenIn, balanceTokenOut);
+        (uint256 amountIn, uint256 amountOut) = request.kind == IVault.SwapKind.GIVEN_IN
+            ? (request.amount, amountCalculated)
+            : (amountCalculated, request.amount);
+        emit Swap(request.poolId, request.tokenIn, request.tokenOut, amountIn, amountOut);
     }
 
     function callGeneralPoolSwap(
@@ -123,8 +141,11 @@ contract MockVault is IPoolSwapStructs {
         uint256 indexIn,
         uint256 indexOut
     ) external {
-        uint256 amount = IGeneralPool(pool).onSwap(request, balances, indexIn, indexOut);
-        emit Swap(request.poolId, request.tokenIn, request.tokenOut, amount);
+        uint256 amountCalculated = IGeneralPool(pool).onSwap(request, balances, indexIn, indexOut);
+        (uint256 amountIn, uint256 amountOut) = request.kind == IVault.SwapKind.GIVEN_IN
+            ? (request.amount, amountCalculated)
+            : (amountCalculated, request.amount);
+        emit Swap(request.poolId, request.tokenIn, request.tokenOut, amountIn, amountOut);
     }
 
     function callJoinPool(
@@ -148,7 +169,7 @@ contract MockVault is IPoolSwapStructs {
 
         Pool storage pool = pools[poolId];
         for (uint256 i = 0; i < pool.tokens.length; i++) {
-            pool.balances[pool.tokens[i]] += amountsIn[i];
+            pool.cash[pool.tokens[i]] += amountsIn[i];
         }
 
         IERC20[] memory tokens = new IERC20[](currentBalances.length);
@@ -181,7 +202,7 @@ contract MockVault is IPoolSwapStructs {
 
         Pool storage pool = pools[poolId];
         for (uint256 i = 0; i < pool.tokens.length; i++) {
-            pool.balances[pool.tokens[i]] -= amountsOut[i];
+            pool.cash[pool.tokens[i]] -= amountsOut[i];
         }
 
         IERC20[] memory tokens = new IERC20[](currentBalances.length);
@@ -191,5 +212,14 @@ contract MockVault is IPoolSwapStructs {
         }
 
         emit PoolBalanceChanged(poolId, msg.sender, tokens, deltas, dueProtocolFeeAmounts);
+    }
+
+    // Needed to support authorizer adaptor entrypoint
+    function getActionId(bytes4 selector) public view returns (bytes32) {
+        return keccak256(abi.encodePacked(bytes32(uint256(address(this))), selector));
+    }
+
+    function setAuthorizer(IAuthorizer newAuthorizer) external {
+        _authorizer = newAuthorizer;
     }
 }

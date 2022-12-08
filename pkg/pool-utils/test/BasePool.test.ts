@@ -9,37 +9,31 @@ import { advanceTime, DAY, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { JoinPoolRequest, ExitPoolRequest, PoolSpecialization, WeightedPoolEncoder } from '@balancer-labs/balancer-js';
-import { BigNumberish, fp, bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
+import { BigNumberish, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { Account } from '@balancer-labs/v2-helpers/src/models/types/types';
 import TypesConverter from '@balancer-labs/v2-helpers/src/models/types/TypesConverter';
-import { expectBalanceChange } from '@balancer-labs/v2-helpers/src/test/tokenBalance';
 import { random } from 'lodash';
 import { defaultAbiCoder } from 'ethers/lib/utils';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('BasePool', function () {
-  let admin: SignerWithAddress,
-    poolOwner: SignerWithAddress,
-    deployer: SignerWithAddress,
-    assetManager: SignerWithAddress,
-    other: SignerWithAddress;
+  let admin: SignerWithAddress, poolOwner: SignerWithAddress, deployer: SignerWithAddress, other: SignerWithAddress;
   let authorizer: Contract, vault: Contract;
   let tokens: TokenList;
 
   const MIN_SWAP_FEE_PERCENTAGE = fp(0.000001);
   const MAX_SWAP_FEE_PERCENTAGE = fp(0.1);
-  const DELEGATE_OWNER = '0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B';
 
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
 
   before(async () => {
-    [, admin, poolOwner, deployer, assetManager, other] = await ethers.getSigners();
+    [, admin, poolOwner, deployer, other] = await ethers.getSigners();
   });
 
   sharedBeforeEach(async () => {
-    authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('v2-vault/Vault', { args: [authorizer.address, ZERO_ADDRESS, 0, 0] });
+    ({ instance: vault, authorizer } = await Vault.create({ admin }));
     tokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
   });
 
@@ -85,38 +79,6 @@ describe('BasePool', function () {
       ],
     });
   }
-
-  describe('deployment', () => {
-    let assetManagers: string[];
-
-    beforeEach(() => {
-      assetManagers = [assetManager.address, ...Array(tokens.length - 1).fill(ZERO_ADDRESS)];
-    });
-
-    it('registers a pool in the vault', async () => {
-      const pool = await deployBasePool({
-        tokens,
-        assetManagers,
-      });
-      const poolId = await pool.getPoolId();
-
-      const [poolAddress, poolSpecialization] = await vault.getPool(poolId);
-      expect(poolAddress).to.equal(pool.address);
-      expect(poolSpecialization).to.equal(PoolSpecialization.GeneralPool);
-
-      const { tokens: poolTokens } = await vault.getPoolTokens(poolId);
-      expect(poolTokens).to.have.same.members(tokens.addresses);
-
-      poolTokens.forEach(async (token: string, i: number) => {
-        const { assetManager } = await vault.getPoolTokenInfo(poolId, token);
-        expect(assetManager).to.equal(assetManagers[i]);
-      });
-    });
-
-    it('reverts if the tokens are not sorted', async () => {
-      await expect(deployBasePool({ tokens: tokens.addresses.reverse() })).to.be.revertedWith('UNSORTED_ARRAY');
-    });
-  });
 
   describe('authorizer', () => {
     let pool: Contract;
@@ -166,6 +128,12 @@ describe('BasePool', function () {
 
     sharedBeforeEach(async () => {
       pool = await deployBasePool();
+    });
+
+    it('skips zero value mints', async () => {
+      const tx = await pool.payProtocolFees(0);
+
+      expectEvent.notEmitted(await tx.wait(), 'Transfer');
     });
 
     it('mints bpt to the protocol fee collector', async () => {
@@ -501,22 +469,39 @@ describe('BasePool', function () {
         expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: true });
       });
 
-      it('can disable recovery mode', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        await pool.connect(sender).disableRecoveryMode();
+      context('when recovery mode is enabled', () => {
+        sharedBeforeEach('enable recovery mode', async () => {
+          await pool.connect(sender).enableRecoveryMode();
+        });
 
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
+        it('can disable recovery mode', async () => {
+          await pool.connect(sender).disableRecoveryMode();
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
+
+        it('cannot enable recovery mode again', async () => {
+          await expect(pool.connect(sender).enableRecoveryMode()).to.be.revertedWith('IN_RECOVERY_MODE');
+        });
+
+        it('disabling recovery mode emits an event', async () => {
+          const tx = await pool.connect(sender).disableRecoveryMode();
+          const receipt = await tx.wait();
+          expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
+        });
       });
 
-      it('disabling recovery mode emits an event', async () => {
-        await pool.connect(sender).enableRecoveryMode();
-        const tx = await pool.connect(sender).disableRecoveryMode();
-        const receipt = await tx.wait();
-        expectEvent.inReceipt(receipt, 'RecoveryModeStateChanged', { enabled: false });
+      context('when recovery mode is disabled', () => {
+        it('cannot be disabled again', async () => {
+          const recoveryMode = await pool.inRecoveryMode();
+          expect(recoveryMode).to.be.false;
 
-        const recoveryMode = await pool.inRecoveryMode();
-        expect(recoveryMode).to.be.false;
+          await expect(pool.connect(sender).disableRecoveryMode()).to.be.revertedWith('NOT_IN_RECOVERY_MODE');
+        });
       });
 
       it('reverts when calling functions in the wrong mode', async () => {
@@ -782,16 +767,13 @@ describe('BasePool', function () {
               toInternalBalance: false,
             };
 
-            // The sole BPT holder is the owner, so they own the initial balances
-            const expectedChanges = tokens.reduce(
-              (changes, token, i) => ({ ...changes, [token.symbol]: ['very-near', initialBalances[i].div(3)] }),
-              {}
-            );
-            await expectBalanceChange(
-              () => vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request),
-              tokens,
-              { account: poolOwner, changes: expectedChanges }
-            );
+            const totalSupply = await pool.totalSupply();
+            const tx = await vault.connect(poolOwner).exitPool(poolId, poolOwner.address, poolOwner.address, request);
+            expectEvent.inIndirectReceipt(await tx.wait(), pool.interface, 'RecoveryModeExit', {
+              totalSupply,
+              balances: initialBalances,
+              bptAmountIn: exitBPT,
+            });
 
             // Exit BPT was burned
             const afterExitBalance = await pool.balanceOf(poolOwner.address);
@@ -863,159 +845,6 @@ describe('BasePool', function () {
         const data = `0x${'1'.repeat(i).padStart(64, '0')}`;
         await assertMiscData(data);
       }
-    });
-  });
-
-  describe('set asset manager config', () => {
-    let pool: Contract;
-    let assetManagerContract: Contract;
-
-    const poolConfig = {
-      targetPercentage: 3,
-      upperCriticalPercentage: 4,
-      lowerCriticalPercentage: 2,
-    };
-
-    const encodedConfig = ethers.utils.defaultAbiCoder.encode(
-      ['uint64', 'uint64', 'uint64'],
-      [bn(poolConfig.targetPercentage), bn(poolConfig.upperCriticalPercentage), bn(poolConfig.lowerCriticalPercentage)]
-    );
-
-    sharedBeforeEach('deploy pool and asset manager', async () => {
-      assetManagerContract = await deploy('MockAssetManager', { args: [tokens.first.address] });
-
-      const assetManagers = Array(tokens.length).fill(ZERO_ADDRESS);
-      assetManagers[0] = assetManagerContract.address;
-
-      pool = await deployBasePool({ owner: poolOwner, assetManagers });
-    });
-
-    sharedBeforeEach('set permissions', async () => {
-      const pauseAction = await actionId(pool, 'pause');
-      await authorizer.connect(admin).grantPermissions([pauseAction], admin.address, [ANY_ADDRESS]);
-    });
-
-    it('sets the asset manager for the first token', async () => {
-      const poolId = await pool.getPoolId();
-      const { assetManager } = await vault.getPoolTokenInfo(poolId, tokens.first.address);
-
-      expect(assetManager).to.equal(assetManagerContract.address);
-    });
-
-    it('lets the owner set the asset manager config', async () => {
-      await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
-    });
-
-    it('Setting the asset manager config emits an event', async () => {
-      const tx = await pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig);
-      const receipt = await tx.wait();
-
-      const poolId = await pool.getPoolId();
-
-      expectEvent.inIndirectReceipt(receipt, assetManagerContract.interface, 'AssetManagerPoolConfigSet', {
-        token: tokens.first.address,
-        assetManager: assetManagerContract.address,
-        poolId: poolId,
-        poolConfig: encodedConfig,
-      });
-    });
-
-    it('reverts if non-owner sets the asset manager config', async () => {
-      await expect(
-        pool.connect(other).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
-      ).to.be.revertedWith('SENDER_NOT_ALLOWED');
-    });
-
-    context('when paused', () => {
-      sharedBeforeEach('pause pool', async () => {
-        await pool.connect(admin).pause();
-      });
-
-      it('reverts', async () => {
-        await expect(
-          pool.connect(poolOwner).setAssetManagerPoolConfig(tokens.first.address, encodedConfig)
-        ).to.be.revertedWith('PAUSED');
-      });
-    });
-  });
-
-  describe('scaling', () => {
-    let pool: Contract;
-
-    sharedBeforeEach('deploy pool', async () => {
-      pool = await deployBasePool();
-    });
-
-    describe('upscale', () => {
-      it('returns the amount multiplied by the scaling factor', async () => {
-        expect(await pool.upscale(fp(42), fp(1.6))).to.equal(fp(67.2));
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.upscale(1, 1)).to.equal(0);
-      });
-    });
-
-    describe('upscaleArray', () => {
-      it('returns the amounts multiplied by the scaling factors', async () => {
-        expect(await pool.upscaleArray([fp(42), fp(15)], [fp(1.6), fp(2)])).to.deep.equal([fp(67.2), fp(30)]);
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.upscaleArray([1], [1])).to.deep.equal([0]);
-      });
-
-      it('reverts if the arrays have different lengths', async () => {
-        await expect(pool.upscaleArray([fp(42), fp(15)], [fp(1.6)])).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-      });
-    });
-
-    describe('downscaleDown', () => {
-      it('returns the amount divided by the scaling factor', async () => {
-        expect(await pool.downscaleDown(fp(60), fp(1.6))).to.equal(fp(37.5));
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.downscaleDown(5, fp(2))).to.equal(2);
-      });
-    });
-
-    describe('downscaleDownArray', () => {
-      it('returns the amounts divided by the scaling factors', async () => {
-        expect(await pool.downscaleDownArray([fp(60), fp(30)], [fp(1.6), fp(2)])).to.deep.equal([fp(37.5), fp(15)]);
-      });
-
-      it('rounds down', async () => {
-        expect(await pool.downscaleDownArray([5], [fp(2)])).to.deep.equal([2]);
-      });
-
-      it('reverts if the arrays have different lengths', async () => {
-        await expect(pool.downscaleDownArray([fp(42), fp(15)], [fp(1.6)])).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-      });
-    });
-
-    describe('downscaleUp', () => {
-      it('returns the amount divided by the scaling factor', async () => {
-        expect(await pool.downscaleUp(fp(60), fp(1.6))).to.equal(fp(37.5));
-      });
-
-      it('rounds up', async () => {
-        expect(await pool.downscaleUp(5, fp(2))).to.equal(3);
-      });
-    });
-
-    describe('downscaleUpArray', () => {
-      it('returns the amounts divided by the scaling factors', async () => {
-        expect(await pool.downscaleUpArray([fp(60), fp(30)], [fp(1.6), fp(2)])).to.deep.equal([fp(37.5), fp(15)]);
-      });
-
-      it('rounds up', async () => {
-        expect(await pool.downscaleUpArray([5], [fp(2)])).to.deep.equal([3]);
-      });
-
-      it('reverts if the arrays have different lengths', async () => {
-        await expect(pool.downscaleUpArray([fp(42), fp(15)], [fp(1.6)])).to.be.revertedWith('INPUT_LENGTH_MISMATCH');
-      });
     });
   });
 });

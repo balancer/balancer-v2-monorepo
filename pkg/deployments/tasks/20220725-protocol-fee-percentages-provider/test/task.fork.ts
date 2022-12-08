@@ -5,11 +5,9 @@ import { Contract } from 'ethers';
 import { BigNumber, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { describeForkTest } from '../../../src/forkTests';
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
 
 describeForkTest('ProtocolFeePercentagesProvider', 'mainnet', 15130000, function () {
   let admin: SignerWithAddress;
@@ -44,7 +42,7 @@ describeForkTest('ProtocolFeePercentagesProvider', 'mainnet', 15130000, function
 
   before('setup admin', async () => {
     const DEFAULT_ADMIN_ROLE = await authorizer.DEFAULT_ADMIN_ROLE();
-    admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0), fp(100));
+    admin = await impersonate(await authorizer.getRoleMember(DEFAULT_ADMIN_ROLE, 0));
   });
 
   context('without permissions', () => {

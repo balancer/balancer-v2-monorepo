@@ -6,6 +6,6 @@ Deployment of the `ChildChainLiquidityGaugeFactory`, for liquidity gauges to be 
 
 - [Polygon addresses](./output/polygon.json)
 - [Arbitrum addresses](./output/arbitrum.json)
-- [`ChildChainStreamer` ABI](./abi/ChildChainStreamer.json)
-- [`RewardsOnlyGauge` ABI](./abi/RewardsOnlyGauge.json)
-- [`ChildChainGaugeFactory` ABI](./abi/ChildChainGaugeFactory.json)
+- [`ChildChainStreamer` artifact](./artifact/ChildChainStreamer.json)
+- [`RewardsOnlyGauge` artifact](./artifact/RewardsOnlyGauge.json)
+- [`ChildChainGaugeFactory` artifact](./artifact/ChildChainGaugeFactory.json)

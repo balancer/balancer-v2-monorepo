@@ -2,7 +2,6 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceToTimestamp, DAY } from '@balancer-labs/v2-helpers/src/time';
 
@@ -28,8 +27,8 @@ describeForkTest('veBALDeploymentCoordinator', 'mainnet', 14458084, function () 
   });
 
   before('grant permissions', async () => {
-    balMultisig = await impersonate(BAL_MULTISIG, fp(100));
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    balMultisig = await impersonate(BAL_MULTISIG);
+    govMultisig = await impersonate(GOV_MULTISIG);
 
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());

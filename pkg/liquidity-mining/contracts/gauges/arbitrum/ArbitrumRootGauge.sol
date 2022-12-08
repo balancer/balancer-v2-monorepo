@@ -15,12 +15,14 @@
 pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/IArbitrumFeeProvider.sol";
-import "@balancer-labs/v2-interfaces/contracts/liquidity-mining/ISingleRecipientGauge.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "../StakelessGauge.sol";
 import "./IGatewayRouter.sol";
 
-contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
+contract ArbitrumRootGauge is StakelessGauge {
+    using SafeERC20 for IERC20;
+
     address private immutable _gateway;
     IGatewayRouter private immutable _gatewayRouter;
     IArbitrumFeeProvider private immutable _factory;
@@ -33,9 +35,9 @@ contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
         _factory = IArbitrumFeeProvider(msg.sender);
     }
 
-    function initialize(address recipient) external override {
+    function initialize(address recipient, uint256 relativeWeightCap) external {
         // This will revert in all calls except the first one
-        __StakelessGauge_init();
+        __StakelessGauge_init(relativeWeightCap);
 
         _recipient = recipient;
     }
@@ -46,7 +48,7 @@ contract ArbitrumRootGauge is ISingleRecipientGauge, StakelessGauge {
 
     function _postMintAction(uint256 mintAmount) internal override {
         // Token needs to be approved on the gateway NOT the gateway router
-        _balToken.approve(_gateway, mintAmount);
+        _balToken.safeApprove(_gateway, mintAmount);
 
         (uint256 gasLimit, uint256 gasPrice, uint256 maxSubmissionCost) = _factory.getArbitrumFees();
         uint256 totalBridgeCost = _getTotalBridgeCost(gasLimit, gasPrice, maxSubmissionCost);

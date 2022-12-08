@@ -21,6 +21,8 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IBasePoolFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/BaseSplitCodeFactory.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
+import "./FactoryWidePauseWindow.sol";
+
 /**
  * @notice Base contract for Pool factories.
  *
@@ -35,7 +37,12 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/SingletonAuthenticati
  * become increasingly important. Governance can deprecate a factory by calling `disable`, which will permanently
  * prevent the creation of any future pools from the factory.
  */
-abstract contract BasePoolFactory is IBasePoolFactory, BaseSplitCodeFactory, SingletonAuthentication {
+abstract contract BasePoolFactory is
+    IBasePoolFactory,
+    BaseSplitCodeFactory,
+    SingletonAuthentication,
+    FactoryWidePauseWindow
+{
     IProtocolFeePercentagesProvider private immutable _protocolFeeProvider;
 
     mapping(address => bool) private _isPoolFromFactory;
@@ -47,8 +54,14 @@ abstract contract BasePoolFactory is IBasePoolFactory, BaseSplitCodeFactory, Sin
     constructor(
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration,
         bytes memory creationCode
-    ) BaseSplitCodeFactory(creationCode) SingletonAuthentication(vault) {
+    )
+        BaseSplitCodeFactory(creationCode)
+        SingletonAuthentication(vault)
+        FactoryWidePauseWindow(initialPauseWindowDuration, bufferPeriodDuration)
+    {
         _protocolFeeProvider = protocolFeeProvider;
     }
 

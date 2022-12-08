@@ -3,11 +3,25 @@ import { ethers } from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { random, range } from 'lodash';
 
-import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
+import { deploy, deployedAt, getArtifact } from '@balancer-labs/v2-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { PoolSpecialization, SwapKind } from '@balancer-labs/balancer-js';
-import { BigNumberish, bn, fp, pct, FP_SCALING_FACTOR, arrayAdd, bnSum } from '@balancer-labs/v2-helpers/src/numbers';
+
+import {
+  BigNumberish,
+  bn,
+  fp,
+  pct,
+  arrayAdd,
+  arrayFpMul,
+  bnSum,
+  fpDiv,
+  fpMul,
+  FP_ONE,
+  FP_ZERO,
+  FP_100_PCT,
+} from '@balancer-labs/v2-helpers/src/numbers';
 import { MAX_UINT112, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { RawStablePoolDeployment } from '@balancer-labs/v2-helpers/src/models/pools/stable/types';
 import { currentTimestamp, advanceTime, MONTH, WEEK, DAY } from '@balancer-labs/v2-helpers/src/time';
@@ -15,6 +29,9 @@ import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
 import TokenList from '@balancer-labs/v2-helpers/src/models/tokens/TokenList';
 import StablePool from '@balancer-labs/v2-helpers/src/models/pools/stable/StablePool';
 import { calculateInvariant } from '@balancer-labs/v2-helpers/src/models/pools/stable/math';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
+import { ProtocolFee } from '@balancer-labs/v2-helpers/src/models/vault/types';
+import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 describe('ComposableStablePool', () => {
   let lp: SignerWithAddress,
@@ -80,7 +97,7 @@ describe('ComposableStablePool', () => {
 
       for (let i = 0; i < numberOfTokens; i++) {
         rateProviders[i] = await deploy('v2-pool-utils/MockRateProvider');
-        await rateProviders[i].mockRate(rates[i] || fp(1));
+        await rateProviders[i].mockRate(rates[i] || FP_ONE);
         tokenRateCacheDurations[i] = MONTH + i;
         exemptFromYieldProtocolFeeFlags[i] = i % 2 == 0; // set true for even tokens
       }
@@ -333,18 +350,19 @@ describe('ComposableStablePool', () => {
 
               const deltaSum = bnSum(deltas);
               const currSum = bnSum(registeredBalancesWithFees.filter((_, i) => i != bptIndex));
-              const poolPercentageDueToDeltas = deltaSum.mul(FP_SCALING_FACTOR).div(currSum);
+              const poolPercentageDueToDeltas = fpDiv(deltaSum, currSum);
 
-              const expectedProtocolOwnershipPercentage = poolPercentageDueToDeltas
-                .mul(PROTOCOL_SWAP_FEE_PERCENTAGE)
-                .div(FP_SCALING_FACTOR);
+              const expectedProtocolOwnershipPercentage = fpMul(
+                poolPercentageDueToDeltas,
+                PROTOCOL_SWAP_FEE_PERCENTAGE
+              );
 
               // protocol ownership = to mint / (supply + to mint)
               // to mint = supply * protocol ownership / (1 - protocol ownership)
               const preVirtualSupply = await pool.getVirtualSupply();
               expectedBptAmount = preVirtualSupply
                 .mul(expectedProtocolOwnershipPercentage)
-                .div(fp(1).sub(expectedProtocolOwnershipPercentage));
+                .div(FP_100_PCT.sub(expectedProtocolOwnershipPercentage));
             });
 
             it('returns the total supply after protocol fees are paid', async () => {
@@ -378,9 +396,12 @@ describe('ComposableStablePool', () => {
 
         it('returns the pre-join invariant', async () => {
           const { value, precision } = await pool.getAmplificationParameter();
+
+          // We pass a floating point amplification instead of an integer one, to more closely match the behavior in the
+          // Pool.
           const expectedInvariant = calculateInvariant(
             registeredBalances.filter((_, i) => i !== bptIndex),
-            value.div(precision)
+            value.toNumber() / precision.toNumber()
           );
 
           const { preJoinExitInvariant } = await pool.instance.callStatic.beforeJoinExit(registeredBalances);
@@ -466,7 +487,7 @@ describe('ComposableStablePool', () => {
 
         context('when the pool was not initialized', () => {
           it('reverts', async () => {
-            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: fp(0), recipient });
+            const tx = pool.swapGivenIn({ in: tokens.first, out: tokens.second, amount: FP_ZERO, recipient });
             await expect(tx).to.be.reverted;
           });
         });
@@ -977,7 +998,7 @@ describe('ComposableStablePool', () => {
 
           function itJoinsExactBPTOutCorrectly() {
             it('fails if not initialized', async () => {
-              await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
+              await expect(pool.singleJoinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('UNINITIALIZED');
             });
 
             context('once initialized', () => {
@@ -989,9 +1010,9 @@ describe('ComposableStablePool', () => {
                 const previousBptBalance = await pool.balanceOf(recipient);
                 const bptOut = pct(previousBptBalance, 0.2);
 
-                await expect(pool.joinGivenOut({ from: recipient, recipient, bptOut, token: 100 })).to.be.revertedWith(
-                  'OUT_OF_BOUNDS'
-                );
+                await expect(
+                  pool.singleJoinGivenOut({ from: recipient, recipient, bptOut, token: 100 })
+                ).to.be.revertedWith('OUT_OF_BOUNDS');
               });
 
               it('grants exact BPT for token in', async () => {
@@ -1000,7 +1021,7 @@ describe('ComposableStablePool', () => {
                 const bptOut = pct(previousBptBalance, 0.2);
                 const expectedAmountIn = await pool.estimateTokenInGivenBptOut(token, bptOut);
 
-                const result = await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+                const result = await pool.singleJoinGivenOut({ from: recipient, recipient, bptOut, token });
 
                 // Only token in should be the one transferred
                 expect(result.amountsIn[tokenIndexWithBpt]).to.be.equalWithError(expectedAmountIn, 0.001);
@@ -1016,12 +1037,12 @@ describe('ComposableStablePool', () => {
                 // 20% of previous balance
                 const bptOut = pct(previousBptBalance, 0.2);
 
-                const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+                const queryResult = await pool.querySingleJoinGivenOut({ recipient, bptOut, token });
 
                 expect(queryResult.bptOut).to.be.equal(bptOut);
                 expect(queryResult.amountsIn.filter((_, i) => i != tokenIndexWithBpt)).to.be.zeros;
 
-                const result = await pool.joinGivenOut({ from: recipient, bptOut, token });
+                const result = await pool.singleJoinGivenOut({ from: recipient, bptOut, token });
                 // Query and join should match exactly
                 expect(result.amountsIn[tokenIndexWithBpt]).to.equal(queryResult.amountsIn[tokenIndexWithBpt]);
               });
@@ -1031,7 +1052,7 @@ describe('ComposableStablePool', () => {
                 // 32.5% of previous balance
                 const bptOut = pct(previousBptBalance, 0.325);
 
-                const queryResult = await pool.queryJoinGivenOut({ recipient, bptOut, token });
+                const queryResult = await pool.querySingleJoinGivenOut({ recipient, bptOut, token });
 
                 const amountIn = await pool.querySwapGivenOut({
                   from: recipient,
@@ -1047,13 +1068,65 @@ describe('ComposableStablePool', () => {
               itStoresThePostInvariantAndAmp(async () => {
                 const previousBptBalance = await pool.balanceOf(recipient);
                 const bptOut = pct(previousBptBalance, 0.2);
-                await pool.joinGivenOut({ from: recipient, recipient, bptOut, token });
+                await pool.singleJoinGivenOut({ from: recipient, recipient, bptOut, token });
               });
 
               it('reverts if paused', async () => {
                 await pool.pause();
 
-                await expect(pool.joinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
+                await expect(pool.singleJoinGivenOut({ bptOut: fp(2), token })).to.be.revertedWith('PAUSED');
+              });
+            });
+          }
+        });
+
+        describe('join all tokens in for exact BPT out', () => {
+          context('not in recovery mode', () => {
+            itJoinsGivenExactBPTOutCorrectly();
+          });
+
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+            });
+
+            itJoinsGivenExactBPTOutCorrectly();
+          });
+
+          function itJoinsGivenExactBPTOutCorrectly() {
+            it('fails if not initialized', async () => {
+              await expect(pool.joinGivenOut({ recipient, bptOut: fp(1) })).to.be.revertedWith('UNINITIALIZED');
+            });
+
+            context('once initialized', () => {
+              let bptOut: BigNumberish;
+              let expectedAmountsIn: BigNumberish[];
+              let previousBptBalance: BigNumberish;
+
+              sharedBeforeEach('initialize pool', async () => {
+                await pool.init({ recipient, initialBalances });
+                bptIndex = await pool.getBptIndex();
+                expectedAmountsIn = initialBalances.map((n, i) => (i != bptIndex ? bn(n).div(3) : 0));
+                previousBptBalance = await pool.balanceOf(recipient);
+
+                bptOut = previousBptBalance.div(3);
+              });
+
+              it('grants tokens for exact BPT', async () => {
+                const result = await pool.joinGivenOut({ bptOut, recipient, from: recipient });
+
+                // Amounts out should be 1/3 the initial balances
+                expect(result.amountsIn).to.equalWithError(expectedAmountsIn, 0.0000001);
+
+                // Make sure received BPT is close to what we expect
+                const currentBptBalance = await pool.balanceOf(recipient);
+                expect(currentBptBalance).to.be.equalWithError(bn(previousBptBalance).add(bptOut), 0.001);
+              });
+
+              it('reverts if paused', async () => {
+                await pool.pause();
+
+                await expect(pool.joinGivenOut({ bptOut })).to.be.revertedWith('PAUSED');
               });
             });
           }
@@ -1274,6 +1347,43 @@ describe('ComposableStablePool', () => {
             });
           }
         });
+
+        describe('exit exact BPT in for all tokens out', () => {
+          context('not in recovery mode', () => {
+            itExitsExactBptInForTokensOutProperly();
+          });
+
+          context('in recovery mode', () => {
+            sharedBeforeEach('enable recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+            });
+
+            itExitsExactBptInForTokensOutProperly();
+          });
+
+          function itExitsExactBptInForTokensOutProperly() {
+            it('grants tokens for exact bpt', async () => {
+              // Request a third of the token balances
+              const expectedAmountsOut = initialBalances.map((balance) => bn(balance).div(3));
+              // Exit with a third of the BPT balance
+              const expectedBptIn = previousBptBalance.div(3);
+
+              const result = await pool.exitGivenIn({ from: lp, bptIn: expectedBptIn });
+
+              // Token balances should been reduced as requested
+              expect(result.amountsOut).to.be.equalWithError(expectedAmountsOut, 0.00001);
+
+              // BPT balance should have been reduced to 2/3 because we are returning 1/3 of the tokens
+              expect(await pool.balanceOf(lp)).to.be.equalWithError(previousBptBalance.sub(expectedBptIn), 0.001);
+            });
+
+            it('reverts if paused', async () => {
+              await pool.pause();
+
+              await expect(pool.exitGivenIn({ from: lp, bptIn: previousBptBalance })).to.be.revertedWith('PAUSED');
+            });
+          }
+        });
       });
     });
 
@@ -1375,7 +1485,7 @@ describe('ComposableStablePool', () => {
               const value = Math.random() / 5;
 
               await rateProviders[i].mockRate(
-                previousCache.rate.mul(Math.random() > 0.5 ? fp(1 + value) : fp(1 - value)).div(fp(1))
+                fpMul(previousCache.rate, Math.random() > 0.5 ? fp(1 + value) : fp(1 - value))
               );
             });
           }
@@ -1390,7 +1500,7 @@ describe('ComposableStablePool', () => {
               expect(actualFactors[tokenIndex]).to.be.equal(expectedScalingFactor);
             });
 
-            expect(newScalingFactors[pool.bptIndex]).to.be.equal(fp(1));
+            expect(newScalingFactors[pool.bptIndex]).to.be.equal(FP_ONE);
           }
 
           sharedBeforeEach('fund lp and pool', async () => {
@@ -1466,9 +1576,9 @@ describe('ComposableStablePool', () => {
             const bptOut = pct(previousBptBalance, 0.18);
 
             const query = async () =>
-              (await pool.queryJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
+              (await pool.querySingleJoinGivenOut({ recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
             const actual = async () =>
-              (await pool.joinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
+              (await pool.singleJoinGivenOut({ from: lp, recipient: lp, bptOut, token })).amountsIn[tokenIndexWithBpt];
 
             await expectScalingFactorsToBeUpdated(query, actual);
           });
@@ -1521,11 +1631,11 @@ describe('ComposableStablePool', () => {
         await deployPool({ swapFeePercentage });
         await pool.vault.setSwapFeePercentage(protocolFeePercentage);
 
-        await pool.updateProtocolFeePercentageCache();
-
         // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
         equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) => (i == bptIndex ? bn(0) : fp(100)));
         await pool.init({ recipient: lp.address, initialBalances: equalBalances });
+
+        await pool.updateProtocolFeePercentageCache();
       });
 
       context('without protocol fees', () => {
@@ -1539,30 +1649,39 @@ describe('ComposableStablePool', () => {
       });
     });
 
-    describe('getRate', () => {
+    describe('getRate and protocol fees', () => {
       const swapFeePercentage = fp(0.1); // 10 %
       const protocolFeePercentage = fp(0.5); // 50 %
 
-      sharedBeforeEach('deploy pool', async () => {
+      sharedBeforeEach('deploy  pool', async () => {
         await deployPool({ swapFeePercentage });
-        await pool.vault.setSwapFeePercentage(protocolFeePercentage);
-
-        await pool.updateProtocolFeePercentageCache();
       });
 
       context('before initialized', () => {
-        it('rate is zero', async () => {
+        it('rate is undefined', async () => {
           await expect(pool.getRate()).to.be.revertedWith('ZERO_DIVISION');
         });
       });
 
       context('once initialized', () => {
+        const initialBalance = fp(100);
+
         sharedBeforeEach('initialize pool', async () => {
           // Init pool with equal balances so that each BPT accounts for approximately one underlying token.
           const equalBalances = Array.from({ length: numberOfTokens + 1 }).map((_, i) =>
-            i == bptIndex ? bn(0) : fp(100)
+            i == bptIndex ? bn(0) : initialBalance
           );
           await pool.init({ recipient: lp.address, initialBalances: equalBalances });
+
+          await tokens.mint({ to: lp, amount: initialBalance.mul(100) });
+          await tokens.approve({ from: lp, to: pool.vault });
+        });
+
+        sharedBeforeEach('set fees', async () => {
+          await pool.vault.setFeeTypePercentage(ProtocolFee.SWAP, protocolFeePercentage);
+          await pool.vault.setFeeTypePercentage(ProtocolFee.YIELD, protocolFeePercentage);
+
+          await pool.updateProtocolFeePercentageCache();
         });
 
         context('without protocol fees', () => {
@@ -1570,35 +1689,235 @@ describe('ComposableStablePool', () => {
             const virtualSupply = await pool.getVirtualSupply();
             const invariant = await pool.estimateInvariant();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+            const expectedRate = fpDiv(invariant, virtualSupply);
 
             const rate = await pool.getRate();
 
-            expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+            expect(rate).to.be.almostEqual(expectedRate, 0.0001);
           });
         });
 
         context('with protocol fees', () => {
-          sharedBeforeEach('swap bpt in', async () => {
-            const amount = fp(50);
-            const tokenIn = pool.bpt;
-            const tokenOut = tokens.second;
+          let feeAmount: BigNumber; // The number of tokens in the Pool that are fees
 
-            await tokens.mint({ to: lp, amount });
-            await tokens.approve({ from: lp, to: pool.vault });
+          function itReportsRateCorrectly() {
+            let unmintedBPT: BigNumber;
 
-            await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient });
+            sharedBeforeEach('compute protocol ownership', async () => {
+              const balanceSum = initialBalance.mul(numberOfTokens).add(feeAmount);
+              const feePercentage = fpDiv(feeAmount, balanceSum);
+              const protocolOwnership = fpMul(feePercentage, protocolFeePercentage);
+
+              // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
+              // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
+              // to the current balances to obtain the final sum.
+              const virtualSupply = await pool.getVirtualSupply();
+
+              // The unminted BPT is supply * protocolOwnership / (1 - protocolOwnership)
+              unmintedBPT = virtualSupply.mul(protocolOwnership).div(fp(1).sub(protocolOwnership));
+            });
+
+            it('the actual supply takes into account unminted protocol fees', async () => {
+              const virtualSupply = await pool.getVirtualSupply();
+              const expectedActualSupply = virtualSupply.add(unmintedBPT);
+
+              expect(await pool.getActualSupply()).to.almostEqual(expectedActualSupply, 1e-6);
+            });
+
+            it('rate takes into account unminted protocol fees', async () => {
+              const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
+                (_, i) => i != bptIndex
+              );
+              const invariant = calculateInvariant(
+                scaledBalances,
+                (await pool.getAmplificationParameter()).value.div(1000)
+              );
+
+              // The virtual supply does not include the unminted protocol fees. We need to adjust it by computing those.
+              // Since all balances are relatively close and the pool is balanced, we can simply add the fee amount
+              // to the current balances to obtain the final sum.
+              const virtualSupply = await pool.getVirtualSupply();
+
+              const actualSupply = virtualSupply.add(unmintedBPT);
+
+              const rateAssumingNoProtocolFees = fpDiv(invariant, virtualSupply);
+              const rateConsideringProtocolFees = fpDiv(invariant, actualSupply);
+
+              // The rate considering fees should be lower. Check that we have a difference of at least 0.01% to discard
+              // rounding error.
+              expect(rateConsideringProtocolFees).to.be.lt(rateAssumingNoProtocolFees.mul(9999).div(10000));
+
+              expect(await pool.getRate()).to.be.almostEqual(rateConsideringProtocolFees, 1e-6);
+            });
+
+            async function expectNoRateChange(action: () => Promise<void>): Promise<void> {
+              const rateBeforeAction = await pool.getRate();
+
+              await action();
+
+              const rateAfterAction = await pool.getRate();
+
+              // There's some minute diference due to rounding error
+              const rateDelta = rateAfterAction.sub(rateBeforeAction);
+              expect(rateDelta.abs()).to.be.lte(2);
+            }
+
+            it('rate does not change due to proportional joins', async () => {
+              await expectNoRateChange(async () => {
+                // Perform a proportional join. These have no swap fees, which means that the rate should remain the same
+                // (even though this triggers a due protocol fee payout).
+
+                // Note that we join with proportional *unscaled* balances - otherwise we'd need to take their different
+                // scaling factors into account.
+                const { balances: unscaledBalances } = await pool.getTokens();
+                const amountsIn = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+                await pool.joinGivenIn({ from: lp, amountsIn });
+              });
+            });
+
+            it('rate does not change due to proportional exits', async () => {
+              await expectNoRateChange(async () => {
+                // Perform a proportional exit. These have no swap fees, which means that the rate should remain the same
+                // (even though this triggers a due protocol fee payout).
+
+                // Note that we exit with proportional *unscaled* balances - otherwise we'd need to take their different
+                // scaling factors into account.
+                const { balances: unscaledBalances } = await pool.getTokens();
+                const amountsOut = unscaledBalances.map((balance, i) => (i == bptIndex ? bn(0) : balance.div(100)));
+                await pool.exitGivenOut({ from: lp, amountsOut });
+              });
+            });
+
+            it('rate increases when enabling recovery mode', async () => {
+              const initialRate = await pool.getRate();
+
+              // When enabling recovery mode, protocol fees are forfeit and the percentages drop to zero. This causes
+              // an increase in the rate, since the BPT's value increases (as it no longer carries any protocol debt).
+              await pool.enableRecoveryMode(admin);
+              const newRate = await pool.getRate();
+
+              expect(newRate).to.be.gt(initialRate);
+
+              // We can compute the new rate by computing the ratio of invariant and total supply, not considering any
+              // due protocol fees (because there should be none).
+              const scaledBalances = arrayFpMul(await pool.getBalances(), await pool.getScalingFactors()).filter(
+                (_, i) => i != bptIndex
+              );
+              const invariant = calculateInvariant(
+                scaledBalances,
+                (await pool.getAmplificationParameter()).value.div(AMP_PRECISION)
+              );
+
+              const virtualSupply = await pool.getVirtualSupply();
+
+              const rateAssumingNoProtocolFees = fpDiv(invariant, virtualSupply);
+
+              expect(newRate).to.be.almostEqual(rateAssumingNoProtocolFees, 1e-6);
+            });
+
+            it('rate does not change when disabling recovery mode', async () => {
+              await pool.enableRecoveryMode(admin);
+
+              await expectNoRateChange(async () => {
+                // Disabling recovery mode should cause no rate changes - fees have already been forfeit when recovery
+                // mode was enabled.
+                await pool.disableRecoveryMode(admin);
+              });
+            });
+
+            function itReactsToProtocolFeePercentageChangesCorrectly(feeType: number) {
+              it('rate does not change on protocol fee update', async () => {
+                await expectNoRateChange(async () => {
+                  // Changing the fee on the providere should cause no changes as the Pool ignores the provider outside
+                  // of cache updates.
+                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+                });
+              });
+
+              it('rate does not change on protocol fee cache update', async () => {
+                await expectNoRateChange(async () => {
+                  // Even though there's due protocol fees, which are a function of the protocol fee percentage, changing
+                  // this value should not change the Pool's rate (to avoid manipulation).
+                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+                  await pool.updateProtocolFeePercentageCache();
+                });
+              });
+
+              it('due protocol fees are minted on protocol fee cache update', async () => {
+                await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+                const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
+
+                const event = expectEvent.inReceipt(receipt, 'Transfer', {
+                  from: ZERO_ADDRESS,
+                  to: (await pool.vault.getFeesCollector()).address,
+                });
+
+                expect(event.args.value).to.be.almostEqual(unmintedBPT, 1e-3);
+              });
+
+              it('repeated protocol fee cache updates do not mint any more fees', async () => {
+                await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+                await pool.updateProtocolFeePercentageCache();
+
+                await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(4));
+                const receipt = await (await pool.updateProtocolFeePercentageCache()).wait();
+
+                expectEvent.notEmitted(receipt, 'Transfer');
+              });
+
+              context('when paused', () => {
+                sharedBeforeEach('pause pool', async () => {
+                  await pool.pause();
+                });
+
+                it('reverts on protocol fee cache updated', async () => {
+                  await pool.vault.setFeeTypePercentage(feeType, protocolFeePercentage.div(2));
+                  await expect(pool.updateProtocolFeePercentageCache()).to.be.revertedWith('PAUSED');
+                });
+              });
+            }
+
+            context('on swap protocol fee change', () => {
+              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.SWAP);
+            });
+
+            context('on yield protocol fee change', () => {
+              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.YIELD);
+            });
+
+            context('on aum protocol fee change', () => {
+              itReactsToProtocolFeePercentageChangesCorrectly(ProtocolFee.AUM);
+            });
+          }
+
+          context('with swap protocol fees', () => {
+            sharedBeforeEach('accrue fees due to a swap', async () => {
+              const amount = initialBalance.div(20);
+              feeAmount = fpMul(amount, swapFeePercentage);
+
+              const tokenIn = tokens.first;
+              const tokenOut = tokens.second;
+              await pool.swapGivenIn({ in: tokenIn, out: tokenOut, amount, from: lp, recipient: lp });
+            });
+
+            itReportsRateCorrectly();
           });
 
-          it('reports correctly', async () => {
-            const virtualSupply = await pool.getVirtualSupply();
-            const invariant = await pool.estimateInvariant();
+          context('with yield protocol fees', () => {
+            sharedBeforeEach('accrue fees due to yield', async () => {
+              // Even tokens are exempt from yield fee, so we cause some on an odd one.
+              const rateProvider = rateProviders[1];
+              const currentRate = await rateProvider.getRate();
 
-            const expectedRate = invariant.mul(FP_SCALING_FACTOR).div(virtualSupply);
+              // Cause a 0.5% (1/200) rate increase
+              const newRate = fpMul(currentRate, fp(1.005));
+              await rateProvider.mockRate(newRate);
+              await pool.updateTokenRateCache(tokens.second);
 
-            const rate = await pool.getRate();
+              feeAmount = fpMul(initialBalance, newRate.sub(currentRate));
+            });
 
-            expect(rate).to.be.equalWithError(expectedRate, 0.0001);
+            itReportsRateCorrectly();
           });
         });
       });
@@ -1745,6 +2064,53 @@ describe('ComposableStablePool', () => {
             itAllowsBothLpsToExit();
           });
         });
+      });
+    });
+
+    describe('permissioned actions', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        await deployPool();
+      });
+
+      function itIsOwnerOnly(method: string) {
+        it(`${method} can only be called by non-delegated owners`, async () => {
+          expect(await pool.instance.isOwnerOnlyAction(await actionId(pool.instance, method))).to.be.true;
+        });
+      }
+
+      function itIsNotOwnerOnly(method: string) {
+        it(`${method} can never be called by the owner`, async () => {
+          expect(await pool.instance.isOwnerOnlyAction(await actionId(pool.instance, method))).to.be.false;
+        });
+      }
+
+      const poolArtifact = getArtifact('v2-pool-stable/MockComposableStablePool');
+      const nonViewFunctions = poolArtifact.abi
+        .filter(
+          (elem) =>
+            elem.type === 'function' && (elem.stateMutability === 'payable' || elem.stateMutability === 'nonpayable')
+        )
+        .map((fn) => fn.name);
+
+      const expectedOwnerOnlyFunctions = [
+        'setSwapFeePercentage',
+        'startAmplificationParameterUpdate',
+        'stopAmplificationParameterUpdate',
+        'setTokenRateCacheDuration',
+      ];
+
+      const expectedNotOwnerOnlyFunctions = nonViewFunctions.filter((fn) => !expectedOwnerOnlyFunctions.includes(fn));
+
+      describe('owner only actions', () => {
+        for (const expectedOwnerOnlyFunction of expectedOwnerOnlyFunctions) {
+          itIsOwnerOnly(expectedOwnerOnlyFunction);
+        }
+      });
+
+      describe('non owner only actions', () => {
+        for (const expectedNotOwnerOnlyFunction of expectedNotOwnerOnlyFunctions) {
+          itIsNotOwnerOnly(expectedNotOwnerOnlyFunction);
+        }
       });
     });
   }

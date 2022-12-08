@@ -22,9 +22,9 @@ import "./BasePool.sol";
 /**
  * @dev Extension of `BasePool`, adding a handler for `IMinimalSwapInfoPool.onSwap`.
  *
- * Derived contracts must call `BasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut` along with
- * `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the Two Token or Minimal
- * Swap Info specialization settings.
+ * Derived contracts must call `BasePool`'s constructor, and implement `_onSwapGivenIn` and `_onSwapGivenOut`
+ * along with `BasePool`'s virtual functions. Inheriting from this contract lets derived contracts choose the
+ * Two Token or Minimal Swap Info specialization settings.
  */
 abstract contract BaseMinimalSwapInfoPool is IMinimalSwapInfoPool, BasePool {
     // Swap Hooks

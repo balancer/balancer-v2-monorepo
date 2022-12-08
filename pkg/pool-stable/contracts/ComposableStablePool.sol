@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/pool-stable/StablePoolUserData.so
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/standalone-utils/IProtocolFeePercentagesProvider.sol";
 import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/math/FixedPoint.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/math/Math.sol";
@@ -26,6 +27,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BaseGeneralPool.sol";
+import "@balancer-labs/v2-pool-utils/contracts/lib/BasePoolMath.sol";
 import "@balancer-labs/v2-pool-utils/contracts/rates/PriceRateCache.sol";
 
 import "./ComposableStablePoolStorage.sol";
@@ -50,6 +52,7 @@ import "./StableMath.sol";
  */
 contract ComposableStablePool is
     IRateProvider,
+    IVersion,
     BaseGeneralPool,
     StablePoolAmplification,
     ComposableStablePoolRates,
@@ -63,6 +66,8 @@ contract ComposableStablePool is
     // The maximum imposed by the Vault, which stores balances in a packed format, is 2**(112) - 1.
     // We are preminting half of that value (rounded up).
     uint256 private constant _PREMINTED_TOKEN_BALANCE = 2**(111);
+
+    string private _version;
 
     // The constructor arguments are received in a struct to work around stack-too-deep issues
     struct NewPoolParams {
@@ -79,6 +84,7 @@ contract ComposableStablePool is
         uint256 pauseWindowDuration;
         uint256 bufferPeriodDuration;
         address owner;
+        string version;
     }
 
     constructor(NewPoolParams memory params)
@@ -97,9 +103,12 @@ contract ComposableStablePool is
         StablePoolAmplification(params.amplificationParameter)
         ComposableStablePoolStorage(_extractStorageParams(params))
         ComposableStablePoolRates(_extractRatesParams(params))
-        ProtocolFeeCache(params.protocolFeeProvider, ProtocolFeeCache.DELEGATE_PROTOCOL_SWAP_FEES_SENTINEL)
+        ProtocolFeeCache(
+            params.protocolFeeProvider,
+            ProviderFeeIDs({ swap: ProtocolFeeType.SWAP, yield: ProtocolFeeType.YIELD, aum: ProtocolFeeType.AUM })
+        )
     {
-        // solhint-disable-previous-line no-empty-blocks
+        _version = params.version;
     }
 
     // Translate parameters to avoid stack-too-deep issues in the constructor
@@ -128,6 +137,10 @@ contract ComposableStablePool is
                 tokenRateProviders: params.rateProviders,
                 exemptFromYieldProtocolFeeFlags: params.exemptFromYieldProtocolFeeFlags
             });
+    }
+
+    function version() external view override returns (string memory) {
+        return _version;
     }
 
     /**
@@ -365,7 +378,7 @@ contract ComposableStablePool is
         uint256[] memory balances,
         uint256 indexIn,
         uint256 currentAmp,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         return
@@ -375,7 +388,7 @@ contract ComposableStablePool is
                     balances,
                     indexIn,
                     currentAmp,
-                    virtualSupply,
+                    actualSupply,
                     preJoinExitInvariant
                 )
                 : _joinSwapExactBptOutForTokenIn(
@@ -383,7 +396,7 @@ contract ComposableStablePool is
                     balances,
                     indexIn,
                     currentAmp,
-                    virtualSupply,
+                    actualSupply,
                     preJoinExitInvariant
                 );
     }
@@ -398,7 +411,7 @@ contract ComposableStablePool is
         uint256[] memory balances,
         uint256 indexIn,
         uint256 currentAmp,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         // The StableMath function was created with joins in mind, so it expects a full amounts array. We create an
@@ -410,13 +423,13 @@ contract ComposableStablePool is
             currentAmp,
             balances,
             amountsIn,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
         balances[indexIn] = balances[indexIn].add(amountIn);
-        uint256 postJoinExitSupply = virtualSupply.add(bptOut);
+        uint256 postJoinExitSupply = actualSupply.add(bptOut);
 
         return (bptOut, postJoinExitSupply);
     }
@@ -431,7 +444,7 @@ contract ComposableStablePool is
         uint256[] memory balances,
         uint256 indexIn,
         uint256 currentAmp,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         uint256 amountIn = StableMath._calcTokenInGivenExactBptOut(
@@ -439,13 +452,13 @@ contract ComposableStablePool is
             balances,
             indexIn,
             bptOut,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
         balances[indexIn] = balances[indexIn].add(amountIn);
-        uint256 postJoinExitSupply = virtualSupply.add(bptOut);
+        uint256 postJoinExitSupply = actualSupply.add(bptOut);
 
         return (amountIn, postJoinExitSupply);
     }
@@ -460,7 +473,7 @@ contract ComposableStablePool is
         uint256[] memory balances,
         uint256 indexOut,
         uint256 currentAmp,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         return
@@ -470,7 +483,7 @@ contract ComposableStablePool is
                     balances,
                     indexOut,
                     currentAmp,
-                    virtualSupply,
+                    actualSupply,
                     preJoinExitInvariant
                 )
                 : _exitSwapExactTokenOutForBptIn(
@@ -478,7 +491,7 @@ contract ComposableStablePool is
                     balances,
                     indexOut,
                     currentAmp,
-                    virtualSupply,
+                    actualSupply,
                     preJoinExitInvariant
                 );
     }
@@ -493,7 +506,7 @@ contract ComposableStablePool is
         uint256[] memory balances,
         uint256 indexOut,
         uint256 currentAmp,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
@@ -501,13 +514,13 @@ contract ComposableStablePool is
             balances,
             indexOut,
             bptAmount,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
         balances[indexOut] = balances[indexOut].sub(amountOut);
-        uint256 postJoinExitSupply = virtualSupply.sub(bptAmount);
+        uint256 postJoinExitSupply = actualSupply.sub(bptAmount);
 
         return (amountOut, postJoinExitSupply);
     }
@@ -522,7 +535,7 @@ contract ComposableStablePool is
         uint256[] memory balances,
         uint256 indexOut,
         uint256 currentAmp,
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant
     ) internal view returns (uint256, uint256) {
         // The StableMath function was created with exits in mind, so it expects a full amounts array. We create an
@@ -534,13 +547,13 @@ contract ComposableStablePool is
             currentAmp,
             balances,
             amountsOut,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
 
         balances[indexOut] = balances[indexOut].sub(amountOut);
-        uint256 postJoinExitSupply = virtualSupply.sub(bptAmount);
+        uint256 postJoinExitSupply = actualSupply.sub(bptAmount);
 
         return (bptAmount, postJoinExitSupply);
     }
@@ -712,7 +725,7 @@ contract ComposableStablePool is
     }
 
     /**
-     * @dev Support single- and multi-token joins, but not explicit proportional joins.
+     * @dev Support single- and multi-token joins, plus explicit proportional joins.
      */
     function _doJoin(
         uint256[] memory balances,
@@ -733,6 +746,8 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
+        } else if (kind == StablePoolUserData.JoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT) {
+            return _joinAllTokensInForExactBptOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.JoinKind.TOKEN_IN_FOR_EXACT_BPT_OUT) {
             return _joinTokenInForExactBPTOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
@@ -741,10 +756,24 @@ contract ComposableStablePool is
     }
 
     /**
+     * @dev Proportional join. Pays no swap fees.
+     */
+    function _joinAllTokensInForExactBptOut(
+        uint256 actualSupply,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private pure returns (uint256, uint256[] memory) {
+        uint256 bptAmountOut = userData.allTokensInForExactBptOut();
+        uint256[] memory amountsIn = BasePoolMath.computeProportionalAmountsIn(balances, actualSupply, bptAmountOut);
+
+        return (bptAmountOut, amountsIn);
+    }
+
+    /**
      * @dev Multi-token join. Joins with proportional amounts will pay no protocol fees.
      */
     function _joinExactTokensInForBPTOut(
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balances,
@@ -761,7 +790,7 @@ contract ComposableStablePool is
             currentAmp,
             balances,
             amountsIn,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
@@ -775,7 +804,7 @@ contract ComposableStablePool is
      * @dev Single-token join, equivalent to swapping a pool token for BPT.
      */
     function _joinTokenInForExactBPTOut(
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balances,
@@ -797,7 +826,7 @@ contract ComposableStablePool is
             balances,
             tokenIndex,
             bptAmountOut,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
@@ -808,8 +837,8 @@ contract ComposableStablePool is
     // Exit Hooks
 
     /**
-     * @dev Support single- and multi-token exits, but not explicit proportional exits, which are
-     * supported through Recovery Mode.
+     * @dev Support single- and multi-token exits, plus explicit proportional exits (in addition to the
+     * recovery mode exit).
      */
     function _doExit(
         uint256[] memory balances,
@@ -830,6 +859,8 @@ contract ComposableStablePool is
                     scalingFactors,
                     userData
                 );
+        } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT) {
+            return _exitExactBPTInForTokensOut(preJoinExitSupply, balances, userData);
         } else if (kind == StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT) {
             return _exitExactBPTInForTokenOut(preJoinExitSupply, preJoinExitInvariant, currentAmp, balances, userData);
         } else {
@@ -838,10 +869,26 @@ contract ComposableStablePool is
     }
 
     /**
+     * @dev Proportional exit. Pays no swap fees. This is functionally equivalent to the recovery mode exit,
+     * except this doesn't skip protocol fee collection, calling rate providers, etc., and doesn't require
+     * recovery mode to be enabled.
+     */
+    function _exitExactBPTInForTokensOut(
+        uint256 actualSupply,
+        uint256[] memory balances,
+        bytes memory userData
+    ) private pure returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.exactBptInForTokensOut();
+        uint256[] memory amountsOut = BasePoolMath.computeProportionalAmountsOut(balances, actualSupply, bptAmountIn);
+
+        return (bptAmountIn, amountsOut);
+    }
+
+    /**
      * @dev Multi-token exit. Proportional exits will pay no protocol fees.
      */
     function _exitBPTInForExactTokensOut(
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balances,
@@ -858,7 +905,7 @@ contract ComposableStablePool is
             currentAmp,
             balances,
             amountsOut,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
@@ -871,7 +918,7 @@ contract ComposableStablePool is
      * @dev Single-token exit, equivalent to swapping BPT for a pool token.
      */
     function _exitExactBPTInForTokenOut(
-        uint256 virtualSupply,
+        uint256 actualSupply,
         uint256 preJoinExitInvariant,
         uint256 currentAmp,
         uint256[] memory balances,
@@ -892,7 +939,7 @@ contract ComposableStablePool is
             balances,
             tokenIndex,
             bptAmountIn,
-            virtualSupply,
+            actualSupply,
             preJoinExitInvariant,
             getSwapFeePercentage()
         );
@@ -900,23 +947,25 @@ contract ComposableStablePool is
         return (bptAmountIn, amountsOut);
     }
 
-    /**
-     * @dev We cannot use the default RecoveryMode implementation here, since we need to account for the BPT token.
-     */
     function _doRecoveryModeExit(
         uint256[] memory registeredBalances,
         uint256,
         bytes memory userData
-    ) internal virtual override returns (uint256, uint256[] memory) {
+    ) internal view override returns (uint256, uint256[] memory) {
         // Since this Pool uses preminted BPT, we need to replace the total supply with the virtual total supply, and
         // adjust the balances array by removing BPT from it.
+        // Note that we don't compute the actual supply, which would require a lot of complex calculations and
+        // interactions with external components. This is fine because virtual and actual supply are the same while
+        // recovery mode is enabled (since all protocol fees are forfeit and the fee percentages zeroed out).
         (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(registeredBalances);
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = super._doRecoveryModeExit(
-            balances,
-            virtualSupply,
-            userData
-        );
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        uint256[] memory amountsOut = new uint256[](balances.length);
+
+        uint256 bptRatio = bptAmountIn.divDown(virtualSupply);
+        for (uint256 i = 0; i < balances.length; i++) {
+            amountsOut[i] = balances[i].mulDown(bptRatio);
+        }
 
         // The vault requires an array including BPT, so add it back in here.
         return (bptAmountIn, _addBptItem(amountsOut, 0));
@@ -925,19 +974,177 @@ contract ComposableStablePool is
     // BPT rate
 
     /**
-     * @dev This function returns the appreciation of one BPT relative to the
-     * underlying tokens. This starts at 1 when the pool is created and grows over time.
-     * Because of preminted BPT, it uses `getVirtualSupply` instead of `totalSupply`.
+     * Many functions require accessing multiple internal values that might at first seem unrelated, but are actually
+     * quite intertwined, and computed at the same time for optimal performance (since calculating some of them also
+     * yields intermediate results useful for other queries). This helper function returns many of these values,
+     * greatly reducing bytecode size.
+     *
+     * The return values are:
+     *  @return balances - The current upscaled token balances (not including BPT)
+     *  @return virtualSupply - The Pool's virtual supply
+     *  @return protocolFeeAmount - The amount of unpaid protocol fees in BPT
+     *  @return lastJoinExitAmp - The Pool's amplification factor at the last join or exit operation
+     *  @return currentInvariantWithLastJoinExitAmp - The invariant of the current balances, calculated using the
+     *  amplification factor at the last join or exit operation.
      */
-    function getRate() public view virtual override returns (uint256) {
-        (, uint256[] memory balancesIncludingBpt, ) = getVault().getPoolTokens(getPoolId());
-        _upscaleArray(balancesIncludingBpt, _scalingFactors());
+    function _getSupplyAndFeesData()
+        private
+        view
+        returns (
+            uint256[] memory balances,
+            uint256 virtualSupply,
+            uint256 protocolFeeAmount,
+            uint256 lastJoinExitAmp,
+            uint256 currentInvariantWithLastJoinExitAmp
+        )
+    {
+        // First we query the Vault for current registered balances (which includes preminted BPT), to then calculate
+        // the current scaled balances and virtual supply.
+        (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(registeredBalances, _scalingFactors());
+        (virtualSupply, balances) = _dropBptItemFromBalances(registeredBalances);
 
-        (uint256 virtualSupply, uint256[] memory balances) = _dropBptItemFromBalances(balancesIncludingBpt);
+        // Now we need to calculate any BPT due in the form of protocol fees. This requires data from the last join or
+        // exit operation. `lastJoinExitAmp` can be useful in the scenario in which the amplification factor has not
+        // changed, meaning this old value is equal to the current value.
+        uint256 lastPostJoinExitInvariant;
+        (lastJoinExitAmp, lastPostJoinExitInvariant) = getLastJoinExitData();
 
+        // Computing the protocol ownership percentage also yields the invariant using the old amplification factor. If
+        // it has not changed, then this is also the current invariant.
+        uint256 expectedProtocolOwnershipPercentage;
+        (
+            expectedProtocolOwnershipPercentage,
+            currentInvariantWithLastJoinExitAmp
+        ) = _getProtocolPoolOwnershipPercentage(balances, lastJoinExitAmp, lastPostJoinExitInvariant);
+
+        protocolFeeAmount = ExternalFees.bptForPoolOwnershipPercentage(
+            virtualSupply,
+            expectedProtocolOwnershipPercentage
+        );
+    }
+
+    /**
+     * @dev This function returns the appreciation of BPT relative to the underlying tokens, as an 18 decimal fixed
+     * point number. It is simply the ratio of the invariant to the BPT supply.
+     *
+     * The total supply is initialized to equal the invariant, so this value starts at one. During Pool operation the
+     * invariant always grows and shrinks either proportionally to the total supply (in scenarios with no price impact,
+     * e.g. proportional joins), or grows faster and shrinks more slowly than it (whenever swap fees are collected or
+     * the token rates increase). Therefore, the rate is a monotonically increasing function.
+     *
+     * WARNING: since this function reads balances directly from the Vault, it is potentially subject to manipulation
+     * via reentrancy. However, this can only happen if one of the tokens in the Pool contains some form of callback
+     * behavior in the `transferFrom` function (like ERC777 tokens do). These tokens are strictly incompatible with the
+     * Vault and Pool design, and are not safe to be used.
+     */
+    function getRate() external view virtual override returns (uint256) {
+        // We need to compute the current invariant and actual total supply. The latter includes protocol fees that have
+        // accrued but are not yet minted: in calculating these we'll actually end up fetching most of the data we need
+        // for the invariant.
+
+        (
+            uint256[] memory balances,
+            uint256 virtualSupply,
+            uint256 protocolFeeAmount,
+            uint256 lastJoinExitAmp,
+            uint256 currentInvariantWithLastJoinExitAmp
+        ) = _getSupplyAndFeesData();
+
+        // Due protocol fees will be minted at the next join or exit, so we can simply add them to the current virtual
+        // supply to get the actual supply.
+        uint256 actualTotalSupply = virtualSupply.add(protocolFeeAmount);
+
+        // All that's missing now is the invariant. We have the balances required to calculate it already, but still
+        // need the current amplification factor.
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
-        return StableMath._getRate(balances, currentAmp, virtualSupply);
+        // It turns out that the process for due protocol fee calculation involves computing the current invariant,
+        // except using the amplification factor at the last join or exit. This would typically not be terribly useful,
+        // but since the amplification factor only changes rarely there is high probability of its current value being
+        // the same as it was in the last join or exit. If that is the case, then we can skip the costly invariant
+        // computation altogether.
+        uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
+            ? currentInvariantWithLastJoinExitAmp
+            : StableMath._calculateInvariant(currentAmp, balances);
+
+        // With the current invariant and actual total supply, we can compute the rate as a fixed-point number.
+        return currentInvariant.divDown(actualTotalSupply);
+    }
+
+    /**
+     * @dev Returns the effective BPT supply.
+     *
+     * In other pools, this would be the same as `totalSupply`, but there are two key differences here:
+     *  - this pool pre-mints BPT and holds it in the Vault as a token, and as such we need to subtract the Vault's
+     *    balance to get the total "circulating supply". This is called the 'virtualSupply'.
+     *  - the Pool owes debt to the Protocol in the form of unminted BPT, which will be minted immediately before the
+     *    next join or exit. We need to take these into account since, even if they don't yet exist, they will
+     *    effectively be included in any Pool operation that involves BPT.
+     *
+     * In the vast majority of cases, this function should be used instead of `totalSupply()`.
+     */
+    function getActualSupply() external view returns (uint256) {
+        (, uint256 virtualSupply, uint256 protocolFeeAmount, , ) = _getSupplyAndFeesData();
+        return virtualSupply.add(protocolFeeAmount);
+    }
+
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        // The `getRate()` function depends on the actual supply, which in turn depends on the cached protocol fee
+        // percentages. Changing these would therefore result in the rate changing, which is not acceptable as this is a
+        // sensitive value.
+        // Because of this, we pay any due protocol fees *before* updating the cache, making it so that the new
+        // percentages only affect future operation of the Pool, and not past fees. As a result, `getRate()` is
+        // unaffected by the cached protocol fee percentages changing.
+
+        // Given that this operation is state-changing and relatively complex, we only allow it as long as the Pool is
+        // not paused.
+        _ensureNotPaused();
+
+        // We need to calculate the amount of unminted BPT that represents protocol fees to then pay those. This yields
+        // some auxiliary values that turn out to also be useful for the rest of the tasks we want to perform.
+        (
+            uint256[] memory balances,
+            ,
+            uint256 protocolFeeAmount,
+            uint256 lastJoinExitAmp,
+            uint256 currentInvariantWithLastJoinExitAmp
+        ) = _getSupplyAndFeesData();
+
+        _payProtocolFees(protocolFeeAmount);
+
+        // With the fees paid, we now need to calculate the current invariant so we can store it alongside the current
+        // amplification factor, marking the Pool as free of protocol debt.
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        // It turns out that the process for due protocol fee calculation involves computing the current invariant,
+        // except using the amplification factor at the last join or exit. This would typically not be terribly useful,
+        // but since the amplification factor only changes rarely there is high probability of its current value being
+        // the same as it was in the last join or exit. If that is the case, then we can skip the costly invariant
+        // computation altogether.
+        uint256 currentInvariant = (currentAmp == lastJoinExitAmp)
+            ? currentInvariantWithLastJoinExitAmp
+            : StableMath._calculateInvariant(currentAmp, balances);
+
+        _updatePostJoinExit(currentAmp, currentInvariant);
+    }
+
+    function _onDisableRecoveryMode() internal override {
+        // Enabling recovery mode short-circuits protocol fee computations, forcefully returning a zero percentage,
+        // increasing the return value of `getRate()` and effectively forfeiting due protocol fees.
+
+        // Therefore, when exiting recovery mode we store the current invariant and the amplification factor used to
+        // compute it, marking the Pool as free of protocol debt. Otherwise it'd be possible for debt to be
+        // retroactively accrued, which would be incorrect and could lead to the value of `getRate` decreasing.
+
+        (, uint256[] memory registeredBalances, ) = getVault().getPoolTokens(getPoolId());
+        _upscaleArray(registeredBalances, _scalingFactors());
+        uint256[] memory balances = _dropBptItem(registeredBalances);
+
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+        uint256 currentInvariant = StableMath._calculateInvariant(currentAmp, balances);
+
+        _updatePostJoinExit(currentAmp, currentInvariant);
     }
 
     // Helpers

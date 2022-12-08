@@ -31,7 +31,7 @@ import "@balancer-labs/v2-solidity-utils/contracts/helpers/Authentication.sol";
 abstract contract BasePoolAuthorization is Authentication {
     address private immutable _owner;
 
-    address private constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
+    address internal constant _DELEGATE_OWNER = 0xBA1BA1ba1BA1bA1bA1Ba1BA1ba1BA1bA1ba1ba1B;
 
     constructor(address owner) {
         _owner = owner;
@@ -55,7 +55,9 @@ abstract contract BasePoolAuthorization is Authentication {
         }
     }
 
-    function _isOwnerOnlyAction(bytes32 actionId) internal view virtual returns (bool);
+    function _isOwnerOnlyAction(bytes32) internal view virtual returns (bool) {
+        return false;
+    }
 
     function _getAuthorizer() internal view virtual returns (IAuthorizer);
 }

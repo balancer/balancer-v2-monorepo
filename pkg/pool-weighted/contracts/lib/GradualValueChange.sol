@@ -28,37 +28,34 @@ library GradualValueChange {
         uint256 startTime,
         uint256 endTime
     ) internal view returns (uint256) {
-        uint256 pctProgress = _calculateValueChangeProgress(startTime, endTime);
+        uint256 pctProgress = calculateValueChangeProgress(startTime, endTime);
 
-        return _interpolateValue(startValue, endValue, pctProgress);
+        return interpolateValue(startValue, endValue, pctProgress);
     }
 
     function resolveStartTime(uint256 startTime, uint256 endTime) internal view returns (uint256 resolvedStartTime) {
         // If the start time is in the past, "fast forward" to start now
         // This avoids discontinuities in the value curve. Otherwise, if you set the start/end times with
         // only 10% of the period in the future, the value would immediately jump 90%
-        uint256 currentTime = block.timestamp;
-        resolvedStartTime = Math.max(currentTime, startTime);
+        resolvedStartTime = Math.max(block.timestamp, startTime);
 
         _require(resolvedStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
     }
 
-    // Private functions
-
-    function _interpolateValue(
+    function interpolateValue(
         uint256 startValue,
         uint256 endValue,
         uint256 pctProgress
-    ) private pure returns (uint256) {
-        if (pctProgress == 0 || startValue == endValue) return startValue;
-        if (pctProgress >= FixedPoint.ONE) return endValue;
+    ) internal pure returns (uint256) {
+        if (pctProgress >= FixedPoint.ONE || startValue == endValue) return endValue;
+        if (pctProgress == 0) return startValue;
 
         if (startValue > endValue) {
             uint256 delta = pctProgress.mulDown(startValue - endValue);
-            return startValue.sub(delta);
+            return startValue - delta;
         } else {
             uint256 delta = pctProgress.mulDown(endValue - startValue);
-            return startValue.add(delta);
+            return startValue + delta;
         }
     }
 
@@ -66,20 +63,18 @@ library GradualValueChange {
      * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function _calculateValueChangeProgress(uint256 startTime, uint256 endTime) private view returns (uint256) {
-        uint256 currentTime = block.timestamp;
-
-        if (currentTime > endTime) {
+    function calculateValueChangeProgress(uint256 startTime, uint256 endTime) internal view returns (uint256) {
+        if (block.timestamp >= endTime) {
             return FixedPoint.ONE;
-        } else if (currentTime < startTime) {
+        } else if (block.timestamp <= startTime) {
             return 0;
         }
 
-        // No need for SafeMath as it was checked right above: endTime >= currentTime >= startTime
+        // No need for SafeMath as it was checked right above: endTime > block.timestamp > startTime
         uint256 totalSeconds = endTime - startTime;
-        uint256 secondsElapsed = currentTime - startTime;
+        uint256 secondsElapsed = block.timestamp - startTime;
 
-        // In the degenerate case of a zero duration change, consider it completed (and avoid division by zero)
-        return totalSeconds == 0 ? FixedPoint.ONE : secondsElapsed.divDown(totalSeconds);
+        // We don't need to consider zero division here as this is covered above.
+        return secondsElapsed.divDown(totalSeconds);
     }
 }

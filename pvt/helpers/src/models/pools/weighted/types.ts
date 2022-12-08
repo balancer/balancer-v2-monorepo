@@ -12,19 +12,20 @@ export enum WeightedPoolType {
   WEIGHTED_POOL = 0,
   LIQUIDITY_BOOTSTRAPPING_POOL,
   MANAGED_POOL,
+  MOCK_MANAGED_POOL,
+  MOCK_MANAGED_POOL_SETTINGS,
 }
 
 export type RawWeightedPoolDeployment = {
   tokens?: TokenList;
   weights?: BigNumberish[];
+  rateProviders?: Account[];
   assetManagers?: string[];
   swapFeePercentage?: BigNumberish;
   pauseWindowDuration?: BigNumberish;
   bufferPeriodDuration?: BigNumberish;
   swapEnabledOnStart?: boolean;
   mustAllowlistLPs?: boolean;
-  protocolSwapFeePercentage?: BigNumberish;
-  managementSwapFeePercentage?: BigNumberish;
   managementAumFeePercentage?: BigNumberish;
   aumProtocolFeesCollector?: string;
   owner?: Account;
@@ -33,11 +34,16 @@ export type RawWeightedPoolDeployment = {
   vault?: Vault;
   fromFactory?: boolean;
   poolType?: WeightedPoolType;
+  aumFeeId?: BigNumberish;
+  mockContractName?: string;
+  factoryVersion?: string;
+  poolVersion?: string;
 };
 
 export type WeightedPoolDeployment = {
   tokens: TokenList;
   weights: BigNumberish[];
+  rateProviders: Account[];
   assetManagers: string[];
   swapFeePercentage: BigNumberish;
   pauseWindowDuration: BigNumberish;
@@ -45,10 +51,11 @@ export type WeightedPoolDeployment = {
   poolType: WeightedPoolType;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  protocolSwapFeePercentage: BigNumberish;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
   aumProtocolFeesCollector: string;
+  factoryVersion: string;
+  poolVersion: string;
+  aumFeeId?: BigNumberish;
   owner?: string;
   admin?: SignerWithAddress;
   from?: SignerWithAddress;
@@ -198,18 +205,24 @@ export type ManagedPoolRights = {
   canSetCircuitBreakers: boolean;
   canChangeTokens: boolean;
   canChangeMgmtFees: boolean;
+  canDisableJoinExit: boolean;
 };
 
 export type ManagedPoolParams = {
-  name: string;
-  symbol: string;
   tokens: string[];
   normalizedWeights: BigNumberish[];
-  assetManagers: string[];
   swapFeePercentage: BigNumberish;
   swapEnabledOnStart: boolean;
   mustAllowlistLPs: boolean;
-  protocolSwapFeePercentage: BigNumberish;
-  managementSwapFeePercentage: BigNumberish;
   managementAumFeePercentage: BigNumberish;
+  aumFeeId: BigNumberish;
+};
+
+export type CircuitBreakerState = {
+  bptPrice: BigNumber;
+  referenceWeight: BigNumber;
+  lowerBound: BigNumber;
+  upperBound: BigNumber;
+  lowerBptPriceBound: BigNumber;
+  upperBptPriceBound: BigNumber;
 };

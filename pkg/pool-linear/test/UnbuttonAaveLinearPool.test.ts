@@ -32,7 +32,7 @@ export const setupWrappedTokens = async (w1Rate: BigNumberish, w2Rate: BigNumber
   const mainToken = await Token.deployedAt(wamplContract.address);
   await wamplContract.connect(deployer).mint(fp(1));
 
-  const aaveAMPLContract = await await deploy('MockAaveAMPLToken', {
+  const aaveAMPLContract = await deploy('MockAaveAMPLToken', {
     args: [ampl.address, 'Mock Aave Ampleforth', 'aAMPL'],
   });
   await ampl.approve(aaveAMPLContract.address, MAX_UINT256, { from: deployerAddress });
@@ -127,7 +127,7 @@ describe('UnbuttonAaveLinearPool', function () {
       const mainToken = await Token.deployedAt(wDAI.address);
       await wDAI.connect(deployer).mint(amplFP(1));
 
-      const aaveAMPLContract = await await deploy('MockAaveAMPLToken', {
+      const aaveAMPLContract = await deploy('MockAaveAMPLToken', {
         args: [ampl.address, 'Mock Aave Ampleforth', 'aAMPL'],
       });
       await ampl.approve(aaveAMPLContract.address, MAX_UINT256, { from: deployerAddress });
