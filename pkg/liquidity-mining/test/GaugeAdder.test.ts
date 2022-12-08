@@ -10,10 +10,6 @@ import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { GaugeType } from '@balancer-labs/balancer-js/src/types';
 import { fp } from '@balancer-labs/v2-helpers/src/numbers';
-<<<<<<< HEAD
-import { GaugeType } from '@balancer-labs/balancer-js/src/types';
-=======
->>>>>>> deployments/gauge-adder-v3
 
 describe('GaugeAdder', () => {
   let vault: Vault;
