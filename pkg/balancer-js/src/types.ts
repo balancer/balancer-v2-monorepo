@@ -53,6 +53,18 @@ export type BatchSwap = {
   deadline: BigNumberish;
 };
 
+export type SwapRequest = {
+  kind: SwapKind;
+  tokenIn: string;
+  tokenOut: string;
+  amount: BigNumberish;
+  poolId: string;
+  lastChangeBlock: BigNumberish;
+  from: string;
+  to: string;
+  userData: string;
+};
+
 // Joins
 
 export type JoinPoolRequest = {
@@ -100,3 +112,16 @@ export type PoolBalanceOp = {
   token: string;
   amount: BigNumberish;
 };
+
+// Stakeless gauges
+
+export enum GaugeType {
+  LiquidityMiningCommittee = 0,
+  veBAL,
+  Ethereum,
+  Polygon,
+  Arbitrum,
+  Optimism,
+  Gnosis,
+  ZkSync,
+}

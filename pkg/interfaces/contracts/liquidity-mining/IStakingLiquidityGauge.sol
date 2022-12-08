@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
 import "../solidity-utils/openzeppelin/IERC20.sol";
@@ -25,7 +25,7 @@ import "./IRewardTokenDistributor.sol";
 // solhint-disable func-name-mixedcase, var-name-mixedcase
 
 interface IStakingLiquidityGauge is IRewardTokenDistributor, ILiquidityGauge, IERC20 {
-    function initialize(address lpToken) external;
+    function initialize(address lpToken, uint256 relativeWeightCap) external;
 
     function lp_token() external view returns (IERC20);
 

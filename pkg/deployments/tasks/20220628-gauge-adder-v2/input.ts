@@ -9,8 +9,11 @@ const GaugeAdder = new Task('20220325-gauge-adder', TaskMode.READ_ONLY);
 const GaugeController = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
 
 export default {
+  GaugeController,
   mainnet: {
-    GaugeController,
     PreviousGaugeAdder: GaugeAdder.output({ network: 'mainnet' }).GaugeAdder,
+  },
+  goerli: {
+    PreviousGaugeAdder: GaugeAdder.output({ network: 'goerli' }).GaugeAdder,
   },
 };

@@ -1,11 +1,12 @@
 import { BigNumber, ContractReceipt } from 'ethers';
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 
 import { BigNumberish, bn } from './numbers';
 
+import { time } from '@nomicfoundation/hardhat-network-helpers';
+
 export const currentTimestamp = async (): Promise<BigNumber> => {
-  const { timestamp } = await network.provider.send('eth_getBlockByNumber', ['latest', true]);
-  return bn(timestamp);
+  return bn(await time.latest());
 };
 
 export const currentWeekTimestamp = async (): Promise<BigNumber> => {
@@ -18,20 +19,18 @@ export const fromNow = async (seconds: number): Promise<BigNumber> => {
 };
 
 export const advanceTime = async (seconds: BigNumberish): Promise<void> => {
-  await ethers.provider.send('evm_increaseTime', [parseInt(seconds.toString())]);
-  await ethers.provider.send('evm_mine', []);
+  await time.increase(seconds);
 };
 
 export const advanceToTimestamp = async (timestamp: BigNumberish): Promise<void> => {
-  await setNextBlockTimestamp(timestamp);
-  await ethers.provider.send('evm_mine', []);
+  await time.increaseTo(timestamp);
 };
 
 export const setNextBlockTimestamp = async (timestamp: BigNumberish): Promise<void> => {
-  await ethers.provider.send('evm_setNextBlockTimestamp', [parseInt(timestamp.toString())]);
+  await time.setNextBlockTimestamp(timestamp);
 };
 
-export const lastBlockNumber = async (): Promise<number> => Number(await network.provider.send('eth_blockNumber'));
+export const lastBlockNumber = async (): Promise<number> => await time.latestBlock();
 
 export const receiptTimestamp = async (receipt: ContractReceipt | Promise<ContractReceipt>): Promise<number> => {
   const blockHash = (await receipt).blockHash;

@@ -41,6 +41,14 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
         return _poolId;
     }
 
+    function getSwapFeePercentage() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function getScalingFactors() external pure override returns (uint256[] memory) {
+        return new uint256[](0);
+    }
+
     function registerTokens(IERC20[] memory tokens, address[] memory assetManagers) external {
         _vault.registerTokens(_poolId, tokens, assetManagers);
     }
@@ -143,5 +151,29 @@ contract MockPool is IGeneralPool, IMinimalSwapInfoPool {
             swapRequest.kind == IVault.SwapKind.GIVEN_IN
                 ? swapRequest.amount.mulDown(_multiplier)
                 : swapRequest.amount.divDown(_multiplier);
+    }
+
+    function queryJoin(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory) {
+        return (0, new uint256[](0));
+    }
+
+    function queryExit(
+        bytes32,
+        address,
+        address,
+        uint256[] memory,
+        uint256,
+        uint256,
+        bytes memory
+    ) external pure override returns (uint256, uint256[] memory) {
+        return (0, new uint256[](0));
     }
 }

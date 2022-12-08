@@ -15,6 +15,10 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
+import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/TemporarilyPausable.sol";
+
 /**
  * @dev Utility to create Pool factories for Pools that use the `TemporarilyPausable` contract.
  *
@@ -25,15 +29,32 @@ contract FactoryWidePauseWindow {
     // This contract relies on timestamps in a similar way as `TemporarilyPausable` does - the same caveats apply.
     // solhint-disable not-rely-on-time
 
-    uint256 private constant _INITIAL_PAUSE_WINDOW_DURATION = 90 days;
-    uint256 private constant _BUFFER_PERIOD_DURATION = 30 days;
+    uint256 private immutable _initialPauseWindowDuration;
+    uint256 private immutable _bufferPeriodDuration;
 
     // Time when the pause window for all created Pools expires, and the pause window duration of new Pools becomes
     // zero.
     uint256 private immutable _poolsPauseWindowEndTime;
 
-    constructor() {
-        _poolsPauseWindowEndTime = block.timestamp + _INITIAL_PAUSE_WINDOW_DURATION;
+    constructor(uint256 initialPauseWindowDuration, uint256 bufferPeriodDuration) {
+        // New pools will check on deployment that the durations given are within the bounds specified by
+        // `TemporarilyPausable`. Since it is now possible for a factory to pass in arbitrary values here,
+        // pre-emptively verify that these durations are valid for pool creation.
+        // (Otherwise, you would be able to deploy a useless factory where `create` would always revert.)
+
+        _require(
+            initialPauseWindowDuration <= PausableConstants.MAX_PAUSE_WINDOW_DURATION,
+            Errors.MAX_PAUSE_WINDOW_DURATION
+        );
+        _require(
+            bufferPeriodDuration <= PausableConstants.MAX_BUFFER_PERIOD_DURATION,
+            Errors.MAX_BUFFER_PERIOD_DURATION
+        );
+
+        _initialPauseWindowDuration = initialPauseWindowDuration;
+        _bufferPeriodDuration = bufferPeriodDuration;
+
+        _poolsPauseWindowEndTime = block.timestamp + initialPauseWindowDuration;
     }
 
     /**
@@ -50,7 +71,7 @@ contract FactoryWidePauseWindow {
             // to a potential emergency. The Pause Window duration however decreases as the end time approaches.
 
             pauseWindowDuration = _poolsPauseWindowEndTime - currentTime; // No need for checked arithmetic.
-            bufferPeriodDuration = _BUFFER_PERIOD_DURATION;
+            bufferPeriodDuration = _bufferPeriodDuration;
         } else {
             // After the end time, newly created Pools have no Pause Window, nor Buffer Period (since they are not
             // pausable in the first place).

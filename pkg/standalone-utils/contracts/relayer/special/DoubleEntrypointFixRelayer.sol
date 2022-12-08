@@ -23,8 +23,6 @@ import "@balancer-labs/v2-interfaces/contracts/vault/IFlashLoanRecipient.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/helpers/ERC20Helpers.sol";
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title DoubleEntrypointFixRelayer
  * @notice This contract performs mitigations to safeguard funds affected by double-entrypoint tokens (mostly Synthetix
@@ -33,8 +31,11 @@ import "hardhat/console.sol";
 contract DoubleEntrypointFixRelayer is IFlashLoanRecipient {
     using SafeERC20 for IERC20;
 
+    // solhint-disable const-name-snakecase
     IERC20 public constant BTC_STABLE_POOL_ADDRESS = IERC20(0xFeadd389a5c427952D8fdb8057D6C8ba1156cC56);
     bytes32 public constant BTC_STABLE_POOL_ID = 0xfeadd389a5c427952d8fdb8057d6c8ba1156cc56000000000000000000000066;
+
+    // solhint-disable const-name-snakecase
     IERC20 public constant wBTC = IERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
     IERC20 public constant renBTC = IERC20(0xEB4C2781e4ebA804CE9a9803C67d0893436bB27D);
     IERC20 public constant sBTC = IERC20(0xfE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6);
@@ -45,6 +46,10 @@ contract DoubleEntrypointFixRelayer is IFlashLoanRecipient {
     IERC20 public constant SNX = IERC20(0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F);
     IERC20 public constant WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     IERC20 public constant SNX_IMPLEMENTATION = IERC20(0x639032d3900875a4cf4960aD6b9ee441657aA93C);
+    // solhint-enable const-name-snakecase
+
+    // This was removed from the StablePoolEncoder along with StablePool.
+    uint256 private constant _STABLE_POOL_EXIT_KIND_EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 
     IVault private immutable _vault;
     IProtocolFeesCollector private immutable _protocolFeeCollector;
@@ -76,7 +81,7 @@ contract DoubleEntrypointFixRelayer is IFlashLoanRecipient {
         _withdrawFromProtocolFeeCollector(sBTC, sBTC.balanceOf(address(_protocolFeeCollector)));
 
         // Perform the exit.
-        bytes memory userData = abi.encode(StablePoolUserData.ExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
+        bytes memory userData = abi.encode(_STABLE_POOL_EXIT_KIND_EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn);
         IVault.ExitPoolRequest memory request = IVault.ExitPoolRequest(
             _asIAsset(tokens),
             new uint256[](tokens.length),

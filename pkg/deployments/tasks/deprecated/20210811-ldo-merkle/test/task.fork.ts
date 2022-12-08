@@ -1,31 +1,30 @@
 import hre, { ethers } from 'hardhat';
-import { Contract, BigNumber, utils } from 'ethers';
+import { Contract, BigNumber } from 'ethers';
 
 import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
-import { MerkleTree } from '@balancer-labs/v2-distributors/lib/merkleTree';
-import { deploy } from '@balancer-labs/v2-helpers/src/contract';
+import { MerkleTree } from '@balancer-labs/v2-helpers/src/merkleTree';
 
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { getSigner, impersonate } from '../../../../src/signers';
 import { MAX_UINT256 } from '@balancer-labs/v2-helpers/src/constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 function encodeElement(address: string, balance: BigNumber): string {
   return ethers.utils.solidityKeccak256(['address', 'uint'], [address, balance]);
 }
 
-describe('MerkleRedeem', function () {
+describeForkTest('MerkleRedeem', 'mainnet', 14850000, function () {
   let lp: SignerWithAddress, other: SignerWithAddress, whale: SignerWithAddress;
   let distributor: Contract, token: Contract;
 
-  const task = new Task('20210811-ldo-merkle', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const LDO_TOKEN_ADDRESS = '0x5a98fcbea516cf06857215779fd812ca3bef1b32'; // LDO
   const LDO_WHALE_ADDRESS = '0x3e40d73eb977dc6a537af587d48316fee66e9c8c';
 
   before('run task', async () => {
+    task = new Task('20210811-ldo-merkle', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     distributor = await task.instanceAt('MerkleRedeem', task.output().MerkleRedeem);
   });
@@ -65,18 +64,6 @@ describe('MerkleRedeem', function () {
 
       await distributor.connect(lp).claimWeek(lp.address, bn(1), fp(66), proof);
       expectEqualWithError(await token.balanceOf(lp.address), fp(66), fp(1));
-    });
-
-    it('can claim a reward to a callback', async () => {
-      await distributor.connect(whale).seedAllocations(bn(2), root, fp(100));
-
-      const calldata = utils.defaultAbiCoder.encode([], []);
-      const callbackContract = await deploy('v2-distributors/MockRewardCallback', { args: [] });
-
-      const claims = [{ week: bn(2), balance: fp(66), merkleProof: proof }];
-
-      await distributor.connect(lp).claimWeeksWithCallback(lp.address, callbackContract.address, calldata, claims);
-      expectEqualWithError(await token.balanceOf(callbackContract.address), fp(66), fp(1));
     });
   });
 });

@@ -22,13 +22,24 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v2-interfaces`](./pkg/interfaces): Solidity interfaces for all contracts.
 - [`v2-vault`](./pkg/vault): the [`Vault`](./pkg/vault/contracts/Vault.sol) contract and all core interfaces, including [`IVault`](./pkg/vault/contracts/interfaces/IVault.sol) and the Pool interfaces: [`IBasePool`](./pkg/vault/contracts/interfaces/IBasePool.sol), [`IGeneralPool`](./pkg/vault/contracts/interfaces/IGeneralPool.sol) and [`IMinimalSwapInfoPool`](./pkg/vault/contracts/interfaces/IMinimalSwapInfoPool.sol).
 - [`v2-pool-weighted`](./pkg/pool-weighted): the [`WeightedPool`](./pkg/pool-weighted/contracts/WeightedPool.sol), [`WeightedPool2Tokens`](./pkg/pool-weighted/contracts/WeightedPool2Tokens.sol) and [`LiquidityBootstrappingPool`](./pkg/pool-weighted/contracts/smart/LiquidityBootstrappingPool.sol) contracts, along with their associated factories.
-- [`v2-pool-stable`](./pkg/pool-stable): the [`StablePool`](./pkg/pool-weighted/contracts/StablePool.sol) contract, along with its associated factory.
 - [`v2-pool-linear`](./pkg/pool-linear): the [`AaveLinearPool`](./pkg/pool-linear/contracts/aave/AaveLinearPool.sol) and [`ERC4626LinearPool`](./pkg/pool-linear/contracts/erc4626/ERC4626LinearPool.sol) contracts, along with their associated factories.
 - [`v2-pool-utils`](./pkg/pool-utils): Solidity utilities used to develop Pool contracts.
 - [`v2-solidity-utils`](./pkg/solidity-utils): miscellaneous Solidity helpers and utilities used in many different contracts.
 - [`v2-standalone-utils`](./pkg/standalone-utils): miscellaneous standalone utility contracts.
 - [`v2-liquidity-mining`](./pkg/liquidity-mining): contracts that compose the liquidity mining (veBAL) system.
 - [`v2-governance-scripts`](./pkg/governance-scripts): contracts that execute complex governance actions.
+
+## Pre-requisites
+
+The build & test instructions below should work out of the box with Node ^14.18.0. (Please note that it needs Node 14 specifically, and will NOT work with Node 16 or higher. Minor version should be at least 18).
+
+## Clone
+
+This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
+
+```bash
+$ git clone --recurse-submodules https://github.com/balancer-labs/balancer-v2-monorepo.git
+```
 
 ## Build and Test
 
@@ -56,11 +67,27 @@ $ yarn test
 
 You can see a sample report of a test run [here](./audits/test-report.md).
 
+### Foundry (Forge) tests
+
+To run Forge tests, first [install Foundry](https://book.getfoundry.sh/getting-started/installation). The installation steps below apply to Linux or MacOS. Follow the link for additional options.
+
+```bash
+$ curl -L https://foundry.paradigm.xyz | bash
+$ source ~/.bashrc # or open a new terminal
+$ foundryup
+```
+
+Then, to run tests in a single package, run:
+```bash
+$ cd pkg/<package> # e.g. cd pkg/v2-vault
+$ yarn test-fuzz
+```
+
 ## Security
 
 Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the [`audits`](./audits) directory.
 
-Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs.balancer.fi/core-concepts/security/bug-bounties) to learn more.
+Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs.balancer.fi/core-concepts/security/bug-bounties) to learn more. Alternatively, send an email to security@balancer.finance.
 
 All core smart contracts are immutable, and cannot be upgraded. See page 6 of the [Trail of Bits audit](https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/audits/trail-of-bits/2021-04-05.pdf):
 

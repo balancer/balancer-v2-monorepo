@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
@@ -13,6 +13,7 @@ import LinearPool from '@balancer-labs/v2-helpers/src/models/pools/linear/Linear
 
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
+import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 
 describe('ERC4626LinearPool', function () {
   let pool: LinearPool, tokens: TokenList, token: Token, rebasingYieldToken: Token, wrappedYieldToken: Token;
@@ -21,6 +22,9 @@ describe('ERC4626LinearPool', function () {
   let trader: SignerWithAddress, lp: SignerWithAddress, owner: SignerWithAddress;
 
   const POOL_SWAP_FEE_PERCENTAGE = fp(0.01);
+
+  const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
+  const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
   before('setup', async () => {
     [, lp, trader, owner] = await ethers.getSigners();
@@ -42,7 +46,7 @@ describe('ERC4626LinearPool', function () {
   sharedBeforeEach('deploy pool factory', async () => {
     const vault = await Vault.create();
     poolFactory = await deploy('ERC4626LinearPoolFactory', {
-      args: [vault.address],
+      args: [vault.address, vault.getFeesProvider().address, BASE_PAUSE_WINDOW_DURATION, BASE_BUFFER_PERIOD_DURATION],
     });
   });
 
@@ -67,7 +71,7 @@ describe('ERC4626LinearPool', function () {
     it('returns expected value for 1:1 exchange', async () => {
       // Exchange rate is 1:1, scaled to 1e18 regardless of token decimals
       await wrappedYieldTokenInstance.setRate(bn(1e18));
-      expect(await pool.getWrappedTokenRate()).to.be.eq(fp(1));
+      expect(await pool.getWrappedTokenRate()).to.be.eq(FP_ONE);
 
       // Deposit one asset and check decimals on assets/shares
       await wrappedYieldTokenInstance.deposit(bn(1e6), trader.address);

@@ -20,12 +20,16 @@ import "@balancer-labs/v2-interfaces/contracts/pool-weighted/WeightedPoolUserDat
 import "../BasePool.sol";
 
 contract MockBasePool is BasePool {
+    using BasePoolUserData for bytes;
     using WeightedPoolUserData for bytes;
 
     uint256 private immutable _totalTokens;
 
+    bool private _failBeforeSwapJoinExit;
+
     event InnerOnJoinPoolCalled(uint256 protocolSwapFeePercentage);
     event InnerOnExitPoolCalled(uint256 protocolSwapFeePercentage);
+    event RecoveryModeExit(uint256 totalSupply, uint256[] balances, uint256 bptAmountIn);
 
     constructor(
         IVault vault,
@@ -52,6 +56,7 @@ contract MockBasePool is BasePool {
             owner
         )
     {
+        _failBeforeSwapJoinExit = false;
         _totalTokens = tokens.length;
     }
 
@@ -110,6 +115,15 @@ contract MockBasePool is BasePool {
         return (0, new uint256[](balances.length));
     }
 
+    function setFailBeforeSwapJoinExit(bool fail) external {
+        _failBeforeSwapJoinExit = fail;
+    }
+
+    function _beforeSwapJoinExit() internal override {
+        require(!_failBeforeSwapJoinExit, "FAIL_BEFORE_SWAP_JOIN_EXIT");
+        super._beforeSwapJoinExit();
+    }
+
     function payProtocolFees(uint256 bptAmount) public {
         _payProtocolFees(bptAmount);
     }
@@ -145,5 +159,15 @@ contract MockBasePool is BasePool {
 
     function onlyCallableInRecovery() external view {
         _ensureInRecoveryMode();
+    }
+
+    function _doRecoveryModeExit(
+        uint256[] memory balances,
+        uint256 totalSupply,
+        bytes memory userData
+    ) internal override returns (uint256, uint256[] memory) {
+        uint256 bptAmountIn = userData.recoveryModeExit();
+        emit RecoveryModeExit(totalSupply, balances, bptAmountIn);
+        return (bptAmountIn, balances);
     }
 }

@@ -5,21 +5,13 @@ export enum StablePoolJoinKind {
   INIT = 0,
   EXACT_TOKENS_IN_FOR_BPT_OUT,
   TOKEN_IN_FOR_EXACT_BPT_OUT,
-}
-
-export enum StablePhantomPoolJoinKind {
-  INIT = 0,
-  EXACT_TOKENS_IN_FOR_BPT_OUT,
+  ALL_TOKENS_IN_FOR_EXACT_BPT_OUT,
 }
 
 export enum StablePoolExitKind {
   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0,
-  EXACT_BPT_IN_FOR_TOKENS_OUT,
   BPT_IN_FOR_EXACT_TOKENS_OUT,
-}
-
-export enum StablePhantomPoolExitKind {
-  BPT_IN_FOR_EXACT_TOKENS_OUT = 0,
+  EXACT_BPT_IN_FOR_ALL_TOKENS_OUT,
 }
 
 export class StablePoolEncoder {
@@ -48,12 +40,6 @@ export class StablePoolEncoder {
       [StablePoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBPT]
     );
 
-  static joinExactTokensInForBPTOutPhantom = (amountsIn: BigNumberish[], minimumBPT: BigNumberish): string =>
-    defaultAbiCoder.encode(
-      ['uint256', 'uint256[]', 'uint256'],
-      [StablePhantomPoolJoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT, amountsIn, minimumBPT]
-    );
-
   /**
    * Encodes the userData parameter for joining a StablePool with to receive an exact amount of BPT
    * @param bptAmountOut - the amount of BPT to be minted
@@ -66,22 +52,22 @@ export class StablePoolEncoder {
     );
 
   /**
+   * Encodes the userData parameter for joining a StablePool proportionally
+   * @param bptAmountOut - the amount of BPT to be minted
+   */
+  static joinAllTokensInForExactBptOut = (bptAmountOut: BigNumberish): string =>
+    defaultAbiCoder.encode(['uint256', 'uint256'], [StablePoolJoinKind.ALL_TOKENS_IN_FOR_EXACT_BPT_OUT, bptAmountOut]);
+
+  /**
    * Encodes the userData parameter for exiting a StablePool by removing a single token in return for an exact amount of BPT
    * @param bptAmountIn - the amount of BPT to be burned
-   * @param enterTokenIndex - the index of the token to removed from the pool
+   * @param exitTokenIndex - the index of the token to removed from the pool
    */
   static exitExactBPTInForOneTokenOut = (bptAmountIn: BigNumberish, exitTokenIndex: number): string =>
     defaultAbiCoder.encode(
       ['uint256', 'uint256', 'uint256'],
       [StablePoolExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, exitTokenIndex]
     );
-
-  /**
-   * Encodes the userData parameter for exiting a StablePool by removing tokens in return for an exact amount of BPT
-   * @param bptAmountIn - the amount of BPT to be burned
-   */
-  static exitExactBPTInForTokensOut = (bptAmountIn: BigNumberish): string =>
-    defaultAbiCoder.encode(['uint256', 'uint256'], [StablePoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
 
   /**
    * Encodes the userData parameter for exiting a StablePool by removing exact amounts of tokens
@@ -95,13 +81,9 @@ export class StablePoolEncoder {
     );
 
   /**
-   * Encodes the userData parameter for exiting a PhantomStablePool by removing exact amounts of tokens
-   * @param amountsOut - the amounts of each token to be withdrawn from the pool
-   * @param maxBPTAmountIn - the minimum acceptable BPT to burn in return for withdrawn tokens
+   * Encodes the userData parameter for exiting a StablePool proportionally
+   * @param bptAmountIn - the amount of BPT to burn in exchange for withdrawn tokens
    */
-  static exitBPTInForExactTokensOutPhantom = (amountsOut: BigNumberish[], maxBPTAmountIn: BigNumberish): string =>
-    defaultAbiCoder.encode(
-      ['uint256', 'uint256[]', 'uint256'],
-      [StablePhantomPoolExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
-    );
+  static exitExactBptInForTokensOut = (bptAmountIn: BigNumberish): string =>
+    defaultAbiCoder.encode(['uint256', 'uint256'], [StablePoolExitKind.EXACT_BPT_IN_FOR_ALL_TOKENS_OUT, bptAmountIn]);
 }

@@ -46,6 +46,7 @@ contract ERC4626LinearPool is LinearPool {
             mainToken,
             wrappedToken,
             upperTarget,
+            new address[](2),
             swapFeePercentage,
             pauseWindowDuration,
             bufferPeriodDuration,
@@ -78,7 +79,7 @@ contract ERC4626LinearPool is LinearPool {
     }
 
     function _getWrappedTokenRate() internal view override returns (uint256) {
-        IERC4626 wrappedToken = IERC4626(getWrappedToken());
+        IERC4626 wrappedToken = IERC4626(address(getWrappedToken()));
 
         // Main tokens per 1e18 wrapped token wei
         //     decimals: main + (18 - wrapped)

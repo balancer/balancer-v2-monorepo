@@ -138,73 +138,6 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-asset-manager-utils]: 
 ➤ [@balancer-labs/v2-asset-manager-utils]:   54 passing (41s)
 ➤ [@balancer-labs/v2-asset-manager-utils]: 
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]:   MerkleRedeem
-➤ [@balancer-labs/v2-distributors]:     ✓ stores an allocation (284ms)
-➤ [@balancer-labs/v2-distributors]:     ✓ emits RewardAdded when an allocation is stored (252ms)
-➤ [@balancer-labs/v2-distributors]:     ✓ requisitions tokens when it stores a balance
-➤ [@balancer-labs/v2-distributors]:     ✓ reverts when unauthorized to seed allocation
-➤ [@balancer-labs/v2-distributors]:     ✓ stores multiple allocations
-➤ [@balancer-labs/v2-distributors]:     with an allocation
-➤ [@balancer-labs/v2-distributors]:       ✓ allows the user to claimWeek (255ms)
-➤ [@balancer-labs/v2-distributors]:       ✓ emits RewardPaid when an allocation is claimed
-➤ [@balancer-labs/v2-distributors]:       ✓ marks claimed weeks as claimed
-➤ [@balancer-labs/v2-distributors]:       ✓ allows the user to claimWeek to internal balance
-➤ [@balancer-labs/v2-distributors]:       ✓ reverts when a user attempts to claim for another user
-➤ [@balancer-labs/v2-distributors]:       ✓ reverts when the user attempts to claim the wrong balance
-➤ [@balancer-labs/v2-distributors]:       ✓ reverts when the user attempts to claim twice
-➤ [@balancer-labs/v2-distributors]:       ✓ reverts when an admin attempts to overwrite an allocationn
-➤ [@balancer-labs/v2-distributors]:     with several allocations
-➤ [@balancer-labs/v2-distributors]:       ✓ allows the user to claim multiple weeks at once
-➤ [@balancer-labs/v2-distributors]:       ✓ reports weeks as unclaimed
-➤ [@balancer-labs/v2-distributors]:       ✓ returns an array of merkle roots
-➤ [@balancer-labs/v2-distributors]:       When a user has claimed one of their allocations
-➤ [@balancer-labs/v2-distributors]:         ✓ reports one of the weeks as claimed
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]:   Staking contract
-➤ [@balancer-labs/v2-distributors]:     isAllowlistedRewarder
-➤ [@balancer-labs/v2-distributors]:       ✓ allows thet asset managers to allowlist themselves
-➤ [@balancer-labs/v2-distributors]:       ✓ allows the owner to allowlist someone
-➤ [@balancer-labs/v2-distributors]:       ✓ returns false for random users
-➤ [@balancer-labs/v2-distributors]:     addReward
-➤ [@balancer-labs/v2-distributors]:       ✓ sets up a reward for an asset manager
-➤ [@balancer-labs/v2-distributors]:     stakeWithPermit
-➤ [@balancer-labs/v2-distributors]:       ✓ stakes with a permit signature
-➤ [@balancer-labs/v2-distributors]:       ✓ stakes with a permit signature to a recipient
-➤ [@balancer-labs/v2-distributors]:     with two stakes
-➤ [@balancer-labs/v2-distributors]:       ✓ sends expected amount of reward token to the rewards contract
-➤ [@balancer-labs/v2-distributors]:       ✓ emits RewardAdded when an allocation is stored
-➤ [@balancer-labs/v2-distributors]:       when the rewarder has called notifyRewardAmount
-➤ [@balancer-labs/v2-distributors]:         ✓ distributes the reward according to the fraction of staked LP tokens
-➤ [@balancer-labs/v2-distributors]:         ✓ allows a user to claim the reward to an EOA
-➤ [@balancer-labs/v2-distributors]:         ✓ allows a user to claim the reward to internal balance
-➤ [@balancer-labs/v2-distributors]:         ✓ emits RewardPaid when an allocation is claimed
-➤ [@balancer-labs/v2-distributors]:       with a second distribution from the same rewarder
-➤ [@balancer-labs/v2-distributors]:         ✓ calculates totalEarned from both distributions
-➤ [@balancer-labs/v2-distributors]:       with a second distributions from another rewarder
-➤ [@balancer-labs/v2-distributors]:         ✓ calculates totalEarned from both distributions
-➤ [@balancer-labs/v2-distributors]:     with two pools
-➤ [@balancer-labs/v2-distributors]:       ✓ allows you to claim across multiple pools (431ms)
-➤ [@balancer-labs/v2-distributors]:       - emits RewardPaid for each pool
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]:   Staking contract
-➤ [@balancer-labs/v2-distributors]:     with a stake and a reward
-➤ [@balancer-labs/v2-distributors]:       ✓ allows a user to claim the reward to a callback contract
-➤ [@balancer-labs/v2-distributors]:       ✓ calls the callback on the contract
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]:   Reinvestor
-➤ [@balancer-labs/v2-distributors]:     with a stake and a reward
-➤ [@balancer-labs/v2-distributors]:       with a pool to claim into
-➤ [@balancer-labs/v2-distributors]:         ✓ emits PoolBalanceChanged when a LP claims to weighted pool (413ms)
-➤ [@balancer-labs/v2-distributors]:         ✓ mints bpt to a LP when they claim to weighted pool (380ms)
-➤ [@balancer-labs/v2-distributors]:         addReward
-➤ [@balancer-labs/v2-distributors]:           ✓ returns rewards that are unused in reinvestment (438ms)
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]: 
-➤ [@balancer-labs/v2-distributors]:   37 passing (41s)
-➤ [@balancer-labs/v2-distributors]:   1 pending
-➤ [@balancer-labs/v2-distributors]: 
 ➤ [@balancer-labs/v2-solidity-utils]: 
 ➤ [@balancer-labs/v2-solidity-utils]: 
 ➤ [@balancer-labs/v2-solidity-utils]:   BalancerErrors
@@ -397,44 +330,6 @@ codes instead of standard revert strings.
 ➤ [@balancer-labs/v2-solidity-utils]:         ✓ removes added keys
 ➤ [@balancer-labs/v2-solidity-utils]:         ✓ returns false when removing keys not in the set
 ➤ [@balancer-labs/v2-solidity-utils]:         ✓ adds and removes multiple keys (535ms)
-➤ [@balancer-labs/v2-solidity-utils]: 
-➤ [@balancer-labs/v2-solidity-utils]:   LogCompression
-➤ [@balancer-labs/v2-solidity-utils]:     small values
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 1 (307ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 2 (258ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 3 (309ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 4 (262ms)
-➤ [@balancer-labs/v2-solidity-utils]:     medium and large values
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 5 (273ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 6
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 7 (263ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 8 (414ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 9
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 10
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 11 (287ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 12
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 13
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 14
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 15
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 16 (258ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 17 (344ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 18 (269ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 19
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 20
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 21
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 22
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 23
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 24 (270ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 25
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 26
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 27
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 28
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 29 (255ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 30
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 31 (383ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 32 (281ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 33 (316ms)
-➤ [@balancer-labs/v2-solidity-utils]:       ✓ encodes and decodes powers of 34 (356ms)
 ➤ [@balancer-labs/v2-solidity-utils]: 
 ➤ [@balancer-labs/v2-solidity-utils]:   ExpLog
 ➤ [@balancer-labs/v2-solidity-utils]:     exponent zero

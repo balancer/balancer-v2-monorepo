@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.7.0;
+pragma solidity >=0.7.0 <0.9.0;
 
 import "./ILendingPool.sol";
 
@@ -33,4 +33,19 @@ interface IStaticAToken {
      * @dev returns a 27 decimal fixed point 'ray' value so a rate of 1 is represented as 1e27
      */
     function rate() external view returns (uint256);
+
+    function deposit(
+        address,
+        uint256,
+        uint16,
+        bool
+    ) external returns (uint256);
+
+    function withdraw(
+        address,
+        uint256,
+        bool
+    ) external returns (uint256, uint256);
+
+    function staticToDynamicAmount(uint256 amount) external view returns (uint256);
 }

@@ -5,4 +5,4 @@ Deployment of the `veBALL2GaugeSetupCoordinator`, responsible for setting up L2 
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`veBALL2GaugeSetupCoordinator` ABI](./abi/veBALL2GaugeSetupCoordinator.json)
+- [`veBALL2GaugeSetupCoordinator` artifact](./artifact/veBALL2GaugeSetupCoordinator.json)

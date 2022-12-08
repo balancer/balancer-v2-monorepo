@@ -19,6 +19,7 @@ import "@balancer-labs/v2-interfaces/contracts/solidity-utils/misc/IERC4626.sol"
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/Address.sol";
+import "@balancer-labs/v2-solidity-utils/contracts/openzeppelin/SafeERC20.sol";
 
 import "./IBaseRelayerLibrary.sol";
 
@@ -29,6 +30,7 @@ import "./IBaseRelayerLibrary.sol";
  */
 abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
     using Address for address payable;
+    using SafeERC20 for IERC20;
 
     function wrapERC4626(
         IERC4626 wrappedToken,
@@ -50,7 +52,7 @@ abstract contract ERC4626Wrapping is IBaseRelayerLibrary {
             _pullToken(sender, underlying, amount);
         }
 
-        underlying.approve(address(wrappedToken), amount);
+        underlying.safeApprove(address(wrappedToken), amount);
         uint256 result = wrappedToken.deposit(amount, recipient);
 
         if (_isChainedReference(outputReference)) {

@@ -21,8 +21,8 @@ export type PreseededVotingEscrowDelegationDeployment = {
   PreseededApprovalCalls: SetApprovalForAllCall[];
 };
 
-const VotingEscrow = new Task('gauge-controller', TaskMode.READ_ONLY);
-const AuthorizerAdaptor = new Task('authorizer-adaptor', TaskMode.READ_ONLY);
+const VotingEscrow = new Task('20220325-gauge-controller', TaskMode.READ_ONLY);
+const AuthorizerAdaptor = new Task('20220325-authorizer-adaptor', TaskMode.READ_ONLY);
 
 export default {
   VotingEscrow,
@@ -75,5 +75,9 @@ export default {
         delegator: '0xc4EAc760C2C631eE0b064E39888b89158ff808B2',
       },
     ],
+  },
+  goerli: {
+    PreseededBoostCalls: [],
+    PreseededApprovalCalls: [],
   },
 };

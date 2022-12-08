@@ -17,7 +17,7 @@ describe('ChildChainGaugeRewardHelper', () => {
   const rewardAmount = parseFixed('1', 18);
 
   let vault: Vault;
-  let adaptor: Contract;
+  let adaptorEntrypoint: Contract;
 
   let balToken: Token;
   let tokens: TokenList;
@@ -40,9 +40,8 @@ describe('ChildChainGaugeRewardHelper', () => {
 
   sharedBeforeEach('deploy token', async () => {
     vault = await Vault.create({ admin });
-    if (!vault.authorizer) throw Error('Vault has no Authorizer');
-
-    adaptor = await deploy('AuthorizerAdaptor', { args: [vault.address] });
+    const adaptor = vault.authorizerAdaptor;
+    adaptorEntrypoint = vault.authorizerAdaptorEntrypoint;
 
     tokens = await TokenList.create([{ symbol: 'BPT' }, { symbol: 'BPT2' }]);
     balToken = await Token.create({ symbol: 'BAL' });
@@ -80,15 +79,15 @@ describe('ChildChainGaugeRewardHelper', () => {
   });
 
   sharedBeforeEach('set up distributor on streamer', async () => {
-    const setDistributorActionId = await actionId(adaptor, 'set_reward_distributor', streamerOne.interface);
+    const setDistributorActionId = await actionId(adaptorEntrypoint, 'set_reward_distributor', streamerOne.interface);
     await vault.grantPermissionsGlobally([setDistributorActionId], admin);
 
     const calldata = streamerOne.interface.encodeFunctionData('set_reward_distributor', [
       balToken.address,
       distributor.address,
     ]);
-    await adaptor.connect(admin).performAction(streamerOne.address, calldata);
-    await adaptor.connect(admin).performAction(streamerTwo.address, calldata);
+    await adaptorEntrypoint.connect(admin).performAction(streamerOne.address, calldata);
+    await adaptorEntrypoint.connect(admin).performAction(streamerTwo.address, calldata);
   });
 
   sharedBeforeEach('send tokens to streamer', async () => {

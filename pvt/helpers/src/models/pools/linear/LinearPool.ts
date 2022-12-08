@@ -1,5 +1,4 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { defaultAbiCoder } from '@ethersproject/abi';
 import { BigNumber, Contract, ContractTransaction } from 'ethers';
 
 import { SwapKind } from '@balancer-labs/balancer-js';
@@ -10,7 +9,7 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
 import { GeneralSwap } from '../../vault/types';
 import { Account, TxParams } from '../../types/types';
-import { SwapLinearPool, RawLinearPoolDeployment, MultiExitGivenInLinearPool, ExitResult } from './types';
+import { SwapLinearPool, RawLinearPoolDeployment } from './types';
 
 import Vault from '../../vault/Vault';
 import Token from '../../tokens/Token';
@@ -18,18 +17,15 @@ import TokenList from '../../tokens/TokenList';
 import TypesConverter from '../../types/TypesConverter';
 import LinearPoolDeployer from './LinearPoolDeployer';
 import { deployedAt } from '../../../contract';
+import BasePool from '../base/BasePool';
 
-export default class LinearPool {
-  instance: Contract;
-  poolId: string;
+export default class LinearPool extends BasePool {
   mainToken: Token;
   wrappedToken: Token;
   bptToken: Token;
   lowerTarget: BigNumberish;
   upperTarget: BigNumberish;
-  swapFeePercentage: BigNumberish;
-  vault: Vault;
-  owner?: SignerWithAddress;
+  assetManagers: string[];
 
   static async create(params: RawLinearPoolDeployment, mockedVault: boolean): Promise<LinearPool> {
     return LinearPoolDeployer.deploy(params, mockedVault);
@@ -60,6 +56,17 @@ export default class LinearPool {
     );
   }
 
+  // Order the tokens the same way the Vault will
+  static getTokenList(mainToken: Token, wrappedToken: Token, bptToken: Token): TokenList {
+    const tokens: Token[] = [];
+
+    tokens.push(bptToken);
+    tokens.push(mainToken.address < wrappedToken.address ? mainToken : wrappedToken);
+    tokens.push(mainToken.address < wrappedToken.address ? wrappedToken : mainToken);
+
+    return new TokenList(tokens);
+  }
+
   constructor(
     instance: Contract,
     poolId: string,
@@ -69,27 +76,32 @@ export default class LinearPool {
     bptToken: Token,
     lowerTarget: BigNumberish,
     upperTarget: BigNumberish,
+    assetManagers: string[],
     swapFeePercentage: BigNumberish,
     owner?: SignerWithAddress
   ) {
-    this.instance = instance;
-    this.poolId = poolId;
-    this.vault = vault;
+    super(
+      instance,
+      poolId,
+      vault,
+      LinearPool.getTokenList(mainToken, wrappedToken, bptToken),
+      swapFeePercentage,
+      owner
+    );
     this.mainToken = mainToken;
     this.wrappedToken = wrappedToken;
     this.bptToken = bptToken;
     this.lowerTarget = lowerTarget;
     this.upperTarget = upperTarget;
-    this.swapFeePercentage = swapFeePercentage;
-    this.owner = owner;
+    this.assetManagers = assetManagers;
   }
 
   get address(): string {
     return this.instance.address;
   }
 
-  get tokens(): TokenList {
-    return new TokenList([this.wrappedToken, this.mainToken, this.bptToken]).sort();
+  get getLinearTokens(): TokenList {
+    return LinearPool.getTokenList(this.mainToken, this.wrappedToken, this.bptToken);
   }
 
   get mainIndex(): number {
@@ -116,71 +128,8 @@ export default class LinearPool {
     return addresses[0] == token.address ? 0 : addresses[1] == token.address ? 1 : 2;
   }
 
-  async name(): Promise<string> {
-    return this.instance.name();
-  }
-
-  async symbol(): Promise<string> {
-    return this.instance.symbol();
-  }
-
-  async decimals(): Promise<number> {
-    return this.instance.decimals();
-  }
-
-  async totalSupply(): Promise<BigNumber> {
-    return this.instance.totalSupply();
-  }
-
-  async balanceOf(account: Account): Promise<BigNumber> {
-    return this.instance.balanceOf(TypesConverter.toAddress(account));
-  }
-
-  async getVault(): Promise<string> {
-    return this.instance.getVault();
-  }
-
-  async getRegisteredInfo(): Promise<{ address: string; specialization: BigNumber }> {
-    return this.vault.getPool(this.poolId);
-  }
-
-  async getPoolId(): Promise<string> {
-    return this.instance.getPoolId();
-  }
-
-  async getSwapFeePercentage(): Promise<BigNumber> {
-    return this.instance.getSwapFeePercentage();
-  }
-
-  async getScalingFactors(): Promise<BigNumber[]> {
-    return this.instance.getScalingFactors();
-  }
-
-  async getScalingFactor(token: Token): Promise<BigNumber> {
-    return this.instance.getScalingFactor(token.address);
-  }
-
   async getWrappedTokenRate(): Promise<BigNumber> {
     return this.instance.getWrappedTokenRate();
-  }
-
-  async getTokens(): Promise<{ tokens: string[]; balances: BigNumber[]; lastChangeBlock: BigNumber }> {
-    return this.vault.getPoolTokens(this.poolId);
-  }
-
-  async getBalances(): Promise<BigNumber[]> {
-    const { balances } = await this.getTokens();
-    return balances;
-  }
-
-  async getTokenInfo(
-    token: Token
-  ): Promise<{ cash: BigNumber; managed: BigNumber; lastChangeBlock: BigNumber; assetManager: string }> {
-    return this.vault.getPoolTokenInfo(this.poolId, token);
-  }
-
-  async getRate(): Promise<BigNumber> {
-    return this.instance.getRate();
   }
 
   async getVirtualSupply(): Promise<BigNumber> {
@@ -222,8 +171,9 @@ export default class LinearPool {
   async swap(params: GeneralSwap): Promise<BigNumber> {
     const tx = await this.vault.generalSwap(params);
     const receipt = await (await tx).wait();
-    const { amount } = expectEvent.inReceipt(receipt, 'Swap').args;
-    return amount;
+    const { amountIn, amountOut } = expectEvent.inReceipt(receipt, 'Swap').args;
+
+    return params.kind == SwapKind.GivenIn ? amountOut : amountIn;
   }
 
   private _buildSwapParams(kind: number, params: SwapLinearPool): GeneralSwap {
@@ -242,34 +192,6 @@ export default class LinearPool {
       indexIn: params.in,
       indexOut: params.out,
     };
-  }
-
-  async emergencyProportionalExit(params: MultiExitGivenInLinearPool): Promise<ExitResult> {
-    const { tokens: allTokens } = await this.getTokens();
-    const data = this._encodeExitEmergencyExactBPTInForTokensOut(params.bptIn);
-    const currentBalances = params.currentBalances || (await this.getBalances());
-    const to = params.recipient ? TypesConverter.toAddress(params.recipient) : params.from?.address ?? ZERO_ADDRESS;
-
-    const tx = await this.vault.exitPool({
-      poolAddress: this.address,
-      poolId: this.poolId,
-      recipient: to,
-      currentBalances,
-      tokens: allTokens,
-      lastChangeBlock: params.lastChangeBlock ?? 0,
-      protocolFeePercentage: params.protocolFeePercentage ?? 0,
-      data: data,
-      from: params.from,
-    });
-
-    const receipt = await (await tx).wait();
-    const { deltas, protocolFeeAmounts } = expectEvent.inReceipt(receipt, 'PoolBalanceChanged').args;
-    return { amountsOut: deltas.map((x: BigNumber) => x.mul(-1)), dueProtocolFeeAmounts: protocolFeeAmounts };
-  }
-
-  private _encodeExitEmergencyExactBPTInForTokensOut(bptAmountIn: BigNumberish): string {
-    const EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT = 0;
-    return defaultAbiCoder.encode(['uint256', 'uint256'], [EMERGENCY_EXACT_BPT_IN_FOR_TOKENS_OUT, bptAmountIn]);
   }
 
   async pause(): Promise<void> {

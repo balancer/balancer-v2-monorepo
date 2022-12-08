@@ -2,28 +2,27 @@ import hre from 'hardhat';
 import { BigNumber, Contract } from 'ethers';
 import { expect } from 'chai';
 
-import { fp } from '@balancer-labs/v2-helpers/src/numbers';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 
-import Task, { TaskMode } from '../../../src/task';
-import { getForkedNetwork } from '../../../src/test';
-import { getSigner, impersonate } from '../../../src/signers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 import { fromNow, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-describe('PreseededVotingEscrowDelegation', function () {
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../src';
+
+describeForkTest('PreseededVotingEscrowDelegation', 'mainnet', 14850000, function () {
   let oldDelegation: Contract;
   let receiver: SignerWithAddress;
   let delegation: Contract;
 
-  const task = new Task('preseeded-voting-escrow-delegation', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const GOV_MULTISIG = '0x10A19e7eE7d7F8a52822f6817de8ea18204F2e4f';
 
   before('run task', async () => {
+    task = new Task('preseeded-voting-escrow-delegation', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     delegation = await task.deployedInstance('PreseededVotingEscrowDelegation');
   });
@@ -47,7 +46,7 @@ describe('PreseededVotingEscrowDelegation', function () {
       getForkedNetwork(hre)
     ).deployedInstance('Authorizer');
 
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
     await authorizer
       .connect(govMultisig)
       .grantRole(await actionId(delegationProxy, 'setDelegation'), govMultisig.address);
@@ -111,7 +110,7 @@ describe('PreseededVotingEscrowDelegation', function () {
     const TRIBE_DAO = '0xc4EAc760C2C631eE0b064E39888b89158ff808B2';
     const TRIBE_OPERATOR = '0x66977ce30049cd0e443216bf26377966c3a109e2';
 
-    const operator = await impersonate(TRIBE_OPERATOR, fp(100));
+    const operator = await impersonate(TRIBE_OPERATOR);
 
     const receipt = await (
       await delegation.connect(operator).create_boost(TRIBE_DAO, receiver.address, 1000, 0, await fromNow(MONTH), 0)

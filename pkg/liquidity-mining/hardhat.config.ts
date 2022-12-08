@@ -1,6 +1,7 @@
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-vyper';
+import 'hardhat-ignore-warnings';
 
 import { hardhatBaseConfig } from '@balancer-labs/v2-common';
 import { name } from './package.json';
@@ -17,6 +18,7 @@ export default {
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
   vyper: {
-    version: '0.3.1',
+    compilers: [{ version: '0.3.1' }, { version: '0.3.3' }],
   },
+  warnings: hardhatBaseConfig.warnings,
 };

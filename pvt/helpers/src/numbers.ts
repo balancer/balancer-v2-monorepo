@@ -51,17 +51,31 @@ export const min = (a: BigNumberish, b: BigNumberish): BigNumber => {
   return a.lt(b) ? a : b;
 };
 
+export const bnSum = (bnArr: BigNumberish[]): BigNumber => {
+  return bn(bnArr.reduce((prev, curr) => bn(prev).add(bn(curr)), 0));
+};
+
 export const arrayAdd = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
   arrA.map((a, i) => bn(a).add(bn(arrB[i])));
 
+export const arrayFpMul = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
+  arrA.map((a, i) => fpMul(a, arrB[i]));
+
 export const arraySub = (arrA: BigNumberish[], arrB: BigNumberish[]): BigNumber[] =>
   arrA.map((a, i) => bn(a).sub(bn(arrB[i])));
+
+export const fpMul = (a: BigNumberish, b: BigNumberish): BigNumber => bn(a).mul(b).div(FP_SCALING_FACTOR);
+
+export const fpDiv = (a: BigNumberish, b: BigNumberish): BigNumber => bn(a).mul(FP_SCALING_FACTOR).div(b);
 
 export const divCeil = (x: BigNumber, y: BigNumber): BigNumber =>
   // ceil(x/y) == (x + y - 1) / y
   x.add(y).sub(1).div(y);
 
-export const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
+const FP_SCALING_FACTOR = bn(SCALING_FACTOR);
+export const FP_ZERO = fp(0);
+export const FP_ONE = fp(1);
+export const FP_100_PCT = fp(1);
 
 export function printGas(gas: number | BigNumber): string {
   if (typeof gas !== 'number') {
@@ -116,4 +130,9 @@ function parseScientific(num: string): string {
   }
 
   return numberSign < 0 ? '-' + num : num;
+}
+
+export function randomFromInterval(min: number, max: number): number {
+  // min and max included
+  return Math.random() * (max - min) + min;
 }

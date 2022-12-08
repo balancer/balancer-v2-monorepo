@@ -26,4 +26,13 @@ export default {
   optimism: {
     InitialDeniedTokens: [],
   },
+  gnosis: {
+    InitialDeniedTokens: [],
+  },
+  bsc: {
+    InitialDeniedTokens: [],
+  },
+  goerli: {
+    InitialDeniedTokens: [],
+  },
 };

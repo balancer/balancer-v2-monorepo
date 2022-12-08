@@ -11,10 +11,15 @@ describe('BalancerErrors', function () {
   });
 
   it('encodes the error code as expected', async () => {
-    await expect(errors.fail(123)).to.be.revertedWith('123');
+    await expect(errors.fail(123)).to.be.revertedWith('BAL#123');
   });
 
   it('translates the error code to its corresponding string if existent', async () => {
     await expect(errors.fail(102)).to.be.revertedWith('UNSORTED_TOKENS');
+  });
+
+  it('encodes the prefix as expected', async () => {
+    // GYR = 0x475952
+    await expect(errors.failWithPrefix(123, '0x475952')).to.be.revertedWith('GYR#123');
   });
 });

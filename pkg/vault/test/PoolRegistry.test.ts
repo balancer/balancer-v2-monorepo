@@ -8,16 +8,15 @@ import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { encodeExit, encodeJoin } from '@balancer-labs/v2-helpers/src/models/pools/mockPool';
 
 import { bn } from '@balancer-labs/v2-helpers/src/numbers';
-import { MONTH } from '@balancer-labs/v2-helpers/src/time';
 import { deploy } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT256, ZERO_ADDRESS, ZERO_BYTES32 } from '@balancer-labs/v2-helpers/src/constants';
 import { PoolSpecialization } from '@balancer-labs/balancer-js';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { lastBlockNumber } from '@balancer-labs/v2-helpers/src/time';
+import Vault from '@balancer-labs/v2-helpers/src/models/vault/Vault';
 
 describe('PoolRegistry', () => {
   let admin: SignerWithAddress, lp: SignerWithAddress, other: SignerWithAddress;
-  let authorizer: Contract, vault: Contract;
+  let vault: Contract;
   let allTokens: TokenList;
 
   before(async () => {
@@ -25,10 +24,7 @@ describe('PoolRegistry', () => {
   });
 
   sharedBeforeEach('deploy vault & tokens', async () => {
-    const weth = await TokensDeployer.deployToken({ symbol: 'WETH' });
-
-    authorizer = await deploy('TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-    vault = await deploy('Vault', { args: [authorizer.address, weth.address, 0, 0] });
+    vault = (await Vault.create({ admin })).instance;
 
     allTokens = await TokenList.create(['DAI', 'MKR', 'SNX'], { sorted: true });
     await allTokens.mint({ to: lp, amount: 50000 });

@@ -2,23 +2,24 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { Contract, ContractReceipt } from 'ethers';
 
-import { bn, fp } from '@balancer-labs/v2-helpers/src/numbers';
+import { bn } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
+import { describeForkTest } from '../../../../src/forkTests';
 import Task, { TaskMode } from '../../../../src/task';
 import { getForkedNetwork } from '../../../../src/test';
 import { impersonate } from '../../../../src/signers';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import { range } from 'lodash';
 
-describe('veBALGaugeFixCoordinator', function () {
+describeForkTest('veBALGaugeFixCoordinator', 'mainnet', 14850000, function () {
   let govMultisig: SignerWithAddress;
   let coordinator: Contract;
 
   let authorizer: Contract, gaugeController: Contract;
 
-  const task = new Task('20220418-veBAL-gauge-fix-coordinator', TaskMode.TEST, getForkedNetwork(hre));
+  let task: Task;
 
   const BAL_TOKEN = '0xba100000625a3754423978a60c9317c58a424e3D';
 
@@ -33,6 +34,7 @@ describe('veBALGaugeFixCoordinator', function () {
   let executeReceipt: ContractReceipt;
 
   before('run task', async () => {
+    task = new Task('20220418-veBAL-gauge-fix-coordinator', TaskMode.TEST, getForkedNetwork(hre));
     await task.run({ force: true });
     coordinator = await task.instanceAt(
       'veBALGaugeFixCoordinator',
@@ -49,7 +51,7 @@ describe('veBALGaugeFixCoordinator', function () {
   });
 
   before('grant permissions', async () => {
-    govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    govMultisig = await impersonate(GOV_MULTISIG);
 
     const vaultTask = new Task('20210418-vault', TaskMode.READ_ONLY, getForkedNetwork(hre));
     authorizer = await vaultTask.instanceAt('Authorizer', await coordinator.getAuthorizer());

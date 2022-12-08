@@ -13,18 +13,30 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
-import "../ProtocolFeeCache.sol";
+import "../external-fees/ProtocolFeeCache.sol";
+import "./MockRecoveryModeStorage.sol";
 
-contract MockProtocolFeeCache is ProtocolFeeCache {
+contract MockProtocolFeeCache is ProtocolFeeCache, MockRecoveryModeStorage {
     // We make the caller the owner and make all functions owner only, letting the deployer perform all permissioned
     // actions.
-    constructor(IVault vault, uint256 protocolSwapFeePercentage)
+    constructor(IProtocolFeePercentagesProvider protocolFeeProvider, ProviderFeeIDs memory providerFeeIDs)
         Authentication(bytes32(uint256(address(this))))
         BasePoolAuthorization(msg.sender)
-        ProtocolFeeCache(vault, protocolSwapFeePercentage)
+        ProtocolFeeCache(protocolFeeProvider, providerFeeIDs)
     {
-        // solhint-disable-prev-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    event FeesInBeforeHook(uint256 swap, uint256 yield, uint256 aum);
+
+    function _beforeProtocolFeeCacheUpdate() internal override {
+        emit FeesInBeforeHook(
+            getProtocolFeePercentageCache(ProtocolFeeType.SWAP),
+            getProtocolFeePercentageCache(ProtocolFeeType.YIELD),
+            getProtocolFeePercentageCache(ProtocolFeeType.AUM)
+        );
     }
 
     function _isOwnerOnlyAction(bytes32) internal pure override returns (bool) {
@@ -33,5 +45,13 @@ contract MockProtocolFeeCache is ProtocolFeeCache {
 
     function _getAuthorizer() internal pure override returns (IAuthorizer) {
         return IAuthorizer(address(0));
+    }
+
+    function _doRecoveryModeExit(
+        uint256[] memory,
+        uint256,
+        bytes memory
+    ) internal pure override returns (uint256, uint256[] memory) {
+        _revert(Errors.UNIMPLEMENTED);
     }
 }
