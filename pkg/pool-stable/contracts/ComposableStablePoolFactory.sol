@@ -20,11 +20,10 @@ import "@balancer-labs/v2-interfaces/contracts/pool-utils/IVersion.sol";
 import "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/factories/BasePoolFactory.sol";
-import "@balancer-labs/v2-pool-utils/contracts/factories/FactoryWidePauseWindow.sol";
 
 import "./ComposableStablePool.sol";
 
-contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory, FactoryWidePauseWindow {
+contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory {
     string private _version;
     string private _poolVersion;
 
@@ -32,8 +31,18 @@ contract ComposableStablePoolFactory is IVersion, IPoolVersion, BasePoolFactory,
         IVault vault,
         IProtocolFeePercentagesProvider protocolFeeProvider,
         string memory factoryVersion,
-        string memory poolVersion
-    ) BasePoolFactory(vault, protocolFeeProvider, type(ComposableStablePool).creationCode) {
+        string memory poolVersion,
+        uint256 initialPauseWindowDuration,
+        uint256 bufferPeriodDuration
+    )
+        BasePoolFactory(
+            vault,
+            protocolFeeProvider,
+            initialPauseWindowDuration,
+            bufferPeriodDuration,
+            type(ComposableStablePool).creationCode
+        )
+    {
         _version = factoryVersion;
         _poolVersion = poolVersion;
     }
