@@ -24,4 +24,12 @@ contract TemporarilyPausableMock is TemporarilyPausable {
     function setPaused(bool paused) external {
         _setPaused(paused);
     }
+
+    function getMaxPauseWindowDuration() external pure returns (uint256) {
+        return PausableConstants.MAX_PAUSE_WINDOW_DURATION;
+    }
+
+    function getMaxBufferPeriodDuration() external pure returns (uint256) {
+        return PausableConstants.MAX_BUFFER_PERIOD_DURATION;
+    }
 }
