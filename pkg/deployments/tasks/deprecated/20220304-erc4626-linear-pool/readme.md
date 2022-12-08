@@ -9,4 +9,4 @@ Preliminary deployment of the `ERC4626LinearPoolFactory`, for Linear Pools with 
 ## Useful Files
 
 - [Polygon mainnet addresses](./output/polygon.json)
-- [`ERC4626LinearPool` ABI](./abi/ERC4626LinearPool.json)
+- [`ERC4626LinearPool` artifact](./artifact/ERC4626LinearPool.json)

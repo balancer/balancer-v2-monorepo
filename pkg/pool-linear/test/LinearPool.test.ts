@@ -159,7 +159,7 @@ describe('LinearPool', function () {
 
     it('cannot be initialized twice', async () => {
       await pool.initialize();
-      await expect(pool.initialize()).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(pool.initialize()).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
@@ -180,7 +180,7 @@ describe('LinearPool', function () {
         data: '0x',
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
 
     it('regular exits should revert', async () => {
@@ -194,18 +194,20 @@ describe('LinearPool', function () {
         data: '0x',
       });
 
-      await expect(tx).to.be.revertedWith('UNHANDLED_BY_LINEAR_POOL');
+      await expect(tx).to.be.revertedWith('UNIMPLEMENTED');
     });
   });
 
   describe('set targets', () => {
     const originalLowerTarget = fp(1000);
     const originalUpperTarget = fp(5000);
+    const originalSwapFee = fp(0.057);
 
     sharedBeforeEach('deploy pool and set initial targets', async () => {
       await deployPool({ mainToken, wrappedToken, upperTarget: originalUpperTarget }, true);
       await setBalances(pool, { mainBalance: originalLowerTarget.add(originalUpperTarget).div(2) });
       await pool.setTargets(originalLowerTarget, originalUpperTarget);
+      await pool.setSwapFeePercentage(originalSwapFee);
     });
 
     const setBalances = async (
@@ -214,7 +216,7 @@ describe('LinearPool', function () {
     ) => {
       const poolId = await pool.getPoolId();
 
-      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+      const updatedBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
         i == pool.mainIndex
           ? balances.mainBalance ?? bn(0)
           : i == pool.wrappedIndex
@@ -224,7 +226,7 @@ describe('LinearPool', function () {
           : bn(0)
       );
 
-      await pool.vault.updateBalances(poolId, updateBalances);
+      await pool.vault.updateCash(poolId, updatedBalances);
     };
 
     context('when outside the current free zone', () => {
@@ -329,6 +331,15 @@ describe('LinearPool', function () {
           });
         });
 
+        it('does not overwrite other state', async () => {
+          const newLowerTarget = originalLowerTarget.div(2);
+          const newUpperTarget = originalUpperTarget.mul(2);
+
+          await pool.setTargets(newLowerTarget, newUpperTarget);
+
+          expect(await pool.getSwapFeePercentage()).to.equal(originalSwapFee);
+        });
+
         it('reverts if the lower target is fractional', async () => {
           const newLowerTarget = originalLowerTarget.add(1);
           const newUpperTarget = originalUpperTarget;
@@ -380,7 +391,7 @@ describe('LinearPool', function () {
     ) => {
       const poolId = await pool.getPoolId();
 
-      const updateBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
+      const updatedBalances = Array.from({ length: TOTAL_TOKENS }, (_, i) =>
         i == pool.mainIndex
           ? balances.mainBalance ?? bn(0)
           : i == pool.wrappedIndex
@@ -390,7 +401,7 @@ describe('LinearPool', function () {
           : bn(0)
       );
 
-      await pool.vault.updateBalances(poolId, updateBalances);
+      await pool.vault.updateCash(poolId, updatedBalances);
     };
 
     context('when outside the targets', () => {
@@ -438,7 +449,7 @@ describe('LinearPool', function () {
       await deployPool({ mainToken, wrappedToken, upperTarget, owner }, true);
 
       poolId = await pool.getPoolId();
-      await pool.vault.updateBalances(
+      await pool.vault.updateCash(
         poolId,
         Array.from({ length: TOTAL_TOKENS }, (_, i) => (i == pool.bptIndex ? MAX_UINT112 : bn(0)))
       );
@@ -481,7 +492,7 @@ describe('LinearPool', function () {
       });
 
       sharedBeforeEach('update balances and rate', async () => {
-        await pool.vault.updateBalances(poolId, balances);
+        await pool.vault.updateCash(poolId, balances);
         await pool.setTargets(lowerTarget, upperTarget);
       });
 
@@ -507,7 +518,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -530,7 +541,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -555,7 +566,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -578,7 +589,7 @@ describe('LinearPool', function () {
           });
 
           it('rate remains the same', async () => {
-            await pool.vault.updateBalances(poolId, balances);
+            await pool.vault.updateCash(poolId, balances);
 
             const currentRate = await pool.getRate();
             expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
@@ -591,12 +602,12 @@ describe('LinearPool', function () {
           const newLowerTarget = lowerTarget.div(2);
           const newUpperTarget = upperTarget.mul(2);
 
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           await pool.setTargets(newLowerTarget, newUpperTarget);
         });
 
         it('rate remains the same', async () => {
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           const currentRate = await pool.getRate();
           expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
         });
@@ -604,12 +615,12 @@ describe('LinearPool', function () {
 
       context('with swap fee updated', () => {
         sharedBeforeEach('update swap fee', async () => {
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           await pool.instance.connect(owner).setSwapFeePercentage(POOL_SWAP_FEE_PERCENTAGE.mul(2));
         });
 
         it('rate remains the same', async () => {
-          await pool.vault.updateBalances(poolId, balances);
+          await pool.vault.updateCash(poolId, balances);
           const currentRate = await pool.getRate();
           expect(currentRate).to.be.equalWithError(fp(expectedRate), 0.000000000001);
         });

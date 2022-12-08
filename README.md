@@ -29,6 +29,10 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v2-liquidity-mining`](./pkg/liquidity-mining): contracts that compose the liquidity mining (veBAL) system.
 - [`v2-governance-scripts`](./pkg/governance-scripts): contracts that execute complex governance actions.
 
+## Pre-requisites
+
+The build & test instructions below should work out of the box with Node ^14.18.0. (Please note that it needs Node 14 specifically, and will NOT work with Node 16 or higher. Minor version should be at least 18).
+
 ## Clone
 
 This repository uses git submodules; use `--recurse-submodules` option when cloning. For example, using https:
@@ -83,7 +87,7 @@ $ yarn test-fuzz
 
 Multiple independent reviews and audits were performed by [Certora](https://www.certora.com/), [OpenZeppelin](https://openzeppelin.com/) and [Trail of Bits](https://www.trailofbits.com/). The latest reports from these engagements are located in the [`audits`](./audits) directory.
 
-Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs.balancer.fi/core-concepts/security/bug-bounties) to learn more.
+Bug bounties apply to most of the smart contracts hosted in this repository: head to [Balancer V2 Bug Bounties](https://docs.balancer.fi/core-concepts/security/bug-bounties) to learn more. Alternatively, send an email to security@balancer.finance.
 
 All core smart contracts are immutable, and cannot be upgraded. See page 6 of the [Trail of Bits audit](https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/audits/trail-of-bits/2021-04-05.pdf):
 

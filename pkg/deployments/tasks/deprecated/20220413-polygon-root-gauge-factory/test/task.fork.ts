@@ -1,20 +1,18 @@
 import hre, { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
+import { range } from 'lodash';
 
-import { BigNumber, fp, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
+import { BigNumber, FP_ONE } from '@balancer-labs/v2-helpers/src/numbers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { advanceTime, currentWeekTimestamp, DAY, WEEK } from '@balancer-labs/v2-helpers/src/time';
 import * as expectEvent from '@balancer-labs/v2-helpers/src/test/expectEvent';
 import { expectTransferEvent } from '@balancer-labs/v2-helpers/src/test/expectTransfer';
 
-import { describeForkTest } from '../../../../src/forkTests';
-import Task, { TaskMode } from '../../../../src/task';
-import { getForkedNetwork } from '../../../../src/test';
-import { getSigner, impersonate } from '../../../../src/signers';
 import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativeError';
 import { ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
-import { range } from 'lodash';
+
+import { describeForkTest, getSigner, impersonate, getForkedNetwork, Task, TaskMode } from '../../../../src';
 
 describeForkTest('PolygonRootGaugeFactory', 'mainnet', 14600000, function () {
   let veBALHolder: SignerWithAddress, admin: SignerWithAddress, recipient: SignerWithAddress;
@@ -47,7 +45,7 @@ describeForkTest('PolygonRootGaugeFactory', 'mainnet', 14600000, function () {
     admin = await getSigner(0);
     recipient = await getSigner(1);
 
-    veBALHolder = await impersonate(VEBAL_HOLDER, fp(100));
+    veBALHolder = await impersonate(VEBAL_HOLDER);
   });
 
   before('setup contracts', async () => {
@@ -97,7 +95,7 @@ describeForkTest('PolygonRootGaugeFactory', 'mainnet', 14600000, function () {
   it('grant permissions', async () => {
     // We need to grant permission to the admin to add the Polygon factory to the GaugeAdder, and also to then add
     // gauges from said factory to the GaugeController.
-    const govMultisig = await impersonate(GOV_MULTISIG, fp(100));
+    const govMultisig = await impersonate(GOV_MULTISIG);
 
     const selectors = ['addGaugeFactory', 'addPolygonGauge'].map((method) => gaugeAdder.interface.getSighash(method));
     await Promise.all(

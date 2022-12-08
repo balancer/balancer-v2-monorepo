@@ -11,10 +11,13 @@ import { deploy, deployedAt } from '@balancer-labs/v2-helpers/src/contract';
 import { MAX_UINT112 } from '@balancer-labs/v2-helpers/src/constants';
 import { advanceTime, currentTimestamp, MONTH } from '@balancer-labs/v2-helpers/src/time';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
+import { sharedBeforeEach } from '@balancer-labs/v2-common/sharedBeforeEach';
+import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 describe('AaveLinearPoolFactory', function () {
   let vault: Vault, tokens: TokenList, factory: Contract;
-  let creationTime: BigNumber, owner: SignerWithAddress;
+  let creationTime: BigNumber, admin: SignerWithAddress, owner: SignerWithAddress;
+  let factoryVersion: string, poolVersion: string;
 
   const NAME = 'Balancer Linear Pool Token';
   const SYMBOL = 'LPT';
@@ -23,38 +26,75 @@ describe('AaveLinearPoolFactory', function () {
   const BASE_PAUSE_WINDOW_DURATION = MONTH * 3;
   const BASE_BUFFER_PERIOD_DURATION = MONTH;
 
+  const AAVE_PROTOCOL_ID = 0;
+  const BEEFY_PROTOCOL_ID = 1;
+  const STURDY_PROTOCOL_ID = 2;
+
+  const AAVE_PROTOCOL_NAME = 'AAVE';
+  const BEEFY_PROTOCOL_NAME = 'Beefy';
+  const STURDY_PROTOCOL_NAME = 'Sturdy';
+
   before('setup signers', async () => {
-    [, owner] = await ethers.getSigners();
+    [, admin, owner] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy factory & tokens', async () => {
-    vault = await Vault.create();
+    vault = await Vault.create({ admin });
     const queries = await deploy('v2-standalone-utils/BalancerQueries', { args: [vault.address] });
+    factoryVersion = JSON.stringify({
+      name: 'AaveLinearPoolFactory',
+      version: '3',
+      deployment: 'test-deployment',
+    });
+    poolVersion = JSON.stringify({
+      name: 'AaveLinearPool',
+      version: '1',
+      deployment: 'test-deployment',
+    });
     factory = await deploy('AaveLinearPoolFactory', {
-      args: [vault.address, vault.getFeesProvider().address, queries.address],
+      args: [
+        vault.address,
+        vault.getFeesProvider().address,
+        queries.address,
+        factoryVersion,
+        poolVersion,
+        BASE_PAUSE_WINDOW_DURATION,
+        BASE_BUFFER_PERIOD_DURATION,
+      ],
     });
     creationTime = await currentTimestamp();
 
+    const mockLendingPool = await deploy('MockAaveLendingPool');
+
     const mainToken = await Token.create('DAI');
-    const wrappedTokenInstance = await deploy('MockStaticAToken', { args: ['cDAI', 'cDAI', 18, mainToken.address] });
+    const wrappedTokenInstance = await deploy('MockStaticAToken', {
+      args: ['cDAI', 'cDAI', 18, mainToken.address, mockLendingPool.address],
+    });
     const wrappedToken = await Token.deployedAt(wrappedTokenInstance.address);
 
     tokens = new TokenList([mainToken, wrappedToken]).sort();
   });
 
   async function createPool(): Promise<Contract> {
-    const receipt = await factory.create(
+    const tx = await factory.create(
       NAME,
       SYMBOL,
       tokens.DAI.address,
       tokens.CDAI.address,
       UPPER_TARGET,
       POOL_SWAP_FEE_PERCENTAGE,
-      owner.address
+      owner.address,
+      AAVE_PROTOCOL_ID
     );
 
-    const event = expectEvent.inReceipt(await receipt.wait(), 'PoolCreated');
-    return deployedAt('LinearPool', event.args.pool);
+    const receipt = await tx.wait();
+    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+    expectEvent.inReceipt(receipt, 'AaveLinearPoolCreated', {
+      pool: event.args.pool,
+      protocolId: AAVE_PROTOCOL_ID,
+    });
+
+    return deployedAt('AaveLinearPool', event.args.pool);
   }
 
   describe('constructor arguments', () => {
@@ -66,6 +106,18 @@ describe('AaveLinearPoolFactory', function () {
 
     it('sets the vault', async () => {
       expect(await pool.getVault()).to.equal(vault.address);
+    });
+
+    it('checks the factory version', async () => {
+      expect(await factory.version()).to.equal(factoryVersion);
+    });
+
+    it('checks the pool version', async () => {
+      expect(await pool.version()).to.equal(poolVersion);
+    });
+
+    it('checks the pool version in the factory', async () => {
+      expect(await factory.getPoolVersion()).to.equal(poolVersion);
     });
 
     it('registers tokens in the vault', async () => {
@@ -173,6 +225,54 @@ describe('AaveLinearPoolFactory', function () {
 
       expect(pauseWindowEndTime).to.equal(now);
       expect(bufferPeriodEndTime).to.equal(now);
+    });
+  });
+
+  describe('protocol id', () => {
+    it('should not allow adding protocols without permission', async () => {
+      await expect(factory.registerProtocolId(AAVE_PROTOCOL_ID, 'AAVE')).to.be.revertedWith('SENDER_NOT_ALLOWED');
+    });
+
+    context('with no registered protocols', () => {
+      it('should revert when asking for an unregistered protocol name', async () => {
+        await expect(factory.getProtocolName(AAVE_PROTOCOL_ID)).to.be.revertedWith('Protocol ID not registered');
+      });
+    });
+
+    context('with registered protocols', () => {
+      sharedBeforeEach('grant permissions', async () => {
+        const action = await actionId(factory, 'registerProtocolId');
+        await vault.authorizer.connect(admin).grantPermissions([action], admin.address, [factory.address]);
+      });
+
+      sharedBeforeEach('register some protocols', async () => {
+        await factory.connect(admin).registerProtocolId(AAVE_PROTOCOL_ID, AAVE_PROTOCOL_NAME);
+        await factory.connect(admin).registerProtocolId(BEEFY_PROTOCOL_ID, BEEFY_PROTOCOL_NAME);
+        await factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, STURDY_PROTOCOL_NAME);
+      });
+
+      it('protocol ID registration should emit an event', async () => {
+        const OTHER_PROTOCOL_ID = 57;
+        const OTHER_PROTOCOL_NAME = 'Protocol 57';
+
+        const tx = await factory.connect(admin).registerProtocolId(OTHER_PROTOCOL_ID, OTHER_PROTOCOL_NAME);
+        expectEvent.inReceipt(await tx.wait(), 'AaveLinearPoolProtocolIdRegistered', {
+          protocolId: OTHER_PROTOCOL_ID,
+          name: OTHER_PROTOCOL_NAME,
+        });
+      });
+
+      it('should register protocols', async () => {
+        expect(await factory.getProtocolName(AAVE_PROTOCOL_ID)).to.equal(AAVE_PROTOCOL_NAME);
+        expect(await factory.getProtocolName(BEEFY_PROTOCOL_ID)).to.equal(BEEFY_PROTOCOL_NAME);
+        expect(await factory.getProtocolName(STURDY_PROTOCOL_ID)).to.equal(STURDY_PROTOCOL_NAME);
+      });
+
+      it('should fail when a protocol is already registered', async () => {
+        await expect(
+          factory.connect(admin).registerProtocolId(STURDY_PROTOCOL_ID, 'Random protocol')
+        ).to.be.revertedWith('Protocol ID already registered');
+      });
     });
   });
 });

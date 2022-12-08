@@ -13,6 +13,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.7.0;
+pragma experimental ABIEncoderV2;
 
 import { Test } from "forge-std/Test.sol";
 
@@ -21,6 +22,8 @@ import "@balancer-labs/v2-solidity-utils/contracts/test/TestToken.sol";
 
 import "../../contracts/lib/GradualValueChange.sol";
 import "../../contracts/WeightedMath.sol";
+
+import "@balancer-labs/v2-solidity-utils/contracts/helpers/WordCodecHelpers.sol";
 
 import "../../contracts/test/MockManagedPoolTokenStorageLib.sol";
 
@@ -38,26 +41,6 @@ contract ManagedPoolTokenStorageLibTest is Test {
         mock = new MockManagedPoolTokenStorageLib();
     }
 
-    function clearWordAtPosition(
-        bytes32 word,
-        uint256 offset,
-        uint256 bitLength
-    ) internal pure returns (bytes32 clearedWord) {
-        uint256 mask = (1 << bitLength) - 1;
-        clearedWord = bytes32(uint256(word) & ~(mask << offset));
-    }
-
-    function assertOtherStateUnchanged(
-        bytes32 oldPoolState,
-        bytes32 newPoolState,
-        uint256 offset,
-        uint256 bitLength
-    ) internal returns (bool) {
-        bytes32 clearedOldState = clearWordAtPosition(oldPoolState, offset, bitLength);
-        bytes32 clearedNewState = clearWordAtPosition(newPoolState, offset, bitLength);
-        assertEq(clearedOldState, clearedNewState);
-    }
-
     function testScalingFactor(bytes32 tokenState, uint8 decimals) external {
         decimals = uint8(bound(decimals, 0, 30));
         ERC20 token = new TestToken("Test", "TEST", decimals);
@@ -66,7 +49,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
 
             bytes32 newTokenState = mock.setTokenScalingFactor(tokenState, token);
-            assertOtherStateUnchanged(tokenState, newTokenState, _DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH);
+            assertTrue(WordCodecHelpers.isOtherStateUnchanged(tokenState, newTokenState, _DECIMAL_DIFF_OFFSET, _DECIMAL_DIFF_WIDTH));
 
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(newTokenState);
             assertEq(tokenScalingFactor, expectedScalingFactor);
@@ -94,7 +77,7 @@ contract ManagedPoolTokenStorageLibTest is Test {
 
         bytes32 newTokenState = mock.setTokenWeight(tokenState, normalizedStartWeight, normalizedEndWeight);
 
-        assertOtherStateUnchanged(tokenState, newTokenState, _START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH * 2);
+        assertTrue(WordCodecHelpers.isOtherStateUnchanged(tokenState, newTokenState, _START_NORM_WEIGHT_OFFSET, _NORM_WEIGHT_WIDTH * 2));
 
         (uint256 recoveredStartWeight, uint256 recoveredEndWeight) = mock.getTokenStartAndEndWeights(newTokenState);
 
@@ -145,12 +128,12 @@ contract ManagedPoolTokenStorageLibTest is Test {
         ERC20 token = new TestToken("Test", "TEST", decimals);
         if (decimals <= 18) {
             bytes32 tokenState = mock.initializeTokenState(token, normalizedWeight);
-            assertOtherStateUnchanged(
+            assertTrue(WordCodecHelpers.isOtherStateUnchanged(
                 bytes32(0),
                 tokenState,
                 _START_NORM_WEIGHT_OFFSET,
                 _NORM_WEIGHT_WIDTH * 2 + _DECIMAL_DIFF_WIDTH
-            );
+            ));
 
             uint256 expectedScalingFactor = FixedPoint.ONE * 10**(18 - decimals);
             uint256 tokenScalingFactor = mock.getTokenScalingFactor(tokenState);

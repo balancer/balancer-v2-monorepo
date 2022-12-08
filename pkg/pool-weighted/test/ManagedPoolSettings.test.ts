@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { BigNumber, Contract, ContractReceipt } from 'ethers';
 import { ANY_ADDRESS, DELEGATE_OWNER, ZERO_ADDRESS } from '@balancer-labs/v2-helpers/src/constants';
 import {
-  MONTH,
   WEEK,
   DAY,
   MINUTE,
@@ -33,7 +32,6 @@ import { expectEqualWithError } from '@balancer-labs/v2-helpers/src/test/relativ
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { toNormalizedWeights } from '@balancer-labs/balancer-js';
 import Token from '@balancer-labs/v2-helpers/src/models/tokens/Token';
-import TokensDeployer from '@balancer-labs/v2-helpers/src/models/tokens/TokensDeployer';
 import { actionId } from '@balancer-labs/v2-helpers/src/models/misc/actions';
 
 import { range } from 'lodash';
@@ -46,7 +44,6 @@ describe('ManagedPoolSettings', function () {
   let tooManyWeights: BigNumber[];
   let admin: SignerWithAddress, owner: SignerWithAddress, other: SignerWithAddress;
   let pool: WeightedPool;
-  let authorizer: Contract;
   let vault: Vault;
 
   before('setup signers', async () => {
@@ -76,6 +73,7 @@ describe('ManagedPoolSettings', function () {
     await allTokens.mint({ to: [other, owner], amount: fp(2000) });
 
     vault = await Vault.create({ admin });
+
     await allTokens.approve({ from: other, to: vault });
     await allTokens.approve({ from: owner, to: vault });
   });
@@ -85,8 +83,7 @@ describe('ManagedPoolSettings', function () {
     const fullParams = {
       ...params,
       swapFeePercentage: INITIAL_SWAP_FEE,
-      poolType: WeightedPoolType.MOCK_MANAGED_POOL,
-      mockContractName: 'MockManagedPoolSettings',
+      poolType: WeightedPoolType.MOCK_MANAGED_POOL_SETTINGS,
     };
     return WeightedPool.create(fullParams);
   }
@@ -163,13 +160,6 @@ describe('ManagedPoolSettings', function () {
               const tokenScalingFactors = tokens.map((token) => fp(10 ** (18 - token.decimals)));
 
               expect(poolScalingFactors).to.deep.equal(tokenScalingFactors);
-            });
-
-            it('sets asset managers', async () => {
-              await tokens.asyncEach(async (token, i) => {
-                const info = await pool.getTokenInfo(token);
-                expect(info.assetManager).to.eq(assetManagers[i]);
-              });
             });
           });
         });
@@ -272,6 +262,16 @@ describe('ManagedPoolSettings', function () {
           it('getMustAllowlistLPs() returns true', async () => {
             expect(await pool.instance.getMustAllowlistLPs()).to.be.true;
           });
+        });
+      });
+
+      context('join / exit enabled by default', () => {
+        sharedBeforeEach(async () => {
+          pool = await createMockPool({ tokens: poolTokens });
+        });
+
+        it('joins and exits show enabled on start', async () => {
+          expect(await pool.instance.getJoinExitEnabled()).to.be.true;
         });
       });
     });
@@ -394,6 +394,58 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('permissioned actions', () => {
+    describe('enable/disable joins and exits', () => {
+      sharedBeforeEach('deploy pool', async () => {
+        const params = {
+          tokens: poolTokens,
+          weights: poolWeights,
+          owner: owner.address,
+          vault,
+        };
+        pool = await createMockPool(params);
+      });
+
+      context('when the sender is not the owner', () => {
+        it('non-owners cannot disable joins and exits', async () => {
+          await expect(pool.setJoinExitEnabled(other, false)).to.be.revertedWith('SENDER_NOT_ALLOWED');
+        });
+      });
+
+      context('when the sender is the owner', () => {
+        beforeEach('set sender to owner', () => {
+          sender = owner;
+        });
+
+        sharedBeforeEach('initialize pool', async () => {
+          await pool.init({ from: sender, initialBalances });
+        });
+
+        it('joins and exits can be enabled and disabled', async () => {
+          await pool.setJoinExitEnabled(sender, false);
+          expect(await pool.instance.getJoinExitEnabled()).to.be.false;
+
+          await pool.setJoinExitEnabled(sender, true);
+          expect(await pool.instance.getJoinExitEnabled()).to.be.true;
+        });
+
+        it('disabling joins and exits emits an event', async () => {
+          const receipt = await pool.setJoinExitEnabled(sender, false);
+
+          expectEvent.inReceipt(await receipt.wait(), 'JoinExitEnabledSet', {
+            joinExitEnabled: false,
+          });
+        });
+
+        it('enabling joins and exits emits an event', async () => {
+          const receipt = await pool.setJoinExitEnabled(sender, true);
+
+          expectEvent.inReceipt(await receipt.wait(), 'JoinExitEnabledSet', {
+            joinExitEnabled: true,
+          });
+        });
+      });
+    });
+
     describe('enable/disable swaps', () => {
       sharedBeforeEach('deploy pool', async () => {
         const params = {
@@ -464,7 +516,6 @@ describe('ManagedPoolSettings', function () {
       context('when the sender is not the owner', () => {
         it('non-owners cannot update weights', async () => {
           const now = await currentTimestamp();
-
           await expect(pool.updateWeightsGradually(other, now, now, poolWeights)).to.be.revertedWith(
             'SENDER_NOT_ALLOWED'
           );
@@ -1141,10 +1192,8 @@ describe('ManagedPoolSettings', function () {
               intermediateWeight
             );
 
-            const {
-              lowerBptPriceBound: actualLowerBptPriceBound,
-              upperBptPriceBound: actualUpperBptPriceBound,
-            } = await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
+            const { lowerBptPriceBound: actualLowerBptPriceBound, upperBptPriceBound: actualUpperBptPriceBound } =
+              await pool.getCircuitBreakerState(poolTokens.get(tokenIndex));
 
             expect(actualLowerBptPriceBound).to.equalWithError(fpMul(expectedLowerBptPriceBound, scalingFactor), 0.001);
             expect(actualUpperBptPriceBound).to.equalWithError(fpMul(expectedUpperBptPriceBound, scalingFactor), 0.001);
@@ -1471,9 +1520,8 @@ describe('ManagedPoolSettings', function () {
   });
 
   describe('non-zero AUM protocol fees', () => {
-    let authorizedVault: Contract;
     let protocolFeesProvider: Contract;
-    let vault: Vault;
+    let authorizer: Contract;
 
     const AUM_PROTOCOL_FEE_PERCENTAGE = fp(0.1);
     const swapFeePercentage = fp(0.02);
@@ -1482,13 +1530,14 @@ describe('ManagedPoolSettings', function () {
     const maxAUMValue = fp(1);
 
     sharedBeforeEach('deploy and set protocol AUM fee', async () => {
-      const WETH = await TokensDeployer.deployToken({ symbol: 'WETH' });
-
-      authorizer = await deploy('v2-vault/TimelockAuthorizer', { args: [admin.address, ZERO_ADDRESS, MONTH] });
-      authorizedVault = await deploy('v2-vault/Vault', { args: [authorizer.address, WETH.address, MONTH, MONTH] });
-      protocolFeesProvider = await deploy('v2-standalone-utils/ProtocolFeePercentagesProvider', {
-        args: [authorizedVault.address, maxYieldValue, maxAUMValue],
+      vault = await Vault.create({
+        admin,
+        maxYieldValue,
+        maxAUMValue,
       });
+
+      authorizer = vault.authorizer;
+      protocolFeesProvider = vault.protocolFeesProvider;
 
       const action = await actionId(protocolFeesProvider, 'setFeeTypePercentage');
       await authorizer.connect(admin).grantPermissions([action], admin.address, [ANY_ADDRESS]);
@@ -1496,9 +1545,6 @@ describe('ManagedPoolSettings', function () {
     });
 
     sharedBeforeEach('deploy and initialize pool', async () => {
-      // protocolFeesProvider unused for now
-      vault = new Vault(false, authorizedVault, authorizer, protocolFeesProvider, admin);
-
       const params = {
         tokens: poolTokens,
         weights: poolWeights,

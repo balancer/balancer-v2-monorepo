@@ -10,4 +10,4 @@ Deployment of `FeeDistributor`, responsible for distributing tokens to veBAL hol
 ## Useful Files
 
 - [Ethereum mainnet addresses](./output/mainnet.json)
-- [`FeeDistributor` ABI](./abi/FeeDistributor.json)
+- [`FeeDistributor` artifact](./artifact/FeeDistributor.json)

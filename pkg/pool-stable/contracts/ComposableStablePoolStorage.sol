@@ -16,13 +16,13 @@ pragma solidity ^0.7.0;
 
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/helpers/BalancerErrors.sol";
 import "@balancer-labs/v2-interfaces/contracts/solidity-utils/openzeppelin/IERC20.sol";
-import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProvider.sol";
+import "@balancer-labs/v2-interfaces/contracts/pool-utils/IRateProviderPool.sol";
 
 import "@balancer-labs/v2-pool-utils/contracts/BasePool.sol";
 
 import "./StableMath.sol";
 
-abstract contract ComposableStablePoolStorage is BasePool {
+abstract contract ComposableStablePoolStorage is BasePool, IRateProviderPool {
     using FixedPoint for uint256;
     using WordCodec for bytes32;
 
@@ -308,10 +308,7 @@ abstract contract ComposableStablePoolStorage is BasePool {
         }
     }
 
-    /**
-     * @dev Returns the rate providers configured for each token (in the same order as registered).
-     */
-    function getRateProviders() external view returns (IRateProvider[] memory) {
+    function getRateProviders() external view override returns (IRateProvider[] memory) {
         uint256 totalTokens = _getTotalTokens();
         IRateProvider[] memory providers = new IRateProvider[](totalTokens);
 
